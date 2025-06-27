@@ -126,7 +126,7 @@ describe("QueryBuilder - beforeunload events", () => {
 
       await userEvent.click(screen.getByText("New"));
       await userEvent.click(
-        within(await screen.findByRole("dialog")).getByText("SQL query"),
+        within(await screen.findByRole("menu")).getByText("SQL query"),
       );
       await waitForLoaderToBeRemoved();
 
@@ -146,7 +146,7 @@ describe("QueryBuilder - beforeunload events", () => {
 
       await userEvent.click(screen.getByText("New"));
       await userEvent.click(
-        within(await screen.findByRole("dialog")).getByText("SQL query"),
+        within(await screen.findByRole("menu")).getByText("SQL query"),
       );
 
       await waitForLoaderToBeRemoved();

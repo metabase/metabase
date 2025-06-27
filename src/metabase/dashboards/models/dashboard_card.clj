@@ -25,12 +25,14 @@
 
 (t2/deftransforms :model/DashboardCard
   {:parameter_mappings     mi/transform-parameters-list
-   :visualization_settings mi/transform-visualization-settings})
+   :visualization_settings mi/transform-visualization-settings
+   :inline_parameters      mi/transform-json})
 
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
   (merge {:parameter_mappings     []
-          :visualization_settings {}}
+          :visualization_settings {}
+          :inline_parameters      []}
          dashcard))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
@@ -158,6 +160,7 @@
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
    [:parameter_mappings     {:optional true} [:maybe [:sequential :map]]]
    [:visualization_settings {:optional true} [:maybe :map]]
+   [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
    [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
@@ -177,7 +180,7 @@
    old-dashboard-card :- DashboardCardUpdates]
   (t2/with-transaction [_conn]
     (let [update-ks [:action_id :card_id :row :col :size_x :size_y
-                     :parameter_mappings :visualization_settings :dashboard_tab_id]
+                     :parameter_mappings :visualization_settings :dashboard_tab_id :inline_parameters]
           updates   (shallow-updates (select-keys dashboard-card update-ks)
                                      (select-keys old-dashboard-card update-ks))]
       (when (seq updates)
@@ -204,6 +207,7 @@
    ;; TODO - use ParamMapping. Breaks too many tests right now tho (#40021)
    [:parameter_mappings     {:optional true} [:maybe [:sequential map?]]]
    [:visualization_settings {:optional true} [:maybe map?]]
+   [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
 (mu/defn create-dashboard-cards!
@@ -216,7 +220,8 @@
                                 :model/DashboardCard
                                 (for [dashcard dashboard-cards]
                                   (merge {:parameter_mappings []
-                                          :visualization_settings {}}
+                                          :visualization_settings {}
+                                          :inline_parameters []}
                                          (dissoc dashcard :id :created_at :updated_at :entity_id :series :card :collection_authority_level))))]
         ;; add series to the DashboardCard
         (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
@@ -224,11 +229,37 @@
         (-> (t2/select :model/DashboardCard :id [:in dashboard-card-ids])
             (t2/hydrate :series))))))
 
+(defn- cleanup-orphaned-inline-parameters!
+  "Remove inline parameter IDs from the dashboard's parameters list when dashcards are deleted.
+   Since inline parameters can only be referenced by a single card, all inline parameters
+   from deleted cards become orphaned."
+  [dashboard-card-ids]
+  (when (seq dashboard-card-ids)
+    (let [cards-being-deleted (t2/select :model/DashboardCard :id [:in dashboard-card-ids])
+          orphaned-param-ids (set (mapcat :inline_parameters cards-being-deleted))
+          ;; Get dashboard IDs (should all be the same, but let's be safe)
+          dashboard-ids (set (map :dashboard_id cards-being-deleted))]
+
+      (when (and (seq orphaned-param-ids) (= 1 (count dashboard-ids)))
+        (let [dashboard-id (first dashboard-ids)
+              dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+              current-params (:parameters dashboard)
+              cleaned-params (filterv #(not (contains? orphaned-param-ids (:id %)))
+                                      current-params)]
+
+          (when (not= (count current-params) (count cleaned-params))
+            (t2/update! :model/Dashboard dashboard-id {:parameters cleaned-params})
+            (count orphaned-param-ids)))))))
+
 (defn delete-dashboard-cards!
-  "Delete DashboardCards of a Dasbhoard."
+  "Delete DashboardCards of a Dashboard. Automatically cleans up orphaned inline parameters."
   [dashboard-card-ids]
   {:pre [(coll? dashboard-card-ids)]}
   (t2/with-transaction [_conn]
+    ;; Clean up inline parameters before deletion (since we need to read the cards first)
+    (cleanup-orphaned-inline-parameters! dashboard-card-ids)
+
+    ;; Delete the cards
     (t2/delete! :model/PulseCard :dashboard_card_id [:in dashboard-card-ids])
     (t2/delete! :model/DashboardCard :id [:in dashboard-card-ids])))
 
@@ -362,7 +393,7 @@
            (serdes/infer-self-path "DashboardCard" dashcard)]))
 
 (defmethod serdes/make-spec "DashboardCard" [_model-name opts]
-  {:copy      [:col :entity_id :row :size_x :size_y]
+  {:copy      [:col :entity_id :inline_parameters :row :size_x :size_y]
    :skip      []
    :transform {:created_at             (serdes/date)
                :dashboard_id           (serdes/parent-ref)

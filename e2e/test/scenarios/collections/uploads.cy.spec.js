@@ -281,7 +281,7 @@ describe("permissions", { tags: "@external" }, () => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
 
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     H.enableUploads("postgres");
 
     //Deny access for all users to writable DB
@@ -322,7 +322,7 @@ describe("permissions", { tags: "@external" }, () => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
 
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     H.enableUploads("postgres");
 
     cy.updatePermissionsGraph({
@@ -360,7 +360,7 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
     H.enableUploads("postgres");
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should allow a user to delete an upload table", () => {
