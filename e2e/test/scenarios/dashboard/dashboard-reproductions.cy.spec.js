@@ -954,7 +954,7 @@ describe("issue 34382", () => {
   }
 
   function applyFilter() {
-    cy.findByRole("button", { name: "Apply filter" }).click();
+    cy.findByRole("button", { name: "Apply" }).click();
     cy.wait("@dashcardQuery");
   }
 

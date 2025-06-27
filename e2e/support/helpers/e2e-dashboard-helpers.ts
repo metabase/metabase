@@ -384,7 +384,7 @@ export function applyFilterToast() {
 }
 
 export function applyFilterButton() {
-  return applyFilterToast().button("Apply filter");
+  return applyFilterToast().button("Apply");
 }
 
 export function cancelFilterButton() {
