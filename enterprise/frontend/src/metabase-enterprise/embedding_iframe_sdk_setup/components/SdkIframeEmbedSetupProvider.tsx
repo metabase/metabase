@@ -15,6 +15,7 @@ import {
   SdkIframeEmbedSetupContext,
   type SdkIframeEmbedSetupContextType,
 } from "../context";
+import { useParameterList } from "../hooks";
 import { useRecentItems } from "../hooks/use-recent-items";
 import type {
   SdkIframeEmbedSetupExperience,
@@ -63,6 +64,15 @@ export const SdkIframeEmbedSetupProvider = ({
     [settings],
   );
 
+  // Use parameter list hook for dynamic parameter loading
+  const { availableParameters, isLoadingParameters } = useParameterList({
+    experience,
+
+    // We're always using numeric IDs for previews.
+    ...(settings.dashboardId && { dashboardId: Number(settings.dashboardId) }),
+    ...(settings.questionId && { questionId: Number(settings.questionId) }),
+  });
+
   const updateSettings = useCallback(
     (nextSettings: Partial<SdkIframeEmbedSettings>) =>
       setSettings(
@@ -103,6 +113,8 @@ export const SdkIframeEmbedSetupProvider = ({
     recentQuestions,
     addRecentItem,
     isEmbedSettingsLoaded,
+    isLoadingParameters,
+    availableParameters,
   };
 
   return (
