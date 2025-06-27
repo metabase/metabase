@@ -138,7 +138,7 @@
     :<=               (case display-name-variant
                         :default (i18n/tru "Less than or equal to"))
     :between          (case display-name-variant
-                        :default (i18n/tru "Range"))
+                        :default (i18n/tru "Between"))
     :is-null          (case display-name-variant
                         :is-empty (i18n/tru "Is empty")
                         :default  (i18n/tru "Is null"))
