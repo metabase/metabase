@@ -5,6 +5,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Icon, Modal, Tabs } from "metabase/ui";
 
@@ -25,6 +26,8 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
 
   const [activeTab, setActiveTab] = useState<string | null>("db");
 
+  const isHosted = useSetting("is-hosted?");
+
   const isAdmin = useSelector(getUserIsAdmin);
   const userCanAccessSettings = useSelector(canAccessSettings);
 
@@ -40,8 +43,6 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
   const canUploadToDatabase = !!uploadDB?.can_upload;
   const canManageUploads = userCanAccessSettings;
 
-  const canManageDatabases = isAdmin;
-
   const handleTabChange = (tabValue: string | null) => {
     if (tabValue === activeTab || !isValidTab(tabValue)) {
       return;
@@ -50,7 +51,7 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
     const eventMapping = {
       db: "database_tab_clicked",
       csv: "csv_tab_clicked",
-      gsheet: "sheets_tab_clicked",
+      gsheets: "sheets_tab_clicked",
     } as const;
 
     trackAddDataEvent(eventMapping[tabValue]);
@@ -83,12 +84,21 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
               <Tabs.Tab value="csv" leftSection={<Icon name="table2" />}>
                 {t`CSV`}
               </Tabs.Tab>
+              {isHosted && (
+                <Tabs.Tab
+                  value="gsheets"
+                  leftSection={<Icon name="document" />}
+                >
+                  {t`Google Sheets`}
+                </Tabs.Tab>
+              )}
             </Tabs.List>
           </Box>
           <Box component="main" w="30rem" className={S.panelContainer}>
             <PanelsHeader
-              showDatabasesLink={activeTab === "db" && canManageDatabases}
+              showDatabasesLink={activeTab === "db" && isAdmin}
               showUploadsLink={activeTab === "csv" && canManageUploads}
+              showManageImports={activeTab === "gsheets" && isAdmin}
               onAddDataModalClose={onClose}
             />
             <Tabs.Panel value="db" className={S.panel}>
@@ -101,6 +111,9 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
                 canUpload={canUploadToDatabase}
                 canManageUploads={canManageUploads}
               />
+            </Tabs.Panel>
+            <Tabs.Panel value="gsheets" className={S.panel}>
+              <PLUGIN_UPLOAD_MANAGEMENT.GdriveAddDataPanel />
             </Tabs.Panel>
           </Box>
         </Tabs>

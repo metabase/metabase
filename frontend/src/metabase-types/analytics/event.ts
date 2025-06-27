@@ -21,7 +21,7 @@ type ValidateEvent<
 
 type CSVUploadClickedEvent = ValidateEvent<{
   event: "csv_upload_clicked";
-  triggered_from: "left-nav" | "add-data-modal" | "collection";
+  triggered_from: "add-data-modal" | "collection";
 }>;
 
 export type DatabaseAddClickedEvent = ValidateEvent<{
@@ -91,7 +91,7 @@ export type ErrorDiagnosticModalSubmittedEvent = ValidateEvent<{
 
 export type GsheetsConnectionClickedEvent = ValidateEvent<{
   event: "sheets_connection_clicked";
-  triggered_from: "db-page" | "left-nav";
+  triggered_from: "db-page" | "add-data-modal";
 }>;
 
 export type GsheetsImportClickedEvent = ValidateEvent<{

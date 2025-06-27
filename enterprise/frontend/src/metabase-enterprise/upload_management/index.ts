@@ -3,9 +3,9 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import {
   FileUploadErrorModal,
+  GdriveAddDataPanel,
   GdriveConnectionModal,
   GdriveDbMenu,
-  GdriveSidebarMenuItem,
   GdriveSyncStatus,
 } from "../google_drive";
 
@@ -15,10 +15,13 @@ if (hasPremiumFeature("upload_management")) {
   PLUGIN_UPLOAD_MANAGEMENT.UploadManagementTable = UploadManagementTable;
 }
 
+if (hasPremiumFeature("hosting")) {
+  PLUGIN_UPLOAD_MANAGEMENT.GdriveAddDataPanel = GdriveAddDataPanel;
+}
+
 if (hasPremiumFeature("hosting") && hasPremiumFeature("attached_dwh")) {
   PLUGIN_UPLOAD_MANAGEMENT.FileUploadErrorModal = FileUploadErrorModal;
   PLUGIN_UPLOAD_MANAGEMENT.GdriveConnectionModal = GdriveConnectionModal;
-  PLUGIN_UPLOAD_MANAGEMENT.GdriveSidebarMenuItem = GdriveSidebarMenuItem;
   PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus = GdriveSyncStatus;
   PLUGIN_UPLOAD_MANAGEMENT.GdriveDbMenu = GdriveDbMenu;
 }

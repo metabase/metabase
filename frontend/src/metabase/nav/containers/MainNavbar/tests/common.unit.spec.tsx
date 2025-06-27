@@ -124,13 +124,6 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
-  describe("DWH Upload", () => {
-    it("should not render DWH Upload section", () => {
-      setup({ user: createMockUser({ is_superuser: true }) });
-      expect(screen.queryByTestId("dwh-upload")).not.toBeInTheDocument();
-    });
-  });
-
   describe("browse databases link", () => {
     it("should render", async () => {
       await setup();

@@ -225,15 +225,6 @@ function GoogleSheetsDisconnectModal({
 }) {
   const [errorMessage, setErrorMessage] = useState("");
 
-  const { data: gdriveInfo } = useGetGsheetsFolderQuery();
-
-  const connectingUserId = gdriveInfo?.created_by_id;
-  const folderUrl = gdriveInfo?.url;
-
-  const { data: connectingUser } = useGetUserQuery(
-    connectingUserId ? connectingUserId : skipToken,
-  );
-
   const [deleteFolderLink, { isLoading: isDeletingFolderLink }] =
     useDeleteGsheetsFolderLinkMutation();
 
@@ -257,23 +248,13 @@ function GoogleSheetsDisconnectModal({
       });
   };
 
-  const userName = getUserName(connectingUser);
-
-  const relativeConnectionTime = gdriveInfo?.created_at
-    ? dayjs.unix(gdriveInfo.created_at).fromNow()
-    : "";
-
   return (
     <ModalWrapper
       onClose={onClose}
       title={t`To add a new Google Drive folder, the existing one needs to be disconnected first`}
     >
       <Stack gap="md">
-        <DriveConnectionDisplay
-          folderUrl={folderUrl ?? ""}
-          userName={userName ?? ""}
-          relativeConnectionTime={relativeConnectionTime}
-        />
+        <DriveConnectionDisplay />
         <Text c="text-medium" pb="md">
           {reconnect
             ? // eslint-disable-next-line no-literal-metabase-strings -- admin only string
@@ -285,7 +266,11 @@ function GoogleSheetsDisconnectModal({
             {errorMessage}
           </Text>
           <Flex justify="flex-end" gap="md">
-            <Button variant="outline" onClick={onClose}>
+            <Button
+              variant="outline"
+              onClick={onClose}
+              disabled={isDeletingFolderLink}
+            >
               {t`Keep connected`}
             </Button>
             <Button
@@ -318,32 +303,40 @@ const MaybeLink = ({
     <Box>{children}</Box>
   );
 
-const DriveConnectionDisplay = ({
-  folderUrl,
-  userName,
-  relativeConnectionTime,
-}: {
-  folderUrl: string;
-  userName: string;
-  relativeConnectionTime: string;
-}) => (
-  <MaybeLink href={folderUrl}>
-    <Flex
-      bg="bg-light"
-      w="100%"
-      gap="sm"
-      p="md"
-      style={{ borderRadius: "0.5rem" }}
-    >
-      <Icon name="google_drive" mt="xs" />
-      <Box>
-        <Text fw="bold">{t`Google Drive connected`}</Text>
-        {!!userName && (
-          <Text c="text-medium" fz="sm" lh="140%">
-            {t`Connected by ${userName} ${relativeConnectionTime}`}
-          </Text>
-        )}
-      </Box>
-    </Flex>
-  </MaybeLink>
-);
+export const DriveConnectionDisplay = () => {
+  const { data: gdriveInfo } = useGetGsheetsFolderQuery();
+
+  const connectingUserId = gdriveInfo?.created_by_id;
+  const folderUrl = gdriveInfo?.url;
+
+  const { data: connectingUser } = useGetUserQuery(
+    connectingUserId ? connectingUserId : skipToken,
+  );
+
+  const userName = getUserName(connectingUser);
+
+  const relativeConnectionTime = gdriveInfo?.created_at
+    ? dayjs.unix(gdriveInfo.created_at).fromNow()
+    : "";
+  return (
+    <MaybeLink href={folderUrl ?? ""}>
+      <Flex
+        bg="bg-light"
+        w="100%"
+        gap="sm"
+        p="md"
+        style={{ borderRadius: "0.5rem" }}
+      >
+        <Icon name="google_drive" mt="xs" />
+        <Box>
+          <Text fw="bold">{t`Google Drive connected`}</Text>
+          {!!userName && (
+            <Text c="text-medium" fz="sm" lh="140%">
+              {t`Connected by ${userName} ${relativeConnectionTime}`}
+            </Text>
+          )}
+        </Box>
+      </Flex>
+    </MaybeLink>
+  );
+};

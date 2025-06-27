@@ -381,6 +381,21 @@ describe("AddDataModal", () => {
       });
     });
   });
+
+  describe("Google Sheets panel", () => {
+    it("should not exist in OSS binaries", () => {
+      // Hosting is a premium feature
+      setup({ isHosted: false });
+
+      expect(
+        screen.getByRole("tab", { name: /Database$/ }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /CSV$/ })).toBeInTheDocument();
+      expect(
+        screen.queryByRole("tab", { name: /Google Sheets$/ }),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
 
 async function openTab(tabName: string) {

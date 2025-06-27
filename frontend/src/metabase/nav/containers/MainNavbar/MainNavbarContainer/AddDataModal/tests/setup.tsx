@@ -1,11 +1,16 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupDatabaseListEndpoint } from "__support__/server-mocks";
+import {
+  setupDatabaseListEndpoint,
+  setupGdriveGetFolderEndpoint,
+  setupGdrivePostFolderEndpoint,
+  setupGdriveServiceAccountEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type { UserWithApplicationPermissions } from "metabase/plugins";
-import type { TokenFeatures } from "metabase-types/api";
+import type { GdrivePayload, TokenFeatures } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
@@ -25,6 +30,8 @@ interface SetupOpts {
   isHosted?: boolean;
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  enableGoogleSheets?: boolean;
+  status?: GdrivePayload["status"];
 }
 
 export const setup = ({
@@ -36,6 +43,8 @@ export const setup = ({
   isHosted = false,
   hasEnterprisePlugins = false,
   tokenFeatures = {},
+  enableGoogleSheets = false,
+  status,
 }: SetupOpts = {}) => {
   const user = {
     is_superuser: isAdmin,
@@ -70,6 +79,7 @@ export const setup = ({
     }),
     settings: mockSettings({
       "is-hosted?": isHosted,
+      "show-google-sheets-integration": enableGoogleSheets,
       "token-features": createMockTokenFeatures(tokenFeatures),
       "uploads-settings": {
         db_id: uploadsEnabled ? database.id : null,
@@ -85,6 +95,17 @@ export const setup = ({
 
   setupDatabaseListEndpoint(databases);
 
+  if (enableGoogleSheets) {
+    setupGdrivePostFolderEndpoint();
+    setupGdriveGetFolderEndpoint({
+      status,
+      url: "https://docs.google.example/your-spredsheet",
+    });
+    setupGdriveServiceAccountEndpoint(
+      "super-service-account@testing.metabase.com",
+    );
+  }
+
   renderWithProviders(<AddDataModal onClose={jest.fn()} opened={opened} />, {
     storeInitialState: state,
   });
@@ -97,3 +118,18 @@ export const setupAdvancedPermissions = (opts: Partial<SetupOpts>) => {
     tokenFeatures: { advanced_permissions: true },
   });
 };
+
+export const setupHostedInstance = (opts: Partial<SetupOpts>) => {
+  return setup({
+    ...opts,
+    isHosted: true,
+    hasEnterprisePlugins: true,
+    tokenFeatures: { hosting: true, ...opts.tokenFeatures },
+  });
+};
+
+export const setupProUpload = (opts: Partial<SetupOpts>) =>
+  setupHostedInstance({
+    ...opts,
+    tokenFeatures: { attached_dwh: true },
+  });
