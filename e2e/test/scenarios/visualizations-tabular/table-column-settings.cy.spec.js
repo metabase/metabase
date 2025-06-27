@@ -809,7 +809,7 @@ describe("scenarios > visualizations > table column settings", () => {
         openSettings();
 
         const taxColumn = {
-          column: "Tax",
+          column: `Question ${card.id} → Tax`,
           columnName: `Question ${card.id} → Tax`,
           table: "test question 2",
           scrollTimes: 3,
