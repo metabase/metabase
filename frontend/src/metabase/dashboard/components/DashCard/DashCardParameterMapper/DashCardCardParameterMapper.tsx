@@ -62,6 +62,7 @@ interface DashcardCardParameterMapperProps {
   mappingOptions: ParameterMappingOption[];
   isRecentlyAutoConnected: boolean;
   editingParameterInlineDashcard?: DashboardCard;
+  compact?: boolean;
 }
 
 export function DashCardCardParameterMapper({
@@ -74,6 +75,7 @@ export function DashCardCardParameterMapper({
   mappingOptions,
   isRecentlyAutoConnected,
   editingParameterInlineDashcard,
+  compact,
 }: DashcardCardParameterMapperProps) {
   const isQuestion = isQuestionDashCard(dashcard);
   const hasSeries = isQuestion && dashcard.series && dashcard.series.length > 0;
@@ -124,6 +126,7 @@ export function DashCardCardParameterMapper({
         target={target}
         shouldShowAutoConnectHint={shouldShowAutoConnectHint}
         layoutHeight={layoutHeight}
+        compact={compact}
       />
       <Transition
         mounted={shouldShowAutoConnectHint && layoutHeight > 3}
