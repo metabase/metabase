@@ -27,14 +27,14 @@ export const ParameterSettings = () => {
   const updateInitialParameterValue = useDebouncedCallback(
     useCallback(
       (paramId: string, value: string) => {
-        if ("initialParameters" in settings) {
+        if (settings.dashboardId) {
           updateSettings({
             initialParameters: {
               ...settings.initialParameters,
               [paramId]: value,
             },
           });
-        } else if ("initialSqlParameters" in settings) {
+        } else if (settings.questionId) {
           updateSettings({
             initialSqlParameters: {
               ...settings.initialSqlParameters,
