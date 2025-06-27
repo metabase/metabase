@@ -42,6 +42,10 @@ export type DashboardContextOwnProps = {
   navigateToNewCardFromDashboard:
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
     | null;
+  /**
+   * I want this to be optional, and error out when it's not passed, so it's obvious we need to pass it.
+   * Forcing passing it isn't ideal since we only need to do this in a couple of places
+   */
   onNewQuestion?: () => void;
 };
 
