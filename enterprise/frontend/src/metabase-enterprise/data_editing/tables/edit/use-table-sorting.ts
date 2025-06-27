@@ -49,10 +49,15 @@ export const useTableSorting = ({
         const sortDirection = getColumnSortDirection(field);
 
         let newQuery: Query;
-        if (sortDirection === "asc" || sortDirection === "desc") {
+        if (sortDirection === "asc") {
+          // have existing sorting by asc, then make it desc
           const clauses = Lib.orderBys(query, stageIndex);
           newQuery = Lib.changeDirection(query, clauses[0]);
+        } else if (sortDirection === "desc") {
+          // have existing sorting by desc, then remove sorting - WRK-446
+          newQuery = Lib.removeOrderBys(query, stageIndex);
         } else {
+          // no existing sorting on this column - apply new sorting (default - by asc)
           newQuery = Lib.orderBy(
             Lib.removeOrderBys(query, stageIndex),
             stageIndex,

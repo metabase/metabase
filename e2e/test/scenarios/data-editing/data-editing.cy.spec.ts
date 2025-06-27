@@ -1,8 +1,11 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
 
-describe("scenarios > embedding > dashboard parameters", () => {
+const { ORDERS_ID } = SAMPLE_DATABASE;
+
+describe("scenarios > data-editing", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -83,6 +86,42 @@ describe("scenarios > embedding > dashboard parameters", () => {
           cy.findByText("Sample Database");
           cy.findByText("People");
         });
+    });
+  });
+
+  describe("table edit mode", () => {
+    beforeEach(() => {
+      cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
+        "getOrdersTable",
+      );
+
+      cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/edit`);
+
+      cy.wait("@getOrdersTable");
+    });
+
+    it("should allow to sort", () => {
+      cy.findByTestId("table-header").within(() => {
+        cy.findByText("Quantity").click();
+
+        cy.findAllByTestId("header-sort-indicator").should("have.length", 1);
+
+        cy.findByText("Quantity")
+          .closest("[role=button]")
+          .findByLabelText("chevronup icon")
+          .should("be.visible");
+
+        cy.findByText("Quantity").click();
+
+        cy.findByText("Quantity")
+          .closest("[role=button]")
+          .findByLabelText("chevrondown icon")
+          .should("be.visible");
+
+        cy.findByText("Quantity").click();
+
+        cy.findAllByTestId("header-sort-indicator").should("have.length", 0);
+      });
     });
   });
 });
