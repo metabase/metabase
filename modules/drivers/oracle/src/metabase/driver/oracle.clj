@@ -412,7 +412,7 @@
 
 (defmethod sql.qp/cast-temporal-byte [:oracle :Coercion/ISO8601Bytes->Temporal]
   [driver _coercion-strategy expr]
-  (sql.qp/cast-temporal-string driver :Coercion/ISOString->DateTime
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
                                [:utl_raw.cast_to_varchar2 expr]))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
