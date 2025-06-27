@@ -48,14 +48,6 @@ export function NumberFilterPicker({
   const [leftInclusive, setLeftInclusive] = useState(true);
   const [rightInclusive, setRightInclusive] = useState(true);
 
-  const handleInclusiveChange = (side: "left" | "right", value: boolean) => {
-    if (side === "left") {
-      setLeftInclusive(value);
-    } else {
-      setRightInclusive(value);
-    }
-  };
-
   const handleOperatorChange = (newOperator: Lib.NumberFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
@@ -109,7 +101,8 @@ export function NumberFilterPicker({
           onChange={setValues}
           leftInclusive={leftInclusive}
           rightInclusive={rightInclusive}
-          onInclusiveChange={handleInclusiveChange}
+          onLeftInclusiveChange={setLeftInclusive}
+          onRightInclusiveChange={setRightInclusive}
         />
         <FilterPickerFooter
           isNew={isNew}
