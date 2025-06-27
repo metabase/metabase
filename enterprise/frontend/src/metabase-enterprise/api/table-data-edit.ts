@@ -1,6 +1,8 @@
 import type { SkipToken } from "@reduxjs/toolkit/query";
 
 import type {
+  ConfigFormRequest,
+  ConfigFormResponse,
   DescribeActionFormRequest,
   DescribeActionFormResponse,
   TableDeleteRowsRequest,
@@ -123,6 +125,16 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
         body,
       }),
     }),
+    getFormConfiguration: builder.mutation<
+      ConfigFormResponse,
+      ConfigFormRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/action/v2/config-form`,
+        body,
+      }),
+    }),
   }),
 });
 
@@ -135,4 +147,5 @@ export const {
   useGetActionsQuery,
   useExecuteActionMutation,
   useDescribeActionFormMutation,
+  useGetFormConfigurationMutation,
 } = tableDataEditApi;
