@@ -12,7 +12,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import type { Parameter } from "metabase-types/api";
 
-interface DashboardParameterListProps
+export interface DashboardParameterListProps
   extends Pick<
     ComponentProps<typeof ParametersList>,
     "widgetsVariant" | "widgetsWithinPortal" | "vertical"
