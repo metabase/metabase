@@ -624,5 +624,72 @@ describe("metabase/lib/click-behavior", () => {
       });
       expect(value).toEqual("2020-01-01");
     });
+
+    it("should format number/between parameters with binning info as a range", () => {
+      const source = {
+        type: "column" as const,
+        id: "SOME_NUMBER",
+        name: "number",
+      };
+      const target = { type: "parameter" as const, id: "param123" };
+      const data = {
+        ...emptyData,
+        column: {
+          some_number: {
+            value: 10,
+            column: createMockColumn({
+              effective_type: "type/Integer",
+              binning_info: { bin_width: 5 },
+            }),
+          },
+        },
+      };
+      const extraData = {
+        dashboard: createMockDashboard(),
+        parameters: [
+          createMockParameter({ id: "param123", type: "number/between" }),
+        ],
+      };
+      const clickBehavior = { type: "crossfilter" as const };
+      const value = formatSourceForTarget(source, target, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+      expect(value).toEqual([10, 15]);
+    });
+
+    it("should not format number/between as a range when binning info is missing", () => {
+      const source = {
+        type: "column" as const,
+        id: "SOME_NUMBER",
+        name: "number",
+      };
+      const target = { type: "parameter" as const, id: "param123" };
+      const data = {
+        ...emptyData,
+        column: {
+          some_number: {
+            value: 10,
+            column: createMockColumn({
+              effective_type: "type/Integer",
+            }),
+          },
+        },
+      };
+      const extraData = {
+        dashboard: createMockDashboard(),
+        parameters: [
+          createMockParameter({ id: "param123", type: "number/between" }),
+        ],
+      };
+      const clickBehavior = { type: "crossfilter" as const };
+      const value = formatSourceForTarget(source, target, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+      expect(value).toEqual([10]);
+    });
   });
 });
