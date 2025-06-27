@@ -68,6 +68,7 @@
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
@@ -1094,6 +1095,28 @@
       #js {:operator (name operator)
            :column   column
            :values   (to-array (map clj->js values))})))
+
+(defn ^:export range-filter-clause
+  "Creates a range filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[range-filter-parts]]."
+  [column min-value max-value min-inclusive? max-inclusive?]
+  (lib.fe-util/range-filter-clause column
+                                   (js->clj min-value)
+                                   (js->clj max-value)
+                                   min-inclusive?
+                                   max-inclusive?))
+
+(defn ^:export range-filter-parts
+  "Destructures a range filter clause created by [[range-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape."
+  [a-query stage-number a-filter-clause]
+  (when-let [filter-parts (lib.fe-util/range-filter-parts a-query stage-number a-filter-clause)]
+    (let [{:keys [column min-value max-value min-inclusive? max-inclusive?]} filter-parts]
+      #js {:column        column
+           :minValue      (clj->js min-value)
+           :maxValue      (clj->js max-value)
+           :isMinInclusive min-inclusive?
+           :isMaxInslucive max-inclusive?})))
 
 (defn ^:export coordinate-filter-clause
   "Creates a coordinate filter clause based on FE-friendly filter parts. It should be possible to destructure each

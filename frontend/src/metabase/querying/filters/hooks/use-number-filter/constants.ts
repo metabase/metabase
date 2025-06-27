@@ -16,25 +16,10 @@ export const OPERATOR_OPTIONS: Record<
     valueCount: 1,
     hasMultipleValues: true,
   },
-  ">": {
-    operator: ">",
-    valueCount: 1,
-  },
-  "<": {
-    operator: "<",
-    valueCount: 1,
-  },
   between: {
     operator: "between",
     valueCount: 2,
-  },
-  ">=": {
-    operator: ">=",
-    valueCount: 1,
-  },
-  "<=": {
-    operator: "<=",
-    valueCount: 1,
+    name: "Range",
   },
   "is-null": {
     operator: "is-null",

@@ -32,6 +32,7 @@ export interface GroupItem {
 
 export type FilterOperatorOption<T extends Lib.FilterOperatorName> = {
   operator: T;
+  name?: string;
 };
 
 export type DatePickerOperator =

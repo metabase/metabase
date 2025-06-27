@@ -385,6 +385,68 @@
       _
       nil)))
 
+(def ^:private RangeFilterParts
+  [:map
+   [:column         ::lib.schema.metadata/column]
+   [:min-value      {:optional true} [:maybe NumberFilterValue]]
+   [:max-value      {:optional true} [:maybe NumberFilterValue]]
+   [:min-inclusive? :boolean]
+   [:max-inclusive? :boolean]])
+
+(mu/defn range-filter-clause :- ::lib.schema.expression/expression
+  "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
+  expression with [[range-filter-parts]]."
+  [column         :- ::lib.schema.metadata/column
+   min-value      :- [:maybe NumberFilterValue]
+   max-value      :- [:maybe NumberFilterValue]
+   min-inclusive? :- :boolean
+   max-inclusive? :- :boolean]
+  (cond
+    (and (some? min-value) (some? max-value))
+    (expression-clause :between [column min-value max-value] {})
+
+    (some? min-value)
+    (expression-clause (if min-inclusive? :>= :>) [column min-value] {})
+
+    (some? max-value)
+    (expression-clause (if max-inclusive? :<= :<) [column max-value] {})
+
+    :else
+    (throw (ex-info "Either :min-value or :max-value are required" {}))))
+
+(mu/defn range-filter-parts :- [:maybe RangeFilterParts]
+  "Destructures a numeric filter clause created by [[range-filter-clause]]. Returns `nil` if the clause does not match
+  the expected shape."
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
+  (let [ref->col    #(column-metadata-from-ref query stage-number %)
+        number-col? #(ref-clause-with-type? % [:type/Number])
+        number-arg? #(some? (expression-arg->number %))]
+    (lib.util.match/match-one filter-clause
+      [(op :guard #{:> :>=}) _ (col-ref :guard number-col?) (min-value :guard number-arg?)]
+      {:column         (ref->col col-ref)
+       :min-value      (expression-arg->number min-value)
+       :min-inclusive? (= op :>=)
+       :max-inclusive? false}
+
+      [(op :guard #{:< :<=}) _ (col-ref :guard number-col?) (max-value :guard number-arg?)]
+      {:column         (ref->col col-ref)
+       :max-value      (expression-arg->number max-value)
+       :min-inclusive? false
+       :max-inclusive? (= op :<=)}
+
+      [(op :guard #{:between}) _ (col-ref :guard number-col?) (min-value :guard number-arg?) (max-value :guard number-arg?)]
+      {:column        (ref->col col-ref)
+       :min-value     (expression-arg->number min-value)
+       :max-value     (expression-arg->number max-value)
+       :min-inclusive? true
+       :max-inclusive? true}
+
+      ;; do not match inner clauses
+      _
+      nil)))
+
 (def ^:private CoordinateFilterParts
   [:map
    [:operator         ::lib.schema.filter/coordinate-filter-operator]
