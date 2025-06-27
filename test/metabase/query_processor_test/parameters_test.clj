@@ -257,7 +257,7 @@
                                            :venues :type/Text :name :text "In-N-Out Burger"))
     (testing "number custom filters"
       (custom-filter-param-test-is-count-= 22
-                                           :venues :type/Number :price :number "1"))
+                                           :venues :type/Number :price :number 1))
     (testing "boolean custom filters"
       (mt/dataset places-cam-likes
         (custom-filter-param-test-is-count-= 2
