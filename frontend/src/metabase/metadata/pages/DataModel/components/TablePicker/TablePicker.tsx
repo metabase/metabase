@@ -69,7 +69,6 @@ function Tree({
     const [database] = databases;
 
     if (
-      databases.length === 1 &&
       !isExpanded({ databaseId: database.value.databaseId }) &&
       database.value.databaseId !== databaseId
     ) {
