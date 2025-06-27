@@ -1226,7 +1226,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(screen.getByLabelText("Right column"));
       const rhsPicker = await screen.findByTestId("rhs-column-picker");
       await userEvent.click(within(rhsPicker).getByText("Custom Expression"));
-      await enterCustomExpression("[[ID] + 1");
+      await enterCustomExpression("[[Products → ID] + 1");
       await submitCustomExpression();
 
       const [condition] = getRecentJoin().conditions;
