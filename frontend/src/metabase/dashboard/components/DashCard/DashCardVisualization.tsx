@@ -229,6 +229,8 @@ export function DashCardVisualization({
         // Certain visualizations memoize settings computation based on series keys
         // This guarantees a visualization always rerenders on changes
         started_at: new Date().toISOString(),
+
+        columnValuesMapping,
       },
     ];
 
