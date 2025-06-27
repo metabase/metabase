@@ -195,17 +195,6 @@
     (is (= "UTC"
            (driver/db-default-timezone :bigquery-cloud-sdk (mt/db))))))
 
-(defn- do-with-temp-obj [name-fmt-str create-args-fn drop-args-fn f]
-  (driver/with-driver :bigquery-cloud-sdk
-    (let [obj-name (format name-fmt-str (mt/random-name))]
-      ;; TODO: do we still need to make a copy of db everytime we use this helper?
-      (mt/with-temp-copy-of-db
-        (try
-          (apply bigquery.tx/execute! (create-args-fn obj-name))
-          (f obj-name)
-          (finally
-            (apply bigquery.tx/execute! (drop-args-fn obj-name))))))))
-
 (def ^:private numeric-val "-1.2E20")
 (def ^:private decimal-val "2.3E16")
 (def ^:private bignumeric-val "-7.5E30")

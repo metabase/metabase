@@ -37,7 +37,6 @@
    [clojure.set :as set]
    [clojure.test :as t]
    [colorize.core :as colorize]
-   [environ.core :as env]
    [mb.hawk.init :as hawk.init]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl
