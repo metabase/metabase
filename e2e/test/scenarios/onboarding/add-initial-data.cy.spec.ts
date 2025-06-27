@@ -51,47 +51,43 @@ H.describeWithSnowplow(
         cy.visit("/");
         openAddDataModalFromSidebar();
 
-        addDataModal().within(() => {
-          cy.log("Tracking shouldn't happen on the default open tab");
-          cy.findAllByRole("tab")
-            .filter(":contains(Database)")
-            .should("have.attr", "data-active", "true");
+        cy.log("Tracking shouldn't happen on the default open tab");
+        getTab("CSV").should("have.attr", "data-active", "true");
 
-          cy.log("Track when CSV opens");
-          cy.findAllByRole("tab").filter(":contains(CSV)").click();
-          H.expectUnstructuredSnowplowEvent({
+        cy.log("Track when Database tab opens");
+        openTab("Database");
+        H.expectUnstructuredSnowplowEvent({
+          event: "database_tab_clicked",
+          triggered_from: "add-data-modal",
+        });
+
+        cy.log("Ignore the repeated click");
+        openTab("Database");
+        H.expectUnstructuredSnowplowEvent(
+          {
+            event: "database_tab_clicked",
+            triggered_from: "add-data-modal",
+          },
+          1,
+        );
+
+        cy.log("Track when CSV tab opens");
+        openTab("CSV");
+        // We confirm that it didn't track the default open tab because the following assertion passes.
+        // If there were multiple events like this, the count would be higher
+        H.expectUnstructuredSnowplowEvent(
+          {
             event: "csv_tab_clicked",
             triggered_from: "add-data-modal",
-          });
-
-          cy.log("Ignore the repeated click");
-          cy.findAllByRole("tab").filter(":contains(CSV)").click();
-          H.expectUnstructuredSnowplowEvent(
-            {
-              event: "csv_tab_clicked",
-              triggered_from: "add-data-modal",
-            },
-            1,
-          );
-
-          cy.log("Track when Database tab opens");
-          cy.findAllByRole("tab").filter(":contains(Database)").click();
-          // We confirm that it didn't track the default open tab because the following assertion passes.
-          // If there were multiple events like this, the count would be higher
-          H.expectUnstructuredSnowplowEvent(
-            {
-              event: "database_tab_clicked",
-              triggered_from: "add-data-modal",
-            },
-            1,
-          );
-        });
+          },
+          1,
+        );
       });
 
       it("should track database selection", () => {
         cy.visit("/");
         openAddDataModalFromSidebar();
-
+        openTab("Database");
         addDataModal()
           .findByRole("listbox")
           .findByText("Snowflake")
@@ -117,11 +113,7 @@ H.describeWithSnowplow(
 
         cy.visit("/");
         openAddDataModalFromSidebar();
-
-        addDataModal().within(() => {
-          cy.findAllByRole("tab").filter(":contains(CSV)").click();
-          cy.findByText("Select a file").click();
-        });
+        addDataModal().findByText("Select a file").click();
 
         H.expectUnstructuredSnowplowEvent({
           event: "csv_upload_clicked",
@@ -164,6 +156,7 @@ describe("Add data modal", () => {
       cy.signInAsAdmin();
       cy.visit("/");
       openAddDataModalFromSidebar();
+      openTab("Database");
 
       addDataModal().within(() => {
         cy.log("Admin should be able to manage databases");
@@ -248,11 +241,7 @@ describe("Add data modal", () => {
       cy.signInAsAdmin();
       cy.visit("/");
       openAddDataModalFromSidebar();
-
-      addDataModal().within(() => {
-        cy.findAllByRole("tab").filter(":contains(CSV)").click();
-        cy.findByText("Enable uploads").click();
-      });
+      addDataModal().findByText("Enable uploads").click();
 
       cy.location("pathname").should("eq", "/admin/settings/uploads");
       cy.findByLabelText("Database to use for uploads").click();
@@ -270,8 +259,8 @@ describe("Add data modal", () => {
         .should("be.visible")
         .click();
 
+      openTab("CSV");
       addDataModal().within(() => {
-        cy.findAllByRole("tab").filter(":contains(CSV)").click();
         cy.get("#add-data-modal-upload-csv-input").selectFile(
           {
             contents: Cypress.Buffer.from(
@@ -337,7 +326,6 @@ describe("Add data modal", () => {
       openAddDataModalFromSidebar();
 
       addDataModal().within(() => {
-        cy.findAllByRole("tab").filter(":contains(CSV)").click();
         cy.button("Upload").should("be.disabled");
 
         cy.findByTestId("add-data-modal-csv-dropzone").selectFile(
@@ -406,3 +394,10 @@ const openAddDataModalFromSidebar = () =>
     .findByLabelText("Add data")
     .should("be.visible")
     .click();
+
+const getTab = (tab: string) =>
+  addDataModal().findAllByRole("tab").filter(`:contains(${tab})`);
+
+const openTab = (tab: string) => {
+  getTab(tab).click();
+};

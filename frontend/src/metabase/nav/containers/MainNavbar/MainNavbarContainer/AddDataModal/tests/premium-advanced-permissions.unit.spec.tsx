@@ -1,13 +1,13 @@
-import userEvent from "@testing-library/user-event";
-
 import { screen } from "__support__/ui";
 
+import { openTab } from "./helpers";
 import { setupAdvancedPermissions } from "./setup";
 
 describe("Add data modal (EE with token)", () => {
   describe("Database panel", () => {
-    it("should not offer a setting manager to manage databases", () => {
+    it("should not offer a setting manager to manage databases", async () => {
       setupAdvancedPermissions({ isAdmin: false, canManageSettings: true });
+      await openTab("Database");
 
       expect(
         screen.getByRole("tab", { name: /Database$/ }),
@@ -25,7 +25,6 @@ describe("Add data modal (EE with token)", () => {
         canUpload: true,
       });
 
-      await openTab("CSV");
       expect(screen.getByText("Manage uploads")).toBeInTheDocument();
       expect(screen.getByText("Enable uploads")).toBeInTheDocument();
     });
@@ -38,7 +37,6 @@ describe("Add data modal (EE with token)", () => {
         canUpload: true,
       });
 
-      await openTab("CSV");
       expect(screen.getByText("Manage uploads")).toBeInTheDocument();
     });
 
@@ -58,14 +56,7 @@ describe("Add data modal (EE with token)", () => {
         canUpload: false,
       });
 
-      await openTab("CSV");
       expect(screen.getByText("Manage uploads")).toBeInTheDocument();
     });
   });
 });
-
-async function openTab(tabName: string) {
-  await userEvent.click(
-    screen.getByRole("tab", { name: new RegExp(`${tabName}$`) }),
-  );
-}
