@@ -58,7 +58,10 @@ import type {
   CardSlownessStatus,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
-import { shouldShowParameterMapper } from "./utils";
+import {
+  getMissingColumnsFromVisualizationSettings,
+  shouldShowParameterMapper,
+} from "./utils";
 
 interface DashCardVisualizationProps {
   dashboard: Dashboard;
@@ -154,6 +157,26 @@ export function DashCardVisualization({
       ? new Question(dashcard.card, metadata)
       : null;
   }, [dashcard.card, metadata]);
+
+  const visualizerErrMsg = useMemo(() => {
+    if (
+      !dashcard ||
+      !rawSeries ||
+      rawSeries.length === 0 ||
+      !isVisualizerDashboardCard(dashcard)
+    ) {
+      return;
+    }
+
+    const missingCols = getMissingColumnsFromVisualizationSettings({
+      visualizerEntity: dashcard.visualization_settings.visualization,
+      rawSeries,
+    });
+
+    if (missingCols.flat().length > 0) {
+      return `Some columns are missing, this card might not render correctly.`;
+    }
+  }, [dashcard, rawSeries]);
 
   const series = useMemo(() => {
     if (
@@ -484,6 +507,7 @@ export function DashCardVisualization({
       token={token}
       uuid={uuid}
       titleMenuItems={titleMenuItems}
+      errorMessageOverride={visualizerErrMsg}
     />
   );
 }
