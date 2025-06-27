@@ -186,4 +186,29 @@ describe("scenarios > embedding-sdk > popovers", () => {
       cy.findByTestId("color-selector-popover").should("not.exist");
     });
   });
+
+  it("should prevent closing the ComparisonPicker when clicking it", () => {
+    cy.get<string>("@questionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+    });
+
+    cy.findByTestId("chart-type-selector-button").click();
+    cy.findByRole("menu").within(() => {
+      cy.findByText("Trend").click();
+    });
+
+    openVizSettingsSidebar();
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("comparisons-widget-button").click();
+
+      // Clicking at the edge of the ComparisonPicker popover to be sure that the click does not close it
+      cy.findByTestId("comparison-picker-dropdown").click(2, 2);
+      cy.findByTestId("comparison-picker-dropdown").should("be.visible");
+
+      // Clicking outside of the ComparisonPicker popover to be sure that the click closes it
+      cy.findByTestId("chartsettings-sidebar").click(1, 1);
+      cy.findByTestId("comparison-picker-dropdown").should("not.exist");
+    });
+  });
 });
