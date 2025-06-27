@@ -96,6 +96,10 @@ const TEST_CARD = createMockCard({
   parameters: [TEST_PARAM],
 });
 
+// for now, the tests here seem to be taking longer than normal. Team Embedding knows about it
+// and are working to alleviate this because this sucks. Love, Oisin.
+jest.setTimeout(60000);
+
 const setup = ({
   isValidCard = true,
   title,
