@@ -50,8 +50,10 @@ export const assertDashboard = ({ id, name }: { id: number; name: string }) => {
 
 export const navigateToEntitySelectionStep = ({
   experience,
+  resourceName: customResourceName,
 }: {
   experience: "dashboard" | "chart" | "exploration";
+  resourceName?: string;
 }) => {
   visitNewEmbedPage();
 
@@ -72,6 +74,8 @@ export const navigateToEntitySelectionStep = ({
       .with("chart", () => "Orders, Count")
       .otherwise(() => "");
 
+    const resourceName = customResourceName ?? defaultResourceName;
+
     const resourceType = match(experience)
       .with("dashboard", () => "Dashboards")
       .with("chart", () => "Questions")
@@ -84,12 +88,12 @@ export const navigateToEntitySelectionStep = ({
 
     entityPickerModal().within(() => {
       cy.findByText(resourceType).click();
-      cy.findAllByText(defaultResourceName).first().click();
+      cy.findAllByText(resourceName).first().click();
     });
 
     cy.log("resource title should be visible by default");
     getEmbedSidebar().within(() => {
-      cy.findByText(defaultResourceName).should("be.visible");
+      cy.findByText(resourceName).should("be.visible");
     });
   }
 };

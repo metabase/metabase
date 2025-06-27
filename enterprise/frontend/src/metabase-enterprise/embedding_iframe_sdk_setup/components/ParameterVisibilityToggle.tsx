@@ -32,6 +32,8 @@ export const ParameterVisibilityToggle = ({
         variant="subtle"
         onClick={() => onToggle(parameterName)}
         title={tooltipLabel}
+        data-testid="parameter-visibility-toggle"
+        data-hidden={isHidden}
       >
         <Icon name={iconName} size={16} />
       </ActionIcon>
