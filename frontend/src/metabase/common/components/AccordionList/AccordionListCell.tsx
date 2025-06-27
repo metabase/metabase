@@ -424,7 +424,10 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
   return (
     <div
       ref={mergedRef}
-      style={style}
+      style={{
+        ...style,
+        position: isSticky ? "sticky" : undefined,
+      }}
       data-element-id="list-section"
       className={cx(section.className, {
         [ListS.ListSectionExpanded]: sectionIsExpanded(sectionIndex),

@@ -628,9 +628,14 @@ export class AccordionList<
           overflowY: "auto",
           outline: "none",
           maxWidth: width,
+          maxHeight: "inherit",
           ...style,
         }}
-        containerStyle={{ pointerEvents: "auto" }}
+        containerStyle={{
+          pointerEvents: "auto",
+          overflow: "auto",
+          maxHeight: "inherit",
+        }}
         // @ts-expect-error: TODO
         width={width}
         height={height}
