@@ -662,6 +662,20 @@
                                        "DROP ROLE IF EXISTS \"impersonation_role\";"]]
                       (jdbc/execute! spec [statement]))))))))))))
 
+(defn do-on-all-connection-in-pool [f]
+  (let [max-pool-size (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
+        ^CountDownLatch start-latch (java.util.concurrent.CountDownLatch. max-pool-size)
+        ^CountDownLatch finish-latch (java.util.concurrent.CountDownLatch. max-pool-size)]
+    (doseq [_i (range max-pool-size)]
+      (future
+        (try
+          (.countDown ^CountDownLatch start-latch)
+          (.await ^CountDownLatch start-latch)
+          (f)
+          (finally
+            (.countDown ^CountDownLatch finish-latch)))))
+    (.await ^CountDownLatch finish-latch)))
+
 (deftest nested-do-with-connection-with-options-test
   (testing "nested calls to `do-with-connection-with-options-test` use the same
             connection to ensure the correct connection options are set"
@@ -684,35 +698,26 @@
                 (sync/sync-database! database {:scan :schema})
                 (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                   (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
-                (let [max-pool-size (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
-                      ^CountDownLatch start-latch (java.util.concurrent.CountDownLatch. max-pool-size)
-                      ^CountDownLatch finish-latch (java.util.concurrent.CountDownLatch. max-pool-size)]
-                  (doseq [_i (range max-pool-size)]
-                    (future
-                      (try
-                        (.countDown ^CountDownLatch start-latch)
-                        (.await ^CountDownLatch start-latch)
-                        (sql-jdbc.execute/do-with-connection-with-options
-                         driver/*driver* (mt/id) {}
-                         (fn [^Connection conn]
-                           (driver/set-role! driver/*driver* conn role-a)))
-                        (finally
-                          (.countDown ^CountDownLatch finish-latch)))))
-                  (.await ^CountDownLatch finish-latch)
-                  (is (= [[1000]]
-                         (sql-jdbc.execute/do-with-connection-with-options
-                          driver/*driver* (mt/id) {}
-                          (fn [^Connection _conn]
-                            (mt/formatted-rows [int]
-                                               (mt/run-mbql-query checkins {:aggregation [[:count]]}))))))
-                  (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                                 :attributes     {"impersonation_attr" role-a}}
-                    (is (= [[100]]
-                           (mt/formatted-rows [int]
-                                              (mt/run-mbql-query venues
-                                                {:aggregation [[:count]]}))))
-                    (is (thrown-with-msg?
-                         java.lang.Exception
-                         #"ERROR"
-                         (mt/run-mbql-query checkins
-                           {:aggregation [[:count]]})))))))))))))
+                (do-on-all-connection-in-pool
+                 (fn []
+                   (sql-jdbc.execute/do-with-connection-with-options
+                    driver/*driver* (mt/id) {}
+                    (fn [^Connection conn]
+                      (driver/set-role! driver/*driver* conn role-a)))))
+                (is (= [[1000]]
+                       (sql-jdbc.execute/do-with-connection-with-options
+                        driver/*driver* (mt/id) {}
+                        (fn [^Connection _conn]
+                          (mt/formatted-rows [int]
+                                             (mt/run-mbql-query checkins {:aggregation [[:count]]}))))))
+                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                               :attributes     {"impersonation_attr" role-a}}
+                  (is (= [[100]]
+                         (mt/formatted-rows [int]
+                                            (mt/run-mbql-query venues
+                                              {:aggregation [[:count]]}))))
+                  (is (thrown-with-msg?
+                       java.lang.Exception
+                       #"ERROR"
+                       (mt/run-mbql-query checkins
+                         {:aggregation [[:count]]}))))))))))))
