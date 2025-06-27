@@ -991,3 +991,36 @@
                  66]]
       (is (=? {:id 66, :display-name "Created At"}
               (lib.equality/find-matching-column a-ref cols))))))
+
+(deftest ^:parallel match-by-source-uuid-test
+  (let [col  {:base-type                    :type/BigInteger
+              :display-name                 "ID"
+              :effective-type               :type/BigInteger
+              :id                           55600
+              :lib/deduplicated-name        "ID_2"
+              :lib/desired-column-alias     "Orders__ID"
+              :lib/original-join-alias      "Orders"
+              :lib/original-name            "ID"
+              :lib/source                   :source/joins
+              :lib/source-column-alias      "ID"
+              :lib/source-uuid              "1c2a0643-f25c-4099-a2d5-7c7e790b632f"
+              :lib/type                     :metadata/column
+              :metabase.lib.join/join-alias "Orders"
+              :name                         "ID_2"
+              :semantic-type                :type/PK
+              :source-alias                 "Orders"
+              :table-id                     55060}
+        refs [[:field
+               {:lib/uuid       "1c2a0643-f25c-4099-a2d5-7c7e790b632f"
+                :effective-type :type/BigInteger
+                :base-type      :type/BigInteger
+                :join-alias     "Orders"}
+               55600]
+              [:field
+               {:lib/uuid       "6a535ba3-2efd-49cd-9d43-809ddfc3f111"
+                :effective-type :type/Float
+                :base-type      :type/Float
+                :join-alias     "Orders"}
+               55603]]]
+    (is (= (first refs)
+           (lib.equality/find-matching-ref col refs {:match-type ::lib.equality/match-type.same-stage})))))

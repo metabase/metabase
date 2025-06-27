@@ -452,7 +452,11 @@
     ;; the previous stage).
     {:keys [match-type], :or {match-type ::match-type.unknown}} :- [:maybe ::match-options]]
    (let [ref-tails (group-by ref-id-or-name refs)
-         matches   (or (some->> column :lib/source-uuid (get ref-tails) not-empty)
+         matches   (or (when-let [source-uuid (:lib/source-uuid column)]
+                         (some (fn [a-ref]
+                                 (when (= (lib.options/uuid a-ref) source-uuid)
+                                   [a-ref]))
+                               refs))
                        (case match-type
                          ::match-type.same-stage
                          ;; same stage match, use SOURCE COLUMN ALIAS!!!! IF YOU ARE NOT CLEAR ON WHY, TALK
@@ -460,7 +464,7 @@
                          (let [col-join-alias      (lib.join.util/current-join-alias column)
                                source-column-alias ((some-fn :lib/source-column-alias :name) column)]
                            (filter (fn [a-ref]
-                                     (and (clojure.core/= (:metabase.lib.join/join-alias (lib.options/options a-ref)) col-join-alias)
+                                     (and (clojure.core/= (:join-alias (lib.options/options a-ref)) col-join-alias)
                                           (some #(clojure.core/= (ref-id-or-name a-ref) %)
                                                 [(:id column) source-column-alias])))
                                    refs))
