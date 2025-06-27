@@ -11,7 +11,6 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
 import { Button } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
