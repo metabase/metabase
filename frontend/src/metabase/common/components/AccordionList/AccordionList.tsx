@@ -627,6 +627,7 @@ export class AccordionList<
           // This is a temporary fix to handle cases where the parent component doesn’t pass in the correct `maxHeight`
           overflowY: "auto",
           outline: "none",
+          maxWidth: width,
           ...style,
         }}
         containerStyle={{ pointerEvents: "auto" }}
