@@ -46,8 +46,31 @@ export function showUnderlyingQuestion(index: number, title: string) {
  */
 export function removeDataSource(dataSourceName: string) {
   dataSource(dataSourceName)
-    .findAllByLabelText("Remove")
-    .first()
+    .realHover()
+    .findByLabelText("Datasource actions")
+    .click({ force: true });
+  cy.document()
+    .its("body")
+    .findByTestId("datasource-actions-dropdown")
+    .findByLabelText("Remove data source")
+    .click({ force: true });
+}
+
+/**
+ * Resets a data source.
+ * Only works in "ColumnList" mode, despite the name...
+ *
+ * @param dataSourceName the data source name
+ */
+export function resetDataSource(dataSourceName: string) {
+  dataSource(dataSourceName)
+    .realHover()
+    .findByLabelText("Datasource actions")
+    .click({ force: true });
+  cy.document()
+    .its("body")
+    .findByTestId("datasource-actions-dropdown")
+    .findByLabelText("Reset data source")
     .click({ force: true });
 }
 
