@@ -58,8 +58,8 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
   return t`Your license is active until ${validUntil}! Hope you’re enjoying it.`;
 };
 
-const iframeOrigin = "https://store-metabase-figp7pwst-metaboat.vercel.app";
-const iframePath = "/test-for-iframe";
+const iframeOrigin = "https://store-metabase-ezinvrvoa-metaboat.vercel.app/";
+const iframePath = "/test-for-iframe?param1=09ucsdcsd0ce0&param2=cdoicw0";
 
 function handleMessageToken(
   event: MessageEvent,
