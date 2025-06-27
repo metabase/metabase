@@ -153,37 +153,46 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
     });
   });
 
-  it("should show parameter settings for questions with SQL parameters", () => {
+  it("can set default parameters for SQL questions", () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: "Question with Parameters",
     });
 
-    // Should show parameter settings
     getEmbedSidebar().within(() => {
       cy.findByText("Parameters").should("be.visible");
-      cy.findByText("Set default values and control visibility").should(
-        "be.visible",
-      );
-
-      // Should show parameter input
       cy.findByLabelText("ID").should("be.visible");
+    });
 
-      // Questions should not have visibility toggles
-      cy.findByLabelText("ID")
-        .parent()
-        .within(() => {
-          cy.get("[data-testid='parameter-visibility-toggle']").should(
-            "not.exist",
-          );
-        });
+    H.getIframeBody()
+      .findByText(/missing required parameters/)
+      .should("exist");
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("ID").type("123").blur();
+    });
+
+    H.getIframeBody().within(() => {
+      cy.findByText(/missing required parameters/).should("not.exist");
+      cy.findByText("123").should("be.visible");
+
+      // value in a subtotal field
+      cy.findAllByText("75.41").first().should("be.visible");
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Get Code").click();
+      codeBlock().should("contain", '"initialSqlParameters"');
+      codeBlock().should("contain", '"id": "123"');
     });
   });
 
-  it("should show no parameters message for entities without parameters", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
+  it("shows no parameters message for resources without parameters", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: "Orders without dashboard",
+    });
 
-    // Should show no parameters message for the default dashboard (Orders in a dashboard)
     getEmbedSidebar().within(() => {
       cy.findByText("Parameters are not available for this dashboard.").should(
         "be.visible",
