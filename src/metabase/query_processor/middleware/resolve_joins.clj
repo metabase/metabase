@@ -5,12 +5,10 @@
   (:require
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
