@@ -792,7 +792,6 @@ function assignRecipient({
   cy.findByText("Email it").click();
 
   cy.findByPlaceholderText("Enter user names or email addresses")
-    .click()
     .type(`${user.first_name} ${user.last_name}{enter}`)
     .blur();
 }
@@ -804,14 +803,9 @@ function assignRecipients({
   openDashboardSubscriptions(dashboard_id);
   cy.findByText("Email it").click();
 
-  const userInput = users
-    .map((user) => `${user.first_name} ${user.last_name}{enter}`)
-    .join("");
-
-  cy.findByPlaceholderText("Enter user names or email addresses")
-    .click()
-    .type(userInput, { delay: 0 })
-    .blur(); // blur is needed to close the popover
+  cy.findByPlaceholderText("Enter user names or email addresses").click();
+  users.forEach(({ first_name }) => H.popover().contains(first_name).click());
+  cy.realPress("Escape");
 }
 
 function clickButton(name) {
