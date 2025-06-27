@@ -49,6 +49,13 @@ export const FormTextInput = forwardRef(function FormTextInput(
     [setTouched, onBlur],
   );
 
+  const rightSection = hasCopyButton ? (
+    <CopyWidgetButton value={value} />
+  ) : (
+    props.rightSection
+  );
+  const rightSectionWidth = hasCopyButton ? 40 : (props.rightSectionWidth ?? 0);
+
   return (
     <TextInput
       styles={{
@@ -63,8 +70,8 @@ export const FormTextInput = forwardRef(function FormTextInput(
       error={touched && error ? error : null}
       onChange={handleChange}
       onBlur={handleBlur}
-      rightSection={hasCopyButton ? <CopyWidgetButton value={value} /> : null}
-      rightSectionWidth={hasCopyButton ? 40 : undefined}
+      rightSection={rightSection}
+      rightSectionWidth={rightSectionWidth}
       errorProps={{
         role: "alert",
       }}

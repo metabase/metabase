@@ -286,6 +286,7 @@
                        _
                        {:card_id      c1-id
                         :dashboard_id dash-id
+                        :inline_parameters ["12345678"]
                         :parameter_mappings
                         [{:parameter_id "12345678"
                           :card_id      c1-id
