@@ -65,7 +65,7 @@ export const LicenseTokenForm = ({
               }}
               rightSection={
                 <Box>
-                  <HoverCard position="bottom-end" initiallyOpened={true}>
+                  <HoverCard position="bottom-end">
                     <HoverCard.Target>
                       <UnstyledButton
                         component={Icon}
