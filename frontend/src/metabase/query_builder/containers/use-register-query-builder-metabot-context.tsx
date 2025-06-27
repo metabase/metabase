@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { match } from "ts-pattern";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
+import { PLUGIN_AI_ENTITY_ANALYSIS, PLUGIN_METABOT } from "metabase/plugins";
 import {
   getChartImagePngDataUri,
   getChartSelector,
@@ -185,10 +185,6 @@ const getChartConfigs = async ({
   timelines: Timeline[];
 }): Promise<MetabotChartConfig[]> => {
   try {
-    if (!PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question)) {
-      return [];
-    }
-
     return [
       {
         image_base_64: await getVisualizationDataUri(question),
@@ -196,6 +192,8 @@ const getChartConfigs = async ({
         description: question.description(),
         series: processSeriesData(series, visualizationSettings),
         timeline_events: processTimelineEvents(timelines),
+        query: question.datasetQuery(),
+        display_type: question.display(),
       },
     ];
   } catch (err) {
@@ -217,6 +215,9 @@ export const registerQueryBuilderMetabotContextFn = async ({
   timelines: Timeline[];
   queryResult: any;
 }) => {
+  if (!PLUGIN_METABOT.isEnabled()) {
+    return {};
+  }
   if (!question) {
     return {};
   }
@@ -245,8 +246,6 @@ export const registerQueryBuilderMetabotContextFn = async ({
       {
         ...questionCtx,
         ...queryCtx,
-        query: question.datasetQuery(),
-        display_type: question.display(),
         chart_configs,
       },
     ],
@@ -254,7 +253,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
 };
 
 export const useRegisterQueryBuilderMetabotContext = () => {
-  useRegisterMetabotContextProvider((state) => {
+  useRegisterMetabotContextProvider(async (state) => {
     const question = getQuestion(state);
     const series = getTransformedSeries(state);
     const visualizationSettings = getVisualizationSettings(state);

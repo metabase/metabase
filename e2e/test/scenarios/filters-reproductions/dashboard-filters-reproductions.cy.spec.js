@@ -4775,3 +4775,55 @@ describe.skip("issue 47951", () => {
     });
   });
 });
+
+describe("issue 59306", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    const parameter = createMockParameter({
+      id: "p1",
+      slug: "p1",
+      type: "string/=",
+      sectionId: "string",
+      default: undefined,
+      values_query_type: "none",
+    });
+
+    H.createDashboardWithQuestions({
+      dashboardDetails: {
+        parameters: [parameter],
+      },
+      questions: [{ name: "q1", query: { "source-table": PRODUCTS_ID } }],
+    }).then(({ dashboard, questions: [card] }) => {
+      H.updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            card_id: card.id,
+            parameter_mappings: [
+              {
+                card_id: card.id,
+                parameter_id: parameter.id,
+                target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                has_field_values: "input",
+              },
+            ],
+          },
+        ],
+      }).then(() => {
+        H.visitDashboard(dashboard.id);
+      });
+    });
+  });
+
+  it("should not overflow the filter box (metabase#59306)", () => {
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter some text")
+        .type("asdf".repeat(20))
+        .invoke("outerWidth")
+        .should("be.lt", 400);
+    });
+  });
+});

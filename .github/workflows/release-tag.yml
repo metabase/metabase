@@ -250,19 +250,9 @@ jobs:
 
     - name: Tag the docker image
       run: | # sh
-        docker pull $DOCKERHUB_REPO\:$DOCKERHUB_VERSION
-        docker tag $DOCKERHUB_REPO\:$DOCKERHUB_VERSION $DOCKERHUB_REPO\:$TAG_NAME
-        docker image ls $DOCKERHUB_REPO
-
-        SOURCE_ID=$(docker image ls $DOCKERHUB_REPO\:$DOCKERHUB_VERSION -q)
-        TAGGED_ID=$(docker image ls $DOCKERHUB_REPO\:$TAG_NAME -q)
-
-        if [[ $SOURCE_ID != $TAGGED_ID ]]; then
-          echo "Error tagging docker image"
-          exit 1
-        fi
-
-        docker push $DOCKERHUB_REPO\:$TAG_NAME
+        docker buildx imagetools create --tag \
+          $DOCKERHUB_REPO\:$TAG_NAME \
+          $DOCKERHUB_REPO\:$DOCKERHUB_VERSION
 
   push-git-tags:
     permissions: write-all
