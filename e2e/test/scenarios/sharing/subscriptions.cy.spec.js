@@ -112,13 +112,13 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         H.sidebar().findByText("Email it").click();
 
-        cy.findByPlaceholderText("Enter user names or email addresses")
-          .as("input")
-          .click()
-          .type(`${admin.first_name}`);
-        cy.get("@input").type("{esc}");
-
-        cy.get("@input").should("have.value", `${admin.first_name}`);
+        cy.findByPlaceholderText("Enter user names or email addresses").click();
+        H.popover().should("be.visible").and("contain", `${admin.first_name}`);
+        cy.realPress("Escape");
+        H.popover({ skipVisibilityCheck: true }).should("not.exist");
+        cy.findByPlaceholderText("Enter user names or email addresses").should(
+          "not.have.value",
+        );
 
         cy.findByTestId("token-field-popover").should("not.exist");
       });
