@@ -187,14 +187,27 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
     });
   });
 
-  it("shows no parameters message for resources without parameters", () => {
+  it("shows no parameters message for dashboards without parameters", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
-      resourceName: "Orders without dashboard",
+      resourceName: "Orders in a dashboard",
     });
 
     getEmbedSidebar().within(() => {
       cy.findByText("Parameters are not available for this dashboard.").should(
+        "be.visible",
+      );
+    });
+  });
+
+  it("shows no parameters message for charts without parameters", () => {
+    navigateToEmbedOptionsStep({
+      experience: "chart",
+      resourceName: "Orders, Count",
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Parameters are not available for this chart.").should(
         "be.visible",
       );
     });
