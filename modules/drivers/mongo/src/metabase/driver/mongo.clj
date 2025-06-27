@@ -190,6 +190,9 @@
                                     "$indices"]}}}])
 
 (defn- describe-table-pipeline
+  "Construct mongo aggregation pipeline to fetch at most `leaf-limit` number of _leaf fields_. _Leaf fields_ are later
+  transformed by [[dbfields->ftree]] and [[ftree->nested-fields]] to be returned as :fields
+  of [[driver/describe-table]]."
   [& {:keys [collection-name sample-size dive-depth leaf-limit]}]
   (into []
         cat
@@ -220,9 +223,9 @@
                        "indices" "$info.indices"}}
           {"$project" {"info" 0}}]]))
 
-;;ok
 (defn- raw-path->ftree-paths
-  "Construct sequence of ftree paths from `path`. `path` is string of form `component.component...`."
+  "Construct sequence of ftree paths from `path`. `path` is string of form eg. `c1.c2...`. The result
+  for the example looks as '([:children 'c1'] [:children 'c1' :children 'c2']."
   [path]
   (letfn [(zip [coll1 coll2]
             (vec (mapcat vector coll1 coll2)))]
@@ -231,19 +234,17 @@
          (drop 1)
          (map (partial zip (repeat :children))))))
 
-;;ok
 (defn- ftree-path->raw-path
   [ftree-path]
   (str/join "." (remove (partial = :children) ftree-path)))
 
-;;ok
 (defn- ftree-set-type
   "Set type in ftree node.
 
   There may be situations where some documents from sampled data contain path `a.b` of type eg. datetime and path
   `a.b.c` of some other type. That could result in type conflict on `a.b`.
 
-  When building the ftree, Type conflicts are resolved as \"object wins\". That way field"
+  When building the ftree, Type conflicts are resolved as \"object wins\"."
   [ftree path new-type]
   (let [type-path (conj (vec path) :database-type)
         current-type (get-in ftree type-path)]
@@ -254,7 +255,8 @@
       (or (= "object" new-type) (nil? current-type)) (assoc-in type-path new-type))))
 
 (defn- dbfields->ftree*
-  "Construct ftree from sequence of dbfields."
+  "Construct _raw_ ftree from `dbfields`. Intended result is described in the [[dbfields->ftree]] docstring.
+  _Raw_ means that nodes have only #{:database-type :visibility-type :index} keys."
   [dbfields]
   (loop [[{raw-path :path leaf-type :type :as dbfield} & dbfields*] dbfields
          ftree {:children {}}]
@@ -267,20 +269,21 @@
                                           (assoc-in (conj %2 :visibility-type) :details-only))
                                      ftree parents-paths)
                              (ftree-set-type leaf-path leaf-type)
-                             ;; hacking in the indices
+                             ;; Zip paths of nested object with indices and adjust ftree
                              ((fn [ftree*]
                                 (reduce #(assoc-in %1 (conj (vec (%2 0)) :index) (%2 1))
                                         ftree*
-                                        @(def bla (map vector
-                                                       ftree-paths
-                                                       (:indices dbfield))))))))))))
+                                        (map vector
+                                             ftree-paths
+                                             (:indices dbfield)))))))))))
 
 (defn- ftree-prewalk
+  "Walk the `ftree` and apply (f ftree path) to each node prior descending to its children. Nodes are walked according
+  to index and name. Returns the modified ftree."
   [ftree f]
   (letfn [(sorted-children-paths
             [ftree* path]
             (->> (get-in ftree* (conj path :children))
-                ;; blah
                  keys (sort-by (juxt #(get-in ftree* (conj path :children % :index)) identity))
                  (map (partial conj path :children))))
 
@@ -319,6 +322,7 @@
        db-type :type/*))
 
 (defn- ftree-reconcile-nodes
+  "Add missing keys [[dbfields->ftree*]] nodes to match description in [[dbfields->ftree]]."
   [ftree]
   (let [index (atom -1)]
     (-> (ftree-prewalk
@@ -329,13 +333,39 @@
                (assoc-in (conj path :base-type) (-> (get-in ftree* (conj path :database-type))
                                                     db-type->base-type))
                (assoc-in (conj path :name) (last path)))))
-        (assoc-in [:children "_id" :pk?] true))))
+        (as-> $ (if (map? (get-in $ [:children "_id"]))
+                  (assoc-in $ [:children "_id" :pk?] true)
+                  $)))))
 
 (defn- dbfields->ftree
+  "Build ftree from `dbfields`. Ftree is intermediate structure, later transformed for needs
+  of [[driver/describe-table]]. For details see the [[ftree->nested-fields]].
+
+  Ftree if of form
+  {:children {'toplevelkey' {:name 'toplevelkey'
+                             :database-position <int>
+                             :database-type <string>
+                             :base-type <base-type>
+                             :index <int>                              ; index of key in mongo object
+                             :visibility-type :details-only            ; only for object database-type
+                             :pk? true                                 ; only in '_id' named toplevel key
+                             :children {'nestedkey' {:name 'nestedkey'
+                                                     ...}
+                                        ...}}
+              ...}}
+
+  Reason for doing this in 2 steps is that for adding database-position the structure has to be fully constructed
+  first.
+
+  The resulting structure will hold at most [[*leaf-fields-limit*]] leaf fields. That translates to at most
+  [[*leaf-fields-limit]] * [[describe-table-query-depth]]. That is 7K fields at the time of writing hence safe
+  to reside in memory for further operation."
   [dbfields]
-  @(def rrr3 (-> dbfields dbfields->ftree* ftree-reconcile-nodes)))
+  (-> dbfields dbfields->ftree* ftree-reconcile-nodes))
 
 (defn- ftree->nested-fields
+  "Create nested-fields structure suitable for :fields key of structure return by [[driver/describe-table]]. `ftree`
+  is a tree that represents sampled mongo documents. See the [[dbfields->ftree]] for details."
   [ftree]
   (letfn [(ftree->nested-fields*
             [ftree*]
@@ -353,9 +383,16 @@
     ([] (transient []))
     ([r] (persistent! r))
     ([acc row]
-     (conj! acc (zipmap [:path :type :indices] row) #_row))))
+     (conj! acc (zipmap [:path :type :indices] row)))))
 
 (defn- fetch-dbfields
+  "Fetch _dbfields_ from a mongo collection.
+
+  Result is vector of maps as
+  [{:path 'x.y.z' :type 'int' :indices [1 1 1]} ...]
+
+  Each row represents leaf in sampled documents, its type and indices of keys present in the path of mongo of nested
+  object."
   [database table]
   (let [pipeline (describe-table-pipeline {:collection-name  (:name table)
                                            :sample-size      (* table-rows-sample/nested-field-sample-limit 2)

@@ -1063,21 +1063,27 @@
                     (driver/prettify-native-form driver/*driver*))))))))
 
 (defn- do-with-describe-table-for-sample
+  "Override so aggregation is run on database instead of collection and provide `documents` in initial stage of
+  aggregation."
   [documents thunk]
-  (mt/with-temp [:model/Database db {:engine "mongo"
-                                     :details {:host "localhost"
-                                               :port 27017
-                                               :dbname "admin"}}
-                 :model/Table t {:db_id (:id db)}]
+  (mt/dataset
+    test-data
     (binding [mongo.execute/*aggregate* (fn [db _coll session stages timeout-ms]
                                           (mongo.execute/aggregate-database db session stages timeout-ms))
               mongo/*sample-stages* (fn [& _#] [{"$documents" documents}])]
-      (let [dbfields (delay (@#'mongo/fetch-dbfields db t))
+      (let [dbfields (delay (@#'mongo/fetch-dbfields (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))
             ftree (delay (@#'mongo/dbfields->ftree @dbfields))
             nested-fields (delay (@#'mongo/ftree->nested-fields @ftree))]
         (thunk dbfields ftree nested-fields)))))
 
 (defmacro with-describe-table-for-sample
+  "Use `documents` as input to aggregation pipeline used for sampling in [[driver/describe-table]].
+
+  Forward bindings become delays of results of functions used in mongo's describe-table:
+
+  - `dbfields`     : reuslt of [[mongo/fetch-dbfields]],
+  - `ftree`        : reuslt of [[mongo/dbfields->ftree]],
+  - `nested-fields`: reuslt of [[mongo/ftree->nested-fields]]."
   [documents & body]
   `(do-with-describe-table-for-sample ~documents (fn [~'dbfields ~'ftree ~'nested-fields] ~@body)))
 
@@ -1085,7 +1091,7 @@
   (mt/test-driver
     :mongo
     (testing "Ensure _id is present in results"
-   ;; Gist: Limit is set to 2 and there, other fields' names precede the _id when sorted
+      ;; Gist: Limit is set to 2 and there, other fields' names that precede the _id when sorted
       (binding [mongo/*leaf-fields-limit* 2]
         (with-describe-table-for-sample
           [(ordered-map/ordered-map
@@ -1157,6 +1163,7 @@
                {:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}}
              @nested-fields)))))
 
+;; This behavior should be changed in future as per issue #59942.
 (deftest most-prevalent-type-used-test
   (mt/test-driver
     :mongo
@@ -1202,7 +1209,10 @@
             "a" {"b" {"c" {"d" {"e" {"f" {"h" nil
                                           "i" 10}}}}}})]
           (is (=? expected @dbfields)))))))
-;; _id is always present
-;; 
-;; object takes precedence
-;;
+
+(deftest empty-collection-handled-gracefully-test
+  (mt/test-driver
+    :mongo
+    (with-describe-table-for-sample
+      []
+      (is (=? #{} @nested-fields)))))
