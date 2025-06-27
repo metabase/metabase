@@ -30,7 +30,10 @@ import {
   FullscreenToggle,
   NightModeToggleButton,
 } from "metabase/dashboard/components/DashboardHeader/buttons";
-import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
+import {
+  DashboardParameterList,
+  type DashboardParameterListProps,
+} from "metabase/dashboard/components/DashboardParameterList";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { DashboardTitle } from "metabase/dashboard/components/DashboardTitle";
 import { RefreshWidget } from "metabase/dashboard/components/RefreshWidget";
@@ -251,8 +254,10 @@ SdkDashboard.InfoButton = DashboardInfoButton;
 SdkDashboard.NightModeButton = NightModeToggleButton;
 SdkDashboard.RefreshPeriod = RefreshWidget;
 
-function SdkDashboardParameterList() {
+function SdkDashboardParameterList(
+  props: Omit<DashboardParameterListProps, "parameters">,
+) {
   const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
 
-  return <DashboardParameterList parameters={parameters} />;
+  return <DashboardParameterList parameters={parameters} {...props} />;
 }
