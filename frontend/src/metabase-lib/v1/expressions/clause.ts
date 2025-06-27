@@ -1,4 +1,4 @@
-import { memoize } from "underscore";
+import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
@@ -59,7 +59,7 @@ export function getMBQLName(
   return EXPRESSION_TO_MBQL_NAME.get(expressionName.trim().toLowerCase());
 }
 
-export const clausesForMode = memoize(
+export const clausesForMode = _.memoize(
   (expressionMode: Lib.ExpressionMode) => {
     const base =
       expressionMode === "aggregation"
