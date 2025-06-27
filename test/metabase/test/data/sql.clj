@@ -365,7 +365,8 @@
    (let [parent-method (get-method tx/field-reference :sql/test-extensions)
          full-reference (parent-method driver field-id)
          [_ _ field-name] (str/split full-reference #"\.")]
-     (format "`t1`.%s" field-name))))
+     #_(format "`t1`.%s" field-name)
+     field-name)))
 
 ;; With bigquery, ->honeysql returns `db`.`orders`.`created_at`, but for whatever reason, the query actually wants
 ;; `db.orders`.`created_at`.
