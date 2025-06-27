@@ -1,6 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { moveDnDKitElement } from "e2e/support/helpers";
+import { moveDnDKitListElement } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -625,8 +625,9 @@ describe("scenarios > question > multiple column breakouts", () => {
 
           cy.log("move a column from rows to columns");
           H.openVizSettingsSidebar();
-          moveDnDKitElement(cy.findAllByTestId("drag-handle").eq(2), {
-            vertical: 65,
+          moveDnDKitListElement("drag-handle", {
+            startIndex: 2,
+            dropIndex: 3,
           });
           cy.wait("@pivotDataset");
           cy.findByTestId("pivot-table")
@@ -634,8 +635,9 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 2);
 
           cy.log("move a column from columns to rows");
-          moveDnDKitElement(cy.findAllByTestId("drag-handle").eq(4), {
-            vertical: -200,
+          moveDnDKitListElement("drag-handle", {
+            startIndex: 4,
+            dropIndex: 1,
           });
           cy.wait("@pivotDataset");
           cy.findByTestId("pivot-table")
