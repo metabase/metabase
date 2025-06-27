@@ -3,9 +3,9 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import Link from "metabase/common/components/Link";
-import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex } from "metabase/ui";

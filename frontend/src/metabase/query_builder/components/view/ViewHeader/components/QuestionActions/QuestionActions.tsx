@@ -3,8 +3,8 @@ import { useRef, useState } from "react";
 import { t } from "ttag";
 
 import BookmarkToggle from "metabase/common/components/BookmarkToggle";
-import { ToolbarButton } from "metabase/components/ToolbarButton";
-import { UploadInput } from "metabase/components/upload";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { UploadInput } from "metabase/common/components/upload";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";

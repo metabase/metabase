@@ -4,10 +4,10 @@ import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
 import Button from "metabase/common/components/Button";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { NotFound } from "metabase/components/ErrorPages";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import LogoIcon from "metabase/components/LogoIcon";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import LogoIcon from "metabase/common/components/LogoIcon";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";

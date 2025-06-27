@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 export const AIQuestionAnalysisButton = () => {

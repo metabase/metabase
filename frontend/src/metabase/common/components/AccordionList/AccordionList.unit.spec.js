@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, render, screen } from "__support__/ui";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
+import TippyPopover from "metabase/common/components/Popover/TippyPopover";
 
 import AccordionList from "./AccordionList";
 

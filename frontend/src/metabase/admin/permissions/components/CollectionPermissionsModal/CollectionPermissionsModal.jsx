@@ -6,7 +6,7 @@ import _ from "underscore";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 import Button from "metabase/common/components/Button";
 import Link from "metabase/common/components/Link";
-import ModalContent from "metabase/components/ModalContent";
+import ModalContent from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
 import Collections from "metabase/entities/collections";
 import Groups from "metabase/entities/groups";

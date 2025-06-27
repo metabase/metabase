@@ -4,8 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
+import Modal from "metabase/common/components/Modal";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
 import Actions from "metabase/entities/actions";
 import Search from "metabase/entities/search";

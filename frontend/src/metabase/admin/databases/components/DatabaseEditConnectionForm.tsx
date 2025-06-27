@@ -6,10 +6,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { GenericError } from "metabase/common/components/ErrorPages";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import { GenericError } from "metabase/components/ErrorPages";
-import { LeaveRouteConfirmModal } from "metabase/components/LeaveConfirmModal";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import {
   DatabaseForm,
   type DatabaseFormConfig,

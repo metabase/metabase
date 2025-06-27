@@ -1,8 +1,8 @@
 /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { t } from "ttag";
 
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import { useMergeSetting, useSetting } from "metabase/common/hooks";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { Box, Stack } from "metabase/ui";
 import type { SettingValue } from "metabase-types/api";
 

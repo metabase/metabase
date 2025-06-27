@@ -2,7 +2,7 @@ import type { LocationDescriptor } from "history";
 import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 
-import { NotFound } from "metabase/components/ErrorPages";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { connect } from "metabase/lib/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
 

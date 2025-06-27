@@ -3,8 +3,8 @@ import PropTypes from "prop-types";
 import { Component, createRef } from "react";
 import { t } from "ttag";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import ModalWithTrigger from "metabase/common/components/ModalWithTrigger";
+import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";

@@ -2,8 +2,8 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { useRef, useState } from "react";
 
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
 import CS from "metabase/css/core/index.css";
 import { Text, Tooltip } from "metabase/ui";
 

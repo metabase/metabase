@@ -5,9 +5,9 @@ import { SettingHeader } from "metabase/admin/settings/components/SettingHeader"
 import { SetByEnvVarWrapper } from "metabase/admin/settings/components/SettingsSetting";
 import { SwitchWithSetByEnvVar } from "metabase/admin/settings/components/widgets/EmbeddingOption/SwitchWithSetByEnvVar";
 import { SettingTextInput } from "metabase/admin/settings/components/widgets/SettingTextInput";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useMergeSetting } from "metabase/common/hooks";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { Box, Button, Stack } from "metabase/ui";

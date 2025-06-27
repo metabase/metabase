@@ -5,13 +5,13 @@ import _ from "underscore";
 
 import Button from "metabase/common/components/Button";
 import ExternalLink from "metabase/common/components/ExternalLink";
+import ModalContent from "metabase/common/components/ModalContent";
 import type { RadioOption } from "metabase/common/components/Radio";
 import Radio from "metabase/common/components/Radio";
 import type { SelectChangeEvent } from "metabase/common/components/Select";
 import Select, { Option } from "metabase/common/components/Select";
 import SelectButton from "metabase/common/components/SelectButton";
 import { useSafeAsyncFunction } from "metabase/common/hooks/use-safe-async-function";
-import ModalContent from "metabase/components/ModalContent";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import { connect, useSelector } from "metabase/lib/redux";
