@@ -32,8 +32,8 @@ export const Grid = ({
     onAddQuestion,
   } = useDashboardContext();
 
-  // use this as a proxy for whether a user can access questions at all, for now.
-  // used for the SDK's StaticDashboard to ensure users can't see the `Add Question` button.
+  // if users can't navigate to new cards or drill down, then they shouldn't
+  // be able to use the `Add question` button. Used in static and public dashboards
   const canWrite =
     navigateToNewCardFromDashboard && Boolean(dashboard?.can_write);
   const currentTabDashcards = useMemo(() => {

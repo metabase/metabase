@@ -89,16 +89,20 @@ export const DashboardApp = ({
   useRegisterDashboardMetabotContext();
   useDashboardUrlQuery(router, location);
 
+  const extractAndRemoveHashOption = (key: string) => {
+    const { [key]: removed, ...restHashOptions } = options;
+    const hash = stringifyHashOptions(restHashOptions);
+    dispatch(push({ ...location, hash: hash ? "#" + hash : "" }));
+  };
+
   const onLoadDashboard = (dashboard: IDashboard) => {
     try {
       if (editingOnLoad) {
         dispatch(setEditingDashboard(dashboard));
-
-        const { edit, ...restHashOptions } = options;
-        const hash = stringifyHashOptions(restHashOptions);
-        dispatch(push({ ...location, hash: hash ? "#" + hash : "" }));
+        extractAndRemoveHashOption("edit");
       }
       if (addCardOnLoad != null) {
+        extractAndRemoveHashOption("add");
         const searchParams = new URLSearchParams(window.location.search);
         const tabParam = searchParams.get("tab");
         const tabId = tabParam ? parseInt(tabParam, 10) : null;

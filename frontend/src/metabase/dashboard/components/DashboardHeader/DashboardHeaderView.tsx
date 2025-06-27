@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import EditBar from "metabase/common/components/EditBar";
 import LastEditInfoLabel from "metabase/common/components/LastEditInfoLabel";

@@ -167,6 +167,7 @@ const setup = ({
           hasNightModeToggle={hasNightModeToggle}
           onNightModeChange={jest.fn()}
           isNightMode={isNightMode}
+          downloadsEnabled={{ pdf: false }}
         >
           <DashboardHeaderButtonRow
             canResetFilters

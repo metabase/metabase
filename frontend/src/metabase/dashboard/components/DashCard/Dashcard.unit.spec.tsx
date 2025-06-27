@@ -102,6 +102,7 @@ function setup({
       isEditing={isEditing}
       isEditingParameter={false}
       dashcardMenu={dashcardMenu}
+      reportAutoScrolledToDashcard={jest.fn()}
     >
       <DashCard
         dashcard={dashcard}
@@ -116,7 +117,6 @@ function setup({
         onUpdateVisualizationSettings={jest.fn()}
         showClickBehaviorSidebar={jest.fn()}
         autoScroll={false}
-        reportAutoScrolledToDashcard={jest.fn()}
         onEditVisualization={jest.fn()}
       />
     </MockDashboardContext>,

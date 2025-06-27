@@ -1,9 +1,6 @@
 import type { ComponentType } from "react";
 
-import type {
-  DashboardFullscreenControls,
-  DashboardNightModeControls,
-} from "metabase/dashboard/types";
+import type { DashboardContextReturned } from "metabase/dashboard/context";
 import type { Collection, Dashboard } from "metabase-types/api";
 
 import type { DASHBOARD_ACTION } from "./dashboard-action-keys";
@@ -36,7 +33,13 @@ export type DashboardActionButton = {
   component: ComponentType<HeaderButtonProps>;
   enabled: (
     props: HeaderButtonProps &
-      DashboardFullscreenControls &
-      Omit<DashboardNightModeControls, "isNightMode">,
+      Pick<
+        DashboardContextReturned,
+        | "downloadsEnabled"
+        | "isFullscreen"
+        | "onFullscreenChange"
+        | "onNightModeChange"
+        | "hasNightModeToggle"
+      >,
   ) => boolean;
 };
