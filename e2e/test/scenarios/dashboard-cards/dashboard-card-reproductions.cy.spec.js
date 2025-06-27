@@ -1115,8 +1115,10 @@ describe("issue 31628", () => {
         cy.findByTestId("scalar-period").should("not.exist");
 
         cy.log("it should truncate title and show title tooltip on hover");
-        scalarTitle().then(($element) => H.assertIsEllipsified($element[0]));
-        scalarTitle().realHover();
+        cy.findByTestId("legend-caption-title")
+          .as("title")
+          .then(($element) => H.assertIsEllipsified($element[0]));
+        cy.get("@title").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.name)
