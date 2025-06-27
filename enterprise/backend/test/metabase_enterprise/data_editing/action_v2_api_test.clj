@@ -282,24 +282,46 @@
                                                     (filter #(= test-table (:table_id %)))
                                                     (u/index-by :kind :id))
                 pending-config {:parameters
-                                [{:parameterId "id",        :sourceType "row-data"}
-                                 {:parameterId "int",       :sourceType "constant", :value 42}
-                                 {:parameterId "text",      :sourceType "row-data", :visibility "readonly"}
-                                 {:parameterId "timestamp", :visibility "hidden"}]}
+                                [{:id "id",        :sourceType "row-data"}
+                                 {:id "int",       :sourceType "constant", :value 42}
+                                 {:id "text",      :sourceType "row-data", :visibility "readonly"}
+                                 {:id "timestamp", :visibility "hidden"}]}
 
-                ;; This gives us the format that the in-memory action looks like in the FE.
-                wrap-action    (fn [packed-id]
-                                 {:packed-id packed-id
-                                  :param-map (->> pending-config
-                                                  :parameters
-                                                  ;; TODO we won't need to do this once we change the schema for
-                                                  ;;      unified-action to use a list.
-                                                  (u/index-by :parameterId #(dissoc % :parameterId)))})
                 scope          {:table-id test-table}]
-            (is (=? {:title      (mt/malli=? :string)
-                     :parameters (for [p (:parameters pending-config)]
-                                   ;; What a silly difference, which we should squelch.
-                                   (-> p (assoc :id (:parameterId p)) (dissoc :parameterId)))}
+            (is (=? {:title      "Custom Row Action 489"
+                     :parameters (:parameters pending-config)}
                     (mt/user-http-request :crowberto :post 200 "action/v2/config-form"
                                           {:scope     scope
-                                           :action_id (wrap-action action-id)})))))))))
+                                           :action_id {:action-id action-id
+                                                       :name      "Custom Row Action 489"
+                                                       :parameters (:parameters pending-config)}})))))))))
+
+(deftest configure-pending-saved-implicit-action-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/with-data-editing-enabled! true
+        (testing "saved actions"
+          (let [mapped-pk-params    [{:id "id"         :sourceType "row-data"}]
+                pending-row-params  [{:id "user_id"    :sourceType "row-data"}
+                                     {:id "product_id" :sourceType "ask-user"}
+                                     {:id "subtotal"   :sourceType "constant" :value 10}
+                                     {:id "tax"        :sourceType "constant" :value 0}
+                                     {:id "total"      :sourceType "constant" :value 0}
+                                     {:id "discount"   :sourceType "constant" :value 10}
+                                     {:id "created_at" :sourceType "ask-user"}
+                                     {:id "quantity"   :sourceType "constant" :value 1}]
+                action-kind->params {"row/create" pending-row-params
+                                     "row/update" (concat mapped-pk-params pending-row-params)
+                                     "row/delete" mapped-pk-params}]
+
+            (doseq [[action-kind expected-params] action-kind->params]
+              (mt/with-actions [model {:type :model, :dataset_query (mt/mbql-query orders)}
+                                {action-id :action-id} {:type :implicit, :kind action-kind, :name "Implicit Action"}]
+                (is (= {:title      "My Row Action"
+                        :parameters expected-params}
+                       (mt/user-http-request :crowberto :post 200 "action/v2/config-form"
+                                             {:scope     {:model-id (:id model)
+                                                          :table-id (mt/id :orders)}
+                                              :action_id {:action-id action-id
+                                                          :name      "My Row Action"
+                                                          :parameters expected-params}})))))))))))
