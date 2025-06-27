@@ -39,11 +39,11 @@ export const InteractiveDashboard = (props: InteractiveDashboardProps) => {
     <SdkDashboard
       {...props}
       getClickActionMode={getClickActionMode}
-      dashboardActions={({ downloadsEnabled }) =>
-        downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : []
-      }
-      dashcardMenu={({ dashcard, result }) =>
-        props.withDownloads &&
+      dashboardActions={({ downloadsEnabled }) => {
+        return downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : [];
+      }}
+      dashcardMenu={({ dashcard, result, downloadsEnabled }) =>
+        downloadsEnabled?.results &&
         isQuestionCard(dashcard.card) &&
         !!result?.data &&
         !result?.error && (
