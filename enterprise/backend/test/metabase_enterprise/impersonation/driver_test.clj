@@ -718,6 +718,6 @@
                                               {:aggregation [[:count]]}))))
                   (is (thrown-with-msg?
                        java.lang.Exception
-                       #"ERROR"
+                       #"Error.*checkins"
                        (mt/run-mbql-query checkins
                          {:aggregation [[:count]]}))))))))))))
