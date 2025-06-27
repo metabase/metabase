@@ -1,18 +1,30 @@
+import cx from "classnames";
+
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Icon, type IconName, Title } from "metabase/ui";
+import {
+  Box,
+  Card,
+  FixedSizeIcon,
+  Flex,
+  type IconName,
+  Title,
+} from "metabase/ui";
+
+import Styles from "./BrowseCard.module.css";
 
 const sizeOptions = {
   md: {
-    height: "2.5rem",
-    flexDirection: "row",
+    height: "4rem",
+    flexDirection: "row" as const,
     alignItems: "center",
     gap: "0.5rem",
     iconSize: 16,
   },
   lg: {
     height: "8.5rem",
-    flexDirection: "column",
+    flexDirection: "column" as const,
     alignItems: "flex-start",
     gap: "2.5rem",
     iconSize: 32,
@@ -37,33 +49,47 @@ export const BrowseCard = ({
   onClick?: () => void;
 }) => {
   return (
-    <Box
+    <Card
+      withBorder
+      shadow="none"
       component={Link}
       to={to}
       onClick={onClick}
-      bd="1px solid var(--mb-color-border)"
-      bg="white"
       h={sizeOptions[size].height}
       p="1.5rem"
-      style={{
-        borderRadius: "var(--mantine-radius-md)",
+      classNames={{
+        root: cx(Styles.HoverBrandLight, CS.hoverParent, CS.hoverDisplay),
       }}
-      className={CS.textBrandHover}
     >
-      <Flex justify="space-between" h="100%" align="center">
-        <Flex
-          direction={sizeOptions[size].flexDirection}
-          align={sizeOptions[size].alignItems}
-          gap={sizeOptions[size].gap}
-          h="100%"
+      <Flex
+        direction={sizeOptions[size].flexDirection}
+        align={sizeOptions[size].alignItems}
+        justify="space-between"
+        gap="sm"
+        h="100%"
+        w="100%"
+      >
+        <FixedSizeIcon
+          name={icon}
+          c={iconColor}
+          size={sizeOptions[size].iconSize}
+        />
+        <Title
+          order={2}
+          size="md"
+          lh={1.2}
+          style={{ overflow: "hidden" }}
+          component={Ellipsified}
+          w="100%"
         >
-          <Icon name={icon} c={iconColor} size={sizeOptions[size].iconSize} />
-          <Title order={2} size="md" lh={1.2} c="inherit">
-            {title}
-          </Title>
-        </Flex>
-        {children && <Box>{children}</Box>}
+          <strong style={{ textWrap: "nowrap" }}>{title}</strong>
+        </Title>
+        {size === "md" && (
+          <Box ml="auto" style={{ flexShrink: 0 }}>
+            {children}
+          </Box>
+        )}
       </Flex>
-    </Box>
+    </Card>
   );
 };

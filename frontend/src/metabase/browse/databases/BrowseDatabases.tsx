@@ -12,7 +12,7 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { newDatabase } from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Group, SimpleGrid, Stack, Text, Title } from "metabase/ui";
+import { Box, Group, Stack, Text, Title } from "metabase/ui";
 
 import { BrowseCard } from "../components/BrowseCard";
 import {
@@ -22,6 +22,7 @@ import {
   CenteredEmptyState,
 } from "../components/BrowseContainer.styled";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
+import { BrowseGrid } from "../components/BrowseGrid";
 
 import DB from "./BrowseDatabases.module.css";
 import { trackAddDatabaseDBList } from "./analytics";
@@ -57,8 +58,8 @@ export const BrowseDatabases = () => {
     <BrowseContainer>
       <BrowseDataHeader />
       <BrowseMain>
-        <BrowseSection>
-          <SimpleGrid data-testid="database-browser" cols={3} w="100%">
+        <BrowseSection direction="column">
+          <BrowseGrid data-testid="database-browser">
             {databases &&
               databases.length > 0 &&
               databases.map((database) => (
@@ -72,7 +73,7 @@ export const BrowseDatabases = () => {
                 />
               ))}
             {isAdmin && <AddDatabaseCard />}
-          </SimpleGrid>
+          </BrowseGrid>
         </BrowseSection>
       </BrowseMain>
     </BrowseContainer>
