@@ -541,10 +541,10 @@
    db-or-id-or-spec
    (dissoc options :session-timezone)
    (fn [^java.sql.Connection conn]
-     (when-not (sql-jdbc.execute/recursive-connection?)
+     (when-not false #_(sql-jdbc.execute/recursive-connection?)
        ;; in H2, setting readOnly to true doesn't prevent writes
        ;; see https://github.com/h2database/h2database/issues/1163
-       (.setReadOnly conn (not write?)))
+               (.setReadOnly conn (not write?)))
      (f conn))))
 
 ;; de-CLOB any CLOB values that come back

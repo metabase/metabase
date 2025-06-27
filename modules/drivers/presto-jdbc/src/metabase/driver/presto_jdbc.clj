@@ -714,8 +714,8 @@
      db-or-id-or-spec
      (dissoc options :session-timezone)
      (fn [^java.sql.Connection conn]
-       (when-not (sql-jdbc.execute/recursive-connection?)
-         (set-connection-options! driver conn options))
+       (when-not false #_(sql-jdbc.execute/recursive-connection?)
+                 (set-connection-options! driver conn options))
        (f conn)))))
 
 (defn- date-time->substitution [ts-str]
