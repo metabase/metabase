@@ -6,6 +6,10 @@ describe("HomeHelpCard (OSS)", () => {
   it("should show Metabase despite customizing the application name", () => {
     setup({ applicationName: "My app analytics" });
     expect(screen.getByText("Metabase tips")).toBeInTheDocument();
+    expect(screen.getByRole("link")).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/learn/",
+    );
   });
 
   it("should render help link when `show-metabase-links: true`", () => {

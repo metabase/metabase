@@ -20,7 +20,7 @@ export const HomeModelCard = ({
   url,
 }: HomeModelCardProps): JSX.Element => {
   return (
-    <HomeCard url={url}>
+    <HomeCard to={url}>
       <CardIcon {...icon} />
       <CardTitle>{title}</CardTitle>
     </HomeCard>

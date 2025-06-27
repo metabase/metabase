@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { useSelector } from "metabase/lib/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
@@ -8,7 +9,9 @@ import {
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
 
-import { CardIcon, CardRoot, CardTitle } from "./HomeHelpCard.styled";
+import { HomeCard } from "../HomeCard";
+
+import { CardIcon, CardTitle } from "./HomeHelpCard.styled";
 
 export const HomeHelpCard = (): JSX.Element | null => {
   const cardTitleId = useUniqueId();
@@ -20,9 +23,13 @@ export const HomeHelpCard = (): JSX.Element | null => {
   }
 
   return (
-    <CardRoot href={getLearnUrl()} aria-labelledby={cardTitleId}>
+    <HomeCard
+      component={ExternalLink}
+      href={getLearnUrl()}
+      aria-labelledby={cardTitleId}
+    >
       <CardIcon name="reference" />
       <CardTitle id={cardTitleId}>{t`${applicationName} tips`}</CardTitle>
-    </CardRoot>
+    </HomeCard>
   );
 };

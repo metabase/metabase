@@ -1,4 +1,5 @@
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/hoc/Title";
 
 import { HomeXrayCard } from "./HomeXrayCard";
 
@@ -9,7 +10,17 @@ interface SetupOpts {
 }
 
 const setup = ({ title, message, url }: SetupOpts) => {
-  render(<HomeXrayCard title={title} message={message} url={url} />);
+  renderWithProviders(
+    <Route
+      path="/"
+      component={() => (
+        <HomeXrayCard title={title} message={message} url={url} />
+      )}
+    ></Route>,
+    {
+      withRouter: true,
+    },
+  );
 };
 
 describe("HomeXrayCard", () => {
@@ -22,5 +33,6 @@ describe("HomeXrayCard", () => {
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(screen.getByText("A look at")).toBeInTheDocument();
+    expect(screen.getByRole("link")).toHaveAttribute("href", "/question/1");
   });
 });
