@@ -38,6 +38,7 @@ jobs:
                 repo: "docs.metabase.github.io",
                 event_type: "docs_update",
                 client_payload: {
+                  dispatch_type: "docs_update",
                   source_branch: process.env.SOURCE_BRANCH,
                   target_branch: process.env.TARGET_BRANCH,
                   pr_number: process.env.PR_NUMBER}});
