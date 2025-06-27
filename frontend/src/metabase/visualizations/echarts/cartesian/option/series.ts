@@ -58,6 +58,7 @@ import { getSeriesYAxisIndex } from "./utils";
 
 const CARTESIAN_LABEL_DENSITY_SCALE_FACTOR = 1.2;
 const WATERFALL_LABEL_DENSITY_SCALE_FACTOR = 0.6;
+const DISTANCE = 5; // https://echarts.apache.org/en/option.html#series-line.label.distance
 
 const getBlurLabelStyle = (
   settings: ComputedVisualizationSettings,
@@ -84,15 +85,15 @@ export const getBarLabelLayout =
       return {};
     }
 
-    let dy = 0;
-    if (labelValue < 0) {
-      const distance = 5; // https://echarts.apache.org/en/option.html#series-line.label.distance
-      dy = rect.height + CHART_STYLE.seriesLabels.size + distance * 2;
-    }
+    const dy =
+      labelValue >= 0
+        ? -CHART_STYLE.seriesLabels.size - DISTANCE
+        : rect.height + DISTANCE;
 
     return {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
       dy,
+      align: "center",
     };
   };
 
@@ -263,7 +264,7 @@ export const buildEChartsLabelOptions = (
   formatter?: LabelFormatter,
   settings?: ComputedVisualizationSettings,
   chartDataDensity?: ChartDataDensity,
-  position?: "top" | "bottom" | "inside",
+  position?: "top" | "bottom" | "inside" | [number | string, number | string],
 ): SeriesLabelOption => {
   const { fontSize } = renderingContext.theme.cartesian.label;
 
@@ -388,7 +389,7 @@ function getDataLabelSeriesOption(
   seriesOption: LineSeriesOption | BarSeriesOption,
   settings: ComputedVisualizationSettings,
   formatter: (params: CallbackDataParams) => string,
-  position: "top" | "bottom",
+  position: "top" | "bottom" | [string | number, string | number],
   renderingContext: RenderingContext,
   showInBlur = true,
 ) {
@@ -504,7 +505,7 @@ const buildEChartsBarSeries = (
           labelFormatter,
           settings,
           chartDataDensity,
-          "top",
+          ["50%", 0],
         ),
     labelLayout: isStacked
       ? getBarInsideLabelLayout(
@@ -548,10 +549,17 @@ const buildEChartsBarSeries = (
               return isZero ? 0 : value;
             },
           ),
-          sign === "+" ? "top" : "bottom",
+          ["50%", 0],
           renderingContext,
           false,
         ),
+        labelLayout: {
+          align: "center",
+          dy:
+            sign === "+"
+              ? -(DISTANCE + CHART_STYLE.seriesLabels.size)
+              : DISTANCE,
+        },
         type: "bar", // ensure type is bar for typescript
       };
     },
