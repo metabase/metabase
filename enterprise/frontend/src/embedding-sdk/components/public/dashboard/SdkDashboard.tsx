@@ -21,6 +21,7 @@ import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import { setEditingDashboard, toggleSidebar } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import { Grid } from "metabase/dashboard/components/Dashboard/components/Grid";
 import {
@@ -33,10 +34,13 @@ import { DashboardParameterList } from "metabase/dashboard/components/DashboardP
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { DashboardTitle } from "metabase/dashboard/components/DashboardTitle";
 import { RefreshWidget } from "metabase/dashboard/components/RefreshWidget";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   type DashboardContextProps,
   DashboardContextProvider,
 } from "metabase/dashboard/context";
+import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
@@ -200,6 +204,10 @@ const SdkDashboardInner = ({
       getClickActionMode={getClickActionMode}
       dashcardMenu={dashcardMenu}
       dashboardActions={dashboardActions}
+      onAddQuestion={(dashboard) => {
+        dispatch(setEditingDashboard(dashboard));
+        dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
+      }}
     >
       {adhocQuestionUrl ? (
         <SdkDashboardStyledWrapperWithRef className={className} style={style}>
@@ -234,7 +242,7 @@ export const SdkDashboard = ({ ...props }: SdkDashboardInnerProps) => (
 );
 
 SdkDashboard.Grid = Grid;
-SdkDashboard.ParameterList = DashboardParameterList;
+SdkDashboard.ParameterList = SdkDashboardParameterList;
 SdkDashboard.Title = DashboardTitle;
 SdkDashboard.Tabs = DashboardTabs;
 SdkDashboard.FullscreenButton = FullscreenToggle;
@@ -242,3 +250,9 @@ SdkDashboard.ExportAsPdfButton = ExportAsPdfButton;
 SdkDashboard.InfoButton = DashboardInfoButton;
 SdkDashboard.NightModeButton = NightModeToggleButton;
 SdkDashboard.RefreshPeriod = RefreshWidget;
+
+function SdkDashboardParameterList() {
+  const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
+
+  return <DashboardParameterList parameters={parameters} />;
+}
