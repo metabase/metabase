@@ -7,6 +7,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { addParameter, duplicateCard } from "metabase/dashboard/actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
@@ -17,7 +18,8 @@ import {
 } from "metabase/dashboard/utils";
 import { isEmbeddingSdk } from "metabase/env";
 import { color } from "metabase/lib/colors";
-import { useSelector, useStore } from "metabase/lib/redux";
+import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
+import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Box } from "metabase/ui";
@@ -117,6 +119,7 @@ function DashCardInner({
     getDashcardData(state, dashcard.id),
   );
   const store = useStore();
+  const dispatch = useDispatch();
   const getHref = useCallback(
     () => getDashcardHref(store.getState(), dashcard.id),
     [store, dashcard.id],
@@ -290,6 +293,17 @@ function DashCardInner({
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
+  const handleAddParameter = useCallback(
+    (options: NewParameterOpts) => {
+      dispatch(addParameter({ options, dashcardId: dashcard.id }));
+    },
+    [dashcard.id, dispatch],
+  );
+
+  const handleDuplicateDashcard = useCallback(() => {
+    dispatch(duplicateCard({ id: dashcard.id }));
+  }, [dashcard.id, dispatch]);
+
   const onEditVisualizationClick = useCallback(() => {
     let initialState: VisualizerVizDefinitionWithColumns;
 
@@ -353,6 +367,7 @@ function DashCardInner({
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}
+            onDuplicate={handleDuplicateDashcard}
             onRemove={onRemove}
             onReplaceCard={onReplaceCard}
             onUpdateVisualizationSettings={onUpdateVisualizationSettings}
@@ -362,6 +377,7 @@ function DashCardInner({
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
             isTrashedOnRemove={isTrashedOnRemove}
+            onAddParameter={handleAddParameter}
             onEditVisualization={onEditVisualizationClick}
           />
         )}

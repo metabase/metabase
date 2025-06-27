@@ -38,6 +38,7 @@ import type {
   DashboardId,
   DashboardParameterMapping,
   ParameterId,
+  VirtualCard,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
@@ -51,6 +52,8 @@ import {
   canResetFilter,
   getMappedParametersIds,
   hasDatabaseActionsEnabled,
+  hasInlineParameters,
+  isDashcardInlineParameter,
   isQuestionCard,
   isQuestionDashCard,
 } from "./utils";
@@ -260,6 +263,12 @@ export const getHasUnappliedParameterValues = createSelector(
   },
 );
 
+export const getEffectiveParameterValues = createSelector(
+  [getParameterValues, getDraftParameterValues, getIsAutoApplyFilters],
+  (values, draftValues, isAutoApplyFilters) =>
+    isAutoApplyFilters ? values : draftValues,
+);
+
 const getIsParameterValuesEmpty = createSelector(
   [getParameterValues],
   (parameterValues) => {
@@ -356,7 +365,7 @@ export const getEditingParameter = createSelector(
   },
 );
 
-const getCard = (state: State, { card }: { card: Card }) => card;
+const getCard = (state: State, { card }: { card: Card | VirtualCard }) => card;
 const getDashCard = (state: State, { dashcard }: { dashcard: DashboardCard }) =>
   dashcard;
 
@@ -411,19 +420,46 @@ export const getParameters = createSelector(
   },
 );
 
-export const getValuePopulatedParameters = createSelector(
+export const getDashboardHeaderParameters = createSelector(
+  [getDashcards, getParameters],
+  (dashcards, parameters) => {
+    const dashcardList = Object.values(dashcards);
+    return parameters.filter(
+      (parameter) => !isDashcardInlineParameter(parameter.id, dashcardList),
+    );
+  },
+);
+
+export const getDashboardHeaderValuePopulatedParameters = createSelector(
+  [getDashboardHeaderParameters, getEffectiveParameterValues],
+  (parameters, values) => _getValuePopulatedParameters({ parameters, values }),
+);
+
+export const getDashCardInlineValuePopulatedParameters = createSelector(
   [
+    getDashcards,
     getParameters,
-    getParameterValues,
-    getDraftParameterValues,
-    getIsAutoApplyFilters,
+    getEffectiveParameterValues,
+    (_, dashcardId: number) => dashcardId,
   ],
-  (parameters, parameterValues, draftParameterValues, isAutoApplyFilters) => {
+  (dashcards, parameters, parameterValues, dashcardId) => {
+    const dashcard = dashcards[dashcardId];
+    if (!dashcard || !hasInlineParameters(dashcard)) {
+      return [];
+    }
+    const inlineParameters = dashcard.inline_parameters.map((parameterId) =>
+      parameters.find((p) => p.id === parameterId),
+    );
     return _getValuePopulatedParameters({
-      parameters,
-      values: isAutoApplyFilters ? parameterValues : draftParameterValues,
+      parameters: inlineParameters,
+      values: parameterValues,
     });
   },
+);
+
+export const getValuePopulatedParameters = createSelector(
+  [getParameters, getEffectiveParameterValues],
+  (parameters, values) => _getValuePopulatedParameters({ parameters, values }),
 );
 
 export const getMissingRequiredParameters = createSelector(
@@ -440,12 +476,19 @@ export const getMissingRequiredParameters = createSelector(
  * It's a memoized version, it uses LRU cache per card identified by id
  */
 export const getQuestionByCard = createCachedSelector(
-  [(_state: State, props: { card: Card }) => props.card, getMetadata],
+  [
+    (_state: State, props: { card: Card | VirtualCard }) => props.card,
+    getMetadata,
+  ],
   (card, metadata) => {
     return isQuestionCard(card) ? new Question(card, metadata) : undefined;
   },
 )((_state, props) => {
-  return props.card.id;
+  // Sometime card doesn't have an id.
+  // In that case, we use the stringified version of the card as a cache key.
+  // That's nless than ideal, but it avoids flooding the console with warnings
+  // and it's still better than using `undefined` as a cache key.
+  return props.card.id ?? JSON.stringify(props.card).slice(0, 50);
 });
 
 export const getDashcardParameterMappingOptions = createCachedSelector(
@@ -654,14 +697,15 @@ export const getHasModelActionsEnabled = createSelector(
   },
 );
 
-export const getVisibleValuePopulatedParameters = createSelector(
-  [getValuePopulatedParameters, getHiddenParameterSlugs],
-  getVisibleParameters,
-);
-
 export const getFiltersToReset = createSelector(
-  [getVisibleValuePopulatedParameters],
-  (parameters) => parameters.filter(canResetFilter),
+  [getValuePopulatedParameters, getHiddenParameterSlugs],
+  (parameters, hiddenParameterSlugs) => {
+    const visibleParameters = getVisibleParameters(
+      parameters,
+      hiddenParameterSlugs,
+    );
+    return visibleParameters.filter(canResetFilter);
+  },
 );
 
 export const getCanResetFilters = createSelector(

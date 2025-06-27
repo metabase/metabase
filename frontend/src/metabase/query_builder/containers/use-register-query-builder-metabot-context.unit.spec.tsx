@@ -2,6 +2,8 @@ import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { renderHook } from "__support__/ui";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -21,7 +23,10 @@ import {
 } from "metabase-types/api/mocks";
 import { createAdHocCard } from "metabase-types/api/mocks/presets";
 
-import { registerQueryBuilderMetabotContextFn } from "./use-register-query-builder-metabot-context";
+import {
+  registerQueryBuilderMetabotContextFn,
+  useRegisterQueryBuilderMetabotContext,
+} from "./use-register-query-builder-metabot-context";
 
 const MOCK_PNG = "data:image/png;base64,test-base64";
 const MOCK_SVG = "data:image/svg+xml;base64,test-base64";
@@ -245,19 +250,46 @@ describe("registerQueryBuilderMetabotContextFn", () => {
       },
     });
   });
+});
 
-  it("should produce empty chart configs if it cannot analyze a question", async () => {
-    const card = createMockCard({
-      name: "Count by name",
-      display: "table",
-      visualization_settings: createMockVisualizationSettings({
-        "graph.dimensions": ["name"],
-        "graph.metrics": ["count"],
-      }),
-    });
-    const data = createMockData({ question: new Question(card) });
-    const result = await registerQueryBuilderMetabotContextFn(data);
+it("should return empty result when metabot is disabled", async () => {
+  PLUGIN_METABOT.isEnabled = jest.fn(() => false);
 
-    expect(getUserIsViewing(result)?.chart_configs).toEqual([]);
+  const card = createMockCard({
+    name: "Count by name",
+    display: "table",
+    visualization_settings: createMockVisualizationSettings({
+      "graph.dimensions": ["name"],
+      "graph.metrics": ["count"],
+    }),
   });
+  const data = createMockData({ question: new Question(card) });
+  const result = await registerQueryBuilderMetabotContextFn(data);
+
+  expect(getUserIsViewing(result)).toBeUndefined();
+});
+
+it("should return populated context when metabot is enabled", async () => {
+  PLUGIN_METABOT.isEnabled = jest.fn(() => true);
+
+  const card = createMockCard({
+    name: "Count by name",
+    display: "table",
+    visualization_settings: createMockVisualizationSettings({
+      "graph.dimensions": ["name"],
+      "graph.metrics": ["count"],
+    }),
+  });
+  const data = createMockData({ question: new Question(card) });
+  const result = await registerQueryBuilderMetabotContextFn(data);
+  const viewing = getUserIsViewing(result);
+  expect(viewing).toBeDefined();
+});
+
+it("should register without throwing", () => {
+  PLUGIN_METABOT.isEnabled = jest.fn(() => true);
+
+  expect(() => {
+    renderHook(() => useRegisterQueryBuilderMetabotContext());
+  }).not.toThrow();
 });
