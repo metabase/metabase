@@ -43,6 +43,7 @@ type Props<
   id?: string;
   onChange?: (item: TItem) => void;
   onChangeSection?: (section: TSection, sectionIndex: number) => boolean | void;
+  onChangeSearchText?: (searchText: string) => void;
   openSection?: number;
   role?: string;
   searchProp?: SearchProps<TItem>;
@@ -250,6 +251,7 @@ export class AccordionList<
 
   handleChangeSearchText = (searchText: string) => {
     this.setState({ searchText, cursor: null });
+    this.props.onChangeSearchText?.(searchText);
   };
 
   getFirstSelectedItemCursor = () => {

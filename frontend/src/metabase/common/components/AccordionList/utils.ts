@@ -283,7 +283,18 @@ function sortAndFilterSections<
       ({ sectionScore, section }) =>
         section.type || sectionScore < scores.threshold,
     )
-    .sort((a, b) => a.sectionScore - b.sectionScore);
+    .sort((a, b) => {
+      if (a.section.alwaysSortLast && b.section.alwaysSortLast) {
+        return 0;
+      }
+      if (a.section.alwaysSortLast) {
+        return 1;
+      }
+      if (b.section.alwaysSortLast) {
+        return -1;
+      }
+      return a.sectionScore - b.sectionScore;
+    });
 }
 
 function sortAndFilterItems<TItem extends Item>(

@@ -1,11 +1,9 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
 
-import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { getClauseDefinition } from "../clause";
-import { EXPRESSION_FUNCTIONS } from "../config";
+import { clausesForMode } from "../clause";
 import {
   GROUP,
   LOGICAL_AND,
@@ -28,36 +26,19 @@ export type Options = {
   expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   metadata: Metadata;
-  reportTimezone?: string;
 };
 
-export function suggestFunctions({
-  expressionMode,
-  query,
-  metadata,
-  reportTimezone,
-}: Options) {
+export function suggestFunctions({ expressionMode, query, metadata }: Options) {
   if (expressionMode !== "expression" && expressionMode !== "filter") {
     return null;
   }
 
   const database = getDatabase(query, metadata);
-  const functions = Object.keys(EXPRESSION_FUNCTIONS)
-    .map(getClauseDefinition)
-    .filter(isNotNull)
+  const functions = clausesForMode(expressionMode)
     .filter((clause) => database?.hasFeature(clause.requiresFeature))
-    .filter(function disableOffsetInFilterExpressions(clause) {
-      const isOffset = clause.name === "offset";
-      const isFilterExpression = expressionMode === "filter";
-      const isOffsetInFilterExpression = isOffset && isFilterExpression;
-      return !isOffsetInFilterExpression;
-    })
-    .sort((a, b) => a.name.localeCompare(b.name))
     .map((func) =>
       expressionClauseCompletion(func, {
         type: "function",
-        database,
-        reportTimezone,
       }),
     );
 

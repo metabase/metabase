@@ -23,7 +23,6 @@ type Options = {
   stageIndex: number;
   expressionIndex: number | undefined;
   metadata: Metadata;
-  reportTimezone?: string;
   extensions?: Extension[];
 };
 
@@ -46,7 +45,6 @@ export function useExtensions(options: Options): Extension[] {
     query,
     stageIndex,
     expressionIndex,
-    reportTimezone,
     metadata,
     extensions: extra = [],
   } = options;
@@ -95,7 +93,6 @@ export function useExtensions(options: Options): Extension[] {
       suggestions({
         query,
         stageIndex,
-        reportTimezone,
         expressionMode,
         expressionIndex,
         metadata,
@@ -115,7 +112,6 @@ export function useExtensions(options: Options): Extension[] {
     stageIndex,
     expressionIndex,
     metadata,
-    reportTimezone,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);
