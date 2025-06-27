@@ -97,9 +97,9 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
     });
 
     step().within(() => {
-      cy.findByRole("heading", {
-        name: "Let's get you up and running with a starting setup for embedded analytics",
-      }).should("be.visible");
+      cy.findByText(
+        /Let's get you up and running with a starting setup for embedded analytics/,
+      ).should("be.visible");
       cy.button("Start").should("be.visible").click();
     });
 
