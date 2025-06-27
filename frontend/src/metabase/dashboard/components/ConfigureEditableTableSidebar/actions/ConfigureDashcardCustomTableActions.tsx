@@ -9,6 +9,7 @@ import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Stack, Text } from "metabase/ui";
 import type {
+  ActionScope,
   Dashboard,
   DashboardCard,
   TableActionDisplaySettings,
@@ -74,6 +75,14 @@ export const ConfigureDashcardCustomTableActions = ({
     [dashcard.id, dispatch, enabledActions],
   );
 
+  const actionScope = useMemo<ActionScope>(
+    () =>
+      dashcard.id !== -1
+        ? { "dashcard-id": dashcard.id }
+        : { "dashboard-id": dashboard.id },
+    [dashcard.id, dashboard.id],
+  );
+
   const ConfigureTableActions = PLUGIN_TABLE_ACTIONS.ConfigureTableActions;
 
   return (
@@ -85,7 +94,7 @@ export const ConfigureDashcardCustomTableActions = ({
           {showMetabaseLinks && (
             <>
               {" "}
-              {jt`You can ${(<ExternalLink href={docsLink}>{t`learn more`}</ExternalLink>)} about it here.`}
+              {jt`You can ${(<ExternalLink key="action-docs-link" href={docsLink}>{t`learn more`}</ExternalLink>)} about it here.`}
             </>
           )}
         </Text>
@@ -95,6 +104,7 @@ export const ConfigureDashcardCustomTableActions = ({
             <ConfigureTableActions
               value={tableActions}
               databaseId={databaseId}
+              actionScope={actionScope}
               onChange={handleUpdateRowActions}
               cols={tableColumns}
             />

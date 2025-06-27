@@ -1,8 +1,10 @@
 import type { CardId } from "./card";
+import type { DashCardId, DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
 import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
 import type { NativeDatasetQuery } from "./query";
+import type { ConcreteTableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 
 export interface ListActionsRequest {
@@ -280,6 +282,7 @@ export type DataGridWritebackAction = WritebackAction | TableAction;
 export type DataGridWritebackActionId = DataGridWritebackAction["id"];
 
 export type ActionScope =
-  | { "table-id": number } // table actions
-  | { "dashcard-id": number } // dashboard actions
-  | { "card-id": number }; // question actions (non dashboard context)
+  | { "table-id": ConcreteTableId } // table actions
+  | { "dashcard-id": DashCardId } // saved dashcard actions
+  | { "card-id": CardId } // question actions (non dashboard context)
+  | { "dashboard-id": DashboardId }; // unsaved dashboard actions (mostly used for form configuration)

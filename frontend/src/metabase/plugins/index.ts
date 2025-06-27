@@ -833,6 +833,7 @@ export const PLUGIN_TABLE_ACTIONS = {
     value: TableActionDisplaySettings[] | undefined;
     cols: BasicTableViewColumn[];
     databaseId: DatabaseId | undefined;
+    actionScope: ActionScope;
     onChange: (newValue: TableActionDisplaySettings[]) => void;
   }>,
 };
