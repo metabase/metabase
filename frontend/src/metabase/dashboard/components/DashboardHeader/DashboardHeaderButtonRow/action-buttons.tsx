@@ -92,7 +92,7 @@ export const dashboardActionButtons: Record<
   },
   [DASHBOARD_ACTION.FULLSCREEN_TOGGLE]: {
     component: FullscreenToggle,
-    enabled: ({ isPublic }) => !!isPublic,
+    enabled: ({ isFullscreen, isPublic }) => isPublic || isFullscreen,
   },
   [DASHBOARD_ACTION.DASHBOARD_BOOKMARK]: {
     component: DashboardBookmark,
