@@ -45,7 +45,9 @@ export const DatabaseRoutingSection = ({
 
   const isAdmin = useSelector(getUserIsAdmin);
   const userAttribute = database.router_user_attribute ?? undefined;
-  const shouldHideSection = database.is_attached_dwh || database.is_sample;
+  const dbSupportsRouting = database.features?.includes("database-routing");
+  const shouldHideSection =
+    database.is_attached_dwh || database.is_sample || !dbSupportsRouting;
 
   const [tempEnabled, setTempEnabled] = useState(false);
   const enabled = tempEnabled || hasDbRoutingEnabled(database);

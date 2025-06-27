@@ -2,13 +2,13 @@ import dayjs from "dayjs";
 import { useCallback } from "react";
 import { jt, t } from "ttag";
 
-import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
+import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
 import { useGetAdminSettingsDetailsQuery } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";

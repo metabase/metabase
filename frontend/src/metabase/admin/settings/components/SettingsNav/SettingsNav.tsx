@@ -2,17 +2,16 @@ import { useDisclosure } from "@mantine/hooks";
 import React, { type ReactElement } from "react";
 import { t } from "ttag";
 
+import {
+  AdminNavItem,
+  type AdminNavItemProps,
+  AdminNavWrapper,
+} from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex } from "metabase/ui";
-
-import {
-  AdminNavItem,
-  type AdminNavItemProps,
-  AdminNavWrapper,
-} from "../AdminNav";
 
 import { UpdatesNavItem } from "./UpdatesNavItem";
 

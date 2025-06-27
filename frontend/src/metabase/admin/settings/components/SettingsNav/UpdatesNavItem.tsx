@@ -1,12 +1,11 @@
 import { t } from "ttag";
 
+import { getCurrentVersion } from "metabase/admin/app/selectors";
 import { useGetVersionInfoQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { newVersionAvailable } from "metabase/lib/utils";
 import { Badge } from "metabase/ui";
-
-import { getCurrentVersion } from "../../selectors";
 
 import { SettingsNavItem } from "./SettingsNav";
 

@@ -594,9 +594,12 @@ describe("scenarios > dashboard", () => {
         "a really really really really really really really really really really really really really really really really long title";
 
       it("should prevent entering a title longer than 100 chars", () => {
-        const dashboardNameInput = cy.findByTestId("dashboard-name-heading");
-        dashboardNameInput.clear().type(longTitle).blur();
-        dashboardNameInput.invoke("text").should("have.length", 100);
+        cy.findByTestId("dashboard-name-heading")
+          .as("dashboardInput")
+          .clear()
+          .type(longTitle, { delay: 0 })
+          .blur();
+        cy.get("@dashboardInput").invoke("text").should("have.length", 100);
       });
     });
 
@@ -1235,10 +1238,11 @@ describe("scenarios > dashboard", () => {
 
       // edit
       H.editDashboard();
-      const card = cy
-        .findAllByTestId("dashcard-container", { scrollBehavior: false })
-        .eq(0);
-      dragOnXAxis(card, 100);
+      const card = () =>
+        cy
+          .findAllByTestId("dashcard-container", { scrollBehavior: false })
+          .eq(0);
+      dragOnXAxis(card(), 100);
       assertPreventLeave();
       H.saveDashboard();
 
@@ -1586,7 +1590,7 @@ describe("scenarios > dashboard > caching", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   /**

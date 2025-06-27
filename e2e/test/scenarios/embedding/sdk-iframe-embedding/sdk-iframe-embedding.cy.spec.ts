@@ -183,6 +183,34 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     });
   });
 
+  it("fires ready event after iframe is loaded", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      questionId: ORDERS_QUESTION_ID,
+      onVisitPage: () => {
+        cy.window().then((win) => {
+          // @ts-expect-error -- this is within the iframe
+          win.embed.addEventListener("ready", () => {
+            win.document.body.setAttribute("data-iframe-is-ready", "true");
+          });
+        });
+      },
+    });
+
+    cy.log("ready event should not be fired before the page loads");
+    cy.get("body").should("not.have.attr", "data-iframe-is-ready", "true");
+
+    cy.wait("@getCardQuery");
+
+    cy.log("ready event should be fired after the page loads");
+    cy.get("iframe").should("be.visible");
+    cy.get("body").should("have.attr", "data-iframe-is-ready", "true");
+
+    cy.log("iframe content should now be loaded");
+    frame.within(() => {
+      H.assertSdkInteractiveQuestionOrdersUsable();
+    });
+  });
+
   it("shows dashboard title when updateSettings({ withTitle: true }) is called", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,

@@ -44,6 +44,7 @@ export function PublicOrEmbeddedDashboardView() {
     setRefreshElapsedHook,
     selectedTabId,
     parameters,
+    headerParameters,
     parameterValues,
     draftParameterValues,
     dashboardId,
@@ -83,7 +84,8 @@ export function PublicOrEmbeddedDashboardView() {
 
   const dashboardHasCards = dashboard && visibleDashcards.length > 0;
   const dashboardHasTabs = dashboard?.tabs && dashboard.tabs.length > 1;
-  const hasVisibleParameters = parameters.filter((p) => !p.hidden).length > 0;
+  const hasVisibleParameters =
+    headerParameters.filter((p) => !p.hidden).length > 0;
 
   const tabHasCards =
     visibleDashcards.filter(
@@ -120,7 +122,7 @@ export function PublicOrEmbeddedDashboardView() {
       name={dashboard && dashboard.name}
       description={dashboard && dashboard.description}
       dashboard={dashboard}
-      parameters={parameters}
+      parameters={headerParameters}
       parameterValues={parameterValues}
       draftParameterValues={draftParameterValues}
       hiddenParameterSlugs={hiddenParameterSlugs}
@@ -128,12 +130,7 @@ export function PublicOrEmbeddedDashboardView() {
       setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior
       actionButtons={buttons ? <div className={CS.flex}>{buttons}</div> : null}
-      dashboardTabs={
-        dashboardId &&
-        dashboardHasTabs && (
-          <DashboardTabs dashboardId={dashboardId} isNightMode={isNightMode} />
-        )
-      }
+      dashboardTabs={dashboardId && dashboardHasTabs && <DashboardTabs />}
       background={background}
       bordered={bordered}
       titled={titled}
