@@ -41,6 +41,7 @@ interface DashCardCardParameterMapperContentProps {
   target: ParameterTarget | null | undefined;
   layoutHeight: number;
   editingParameterInlineDashcard?: DashboardCard;
+  compact?: boolean;
 }
 
 export const DashCardCardParameterMapperContent = ({
@@ -58,6 +59,7 @@ export const DashCardCardParameterMapperContent = ({
   target,
   shouldShowAutoConnectHint,
   editingParameterInlineDashcard,
+  compact,
 }: DashCardCardParameterMapperContentProps) => {
   const isVirtual = isVirtualDashCard(dashcard);
   const virtualCardType = getVirtualCardType(dashcard);
@@ -175,6 +177,7 @@ export const DashCardCardParameterMapperContent = ({
           card={card}
           target={target}
           mappingOptions={mappingOptions}
+          compact={compact}
         />
         {shouldShowAutoConnectIcon && <AutoConnectedAnimatedIcon />}
       </Flex>
