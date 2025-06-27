@@ -863,6 +863,21 @@
     (is (= {:operator :=, :lhs-expression lhs, :rhs-expression rhs}
            (lib.fe-util/join-condition-parts (lib/= lhs rhs))))))
 
+(deftest ^:parallel join-condition-lhs-or-rhs-column?-test
+  (let [query             (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        products          (meta/table-metadata :products)
+        lhs-columns       (lib/join-condition-lhs-columns query products nil nil)
+        lhs-order-tax     (m/find-first (comp #{"TAX"} :name) lhs-columns)
+        rhs-columns       (lib/join-condition-rhs-columns query products nil nil)
+        rhs-product-price (m/find-first (comp #{"PRICE"} :name) rhs-columns)]
+    (are [expected lhs-or-rhs] (= expected (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs))
+      true  (lib/ref lhs-order-tax)
+      true  (lib/ref rhs-product-price)
+      false (lib/+ lhs-order-tax 1)
+      false (lib/+ lhs-order-tax lhs-order-tax)
+      false (lib/+ 1 rhs-product-price)
+      false (lib/+ rhs-product-price rhs-product-price))))
+
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (meta/field-metadata :products :created-at)
         date-arg-1 "2023-11-02"
