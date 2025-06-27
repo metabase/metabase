@@ -650,7 +650,7 @@ describe("scenarios > admin > settings > email settings", () => {
       cy.button("Send test email").should("not.exist");
       cy.findByTestId("admin-layout-content").within(() => {
         cy.findByText("Whitelabel email notifications").should("be.visible");
-        cy.findByLabelText("From Address").find("input").should("be.disabled");
+        cy.findByLabelText("From Address").should("be.disabled");
         cy.findByText(
           "Please set up a custom SMTP server to change this (Pro only)",
         ).should("be.visible");
@@ -660,7 +660,7 @@ describe("scenarios > admin > settings > email settings", () => {
 
   describe("Pro-cloud instance", () => {
     beforeEach(() => {
-      cy.intercept("PUT", "api/email/cloud", "204").as("smtpSaved");
+      cy.intercept("PUT", "api/email/cloud").as("smtpSaved");
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-cloud");
@@ -674,7 +674,6 @@ describe("scenarios > admin > settings > email settings", () => {
         .click();
 
       H.modal().within(() => {
-        // SMTP connection setup
         cy.findByLabelText(/SMTP Host/i)
           .type("localhost")
           .blur();
@@ -689,17 +688,9 @@ describe("scenarios > admin > settings > email settings", () => {
         cy.button("Save changes").click();
       });
 
-      // This can't be tested until we have a secure SMTP server to connect to
-      // the simple maildev one isn't sufficient
-      //
-      // cy.wait("@smtpSaved");
-      // // should show as active now
+      cy.wait("@smtpSaved");
       // cy.findByTestId("cloud-smtp-connection-card").within(() => {
-      //   cy.findByText("Custom SMTP Server").should(
-      //     "have.attr",
-      //     '[data-checked="true"]',
-      //   );
-      //   cy.contains('[data-checked="true"]', "Custom SMTP Server");
+      //   cy.findByTestId("custom-smtp-radio");
       //   cy.button("Edit settings");
       // });
 
