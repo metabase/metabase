@@ -8,7 +8,7 @@ summary: Learn how Metabase stays in sync with your database by running periodic
 Metabase periodically runs different types of queries on your data warehouse to stay up to date with your database's metadata. Knowing information about your data helps Metabase do things like display the right chart for the results automatically and populate dropdown menus in filter widgets.
 
 - [Sync database schema](#how-database-syncs-work): grabs database schema, table structures, fields, constraints (primary and foreign keys), and deactivates deleted tables.
-- [Scan field values](#how-database-scans-work): takes samples of column values to populate filter dropdown menus and suggest helpful visualizations. Metabase doesn't store _complete_ tables from your database.
+- [Scan field values](#how-database-scans-work): takes samples of column values to populate filter dropdown menus, find distinct values, and identify valid visualizations. Metabase doesn't store _complete_ tables from your database.
 - [Fingerprinting](#how-database-fingerprinting-works): samples the first 10,000 rows of the table to compute statistics for each field in the sample depending on their type, notably: distinct values count, % of null values (all field types), average, median, min, max, and quartiles (numeric types).
 
 ## Initial sync, scan, and fingerprinting
