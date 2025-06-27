@@ -5,6 +5,7 @@ import { uuid } from "metabase/lib/uuid";
 import { Button, Modal, Stack, Text } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type {
+  ActionScope,
   DatabaseId,
   RowActionFieldSettings,
   TableAction,
@@ -21,6 +22,7 @@ type ConfigureTableActionsProps = {
   value: TableActionDisplaySettings[] | undefined;
   cols: BasicTableViewColumn[];
   databaseId: DatabaseId | undefined;
+  actionScope: ActionScope;
   onChange: (newValue: TableActionDisplaySettings[]) => void;
 };
 
@@ -28,6 +30,7 @@ export const ConfigureTableActions = ({
   value: tableActions,
   cols: columns,
   databaseId,
+  actionScope,
   onChange,
 }: ConfigureTableActionsProps) => {
   const {
@@ -146,6 +149,7 @@ export const ConfigureTableActions = ({
         >
           <Modal.Overlay />
           <AddOrEditActionSettingsContent
+            actionScope={actionScope}
             actionSettings={editingAction}
             tableColumns={columns}
             databaseId={databaseId}

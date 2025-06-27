@@ -14,6 +14,7 @@ import { Button, Center, Icon, Modal } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
+  ActionScope,
   DataGridWritebackAction,
   DatabaseId,
   RowActionFieldSettings,
@@ -26,6 +27,7 @@ interface Props {
   actionSettings: TableActionDisplaySettings | null | undefined;
   tableColumns: BasicTableViewColumn[];
   databaseId: DatabaseId | undefined;
+  actionScope: ActionScope;
   onClose: () => void;
   onSubmit: (actionParams: {
     id?: string;
