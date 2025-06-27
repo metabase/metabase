@@ -88,13 +88,13 @@ export const openAndAddEmailsToSubscriptions = (recipients) => {
 
   cy.findByText("Email it").click();
 
-  cy.findByPlaceholderText("Enter user names or email addresses")
-    .as("input")
-    .click();
   recipients.forEach((recipient) => {
-    cy.get("@input").type(`${recipient}{enter}`);
+    cy.findByTestId("token-field")
+      .find("input")
+      .click()
+      .type(`${recipient}{enter}`)
+      .blur();
   });
-  cy.get("@input").blur();
 };
 
 export const setupSubscriptionWithRecipients = (recipients) => {

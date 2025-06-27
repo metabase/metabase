@@ -792,15 +792,9 @@ function assignRecipient({
   cy.findByText("Email it").click();
 
   cy.findByPlaceholderText("Enter user names or email addresses")
-    .as("input")
     .click()
-    .type(`${user.first_name} ${user.last_name}`);
-
-  cy.findByTestId("token-field-popover").within(() => {
-    cy.findByText(`${user.first_name} ${user.last_name}`).click();
-  });
-
-  cy.get("@input").blur(); // blur is needed to close the popover
+    .type(`${user.first_name} ${user.last_name}{enter}`)
+    .blur();
 }
 
 function assignRecipients({
@@ -816,7 +810,7 @@ function assignRecipients({
 
   cy.findByPlaceholderText("Enter user names or email addresses")
     .click()
-    .type(userInput)
+    .type(userInput, { delay: 0 })
     .blur(); // blur is needed to close the popover
 }
 
