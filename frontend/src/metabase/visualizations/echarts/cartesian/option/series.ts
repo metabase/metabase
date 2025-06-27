@@ -84,14 +84,15 @@ export const getBarLabelLayout =
       return {};
     }
 
-    const barHeight = rect.height;
-    const labelOffset =
-      barHeight / 2 +
-      CHART_STYLE.seriesLabels.size / 2 +
-      CHART_STYLE.seriesLabels.offset;
+    let dy = 0;
+    if (labelValue < 0) {
+      const distance = 5; // https://echarts.apache.org/en/option.html#series-line.label.distance
+      dy = rect.height + CHART_STYLE.seriesLabels.size + distance * 2;
+    }
+
     return {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
-      dy: labelValue < 0 ? labelOffset : -labelOffset,
+      dy,
     };
   };
 
@@ -503,6 +504,7 @@ const buildEChartsBarSeries = (
           labelFormatter,
           settings,
           chartDataDensity,
+          "top",
         ),
     labelLayout: isStacked
       ? getBarInsideLabelLayout(
