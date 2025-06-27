@@ -12,8 +12,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.honey-sql-2 :as h2x])
   (:import
    [java.net Inet4Address Inet6Address]
    [java.sql ResultSet ResultSetMetaData Types]

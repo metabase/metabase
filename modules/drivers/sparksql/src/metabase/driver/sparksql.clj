@@ -16,8 +16,7 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.honey-sql-2 :as h2x])
   (:import
    (java.sql Connection ResultSet)))
 

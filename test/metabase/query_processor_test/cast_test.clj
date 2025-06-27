@@ -15,7 +15,7 @@
    [metabase.types.core :as types]
    [metabase.util :as u])
   (:import
-   (java.time OffsetDateTime ZonedDateTime)))
+   (java.time OffsetDateTime)))
 
 (set! *warn-on-reflection* true)
 
