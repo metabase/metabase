@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-510-initial-and-hidden-parameter-settings-for-new-iframe-embed",
     "hash": "011a68a95a137b752f86a3ff1aefd0005d6ec951"
+  },
+  "upstream": {
+    "branch": "emb-513-persist-new-iframe-embed-flow-settings-to-user-settings"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 60234,
+        "gqlID": "PR_kwDOAczgH86cfx3p"
+      }
+    }
   }
 }
