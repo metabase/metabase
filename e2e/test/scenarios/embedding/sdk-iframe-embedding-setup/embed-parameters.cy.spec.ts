@@ -84,13 +84,13 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
 
       cy.log("parameters should be visible by default");
 
-      getParameterVisibilityToggle("ID").should(
+      parameterVisibilityToggle("id").should(
         "have.attr",
         "data-hidden",
         "false",
       );
 
-      getParameterVisibilityToggle("Product ID").should(
+      parameterVisibilityToggle("product_id").should(
         "have.attr",
         "data-hidden",
         "false",
@@ -110,10 +110,12 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
       cy.findByLabelText("Product ID").type("456").blur();
     });
 
-    cy.log("verify the default values appear in the preview");
+    cy.log("default values should show up in the parameter widget");
     H.getIframeBody().within(() => {
-      cy.get('[aria-label="ID"]').should("contain", "123");
-      cy.get('[aria-label="Product ID"]').should("contain", "456");
+      parameterWidgetContainer().within(() => {
+        cy.findByLabelText("ID").should("contain", "123");
+        cy.findByLabelText("Product ID").should("contain", "456");
+      });
     });
 
     cy.log("default values should be in the code snippet");
@@ -125,24 +127,29 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
     });
   });
 
-  it("should allow hiding dashboard parameters", () => {
+  it("can hide dashboard parameters", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: "Dashboard with Parameters",
     });
 
+    cy.log("hide both parameters");
     getEmbedSidebar().within(() => {
-      // Hide the ID parameter
-      getParameterVisibilityToggle("ID").click();
-
-      // Navigate to the code step to verify the setting is included
-      cy.findByText("Next").click();
+      parameterVisibilityToggle("id").click();
+      parameterVisibilityToggle("product_id").click();
     });
 
-    // The code snippet should include the hidden parameter
+    cy.log("parameter widget container should not exist");
+    H.getIframeBody().within(() => {
+      parameterWidgetContainer().should("not.exist");
+    });
+
+    cy.log("code snippet should contain the hidden parameters");
     getEmbedSidebar().within(() => {
-      cy.findByText("hiddenParameters").should("be.visible");
-      cy.findByText('"id"').should("be.visible");
+      cy.findByText("Get Code").click();
+      codeBlock().should("contain", '"hiddenParameters"');
+      codeBlock().should("contain", '"id"');
+      codeBlock().should("contain", '"product_id"');
     });
   });
 
@@ -215,10 +222,12 @@ const navigateToEmbedOptionsStep = ({
   });
 };
 
-const getParameterVisibilityToggle = (parameterName: string) =>
+const parameterVisibilityToggle = (slug: string) =>
   cy
-    .findByLabelText(parameterName)
-    .parent()
-    .get("[data-testid='parameter-visibility-toggle']");
+    .findAllByTestId("parameter-visibility-toggle")
+    .get(`[data-parameter-slug="${slug}"]`);
 
 const codeBlock = () => cy.get(".cm-content");
+
+const parameterWidgetContainer = () =>
+  cy.findByTestId("dashboard-parameters-widget-container");

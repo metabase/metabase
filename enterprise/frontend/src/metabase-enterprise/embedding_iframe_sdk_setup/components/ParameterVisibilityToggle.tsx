@@ -34,6 +34,7 @@ export const ParameterVisibilityToggle = ({
         title={tooltipLabel}
         data-testid="parameter-visibility-toggle"
         data-hidden={isHidden}
+        data-parameter-slug={parameterName}
       >
         <Icon name={iconName} size={16} />
       </ActionIcon>
