@@ -1,5 +1,5 @@
 import type { LocationDescriptor } from "history";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
@@ -67,6 +67,11 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
+const MIN_SIDEBAR_WIDTH = 224;
+const MAX_SIDEBAR_WIDTH = 384;
+const DEFAULT_SIDEBAR_WIDTH = 324;
+const SIDEBAR_WIDTH_STORAGE_KEY = "metabase.sidebarWidth";
+
 function MainNavbar({
   isOpen,
   location,
@@ -91,6 +96,24 @@ function MainNavbar({
     collectionId ? { id: collectionId } : skipToken,
   );
 
+  // Sidebar width state and resizing logic
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const stored = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
+    const parsed = stored ? parseInt(stored, 10) : DEFAULT_SIDEBAR_WIDTH;
+    return isNaN(parsed)
+      ? DEFAULT_SIDEBAR_WIDTH
+      : Math.min(Math.max(parsed, MIN_SIDEBAR_WIDTH), MAX_SIDEBAR_WIDTH);
+  });
+  const [isResizing, setIsResizing] = useState(false);
+
+  // Save width to localStorage when it changes
+  useEffect(() => {
+    window.localStorage.setItem(
+      SIDEBAR_WIDTH_STORAGE_KEY,
+      String(sidebarWidth),
+    );
+  }, [sidebarWidth]);
+
   useEffect(() => {
     function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
       if (e.key === "." && (e.ctrlKey || e.metaKey)) {
@@ -107,6 +130,41 @@ function MainNavbar({
       window.removeEventListener("keydown", handleSidebarKeyboardShortcut);
     };
   }, [isOpen, openNavbar, closeNavbar]);
+
+  useEffect(() => {
+    if (!isResizing) {
+      return;
+    }
+    function handleMouseMove(e: MouseEvent) {
+      const newWidth = Math.min(
+        Math.max(e.clientX, MIN_SIDEBAR_WIDTH),
+        MAX_SIDEBAR_WIDTH,
+      );
+      setSidebarWidth(newWidth);
+    }
+    function handleMouseUp() {
+      setIsResizing(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = originalUserSelect;
+    }
+    // Prevent text selection while resizing
+    const originalUserSelect = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "ew-resize";
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = originalUserSelect;
+    };
+  }, [isResizing]);
+
+  // Reset width when sidebar closes (optional: comment out to persist width even when closed)
+  // useEffect(() => {
+  //   if (!isOpen) setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+  // }, [isOpen]);
 
   const selectedItems = useMemo<SelectedItem[]>(() => {
     const question = card && new Question(card);
@@ -127,6 +185,8 @@ function MainNavbar({
       aria-hidden={!isOpen}
       data-testid="main-navbar-root"
       data-element-id="navbar-root"
+      width={`${sidebarWidth}px`}
+      style={{ minWidth: MIN_SIDEBAR_WIDTH, maxWidth: MAX_SIDEBAR_WIDTH }}
     >
       <NavRoot isOpen={isOpen}>
         <MainNavbarContainer
@@ -137,9 +197,31 @@ function MainNavbar({
           openNavbar={openNavbar}
           closeNavbar={closeNavbar}
           onChangeLocation={onChangeLocation}
+          sidebarWidth={sidebarWidth}
           {...props}
         />
       </NavRoot>
+      {/* Resizer handle */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          width: 6,
+          height: "100%",
+          cursor: "ew-resize",
+          zIndex: 10,
+        }}
+        onMouseDown={() => setIsResizing(true)}
+        onClick={(e) => {
+          // Only close if not a drag (i.e., not resizing)
+          if (!isResizing) {
+            e.stopPropagation();
+            closeNavbar();
+          }
+        }}
+        data-testid="sidebar-resizer"
+      />
     </Sidebar>
   );
 }

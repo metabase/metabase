@@ -9,6 +9,7 @@ import {
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
+import type { TreeNodeProps } from "metabase/common/components/tree/types";
 import { useHasTokenFeature, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { getIsNewInstance } from "metabase/home/selectors";
@@ -68,6 +69,7 @@ type Props = {
     newIndex: number;
     oldIndex: number;
   }) => Promise<any>;
+  sidebarWidth?: number;
 };
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
 
@@ -81,6 +83,7 @@ export function MainNavbarView({
   reorderBookmarks,
   handleCreateNewCollection,
   handleCloseNavbar,
+  sidebarWidth,
 }: Props) {
   const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
@@ -214,7 +217,12 @@ export function MainNavbarView({
                 data={regularCollections}
                 selectedId={collectionItem?.id}
                 onSelect={onItemSelect}
-                TreeNode={SidebarCollectionLink}
+                TreeNode={(props: TreeNodeProps) => (
+                  <SidebarCollectionLink
+                    {...props}
+                    sidebarWidth={sidebarWidth}
+                  />
+                )}
                 role="tree"
                 aria-label="collection-tree"
               />
