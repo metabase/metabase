@@ -348,7 +348,7 @@
    values   :- [:maybe [:sequential NumberFilterValue]]
    options  :- ::lib.schema.filter/number-filter-options]
   (expression-clause-with-in operator (into [column] (map number->expression-arg) values)
-                             (->> (select-keys options [:min-inclusive :max-exclusive])
+                             (->> (select-keys options [:min-inclusive :max-inclusive])
                                   ;; True is the default, so omit them unless they're explicitly false.
                                   (m/filter-vals false?))))
 
@@ -367,36 +367,27 @@
                   :values (mapv expression-arg->number values)})]
     (lib.util.match/match-lite filter-clause
       ;; no arguments
-      [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?) & (args :len 0 :guard (every? number-arg? args))]
-      (result op col-ref args)
+      [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?)]
+      {:operator op, :column (ref->col col-ref), :values [], :options {}}
 
       ;; multiple arguments, `:=`
-      [(op :guard #{:= :in}) _ (col-ref :guard number-col?) & (args :guard (every? number-arg? args))]
-      (result op col-ref args)
+      [(_ :guard #{:= :in}) _ (col-ref :guard number-col?) & (args :guard #(every? number-arg? %))]
+      {:operator :=, :column (ref->col col-ref), :values (mapv expression-arg->number args), :options {}}
 
       ;; multiple arguments, `:!=`
-      [(op :guard #{:!= :not-in}) _ (col-ref :guard number-col?) & (args :guard (every? number-arg? args))]
-      (result op col-ref args)
+      [(_ :guard #{:!= :not-in}) _ (col-ref :guard number-col?) & (args :guard #(every? number-arg? %))]
+      {:operator :!=, :column (ref->col col-ref), :values (mapv expression-arg->number args), :options {}}
 
       ;; exactly 1 argument
-      [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard number-col?) & (args :len 1 :guard (every? number-arg? args))]
-      (result op col-ref args)
+      [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard number-col?) (arg :guard number-arg?)]
+      {:operator op, :column (ref->col col-ref), :values [(expression-arg->number arg)], :options {}}
 
       ;; exactly 2 arguments
-      [(op :guard #{:between}) _ (col-ref :guard number-col?) (start :guard number-arg?) (end :guard number-arg?)]
+      [(op :guard #{:between}) opts (col-ref :guard number-col?) (start :guard number-arg?) (end :guard number-arg?)]
       {:operator op
        :column   (ref->col col-ref)
        :values   [(expression-arg->number start) (expression-arg->number end)]
-       :options  {}}
-
-      ;; exactly 3 arguments
-      [(op :guard #{:between}) _ (col-ref :guard number-col?) (start :guard number-arg?) (end :guard number-arg?)
-       (opts :guard map?)]
-      {:operator op
-       :column   (ref->col col-ref)
-       :values   [(expression-arg->number start) (expression-arg->number end)]
-       :options  {(get opts :min-inclusive true)
-                  (get opts :max-inclusive true)}}
+       :options  (select-keys opts [:min-inclusive :max-inclusive])}
 
       ;; do not match inner clauses
       _
