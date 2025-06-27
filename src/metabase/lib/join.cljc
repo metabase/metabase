@@ -81,6 +81,13 @@
     (let [[_operator _opts lhs _rhs] condition]
       lhs)))
 
+(defn- standard-join-condition-rhs
+  "If `condition` is a [[standard-join-condition?]], return the RHS."
+  [condition]
+  (when (standard-join-condition? condition)
+    (let [[_operator _opts _lhs rhs] condition]
+      rhs)))
+
 (defn- standard-join-condition-update-rhs
   "If `condition` is a [[standard-join-condition?]], update the RHS with `f` like
 
@@ -518,10 +525,10 @@
   ([query _stage-number a-join stage home-cols]
    (let [home-cols  home-cols
          lhs-fields (into []
-                          (keep (fn [condition]
-                                  (when-let [lhs (standard-join-condition-lhs condition)]
-                                    (when (lib.util/field-clause? lhs)
-                                      lhs))))
+                          (comp (mapcat (fn [condition]
+                                          [(standard-join-condition-lhs condition)
+                                           (standard-join-condition-rhs condition)]))
+                                (filter lib.util/field-clause?))
                           (:conditions a-join))
          home-col   (select-home-column home-cols lhs-fields)]
      (as-> (calculate-join-alias query a-join home-col) s
