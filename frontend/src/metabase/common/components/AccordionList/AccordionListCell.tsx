@@ -419,16 +419,22 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
     }
   }
 
+  const isSticky = type === "search";
+
   return (
     <div
       ref={mergedRef}
-      style={style}
+      style={{
+        ...style,
+        position: isSticky ? "sticky" : undefined,
+      }}
       data-element-id="list-section"
       className={cx(section.className, {
         [ListS.ListSectionExpanded]: sectionIsExpanded(sectionIndex),
         [ListS.ListSectionToggleAble]: canToggleSections,
         [styles.borderTop]: withBorders && borderTop,
         [styles.borderBottom]: withBorders && borderBottom,
+        [styles.sticky]: isSticky,
       })}
     >
       {content}

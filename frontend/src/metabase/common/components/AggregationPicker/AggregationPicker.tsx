@@ -347,8 +347,6 @@ export function AggregationPicker({
         renderItemDescription={omitItemDescription}
         renderItemExtra={renderItemIcon}
         renderItemWrapper={renderItemWrapper}
-        // disable scrollbars inside the list
-        style={{ overflow: "visible" }}
         maxHeight={Infinity}
         withBorders
         globalSearch
