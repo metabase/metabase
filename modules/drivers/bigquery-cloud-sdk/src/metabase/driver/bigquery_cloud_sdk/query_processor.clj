@@ -1020,7 +1020,7 @@
 (mu/defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk FieldFilter]
   [driver                            :- :keyword
    {:keys [field], :as field-filter} :- [:map
-                                         [:field driver-api/schema.metadata.column]]]
+                                         [:field :any]]]
   (let [field-temporal-type (temporal-type field)
         parent-method       (get-method sql.params.substitution/->replacement-snippet-info [:sql FieldFilter])
         result              (parent-method driver field-filter)]
