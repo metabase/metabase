@@ -2208,7 +2208,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         {
           joins: [
             {
-              lhsTable: "Previous results",
+              lhsTable: "Orders",
               rhsTable: "Reviews",
               type: "left-join",
               conditions: [

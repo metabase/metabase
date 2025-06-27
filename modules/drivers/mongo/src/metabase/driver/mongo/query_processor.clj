@@ -1614,9 +1614,42 @@
         (merge compiled (add-aggregation-pipeline inner-query compiled))))
     (simple-mbql->native inner-query)))
 
+;;; TODO (Cam 6/20/25) -- MongoDB QP code is completely broken and does not consistently look at the keys added
+;;; by [[driver-api/add-alias-info]]. Fixing all the busted code above is more work than I want to take on right now, so
+;;; until we get around to fixing that let's just walk the query and replace all the non-add-alias-info keys with the
+;;; values added by add-alias-info.
+(defn- HACK-update-aliases [form]
+  (driver-api/replace form
+    (m :guard (every-pred map?
+                          :alias
+                          driver-api/qp.add.alias
+                          #(not= (driver-api/qp.add.alias %) (:alias %))))
+    (HACK-update-aliases (assoc m :alias (driver-api/qp.add.alias m)))
+
+    [:field id-or-name (opts :guard (every-pred map?
+                                                #(not= (:name %) (driver-api/qp.add.source-alias %))))]
+    (let [id-or-name' (if (string? id-or-name)
+                        (driver-api/qp.add.source-alias opts)
+                        id-or-name)]
+      (HACK-update-aliases [:field id-or-name' (assoc opts :name (driver-api/qp.add.source-alias opts))]))
+
+    [:field id-or-name (opts :guard (every-pred map?
+                                                :join-alias
+                                                #(= (driver-api/qp.add.source-table %) driver-api/qp.add.source)))]
+    [:field id-or-name (-> opts
+                           (dissoc :join-alias)
+                           (assoc ::fixed true))]
+
+    [:field id-or-name (opts :guard (every-pred map?
+                                                :join-alias
+                                                #(string? (driver-api/qp.add.source-table %))))]
+    [:field id-or-name (assoc opts :join-alias (driver-api/qp.add.source-table opts))]))
+
 (defn- preprocess
   [inner-query]
-  (driver-api/add-alias-info inner-query))
+  (-> inner-query
+      (driver-api/add-alias-info {:globally-unique-join-aliases? true})
+      HACK-update-aliases))
 
 (defn mbql->native
   "Compile an MBQL query."
