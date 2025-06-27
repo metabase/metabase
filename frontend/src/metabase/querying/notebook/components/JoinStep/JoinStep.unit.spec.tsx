@@ -1110,6 +1110,48 @@ describe("Notebook Editor > Join Step", () => {
     );
   });
 
+  describe("expressions in conditions", () => {
+    it("should be able to update a LHS expression with a custom expression", async () => {
+      const query = getJoinedQuery();
+      const { getRecentJoin } = setup({
+        step: createMockNotebookStep({ query }),
+      });
+
+      await userEvent.click(screen.getByLabelText("Left column"));
+      const popover = await screen.findByTestId("lhs-column-picker");
+      await userEvent.click(within(popover).getByText("Custom Expression"));
+
+      screen.getByTestId("custom-expression-query-editor").focus();
+      await userEvent.paste(" + 1");
+      const doneButton = screen.getByRole("button", { name: "Update" });
+      await waitFor(() => expect(doneButton).toBeEnabled());
+      await userEvent.click(doneButton);
+
+      const [condition] = getRecentJoin().conditions;
+      expect(condition.lhsExpression.longDisplayName).toBe("Product ID + 1");
+    });
+
+    it("should be able to update a RHS expression with a custom expression", async () => {
+      const query = getJoinedQuery();
+      const { getRecentJoin } = setup({
+        step: createMockNotebookStep({ query }),
+      });
+
+      await userEvent.click(screen.getByLabelText("Right column"));
+      const popover = await screen.findByTestId("rhs-column-picker");
+      await userEvent.click(within(popover).getByText("Custom Expression"));
+
+      screen.getByTestId("custom-expression-query-editor").focus();
+      await userEvent.paste(" + 1");
+      const doneButton = screen.getByRole("button", { name: "Update" });
+      await waitFor(() => expect(doneButton).toBeEnabled());
+      await userEvent.click(doneButton);
+
+      const [condition] = getRecentJoin().conditions;
+      expect(condition.rhsExpression.longDisplayName).toBe("ID + 1");
+    });
+  });
+
   describe("read-only", () => {
     it("shouldn't allow changing the join type", () => {
       setup({
