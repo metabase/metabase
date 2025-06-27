@@ -103,9 +103,8 @@ describe("scenarios > question > joined questions", () => {
     H.selectSavedQuestionsToJoin("question a", "question b");
     H.popover().findByText("PRODUCT_ID").click();
     H.popover().findByText("ID").click();
-
+    cy.realPress("Escape");
     H.visualize();
-
     H.assertJoinValid({
       lhsTable: "question a",
       rhsTable: "question b",
@@ -122,6 +121,7 @@ describe("scenarios > question > joined questions", () => {
       cy.findByText("question b - PRODUCT_ID → CATEGORY").click();
       cy.findByText("question b - PRODUCT_ID → CREATED_AT").click();
     });
+    cy.realPress("Escape");
     H.visualize();
     H.assertJoinValid({
       lhsTable: "question a",
