@@ -10,6 +10,7 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
@@ -209,6 +210,8 @@ function Dashboard({ className }: { className?: string }) {
           onCancel={() => setSharing(false)}
         />
       </Flex>
+
+      <FilterApplyToast />
     </Flex>
   );
 }
