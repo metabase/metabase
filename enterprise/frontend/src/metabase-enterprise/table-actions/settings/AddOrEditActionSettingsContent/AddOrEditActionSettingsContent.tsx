@@ -41,6 +41,7 @@ export function AddOrEditActionSettingsContent({
   actionSettings,
   tableColumns,
   databaseId,
+  actionScope,
   onClose,
   onSubmit,
 }: Props) {
@@ -159,6 +160,7 @@ export function AddOrEditActionSettingsContent({
         <ActionParameterMappingForm
           action={action}
           actionSettings={selectedActionSettings}
+          actionScope={actionScope}
           tableColumns={tableColumns}
           onSubmit={handleSubmit}
         />
@@ -182,6 +184,7 @@ export function AddOrEditActionSettingsContent({
         <ActionParameterMappingForm
           action={action}
           actionSettings={selectedActionSettings}
+          actionScope={actionScope}
           tableColumns={tableColumns}
           onSubmit={handleSubmit}
         />

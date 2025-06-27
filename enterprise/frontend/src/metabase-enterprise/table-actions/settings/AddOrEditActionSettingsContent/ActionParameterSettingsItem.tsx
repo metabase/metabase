@@ -8,10 +8,10 @@ import {
 import { FormRadioGroup, FormSelect, FormTextInput } from "metabase/forms";
 import { Box, Group, Radio, Text } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
+import type { ConfigFormParameter } from "metabase-enterprise/data_editing/tables/types";
 import type {
   DataGridWritebackAction,
   RowActionFieldSourceType,
-  TableActionParameter,
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
@@ -48,7 +48,7 @@ const SOURCE_TYPE_OPTIONS: {
 export type ActionParameterSettingsItemProps = {
   index: number;
   action: DataGridWritebackAction;
-  actionParameter: WritebackParameter | TableActionParameter;
+  actionParameter: ConfigFormParameter;
   tableColumns: BasicTableViewColumn[];
 };
 
@@ -69,8 +69,7 @@ export const ActionParameterSettingsItem = ({
     action as WritebackAction,
     actionParameter as WritebackParameter,
   );
-  const name =
-    (actionParameter as WritebackParameter).name ?? actionParameter.id;
+  const name = actionParameter.id;
 
   return (
     <Box

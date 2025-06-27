@@ -123,3 +123,27 @@ export type DescribeActionFormResponse = {
   title: string;
   parameters: ActionFormParameter[];
 };
+
+export type ConfigFormRequest = {
+  action_id:
+    | string
+    | {
+        "action-id": number;
+        name: string;
+        parameters?: any;
+      };
+  scope: ActionScope;
+};
+
+export type ConfigFormParameter = {
+  id: string;
+  sourceType?: "ask-user" | "row-data" | "constant";
+  sourceValueTarget?: string;
+  visibility?: "readonly" | "hidden";
+  value?: RowValue;
+};
+
+export type ConfigFormResponse = {
+  title: string;
+  parameters: ConfigFormParameter[];
+};

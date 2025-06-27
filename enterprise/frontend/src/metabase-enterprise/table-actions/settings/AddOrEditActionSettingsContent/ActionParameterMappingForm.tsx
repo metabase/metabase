@@ -1,13 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { sortActionParams } from "metabase/actions/utils";
 import EditableText from "metabase/common/components/EditableText";
 import EmptyState from "metabase/common/components/EmptyState";
 import { Form, FormProvider } from "metabase/forms";
-import { Box, Button, Stack, Title } from "metabase/ui";
+import { Box, Button, Center, Loader, Stack, Title } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
+import { useGetFormConfigurationMutation } from "metabase-enterprise/api";
 import type {
+  ActionScope,
   DataGridWritebackAction,
   RowActionFieldSettings,
   TableActionDisplaySettings,
@@ -21,6 +22,7 @@ import { cleanEmptyVisibility, isValidMapping } from "./utils";
 interface ActionParameterMappingProps {
   action: DataGridWritebackAction;
   actionSettings: TableActionDisplaySettings | null | undefined;
+  actionScope: ActionScope;
   tableColumns: BasicTableViewColumn[];
   onSubmit: (actionParams: {
     id?: string;
@@ -33,6 +35,7 @@ interface ActionParameterMappingProps {
 export const ActionParameterMappingForm = ({
   action,
   actionSettings,
+  actionScope,
   tableColumns,
   onSubmit,
 }: ActionParameterMappingProps) => {
@@ -40,30 +43,35 @@ export const ActionParameterMappingForm = ({
     actionSettings?.name || action.name,
   );
 
-  const hasParameters = !!action.parameters?.length;
+  const [fetchFormConfiguration, { data: formConfiguration }] =
+    useGetFormConfigurationMutation();
 
-  const writeableParameters = useMemo(() => {
-    const actionParameters = action.parameters ?? [];
-
-    const sorted =
-      actionParameters && action.visualization_settings?.fields
-        ? actionParameters.toSorted(
-            sortActionParams(action.visualization_settings),
-          )
-        : actionParameters || [];
-
-    if (action.visualization_settings?.fields) {
-      return sorted.filter(
-        ({ id }) => !action.visualization_settings?.fields?.[id]?.hidden,
-      );
-    }
-
-    return sorted;
-  }, [action]);
+  useEffect(() => {
+    fetchFormConfiguration({
+      action_id: actionSettings
+        ? actionSettings.id
+        : {
+            "action-id": action.id,
+            name: action.name,
+            parameters:
+              action.parameters?.map((it) => ({
+                id: it.id,
+                sourceType: "ask-user",
+              })) ?? [],
+          },
+      scope: actionScope,
+    });
+  }, [fetchFormConfiguration, actionSettings, action, actionScope]);
 
   const initialValues = useMemo(() => {
+    if (!formConfiguration) {
+      return {
+        parameters: [],
+      };
+    }
+
     return {
-      parameters: writeableParameters.map(({ id }) => {
+      parameters: formConfiguration.parameters.map(({ id }) => {
         if (actionSettings) {
           const mapping = actionSettings.parameterMappings?.find(
             ({ parameterId }) => id === parameterId,
@@ -79,7 +87,7 @@ export const ActionParameterMappingForm = ({
         } as RowActionFieldSettings;
       }),
     };
-  }, [actionSettings, writeableParameters]);
+  }, [actionSettings, formConfiguration]);
 
   const getIsFormInvalid = (values: ActionParametersFormValues) => {
     return values.parameters.some(
@@ -95,6 +103,16 @@ export const ActionParameterMappingForm = ({
       parameterMappings: cleanEmptyVisibility(values.parameters || []),
     });
   };
+
+  if (!formConfiguration) {
+    return (
+      <Box className={S.ParametersModalRightSection} p="xl">
+        <Center>
+          <Loader />
+        </Center>
+      </Box>
+    );
+  }
 
   return (
     <Box className={S.ParametersModalRightSection}>
@@ -115,7 +133,7 @@ export const ActionParameterMappingForm = ({
               />
             </Box>
 
-            {hasParameters && (
+            {formConfiguration.parameters.length > 0 && (
               <Box px="2rem">
                 <Title
                   order={4}
@@ -128,17 +146,19 @@ export const ActionParameterMappingForm = ({
                 data-testid="table-action-parameters-mapping-form"
               >
                 <Stack gap="lg" mt="md">
-                  {writeableParameters.map((actionParameter, index) => (
-                    <ActionParameterSettingsItem
-                      key={actionParameter.id}
-                      index={index}
-                      action={action}
-                      actionParameter={actionParameter}
-                      tableColumns={tableColumns}
-                    />
-                  ))}
+                  {formConfiguration.parameters.map(
+                    (actionParameter, index) => (
+                      <ActionParameterSettingsItem
+                        key={actionParameter.id}
+                        index={index}
+                        action={action}
+                        actionParameter={actionParameter}
+                        tableColumns={tableColumns}
+                      />
+                    ),
+                  )}
 
-                  {writeableParameters.length === 0 && (
+                  {formConfiguration.parameters.length === 0 && (
                     <EmptyState
                       message={t`This action has no parameters to map`}
                     />
