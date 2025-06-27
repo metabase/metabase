@@ -1273,31 +1273,31 @@
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
   (driver-api/match-one
-   (nth (:aggregation *inner-query*) index)
-   [:aggregation-options ag (options :guard :name)]
-   (->honeysql driver (h2x/identifier :field-alias (:name options)))
+    (nth (:aggregation *inner-query*) index)
+    [:aggregation-options ag (options :guard :name)]
+    (->honeysql driver (h2x/identifier :field-alias (:name options)))
 
-   [:aggregation-options ag _]
-   #_:clj-kondo/ignore
-   (recur ag)
+    [:aggregation-options ag _]
+    #_:clj-kondo/ignore
+    (recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
     ;; same as the aggregation
-   :distinct
-   (->honeysql driver (h2x/identifier :field-alias :count))
+    :distinct
+    (->honeysql driver (h2x/identifier :field-alias :count))
 
-   #{:+ :- :* :/}
-   (->honeysql driver &match)
+    #{:+ :- :* :/}
+    (->honeysql driver &match)
 
-   [:offset (options :guard :name) _expr _n]
-   (->honeysql driver (h2x/identifier :field-alias (:name options)))
+    [:offset (options :guard :name) _expr _n]
+    (->honeysql driver (h2x/identifier :field-alias (:name options)))
 
     ;; for everything else just use the name of the aggregation as an identifer, e.g. `:sum`
     ;;
     ;; TODO -- I don't think we will ever actually get to this anymore because everything should have been given a name
     ;; by [[metabase.query-processor.middleware.pre-alias-aggregations]]
-   [ag-type & _]
-   (->honeysql driver (h2x/identifier :field-alias ag-type))))
+    [ag-type & _]
+    (->honeysql driver (h2x/identifier :field-alias ag-type))))
 
 (mu/defmethod ->honeysql [:sql :absolute-datetime] :- some?
   [driver [_ timestamp unit]]
@@ -1670,8 +1670,8 @@
 (defn- correct-null-behaviour
   [driver [op & args :as clause]]
   (if-let [field-arg (driver-api/match-one args
-                                           :field          &match
-                                           :expression     &match)]
+                       :field          &match
+                       :expression     &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
     [:or

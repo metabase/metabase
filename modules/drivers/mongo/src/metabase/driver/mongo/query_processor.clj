@@ -999,37 +999,37 @@
 
 (defn- aggregation->rvalue [ag]
   (driver-api/match-one ag
-                        [:aggregation-options ag' _]
-                        (recur ag')
+    [:aggregation-options ag' _]
+    (recur ag')
 
-                        [:count]
-                        {$sum 1}
+    [:count]
+    {$sum 1}
 
-                        [:count arg]
-                        {$sum {$cond {:if   (->rvalue arg)
-                                      :then 1
-                                      :else 0}}}
+    [:count arg]
+    {$sum {$cond {:if   (->rvalue arg)
+                  :then 1
+                  :else 0}}}
 
     ;; these aggregation types can all be used in expressions as well so their implementations live above in the
     ;; general [[->rvalue]] implementations
-                        #{:avg :stddev :sum :min :max}
-                        (->rvalue &match)
+    #{:avg :stddev :sum :min :max}
+    (->rvalue &match)
 
-                        [:distinct arg]
-                        {$addToSet (->rvalue arg)}
+    [:distinct arg]
+    {$addToSet (->rvalue arg)}
 
-                        [:sum-where arg pred]
-                        {$sum {$cond {:if   (compile-cond pred)
-                                      :then (->rvalue arg)
-                                      :else 0}}}
+    [:sum-where arg pred]
+    {$sum {$cond {:if   (compile-cond pred)
+                  :then (->rvalue arg)
+                  :else 0}}}
 
-                        [:count-where pred]
-                        (recur [:sum-where [:value 1] pred])
+    [:count-where pred]
+    (recur [:sum-where [:value 1] pred])
 
-                        :else
-                        (throw
-                         (ex-info (tru "Don''t know how to handle aggregation {0}" ag)
-                                  {:type :invalid-query, :clause ag}))))
+    :else
+    (throw
+     (ex-info (tru "Don''t know how to handle aggregation {0}" ag)
+              {:type :invalid-query, :clause ag}))))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
   (if (= ag-type :aggregation-options)
@@ -1339,14 +1339,14 @@
      (assoc-in
       m
       (driver-api/match-one field-clause
-                            [:field (field-id :guard integer?) _]
-                            (str/split (field-alias field-clause) #"\.")
+        [:field (field-id :guard integer?) _]
+        (str/split (field-alias field-clause) #"\.")
 
-                            [:field (field-name :guard string?) _]
-                            [field-name]
+        [:field (field-name :guard string?) _]
+        [field-name]
 
-                            [:expression expr-name _]
-                            [expr-name])
+        [:expression expr-name _]
+        [expr-name])
       (->rvalue field-clause)))
    (ordered-map/ordered-map)
    fields))
@@ -1540,12 +1540,12 @@
   "Return `:collection` from a source query, if it exists."
   [query]
   (driver-api/match-one query
-                        (_ :guard (every-pred map? :collection))
+    (_ :guard (every-pred map? :collection))
     ;; ignore source queries inside `:joins` or `:collection` outside of a `:source-query`
-                        (when (let [parents (set &parents)]
-                                (and (contains? parents :source-query)
-                                     (not (contains? parents :joins))))
-                          (:collection &match))))
+    (when (let [parents (set &parents)]
+            (and (contains? parents :source-query)
+                 (not (contains? parents :joins))))
+      (:collection &match))))
 
 (defn- log-aggregation-pipeline [form]
   (when-not driver-api/*disable-qp-logging*
