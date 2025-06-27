@@ -11,6 +11,11 @@ import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
+/**
+ * @interface
+ * @expand
+ * @category Dashboard
+ */
 export type InteractiveDashboardProps = SdkDashboardProps;
 
 /**
@@ -18,6 +23,7 @@ export type InteractiveDashboardProps = SdkDashboardProps;
  *
  * @function
  * @category Dashboard
+ * @param props
  */
 export const InteractiveDashboard = (props: InteractiveDashboardProps) => {
   const getClickActionMode: ClickActionModeGetter = useCallback(

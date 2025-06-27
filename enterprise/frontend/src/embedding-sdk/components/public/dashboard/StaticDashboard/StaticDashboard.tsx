@@ -8,6 +8,11 @@ import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import { StaticQuestionSdkMode } from "../../StaticQuestion/mode";
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
+/**
+ * @interface
+ * @expand
+ * @category Dashboard
+ */
 export type StaticDashboardProps = SdkDashboardProps;
 
 /**
@@ -15,6 +20,7 @@ export type StaticDashboardProps = SdkDashboardProps;
  *
  * @function
  * @category Dashboard
+ * @param props
  */
 export const StaticDashboard = (props: StaticDashboardProps) => {
   const getClickActionMode: ClickActionModeGetter = ({ question }) =>

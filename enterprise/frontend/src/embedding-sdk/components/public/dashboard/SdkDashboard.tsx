@@ -53,6 +53,7 @@ import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 /**
  * @interface
+ * @ignore
  * @category Dashboard
  */
 export type SdkDashboardProps = PropsWithChildren<
@@ -94,13 +95,6 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
     >
   >;
 
-/**
- * A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard.
- *
- * @function
- * @category Dashboard
- * @param props
- */
 const SdkDashboardInner = ({
   dashboardId: dashboardIdProp,
   initialParameters = {},

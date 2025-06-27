@@ -13,14 +13,7 @@ export {
   type CreateDashboardValues,
 } from "./CreateDashboardModal";
 export { CreateQuestion, type CreateQuestionProps } from "./CreateQuestion";
-export {
-  EditableDashboard,
-  InteractiveDashboard,
-  type EditableDashboardProps,
-  type InteractiveDashboardProps,
-  StaticDashboard,
-  type StaticDashboardProps,
-} from "./dashboard";
+export * from "./dashboard";
 export {
   InteractiveQuestion,
   type BaseInteractiveQuestionProps,

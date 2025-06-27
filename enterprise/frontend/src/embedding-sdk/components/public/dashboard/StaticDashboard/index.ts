@@ -1,1 +1,1 @@
-export * from "./StaticDashboard";
+export { StaticDashboard, type StaticDashboardProps } from "./StaticDashboard";
