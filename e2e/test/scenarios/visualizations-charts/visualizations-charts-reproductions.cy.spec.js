@@ -668,7 +668,9 @@ describe("issue 21665", () => {
 
     cy.get("@dashboardLoaded").should("have.callCount", 3);
     cy.findByTestId("dashcard")
-      .findByText("There was a problem displaying this chart.")
+      .findByText(
+        "Some columns are missing, this card might not render correctly.",
+      )
       .should("be.visible");
   });
 });
