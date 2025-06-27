@@ -4,9 +4,11 @@ import { NodeModulesPolyfillPlugin } from "@esbuild-plugins/node-modules-polyfil
 import { commonjs } from "@hyrious/esbuild-plugin-commonjs";
 import { build, context } from "esbuild";
 import babel from "esbuild-plugin-babel";
+import ignorePlugin from "esbuild-plugin-ignore";
 
 import { ALIAS } from "./frontend/build/embedding-sdk/constants/alias.mjs";
 import { EXTERNALS } from "./frontend/build/embedding-sdk/constants/externals.mjs";
+import { IGNORED_NOT_USED_BY_SDK_PACKAGES } from "./frontend/build/embedding-sdk/constants/ignored-by-sdk-packages.mjs";
 import {
   IS_DEV_MODE,
   MODE,
@@ -121,6 +123,12 @@ async function esbuildRun(format) {
         ],
       }),
       commonjs({ ignore: (id) => !EXTERNALS.includes(id) }),
+      ignorePlugin(
+        IGNORED_NOT_USED_BY_SDK_PACKAGES.map((pkg) => ({
+          resourceRegExp: new RegExp(`${pkg}$`),
+          contextRegExp: /.*/,
+        })),
+      ),
       NodeModulesPolyfillPlugin(),
       svgPlugin(),
       !IS_DEV_MODE &&
