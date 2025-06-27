@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
+import { useSetting } from "metabase/common/hooks";
 import { Box } from "metabase/ui";
 import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
 
@@ -22,6 +23,8 @@ export const SdkIframeEmbedPreview = () => {
   const embedJsRef = useRef<MetabaseEmbed | null>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
 
+  const instanceUrl = useSetting("site-url");
+
   useEffect(
     () => {
       if (isEmbedSettingsLoaded) {
@@ -35,6 +38,7 @@ export const SdkIframeEmbedPreview = () => {
 
           embedJsRef.current = new MetabaseEmbed({
             ...settings,
+            instanceUrl,
             target: "#iframe-embed-container",
             iframeClassName: S.EmbedPreviewIframe,
             useExistingUserSession: true,
