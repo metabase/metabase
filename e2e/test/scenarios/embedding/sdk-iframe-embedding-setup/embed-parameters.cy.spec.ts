@@ -16,7 +16,6 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/card/**").as("card");
 
-    // Create shared dashboard with parameters
     const dashboardParameters = [
       {
         name: "ID",
@@ -74,7 +73,6 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
       resourceName: "Dashboard with Parameters",
     });
 
-    // Should be on the options step with parameter settings
     getEmbedSidebar().within(() => {
       cy.findByText("Parameters").should("be.visible");
 
