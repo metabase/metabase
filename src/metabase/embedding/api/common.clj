@@ -325,13 +325,18 @@
         field-ids-to-maybe-remove (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove))
         field-ids-to-keep         (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-keep))
         field-ids-to-remove       (set/difference field-ids-to-maybe-remove field-ids-to-keep)
-        remove-parameters         (fn [dashcard]
+        remove-parameter-mappings (fn [dashcard]
                                     (update dashcard :parameter_mappings
                                             (fn [param-mappings]
                                               (remove (fn [{:keys [parameter_id]}]
-                                                        (contains? param-ids-to-remove parameter_id)) param-mappings))))]
+                                                        (contains? param-ids-to-remove parameter_id)) param-mappings))))
+        remove-inline-parameters  (fn [dashcard]
+                                    (update dashcard :inline_parameters
+                                            (fn [inline-params]
+                                              (remove (fn [id] (contains? param-ids-to-remove id)) inline-params))))]
     (-> dashboard
-        (update :dashcards #(map remove-parameters %))
+        (update :dashcards #(map remove-parameter-mappings %))
+        (update :dashcards #(map remove-inline-parameters %))
         ;; TODO cleanup
         (update :param_fields update-vals (fn [fields] (into [] (filter #(not (field-ids-to-remove (:id %)))) fields))))))
 

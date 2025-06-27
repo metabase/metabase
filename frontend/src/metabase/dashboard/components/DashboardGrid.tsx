@@ -664,10 +664,12 @@ class DashboardGridInner extends Component<
     const { width } = this.props;
     const { layouts, visualizerModalStatus } = this.state;
     const rowHeight = this.getRowHeight();
+
     return (
       <GridLayout<DashboardCard>
         className={cx({
           [DashboardS.DashEditing]: this.isEditingLayout,
+          [DashboardS.Mobile]: width < GRID_BREAKPOINTS.mobile,
           [DashboardS.DashDragging]: this.state.isDragging,
           // we use this class to hide a dashcard actions
           // panel during dragging
