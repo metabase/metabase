@@ -14,7 +14,6 @@ import {
 } from "metabase/visualizer/utils";
 import type {
   DashCardId,
-  Dashboard,
   DashboardCard,
   Series,
   VisualizationSettings,
@@ -30,7 +29,6 @@ import { useDuplicateDashCard } from "./use-duplicate-dashcard";
 
 interface Props {
   series: Series;
-  dashboard: Dashboard;
   dashcard?: DashboardCard;
   isLoading: boolean;
   isPreviewing: boolean;
@@ -56,7 +54,6 @@ interface Props {
 
 function DashCardActionsPanelInner({
   series,
-  dashboard,
   dashcard,
   isLoading,
   isPreviewing,
@@ -172,7 +169,6 @@ function DashCardActionsPanelInner({
         <ChartSettingsButton
           key="chart-settings-button"
           series={series}
-          dashboard={dashboard}
           dashcard={dashcard}
           onReplaceAllVisualizationSettings={
             handleOnReplaceAllVisualizationSettings
@@ -252,7 +248,6 @@ function DashCardActionsPanelInner({
       buttons.push(
         <ActionSettingsButtonConnected
           key="action-settings-button"
-          dashboard={dashboard}
           dashcard={dashcard}
         />,
       );

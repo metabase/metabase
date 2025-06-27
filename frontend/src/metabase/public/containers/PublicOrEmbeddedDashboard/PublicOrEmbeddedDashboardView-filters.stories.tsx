@@ -1,12 +1,11 @@
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
+import { HttpResponse, http } from "msw";
 
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
-import { NumberColumn, StringColumn } from "__support__/visualizations";
-import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import { getUnsavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import {
@@ -24,6 +23,7 @@ import {
   createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDatabase,
   createMockDataset,
   createMockDatasetData,
   createMockParameter,
@@ -61,6 +61,13 @@ export default {
   ],
   parameters: {
     layout: "fullscreen",
+    msw: {
+      handlers: [
+        http.get("*/api/database", () =>
+          HttpResponse.json(createMockDatabase()),
+        ),
+      ],
+    },
   },
   argTypes: {
     parameterType: {

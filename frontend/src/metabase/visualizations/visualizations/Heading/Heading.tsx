@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { getParameterValues } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
@@ -21,7 +22,6 @@ import {
 } from "./Heading.styled";
 
 interface HeadingProps {
-  isEditing: boolean;
   onUpdateVisualizationSettings: ({ text }: { text: string }) => void;
   dashcard: QuestionDashboardCard;
   settings: VisualizationSettings;
@@ -30,11 +30,12 @@ interface HeadingProps {
 
 export function Heading({
   settings,
-  isEditing,
   onUpdateVisualizationSettings,
   dashcard,
   dashboard,
 }: HeadingProps) {
+  const { isEditing } = useDashboardContext();
+
   const parameterValues = useSelector(getParameterValues);
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 

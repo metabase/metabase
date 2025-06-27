@@ -1,10 +1,10 @@
 import cx from "classnames";
-import type { LocationDescriptor } from "history";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { getDashcardData } from "metabase/dashboard/selectors";
 import {
@@ -13,19 +13,13 @@ import {
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
-import { isJWT } from "metabase/lib/utils";
-import { isUuid } from "metabase/lib/uuid";
-import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type {
-  ClickActionModeGetter,
-  ComputedVisualizationSettings,
-} from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   createDataSource,
   isVisualizerDashboardCard,
@@ -39,7 +33,6 @@ import type {
   Card,
   CardId,
   DashCardId,
-  Dashboard,
   DashboardCard,
   Dataset,
   DatasetData,
@@ -53,8 +46,8 @@ import type {
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
-import { DashCardQuestionDownloadButton } from "./DashCardQuestionDownloadButton";
 import S from "./DashCardVisualization.module.css";
+import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
 import type {
   CardSlownessStatus,
   DashCardOnChangeCardAndRunHandler,
@@ -65,10 +58,8 @@ import {
 } from "./utils";
 
 interface DashCardVisualizationProps {
-  dashboard: Dashboard;
   dashcard: DashboardCard;
   series: Series;
-  getClickActionMode?: ClickActionModeGetter;
   getHref?: () => string | undefined;
 
   gridSize: {
@@ -86,15 +77,7 @@ interface DashCardVisualizationProps {
   isClickBehaviorSidebarOpen: boolean;
   isEditingDashCardClickBehavior: boolean;
   isEditingDashboardLayout: boolean;
-  isEditing?: boolean;
-  isEditingParameter?: boolean;
-  isFullscreen?: boolean;
   isMobile?: boolean;
-  isNightMode?: boolean;
-  /** If public sharing or static/public embed */
-  isPublicOrEmbedded?: boolean;
-  isXray?: boolean;
-  withTitle?: boolean;
 
   error?: { message?: string; icon?: IconName };
   headerIcon?: IconProps;
@@ -105,10 +88,7 @@ interface DashCardVisualizationProps {
   ) => void;
   onChangeCardAndRun: DashCardOnChangeCardAndRunHandler | null;
   showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
   onTogglePreviewing: () => void;
-
-  downloadsEnabled: EmbedResourceDownloadOptions;
 
   onEditVisualization?: () => void;
 }
@@ -118,9 +98,7 @@ interface DashCardVisualizationProps {
 
 export function DashCardVisualization({
   dashcard,
-  dashboard,
   series: rawSeries,
-  getClickActionMode,
   getHref,
   gridSize,
   gridItemWidth,
@@ -131,25 +109,28 @@ export function DashCardVisualization({
   isAction,
   isSlow,
   isPreviewing,
-  isPublicOrEmbedded,
-  isXray,
   isEditingDashboardLayout,
   isClickBehaviorSidebarOpen,
   isEditingDashCardClickBehavior,
-  isEditing = false,
-  isNightMode = false,
-  isFullscreen = false,
   isMobile = false,
-  isEditingParameter,
-  withTitle = true,
   onChangeCardAndRun,
   onTogglePreviewing,
   showClickBehaviorSidebar,
-  onChangeLocation,
   onUpdateVisualizationSettings,
-  downloadsEnabled,
   onEditVisualization,
 }: DashCardVisualizationProps) {
+  const {
+    cardTitled,
+    dashboard,
+    dashcardMenu,
+    getClickActionMode,
+    isEditing = false,
+    shouldRenderAsNightMode,
+    isFullscreen = false,
+    isEditingParameter,
+    onChangeLocation,
+  } = useDashboardContext();
+
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
   const metadata = useSelector(getMetadata);
@@ -338,16 +319,8 @@ export function DashCardVisualization({
     series,
   ]);
 
-  const token = useMemo(
-    () =>
-      isJWT(dashcard.dashboard_id) ? String(dashcard.dashboard_id) : undefined,
-    [dashcard],
-  );
-  const uuid = useMemo(
-    () =>
-      isUuid(dashcard.dashboard_id) ? String(dashcard.dashboard_id) : undefined,
-    [dashcard],
-  );
+  const token = useMemo(() => getDashcardTokenId(dashcard), [dashcard]);
+  const uuid = useMemo(() => getDashcardUuid(dashcard), [dashcard]);
 
   const findCardById = useCallback(
     (cardId?: CardId | null) => {
@@ -391,36 +364,19 @@ export function DashCardVisualization({
   );
 
   const actionButtons = useMemo(() => {
-    if (!question) {
+    const result = series[0] as unknown as Dataset;
+
+    if (
+      !question ||
+      !DashCardMenu.shouldRender({
+        question,
+        dashboard,
+        dashcardMenu,
+        result,
+        isEditing,
+      })
+    ) {
       return null;
-    }
-
-    const mainSeries = series[0] as unknown as Dataset;
-    const shouldShowDashCardMenu = DashCardMenu.shouldRender({
-      question,
-      result: mainSeries,
-      isXray,
-      isPublicOrEmbedded,
-      isEditing,
-      downloadsEnabled,
-    });
-
-    if (!shouldShowDashCardMenu) {
-      return null;
-    }
-
-    // Only show the download button if the dashboard is public or embedded.
-    if (isPublicOrEmbedded && downloadsEnabled) {
-      return (
-        <DashCardQuestionDownloadButton
-          question={question}
-          result={mainSeries}
-          dashboardId={dashboard.id}
-          dashcardId={dashcard.id}
-          uuid={uuid}
-          token={token}
-        />
-      );
     }
 
     // We only show the titleMenuItems if the card has no title.
@@ -431,29 +387,24 @@ export function DashCardVisualization({
 
     return (
       <DashCardMenu
-        downloadsEnabled={downloadsEnabled}
         question={question}
-        result={mainSeries}
-        dashcardId={dashcard.id}
-        dashboardId={dashboard.id}
-        token={token}
-        uuid={uuid}
+        result={result}
+        dashcard={dashcard}
         onEditVisualization={onEditVisualization}
-        openUnderlyingQuestionItems={title ? undefined : titleMenuItems}
+        openUnderlyingQuestionItems={
+          onChangeCardAndRun && (title ? undefined : titleMenuItems)
+        }
       />
     );
   }, [
+    dashboard,
+    dashcard,
+    dashcardMenu,
+    isEditing,
+    onChangeCardAndRun,
+    onEditVisualization,
     question,
     series,
-    isXray,
-    isPublicOrEmbedded,
-    isEditing,
-    downloadsEnabled,
-    dashcard.id,
-    dashboard.id,
-    token,
-    uuid,
-    onEditVisualization,
     titleMenuItems,
   ]);
 
@@ -468,7 +419,7 @@ export function DashCardVisualization({
         [CS.overflowAuto]: visualizationOverlay,
         [CS.overflowHidden]: !visualizationOverlay,
       })}
-      dashboard={dashboard}
+      dashboard={dashboard ?? undefined}
       dashcard={dashcard}
       rawSeries={series}
       visualizerRawSeries={
@@ -483,13 +434,13 @@ export function DashCardVisualization({
       expectedDuration={expectedDuration}
       error={error?.message}
       errorIcon={error?.icon}
-      showTitle={withTitle}
+      showTitle={cardTitled}
       canToggleSeriesVisibility={!isEditing}
       isAction={isAction}
       isDashboard
       isSlow={isSlow}
       isFullscreen={isFullscreen}
-      isNightMode={isNightMode}
+      isNightMode={shouldRenderAsNightMode}
       isEditing={isEditing}
       isPreviewing={isPreviewing}
       isEditingParameter={isEditingParameter}

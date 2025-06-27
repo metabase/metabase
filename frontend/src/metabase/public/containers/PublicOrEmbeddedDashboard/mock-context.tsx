@@ -3,33 +3,22 @@ import { noop } from "underscore";
 
 import {
   DashboardContext,
-  type DashboardContextErrorState,
-  type DashboardContextOwnProps,
-  type DashboardContextOwnResult,
-  type DashboardContextProps,
-  type DashboardControls,
+  type DashboardContextReturned,
 } from "metabase/dashboard/context";
 import {
-  type ReduxProps,
   mapDispatchToProps,
   mapStateToProps,
 } from "metabase/dashboard/context/context.redux";
 import { connect } from "metabase/lib/redux";
 
-export type MockDashboardContextProps = Partial<DashboardContextProps> &
-  Partial<ReduxProps> &
-  Partial<DashboardContextErrorState>;
-
+export type MockDashboardContextProps = Partial<
+  PropsWithChildren<DashboardContextReturned>
+>;
 // Create a component that accepts all redux props and passes them into DashboardContext
 const DashboardContextWithReduxProps = (
-  props: PropsWithChildren<
-    ReduxProps &
-      DashboardContextOwnProps &
-      DashboardContextOwnResult &
-      DashboardControls
-  >,
+  props: PropsWithChildren<DashboardContextReturned>,
 ) => (
-  <DashboardContext.Provider value={{ error: null, ...props }}>
+  <DashboardContext.Provider value={props}>
     {props.children}
   </DashboardContext.Provider>
 );
@@ -44,15 +33,8 @@ const ConnectedDashboardContextWithReduxProps = connect(
       ...stateProps,
       ...dispatchProps,
       ...ownProps,
-    }) as unknown as ReduxProps &
-      DashboardContextOwnProps &
-      DashboardContextOwnResult &
-      DashboardControls,
-)(DashboardContextWithReduxProps) as ComponentType<
-  PropsWithChildren<
-    MockDashboardContextProps & DashboardContextOwnResult & Partial<ReduxProps>
-  >
->;
+    }) as unknown as DashboardContextReturned,
+)(DashboardContextWithReduxProps) as ComponentType<MockDashboardContextProps>;
 
 /*
  * NOTE: DO NOT USE THIS IN REAL COMPONENTS. This is specifically for the storybook stories for the
@@ -70,21 +52,11 @@ export const MockDashboardContext = ({
   onLoad,
   onError,
   navigateToNewCardFromDashboard = null,
-  // url params
-  isFullscreen = false,
-  onFullscreenChange = noop,
-  hasNightModeToggle = false,
-  onNightModeChange = noop,
-  isNightMode = false,
-  refreshPeriod = null,
-  setRefreshElapsedHook = noop,
-  onRefreshPeriodChange = noop,
   background = true,
   bordered = true,
   titled = true,
   font = null,
   theme = "light",
-  setTheme = noop,
   hideParameters = null,
   downloadsEnabled = { pdf: true, results: true },
   autoScrollToDashcardId = undefined,
@@ -92,33 +64,30 @@ export const MockDashboardContext = ({
   cardTitled = true,
   getClickActionMode = undefined,
   withFooter = true,
+  isNightMode = false,
+  isFullscreen = false,
+  dashboardActions = undefined,
+  dashcardMenu = undefined,
   ...reduxProps
 }: PropsWithChildren<MockDashboardContextProps>) => {
   const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
 
   return (
     <ConnectedDashboardContextWithReduxProps
-      dashboardIdProp={dashboardId}
+      dashboardIdProp={dashboardId ?? undefined}
       dashboardId={dashboardId}
       parameterQueryParams={parameterQueryParams}
       onLoad={onLoad}
       onError={onError}
-      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-      isFullscreen={isFullscreen}
-      onFullscreenChange={onFullscreenChange}
-      hasNightModeToggle={hasNightModeToggle}
-      onNightModeChange={onNightModeChange}
       isNightMode={isNightMode}
+      isFullscreen={isFullscreen}
+      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
       shouldRenderAsNightMode={shouldRenderAsNightMode}
-      refreshPeriod={refreshPeriod}
-      setRefreshElapsedHook={setRefreshElapsedHook}
-      onRefreshPeriodChange={onRefreshPeriodChange}
       background={background}
       bordered={bordered}
       titled={titled}
       font={font}
       theme={theme}
-      setTheme={setTheme}
       hideParameters={hideParameters}
       downloadsEnabled={downloadsEnabled}
       autoScrollToDashcardId={autoScrollToDashcardId}
@@ -126,6 +95,8 @@ export const MockDashboardContext = ({
       cardTitled={cardTitled}
       getClickActionMode={getClickActionMode}
       withFooter={withFooter}
+      dashboardActions={dashboardActions}
+      dashcardMenu={dashcardMenu}
       {...reduxProps}
     >
       {children}

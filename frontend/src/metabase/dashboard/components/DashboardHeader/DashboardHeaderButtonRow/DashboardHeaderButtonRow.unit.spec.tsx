@@ -19,8 +19,8 @@ import {
 } from "metabase-types/store/mocks";
 
 import { DashboardHeaderButtonRow } from "./DashboardHeaderButtonRow";
-import { DASHBOARD_ACTION } from "./action-buttons";
 import { DASHBOARD_EDITING_ACTIONS, DASHBOARD_VIEW_ACTIONS } from "./constants";
+import { DASHBOARD_ACTION } from "./dashboard-action-keys";
 
 const DASHBOARD_EXPECTED_DATA_MAP: Record<
   DashboardActionKey,
@@ -99,6 +99,10 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "expand",
     tooltip: null,
   },
+  DOWNLOAD_PDF: {
+    icon: "download",
+    tooltip: "Download as PDF",
+  },
 };
 
 const setup = ({
@@ -155,20 +159,19 @@ const setup = ({
       path="*"
       component={() => (
         <MockDashboardContext
-          dashboardId={MOCK_DASHBOARD.id}
-          navigateToNewCardFromDashboard={null}
+          refreshPeriod={null}
+          onRefreshPeriodChange={jest.fn()}
+          setRefreshElapsedHook={jest.fn()}
+          isFullscreen={isFullscreen}
+          onFullscreenChange={jest.fn()}
+          hasNightModeToggle={hasNightModeToggle}
+          onNightModeChange={jest.fn()}
+          isNightMode={isNightMode}
+          downloadsEnabled={{ pdf: false }}
         >
           <DashboardHeaderButtonRow
             canResetFilters
             onResetFilters={jest.fn()}
-            refreshPeriod={null}
-            onRefreshPeriodChange={jest.fn()}
-            setRefreshElapsedHook={jest.fn()}
-            isFullscreen={isFullscreen}
-            onFullscreenChange={jest.fn()}
-            hasNightModeToggle={hasNightModeToggle}
-            onNightModeChange={jest.fn()}
-            isNightMode={isNightMode}
             isPublic={isPublic}
             isAnalyticsDashboard={isAnalyticsDashboard}
           />

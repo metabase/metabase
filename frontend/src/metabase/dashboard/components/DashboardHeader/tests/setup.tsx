@@ -19,7 +19,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
-import { DashboardHeader, type DashboardHeaderProps } from "../DashboardHeader";
+import { DashboardHeader } from "../DashboardHeader";
 
 const DASHCARD = createMockDashboardCard();
 
@@ -98,20 +98,6 @@ export const setup = async ({
 
   setupNotificationChannelsEndpoints(channelData.channels);
 
-  const dashboardHeaderProps: DashboardHeaderProps = {
-    dashboard,
-    isFullscreen: false,
-    isNightMode: false,
-    hasNightModeToggle: false,
-    isAdditionalInfoVisible: false,
-    refreshPeriod: 0,
-    setRefreshElapsedHook: jest.fn(),
-    onRefreshPeriodChange: jest.fn(),
-    onNightModeChange: jest.fn(),
-    onFullscreenChange: jest.fn(),
-    parameterQueryParams: {},
-  };
-
   renderWithProviders(
     <Route
       path="*"
@@ -119,12 +105,21 @@ export const setup = async ({
         <MockDashboardContext
           dashboardId={dashboard.id}
           dashboard={dashboard}
-          navigateToNewCardFromDashboard={null}
+          isFullscreen={false}
+          isNightMode={false}
+          hasNightModeToggle={false}
+          isAdditionalInfoVisible={false}
+          refreshPeriod={0}
+          setRefreshElapsedHook={jest.fn()}
+          onRefreshPeriodChange={jest.fn()}
+          onNightModeChange={jest.fn()}
+          onFullscreenChange={jest.fn()}
+          parameterQueryParams={{}}
         >
-          <DashboardHeader {...dashboardHeaderProps} />
+          <DashboardHeader />
         </MockDashboardContext>
       )}
-    ></Route>,
+    />,
     {
       withRouter: true,
       storeInitialState: {
