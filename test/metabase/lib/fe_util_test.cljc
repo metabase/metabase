@@ -9,6 +9,7 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
@@ -462,21 +463,40 @@
                               (lib.filter/<= column 10)         {:operator :<=, :column column, :values [10]}
                               (lib.filter/between column 10 20) {:operator :between, :column column, :values [10 20]}
 
+                              ;; :between with options
+                              (-> (lib.filter/between column 10 20)
+                                  (lib.options/update-options assoc :min-inclusive false))
+                              {:operator :between, :column column, :values [10 20], :options {:min-inclusive false}}
+
+                              (-> (lib.filter/between column 10 20)
+                                  (lib.options/update-options assoc :max-inclusive false))
+                              {:operator :between, :column column, :values [10 20], :options {:max-inclusive false}}
+
+                              (-> (lib.filter/between column 10 20)
+                                  (lib.options/update-options assoc :min-inclusive false :max-inclusive false))
+                              {:operator :between, :column column, :values [10 20], :options {:min-inclusive false
+                                                                                              :max-inclusive false}}
+
                               ;; bigint
                               (lib.filter/= column bigint-clause) {:operator :=, :column column, :values [bigint-value]}
                               (lib.filter/!= column bigint-clause) {:operator :!=, :column column, :values [bigint-value]}
                               (lib.filter/> column bigint-clause) {:operator :>, :column column, :values [bigint-value]}}]
-        (let [{:keys [operator column values]} parts]
+        (let [{:keys [operator column values options]} parts]
           (is (=? parts (lib.fe-util/number-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/number-filter-parts query -1 (lib.fe-util/number-filter-clause operator
                                                                                                     column
-                                                                                                    values)))))))
+                                                                                                    values
+                                                                                                    (or options {}))))))))
     (testing "unsupported clauses"
       (are [clause] (nil? (lib.fe-util/number-filter-parts query -1 clause))
         (lib.filter/= 10 column)
         (lib.filter/is-null (meta/field-metadata :venues :name))
         (lib.expression/+ column 10)
         (lib.filter/and (lib.filter/= column 10) true)))))
+
+;; XXX: START HERE: Not sure if that's adequate testing above.
+;; - Special-case conversion to put those options in an optional last slot.
+;; - Desugar such a between into two :</:>=/etc. clauses in QP. (It should be an invisible QP sugaring though!)
 
 (deftest ^:parallel coordinate-filter-parts-test
   (let [query         (lib.query/query meta/metadata-provider (meta/table-metadata :orders))

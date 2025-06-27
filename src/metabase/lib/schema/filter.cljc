@@ -104,17 +104,10 @@
     #_y [:ref ::expression/orderable]))
 
 (mbql-clause/define-mbql-clause :between :- :type/Boolean
-  [:schema [:catn {:error/message (str "Valid :between clause")}
+  [:schema [:catn {:error/message "Valid :between clause"}
             [:tag [:= {:decode/normalize common/normalize-keyword} :between]]
             [:options [:merge ::common/options ::number-filter-options]]
-            [:args [:repeat {:min 3, :max 3} [:ref ::expression/orderable]]]]])
-
-#_(mbql-clause/define-mbql-clause-with-schema-fn (tuple-clause-of-comparables-schema #{[0 1] [0 2]})
-    :between :- :type/Boolean
-  ;; TODO -- should we enforce that min is <= max (for literal number values?)
-    #_expr [:ref ::expression/orderable]
-    #_min  [:ref ::expression/orderable]
-    #_max  [:ref ::expression/orderable])
+            [:args [:repeat {:min 3, :max 3} [:schema [:ref ::expression/orderable]]]]]])
 
 ;; sugar: a pair of `:between` clauses
 (mbql-clause/define-mbql-clause-with-schema-fn (tuple-clause-of-comparables-schema #{[0 2] [0 4] [1 3] [1 5]})
