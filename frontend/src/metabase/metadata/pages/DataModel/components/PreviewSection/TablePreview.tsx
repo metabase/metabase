@@ -2,6 +2,7 @@ import { memo } from "react";
 import _ from "underscore";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
+import { Repeat, Skeleton, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type {
   DatabaseId,
@@ -28,7 +29,19 @@ interface Props {
 }
 
 const TablePreviewBase = (props: Props) => {
-  const { error, rawSeries } = useDataSample(props);
+  const { error, isFetching, rawSeries } = useDataSample(props);
+
+  if (isFetching) {
+    return (
+      <Stack data-testid="loading-indicator" gap="sm" p="xs">
+        <Skeleton h="2rem" w="6rem" />
+
+        <Repeat times={5}>
+          <Skeleton h="1.5rem" w="10rem" />
+        </Repeat>
+      </Stack>
+    );
+  }
 
   if (error) {
     return <Error message={error} />;
@@ -37,7 +50,7 @@ const TablePreviewBase = (props: Props) => {
   return (
     <Visualization
       // Setting queryBuilderMode to dataset will hide the object detail
-      // expaner column, which we don't want in this case
+      // expander column, which we don't want in this case
       queryBuilderMode="dataset"
       rawSeries={rawSeries}
     />
