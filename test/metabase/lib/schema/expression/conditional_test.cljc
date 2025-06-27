@@ -32,6 +32,106 @@
            :base-type      effective-type}
    x])
 
+(deftest ^:parallel case-schema-test
+  (testing "schema validation for :case expressions"
+    (are [expr] (true?
+                 (mr/validate :mbql.clause/case expr))
+      [:case
+       {:lib/uuid (str (random-uuid))}
+       [[true 1]] 1]
+
+      [:case
+       {:lib/uuid (str (random-uuid))}
+       [[true false]] false]
+
+      [:case
+       {:lib/uuid (str (random-uuid))}
+       [[true true]] true]
+
+      [:case
+       {:lib/uuid (str (random-uuid))}
+       [[true true]] true])
+
+    (are [expr] (false?
+                 (mr/validate :mbql.clause/case expr))
+      [:case
+       {:lib/uuid (str (random-uuid))}
+       1]
+
+      [:case
+       {:lib/uuid (str (random-uuid))}
+       [] 1])))
+
+(deftest ^:parallel case-schema-type-compatibility-test
+  (are [a b] (true?
+              (mr/validate :mbql.clause/case
+                           [:case
+                            {:lib/uuid (str (random-uuid))}
+                            [[true a]
+                             [true b]]]))
+    10 20
+    10 20.5
+
+    "A" "B"
+    "A" ""
+
+    true false
+    true true
+    false false
+
+    (value-expr :type/Date "2023-03-08")
+    (value-expr :type/Date "2023-03-09")
+
+    (value-expr :type/Date "2023-03-08")
+    (value-expr :type/DateTime "2023-03-09T04:33:45")
+
+    (value-expr :type/Date "2023-03-08")
+    (value-expr :type/DateTimeWithTZ "2023-03-09T04:33:45Z")
+
+    (value-expr :type/DateTime "2023-03-09T04:33:45")
+    (value-expr :type/Date "2023-03-09")
+
+    (value-expr :type/DateTime "2023-03-08T04:33:45")
+    (value-expr :type/DateTime "2023-03-09T04:33:45")
+
+    (value-expr :type/DateTime "2023-03-09T04:33:45")
+    (value-expr :type/DateTimeWithTZ "2023-03-09T04:33:45Z")
+
+    ; TODO: this case should fail due to Time and Date not being compatible,
+    ; but until we have a better way to handle this, we just allow it and document
+    ; here as a test.
+    (value-expr :type/Date "2023-03-08")
+    (value-expr :type/Time "15:00:55"))
+
+  (are [a b] (false?
+              (mr/validate :mbql.clause/case
+                           [:case
+                            {:lib/uuid (str (random-uuid))}
+                            [[true a]
+                             [true b]]]))
+    10 "A"
+    10.5 "B"
+
+    true "A"
+    true 10
+    true 10.5
+
+    10 (value-expr :type/Date "2023-03-08")
+    10 (value-expr :type/DateTime "2023-03-08T04:33:45")
+    10 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
+
+    10.5 (value-expr :type/Date "2023-03-08")
+    10.5 (value-expr :type/DateTime "2023-03-08T04:33:45")
+    10.5 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
+
+    "A" (value-expr :type/Date "2023-03-08")
+    "A" (value-expr :type/DateTime "2023-03-08T04:33:45")
+    "A" (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
+
+    true (value-expr :type/Date "2023-03-08")
+    true (value-expr :type/DateTime "2023-03-08T04:33:45")
+    true (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")))
+
 (deftest ^:parallel case-type-of-test
   (testing "type-of logic for :case expressions"
     ;; In QP and MLv2: `expression/type-of-method :case`
@@ -69,6 +169,129 @@
       (case-expr (value-expr :type/DateTimeWithTZ "2023-03-08T00:00:00Z")
                  (value-expr :type/Date "2023-03-08"))
       :type/DateTime)))
+
+(deftest ^:parallel coalesce-schema-test
+  (testing "schema validation for :coalesce expressions"
+    (are [expr] (true?
+                 (mr/validate :mbql.clause/coalesce expr))
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       1 2]
+
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       1 2 3]
+
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       1
+       [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} 1]]
+
+      ; TODO: this case should fail due to Time and Date not being compatible,
+      ; but until we have a better way to handle this, we just allow it and document
+      ; here as a test.
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       (value-expr :type/Date "2023-03-08")
+       (value-expr :type/Time "15:03:55")])
+
+    (are [expr] (false?
+
+                 (mr/validate :mbql.clause/coalesce expr))
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       1]
+
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       1 "A"]
+
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       "A"]
+
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       "A"
+       (value-expr :type/Date "2023-03-08")]
+
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       "A"
+       (value-expr :type/DateTime "2023-03-08T15:03:55")]
+
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       "A"
+       (value-expr :type/DateTimeWithTZ "2023-03-08T15:03:55Z")])))
+
+(deftest ^:parallel coalesce-schema-type-compatibility-test
+  (are [a b] (true?
+              (mr/validate :mbql.clause/coalesce
+                           [:coalesce
+                            {:lib/uuid (str (random-uuid))}
+                            a b]))
+    10 20
+    10 20.5
+
+    "A" "B"
+    "A" ""
+
+    true false
+    true true
+    false false
+
+    (value-expr :type/Date "2023-03-08")
+    (value-expr :type/Date "2023-03-09")
+
+    (value-expr :type/Date "2023-03-08")
+    (value-expr :type/DateTime "2023-03-09T04:33:45")
+
+    (value-expr :type/Date "2023-03-08")
+    (value-expr :type/DateTimeWithTZ "2023-03-09T04:33:45Z")
+
+    (value-expr :type/DateTime "2023-03-09T04:33:45")
+    (value-expr :type/Date "2023-03-09")
+
+    (value-expr :type/DateTime "2023-03-08T04:33:45")
+    (value-expr :type/DateTime "2023-03-09T04:33:45")
+
+    (value-expr :type/DateTime "2023-03-09T04:33:45")
+    (value-expr :type/DateTimeWithTZ "2023-03-09T04:33:45Z")
+
+    ; TODO: this case should fail due to Time and Date not being compatible,
+    ; but until we have a better way to handle this, we just allow it and document
+    ; here as a test.
+    (value-expr :type/Date "2023-03-08")
+    (value-expr :type/Time "15:00:55"))
+
+  (are [a b] (false?
+              (mr/validate :mbql.clause/coalesce
+                           [:coalesce
+                            {:lib/uuid (str (random-uuid))}
+                            a b]))
+    10 "A"
+    10.5 "B"
+
+    true "A"
+    true 10
+    true 10.5
+
+    10 (value-expr :type/Date "2023-03-08")
+    10 (value-expr :type/DateTime "2023-03-08T04:33:45")
+    10 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
+
+    10.5 (value-expr :type/Date "2023-03-08")
+    10.5 (value-expr :type/DateTime "2023-03-08T04:33:45")
+    10.5 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
+
+    "A" (value-expr :type/Date "2023-03-08")
+    "A" (value-expr :type/DateTime "2023-03-08T04:33:45")
+    "A" (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
+
+    true (value-expr :type/Date "2023-03-08")
+    true (value-expr :type/DateTime "2023-03-08T04:33:45")
+    true (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")))
 
 (deftest ^:parallel coalesce-test
   (is (mr/validate
