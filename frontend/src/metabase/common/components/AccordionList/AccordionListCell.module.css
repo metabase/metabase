@@ -26,7 +26,7 @@
   }
 }
 
-.search {
+.sticky {
   position: sticky;
   top: 0;
   background: var(--mb-color-bg-white);

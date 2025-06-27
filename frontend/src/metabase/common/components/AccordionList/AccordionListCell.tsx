@@ -419,6 +419,8 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
     }
   }
 
+  const isSticky = type === "search";
+
   return (
     <div
       ref={mergedRef}
@@ -429,7 +431,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
         [ListS.ListSectionToggleAble]: canToggleSections,
         [styles.borderTop]: withBorders && borderTop,
         [styles.borderBottom]: withBorders && borderBottom,
-        [styles.search]: type === "search",
+        [styles.sticky]: isSticky,
       })}
     >
       {content}
