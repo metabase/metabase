@@ -15,8 +15,7 @@ import {
   SdkIframeEmbedSetupContext,
   type SdkIframeEmbedSetupContextType,
 } from "../context";
-import { useParameterList } from "../hooks";
-import { useRecentItems } from "../hooks/use-recent-items";
+import { useParameterList, useRecentItems } from "../hooks";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupStep,
