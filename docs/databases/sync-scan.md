@@ -42,13 +42,15 @@ Options include:
 
 ### Scanning for filter values
 
+Scans will only include "active fields": fields that people have used within the past fourteen days. Metabase won't scan fields that haven't been used in over fourteen days. Fields that have become inactive will become active again when someone uses them, and Metabase will include them in the next scan.
+
 Options include:
 
 - **Regularly, on a schedule** allows you to run [scan queries](#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database or tables with distinct values that get updated often.
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when someone adds a new filter widget to a dashboard or SQL question (i.e., they add a parameter to their SQL query).
 - **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large or which never really have new values added. Use the [Re-scan field values](#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
-Regardless of which option you pick, if you [set a field to use a dropdown list in filter widgets](../data-modeling/metadata-editing.md#changing-the-filter-widget), Metabase will need to get values for that dropdown. Whenever someone uses that filter widget, Metabase will first look for cached values (valid for 14 days) to populate that dropdown; otherwise, it will re-scan that field for the most up-to-date values.
+Regardless of which option you pick, if you [set a field to use a dropdown list in filter widgets](../data-modeling/metadata-editing.md#changing-the-filter-widget), Metabase will need to get values for that dropdown. Whenever someone uses that filter widget, Metabase will first look for cached values (valid for fourteen days) to populate that dropdown; otherwise, it will re-scan that field for the most up-to-date values.
 
 ## Manually syncing tables and columns
 
@@ -133,14 +135,13 @@ By default, this query runs against your database during setup and again every h
 
 Here's the kind of data that syncs get and why:
 
-| What              | Why                                          |
-| ----------------- | -------------------------------------------- |
-| Table names       | Without tables, what are we even doing here? |
-| Field names       | Without fields, same deal                    |
-| Field data types  | Querying and type handling                   |
-| Primary keys      | Table display and detailed views             |
-| Foreign keys      | Auto-joins and relationship visualization    |
-| Index information | Query optimization recommendations           |
+| What             | Why                                          |
+| ---------------- | -------------------------------------------- |
+| Table names      | Without tables, what are we even doing here? |
+| Field names      | Without fields, same deal                    |
+| Field data types | Querying and type handling                   |
+| Primary keys     | Table display, detailed views, auto-joins    |
+| Foreign keys     | Auto-joins and relationship visualization    |
 
 ## How database scans work
 
@@ -164,7 +165,7 @@ Cached column values are displayed in filter dropdown menus. If people type in t
 
 A scan is more intensive than a sync query, so it only runs once during setup and again once a day by default. If you [disable scans](#scanning-for-filter-values) entirely, you'll need to bring things up to date by running [manual scans](#manually-scanning-column-values).
 
-To reduce the number of tables and fields Metabase needs to scan in order to stay current with your connected database, Metabase will only scan values for fields that someone has queried in the last fourteen days.
+To reduce the number of tables and fields Metabase needs to scan in order to stay current with your connected database, Metabase will only scan values for fields that someone has used in the last fourteen days.
 
 Here's the kind of data that scans get and why:
 
@@ -172,7 +173,7 @@ Here's the kind of data that scans get and why:
 | ---------------------------------------------- | ---------------------------------------- |
 | Distinct values for category fields            | Dropdown filter UI instead of text entry |
 | Cached values for active fields                | Improves filter UI experience            |
-| Advanced field values (with filtering context) | Smarter contextual filtering             |
+| Advanced field values (with filtering context) | Values when the data is sandboxed        |
 
 ## Periodically refingerprint tables
 
@@ -199,21 +200,23 @@ FROM
 LIMIT 10000
 ```
 
-Metabase uses the results of this query to provide better suggestions in the Metabase UI (such as filter dropdowns and auto-binning).
+Metabase uses the results of this query to provide better suggestions in the Metabase UI (such as auto-binning).
 
-To avoid putting strain on your database, Metabase only runs fingerprinting queries the [first time](#initial-sync-scan-and-fingerprinting) you set up a database connection. To change this default, you can turn ON [Periodically refingerprint tables](#periodically-refingerprint-tables).
+To avoid putting strain on your database, Metabase only runs fingerprinting queries the [first time](#initial-sync-scan-and-fingerprinting) you set up a database connection.
+
+By default, Metabase won't re-fingerprint your database after that intial fingerprinting. To re-fingerprint your data, you can turn ON [Periodically refingerprint tables](#periodically-refingerprint-tables).
 
 Here's the kind of data that fingerprinting gets and why:
 
-| What                                      | Why                                         |
-| ----------------------------------------- | ------------------------------------------- |
-| Distinct value count                      | Determines field value caching strategy     |
-| Min/max numeric values                    | Binning in visualizations and range filters |
-| Date range (min/max dates)                | Date filter defaults and timeline display   |
-| Special type detection (URL, email, JSON) | Field rendering and filtering               |
-| Null value ratio                          | Data quality assessment                     |
-| Average/median values                     | Visualization defaults                      |
-| Text length metrics                       | Hide long text fields from UI               |
+| What                                                                 | Why                                         |
+| -------------------------------------------------------------------- | ------------------------------------------- |
+| Distinct value count                                                 | Determines field value caching strategy     |
+| Min/max numeric values                                               | Binning in visualizations and range filters |
+| Date range (min/max dates)                                           | Date filter defaults and timeline display   |
+| Special type detection (URL, email, JSON, Geo data (like US States)) | Field rendering and filtering               |
+| Null value ratio                                                     | Data quality assessment                     |
+| Average/median values                                                | Visualization defaults                      |
+| Text length metrics                                                  | Hide long text fields from UI               |
 
 ## Further reading
 
