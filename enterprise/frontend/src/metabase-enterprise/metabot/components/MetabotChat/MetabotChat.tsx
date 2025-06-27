@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { c, jt, t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
@@ -23,15 +23,13 @@ import { useMetabotAgent } from "../../hooks";
 import Styles from "./MetabotChat.module.css";
 import { AgentErrorMessage, Message } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
-import { useAutoscrollMessages } from "./hooks";
+import { useScrollManager } from "./hooks";
 
 export const MetabotChat = () => {
-  const messagesRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
-
   const metabot = useMetabotAgent();
 
-  useAutoscrollMessages(headerRef, messagesRef, metabot.messages);
+  const { headerRef, messagesRef, messagesHeight, scrollToLatestUserMessage } =
+    useScrollManager();
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
@@ -57,6 +55,7 @@ export const MetabotChat = () => {
     metabot.setPrompt("");
     metabot.promptInputRef?.current?.focus();
     metabot.submitInput(trimmedInput).catch((err) => console.error(err));
+    scrollToLatestUserMessage();
   };
 
   const handleRetryMessage = (messageId: string) => {
@@ -171,6 +170,11 @@ export const MetabotChat = () => {
                     data-testid="metabot-chat-message"
                     message={message}
                     onRetry={canRetry ? handleRetryMessage : undefined}
+                    hideActions={
+                      metabot.isDoingScience &&
+                      metabot.messages.length === index + 1 &&
+                      message.role === "agent"
+                    }
                   />
                 );
               })}
@@ -190,6 +194,9 @@ export const MetabotChat = () => {
                   toolCalls={metabot.useStreaming ? metabot.toolCalls : []}
                 />
               )}
+
+              {/* filler */}
+              <div style={{ height: messagesHeight }} />
 
               {/* long convo warning */}
               {metabot.isLongConversation && (
