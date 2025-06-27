@@ -71,6 +71,8 @@ async function esbuildRun(format) {
       ),
       "process.env.GIT_BRANCH": JSON.stringify(GIT_BRANCH),
       "process.env.GIT_COMMIT": JSON.stringify(GIT_COMMIT),
+      // In additional to the SDK env detection, it is used for unreachable code elimination.
+      // Bundlers remove unreachable code when the direct `process.env.IS_EMBEDDING_SDK === true` condition is used.
       "process.env.IS_EMBEDDING_SDK": "true",
       "process.env.MB_LOG_ANALYTICS": "false",
       "process.env.MB_LOG_CHARTS_DEBUG": "false",
