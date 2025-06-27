@@ -10,12 +10,19 @@ import { P, match } from "ts-pattern";
 import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
-import { EMBED_FALLBACK_DASHBOARD_ID } from "../constants";
+import {
+  EMBED_FALLBACK_DASHBOARD_ID,
+  PERSIST_EMBED_SETTINGS_DEBOUNCE_MS,
+} from "../constants";
 import {
   SdkIframeEmbedSetupContext,
   type SdkIframeEmbedSetupContextType,
 } from "../context";
-import { useParameterList, useRecentItems } from "../hooks";
+import {
+  useParameterList,
+  usePersistByUserSetting,
+  useRecentItems,
+} from "../hooks";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupStep,
@@ -75,16 +82,31 @@ export const SdkIframeEmbedSetupProvider = ({
     ...(settings.questionId && { questionId: Number(settings.questionId) }),
   });
 
-  const updateSettings = useCallback(
-    (nextSettings: Partial<SdkIframeEmbedSettings>) =>
+  const { storeSetting } = usePersistByUserSetting({
+    onLoad: setSettings,
+    settingKey: "sdk-iframe-embed-setup-settings",
+    debounceMs: PERSIST_EMBED_SETTINGS_DEBOUNCE_MS,
+  });
+
+  const setAndPersistSettings = useCallback(
+    (nextSettings: Partial<SdkIframeEmbedSettings>) => {
       setSettings(
         (prevSettings) =>
           ({
             ...prevSettings,
             ...nextSettings,
           }) as SdkIframeEmbedSettings,
-      ),
-    [setSettings],
+      );
+
+      storeSetting(settings);
+    },
+    [settings, storeSetting],
+  );
+
+  const updateSettings = useCallback(
+    (nextSettings: Partial<SdkIframeEmbedSettings>) =>
+      setAndPersistSettings(nextSettings),
+    [setAndPersistSettings],
   );
 
   useEffect(() => {
@@ -109,7 +131,7 @@ export const SdkIframeEmbedSetupProvider = ({
     setCurrentStep,
     experience,
     settings,
-    setSettings,
+    setSettings: setAndPersistSettings,
     updateSettings,
     recentDashboards,
     recentQuestions,
