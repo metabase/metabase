@@ -89,24 +89,27 @@ export const SdkIframeEmbedSetupProvider = ({
   });
 
   const setAndPersistSettings = useCallback(
-    (nextSettings: Partial<SdkIframeEmbedSettings>) => {
-      setSettings(
-        (prevSettings) =>
-          ({
-            ...prevSettings,
-            ...nextSettings,
-          }) as SdkIframeEmbedSettings,
-      );
-
+    (settings: SdkIframeEmbedSettings) => {
+      setSettings(settings);
       storeSetting(settings);
     },
-    [settings, storeSetting],
+    [storeSetting],
   );
 
   const updateSettings = useCallback(
-    (nextSettings: Partial<SdkIframeEmbedSettings>) =>
-      setAndPersistSettings(nextSettings),
-    [setAndPersistSettings],
+    (nextSettings: Partial<SdkIframeEmbedSettings>) => {
+      setSettings((prevSettings) => {
+        const mergedSettings = {
+          ...prevSettings,
+          ...nextSettings,
+        } as SdkIframeEmbedSettings;
+
+        storeSetting(mergedSettings);
+
+        return mergedSettings;
+      });
+    },
+    [storeSetting],
   );
 
   useEffect(() => {
