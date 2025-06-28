@@ -107,15 +107,22 @@ export const useChartEvents = (
         return;
       }
 
-      const yAxisShowOption = [{ show: true }, { show: true }];
+      const visibleSplitLineOption = { lineStyle: { opacity: 1 } };
+      const hiddenSplitLineOption = { lineStyle: { opacity: 0 } };
+      const yAxisShowOption = [
+        { show: true, splitLine: visibleSplitLineOption },
+        { show: true, splitLine: hiddenSplitLineOption },
+      ];
       if (hoveredSeriesDataKey != null) {
         const hiddenYAxisIndex = chartModel.leftAxisModel?.seriesKeys.includes(
           hoveredSeriesDataKey,
         )
           ? 1
           : 0;
+        const visibleYAxisIndex = 1 - hiddenYAxisIndex;
 
         yAxisShowOption[hiddenYAxisIndex].show = false;
+        yAxisShowOption[visibleYAxisIndex].splitLine = visibleSplitLineOption;
       }
 
       chartRef.current?.setOption({ yAxis: yAxisShowOption }, false, true);
