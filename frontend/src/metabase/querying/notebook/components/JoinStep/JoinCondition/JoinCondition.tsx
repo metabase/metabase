@@ -37,6 +37,7 @@ export function JoinCondition({
   const [isLhsOpened, setIsLhsOpened] = useState(false);
   const [isRhsOpened, setIsRhsOpened] = useState(false);
 
+  const strategy = useMemo(() => Lib.joinStrategy(join), [join]);
   const { operator, lhsExpression, rhsExpression } = useMemo(
     () => Lib.joinConditionParts(condition),
     [condition],
@@ -99,11 +100,12 @@ export function JoinCondition({
           query={query}
           stageIndex={stageIndex}
           joinable={join}
+          strategy={strategy}
           tableName={lhsTableName}
           lhsExpression={lhsExpression}
           rhsExpression={rhsExpression}
           isOpened={isLhsOpened}
-          isLhsExpression={true}
+          isLhsPicker={true}
           isReadOnly={isReadOnly}
           onChange={handleLhsExpressionChange}
           onOpenChange={setIsLhsOpened}
@@ -120,11 +122,12 @@ export function JoinCondition({
           query={query}
           stageIndex={stageIndex}
           joinable={join}
+          strategy={strategy}
           tableName={rhsTableName}
           lhsExpression={lhsExpression}
           rhsExpression={rhsExpression}
           isOpened={isRhsOpened}
-          isLhsExpression={false}
+          isLhsPicker={false}
           isReadOnly={isReadOnly}
           onChange={handleRhsExpressionChange}
           onOpenChange={setIsRhsOpened}

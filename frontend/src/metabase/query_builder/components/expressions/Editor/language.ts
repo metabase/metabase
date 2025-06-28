@@ -19,7 +19,7 @@ type LintOptions = {
   expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex?: number | undefined;
+  availableColumns: Lib.ColumnMetadata[];
   metadata: Metadata;
 };
 

@@ -14,6 +14,7 @@ interface JoinConditionDraftProps {
   query: Lib.Query;
   stageIndex: number;
   joinable: Lib.JoinOrJoinable;
+  strategy: Lib.JoinStrategy;
   lhsTableName: string;
   rhsTable?: Lib.Joinable;
   rhsTableName: string | undefined;
@@ -28,6 +29,7 @@ export function JoinConditionDraft({
   query,
   stageIndex,
   joinable,
+  strategy,
   lhsTableName,
   rhsTable,
   rhsTableName,
@@ -113,11 +115,12 @@ export function JoinConditionDraft({
             query={query}
             stageIndex={stageIndex}
             joinable={joinable}
+            strategy={strategy}
             tableName={lhsTableName}
             lhsExpression={lhsExpression}
             rhsExpression={rhsExpression}
             isOpened={isLhsOpened}
-            isLhsExpression={true}
+            isLhsPicker={true}
             isReadOnly={isReadOnly}
             onChange={handleLhsExpressionChange}
             onOpenChange={setIsLhsOpened}
@@ -136,11 +139,12 @@ export function JoinConditionDraft({
             query={query}
             stageIndex={stageIndex}
             joinable={joinable}
+            strategy={strategy}
             tableName={rhsTableName}
             lhsExpression={lhsExpression}
             rhsExpression={rhsExpression}
             isOpened={isRhsOpened}
-            isLhsExpression={false}
+            isLhsPicker={false}
             isReadOnly={isReadOnly}
             onChange={handleRhsExpressionChange}
             onOpenChange={setIsRhsOpened}
