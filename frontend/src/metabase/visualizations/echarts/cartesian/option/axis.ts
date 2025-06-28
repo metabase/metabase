@@ -491,3 +491,14 @@ export const buildAxes = (
     ),
   };
 };
+
+export const createAxisVisibilityOption = ({
+  show,
+  splitLineVisible,
+}: {
+  show: boolean;
+  splitLineVisible: boolean;
+}) => ({
+  show,
+  splitLine: { lineStyle: { opacity: splitLineVisible ? 1 : 0 } },
+});
