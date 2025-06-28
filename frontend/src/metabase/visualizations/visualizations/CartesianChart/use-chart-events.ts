@@ -17,6 +17,7 @@ import type {
   BaseCartesianChartModel,
   ChartDataset,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import { createAxisVisibilityOption } from "metabase/visualizations/echarts/cartesian/option/axis";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { useClickedStateTooltipSync } from "metabase/visualizations/echarts/tooltip";
 import type {
@@ -107,22 +108,29 @@ export const useChartEvents = (
         return;
       }
 
-      const visibleSplitLineOption = { lineStyle: { opacity: 1 } };
-      const hiddenSplitLineOption = { lineStyle: { opacity: 0 } };
-      const yAxisShowOption = [
-        { show: true, splitLine: visibleSplitLineOption },
-        { show: true, splitLine: hiddenSplitLineOption },
-      ];
-      if (hoveredSeriesDataKey != null) {
-        const hiddenYAxisIndex = chartModel.leftAxisModel?.seriesKeys.includes(
-          hoveredSeriesDataKey,
-        )
-          ? 1
-          : 0;
-        const visibleYAxisIndex = 1 - hiddenYAxisIndex;
+      let yAxisShowOption;
 
-        yAxisShowOption[hiddenYAxisIndex].show = false;
-        yAxisShowOption[visibleYAxisIndex].splitLine = visibleSplitLineOption;
+      const noSeriesHovered = hoveredSeriesDataKey == null;
+      const leftAxisSeriesHovered =
+        hoveredSeriesDataKey != null &&
+        chartModel.leftAxisModel?.seriesKeys.includes(hoveredSeriesDataKey);
+
+      if (noSeriesHovered) {
+        yAxisShowOption = [
+          createAxisVisibilityOption({ show: true, splitLineVisible: true }),
+          createAxisVisibilityOption({ show: true, splitLineVisible: false }),
+        ];
+      } else if (leftAxisSeriesHovered) {
+        yAxisShowOption = [
+          createAxisVisibilityOption({ show: true, splitLineVisible: true }),
+          createAxisVisibilityOption({ show: false, splitLineVisible: false }),
+        ];
+      } else {
+        // right axis series hovered
+        yAxisShowOption = [
+          createAxisVisibilityOption({ show: false, splitLineVisible: false }),
+          createAxisVisibilityOption({ show: true, splitLineVisible: true }),
+        ];
       }
 
       chartRef.current?.setOption({ yAxis: yAxisShowOption }, false, true);
