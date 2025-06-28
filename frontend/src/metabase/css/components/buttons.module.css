@@ -25,7 +25,7 @@
 }
 
 .Button:focus {
-  border: 2px solid var(--mb-base-color-white);
+  border: 2px solid var(--mb-color-background);
   outline: 2px solid var(--mb-color-brand);
 }
 
@@ -74,7 +74,7 @@
 }
 
 .ButtonPrimary:focus {
-  border-color: var(--mb-base-color-white);
+  border-color: var(--mb-color-background);
   outline-color: var(--mb-color-brand);
 }
 
@@ -91,7 +91,7 @@
 }
 
 .ButtonWarning:focus {
-  border-color: var(--mb-base-color-white);
+  border-color: var(--mb-color-background);
   outline-color: var(--mb-color-error);
 }
 
@@ -117,15 +117,20 @@
 }
 
 .ButtonBorderless:focus {
-  border-color: var(--mb-base-color-white);
+  border-color: var(--mb-color-background);
   outline-color: var(--mb-color-brand);
 }
 
 .ButtonOnlyIcon {
-  border: none;
+  border-color: transparent;
   background: transparent;
   color: var(--mb-color-text-dark);
   padding: 0;
+}
+
+.ButtonOnlyIcon:focus {
+  border-color: var(--mb-color-background);
+  outline-color: var(--mb-color-brand);
 }
 
 .ButtonGroup {
@@ -188,7 +193,7 @@
 }
 
 .ButtonDanger:focus {
-  border-color: var(--mb-base-color-white);
+  border-color: var(--mb-color-background);
   outline-color: var(--mb-color-error);
 }
 
@@ -205,7 +210,7 @@
 }
 
 .ButtonSuccess:focus {
-  border-color: var(--mb-base-color-white);
+  border-color: var(--mb-color-background);
   outline-color: var(--mb-color-success);
 }
 
