@@ -265,10 +265,15 @@
                                     :as            question-card} {:dataset_query {:type     :query
                                                                                    :database (mt/id)
                                                                                    :query    {:source-table (format "card__%s" model-card-id)}}}]
-        ;; NOTE -- The logic in metabase.formatter/number-formatter renders values between 1 and 100 as an
-        ;; integer value. IDK if this is what we want long term, but this captures the current logic. If we do extend
-        ;; the significant digits in the formatter, we'll need to modify this test as well.
+          ;; NOTE -- The logic in metabase.formatter/number-formatter renders values between 1 and 100 as an integer
+          ;; value. IDK if this is what we want long term, but this captures the current logic. If we do extend the
+          ;; significant digits in the formatter, we'll need to modify this test as well.
           (letfn [(create-comparison-results [query-results card]
+                    (is (=? [{:name "TAX"}
+                             {:name "TOTAL"}
+                             {:name "Tax Rate", :semantic_type :type/Percentage}]
+                            (map #(select-keys % [:name :semantic_type])
+                                 (get-in query-results [:data :cols]))))
                     (let [expected      (mapv (fn [row]
                                                 (format "%.2f%%" (* 100 (peek row))))
                                               (get-in query-results [:data :rows]))

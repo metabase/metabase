@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
-      e2e_all: ${{ steps.changes.outputs.e2e_all }}
+      e2e_embedding_sdk: ${{ steps.changes.outputs.e2e_embedding_sdk }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -62,7 +62,7 @@ jobs:
     needs: [files-changed, get-build-requirements]
     if: |
       !cancelled() &&
-      needs.files-changed.outputs.e2e_all == 'true'
+      needs.files-changed.outputs.e2e_embedding_sdk == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     env:
@@ -121,12 +121,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Prepare Docker containers
-        uses: ./.github/actions/e2e-prepare-containers
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4
