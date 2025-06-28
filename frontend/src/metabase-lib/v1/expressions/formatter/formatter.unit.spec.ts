@@ -28,6 +28,7 @@ function setup(
     if (!Array.isArray(expressions)) {
       return assertFormatted([expressions]);
     }
+
     for (const source of expressions) {
       const options = {
         query,
@@ -38,6 +39,7 @@ function setup(
       const res = compileExpression({
         ...options,
         source,
+        availableColumns: Lib.expressionableColumns(query, stageIndex),
       });
 
       if (res.error) {

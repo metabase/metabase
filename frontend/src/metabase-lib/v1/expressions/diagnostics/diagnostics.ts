@@ -14,6 +14,7 @@ type Options = {
   query: Lib.Query;
   stageIndex: number;
   expressionIndex?: number;
+  availableColumns: Lib.ColumnMetadata[];
   metadata?: Metadata;
 };
 

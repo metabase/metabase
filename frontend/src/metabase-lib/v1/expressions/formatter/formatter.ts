@@ -45,7 +45,7 @@ export async function format(
 type FormatOptions = {
   query?: Lib.Query;
   stageIndex?: number;
-  expressionIndex?: number | undefined;
+  availableColumns?: Lib.ColumnMetadata[];
   printWidth?: number;
   stringDelimiter?: StartDelimiter;
 };

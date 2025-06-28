@@ -173,6 +173,7 @@ export function JoinComplete({
               query={query}
               stageIndex={stageIndex}
               joinable={join}
+              strategy={strategy}
               lhsTableName={lhsTableName}
               rhsTableName={rhsTableName}
               isReadOnly={isReadOnly}

@@ -1,3 +1,5 @@
+import * as Lib from "metabase-lib";
+
 import { resolver as makeResolver } from "./resolver";
 import {
   expressions,
@@ -16,6 +18,7 @@ describe("resolver", () => {
         query,
         stageIndex,
         expressionMode,
+        availableColumns: Lib.expressionableColumns(query, stageIndex),
       });
 
       describe("type = boolean", () => {
@@ -255,6 +258,7 @@ describe("resolver", () => {
       query,
       stageIndex,
       expressionMode: "aggregation",
+      availableColumns: Lib.expressionableColumns(query, stageIndex),
     });
 
     describe("type = boolean", () => {

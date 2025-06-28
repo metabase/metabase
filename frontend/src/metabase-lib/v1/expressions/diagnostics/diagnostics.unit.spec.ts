@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -23,6 +23,7 @@ describe("diagnostics", () => {
         expressionMode,
         query,
         stageIndex,
+        availableColumns: Lib.expressionableColumns(query, stageIndex),
         metadata,
       });
     }
@@ -514,6 +515,7 @@ describe("diagnostics", () => {
         query,
         stageIndex,
         expressionMode: "expression",
+        availableColumns: Lib.expressionableColumns(query, stageIndex),
       });
     }
 
