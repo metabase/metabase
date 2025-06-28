@@ -1,7 +1,6 @@
 import { type UnknownAction, isRejected } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
-import { t } from "ttag";
 
 import { createAsyncThunk } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
@@ -23,13 +22,15 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
-import { getAgentOfflineError } from "../constants";
+import { METABOT_ERR_MSG } from "../constants";
 import { notifyUnknownReaction, reactionHandlers } from "../reactions";
 
-import { metabot } from "./reducer";
+import { type MetabotErrorMessage, metabot } from "./reducer";
 import {
+  getAgentErrorMessages,
   getAgentRequestMetadata,
   getIsProcessing,
+  getLastMessage,
   getMetabotConversationId,
   getUseStreaming,
   getUserPromptForMessageId,
@@ -38,6 +39,7 @@ import { createMessageId } from "./utils";
 
 export const {
   addAgentMessage,
+  addAgentErrorMessage,
   addUserMessage,
   resetConversationId,
   setIsProcessing,
@@ -46,26 +48,32 @@ export const {
 } = metabot.actions;
 
 type PromptErrorOutcome = {
-  notification: string | false;
+  errorMessage: MetabotErrorMessage | false;
   shouldRetry: boolean;
 };
 
 const handleResponseError = (error: unknown): PromptErrorOutcome => {
   return match(error)
     .with({ name: "AbortError" }, () => ({
-      notification: false as const,
+      errorMessage: false as const,
       shouldRetry: false,
     }))
     .with(
       { message: P.string.startsWith("Response status: 5") },
       { status: 500 },
       () => ({
-        notification: getAgentOfflineError(),
+        errorMessage: {
+          type: "alert" as const,
+          message: METABOT_ERR_MSG.agentOffline,
+        },
         shouldRetry: true,
       }),
     )
     .otherwise(() => ({
-      notification: t`Something went wrong, try again.`,
+      errorMessage: {
+        type: "message" as const,
+        message: METABOT_ERR_MSG.default,
+      },
       shouldRetry: true,
     }));
 };
@@ -111,12 +119,18 @@ export const submitInput = createAsyncThunk<
         return { prompt: data.message, success: false, shouldRetry: false };
       }
 
+      // if there were from the last prompt, remove the last prompt from the history
+      const errors = getAgentErrorMessages(state);
+      const lastMessageId = getLastMessage(state)?.id;
+      if (errors.length > 0 && lastMessageId) {
+        dispatch(rewindConversation(lastMessageId));
+      }
+
       // it's important that we get the current metadata containing the history before
       // altering it by adding the current message the user is wanting to send
       const agentMetadata = getAgentRequestMetadata(getState() as any);
       const messageId = createMessageId();
       dispatch(addUserMessage({ id: messageId, message: data.message }));
-
       const useStreaming = getUseStreaming(getState() as any);
       const sendRequestAction = useStreaming
         ? sendStreamedAgentRequest
@@ -134,12 +148,7 @@ export const submitInput = createAsyncThunk<
       const result = await sendMessageRequestPromise;
 
       if (isRejected(result)) {
-        const notification =
-          result.payload?.notification ?? t`Something went wrong, try again.`;
-
-        dispatch(rewindConversation(messageId));
-        dispatch(stopProcessingAndNotify(notification));
-
+        dispatch(stopProcessingAndNotify(result.payload?.errorMessage));
         return {
           prompt: data.message,
           success: false,
@@ -244,10 +253,10 @@ export const sendStreamedAgentRequest = createAsyncThunk<
               .exhaustive();
           },
           onTextPart: (part) => {
-            dispatch(addAgentMessage({ type: "reply", message: String(part) }));
+            dispatch(addAgentMessage({ message: String(part) }));
           },
           onToolCallPart: (part) => dispatch(toolCallStart(part)),
-          onToolResultPart: () => dispatch(toolCallEnd()),
+          onToolResultPart: (part) => dispatch(toolCallEnd(part)),
           onError: (part) => (error = part),
         },
       );
@@ -289,6 +298,7 @@ const rewindConversation = createAsyncThunk(
   "metabase-enterprise/metabot/rewindConversation",
   (messageId: string, { dispatch, getState }) => {
     dispatch(cancelInflightAgentRequests());
+
     const promptMessage = getUserPromptForMessageId(getState(), messageId);
     if (!promptMessage) {
       throw new Error("Unable to rewind conversation to prompt for pro");
@@ -370,14 +380,17 @@ export const stopProcessing = () => (dispatch: Dispatch) => {
 };
 
 export const stopProcessingAndNotify =
-  (message?: string | false) => (dispatch: Dispatch) => {
+  (message?: MetabotErrorMessage | false | undefined) =>
+  (dispatch: Dispatch) => {
     dispatch(stopProcessing());
     if (message !== false) {
       dispatch(
-        addAgentMessage({
-          type: "error",
-          message: message || t`Something went wrong, try again.`,
-        }),
+        addAgentErrorMessage(
+          message ?? {
+            type: "message",
+            message: METABOT_ERR_MSG.default,
+          },
+        ),
       );
     }
   };
