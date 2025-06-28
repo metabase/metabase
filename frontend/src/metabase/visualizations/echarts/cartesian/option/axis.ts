@@ -397,15 +397,15 @@ export const buildMetricAxis = (
       axisModel.label,
       shouldFlipAxisName ? -90 : undefined,
     ),
-    splitLine:
-      hasSplitLine && !!settings["graph.y_axis.axis_enabled"]
-        ? {
-            lineStyle: {
-              type: 5,
-              ...renderingContext.theme.cartesian.splitLine.lineStyle,
-            },
-          }
-        : undefined,
+    splitLine: settings["graph.y_axis.axis_enabled"]
+      ? {
+          lineStyle: {
+            type: 5,
+            opacity: hasSplitLine ? 1 : 0,
+            ...renderingContext.theme.cartesian.splitLine.lineStyle,
+          },
+        }
+      : undefined,
     position,
     axisLine: {
       show: false,
@@ -417,7 +417,6 @@ export const buildMetricAxis = (
       margin: CHART_STYLE.axisTicksMarginY,
       show: !!settings["graph.y_axis.axis_enabled"],
       ...getTicksDefaultOption(renderingContext),
-      // @ts-expect-error TODO: figure out EChart types
       formatter: (rawValue) =>
         axisModel.formatter(
           yAxisScaleTransforms.fromEChartsAxisValue(rawValue),
@@ -492,3 +491,14 @@ export const buildAxes = (
     ),
   };
 };
+
+export const createAxisVisibilityOption = ({
+  show,
+  splitLineVisible,
+}: {
+  show: boolean;
+  splitLineVisible: boolean;
+}) => ({
+  show,
+  splitLine: { lineStyle: { opacity: splitLineVisible ? 1 : 0 } },
+});
