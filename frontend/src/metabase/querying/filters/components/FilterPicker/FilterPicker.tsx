@@ -45,6 +45,10 @@ export function FilterPicker({
     getInitialColumn(query, stageIndex, filter),
   );
   const stageIndexes = useMemo(() => [stageIndex], [stageIndex]);
+  const availableColumns = useMemo(
+    () => Lib.expressionableColumns(query, stageIndex),
+    [query, stageIndex],
+  );
 
   const [
     isEditingExpression,
@@ -98,6 +102,7 @@ export function FilterPicker({
       <ExpressionWidget
         query={query}
         stageIndex={stageIndex}
+        availableColumns={availableColumns}
         clause={filter}
         expressionMode="filter"
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
