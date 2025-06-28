@@ -89,9 +89,9 @@ export const formLauncher = (
 ) => {
   const regExp = new RegExp(`Edit.*${itemName}.*${preface}.*${strategyLabel}`);
   cy.log(`Finding strategy for launcher for regular expression: ${regExp}`);
-  const launcher = databaseCachingPage().findByLabelText(regExp);
-  launcher.should("exist");
-  return launcher;
+  const launcher = () => databaseCachingPage().findByLabelText(regExp);
+  launcher().should("exist");
+  return launcher();
 };
 
 /** Opens the strategy form on 'Database caching' tab */

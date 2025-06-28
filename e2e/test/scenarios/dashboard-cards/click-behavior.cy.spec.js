@@ -1587,15 +1587,19 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
         addUrlDestination();
         H.modal().within(() => {
-          const urlInput = cy.findAllByRole("textbox").eq(0);
-          const customLinkTextInput = cy.findAllByRole("textbox").eq(1);
-          urlInput.type(URL_WITH_PARAMS, {
-            parseSpecialCharSequences: false,
-          });
-          customLinkTextInput.type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
-            parseSpecialCharSequences: false,
-          });
-          customLinkTextInput.blur();
+          cy.findAllByRole("textbox")
+            .eq(0)
+            .as("urlInput")
+            .type(URL_WITH_PARAMS, {
+              parseSpecialCharSequences: false,
+            });
+          cy.findAllByRole("textbox")
+            .eq(1)
+            .as("customLinkTextInput")
+            .type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
+              parseSpecialCharSequences: false,
+            })
+            .blur();
 
           cy.button("Done").click();
         });
@@ -2368,15 +2372,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     addUrlDestination();
 
     H.modal().within(() => {
-      const urlInput = cy.findAllByRole("textbox").eq(0);
-
       cy.get("@targetDashboardId").then((targetDashboardId) => {
-        urlInput.type(
-          `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}&category={{category}}&count={{count}}`,
-          {
-            parseSpecialCharSequences: false,
-          },
-        );
+        cy.findAllByRole("textbox")
+          .eq(0)
+          .as("urlInput")
+          .type(
+            `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}&category={{category}}&count={{count}}`,
+            {
+              parseSpecialCharSequences: false,
+            },
+          );
       });
       cy.button("Done").click();
     });
@@ -2453,15 +2458,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     addUrlDestination();
 
     H.modal().within(() => {
-      const urlInput = cy.findAllByRole("textbox").eq(0);
-
       cy.get("@targetDashboardId").then((targetDashboardId) => {
-        urlInput.type(
-          `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}`,
-          {
-            parseSpecialCharSequences: false,
-          },
-        );
+        cy.findAllByRole("textbox")
+          .eq(0)
+          .as("urlInput")
+          .type(
+            `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}`,
+            {
+              parseSpecialCharSequences: false,
+            },
+          );
       });
       cy.button("Done").click();
     });
@@ -2516,15 +2522,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     addUrlDestination();
 
     H.modal().within(() => {
-      const urlInput = cy.findAllByRole("textbox").eq(0);
-
       cy.get("@targetDashboardId").then((targetDashboardId) => {
-        urlInput.type(
-          `http://localhost:4000/dashboard/${targetDashboardId}?discount={{sum_2}}&total={{sum}}`,
-          {
-            parseSpecialCharSequences: false,
-          },
-        );
+        cy.findAllByRole("textbox")
+          .eq(0)
+          .as("urlInput")
+          .type(
+            `http://localhost:4000/dashboard/${targetDashboardId}?discount={{sum_2}}&total={{sum}}`,
+            {
+              parseSpecialCharSequences: false,
+            },
+          );
       });
       cy.button("Done").click();
     });
