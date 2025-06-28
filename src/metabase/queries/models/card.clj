@@ -239,10 +239,11 @@
       (try
         (prefetch-tables-for-cards! dataset-cards)
         (catch Throwable t
-          (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
+          (log/errorf t "Failed prefetching cards `%s`." (pr-str (map :id dataset-cards))))))
     (query-perms/with-card-instances (when (seq source-card-ids)
                                        (t2/select-fn->fn :id identity [:model/Card :id :collection_id :card_schema]
                                                          :id [:in source-card-ids]))
+      (perms/prime-db-cache (into #{} (map :database_id cards)))
       (mi/instances-with-hydrated-data
        cards :can_run_adhoc_query
        (fn []

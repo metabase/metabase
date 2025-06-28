@@ -326,6 +326,7 @@
            driver
            events
            legacy-mbql
+           lib-be
            models
            notification
            permissions
