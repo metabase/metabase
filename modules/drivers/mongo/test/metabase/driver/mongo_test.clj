@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
    [metabase.api.downloads-exports-test :as downloads-test]
    [metabase.driver :as driver]
@@ -1077,7 +1076,7 @@
         (thunk dbfields ftree nested-fields)))))
 
 (defmacro with-describe-table-for-sample
-  "Use `documents` as input to aggregation pipeline used for sampling in [[driver/describe-table]].
+  "Use `documents` as input to aggregation pipeline used for sampling in mongo's impl of [[driver/describe-table]].
 
   Forward bindings become delays of results of functions used in mongo's describe-table:
 
@@ -1094,13 +1093,11 @@
       ;; Gist: Limit is set to 2 and there, other fields' names that precede the _id when sorted
       (binding [mongo/*leaf-fields-limit* 2]
         (with-describe-table-for-sample
-          [(ordered-map/ordered-map
-            "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+          [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
             "__a" 1
-            "__b" 2)
-           (ordered-map/ordered-map
-            "__b" 3
-            "__a" 1000)]
+            "__b" 2}
+           {"__b" 3
+            "__a" 1000}]
           (is (= [{:path "_id", :type "objectId", :indices [0]}
                   {:path "__a", :type "int", :indices [1]}]
                  @dbfields))
@@ -1117,15 +1114,12 @@
   (mt/test-driver
     :mongo
     (with-describe-table-for-sample
-      [(ordered-map/ordered-map
-        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
-        "a" {"b" 10})
-       (ordered-map/ordered-map
-        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
-        "a" {"b" 20})
-       (ordered-map/ordered-map
-        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
-        "a" {"b" {"c" 30}})]
+      [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" 10}}
+       {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" 20}}
+       {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" {"c" 30}}}]
       (is (= #{{:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}
                {:database-type "object",
                 :visibility-type :details-only,
@@ -1145,15 +1139,12 @@
   (mt/test-driver
     :mongo
     (with-describe-table-for-sample
-      [(ordered-map/ordered-map
-        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
-        "a" {"b" nil})
-       (ordered-map/ordered-map
-        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
-        "a" {"b" nil})
-       (ordered-map/ordered-map
-        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
-        "a" {"b" "hello"})]
+      [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" nil}}
+       {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" nil}}
+       {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" "hello"}}]
       (is (= #{{:database-type "object",
                 :visibility-type :details-only,
                 :database-position 1,
@@ -1168,15 +1159,12 @@
   (mt/test-driver
     :mongo
     (with-describe-table-for-sample
-      [(ordered-map/ordered-map
-        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
-        "a" {"b" 1})
-       (ordered-map/ordered-map
-        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
-        "a" {"b" 1})
-       (ordered-map/ordered-map
-        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
-        "a" {"b" "hello"})]
+      [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" 1}}
+       {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" 1}}
+       {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" "hello"}}]
       (is (= #{{:database-type "object",
                 :visibility-type :details-only,
                 :database-position 1,
@@ -1198,16 +1186,13 @@
                                   {:path "a.b.c.d.e.f.h", :type "null", :indices [1 0 0 0 0 0 0]}]]]]
       (binding [mongo/*leaf-fields-limit* limit]
         (with-describe-table-for-sample
-          [(ordered-map/ordered-map
-            "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
-            "a" {"b" {"c" {"d" {"e" {"f" {"g" [3 2 1]}}}}}})
-           (ordered-map/ordered-map
-            "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
-            "a" {"b" {"c" {"d" {"e" {"f" {"g" [1 2 3]}}}}}})
-           (ordered-map/ordered-map
-            "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+          [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+            "a" {"b" {"c" {"d" {"e" {"f" {"g" [3 2 1]}}}}}}}
+           {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+            "a" {"b" {"c" {"d" {"e" {"f" {"g" [1 2 3]}}}}}}}
+           {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
             "a" {"b" {"c" {"d" {"e" {"f" {"h" nil
-                                          "i" 10}}}}}})]
+                                          "i" 10}}}}}}}]
           (is (=? expected @dbfields)))))))
 
 (deftest empty-collection-handled-gracefully-test
