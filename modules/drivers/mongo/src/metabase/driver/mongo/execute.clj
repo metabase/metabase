@@ -145,7 +145,7 @@
 
 #_:clj-kondo/ignore
 (defn aggregate-database
-  "In testing"
+  "Used in testing to enable aggregate on pipelines sourced with $documents stage."
   [^MongoDatabase db
    ^ClientSession session
    stages timeout-ms]
