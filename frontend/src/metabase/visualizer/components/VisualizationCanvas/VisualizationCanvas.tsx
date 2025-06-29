@@ -116,7 +116,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           pl="7px"
           style={{ gridArea: "bottom-left" }}
         >
-          <Tooltip label={t`View as table`}>
+          <Tooltip withinPortal={false} label={t`View as table`}>
             <ActionIcon
               data-testid="visualizer-view-as-table-button"
               onClick={() => {

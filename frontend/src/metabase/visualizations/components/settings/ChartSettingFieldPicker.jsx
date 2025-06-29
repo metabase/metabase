@@ -163,6 +163,7 @@ export const ChartSettingFieldPicker = ({
           },
           section: {
             backgroundColor: "unset",
+            zIndex: "initial",
           },
           input: {
             marginLeft: theme.spacing.xs,
