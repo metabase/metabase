@@ -1,9 +1,6 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
   (:require
-   #_[clojure.walk :as walk]
-   #_[medley.core :as m]
-   #_[metabase.util.malli :as mu]
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.driver :as driver]
