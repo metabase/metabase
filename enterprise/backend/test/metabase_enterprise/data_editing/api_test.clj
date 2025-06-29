@@ -877,7 +877,6 @@
                                                                            {:id "c"
                                                                             :name "Status"
                                                                             :slug "status"}]}
-
                            :model/ImplicitAction _       {:action_id      (:id action)
                                                           :kind           "row/update"}
                            :model/Dashboard     dash     {}
