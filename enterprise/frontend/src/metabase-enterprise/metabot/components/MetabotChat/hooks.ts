@@ -1,80 +1,135 @@
-import { RefObject, useCallback, useRef, useState } from "react";
-import { useMount } from "react-use";
+import { useEffect } from "react";
 import _ from "underscore";
 
-import { useElementSize } from "@mantine/hooks";
+let observeCount = 0;
+let maxObserveCount = 10 * 1000;
 
-const USER_MSG_SELECTOR = `[data-message-role="user"]`;
-const DEFAULT_HEADER_HEIGHT = 64;
+const getScrollContainerEl = () =>
+  document.getElementById("metabot-chat-content");
 
-const getHeaderHeight = (headerRef: RefObject<HTMLDivElement>) => {
-  return headerRef.current?.clientHeight ?? DEFAULT_HEADER_HEIGHT;
+const isFillerElement = (node: Node) => {
+  return (
+    node instanceof Element &&
+    node.getAttribute("id") === "metabot-message-filler"
+  );
 };
 
-const getPromptOffsetTop = (containerEl: HTMLDivElement) => {
+const DEFAULT_HEADER_HEIGHT = 64;
+const getHeaderHeight = () => {
+  return (
+    document.getElementById("metabot-chat-header")?.clientHeight ??
+    DEFAULT_HEADER_HEIGHT
+  );
+};
+
+const USER_MSG_SELECTOR = `[data-message-role="user"]`;
+const getPromptOffsetTop = (containerEl: HTMLElement) => {
   const userMessages =
-    containerEl.querySelectorAll<HTMLDivElement>(USER_MSG_SELECTOR);
+    containerEl.querySelectorAll<HTMLElement>(USER_MSG_SELECTOR);
   const lastMessage = _.last(userMessages);
   return lastMessage?.offsetTop ?? 0;
 };
 
-const getPromptAndFollowUpNodesHeight = (containerEl: HTMLDivElement) => {
-  const userMessages =
-    containerEl.querySelectorAll<HTMLDivElement>(USER_MSG_SELECTOR);
-  const lastMessage = _.last(userMessages);
+function resizeFillerArea(scrollContainerEl: HTMLElement) {
+  console.log({ observeCount });
+  if (observeCount > maxObserveCount) {
+    return;
+  }
 
-  const nodes = [...containerEl.children[0].children];
-  const afterPromptNodesStart = nodes.findLastIndex(
-    (node) => node !== lastMessage,
+  const fillerElement = document.getElementById("metabot-message-filler");
+
+  if (!fillerElement) {
+    return;
+  }
+
+  const scrollContent = Array.from(scrollContainerEl.children[0]?.children);
+  const lastUserMessageIndex = scrollContent.findLastIndex(
+    (node) => node.getAttribute("data-message-role") === "user",
   );
-  const afterPromptNodes = nodes.slice(afterPromptNodesStart);
-  const afterPromptNodesHeight = afterPromptNodes.reduce((sum, node) => {
-    if (node.getAttribute("id") === "metabot-message-filler") {
-      return sum;
-    }
-    return node.clientHeight + sum;
+  const currentPromptNodes = scrollContent.slice(lastUserMessageIndex);
+  const validNodes = currentPromptNodes.filter((node) => node);
+  const validNodeHeights = validNodes.reduce((sum, node) => {
+    return isFillerElement(node) ? sum : sum + node.clientHeight;
   }, 0);
 
-  return (lastMessage?.clientHeight ?? 0) + afterPromptNodesHeight;
-};
+  const isScrollable =
+    scrollContainerEl.scrollHeight > scrollContainerEl.clientHeight;
+  const paddingAdjustment = isScrollable ? 40 : 24;
+  const containerHeight = scrollContainerEl.clientHeight;
+  const fillerHeight = Math.max(
+    0,
+    containerHeight - validNodeHeights - paddingAdjustment,
+  );
+  fillerElement.style.height = `${fillerHeight}px`;
 
+  observeCount++;
+}
+
+// TODO: handle auto-scrolling portion
+// TODO: rename
+// TODO: refactor to make it more testable
+// TODO: can using refs make this cleaner?
 export function useScrollManager() {
-  const headerRef = useRef<HTMLDivElement>(null);
-  const messagesEl = useElementSize<HTMLDivElement>();
-  const [fillerHeight, setFillerHeight] = useState(0);
+  // getPromptOffsetTop
 
-  // scroll on mount - useful if there's existing conversation
-  // history when the user opens the metabot sidebar
-  useMount(function handleScrollOnMount() {
-    const scrollContainer = messagesEl.ref.current;
-    if (scrollContainer) {
-      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+  useEffect(function resizeFiller() {
+    const scrollContainerEl = getScrollContainerEl();
+    if (!scrollContainerEl) {
+      return;
     }
-  });
 
-  const scrollToLatestUserMessage = useCallback(() => {
-    const scrollContainer = messagesEl.ref.current;
-    if (scrollContainer) {
-      setTimeout(() => {
-        const num = getPromptAndFollowUpNodesHeight(scrollContainer);
-        const fillerHeight = messagesEl.height - num;
-        console.log({ messageHeight: messagesEl.height, num, fillerHeight });
-        setFillerHeight(fillerHeight);
-
-        setTimeout(() => {
-          const promptOffsetTop = getPromptOffsetTop(scrollContainer);
-          const headerHeight = getHeaderHeight(headerRef);
-          const top = promptOffsetTop - headerHeight;
-          scrollContainer.scrollTo({ top, behavior: "smooth" });
-        }, 100);
-      }, 100);
+    // resize filler + scroll to the absolute bottom on mount
+    // - TODO: could I remove this? other ai's don't do this byt the mutation
+    // observer is probs going to be too reactive to elements changing? so i want
+    // to be careful about that... maybe where the isDoingScience part is handy?
+    resizeFillerArea(scrollContainerEl);
+    if (scrollContainerEl) {
+      scrollContainerEl.scrollTop = scrollContainerEl.scrollHeight;
     }
+
+    // react to text updates
+    const mutationObserver = new MutationObserver((mutations) => {
+      // ignore events caused from the resize event
+      const shoudldResize = mutations.some((m) => !isFillerElement(m.target));
+      if (shoudldResize) {
+        resizeFillerArea(scrollContainerEl);
+      }
+    });
+
+    mutationObserver.observe(scrollContainerEl, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    // react to resize updates
+    const resizeObserver = new ResizeObserver(() => {
+      resizeFillerArea(scrollContainerEl);
+    });
+    resizeObserver.observe(scrollContainerEl);
+    return () => {
+      mutationObserver.disconnect();
+      resizeObserver.disconnect();
+    };
   }, []);
 
-  return {
-    headerRef,
-    messagesRef: messagesEl.ref,
-    fillerHeight,
-    scrollToLatestUserMessage,
+  // TODO: find a way to schedule this auto-scroll to it happens AFTER
+  // the next filler resize event OR if I can detect a user message node
+  // was mounted to the dom that might be better...
+  const scheduleAutoScroll = () => {
+    // TODO: figure out a better way to manage timing
+    setTimeout(() => {
+      debugger;
+      const scrollContainerEl = getScrollContainerEl();
+      if (!scrollContainerEl) {
+        return;
+      }
+      const promptOffsetTop = getPromptOffsetTop(scrollContainerEl);
+      const headerHeight = getHeaderHeight();
+      const top = promptOffsetTop - headerHeight;
+      scrollContainerEl.scrollTo({ top, behavior: "smooth" });
+    }, 50);
   };
+
+  return { scheduleAutoScroll };
 }

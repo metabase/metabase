@@ -50,6 +50,7 @@ export const UserMessage = ({
     <MessageContainer
       data-message-id={message.id}
       chatRole={message.role}
+      style={{ background: "green" }}
       {...props}
     >
       <Text
@@ -89,6 +90,7 @@ export const AgentMessage = ({
       data-message-id={message.id}
       chatRole={message.role}
       {...props}
+      style={{ background: "pink" }}
     >
       <AIMarkdown className={Styles.message}>{message.message}</AIMarkdown>
       {!hideActions && (
