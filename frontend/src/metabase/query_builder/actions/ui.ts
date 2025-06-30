@@ -15,8 +15,9 @@ import type {
 
 import { trackFirstNonTableChartGenerated } from "../analytics";
 
-import { updateUrl } from "./navigation";
-import { cancelQuery } from "./querying";
+import { updateUrl } from "./url";
+
+const CANCEL_QUERY = "metabase/qb/CANCEL_QUERY";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
 export const setUIControls = createAction(SET_UI_CONTROLS);
@@ -51,7 +52,7 @@ export const setQueryBuilderMode =
       );
     }
     if (queryBuilderMode === "notebook") {
-      dispatch(cancelQuery());
+      dispatch({ type: CANCEL_QUERY });
     }
   };
 
