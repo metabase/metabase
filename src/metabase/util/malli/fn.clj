@@ -1,6 +1,7 @@
 (ns metabase.util.malli.fn
   (:refer-clojure :exclude [fn])
   (:require
+   [cljs.env :as env]
    [clojure.core :as core]
    [malli.core :as mc]
    [malli.destructure :as md]
@@ -284,6 +285,11 @@
         (.setStackTrace cleaned)))
     e))
 
+(defn compiling-for-cljs?
+  "Standard method of doing this, as it turns out."
+  []
+  (some? env/*compiler*))
+
 (defn- instrumented-arity [error-context [_=> input-schema output-schema]]
   (let [input-schema           (if (= input-schema :cat)
                                  [:cat]
@@ -297,11 +303,15 @@
                                        (validate-output ~error-context ~output-schema))
                                  result-form)]
     `(~arglist
-      (try
-        ~@input-validation-forms
-        ~result-form
-        (catch Exception ~'error
-          (throw (fixup-stacktrace ~'error)))))))
+      ~(if (compiling-for-cljs?)
+         `(do
+            ~@input-validation-forms
+            ~result-form)
+         `(try
+            ~@input-validation-forms
+            ~result-form
+            (catch Exception ~'error
+              (throw (fixup-stacktrace ~'error))))))))
 
 (defn- instrumented-fn-tail [error-context [schema-type :as schema]]
   (case schema-type

@@ -1,10 +1,10 @@
 (ns ^{:instrument/always true} metabase.util.malli.fn-java-error-test
-  "Test that reproduces the actual mu/fn Java exception issue in ClojureScript."
+  "Test that reproduces a macro-expansion issue in Clojurescript: java not found"
   (:require
    [cljs.test :refer [deftest is testing]]
    [metabase.util.malli :as mu]))
 
-(mu/defn- mu-fn-generator :- :int
+(mu/defn- mu-fn-generator
   []
   (mu/fn []
     (throw (ex-info "Oops." {}))))
@@ -12,7 +12,7 @@
 (def mu-fn
   (mu-fn-generator))
 
-(mu/defn mu-fn-caller :- :int
+(mu/defn mu-fn-caller
   []
   (mu-fn))
 
