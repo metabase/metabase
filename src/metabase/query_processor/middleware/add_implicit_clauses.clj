@@ -64,6 +64,7 @@
             base-type                :base_type
             field-id                 :id
             [ref-type :as field-ref] :field_ref
+            unit                     :unit
             coercion-strategy        :coercion_strategy} source-metadata]
        ;; return field-ref directly if it's a `:field` clause already. It might include important info such as
        ;; `:join-alias` or `:source-field`. Remove binning/temporal bucketing info. The Field should already be getting
@@ -79,14 +80,19 @@
                                     (some-> (qp.store/metadata-provider)
                                             (lib.metadata/field field-id)
                                             :coercion-strategy)))
-                            (mbql.u/assoc-field-options :qp/ignore-coercion true))))
+                            (mbql.u/assoc-field-options :qp/ignore-coercion true)
+
+                            unit
+                            (mbql.u/assoc-field-options :inherited-temporal-unit unit))))
              ;; otherwise construct a field reference that can be used to refer to this Field.
              ;; Force string id field if expression contains just field. See issue #28451.
              (if (and (not= ref-type :expression)
                       not-multiply-bracketed?
                       field-id)
                ;; If we have a Field ID, return a `:field` (id) clause
-               [:field field-id (cond-> nil coercion-strategy (assoc :qp/ignore-coercion true))]
+               [:field field-id (cond-> nil
+                                  coercion-strategy (assoc :qp/ignore-coercion true)
+                                  unit              (assoc :inherited-temporal-unit unit))]
                ;; otherwise return a `:field` (name) clause, e.g. for a Field that's the result of an aggregation or
                ;; expression. We don't need to mark as ignore-coercion here because these won't grab the field metadata
                [:field field-name {:base-type base-type}])))))))

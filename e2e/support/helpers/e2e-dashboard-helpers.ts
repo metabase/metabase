@@ -315,8 +315,7 @@ export function resizeDashboardCard({
   y: number;
 }) {
   card.within(() => {
-    const resizeHandle = cy.get(".react-resizable-handle");
-    resizeHandle
+    cy.get(".react-resizable-handle")
       .trigger("mousedown", { button: 0 })
       .wait(200)
       .trigger("mousemove", {
@@ -378,6 +377,18 @@ export function dashboardSaveButton() {
 
 export function dashboardParameterSidebar() {
   return cy.findByTestId("dashboard-parameter-sidebar");
+}
+
+export function applyFilterToast() {
+  return cy.findByTestId("filter-apply-toast");
+}
+
+export function applyFilterButton() {
+  return applyFilterToast().button("Apply");
+}
+
+export function cancelFilterButton() {
+  return applyFilterToast().button("Cancel");
 }
 
 export function setDashboardParameterName(name: string) {
