@@ -94,6 +94,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
       draggable={false}
       role="listitem"
       p={0}
+      pb={1}
       withBorder
     >
       <Flex
