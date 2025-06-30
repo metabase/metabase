@@ -179,7 +179,6 @@ export const GdriveAddDataPanel = () => {
       <Button
         variant="filled"
         w={INNER_WIDTH}
-        disabled={status !== "not-connected"}
         onClick={() => {
           trackSheetConnectionClick({ from: "add-data-modal" });
           openConnectionModal();

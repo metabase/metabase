@@ -103,7 +103,7 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
       name: "Connecting...",
     });
     expect(connectButton).toBeInTheDocument();
-    expect(connectButton).toBeDisabled();
+    expect(connectButton).toBeEnabled();
   });
 
   it("should display error when the connection fails", async () => {
@@ -118,7 +118,7 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
       name: "Something went wrong",
     });
     expect(connectButton).toBeInTheDocument();
-    expect(connectButton).toBeDisabled();
+    expect(connectButton).toBeEnabled();
     const alert = await screen.findByRole("alert");
     expect(
       within(alert).getByText("Couldn't sync Google Sheets"),
