@@ -53,11 +53,11 @@ To disconnect your Google Drive connection to a folder or sheet:
 3. Click on **Disconnect**.
 4. Confirm the disconnection.
 
-Disconnecting won't delete your existing tables. An admin will need to manually delete tables in [Uploads settings](/docs/latest/exploration-and-organization/uploads#deleting-tables-created-by-uploads).
+Disconnecting won't delete your existing tables. An admin will need to manually delete tables in [Uploads settings](../exploration-and-organization/uploads.md#deleting-tables-created-by-uploads).
 
 ## Deleting sheets
 
-Disconnecting from the Google Drive folder won't delete your imported sheets. Admins will need to delete these tables manually in [Uploads settings](/docs/latest/exploration-and-organization/uploads#deleting-tables-created-by-uploads).
+Disconnecting from the Google Drive folder won't delete your imported sheets. Admins will need to delete these tables manually in [Uploads settings](../exploration-and-organization/uploads.md#deleting-tables-created-by-uploads).
 
 ## Changing the Google Drive folder or sheet
 
@@ -69,7 +69,7 @@ If you change the sync target, Metabase will:
 - Stop updating those tables
 - Start syncing with the new folder/sheet
 
-If you want to delete the tables from the old folder, admins will need to delete them manually in [Uploads settings](/docs/latest/exploration-and-organization/uploads#deleting-tables-created-by-uploads).
+If you want to delete the tables from the old folder, admins will need to delete them manually in [Uploads settings](../exploration-and-organization/uploads.md#deleting-tables-created-by-uploads).
 
 ## Limitations and gotchas
 
