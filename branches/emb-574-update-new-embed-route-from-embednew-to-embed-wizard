@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-513-persist-new-iframe-embed-flow-settings-to-user-settings",
-    "hash": "dfc1a6b6611bbf6a5dcd2e39603d3ae4202d0093"
+    "hash": "e8676bc7cd7e3148b95a10b66e5c630ab6119d7b"
   },
   "upstream": {
     "branch": "emb-574-update-new-embed-route-from-embednew-to-embed-wizard"
