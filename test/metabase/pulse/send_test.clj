@@ -196,7 +196,7 @@
                                      :content     true}
                  :title_link        (str "https://testmb.com/question/" card-id)
                  :attachment-name   "image.png"
-                 :inline-parameters []
+                 :inline-parameters nil
                  :fallback          pulse.test-util/card-name}]}
               (pulse.test-util/thunk->boolean pulse-results))))
 
@@ -254,7 +254,7 @@
                            {:title             pulse.test-util/card-name
                             :rendered-info     {:attachments false
                                                 :content     true}
-                            :inline-parameters []
+                            :inline-parameters nil
                             :title_link        (str "https://testmb.com/question/" card-id)
                             :attachment-name   "image.png"
                             :fallback          pulse.test-util/card-name}]}
@@ -395,7 +395,7 @@
                                       {:title             pulse.test-util/card-name
                                        :rendered-info     {:attachments false
                                                            :content     true}
-                                       :inline-parameters []
+                                       :inline-parameters nil
                                        :title_link        (str "https://testmb.com/question/" card-id)
                                        :attachment-name   "image.png"
                                        :fallback          pulse.test-util/card-name}]}
