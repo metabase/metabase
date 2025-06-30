@@ -102,22 +102,21 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
       resourceName: "Dashboard with Parameters",
     });
 
-    cy.log("set default values for parameters");
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("ID").type("123").blur();
-      cy.wait(600); // wait the debounce duration
-      cy.findByLabelText("Product ID").type("456").blur();
-    });
+    cy.log("set default value for id");
+    getEmbedSidebar().findByLabelText("ID").type("123").blur();
+    H.getIframeBody()
+      .findByTestId("dashboard-parameters-widget-container")
+      .findByLabelText("ID")
+      .should("contain", "123");
 
-    cy.log("default values should show up in the parameter widget");
-    H.getIframeBody().within(() => {
-      parameterWidgetContainer().within(() => {
-        cy.findByLabelText("ID").should("contain", "123");
-        cy.findByLabelText("Product ID").should("contain", "456");
-      });
-    });
+    cy.log("set default value for product id");
+    getEmbedSidebar().findByLabelText("Product ID").type("456").blur();
+    H.getIframeBody()
+      .findByTestId("dashboard-parameters-widget-container")
+      .findByLabelText("Product ID")
+      .should("contain", "456");
 
-    cy.log("default values should be in the code snippet");
+    cy.log("both default values should be in the code snippet");
     getEmbedSidebar().within(() => {
       cy.findByText("Get Code").click();
       codeBlock().should("contain", '"initialParameters"');
@@ -139,9 +138,9 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
     });
 
     cy.log("parameter widget container should not exist");
-    H.getIframeBody().within(() => {
-      parameterWidgetContainer().should("not.exist");
-    });
+    H.getIframeBody()
+      .findByTestId("dashboard-parameters-widget-container")
+      .should("not.exist");
 
     cy.log("code snippet should contain the hidden parameters");
     getEmbedSidebar().within(() => {
@@ -249,6 +248,3 @@ const parameterVisibilityToggle = (slug: string) =>
     .get(`[data-parameter-slug="${slug}"]`);
 
 const codeBlock = () => cy.get(".cm-content");
-
-const parameterWidgetContainer = () =>
-  cy.findByTestId("dashboard-parameters-widget-container");
