@@ -5,6 +5,7 @@ import { useSetting } from "metabase/common/hooks";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import type { SdkIframeEmbedSetupSettings } from "../types";
+import { filterEmptySettings } from "../utils/filter-empty-settings";
 
 // Example target ID for the embed snippet.
 const SNIPPET_EMBED_TARGET = "metabase-embed";
@@ -40,19 +41,7 @@ function getSnippet({
 
   // filter out empty arrays, strings, objects, null and undefined.
   // this keeps the embed settings readable.
-  const filteredSettings = Object.fromEntries(
-    Object.entries(cleanedSettings).filter(([, value]) => {
-      if (Array.isArray(value)) {
-        return value.length > 0;
-      }
-
-      if (typeof value === "object" && value !== null) {
-        return Object.keys(value).length > 0;
-      }
-
-      return value !== undefined && value !== null && value !== "";
-    }),
-  );
+  const filteredSettings = filterEmptySettings(cleanedSettings);
 
   // format the json settings with proper indentation
   const formattedSettings = JSON.stringify(filteredSettings, null, 2)

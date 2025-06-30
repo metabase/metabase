@@ -11,11 +11,20 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
-describe("scenarios > embedding > sdk iframe embed setup > embed parameters", () => {
+const suiteTitle =
+  "scenarios > embedding > sdk iframe embed setup > embed parameters";
+
+H.describeWithSnowplow(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   describe("dashboards with parameters", () => {
@@ -27,11 +36,11 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
         },
         dashboardDetails: {
           name: "Dashboard with Parameters",
-          parameters: dashboardParameters,
+          parameters: DASHBOARD_PARAMETERS,
         },
       }).then(({ body: card }) => {
         H.editDashboardCard(card, {
-          parameter_mappings: dashboardParameters.map((parameter) => ({
+          parameter_mappings: DASHBOARD_PARAMETERS.map((parameter) => ({
             card_id: card.card_id,
             parameter_id: parameter.id,
             target: ["dimension", ["field", ORDERS.ID, null]],
@@ -77,6 +86,12 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
 
       cy.log("set default value for id");
       getEmbedSidebar().findByLabelText("ID").type("123").blur();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_option_changed",
+        event_detail: "initialParameters",
+      });
+
       H.getIframeBody()
         .findByTestId("dashboard-parameters-widget-container")
         .findByLabelText("ID")
@@ -84,6 +99,11 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
 
       cy.log("set default value for product id");
       getEmbedSidebar().findByLabelText("Product ID").type("456").blur();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_option_changed",
+        event_detail: "initialParameters",
+      });
       H.getIframeBody()
         .findByTestId("dashboard-parameters-widget-container")
         .findByLabelText("Product ID")
@@ -108,7 +128,18 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
       cy.log("hide both parameters");
       getEmbedSidebar().within(() => {
         parameterVisibilityToggle("id").click();
+
+        H.expectUnstructuredSnowplowEvent({
+          event: "embed_wizard_option_changed",
+          event_detail: "hiddenParameters",
+        });
+
         parameterVisibilityToggle("product_id").click();
+
+        H.expectUnstructuredSnowplowEvent({
+          event: "embed_wizard_option_changed",
+          event_detail: "hiddenParameters",
+        });
       });
 
       cy.log("parameter widget container should not exist");
@@ -196,6 +227,11 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
       cy.findAllByText("75.41").first().should("be.visible");
     });
 
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "initialSqlParameters",
+    });
+
     getEmbedSidebar().within(() => {
       cy.findByText("Get Code").click();
       codeBlock().should("contain", '"initialSqlParameters"');
@@ -226,7 +262,7 @@ const parameterVisibilityToggle = (slug: string) =>
     .findAllByTestId("parameter-visibility-toggle")
     .get(`[data-parameter-slug="${slug}"]`);
 
-const dashboardParameters = [
+const DASHBOARD_PARAMETERS = [
   {
     name: "ID",
     slug: "id",

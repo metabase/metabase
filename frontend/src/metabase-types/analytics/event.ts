@@ -5,19 +5,8 @@ import type {
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type { Engine, VisualizationDisplay } from "metabase-types/api";
 
-type SimpleEventSchema = {
-  event: string;
-  target_id?: number | null;
-  triggered_from?: string | null;
-  duration_ms?: number | null;
-  result?: string | null;
-  event_detail?: string | null;
-};
-
-type ValidateEvent<
-  T extends SimpleEventSchema &
-    Record<Exclude<keyof T, keyof SimpleEventSchema>, never>,
-> = T;
+import type { EmbedWizardEvent } from "./sdk-iframe-embed-setup-flow";
+import type { ValidateSimpleEvent as ValidateEvent } from "./simple-event";
 
 type CSVUploadClickedEvent = ValidateEvent<{
   event: "csv_upload_clicked";
@@ -208,3 +197,4 @@ export type SimpleEvent =
   | AddDataModalOpenedEvent
   | AddDataModalTabEvent
   | DashboardFilterCreatedEvent;
+  | EmbedWizardEvent;

@@ -12,15 +12,24 @@ const { H } = cy;
 const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
 
-describe("scenarios > embedding > sdk iframe embed setup > get code step", () => {
+const suiteTitle =
+  "scenarios > embedding > sdk iframe embed setup > get code step";
+
+H.describeWithSnowplow(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.enableTracking();
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   it("should select user session auth method by default", () => {
@@ -114,6 +123,12 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
 
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Single sign-on (SSO)").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_auth_selected",
+        event_detail: "sso",
+      });
+
       codeBlock().should("not.contain", "useExistingUserSession");
     });
   });

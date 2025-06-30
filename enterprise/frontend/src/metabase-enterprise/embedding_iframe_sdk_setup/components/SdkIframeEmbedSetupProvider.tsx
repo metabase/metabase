@@ -9,6 +9,7 @@ import { P, match } from "ts-pattern";
 
 import { useUserSetting } from "metabase/common/hooks";
 
+import { trackEmbedWizardSettingsUpdated } from "../analytics";
 import {
   EMBED_FALLBACK_DASHBOARD_ID,
   USER_SETTINGS_DEBOUNCE_MS,
@@ -87,6 +88,8 @@ export const SdkIframeEmbedSetupProvider = ({
   const updateSettings = useCallback(
     (nextSettings: Partial<SdkIframeEmbedSetupSettings>) =>
       setRawSettings((prev) => {
+        trackEmbedWizardSettingsUpdated(nextSettings);
+
         // Merging with a partial setting requires us to cast the type
         const mergedSettings = {
           ...(prev ?? defaultSettings),
