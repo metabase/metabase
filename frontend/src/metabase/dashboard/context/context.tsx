@@ -67,6 +67,11 @@ export type DashboardContextOwnProps = {
         "isEditing" | "downloadsEnabled"
       >) => DashboardActionButtonList);
   isDashcardVisible?: (dc: DashboardCard) => boolean;
+  /**
+   * I want this to be optional, and error out when it's not passed, so it's obvious we need to pass it.
+   * Forcing passing it isn't ideal since we only need to do this in a couple of places
+   */
+  onNewQuestion?: () => void;
 };
 
 export type DashboardContextOwnResult = {
@@ -107,6 +112,7 @@ const DashboardContextProviderInner = ({
   dashcardMenu,
   dashboardActions: initDashboardActions,
   isDashcardVisible,
+  onNewQuestion,
 
   children,
 
@@ -370,6 +376,7 @@ const DashboardContextProviderInner = ({
         onError,
         dashcardMenu,
         dashboardActions,
+        onNewQuestion,
 
         navigateToNewCardFromDashboard,
         isLoading,

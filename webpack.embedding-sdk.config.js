@@ -163,7 +163,7 @@ module.exports = (env) => {
           .execSync("git rev-parse HEAD")
           .toString()
           .trim(),
-        IS_EMBEDDING_SDK: true,
+        IS_EMBEDDING_SDK: "true",
       }),
       new webpack.DefinePlugin({
         "process.env.BUILD_TIME": webpack.DefinePlugin.runtimeValue(

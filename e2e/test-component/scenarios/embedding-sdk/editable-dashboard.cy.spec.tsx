@@ -188,7 +188,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
     });
   });
 
-  it("should not show New Question button in sidebar (metabase#53896)", () => {
+  it("should show New Question button in sidebar (metabase#59246)", () => {
     cy.get("@dashboardId").then((dashboardId) => {
       mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
     });
@@ -196,7 +196,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
     getSdkRoot().within(() => {
       cy.findByText("Add a chart").should("be.visible").click();
 
-      cy.findByText("New Question").should("not.exist");
+      cy.findByText("New Question").should("be.visible");
       cy.findByText("New SQL query").should("not.exist");
     });
   });

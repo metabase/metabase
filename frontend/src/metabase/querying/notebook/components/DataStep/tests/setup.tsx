@@ -6,18 +6,25 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
+import * as envs from "metabase/env";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import {
-  createMockEmbedState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { createMockNotebookStep } from "../../../test-utils";
 import type { NotebookStep } from "../../../types";
 import { NotebookProvider } from "../../Notebook/context";
 import { DataStep } from "../DataStep";
+
+const mockedEnvs = envs as { isEmbeddingSdk: boolean };
+
+jest.mock("metabase/env", () => {
+  return {
+    __esModule: true,
+    ...jest.requireActual("metabase/env"),
+    isEmbeddingSdk: false,
+  };
+});
 
 export interface SetupOpts {
   step?: NotebookStep;
@@ -31,6 +38,8 @@ export const setup = ({
   isEmbeddingSdk = false,
   hasEnterprisePlugins = false,
 }: SetupOpts = {}) => {
+  mockedEnvs.isEmbeddingSdk = isEmbeddingSdk;
+
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
@@ -52,10 +61,6 @@ export const setup = ({
     setupSearchEndpoints([]);
   }
 
-  const storeInitialState = createMockState({
-    embed: createMockEmbedState({ isEmbeddingSdk }),
-  });
-
   renderWithProviders(
     <NotebookProvider>
       <DataStep
@@ -69,7 +74,6 @@ export const setup = ({
         updateQuery={updateQuery}
       />
     </NotebookProvider>,
-    { storeInitialState },
   );
 
   const getNextQuery = (): Lib.Query => {

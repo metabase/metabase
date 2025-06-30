@@ -29,11 +29,6 @@ export const isTest = tryOrDefault(
   false,
 );
 
-export const isJest = tryOrDefault(
-  () => process.env.JEST_WORKER_ID !== undefined,
-  false,
-);
-
 export const shouldLogAnalytics = tryOrDefault(
   () => process.env.MB_LOG_ANALYTICS === "true",
   false,
@@ -45,6 +40,6 @@ export const isChartsDebugLoggingEnabled = tryOrDefault(
 );
 
 export const isEmbeddingSdk = tryOrDefault(
-  () => !!process.env.IS_EMBEDDING_SDK,
+  () => process.env.IS_EMBEDDING_SDK === "true",
   false,
 );
