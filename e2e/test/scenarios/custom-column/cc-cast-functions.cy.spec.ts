@@ -157,6 +157,36 @@ const DATETIME_TEST_CASES: CastTestCase[] = [
     filterValue: "March 11, 2025|12:03",
     expectedRowCount: 1,
   },
+  {
+    name: "StringExpressionWithIsoMode",
+    expression:
+      'datetime(concat("2025-03-", case([ID] = 1, "10", "12"), " 12:03"), "iso")',
+    filterOperator: "Before",
+    filterValue: "March 11, 2025|12:03",
+    expectedRowCount: 1,
+  },
+  {
+    name: "StringWithIsoMode",
+    expression: 'datetime("2025-03-20 12:03", "iso")',
+    filterOperator: "On",
+    filterValue: "March 20, 2025|12:03",
+    expectedRowCount: 200,
+  },
+  {
+    name: "StringWithSimpleMode",
+    expression: 'datetime("20250320120300", "simple")',
+    filterOperator: "On",
+    filterValue: "March 20, 2025|12:03",
+    expectedRowCount: 200,
+  },
+  {
+    name: "StringExpressionWithSimpleMode",
+    expression:
+      'datetime(concat("202503", case([ID] = 1, "10", "12"), "120300"), "simple")',
+    filterOperator: "Before",
+    filterValue: "March 11, 2025|12:03",
+    expectedRowCount: 1,
+  },
 ];
 
 const FLOAT_TEST_CASES: CastTestCase[] = [
