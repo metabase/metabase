@@ -323,7 +323,7 @@ const CONVERSION = defineClauses(
       displayName: "datetime",
       type: "datetime",
       requiresFeature: "expressions/datetime",
-      description: () => t`Converts a datetime string to a datetime.`,
+      description: () => t`Converts a datetime string or bytes to a datetime.`,
       hasOptions: true,
       validator(_value, mode) {
         const validModes = [
@@ -336,8 +336,8 @@ const CONVERSION = defineClauses(
           "unixmicroseconds",
           "unixnanoseconds",
         ];
-        
-        if (mode != undefined && validModes.includes(mode)) {
+
+        if (mode !== undefined && validModes.includes(mode)) {
           return t`Invalid mode: ${mode}`;
         }
       },
