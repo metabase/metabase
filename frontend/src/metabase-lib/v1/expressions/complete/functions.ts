@@ -67,6 +67,7 @@ export function suggestFunctions({ expressionMode, query, metadata }: Options) {
       from: token.start,
       to: token.end,
       options,
+      filter: false,
     };
   };
 }

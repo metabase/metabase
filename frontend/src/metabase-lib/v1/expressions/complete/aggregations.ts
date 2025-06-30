@@ -57,6 +57,7 @@ export function suggestAggregations({
       from: token.start,
       to: token.end,
       options,
+      filter: false,
     };
   };
 }
