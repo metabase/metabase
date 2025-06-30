@@ -225,6 +225,8 @@ export function QueryColumnPicker({
   );
 }
 
+// if there is a separate picker for temporal bucketing or binning,
+// we do not want to include it in the column name
 function getColumnWithoutBucketing(
   column: Lib.ColumnMetadata,
   hasTemporalBucketing: boolean,
