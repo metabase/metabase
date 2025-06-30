@@ -1,17 +1,14 @@
 import { useDroppable } from "@dnd-kit/core";
-import { useMemo } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Flex, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
+import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
 import {
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
-import {
-  isArtificialColumn,
-  isDraggedColumnItem,
-} from "metabase/visualizer/utils";
+import { isArtificialColumn } from "metabase/visualizer/utils";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
 
@@ -32,13 +29,10 @@ export function FunnelVerticalWell() {
     (column) => column.name === settings["funnel.metric"],
   );
 
-  const isHighlighted = useMemo(() => {
-    if (!active || !isDraggedColumnItem(active)) {
-      return false;
-    }
-    const { column } = active.data.current;
-    return isMetric(column);
-  }, [active]);
+  const canHandleActiveItem = useCanHandleActiveItem({
+    active,
+    isSuitableColumn: isMetric,
+  });
 
   const handleRemoveMetric = () => {
     if (metric) {
@@ -53,7 +47,7 @@ export function FunnelVerticalWell() {
   return (
     <SimpleVerticalWell
       hasValues={!!metric}
-      isHighlighted={isHighlighted}
+      isHighlighted={canHandleActiveItem}
       isOver={isOver}
       ref={setNodeRef}
     >

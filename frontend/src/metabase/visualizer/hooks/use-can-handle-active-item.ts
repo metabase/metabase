@@ -23,10 +23,11 @@ export function useCanHandleActiveItem({
 
   const isColumnSelected = useMemo(() => {
     return (column: DatasetColumn, dataSourceId: string) => {
-      return columnValuesMapping.find(
-        (item) =>
-          item.sourceId === dataSourceId && item.originalName === column.name,
-      );
+      return !!columnValuesMapping.find((item) => {
+        return (
+          item.sourceId === dataSourceId && item.originalName === column.name
+        );
+      });
     };
   }, [columnValuesMapping]);
 
