@@ -2,4 +2,4 @@
  ["src" "resources"]
 
  :deps
- {com.databricks/databricks-jdbc {:mvn/version "1.0.5-oss"}}}
+ {com.databricks/databricks-jdbc {:mvn/version "1.0.7-oss"}}}
