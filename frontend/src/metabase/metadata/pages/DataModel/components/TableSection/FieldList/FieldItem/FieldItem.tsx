@@ -96,6 +96,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
       p={0}
       pb={1}
       withBorder
+      onClick={handleClick}
     >
       <Flex
         align="flex-start"
@@ -110,7 +111,6 @@ export const FieldItem = ({ active, field, href }: Props) => {
         to={href}
         w="100%"
         wrap="nowrap"
-        onClick={handleClick}
       >
         <Group flex="0 0 auto" gap="sm" maw="100%" wrap="nowrap">
           <Icon className={S.icon} flex="0 0 auto" name={icon} />
