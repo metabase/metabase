@@ -169,6 +169,11 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                [:from_utf8 expr]))
 
+(defmethod sql.qp/cast-temporal-byte [:starburst :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
+                               [:from_utf8 expr]))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Date Truncation                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -182,10 +187,10 @@
         type-info   (h2x/type-info expr)
         db-type     (h2x/type-info->db-type type-info)]
     (if (and ;; AT TIME ZONE is only valid on these starburst types; if applied to something else (ex: `date`), then
-             ;; an error will be thrown by the query analyzer
+         ;; an error will be thrown by the query analyzer
          db-type
          (re-find #"(?i)^time(?:stamp)?(?:\(\d+\))?(?: with time zone)?$" db-type)
-             ;; if one has already been set, don't do so again
+         ;; if one has already been set, don't do so again
          (not (::in-report-zone? (meta expr)))
          report-zone)
       (-> (h2x/with-database-type-info (h2x/at-time-zone expr report-zone) timestamp-with-time-zone-db-type)

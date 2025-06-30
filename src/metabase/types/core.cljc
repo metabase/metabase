@@ -353,6 +353,7 @@
 
 (derive :Coercion/Bytes->Temporal :Coercion/*)
 (derive :Coercion/YYYYMMDDHHMMSSBytes->Temporal :Coercion/Bytes->Temporal)
+(derive :Coercion/ISO8601Bytes->Temporal :Coercion/Bytes->Temporal)
 
 (derive :Coercion/Number->Temporal :Coercion/*)
 (derive :Coercion/UNIXTime->Temporal :Coercion/Number->Temporal)

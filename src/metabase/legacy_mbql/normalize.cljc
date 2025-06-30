@@ -192,6 +192,12 @@
   [[_ field amount unit]]
   [:datetime-subtract (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
 
+(defmethod normalize-mbql-clause-tokens :datetime
+  [[_ field mode]]
+  (if (nil? mode)
+    [:datetime (normalize-tokens field :ignore-path)]
+    [:datetime (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]))
+
 (defmethod normalize-mbql-clause-tokens :get-week
   [[_ field mode]]
   (if mode

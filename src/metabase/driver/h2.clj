@@ -347,6 +347,11 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                [:utf8tostring expr]))
 
+(defmethod sql.qp/cast-temporal-byte [:h2 :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
+                               [:utf8tostring expr]))
+
 ;; H2 v2 added date_trunc and extract
 (defn- date-trunc [unit expr]
   (-> [:date_trunc (h2x/literal unit) expr]
