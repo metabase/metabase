@@ -22,6 +22,8 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
         .click()
         .should("be.checked");
 
+      capturePersistSettings();
+
       cy.findByLabelText("Show dashboard title")
         .should("be.checked")
         .click()
@@ -65,6 +67,8 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       cy.log("Turn on downloads (was off)");
       cy.findByLabelText("Allow downloads").click().should("be.checked");
 
+      capturePersistSettings();
+
       cy.log("Turn off chart title (was on)");
       cy.findByLabelText("Show chart title").click().should("not.be.checked");
     });
@@ -102,6 +106,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
   it("persists exploration embed options", () => {
     navigateToEmbedOptionsStep({ experience: "exploration" });
+    capturePersistSettings();
 
     H.getIframeBody().within(() => {
       cy.findByText("Orders").click();
@@ -143,6 +148,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
   it("persists brand color customization across page reloads", () => {
     navigateToEmbedOptionsStep({ experience: "dashboard" });
+    capturePersistSettings();
 
     cy.log("1. change brand color to red");
     cy.findByLabelText("#509EE3").click();
@@ -185,8 +191,11 @@ const navigateToEmbedOptionsStep = ({
   getEmbedSidebar().within(() => {
     cy.findByText("Next").click(); // Embed options step
   });
+};
 
-  // We cannot do this in beforeEach, as the intercept would've been captured too early by navigateToEntitySelectionStep.
+// We must capture at the last embed options to change,
+// otherwise we'd miss the last PUT request.
+const capturePersistSettings = () => {
   cy.intercept("PUT", "/api/setting/sdk-iframe-embed-setup-settings").as(
     "persistSettings",
   );
