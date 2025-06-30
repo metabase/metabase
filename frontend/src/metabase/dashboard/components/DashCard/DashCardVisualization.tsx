@@ -436,12 +436,7 @@ export function DashCardVisualization({
   const renderLoadingView = useMemo(() => {
     return function DashboardLoadingView() {
       return (
-        <div
-          style={{
-            padding: "0 1rem 1rem",
-            height: "100%",
-          }}
-        >
+        <div className={cx(CS.px2, CS.pb2, CS.fullHeight)}>
           <ChartSkeleton display={display} />
         </div>
       );
