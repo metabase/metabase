@@ -55,6 +55,14 @@
                        :recipients     (count recipients)
                        :max-recipients throttle-threshold})))))))
 
+(defn- add-mail-args
+  "Adds any additionally needed mail properties needed for sending mail to the given map of args."
+  [args]
+  (let [trust (System/getProperty "mail.smtps.ssl.trust")]
+    (if trust
+      (assoc args :ssl.trust trust)
+      args)))
+
 ;; ## PUBLIC INTERFACE
 
 (defn send-email!
@@ -64,7 +72,7 @@
   If email-rate-limit-per-second is set, this function will throttle the email sending based on the total number of recipients."
   [smtp-credentials email-details]
   (check-email-throttle email-details)
-  (postal/send-message smtp-credentials email-details))
+  (postal/send-message (add-mail-args smtp-credentials) email-details))
 
 (defn- add-ssl-settings [m ssl-setting]
   (merge
@@ -196,7 +204,7 @@
                              :connectiontimeout "1000"
                              :timeout "4000")
                       (add-ssl-settings security))
-          session (doto (Session/getInstance (make-props sender details))
+          session (doto (Session/getInstance (make-props sender (add-mail-args details)))
                     (.setDebug false))]
       (with-open [transport (.getTransport session proto)]
         (.connect transport host port user pass)))
