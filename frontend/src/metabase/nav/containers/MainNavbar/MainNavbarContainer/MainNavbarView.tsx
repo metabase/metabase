@@ -18,6 +18,7 @@ import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import { getHasOwnDatabase } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
+import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import {
   ActionIcon,
   Flex,
@@ -204,30 +205,34 @@ export function MainNavbarView({
             </SidebarSection>
           )}
 
-          <SidebarSection>
-            <ErrorBoundary>
-              <CollectionSectionHeading
-                handleCreateNewCollection={handleCreateNewCollection}
-              />
+          {/* This check also limits the create collection button, but if a user has write
+              access to a collection, then it would show up under regular collections.*/}
+          {regularCollections.length > 0 && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <CollectionSectionHeading
+                  handleCreateNewCollection={handleCreateNewCollection}
+                />
 
-              <Tree
-                data={regularCollections}
-                selectedId={collectionItem?.id}
-                onSelect={onItemSelect}
-                TreeNode={SidebarCollectionLink}
-                role="tree"
-                aria-label="collection-tree"
-              />
-              {isAdmin && (
-                <PaddedSidebarLink
-                  icon="group"
-                  url={OTHER_USERS_COLLECTIONS_URL}
-                >
-                  {t`Other users' personal collections`}
-                </PaddedSidebarLink>
-              )}
-            </ErrorBoundary>
-          </SidebarSection>
+                <Tree
+                  data={regularCollections}
+                  selectedId={collectionItem?.id}
+                  onSelect={onItemSelect}
+                  TreeNode={SidebarCollectionLink}
+                  role="tree"
+                  aria-label="collection-tree"
+                />
+                {isAdmin && (
+                  <PaddedSidebarLink
+                    icon="group"
+                    url={OTHER_USERS_COLLECTIONS_URL}
+                  >
+                    {t`Other users' personal collections`}
+                  </PaddedSidebarLink>
+                )}
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
 
           <SidebarSection>
             <ErrorBoundary>
@@ -272,21 +277,26 @@ interface CollectionSectionHeadingProps {
 function CollectionSectionHeading({
   handleCreateNewCollection,
 }: CollectionSectionHeadingProps) {
+  const canWriteToCollection = useSelector(getUserCanWriteToCollections);
+
   return (
     <Flex align="center" justify="space-between">
       <SidebarHeading>{t`Collections`}</SidebarHeading>
-      <Tooltip label={t`Create a new collection`}>
-        <ActionIcon
-          aria-label={t`Create a new collection`}
-          color="var(--mb-color-text-medium)"
-          onClick={() => {
-            trackNewCollectionFromNavInitiated();
-            handleCreateNewCollection();
-          }}
-        >
-          <Icon name="add" />
-        </ActionIcon>
-      </Tooltip>
+      {canWriteToCollection && (
+        <Tooltip label={t`Create a new collection`}>
+          <ActionIcon
+            data-testid="navbar-new-collection-button"
+            aria-label={t`Create a new collection`}
+            color="var(--mb-color-text-medium)"
+            onClick={() => {
+              trackNewCollectionFromNavInitiated();
+              handleCreateNewCollection();
+            }}
+          >
+            <Icon name="add" />
+          </ActionIcon>
+        </Tooltip>
+      )}
     </Flex>
   );
 }

@@ -1,7 +1,10 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
+import {
+  EXTERNAL_USERS_NO_ACCESS_DATABASE,
+  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
+} from "metabase/admin/permissions/constants/messages";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -89,6 +92,7 @@ export const buildDataModelPermission = (
   entityId: EntityId,
   groupId: number,
   isAdmin: boolean,
+  isExternal: boolean,
   permissions: GroupsPermissions,
   defaultGroup: Group,
   permissionSubject: PermissionSubject,
@@ -132,12 +136,16 @@ export const buildDataModelPermission = (
   return {
     permission: DataPermission.DATA_MODEL,
     type: DataPermissionType.DATA_MODEL,
-    isDisabled: isAdmin,
+    isDisabled: isAdmin || isExternal,
     warning,
     confirmations,
     value,
     isHighlighted: isAdmin,
-    disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+    disabledTooltip: isAdmin
+      ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+      : isExternal
+        ? EXTERNAL_USERS_NO_ACCESS_DATABASE
+        : null,
     options: [
       DATA_MODEL_PERMISSION_OPTIONS.none,
       ...(hasChildEntities ? [DATA_MODEL_PERMISSION_OPTIONS.controlled] : []),

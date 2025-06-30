@@ -27,7 +27,7 @@ export const getGroupsSidebar = createSelector(
   (groups: Group[][], params) => {
     const { groupId } = params;
 
-    const [pinnedGroups, unpinnedGroups] = groups;
+    const [pinnedGroups, externalGroups, internalGroups] = groups;
 
     const pinnedGroupItems = pinnedGroups.map((group) => ({
       ...group,
@@ -35,15 +35,21 @@ export const getGroupsSidebar = createSelector(
       icon: "bolt",
     }));
 
-    const unpinnedGroupItems = unpinnedGroups.map((group) => ({
+    const internalGroupItems = internalGroups.map((group) => ({
       ...group,
       name: getGroupNameLocalized(group),
       icon: "group",
     }));
 
+    const externalGroupItems = externalGroups.map((group) => ({
+      ...group,
+      name: getGroupNameLocalized(group),
+      icon: "globe",
+    }));
+
     return {
       selectedId: groupId,
-      entityGroups: [pinnedGroupItems, unpinnedGroupItems],
+      entityGroups: [pinnedGroupItems, internalGroupItems, externalGroupItems],
       entityViewFocus: "group",
       filterPlaceholder: t`Search for a group`,
     };

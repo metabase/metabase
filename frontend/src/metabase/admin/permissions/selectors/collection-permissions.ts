@@ -18,7 +18,7 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   Collection,
   CollectionId,
@@ -32,7 +32,10 @@ import type {
 } from "metabase-types/store";
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../constants/messages";
+import {
+  EXTERNAL_USERS_NO_ACCESS_COLLECTION,
+  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
+} from "../constants/messages";
 import type { DataPermissionValue } from "../types";
 
 import { getPermissionWarningModal } from "./confirmations";
@@ -239,6 +242,7 @@ export const getCollectionsPermissionEditor = createSelector(
 
     const entities = groups.map((group: GroupType) => {
       const isAdmin = isAdminGroup(group);
+      const isExternal = PLUGIN_TENANTS.isExternalUsersGroup(group);
 
       const defaultGroupPermission = getCollectionPermission(
         permissions,
@@ -257,6 +261,7 @@ export const getCollectionsPermissionEditor = createSelector(
       ];
 
       const isIACollection = isInstanceAnalyticsCollection(collection);
+      const isTenantCollection = PLUGIN_TENANTS.isTenantCollection(collection);
 
       const options = isIACollection
         ? [COLLECTION_OPTIONS.read, COLLECTION_OPTIONS.none]
@@ -268,7 +273,12 @@ export const getCollectionsPermissionEditor = createSelector(
 
       const disabledTooltip = isIACollection
         ? PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE
-        : UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+        : isExternal
+          ? EXTERNAL_USERS_NO_ACCESS_COLLECTION
+          : UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+
+      const disabled =
+        (isTenantCollection && !isExternal) || isAdmin || isExternal;
 
       return {
         id: group.id,
@@ -277,8 +287,8 @@ export const getCollectionsPermissionEditor = createSelector(
           {
             toggleLabel,
             hasChildren,
-            isDisabled: isAdmin,
-            disabledTooltip: isAdmin ? disabledTooltip : null,
+            isDisabled: disabled,
+            disabledTooltip: isAdmin || isExternal ? disabledTooltip : null,
             value: getCollectionPermission(
               permissions,
               group.id,

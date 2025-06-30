@@ -1,5 +1,7 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
+import type { TagType } from "metabase/api/tags";
+
 export const ENTERPRISE_TAG_TYPES = [
   "scim",
   "metabot",
@@ -8,7 +10,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "gsheets-status",
 ] as const;
 
-export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
+export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
 
 export function tag(
   type: EnterpriseTagType,

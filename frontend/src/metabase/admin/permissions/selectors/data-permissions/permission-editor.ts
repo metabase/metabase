@@ -9,6 +9,7 @@ import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import {
   PLUGIN_AUDIT,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import type Schema from "metabase-lib/v1/metadata/Schema";
@@ -185,10 +186,17 @@ export const getDatabasesPermissionEditor = createSelector(
 
     const isAdmin = isAdminGroup(group);
     const defaultGroup = _.find(groups, isDefaultGroup);
+    const externalUsersGroup = _.find(
+      groups,
+      PLUGIN_TENANTS.isExternalUsersGroup,
+    );
 
     if (!defaultGroup) {
       throw new Error("No default group found");
     }
+
+    const isExternal =
+      !!externalUsersGroup && externalUsersGroup.id === groupId;
 
     const hasSingleSchema =
       databaseId != null &&
@@ -217,9 +225,10 @@ export const getDatabasesPermissionEditor = createSelector(
               entityId,
               groupId,
               isAdmin,
+              isExternal,
               permissions,
               originalPermissions,
-              defaultGroup,
+              isExternal ? externalUsersGroup : defaultGroup,
               database,
             ),
           };
@@ -240,9 +249,10 @@ export const getDatabasesPermissionEditor = createSelector(
               entityId,
               groupId,
               isAdmin,
+              isExternal,
               permissions,
               originalPermissions,
-              defaultGroup,
+              isExternal ? externalUsersGroup : defaultGroup,
               database,
             ),
           };
@@ -270,9 +280,10 @@ export const getDatabasesPermissionEditor = createSelector(
               entityId,
               groupId,
               isAdmin,
+              isExternal,
               permissions,
               originalPermissions,
-              defaultGroup,
+              isExternal ? externalUsersGroup : defaultGroup,
               database,
             ),
           };
@@ -369,6 +380,10 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
       const sortedGroups = groups.flat();
 
       const defaultGroup = _.find(sortedGroups, isDefaultGroup);
+      const externalUsersGroup = _.find(
+        sortedGroups,
+        PLUGIN_TENANTS.isExternalUsersGroup,
+      );
 
       if (!defaultGroup) {
         throw new Error("No default group found");
@@ -379,6 +394,8 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
 
       const entities = sortedGroups.map((group) => {
         const isAdmin = isAdminGroup(group);
+        const isExternal =
+          !!externalUsersGroup && PLUGIN_TENANTS.isExternalUsersGroup(group);
         let groupPermissions;
 
         if (tableId != null) {
@@ -390,9 +407,10 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             },
             group.id,
             isAdmin,
+            isExternal,
             permissions,
             originalPermissions,
-            defaultGroup,
+            isExternal ? externalUsersGroup : defaultGroup,
             database,
           );
         } else if (schemaName != null) {
@@ -403,9 +421,10 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             },
             group.id,
             isAdmin,
+            isExternal,
             permissions,
             originalPermissions,
-            defaultGroup,
+            isExternal ? externalUsersGroup : defaultGroup,
             database,
           );
         } else if (databaseId != null) {
@@ -415,9 +434,10 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             },
             group.id,
             isAdmin,
+            isExternal,
             permissions,
             originalPermissions,
-            defaultGroup,
+            isExternal ? externalUsersGroup : defaultGroup,
             database,
           );
         }
