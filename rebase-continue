@@ -1,24 +1,3 @@
 {
-  "continuations": [
-    {
-      "command": [
-        "branch",
-        "delete",
-        "--force",
-        "emb-408-add-embed-options-for-questions-dashboards-and-exploration",
-        "emb-433-sso-authentication-in-embedjs-for-new-iframe-embedding",
-        "emb-450-ability-to-select-auth-method-in-new-iframe-embedding",
-        "new-iframe-embedding-rename-to-embed-js",
-        "emb-431-extract-jwt-saml-auth-functions-to-an-isolated-shared-module",
-        "emb-507-add-an-option-to-use-the-existing-user-session-in-the-new",
-        "emb-291-expose-separate-pdf-and-card-result-download-toggles-in",
-        "emb-435-ability-to-select-preferred-authentication-method-in-the-sdk",
-        "emb-442-tests-for-sso-authentication-for-new-iframe-embedding",
-        "emb-320-setup-new-interactive-embedding-route-with-ee-plugins",
-        "new-iframe-embedding",
-        "emb-355-setup-end-to-end-tests-for-using-the-embedv1js-library"
-      ],
-      "branch": "emb-506-live-previews-for-new-iframe-embed-flow"
-    }
-  ]
+  "continuations": null
 }
