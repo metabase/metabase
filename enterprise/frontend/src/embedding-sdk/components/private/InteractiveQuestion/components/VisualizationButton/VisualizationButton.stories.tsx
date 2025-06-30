@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { InteractiveQuestion } from "embedding-sdk";
+import { InteractiveQuestion } from "embedding-sdk/components/public";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Button, Stack, Text } from "metabase/ui";
 

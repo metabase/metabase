@@ -1,12 +1,16 @@
+import { useEffect } from "react";
 import { GlobalTypes } from "@storybook/types";
 import { initialize, mswLoader } from "msw-storybook-addon";
+import type { StoryFn, StoryContext } from "@storybook/react";
+
+import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
+
+import { availableLocales } from "./constants";
+import { initSdkBundle } from "../enterprise/frontend/src/embedding-sdk/lib/public";
 
 // @ts-expect-error: See metabase/lib/delay
 // This will skip the skippable delays in stories
 window.METABASE_REMOVE_DELAYS = true;
-
-import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
-import { availableLocales } from "./constants";
 
 const parameters = {
   actions: { argTypesRegex: "^on[A-Z].*" },
@@ -18,7 +22,19 @@ const parameters = {
   },
 };
 
-const decorators = []; // No decorators for Embedding SDK stories, as we want to simulate real use cases
+// We simulate SDK bundle loading timeout
+const INIT_SDK_BUNDLE_TIMEOUT = 1000;
+const decorators = [
+  (Story: StoryFn, context: StoryContext) => {
+    useEffect(() => {
+      const handle = setTimeout(initSdkBundle, INIT_SDK_BUNDLE_TIMEOUT);
+
+      return () => clearTimeout(handle);
+    }, [context.name]);
+
+    return <Story />;
+  },
+];
 
 const globalTypes: GlobalTypes = {
   sdkTheme: {

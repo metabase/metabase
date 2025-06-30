@@ -7,7 +7,7 @@ module.exports = {
       webpack: {
         config: path.resolve(
           __dirname,
-          "../../../../webpack.embedding-sdk.config.js",
+          "../../../../webpack.embedding-sdk-bundle.config.js",
         ),
         typescript: true,
       },

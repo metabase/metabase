@@ -1,4 +1,4 @@
-import { InteractiveQuestion } from "embedding-sdk";
+import { InteractiveQuestion } from "embedding-sdk/components/public";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, type PopoverProps } from "metabase/ui";
 

@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { type ComponentProps, useState } from "react";
 
-import { InteractiveQuestion } from "embedding-sdk";
+import { InteractiveQuestion } from "embedding-sdk/components/public";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Button, Modal, Stack } from "metabase/ui";
 

@@ -66,6 +66,7 @@ cypress.env.json
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
 /resources/embedding-sdk
+/resources/embedding-sdk-bundle
 /resources/i18n/*.edn
 /resources/instance_analytics.zip
 /resources/license-backend-third-party.txt

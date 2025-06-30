@@ -1,0 +1,21 @@
+import { getStorybookSdkAuthConfigForUser } from "embedding-sdk/test/CommonSdkStoryWrapper";
+
+import { MetabaseProvider } from "../../MetabaseProvider";
+
+import { StaticDashboard } from "./StaticDashboard";
+
+const DASHBOARD_ID = (window as any).DASHBOARD_ID || 1;
+const config = getStorybookSdkAuthConfigForUser("admin");
+
+export default {
+  title: "EmbeddingSDK/StaticDashboard/public",
+  parameters: {
+    layout: "fullscreen",
+  },
+};
+
+export const Default = () => (
+  <MetabaseProvider authConfig={config}>
+    <StaticDashboard dashboardId={DASHBOARD_ID} />
+  </MetabaseProvider>
+);
