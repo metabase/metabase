@@ -35,6 +35,7 @@ describe("suggestFunctions", () => {
   const RESULTS = {
     from: 0,
     to: 4,
+    filter: false,
     options: [
       {
         label: "concat",
@@ -75,36 +76,6 @@ describe("suggestFunctions", () => {
         type: "function",
         icon: "function",
         apply: expect.any(Function),
-      },
-      {
-        apply: expect.any(Function),
-        displayLabel: "coalesce",
-        icon: "function",
-        label: "coalesce",
-        matches: [
-          [0, 1],
-          [6, 6],
-        ],
-        type: "function",
-      },
-      {
-        apply: expect.any(Function),
-        displayLabel: "month",
-        icon: "function",
-        label: "month",
-        matches: [[1, 2]],
-        type: "function",
-      },
-      {
-        apply: expect.any(Function),
-        displayLabel: "monthName",
-        icon: "function",
-        label: "monthName",
-        matches: [
-          [1, 2],
-          [5, 5],
-        ],
-        type: "function",
       },
     ],
   };
@@ -258,11 +229,6 @@ describe("suggestFunctions", () => {
       "now",
       "intervalStartingFrom",
       "interval",
-      "contains",
-      "minute",
-      "month",
-      "length",
-      "monthName",
     ]);
   });
 });

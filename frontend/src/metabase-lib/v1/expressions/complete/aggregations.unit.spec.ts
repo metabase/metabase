@@ -57,6 +57,8 @@ describe("suggestAggregations", () => {
 
     const RESULTS = {
       from: 0,
+      to: 4,
+      filter: false,
       options: [
         {
           apply: expect.any(Function),
@@ -86,20 +88,7 @@ describe("suggestAggregations", () => {
           ],
           type: "aggregation",
         },
-        {
-          displayLabel: "CumulativeSum",
-          label: "CumulativeSum",
-          matches: [
-            [0, 1],
-            [3, 3],
-            [11, 11],
-          ],
-          icon: "function",
-          type: "aggregation",
-          apply: expect.any(Function),
-        },
       ],
-      to: 4,
     };
 
     const RESULTS_NO_TEMPLATE = {
@@ -122,6 +111,7 @@ describe("suggestAggregations", () => {
       expect(results).toEqual({
         from: 0,
         to: 11,
+        filter: false,
         options: [],
       });
     });
@@ -135,6 +125,7 @@ describe("suggestAggregations", () => {
       expect(results).toEqual({
         from: 0,
         to: 11,
+        filter: false,
         options: [
           {
             label: "StandardDeviation",
