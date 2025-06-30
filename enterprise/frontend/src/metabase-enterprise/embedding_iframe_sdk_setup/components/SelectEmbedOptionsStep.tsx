@@ -29,8 +29,7 @@ export const SelectEmbedOptionsStep = () => {
     [theme, updateSettings],
   );
 
-  // Titles are only applicable to dashboards and interactive questions
-  const showTitleOption =
+  const isDashboardOrInteractiveQuestion =
     settings.dashboardId ||
     (settings.questionId && settings.isDrillThroughEnabled);
 
@@ -43,23 +42,23 @@ export const SelectEmbedOptionsStep = () => {
           </Text>
           <Stack gap="md">
             {isQuestionOrDashboardEmbed && (
-              <>
-                <Checkbox
-                  label={t`Allow users to drill through on data points`}
-                  checked={settings.isDrillThroughEnabled ?? false}
-                  onChange={(e) =>
-                    updateSettings({ isDrillThroughEnabled: e.target.checked })
-                  }
-                />
+              <Checkbox
+                label={t`Allow users to drill through on data points`}
+                checked={settings.isDrillThroughEnabled ?? false}
+                onChange={(e) =>
+                  updateSettings({ isDrillThroughEnabled: e.target.checked })
+                }
+              />
+            )}
 
-                <Checkbox
-                  label={t`Allow downloads`}
-                  checked={settings.withDownloads ?? false}
-                  onChange={(e) =>
-                    updateSettings({ withDownloads: e.target.checked })
-                  }
-                />
-              </>
+            {isDashboardOrInteractiveQuestion && (
+              <Checkbox
+                label={t`Allow downloads`}
+                checked={settings.withDownloads ?? false}
+                onChange={(e) =>
+                  updateSettings({ withDownloads: e.target.checked })
+                }
+              />
             )}
 
             {isExplorationEmbed && (
@@ -96,7 +95,7 @@ export const SelectEmbedOptionsStep = () => {
           ))}
         </Group>
 
-        {showTitleOption && (
+        {isDashboardOrInteractiveQuestion && (
           <>
             <Divider mb="md" />
 
