@@ -1,9 +1,18 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { ComponentProps, MouseEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import cx from "classnames";
+import type { ComponentProps, MouseEvent, RefObject } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import CS from "metabase/css/core/index.css";
 import { DashCardParameterMapper } from "metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper";
 import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -14,9 +23,11 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import resizeObserver from "metabase/lib/resize-observer";
 import { isEmpty } from "metabase/lib/validate";
+import { getSetting } from "metabase/selectors/settings";
 import { Flex, Icon, Menu } from "metabase/ui";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
@@ -82,29 +93,6 @@ export function Heading({
   );
   const hasVariables = mappingOptions.length > 0;
 
-  const container = useRef<HTMLDivElement>(null);
-  const [isNarrow, setIsNarrow] = useState(false);
-
-  useEffect(() => {
-    const element = container.current;
-    if (!element) {
-      return;
-    }
-
-    const handleResize = () => {
-      if (!container.current) {
-        return;
-      }
-
-      setIsNarrow(container.current.getBoundingClientRect().width < 600);
-    };
-
-    resizeObserver.subscribe(element, handleResize);
-    return () => {
-      resizeObserver.unsubscribe(element, handleResize);
-    };
-  }, [isEditing]);
-
   const translatedText = useMemo(() => tc(settings.text), [settings.text, tc]);
 
   // handles a case when settings are updated externally
@@ -128,6 +116,64 @@ export function Heading({
   const hasContent = !isEmpty(settings.text);
   const placeholder = t`You can connect widgets to {{variables}} in heading cards.`;
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const headingContentRef = useRef<HTMLDivElement | HTMLInputElement>(null);
+  const parametersListRef = useRef<HTMLDivElement>(null);
+
+  const [isNarrow, setIsNarrow] = useState(false);
+  const fontFamily = useSelector((state) =>
+    getSetting(state, "application-font"),
+  );
+
+  const checkForCollision = useCallback(() => {
+    if (
+      !containerRef.current ||
+      !parametersListRef.current ||
+      inlineParameters.length === 0
+    ) {
+      return false;
+    }
+
+    const { width: containerWidth } =
+      containerRef.current.getBoundingClientRect();
+    const { width: parametersWidth } =
+      parametersListRef.current.getBoundingClientRect();
+
+    const headingWidth = measureTextWidth(content, {
+      family: fontFamily,
+      size: "22px",
+      weight: 700,
+    });
+
+    const bufferSpace = 24;
+    const totalRequiredWidth = headingWidth + parametersWidth + bufferSpace;
+
+    return totalRequiredWidth > containerWidth;
+  }, [content, fontFamily, inlineParameters.length]);
+
+  useEffect(() => {
+    if (isEditingParameter) {
+      return;
+    }
+
+    const updateCollisionState = () => {
+      const shouldCollapse = checkForCollision();
+      setIsNarrow(shouldCollapse);
+    };
+
+    updateCollisionState();
+
+    const element = containerRef.current;
+    if (!element) {
+      return;
+    }
+
+    resizeObserver.subscribe(element, updateCollisionState);
+    return () => {
+      resizeObserver.unsubscribe(element, updateCollisionState);
+    };
+  }, [checkForCollision, isEditing, isEditingParameter]);
+
   let leftContent: JSX.Element | null;
 
   if (hasVariables && isEditingParameter) {
@@ -141,6 +187,7 @@ export function Heading({
         isEditing={isEditing}
         onMouseDown={preventDragging}
         hasFilters={inlineParameters.length > 0}
+        ref={headingContentRef}
       >
         {hasContent ? content : placeholder}
       </HeadingContent>
@@ -162,6 +209,7 @@ export function Heading({
             onUpdateVisualizationSettings({ text: textValue });
           }
         }}
+        ref={headingContentRef as RefObject<HTMLInputElement>}
       />
     );
   }
@@ -172,7 +220,7 @@ export function Heading({
         isEmpty={!hasContent}
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
-        ref={container}
+        ref={containerRef}
         style={{
           paddingRight: isNarrow && isShort ? "2.5rem" : undefined,
         }}
@@ -183,6 +231,7 @@ export function Heading({
             isNarrow={isNarrow}
             parameters={inlineParameters}
             widgetsVariant="subtle"
+            ref={parametersListRef}
           />
         )}
       </InputContainer>
@@ -197,11 +246,12 @@ export function Heading({
       justify="space-between"
       pl="0.75rem"
       style={{ overflow: "hidden" }}
-      ref={container}
+      ref={containerRef}
     >
       <HeadingContent
         data-testid="saved-dashboard-heading-content"
         hasFilters={inlineParameters.length > 0}
+        ref={headingContentRef}
       >
         {content}
       </HeadingContent>
@@ -210,6 +260,7 @@ export function Heading({
           isNarrow={isNarrow}
           parameters={inlineParameters}
           widgetsVariant="subtle"
+          ref={parametersListRef}
         />
       )}
     </Flex>
@@ -221,68 +272,82 @@ interface ParametersListProps
   isNarrow: boolean;
 }
 
-function ParametersList(props: ParametersListProps) {
-  const { isNarrow, ...rest } = props;
+const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
+  function ParametersList(props, ref) {
+    const { isNarrow, ...rest } = props;
 
-  const { editingParameter } = useDashboardContext();
+    const { editingParameter } = useDashboardContext();
 
-  const parametersWithValues = useMemo(
-    () => rest.parameters.filter((p) => p.value != null),
-    [rest.parameters],
-  );
+    const parametersWithValues = useMemo(
+      () => rest.parameters.filter((p) => p.value != null),
+      [rest.parameters],
+    );
 
-  const parametersListCommonProps = {
-    ...rest,
-    widgetsVariant: "subtle" as const,
-    isSortable: false,
-  };
+    const parametersListCommonProps = {
+      ...rest,
+      widgetsVariant: "subtle" as const,
+      isSortable: false,
+    };
 
-  if (isNarrow) {
-    if (editingParameter) {
-      const parameters = rest.parameters.filter(
-        (p) => p.id === editingParameter.id,
-      );
-      // If a parameter is being edited, we don't show the dropdown
-      return (
-        <DashboardParameterList
-          {...parametersListCommonProps}
-          parameters={parameters}
-        />
-      );
-    }
+    const renderContent = () => {
+      if (isNarrow) {
+        if (editingParameter) {
+          const parameters = rest.parameters.filter(
+            (p) => p.id === editingParameter.id,
+          );
+          return (
+            <DashboardParameterList
+              {...parametersListCommonProps}
+              parameters={parameters}
+            />
+          );
+        }
+        return (
+          <Menu>
+            <Menu.Target data-testid="show-filter-parameter-button">
+              <ToolbarButton
+                aria-label={t`Show filters`}
+                tooltipLabel={t`Show filters`}
+                onClick={(e) => {
+                  // To avoid focusing the input when clicking the button
+                  e.stopPropagation();
+                }}
+              >
+                <Icon name="filter" />
+                {parametersWithValues.length > 0 && (
+                  <span data-testid="show-filter-parameter-count">
+                    &nbsp;{parametersWithValues.length}
+                  </span>
+                )}
+              </ToolbarButton>
+            </Menu.Target>
+            <Menu.Dropdown
+              data-testid="show-filter-parameter-dropdown"
+              style={{ overflow: "visible" }}
+            >
+              <DashboardParameterList
+                {...parametersListCommonProps}
+                widgetsWithinPortal={false}
+                vertical
+              />
+            </Menu.Dropdown>
+          </Menu>
+        );
+      }
+
+      return <DashboardParameterList {...parametersListCommonProps} />;
+    };
 
     return (
-      <Menu>
-        <Menu.Target data-testid="show-filter-parameter-button">
-          <ToolbarButton
-            aria-label={t`Show filters`}
-            tooltipLabel={t`Show filters`}
-            onClick={(e) => {
-              // To avoid focusing the input when clicking the button
-              e.stopPropagation();
-            }}
-          >
-            <Icon name="filter" />
-            {parametersWithValues.length > 0 && (
-              <span data-testid="show-filter-parameter-count">
-                &nbsp;{parametersWithValues.length}
-              </span>
-            )}
-          </ToolbarButton>
-        </Menu.Target>
-        <Menu.Dropdown
-          data-testid="show-filter-parameter-dropdown"
-          style={{ overflow: "visible" }}
-        >
-          <DashboardParameterList
-            {...parametersListCommonProps}
-            widgetsWithinPortal={false}
-            vertical
-          />
-        </Menu.Dropdown>
-      </Menu>
+      <>
+        {/* Invisible expanded parameter list for measurements */}
+        <DashboardParameterList
+          {...parametersListCommonProps}
+          className={cx(CS.absolute, CS.hidden)}
+          ref={ref}
+        />
+        {renderContent()}
+      </>
     );
-  }
-
-  return <DashboardParameterList {...parametersListCommonProps} />;
-}
+  },
+);
