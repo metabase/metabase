@@ -82,6 +82,7 @@ export const RemappingPicker = ({
     () => hydrateTableFields(fkTargetTableData),
     [fkTargetTableData],
   );
+  const tables = useMemo(() => [fkTargetTable], [fkTargetTable]);
   const { data: fieldValues } = useGetFieldValuesQuery(id);
 
   const value = useMemo(() => getValue(field), [field]);
@@ -191,7 +192,7 @@ export const RemappingPicker = ({
               selectedTable={fkTargetTable}
               selectedTableId={fkTargetTable?.id}
               setFieldFn={handleFkRemappingFieldChange}
-              tables={[fkTargetTable]}
+              tables={tables}
               triggerElement={
                 <Select
                   data={[
