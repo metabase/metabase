@@ -16,22 +16,34 @@ export function DevInstanceBanner() {
   return (
     <Alert icon={<Icon name="info_filled" />}>
       {isHosted && (
-        <Text lh="1.25rem">
-          {t`This instance is in development mode and can be used for development or testing purposes only.`}
-          <ExternalLink style={{ fontWeight: "bold" }} href={getStoreUrl()}>
-            {t`Manage instance`}
-          </ExternalLink>
-        </Text>
+        <BannerBody
+          copyText={t`This instance is in development mode and can be used for development or testing purposes only.`}
+          linkText={t`Manage instance`}
+        />
       )}
       {!isHosted && (
-        <Text lh="1.25rem">
-          {t`This instance is in development mode and can be used for development or testing purposes only. To spin up more development instances, use your development license token.`}
-          <ExternalLink
-            style={{ fontWeight: "bold" }}
-            href={getStoreUrl()}
-          >{t`Get your token`}</ExternalLink>
-        </Text>
+        <BannerBody
+          copyText={t`This instance is in development mode and can be used for development or testing purposes only. To spin up more development instances, use your development license token.`}
+          linkText={t`Get your token`}
+        />
       )}
     </Alert>
+  );
+}
+
+function BannerBody({
+  copyText,
+  linkText,
+}: {
+  linkText: string;
+  copyText: string;
+}) {
+  return (
+    <Text lh="1.25rem">
+      {copyText}{" "}
+      <ExternalLink style={{ fontWeight: "bold" }} href={getStoreUrl()}>
+        {linkText}
+      </ExternalLink>
+    </Text>
   );
 }
