@@ -285,7 +285,7 @@
         (.setStackTrace cleaned)))
     e))
 
-(defn- instrumented-arity [error-context fixup-stacktrace? [_=> input-schema output-schema]]
+(defn- instrumented-arity [error-context [_=> input-schema output-schema]]
   (let [input-schema           (if (= input-schema :cat)
                                  [:cat]
                                  input-schema)
@@ -298,25 +298,21 @@
                                        (validate-output ~error-context ~output-schema))
                                  result-form)]
     `(~arglist
-      ~(if fixup-stacktrace?
-         `(try
-            ~@input-validation-forms
-            ~result-form
-            (catch Exception ~'error
-              (throw (fixup-stacktrace ~'error))))
-         `(do
-            ~@input-validation-forms
-            ~result-form)))))
+      (try
+        ~@input-validation-forms
+        ~result-form
+        (catch Exception ~'error
+          (throw (fixup-stacktrace ~'error)))))))
 
-(defn- instrumented-fn-tail [error-context fixup-stacktrace? [schema-type :as schema]]
+(defn- instrumented-fn-tail [error-context [schema-type :as schema]]
   (case schema-type
     :=>
-    [(instrumented-arity error-context fixup-stacktrace? schema)]
+    [(instrumented-arity error-context schema)]
 
     :function
     (let [[_function & schemas] schema]
       (for [schema schemas]
-        (instrumented-arity error-context fixup-stacktrace? schema)))))
+        (instrumented-arity error-context schema)))))
 
 (defn instrumented-fn-form
   "Given a `fn-tail` like
@@ -329,9 +325,9 @@
 
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
-  [error-context fixup-stacktrace? parsed & [fn-name]]
+  [error-context parsed & [fn-name]]
   `(let [~'&f ~(deparameterized-fn-form parsed fn-name)]
-     (core/fn ~@(instrumented-fn-tail error-context fixup-stacktrace? (fn-schema parsed)))))
+     (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
@@ -397,13 +393,12 @@
   fix this later."
   [& fn-tail]
   (let [parsed (parse-fn-tail fn-tail)
-        instrument? (instrument-ns? *ns*)]
+        instrument? (macros/case
+                     :cljs false
+                     :clj (instrument-ns? *ns*))]
     (if-not instrument?
       (deparameterized-fn-form parsed)
       (let [error-context (if (symbol? (first fn-tail))
                             ;; We want the quoted symbol of first fn-tail:
-                            {:fn-name (list 'quote (first fn-tail))} {})
-            fixup-stacktrace? (macros/case
-                                :clj true
-                                :cljs false)]
-        (instrumented-fn-form error-context fixup-stacktrace? parsed)))))
+                            {:fn-name (list 'quote (first fn-tail))} {})]
+        (instrumented-fn-form error-context parsed)))))
