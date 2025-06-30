@@ -2,10 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
-import {
-  getFieldDisplayName,
-  getRawTableFieldId,
-} from "metabase/metadata/utils/field";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import * as Lib from "metabase-lib";
 import { getRemappings } from "metabase-lib/v1/queries/utils/field";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
@@ -108,7 +105,7 @@ export function hydrateTableFields(
     ...table,
     fields: table.fields?.map((field) => ({
       ...field,
-      displayName: () => getFieldDisplayName(field),
+      displayName: () => field.display_name,
       icon: () => getColumnIcon(Lib.legacyColumnTypeInfo(field)),
       table,
     })),
