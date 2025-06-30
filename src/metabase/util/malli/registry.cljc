@@ -14,6 +14,7 @@
 ;;; for clj we use perf/prewalk
 (comment walk/prewalk)
 
+;;; weak refs?
 (defonce ^:private cache (atom {}))
 
 (defn- schema-cache-key
@@ -92,21 +93,26 @@
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
   (let [schema-key (schema-cache-key schema)
-        cache-line (get @cache k)]
-    (if-let [cached-val (get cache-line schema-key)]
+        schema-fingerprint (schema-fingerprint schema-key)
+        c @cache
+        schema-key' (get-in c [:schema-fingerprint k schema-fingerprint])]
+    (if-let [cached-val (get (get c k) schema-key)]
       cached-val
-      (let [schema-fingerprint (schema-fingerprint schema-key)
-            v (value-thunk)]
-        (when-let [schema-key' (get-in @cache [:schema-fingerprint k schema-fingerprint])]
+      (let [v (value-thunk)]
+        (when schema-key'
           (throw (ex-info "clashing schema" {:schema schema
                                              :key schema-key
                                              :existing-key schema-key'
                                              :fingerprint schema-fingerprint
                                              :class (#?(:clj class :cljs type) schema)
-                                             :cache @cache})))
-        (swap! cache #(-> %
-                          (assoc-in [k schema-key] v)
-                          (assoc-in [:schema-fingerprint k schema-fingerprint] schema-key)))
+                                             ;; :cache @cache
+                                             })))
+        ;; wip check for par tests
+        (swap! cache #(if (get-in % [k schema-key])
+                        %
+                        (-> %
+                            (assoc-in [k schema-key] v)
+                            (assoc-in [:schema-fingerprint k schema-fingerprint] schema-key))))
         v))))
 
 (defn validator
