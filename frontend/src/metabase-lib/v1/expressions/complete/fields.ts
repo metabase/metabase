@@ -3,6 +3,7 @@ import type { CompletionContext } from "@codemirror/autocomplete";
 // eslint-disable-next-line no-restricted-imports
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { FK_SYMBOL } from "metabase/lib/formatting";
+import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
 import { formatIdentifier } from "../identifier";
@@ -27,7 +28,12 @@ export function suggestFields({ query, stageIndex, expressionIndex }: Options) {
       type: "field",
       label: formatIdentifier(displayInfo.longDisplayName),
       displayLabel: displayInfo.longDisplayName,
-      displayLabelWithTable: `${displayInfo.table?.displayName} ${FK_SYMBOL} ${displayInfo.displayName}`,
+      displayLabelWithTable: [
+        displayInfo.table?.displayName,
+        displayInfo.displayName,
+      ]
+        .filter(isNotNull)
+        .join(` ${FK_SYMBOL} `),
       icon: getColumnIcon(column),
       column,
     };
