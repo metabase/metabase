@@ -4,7 +4,7 @@ import * as d3 from "d3";
 import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
-import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/use-favicon";
+import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getDashboardById } from "metabase/dashboard/selectors";
 import Databases from "metabase/entities/databases";
 import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";

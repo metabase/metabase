@@ -49,11 +49,11 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import * as native from "../native";
 import * as querying from "../querying";
 import * as ui from "../ui";
 import * as url from "../url";
 
+import * as native from "./native";
 import { UPDATE_QUESTION, updateQuestion } from "./updateQuestion";
 
 registerVisualizations();

@@ -1,11 +1,8 @@
 import { createAction } from "redux-actions";
 
 import { updateSetting } from "metabase/admin/settings/settings";
-import { createThunkAction } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import { getOriginalCard } from "metabase/query_builder/selectors";
 import { updateUserSetting } from "metabase/redux/settings";
-import { UserApi } from "metabase/services";
 import type { Card } from "metabase-types/api";
 import type {
   Dispatch,
@@ -93,15 +90,6 @@ export const onCloseTimelines = createAction("metabase/qb/CLOSE_TIMELINES");
 
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
-
-export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
-export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
-  return async (_dispatch, getState) => {
-    // persist the fact that this user has seen the NewbModal
-    const { currentUser } = getState();
-    await UserApi.update_qbnewb({ id: checkNotNull(currentUser).id });
-  };
-});
 
 export const SHOW_CHART_SETTINGS = "metabase/qb/SHOW_CHART_SETTINGS";
 export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
