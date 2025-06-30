@@ -20,7 +20,6 @@ import {
 } from "metabase/visualizer/utils";
 import type {
   DashCardId,
-  Dashboard,
   DashboardCard,
   Series,
   VisualizationSettings,
@@ -35,7 +34,6 @@ import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
 
 interface Props {
   series: Series;
-  dashboard: Dashboard;
   dashcard?: DashboardCard;
   isLoading: boolean;
   isPreviewing: boolean;
@@ -63,7 +61,6 @@ interface Props {
 
 function DashCardActionsPanelInner({
   series,
-  dashboard,
   dashcard,
   isLoading,
   isPreviewing,
@@ -190,7 +187,6 @@ function DashCardActionsPanelInner({
         <ChartSettingsButton
           key="chart-settings-button"
           series={series}
-          dashboard={dashboard}
           dashcard={dashcard}
           onReplaceAllVisualizationSettings={
             handleOnReplaceAllVisualizationSettings
@@ -269,7 +265,6 @@ function DashCardActionsPanelInner({
       buttons.push(
         <ActionSettingsButtonConnected
           key="action-settings-button"
-          dashboard={dashboard}
           dashcard={dashcard}
         />,
       );

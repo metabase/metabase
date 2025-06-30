@@ -34,6 +34,10 @@ export const useMetabotAgent = () => {
     typeof getIsProcessing
   >;
 
+  const visible = useSelector(getMetabotVisible as any) as ReturnType<
+    typeof getMetabotVisible
+  >;
+
   const setVisible = useCallback(
     (isVisible: boolean) => dispatch(setVisibleAction(isVisible)),
     [dispatch],
@@ -56,6 +60,10 @@ export const useMetabotAgent = () => {
 
   const submitInput = useCallback(
     async (prompt: string, metabotId?: string) => {
+      if (!visible) {
+        setVisible(true);
+      }
+
       const context = await getChatContext();
       const action = await dispatch(
         submitInputAction({
@@ -71,7 +79,7 @@ export const useMetabotAgent = () => {
 
       return action;
     },
-    [dispatch, getChatContext, prepareRetryIfUnsuccesful],
+    [dispatch, getChatContext, prepareRetryIfUnsuccesful, setVisible, visible],
   );
 
   const retryMessage = useCallback(
@@ -110,9 +118,7 @@ export const useMetabotAgent = () => {
     metabotId: useSelector(getMetabotId as any) as ReturnType<
       typeof getMetabotId
     >,
-    visible: useSelector(getMetabotVisible as any) as ReturnType<
-      typeof getMetabotVisible
-    >,
+    visible,
     messages,
     lastAgentMessages: useSelector(
       getLastAgentMessagesByType as any,

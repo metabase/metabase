@@ -1116,7 +1116,7 @@ describe("scenarios > dashboard", () => {
       row: 0,
       col: 0,
       size_x: 16,
-      size_y: 8,
+      size_y: 9,
     };
     const paddingCard = H.getTextCardDetails({
       col: 0,
