@@ -77,6 +77,10 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const handleEmbedSettingsRestored = useCallback(
     (settings: SdkIframeEmbedSettings | null) => {
+      if (isEmbedSettingsLoaded) {
+        return;
+      }
+
       if (settings) {
         setSettings(settings);
       } else {
@@ -93,7 +97,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
       setEmbedSettingsLoaded(true);
     },
-    [fallbackDashboardId],
+    [fallbackDashboardId, isEmbedSettingsLoaded],
   );
 
   const { storeSetting } = usePersistJsonViaUserSetting({
