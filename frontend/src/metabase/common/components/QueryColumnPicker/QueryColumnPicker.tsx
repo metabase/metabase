@@ -71,7 +71,11 @@ export function QueryColumnPicker({
         const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
         const items = Lib.getColumnsFromColumnGroup(group).map((column) => ({
-          ...Lib.displayInfo(query, stageIndex, column),
+          ...Lib.displayInfo(
+            query,
+            stageIndex,
+            getColumnWithoutBucketing(column, hasTemporalBucketing, hasBinning),
+          ),
           column,
         }));
 
@@ -81,7 +85,7 @@ export function QueryColumnPicker({
           items,
         };
       }),
-    [query, stageIndex, columnGroups],
+    [query, stageIndex, columnGroups, hasTemporalBucketing, hasBinning],
   );
 
   const handleSelect = useCallback(
@@ -219,6 +223,20 @@ export function QueryColumnPicker({
       />
     </DelayGroup>
   );
+}
+
+function getColumnWithoutBucketing(
+  column: Lib.ColumnMetadata,
+  hasTemporalBucketing: boolean,
+  hasBinning: boolean,
+) {
+  if (hasTemporalBucketing && Lib.temporalBucket(column) != null) {
+    return Lib.withTemporalBucket(column, null);
+  }
+  if (hasBinning && Lib.binning(column) != null) {
+    return Lib.withBinning(column, null);
+  }
+  return column;
 }
 
 function renderItemName(item: ColumnListItem) {
