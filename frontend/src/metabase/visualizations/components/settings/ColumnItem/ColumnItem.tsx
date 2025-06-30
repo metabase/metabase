@@ -71,6 +71,7 @@ export const ColumnItem = ({
         <Icon
           className={cx(CS.flexNoShrink, ColumnItemS.ColumnItemDragHandle)}
           name="grabber"
+          data-testid="drag-handle"
         />
       )}
       {onColorChange && color && (

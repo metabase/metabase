@@ -1,5 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { moveDnDKitListElement } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -624,14 +625,20 @@ describe("scenarios > question > multiple column breakouts", () => {
 
           cy.log("move a column from rows to columns");
           H.openVizSettingsSidebar();
-          H.dragField(2, 3);
+          moveDnDKitListElement("drag-handle", {
+            startIndex: 2,
+            dropIndex: 3,
+          });
           cy.wait("@pivotDataset");
           cy.findByTestId("pivot-table")
             .findAllByText(columnNamePattern)
             .should("have.length", 2);
 
           cy.log("move a column from columns to rows");
-          H.dragField(4, 1);
+          moveDnDKitListElement("drag-handle", {
+            startIndex: 4,
+            dropIndex: 1,
+          });
           cy.wait("@pivotDataset");
           cy.findByTestId("pivot-table")
             .findAllByText(columnNamePattern)
@@ -649,6 +656,43 @@ describe("scenarios > question > multiple column breakouts", () => {
           questionDetails: questionWith5NumBinsBreakoutsDetails,
           columnNamePattern: /^Total: \d+ bins$/,
         });
+      });
+
+      it("should not be able to move columns items into measures and vice-versa", () => {
+        H.createQuestion(questionWith5TemporalBreakoutsDetails, {
+          visitQuestion: true,
+        });
+
+        const columnNamePattern = /^Created At/;
+
+        cy.log("change display and assert the default settings");
+        H.openVizTypeSidebar();
+        cy.findByTestId("chart-type-sidebar")
+          .findByTestId("Pivot Table-button")
+          .click();
+        cy.wait("@pivotDataset");
+        cy.findByTestId("pivot-table")
+          .findAllByText(columnNamePattern)
+          .should("have.length", 3);
+
+        cy.log("move an item from columns to measures");
+        H.openVizSettingsSidebar();
+        moveDnDKitListElement("drag-handle", {
+          startIndex: 2,
+          dropIndex: 5,
+        });
+        cy.findByTestId("pivot-table")
+          .findAllByText(columnNamePattern)
+          .should("have.length", 3);
+
+        cy.log("move an item from measures to columns");
+        moveDnDKitListElement("drag-handle", {
+          startIndex: 5,
+          dropIndex: 2,
+        });
+        cy.findByTestId("pivot-table")
+          .findAllByText(columnNamePattern)
+          .should("have.length", 3);
       });
     });
 
