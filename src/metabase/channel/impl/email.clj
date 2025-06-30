@@ -78,7 +78,7 @@
 
     :text
     (let [inline-params   (:inline_parameters part)
-          rendered-params (when (seq inline-params) (impl.util/render-filters inline-params))]
+          rendered-params (when (seq inline-params) (render.util/render-filters inline-params))]
       {:content (str (markdown/process-markdown (:text part) :html)
                      rendered-params)})
     :tab-title
@@ -268,9 +268,9 @@
                                                                           (pulse-unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
                                                     :filters            (some-> (seq parameters)
                                                                                 (impl.util/remove-inline-parameters dashboard_parts)
-                                                                                (impl.util/render-filters))})
-                                  (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))
-        (construct-emails template message-context-fn attachments recipients)]))
+                                                                                (render.util/render-filters))})
+                                  (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
+    (construct-emails template message-context-fn attachments recipients)))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         System Events                                           ;;

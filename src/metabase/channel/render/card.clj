@@ -1,7 +1,6 @@
 (ns metabase.channel.render.card
   (:require
    [hiccup.core :refer [h]]
-   [metabase.channel.impl.util :as impl.util]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.png :as png]
@@ -208,7 +207,7 @@
                           description
                           (when inline-parameters
                             [:div {:style (style/style {:padding-bottom :16px})}
-                             (impl.util/render-filters inline-parameters)])
+                             (render.util/render-filters inline-parameters)])
                           [:div {:class "pulse-body"
                                  :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
                                                       :display :block
