@@ -500,12 +500,14 @@ describe("Cloud settings section", () => {
   });
 });
 
-describe("scenarios > admin > settings > email settings", () => {
+H.describeWithSnowplow("scenarios > admin > settings > email settings", () => {
   describe("self-hosted instance", () => {
     beforeEach(() => {
       cy.intercept("PUT", "api/email").as("smtpSaved");
       H.restore();
       cy.signInAsAdmin();
+      H.resetSnowplow();
+      H.enableTracking();
     });
 
     it("should be able to save and clear email settings", () => {
@@ -514,6 +516,11 @@ describe("scenarios > admin > settings > email settings", () => {
       cy.findByTestId("self-hosted-smtp-connection-card")
         .button("Configure")
         .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "custom_smtp_setup_clicked",
+        event_detail: "self-hosted",
+      });
 
       H.modal().within(() => {
         // SMTP connection setup
@@ -533,6 +540,12 @@ describe("scenarios > admin > settings > email settings", () => {
       });
 
       cy.wait("@smtpSaved");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "custom_smtp_setup_success",
+        event_detail: "self-hosted",
+      });
+
       // should show as active now
       cy.findByTestId("self-hosted-smtp-connection-card")
         .findByText("Active")
@@ -588,6 +601,8 @@ describe("scenarios > admin > settings > email settings", () => {
         cy.findByLabelText("SMTP Username").should("have.value", "");
         cy.findByLabelText("SMTP Password").should("have.value", "");
       });
+
+      H.expectNoBadSnowplowEvents();
     });
 
     it("should show an error if test email fails", () => {
@@ -673,6 +688,8 @@ describe("scenarios > admin > settings > email settings", () => {
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-cloud");
+      H.resetSnowplow();
+      H.enableTracking();
     });
 
     it("should be able to save and clear email settings", () => {
@@ -681,6 +698,11 @@ describe("scenarios > admin > settings > email settings", () => {
       cy.findByTestId("cloud-smtp-connection-card")
         .button("Set up a custom SMTP server")
         .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "custom_smtp_setup_clicked",
+        event_detail: "cloud",
+      });
 
       H.modal().within(() => {
         cy.findByLabelText(/SMTP Host/i)
@@ -700,6 +722,12 @@ describe("scenarios > admin > settings > email settings", () => {
       });
 
       cy.wait("@smtpSaved");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "custom_smtp_setup_success",
+        event_detail: "cloud",
+      });
+
       cy.findByTestId("cloud-smtp-connection-card").within(() => {
         // Button text should change
         cy.button("Edit settings");
@@ -735,6 +763,7 @@ describe("scenarios > admin > settings > email settings", () => {
         cy.findByDisplayValue("localhost");
         cy.findAllByDisplayValue("admin");
         cy.button("Save changes").should("be.disabled");
+
         cy.button("Clear").click();
         cy.wait("@smtpCleared");
         cy.findByLabelText("SMTP Host").should("have.value", "");
@@ -745,9 +774,12 @@ describe("scenarios > admin > settings > email settings", () => {
         cy.findByRole("button", { name: "Close" }).click();
       });
 
+      // Button text should revert back
       cy.findByTestId("cloud-smtp-connection-card").findByText(
         "Set up a custom SMTP server",
       );
+
+      H.expectNoBadSnowplowEvents();
     });
   });
 });
