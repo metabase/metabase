@@ -2,10 +2,8 @@ import { jt, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
+import { getStoreUrl } from "metabase/selectors/settings";
 import { Alert, Icon, Text } from "metabase/ui";
-
-const MANAGE_INSTANCE_URL = "https://metabase.com/";
-const GET_TOKEN_URL = "https://metabase.com/";
 
 export function DevInstanceBanner() {
   const isDevMode = useSetting("development-mode?");
@@ -19,11 +17,11 @@ export function DevInstanceBanner() {
     <Alert icon={<Icon name="info_filled" />}>
       {isHosted && (
         <Text lh="1.25rem">{jt`This instance is in development mode and can be used for development or testing purposes only.
-        ${(<ExternalLink style={{ fontWeight: "bold" }} href={MANAGE_INSTANCE_URL}>{t`Manage instance`}</ExternalLink>)}`}</Text>
+        ${(<ExternalLink style={{ fontWeight: "bold" }} href={getStoreUrl()}>{t`Manage instance`}</ExternalLink>)}`}</Text>
       )}
       {!isHosted && (
         <Text lh="1.25rem">{jt`This instance is in development mode and can be used for development or testing purposes only. To spin up more development instances, use your development license token.
-        ${(<ExternalLink style={{ fontWeight: "bold" }} href={GET_TOKEN_URL}>{t`Get your token`}</ExternalLink>)}`}</Text>
+        ${(<ExternalLink style={{ fontWeight: "bold" }} href={getStoreUrl()}>{t`Get your token`}</ExternalLink>)}`}</Text>
       )}
     </Alert>
   );
