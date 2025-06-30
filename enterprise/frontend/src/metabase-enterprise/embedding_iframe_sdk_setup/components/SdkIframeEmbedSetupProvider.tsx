@@ -4,6 +4,7 @@ import { P, match } from "ts-pattern";
 import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
+import { trackEmbedWizardSettingsUpdated } from "../analytics";
 import {
   EMBED_FALLBACK_DASHBOARD_ID,
   PERSIST_EMBED_SETTINGS_DEBOUNCE_MS,
@@ -122,6 +123,8 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const updateSettings = useCallback(
     (nextSettings: Partial<SdkIframeEmbedSettings>) => {
+      trackEmbedWizardSettingsUpdated(nextSettings);
+
       setSettings((prevSettings) => {
         const mergedSettings = {
           ...prevSettings,

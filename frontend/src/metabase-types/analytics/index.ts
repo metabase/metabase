@@ -13,6 +13,7 @@ export * from "./event";
 export * from "./invite";
 export * from "./model";
 export * from "./question";
+export * from "./sdk-iframe-embed-setup-flow";
 export * from "./serialization";
 export * from "./schema";
 export * from "./search";
