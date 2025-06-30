@@ -402,7 +402,7 @@ function item(input: string | { display_name?: string; name: string } | null) {
   }
   const name =
     typeof input === "string" ? input : (input.display_name ?? input.name);
-  return (screen.queryByText(name)?.parentNode?.parentNode ??
+  return (screen.queryByText(name)?.parentNode?.parentNode?.parentNode ??
     null) as HTMLDivElement | null;
 }
 

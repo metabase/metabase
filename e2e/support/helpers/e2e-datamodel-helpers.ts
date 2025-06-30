@@ -178,7 +178,7 @@ function getTableSortOrderInput() {
 }
 
 function getTableSectionField(name: string) {
-  return getTableSection().get(`a[aria-label="${name}"]`);
+  return getTableSection().findByLabelText(name);
 }
 
 function getTableSectionSortableField(name: string) {
