@@ -250,6 +250,7 @@ export function AggregationPicker({
         clause={clause}
         withName
         expressionMode="aggregation"
+        expressionIndex={clauseIndex}
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}
