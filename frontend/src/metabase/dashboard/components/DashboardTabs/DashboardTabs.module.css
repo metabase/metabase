@@ -1,5 +1,15 @@
 .dashboardTabs {
   margin-bottom: -2px;
+  position: relative;
+
+  &:before {
+    content: " ";
+    border-bottom: 2px solid var(--mb-color-border);
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    transition: var(--transition-theme-change);
+  }
 }
 
 .createTabButton {
