@@ -1,8 +1,13 @@
 import type { ChangeEvent, KeyboardEvent } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
+import {
+  FieldLabel,
+  FieldLabelContainer,
+  FieldRoot,
+} from "metabase/common/components/FormField/FormField.styled";
 import Input from "metabase/common/components/Input";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
@@ -101,6 +106,7 @@ const EngineSearch = ({
   const [searchText, setSearchText] = useState("");
   const [activeIndex, setActiveIndex] = useState<number>();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [dbOptionsAriaMessage, setDbOptionsAriaMessage] = useState("");
   const isSearching = searchText.length > 0;
   const isNavigating = activeIndex != null;
   const hasMoreOptions = options.length > DEFAULT_OPTIONS_COUNT;
@@ -109,6 +115,22 @@ const EngineSearch = ({
     () => getVisibleOptions(options, isExpanded, isSearching, searchText),
     [options, isExpanded, isSearching, searchText],
   );
+
+  useEffect(() => {
+    if (!searchText && visibleOptions.length === 0) {
+      setDbOptionsAriaMessage("");
+      return;
+    }
+
+    const message = visibleOptions.length
+      ? `${visibleOptions.length} ${visibleOptions.length === 1 ? "result" : "results"} found. Use arrow keys to navigate.`
+      : "No results found.";
+
+    setDbOptionsAriaMessage("");
+    const timeout = setTimeout(() => setDbOptionsAriaMessage(message), 50);
+
+    return () => clearTimeout(timeout);
+  }, [searchText, visibleOptions]);
 
   const optionCount = visibleOptions.length;
   const activeOption = isNavigating ? visibleOptions[activeIndex] : undefined;
@@ -138,17 +160,38 @@ const EngineSearch = ({
 
   return (
     <EngineSearchRoot role="combobox">
-      <Input
-        value={searchText}
-        placeholder={t`Search for a database…`}
-        autoFocus
-        aria-autocomplete="list"
-        aria-controls={getListBoxId(rootId)}
-        aria-activedescendant={getListOptionId(rootId, activeOption)}
-        fullWidth
-        onChange={handleSearch}
-        onKeyDown={handleKeyDown}
-      />
+      <FieldRoot orientation="vertical" alignment="end">
+        <FieldLabelContainer orientation="vertical" hasDescription={false}>
+          <FieldLabel htmlFor="search-for-a-database" hasError={false}>
+            {t`Search for a database`}
+          </FieldLabel>
+        </FieldLabelContainer>
+        <Input
+          id="search-for-a-database"
+          value={searchText}
+          autoFocus
+          aria-autocomplete="list"
+          aria-controls={getListBoxId(rootId)}
+          aria-activedescendant={getListOptionId(rootId, activeOption)}
+          fullWidth
+          onChange={handleSearch}
+          onKeyDown={handleKeyDown}
+        />
+        <div
+          className="visually-hidden"
+          aria-live="polite"
+          aria-atomic="true"
+          style={{
+            position: "absolute",
+            left: "-9999px",
+            width: "1px",
+            height: "1px",
+            overflow: "hidden",
+          }}
+        >
+          {dbOptionsAriaMessage}
+        </div>
+      </FieldRoot>
       {visibleOptions.length ? (
         <EngineList
           rootId={rootId}
@@ -219,6 +262,7 @@ const EngineCard = ({
   return (
     <EngineCardRoot
       role="option"
+      tabIndex={0}
       id={getListOptionId(rootId, option)}
       isActive={isActive}
       onClick={handleClick}
