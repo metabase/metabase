@@ -34,10 +34,7 @@ function resizeFillerArea(
   const scrollContainerEl = scrollContainerRef.current;
   const fillerEl = fillerRef.current;
   if (!scrollContainerEl || !fillerEl) {
-    return console.warn("Tried to resize with unmounted DOM elements", {
-      scrollContainerEl,
-      fillerEl,
-    });
+    return;
   }
 
   const nextFillerHeight = calculateFillerHeight(scrollContainerEl, fillerEl);
