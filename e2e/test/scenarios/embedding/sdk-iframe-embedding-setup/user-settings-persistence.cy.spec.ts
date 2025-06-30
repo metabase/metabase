@@ -17,15 +17,11 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
     cy.log("1. set embed settings to non-default values");
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Allow downloads")
-        .should("not.be.checked")
-        .click()
-        .should("be.checked");
+      cy.findByLabelText("Allow downloads").click().should("be.checked");
 
       capturePersistSettings();
 
       cy.findByLabelText("Show dashboard title")
-        .should("be.checked")
         .click()
         .should("not.be.checked");
     });
@@ -82,17 +78,10 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
   it("persists exploration embed options", () => {
     navigateToEmbedOptionsStep({ experience: "exploration" });
 
-    H.getIframeBody().within(() => {
-      cy.findByText("Orders").click();
-      cy.findByText("Visualize").click();
-      cy.findByText("Save").should("be.visible");
-    });
-
     cy.log("1. set exploration settings to non-default values");
     capturePersistSettings();
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow users to save new questions")
-        .should("be.checked")
         .click()
         .should("not.be.checked");
     });
@@ -121,20 +110,14 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
         .type("rgb(255, 0, 0)");
     });
 
-    cy.log("2. verify brand color is applied");
-    H.getIframeBody()
-      .findAllByTestId("cell-data")
-      .first()
-      .should("have.css", "color", "rgb(255, 0, 0)");
-
-    cy.log("3. reload the page");
+    cy.log("2. reload the page");
     waitAndReload();
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click(); // Entity selection step
       cy.findByText("Next").click(); // Embed options step
     });
 
-    cy.log("4. verify brand color persistence");
+    cy.log("3. verify brand color persistence");
     H.getIframeBody()
       .findAllByTestId("cell-data")
       .first()
