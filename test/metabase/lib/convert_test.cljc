@@ -225,7 +225,7 @@
                 :stages   [{:lib/type     :mbql.stage/mbql
                             :source-table 1
                             :aggregation  [[:sum {:lib/uuid ag-uuid}
-                                            [:field {:lib/uuid string?
+                                            [:field {:lib/uuid (str (random-uuid))
                                                      :effective-type :type/Integer} 1]]]
                             :breakout     [[:aggregation
                                             {:display-name   "Revenue"

@@ -1246,7 +1246,10 @@
   > **Code health:** Single use. This is used in the expression editor to parse and
   format expression clauses."
   [arg]
-  (and (map? arg) (= :metadata/metric (:lib/type arg))))
+  (and (map? arg)
+       (or (= (:lib/type arg) :metadata/metric)
+           (and (= (:lib/type arg) :metadata/column)
+                (= (:lib/source arg) :source/aggregations)))))
 
 (defn ^:export segment-metadata?
   "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/segment`.
@@ -1661,8 +1664,8 @@
 (defn ^:export expressionable-columns
   "Returns a JS array of those columns that can be used in an expression in the given stage of `a-query`.
 
-  Expressions can only see other expressions on the same stage which appear earlier in the list, so you must pass
-  `expression-position` (a 0-based index) when editing an existing expression.
+  `expression-position` (a 0-based index) containing the position of the expression in the list. It could be
+  significant when editing an existing expression, but it's not currently used.
 
   When creating a new expression, `expression-position` should be `nil` (JS `null` or `undefined`).
 
@@ -1678,6 +1681,27 @@
    (keyword "expressionable-columns" (str "stage-" stage-number "-" expression-position)) a-query
    (fn [_]
      (to-array (lib.core/expressionable-columns a-query stage-number expression-position)))))
+
+(defn ^:export aggregable-columns
+  "Returns a JS array of those columns that can be used in an aggregation expression in the given stage of `a-query`.
+
+  `expression-position` (a 0-based index) containing the position of the expression in the list. It could be
+  significant when editing an existing expression, but it's not currently used.
+
+  When creating a new expression, `expression-position` should be `nil` (JS `null` or `undefined`).
+
+  Cached on the query and stage.
+
+  > **Code health:** Healthy"
+  [a-query stage-number expression-position]
+  (lib.cache/side-channel-cache
+    ;; Caching is based on both the stage and expression position, since they can return different sets.
+    ;; TODO: Since these caches are mainly here to avoid expensively recomputing things in rapid succession, it would
+    ;; probably suffice to cache only the last position, and evict if it's different. But the lib.cache system doesn't
+    ;; support that currently.
+   (keyword "aggregable-columns" (str "stage-" stage-number "-" expression-position)) a-query
+   (fn [_]
+     (to-array (lib.core/aggregable-columns a-query stage-number expression-position)))))
 
 (defn ^:export column-extractions
   "Column extractions are a set of transformations possible on a given `column`, based on its type.
