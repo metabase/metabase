@@ -109,6 +109,8 @@ export function ObjectDetailView({
   const hasFks = !_.isEmpty(tableForeignKeys);
   const hasRelationships = showRelations && hasFks && hasPk;
 
+  const isObjectDetailModal = question?.display() !== "object";
+
   const handleExecuteModalClose = () => {
     setActionId(undefined);
   };
@@ -151,7 +153,12 @@ export function ObjectDetailView({
       return;
     }
 
-    if (table && _.isEmpty(table.fks) && !isVirtualCardId(table.id)) {
+    if (
+      isObjectDetailModal &&
+      table &&
+      _.isEmpty(table.fks) &&
+      !isVirtualCardId(table.id)
+    ) {
       fetchTableFks(table.id as ConcreteTableId);
     }
   });
