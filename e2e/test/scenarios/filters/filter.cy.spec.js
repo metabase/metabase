@@ -1158,6 +1158,10 @@ describe("scenarios > question > filter", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
+      cy.log("typing a non-existing clause does nothing");
+      cy.findByPlaceholderText("Find...").clear().type("foo(");
+      H.CustomExpressionEditor.get().should("not.exist");
+
       cy.findByPlaceholderText("Find...").clear().type("case(");
       H.CustomExpressionEditor.value().should(
         "equal",
