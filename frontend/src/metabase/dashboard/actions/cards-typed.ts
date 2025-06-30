@@ -1,4 +1,6 @@
 import { createAction } from "@reduxjs/toolkit";
+import { t } from "ttag";
+import _ from "underscore";
 
 import Questions from "metabase/entities/questions";
 import {
@@ -8,6 +10,7 @@ import {
 } from "metabase/lib/dashboard_grid";
 import { createThunkAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import { addUndo } from "metabase/redux/undo";
 import { getDefaultSize } from "metabase/visualizations";
 import {
   getCardIdsFromColumnValueMappings,
@@ -37,6 +40,7 @@ import {
   getDashboard,
   getDashboardId,
   getDashboards,
+  getDashcardList,
   getDashcards,
   getSelectedTabId,
 } from "../selectors";
@@ -447,7 +451,9 @@ export const removeCardFromDashboard = createThunkAction(
     cardId: DashboardCard["card_id"];
   }) =>
     (dispatch, getState) => {
+      const dashcards = getDashcardList(getState());
       const dashcard = getDashCardById(getState(), dashcardId);
+
       dispatch(closeAddCardAutoWireToasts());
       dispatch(cancelFetchCardData(cardId, dashcardId));
       if (hasInlineParameters(dashcard)) {
@@ -455,11 +461,28 @@ export const removeCardFromDashboard = createThunkAction(
           removeParameterAndReferences(dispatch, getState, parameterId);
         });
       }
+
+      const dashcardCountByCardId = _.countBy(dashcards, "card_id");
+      const isLastDashboardQuestionDashcard = Boolean(
+        dashcard.card_id &&
+          dashcard.card.dashboard_id !== null &&
+          dashcardCountByCardId[dashcard.card_id] <= 1,
+      );
+      dispatch(
+        addUndo({
+          message: isLastDashboardQuestionDashcard
+            ? t`Trashed and removed card`
+            : t`Removed card`,
+          undo: true,
+          action: () => dispatch(undoRemoveCardFromDashboard({ dashcardId })),
+        }),
+      );
+
       return { dashcardId };
     },
 );
 
-export const undoRemoveCardFromDashboard = createThunkAction(
+const undoRemoveCardFromDashboard = createThunkAction(
   UNDO_REMOVE_CARD_FROM_DASH,
   ({ dashcardId }) =>
     (dispatch, getState) => {

@@ -168,6 +168,10 @@ export const getDashboard = createSelector(
 
 export const getDashcards = (state: State) => state.dashboard.dashcards;
 
+export const getDashcardList = createSelector([getDashcards], (dashcards) =>
+  Object.values(dashcards),
+);
+
 export const getDashCardById = (state: State, dashcardId: DashCardId) => {
   const dashcards = getDashcards(state);
   return dashcards[dashcardId];
