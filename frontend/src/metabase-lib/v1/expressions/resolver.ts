@@ -22,10 +22,14 @@ type Options = {
 
 export function resolver(options: Options): Resolver {
   const { query, stageIndex, expressionMode } = options;
+  const f =
+    expressionMode === "aggregation"
+      ? Lib.aggregableColumns
+      : Lib.expressionableColumns;
 
   const metrics = _.memoize(() => Lib.availableMetrics(query, stageIndex));
   const segments = _.memoize(() => Lib.availableSegments(query, stageIndex));
-  const columns = _.memoize(() => Lib.expressionableColumns(query, stageIndex));
+  const columns = _.memoize(() => f(query, stageIndex));
   const cache = infoCache(options);
 
   return function (type, name, node) {

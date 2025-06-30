@@ -15,12 +15,17 @@ export type Options = {
   expressionIndex?: number;
 };
 
-export function suggestFields({ query, stageIndex, expressionIndex }: Options) {
-  const columns = Lib.expressionableColumns(
-    query,
-    stageIndex,
-    expressionIndex,
-  )?.map((column) => {
+export function suggestFields({
+  query,
+  stageIndex,
+  expressionIndex,
+  expressionMode,
+}: Options) {
+  const f =
+    expressionMode === "aggregation"
+      ? Lib.aggregableColumns
+      : Lib.expressionableColumns;
+  const columns = f(query, stageIndex, expressionIndex)?.map((column) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, column);
     return {
       type: "field",
