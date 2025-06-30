@@ -1,14 +1,13 @@
 import type { ReactNode } from "react";
 
-import {
-  MetabaseProvider,
-  type MetabaseTheme,
-  defineMetabaseTheme,
-} from "embedding-sdk";
+import type { MetabaseTheme } from "embedding-sdk";
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { questionIds } from "embedding-sdk/test/storybook-id-args";
 import { storybookThemes } from "embedding-sdk/test/storybook-themes";
+import { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Box } from "metabase/ui";
+
+import { MetabaseProvider } from "../MetabaseProvider";
 
 import { SdkQuestion } from "./SdkQuestion";
 

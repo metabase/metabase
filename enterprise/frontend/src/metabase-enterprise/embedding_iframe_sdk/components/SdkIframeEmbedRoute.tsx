@@ -4,12 +4,12 @@ import { P, match } from "ts-pattern";
 import {
   InteractiveDashboard,
   InteractiveQuestion,
+  SdkQuestion,
   MetabaseProvider,
   StaticDashboard,
   StaticQuestion,
-  defineMetabaseAuthConfig,
-} from "embedding-sdk";
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion";
+} from "embedding-sdk/bundle";
+import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-wrapper/lib/public/define-metabase-auth-config";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";

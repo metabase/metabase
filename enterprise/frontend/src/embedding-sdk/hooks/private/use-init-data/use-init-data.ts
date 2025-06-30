@@ -3,13 +3,11 @@ import { useMount } from "react-use";
 import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
+import { MetabaseProviderStore } from "embedding-sdk/sdk-shared/lib/metabase-provider-store";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { initAuth } from "embedding-sdk/store/auth";
 import { setFetchRefreshTokenFn } from "embedding-sdk/store/reducer";
-import {
-  getFetchRefreshTokenFn,
-  getLoginStatus,
-} from "embedding-sdk/store/selectors";
+import { getFetchRefreshTokenFn } from "embedding-sdk/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
@@ -32,7 +30,6 @@ export const useInitData = ({
 
   const dispatch = useSdkDispatch();
 
-  const loginStatus = useSdkSelector(getLoginStatus);
   const fetchRefreshTokenFnFromStore = useSdkSelector(getFetchRefreshTokenFn);
 
   // This is outside of a useEffect otherwise calls done on the first render could use the wrong value
@@ -52,15 +49,20 @@ export const useInitData = ({
     if (hasBeenInitialized.current) {
       return;
     }
+
+    const store = MetabaseProviderStore.getInstance()?.getSdkStore();
+    const isAuthUninitialized =
+      store && store.getState().sdk.loginStatus.status === "uninitialized";
+
+    if (!isAuthUninitialized) {
+      return;
+    }
+
     hasBeenInitialized.current = true;
 
     registerVisualizationsOnce();
 
-    // Note: this check is not actually needed in prod, but some of our tests start with a loginStatus already initialized
-    // and they don't mock the network requests so the tests fail
-    if (loginStatus.status === "uninitialized") {
-      dispatch(initAuth(authConfig));
-    }
+    dispatch(initAuth(authConfig));
 
     const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
     api.requestClient = {

@@ -173,12 +173,6 @@ const CollectionBrowserWrapper = ({
   return <CollectionBrowserInner collectionId={id} {...restProps} />;
 };
 
-/**
- * A component that allows you to browse collections and their items.
- *
- * @function
- * @category CollectionBrowser
- */
 export const CollectionBrowser = withPublicComponentWrapper(
   CollectionBrowserWrapper,
 );

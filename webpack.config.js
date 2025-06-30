@@ -2,12 +2,12 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
 const fs = require("fs");
+const path = require("path");
 
 const ReactRefreshPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
-const path = require("path");
 const TerserPlugin = require("terser-webpack-plugin");
 const webpack = require("webpack");
 const WebpackNotifierPlugin = require("webpack-notifier");
