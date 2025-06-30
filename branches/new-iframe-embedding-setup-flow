@@ -5,5 +5,13 @@
   },
   "upstream": {
     "branch": "new-iframe-embedding-setup-flow"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 60304,
+        "gqlID": "PR_kwDOAczgH86cxQTy"
+      }
+    }
   }
 }
