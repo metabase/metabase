@@ -1,135 +1,149 @@
-import { useEffect } from "react";
-import _ from "underscore";
+import { type RefObject, useCallback, useEffect, useRef } from "react";
 
-let observeCount = 0;
-let maxObserveCount = 10 * 1000;
-
-const getScrollContainerEl = () =>
-  document.getElementById("metabot-chat-content");
-
-const isFillerElement = (node: Node) => {
-  return (
-    node instanceof Element &&
-    node.getAttribute("id") === "metabot-message-filler"
+function calculateFillerHeight(
+  scrollContainerEl: HTMLElement,
+  fillerEl: HTMLElement,
+): number {
+  const scrollContent = Array.from(
+    scrollContainerEl.children?.[0]?.children ?? [],
   );
-};
-
-const DEFAULT_HEADER_HEIGHT = 64;
-const getHeaderHeight = () => {
-  return (
-    document.getElementById("metabot-chat-header")?.clientHeight ??
-    DEFAULT_HEADER_HEIGHT
-  );
-};
-
-const USER_MSG_SELECTOR = `[data-message-role="user"]`;
-const getPromptOffsetTop = (containerEl: HTMLElement) => {
-  const userMessages =
-    containerEl.querySelectorAll<HTMLElement>(USER_MSG_SELECTOR);
-  const lastMessage = _.last(userMessages);
-  return lastMessage?.offsetTop ?? 0;
-};
-
-function resizeFillerArea(scrollContainerEl: HTMLElement) {
-  console.log({ observeCount });
-  if (observeCount > maxObserveCount) {
-    return;
-  }
-
-  const fillerElement = document.getElementById("metabot-message-filler");
-
-  if (!fillerElement) {
-    return;
-  }
-
-  const scrollContent = Array.from(scrollContainerEl.children[0]?.children);
-  const lastUserMessageIndex = scrollContent.findLastIndex(
-    (node) => node.getAttribute("data-message-role") === "user",
-  );
-  const currentPromptNodes = scrollContent.slice(lastUserMessageIndex);
-  const validNodes = currentPromptNodes.filter((node) => node);
-  const validNodeHeights = validNodes.reduce((sum, node) => {
-    return isFillerElement(node) ? sum : sum + node.clientHeight;
-  }, 0);
-
   const isScrollable =
     scrollContainerEl.scrollHeight > scrollContainerEl.clientHeight;
+
+  const lastUserMessageIndex = scrollContent.findLastIndex(
+    (el) => el.getAttribute("data-message-role") === "user",
+  );
+  const currentPromptEls = scrollContent.slice(lastUserMessageIndex);
+  const validEls = currentPromptEls.filter((node) => node);
+  const validElHeights = validEls.reduce((sum, node) => {
+    return node === fillerEl ? sum : sum + node.clientHeight;
+  }, 0);
+
   const paddingAdjustment = isScrollable ? 40 : 24;
   const containerHeight = scrollContainerEl.clientHeight;
-  const fillerHeight = Math.max(
-    0,
-    containerHeight - validNodeHeights - paddingAdjustment,
-  );
-  fillerElement.style.height = `${fillerHeight}px`;
+  const fillerHeight = containerHeight - validElHeights - paddingAdjustment;
 
-  observeCount++;
+  return Math.max(0, fillerHeight);
 }
 
-// TODO: handle auto-scrolling portion
-// TODO: rename
-// TODO: refactor to make it more testable
-// TODO: can using refs make this cleaner?
-export function useScrollManager() {
-  // getPromptOffsetTop
+function resizeFillerArea(
+  scrollContainerRef: RefObject<HTMLElement>,
+  fillerRef: RefObject<HTMLElement>,
+) {
+  const scrollContainerEl = scrollContainerRef.current;
+  const fillerEl = fillerRef.current;
+  if (!scrollContainerEl || !fillerEl) {
+    console.warn("Tried to resize with unmounted DOM elements", {
+      scrollContainerEl,
+      fillerEl,
+    });
+    return;
+  }
 
-  useEffect(function resizeFiller() {
-    const scrollContainerEl = getScrollContainerEl();
-    if (!scrollContainerEl) {
-      return;
+  const nextFillerHeight = calculateFillerHeight(scrollContainerEl, fillerEl);
+  const nextFillerHeightPx = `${nextFillerHeight}px`;
+
+  // prevent the DOM reflowing/repainting for updates that change nothing
+  const currentFillerHeightPx = fillerEl.style.height;
+  if (currentFillerHeightPx !== nextFillerHeightPx) {
+    fillerEl.style.height = nextFillerHeightPx;
+  }
+}
+
+export function useScrollManager(hasMessages: boolean) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const fillerRef = useRef<HTMLDivElement>(null);
+
+  const rafRef = useRef<number>();
+
+  const scheduleFillerResize = useCallback(() => {
+    // only schedule if nothing has been for this frame
+    if (!rafRef.current) {
+      rafRef.current = requestAnimationFrame(() => {
+        resizeFillerArea(scrollContainerRef, fillerRef);
+        rafRef.current = undefined;
+      });
     }
-
-    // resize filler + scroll to the absolute bottom on mount
-    // - TODO: could I remove this? other ai's don't do this byt the mutation
-    // observer is probs going to be too reactive to elements changing? so i want
-    // to be careful about that... maybe where the isDoingScience part is handy?
-    resizeFillerArea(scrollContainerEl);
-    if (scrollContainerEl) {
-      scrollContainerEl.scrollTop = scrollContainerEl.scrollHeight;
-    }
-
-    // react to text updates
-    const mutationObserver = new MutationObserver((mutations) => {
-      // ignore events caused from the resize event
-      const shoudldResize = mutations.some((m) => !isFillerElement(m.target));
-      if (shoudldResize) {
-        resizeFillerArea(scrollContainerEl);
-      }
-    });
-
-    mutationObserver.observe(scrollContainerEl, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
-
-    // react to resize updates
-    const resizeObserver = new ResizeObserver(() => {
-      resizeFillerArea(scrollContainerEl);
-    });
-    resizeObserver.observe(scrollContainerEl);
-    return () => {
-      mutationObserver.disconnect();
-      resizeObserver.disconnect();
-    };
   }, []);
 
-  // TODO: find a way to schedule this auto-scroll to it happens AFTER
-  // the next filler resize event OR if I can detect a user message node
-  // was mounted to the dom that might be better...
-  const scheduleAutoScroll = () => {
-    // TODO: figure out a better way to manage timing
-    setTimeout(() => {
-      debugger;
-      const scrollContainerEl = getScrollContainerEl();
-      if (!scrollContainerEl) {
+  useEffect(
+    function resizeFiller() {
+      const scrollContainerEl = scrollContainerRef.current;
+      const fillerEl = fillerRef.current;
+      if (!hasMessages || !scrollContainerEl || !fillerEl) {
         return;
       }
-      const promptOffsetTop = getPromptOffsetTop(scrollContainerEl);
-      const headerHeight = getHeaderHeight();
-      const top = promptOffsetTop - headerHeight;
-      scrollContainerEl.scrollTo({ top, behavior: "smooth" });
-    }, 50);
-  };
 
-  return { scheduleAutoScroll };
+      // resize filler + scroll to the absolute bottom on mount
+      scheduleFillerResize();
+      if (scrollContainerEl) {
+        requestAnimationFrame(() => {
+          // put in a RAF so it happens after filler resize
+          scrollContainerEl.scrollTop = scrollContainerEl.scrollHeight;
+        });
+      }
+
+      // react to content updates
+      const mutationObserver = new MutationObserver((mutations) => {
+        // mutations to the filler area will cause another execution of this observer
+        // so filter out events related to this element to avoid an infinite loop
+        const shouldResizeFillerArea = mutations.some(
+          (m) => m.target !== fillerEl,
+        );
+        if (shouldResizeFillerArea) {
+          scheduleFillerResize();
+        }
+
+        // check for new user messages and auto-scroll to them
+        const hasNewUserMessage = mutations.some((mutation) => {
+          return (
+            mutation.type === "childList" &&
+            mutation.addedNodes.length > 0 &&
+            Array.from(mutation.addedNodes).some(
+              (node) =>
+                node instanceof Element &&
+                node.getAttribute("data-message-role") === "user",
+            )
+          );
+        });
+        if (hasNewUserMessage) {
+          const userMessages = scrollContainerEl.querySelectorAll<HTMLElement>(
+            '[data-message-role="user"]',
+          );
+          const latestPrompt = userMessages[userMessages.length - 1];
+
+          const promptOffsetTop = latestPrompt?.offsetTop ?? 0;
+          const headerHeight = headerRef.current?.clientHeight ?? 64;
+          const top = promptOffsetTop - headerHeight;
+
+          // put in a RAF so it happens after filler resize
+          requestAnimationFrame(() => {
+            scrollContainerEl.scrollTo({ top, behavior: "smooth" });
+          });
+        }
+      });
+      mutationObserver.observe(scrollContainerEl, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+
+      // react to resize updates
+      const resizeObserver = new ResizeObserver(scheduleFillerResize);
+      resizeObserver.observe(scrollContainerEl);
+
+      return () => {
+        mutationObserver.disconnect();
+        resizeObserver.disconnect();
+      };
+    },
+    [hasMessages, scheduleFillerResize],
+  );
+
+  return {
+    scrollContainerRef,
+    headerRef,
+    fillerRef,
+  };
 }

@@ -1,7 +1,7 @@
-import _ from "underscore";
 import cx from "classnames";
 import { useMemo } from "react";
 import { c, jt, t } from "ttag";
+import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
@@ -29,10 +29,11 @@ import { useScrollManager } from "./hooks";
 export const MetabotChat = () => {
   const metabot = useMetabotAgent();
 
-  const { scheduleAutoScroll } = useScrollManager();
-
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
+
+  const { scrollContainerRef, headerRef, fillerRef } =
+    useScrollManager(hasMessages);
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery({
     metabot_id: metabot.metabotId,
@@ -54,11 +55,7 @@ export const MetabotChat = () => {
     }
     metabot.setPrompt("");
     metabot.promptInputRef?.current?.focus();
-    metabot
-      .submitInput(trimmedInput, {
-        onSubmitted: scheduleAutoScroll,
-      })
-      .catch((err) => console.error(err));
+    metabot.submitInput(trimmedInput).catch((err) => console.error(err));
   };
 
   const handleRetryMessage = (messageId: string) => {
@@ -86,6 +83,7 @@ export const MetabotChat = () => {
       <Box className={Styles.container} data-testid="metabot-chat">
         {/* header */}
         <Box
+          ref={headerRef}
           id="metabot-chat-header"
           data-testid="metabot-chat-header"
           className={Styles.header}
@@ -111,6 +109,7 @@ export const MetabotChat = () => {
 
         {/* chat messages */}
         <Box
+          ref={scrollContainerRef}
           className={Styles.messagesContainer}
           id="metabot-chat-content"
           data-testid="metabot-chat-content"
@@ -207,7 +206,11 @@ export const MetabotChat = () => {
               )}
 
               {/* filler - height gets set via ref mutation */}
-              <div id="metabot-message-filler" style={{ background: "blue" }} />
+              <div
+                ref={fillerRef}
+                id="metabot-message-filler"
+                style={{ background: "blue" }}
+              />
 
               {/* long convo warning */}
               {metabot.isLongConversation && (
