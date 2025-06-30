@@ -4,19 +4,34 @@ import { createMockUser } from "metabase-types/api/mocks";
 import type { AppBarProps } from "./AppBar";
 import AppBar from "./AppBar";
 
-const NewItemButtonMock = () => <div data-testid="new-button" />;
-const SearchBarMock = () => <div data-testid="search-bar" />;
-const SearchButtonMock = {
-  SearchButton: () => <div data-testid="search-button" />,
-};
-const BreadcrumbsMock = () => <div data-testid="collection-path" />;
-const QuestionLineageMock = () => <div data-testid="question-lineage" />;
+function getNewItemButtonMock() {
+  const NewItemButtonMock = () => <div data-testid="new-button" />;
+  return NewItemButtonMock;
+}
+function getSearchBarMock() {
+  const SearchBarMock = () => <div data-testid="search-bar" />;
+  return SearchBarMock;
+}
+function getSearchButtonMock() {
+  const SearchButtonMock = {
+    SearchButton: () => <div data-testid="search-button" />,
+  };
+  return SearchButtonMock;
+}
+function getBreadcrumbsMock() {
+  const BreadcrumbsMock = () => <div data-testid="collection-path" />;
+  return BreadcrumbsMock;
+}
+function getQuestionLineageMock() {
+  const QuestionLineageMock = () => <div data-testid="question-lineage" />;
+  return QuestionLineageMock;
+}
 
-jest.mock("../NewItemButton", () => NewItemButtonMock);
-jest.mock("../search/SearchBar/SearchBar", () => SearchBarMock);
-jest.mock("../search/SearchButton/SearchButton", () => SearchButtonMock);
-jest.mock("../../containers/CollectionBreadcrumbs", () => BreadcrumbsMock);
-jest.mock("../../containers/QuestionLineage", () => QuestionLineageMock);
+jest.mock("../NewItemButton", () => getNewItemButtonMock());
+jest.mock("../search/SearchBar/SearchBar", () => getSearchBarMock());
+jest.mock("../search/SearchButton/SearchButton", () => getSearchButtonMock());
+jest.mock("../../containers/CollectionBreadcrumbs", () => getBreadcrumbsMock());
+jest.mock("../../containers/QuestionLineage", () => getQuestionLineageMock());
 
 describe("AppBar", () => {
   let matchMediaSpy: jest.SpyInstance;

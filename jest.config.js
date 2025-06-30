@@ -28,6 +28,33 @@ const esmPackages = [
 ];
 
 const baseConfig = {
+  transform: {
+    "^.+\\.(t|j)sx?$": [
+      "@swc/jest",
+      {
+        jsc: {
+          loose: true,
+          parser: {
+            syntax: "typescript",
+            tsx: true,
+          },
+
+          transform: {
+            react: {
+              runtime: "automatic",
+            },
+          },
+
+          experimental: {
+            plugins: [
+              ["@swc/plugin-emotion", {}],
+              ["swc_mut_cjs_exports", {}],
+            ],
+          },
+        },
+      },
+    ],
+  },
   moduleNameMapper: {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
