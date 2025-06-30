@@ -5,7 +5,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { UpsellDevInstances } from "metabase/admin/upsells/UpsellDevInstances";
+import { UpsellDevInstances } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";

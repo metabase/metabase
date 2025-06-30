@@ -7,7 +7,7 @@ import {
 import { EmbeddingToggle } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { UpsellDevInstances } from "metabase/admin/upsells/UpsellDevInstances";
+import { UpsellDevInstances } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { Box, Button } from "metabase/ui";
