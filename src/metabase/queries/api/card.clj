@@ -1,12 +1,14 @@
 (ns metabase.queries.api.card
   "/api/card endpoints."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -25,6 +27,7 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
@@ -38,7 +41,8 @@
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -567,6 +571,26 @@
           (api/column-will-change? :collection_id card-before-update card-updates))
       (assoc :collection_id collection-id))))
 
+;; TODO
+(defn- generate-view-name [query]
+  (str "mb_view_" (abs (hash query))))
+
+(defn- generate-view-definition [name query]
+  (format "CREATE OR REPLACE VIEW \"%s\" AS (%s)" name query))
+
+(mu/defn create-view-for-card
+  "create view for card"
+  [{:keys [database_id dataset_query]}]
+  (let [{:keys [query]} (qp.compile/compile dataset_query)
+        view-name (generate-view-name query)
+        view-definition (generate-view-definition view-name query)
+        db (t2/select-one :model/Database :id database_id)
+        driver (:engine db)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver db {:write? true}
+     (fn [^Connection conn]
+       (jdbc/execute! {:connection conn} view-definition)))))
+
 (mu/defn update-card!
   "Updates a card - impl"
   [id :- ms/PositiveInt
@@ -574,6 +598,7 @@
            result_metadata
            type] :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
+  ;; if type is transform, then let's compile it into a view
   (check-if-card-can-be-saved dataset_query type)
   (when-some [query (dataset-query->query dataset_query)]
     (try
