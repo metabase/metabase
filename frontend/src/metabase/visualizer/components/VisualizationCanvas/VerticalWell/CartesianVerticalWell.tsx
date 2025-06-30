@@ -1,5 +1,5 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -7,7 +7,9 @@ import { Flex, Text } from "metabase/ui";
 import { getDefaultMetricFilter } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
+  getHoveredItems,
   getIsMultiseriesCartesianChart,
+  getReferencedColumns,
   getVisualizationType,
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
@@ -15,7 +17,7 @@ import {
 } from "metabase/visualizer/selectors";
 import { isDraggedColumnItem } from "metabase/visualizer/utils";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, VisualizerDataSource } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
 
@@ -23,9 +25,11 @@ import { SimpleVerticalWell } from "./SimpleVerticalWell";
 
 export function CartesianVerticalWell() {
   const display = useSelector(getVisualizationType);
+  const columnValuesMapping = useSelector(getReferencedColumns);
   const rawSettings = useSelector(getVisualizerRawSettings);
   const computedSettings = useSelector(getVisualizerComputedSettings);
   const columns = useSelector(getVisualizerDatasetColumns);
+  const hoveredItems = useSelector(getHoveredItems);
   const isMultiseries = useSelector(getIsMultiseriesCartesianChart);
   const dispatch = useDispatch();
 
@@ -41,16 +45,35 @@ export function CartesianVerticalWell() {
       .filter(isNotNull);
   }, [columns, computedSettings, rawSettings, isMultiseries]);
 
+  const isColumnSelected = useCallback(
+    (column: DatasetColumn, dataSource: VisualizerDataSource) => {
+      return columnValuesMapping.find(
+        (item) =>
+          item.sourceId === dataSource.id && item.originalName === column.name,
+      );
+    },
+    [columnValuesMapping],
+  );
+
   const canHandleActiveItem = useMemo(() => {
-    if (!display || !active || !isDraggedColumnItem(active)) {
+    if (!display) {
       return false;
     }
-    const { column } = active.data.current;
-    const isSuitableColumn = getDefaultMetricFilter(display);
-    const a = isSuitableColumn(column);
 
-    return a;
-  }, [active, display]);
+    if (hoveredItems && hoveredItems.length > 0) {
+      const isSuitableColumn = getDefaultMetricFilter(display);
+      return hoveredItems.every((item) => {
+        const { column, dataSource } = item.data.current;
+        return (
+          !isColumnSelected(column, dataSource) && isSuitableColumn(column)
+        );
+      });
+    } else if (active && isDraggedColumnItem(active)) {
+      const { column } = active.data.current;
+      const isSuitableColumn = getDefaultMetricFilter(display);
+      return isSuitableColumn(column);
+    }
+  }, [active, display, hoveredItems, isColumnSelected]);
 
   const handleRemoveMetric = (metric: DatasetColumn) => {
     dispatch(removeColumn({ name: metric.name }));
