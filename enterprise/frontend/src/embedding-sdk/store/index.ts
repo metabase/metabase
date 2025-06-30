@@ -1,5 +1,6 @@
 /* eslint-disable no-restricted-imports */
 import {
+  type Action,
   type AnyAction,
   type Reducer,
   type Store,

@@ -5,10 +5,10 @@ import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import {
   MetabaseProvider,
-  type MetabaseProviderProps,
   StaticQuestion,
-  defineMetabaseAuthConfig,
 } from "embedding-sdk/components/public";
+import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
+import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-wrapper/lib/public/define-metabase-auth-config";
 
 import {
   MOCK_INSTANCE_URL,

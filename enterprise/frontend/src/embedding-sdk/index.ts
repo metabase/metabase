@@ -1,23 +1,73 @@
+import { defineGlobalDependencies } from "embedding-sdk/sdk-wrapper/lib/private/define-global-dependencies";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 // Enable SDK mode as we are in the SDK bundle
 // This applies to SDK derivatives such as new iframe embedding.
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
-import "metabase/embedding-sdk/css/layer.module.css";
-import "metabase/embedding-sdk/css/vendor.module.css";
-import "metabase/embedding-sdk/css/index.module.css";
+defineGlobalDependencies();
 
-import "metabase/lib/dayjs";
+export * from "./sdk-wrapper/components/public/CollectionBrowser";
+export * from "./sdk-wrapper/components/public/CreateQuestion";
+export * from "./sdk-wrapper/components/public/CreateDashboardModal";
+export * from "./sdk-wrapper/components/public/dashboard/EditableDashboard";
+export * from "./sdk-wrapper/components/public/dashboard/InteractiveDashboard";
+export * from "./sdk-wrapper/components/public/dashboard/StaticDashboard";
+export * from "./sdk-wrapper/components/public/debug/SdkDebugInfo";
+export { SdkQuestion as InteractiveQuestion } from "./sdk-wrapper/components/public/SdkQuestion";
+export * from "./sdk-wrapper/components/public/StaticQuestion";
+// eslint-disable-next-line no-literal-metabase-strings -- Export
+export * from "./sdk-wrapper/components/public/MetabaseProvider";
+export * from "./sdk-wrapper/components/public/MetabotQuestion";
 
-// Import the EE plugins required by the embedding sdk.
-import "sdk-ee-plugins";
+export { useApplicationName } from "./sdk-wrapper/hooks/public/use-application-name";
+export { useAvailableFonts } from "./sdk-wrapper/hooks/public/use-available-fonts";
+export { useCurrentUser } from "./sdk-wrapper/hooks/public/use-current-user";
+export { useMetabaseAuthStatus } from "./sdk-wrapper/hooks/public/use-metabase-auth-status";
 
-// Imports which are only applicable to the embedding sdk, and not the new iframe embedding.
-import "sdk-specific-imports";
+export * from "./sdk-wrapper/lib/public/define-metabase-auth-config";
+export * from "./sdk-wrapper/lib/public/define-metabase-theme";
 
-export * from "./hooks/public";
-export * from "./components/public";
+export {
+  type CollectionBrowserProps,
+  type CollectionBrowserListColumns,
+} from "./components/public/CollectionBrowser";
+export {
+  type CreateDashboardModalProps,
+  type CreateDashboardValues,
+} from "./components/public/CreateDashboardModal";
+export { type CreateQuestionProps } from "./components/public/CreateQuestion";
+export type {
+  StaticDashboardProps,
+  InteractiveDashboardProps,
+  EditableDashboardProps,
+} from "./components/public/dashboard";
+export {
+  type InteractiveQuestionComponents,
+  type BaseInteractiveQuestionProps,
+  type InteractiveQuestionProps,
+  type InteractiveQuestionBackButtonProps,
+  type InteractiveQuestionBreakoutDropdownProps,
+  type InteractiveQuestionChartTypeDropdownProps,
+  type InteractiveQuestionChartTypeSelectorProps,
+  type InteractiveQuestionDownloadWidgetProps,
+  type InteractiveQuestionDownloadWidgetDropdownProps,
+  type InteractiveQuestionEditorProps,
+  type InteractiveQuestionEditorButtonProps,
+  type InteractiveQuestionFilterProps,
+  type InteractiveQuestionFilterDropdownProps,
+  type InteractiveQuestionQuestionSettingsProps,
+  type InteractiveQuestionQuestionSettingsDropdownProps,
+  type InteractiveQuestionQuestionVisualizationProps,
+  type InteractiveQuestionResetButtonProps,
+  type InteractiveQuestionSaveButtonProps,
+  type InteractiveQuestionSaveQuestionFormProps,
+  type InteractiveQuestionSummarizeDropdownProps,
+  type InteractiveQuestionTitleProps,
+  type DrillThroughQuestionProps,
+} from "./components/public/SdkQuestion";
+export { type MetabaseProviderProps } from "./components/public/MetabaseProvider";
+export { type StaticQuestionProps } from "./components/public/StaticQuestion";
 
 export type {
   CustomDashboardCardMenuItem,

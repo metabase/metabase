@@ -17,6 +17,10 @@ import {
 
 import { EditableDashboard } from "./EditableDashboard";
 
+jest.mock("metabase/embedding-sdk/config", () => ({
+  isEmbeddingSdk: () => true,
+}));
+
 const setup = async (
   options: Omit<SetupSdkDashboardOptions, "component"> = {},
 ) => {
