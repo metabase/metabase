@@ -104,7 +104,7 @@
          ~docstring
          ~(macros/case
             :clj  (let [error-context {:fn-name (list 'quote fn-name)}]
-                    (mu.fn/instrumented-fn-form error-context parsed cosmetic-name))
+                    (mu.fn/instrumented-fn-form error-context true parsed cosmetic-name))
             :cljs (mu.fn/deparameterized-fn-form parsed cosmetic-name))))))
 
 (defmacro defn-

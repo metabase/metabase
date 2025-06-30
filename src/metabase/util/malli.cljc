@@ -95,7 +95,7 @@
               ~error-context-symb  {:fn-name        '~(or (some-> (resolve multifn) symbol)
                                                           (symbol multifn))
                                     :dispatch-value ~dispatch-value-symb}
-              f#                   ~(mu.fn/instrumented-fn-form error-context-symb (mu.fn/parse-fn-tail fn-tail))]
+              f#                   ~(mu.fn/instrumented-fn-form error-context-symb true (mu.fn/parse-fn-tail fn-tail))]
           (.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)
                       ~dispatch-value-symb
                       f#)))))

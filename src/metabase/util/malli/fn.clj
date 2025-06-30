@@ -1,7 +1,6 @@
 (ns metabase.util.malli.fn
   (:refer-clojure :exclude [fn])
   (:require
-   [cljs.env :as env]
    [clojure.core :as core]
    [malli.core :as mc]
    [malli.destructure :as md]
@@ -10,7 +9,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.humanize :as mu.humanize]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [net.cgrand.macrovich :as macros]))
 
 (set! *warn-on-reflection* true)
 
@@ -285,12 +285,7 @@
         (.setStackTrace cleaned)))
     e))
 
-(defn compiling-for-cljs?
-  "Standard method of doing this, as it turns out."
-  []
-  (some? env/*compiler*))
-
-(defn- instrumented-arity [error-context [_=> input-schema output-schema]]
+(defn- instrumented-arity [error-context fixup-stacktrace? [_=> input-schema output-schema]]
   (let [input-schema           (if (= input-schema :cat)
                                  [:cat]
                                  input-schema)
@@ -303,25 +298,25 @@
                                        (validate-output ~error-context ~output-schema))
                                  result-form)]
     `(~arglist
-      ~(if (compiling-for-cljs?)
-         `(do
-            ~@input-validation-forms
-            ~result-form)
+      ~(if fixup-stacktrace?
          `(try
             ~@input-validation-forms
             ~result-form
             (catch Exception ~'error
-              (throw (fixup-stacktrace ~'error))))))))
+              (throw (fixup-stacktrace ~'error))))
+         `(do
+            ~@input-validation-forms
+            ~result-form)))))
 
-(defn- instrumented-fn-tail [error-context [schema-type :as schema]]
+(defn- instrumented-fn-tail [error-context fixup-stacktrace? [schema-type :as schema]]
   (case schema-type
     :=>
-    [(instrumented-arity error-context schema)]
+    [(instrumented-arity error-context fixup-stacktrace? schema)]
 
     :function
     (let [[_function & schemas] schema]
       (for [schema schemas]
-        (instrumented-arity error-context schema)))))
+        (instrumented-arity error-context fixup-stacktrace? schema)))))
 
 (defn instrumented-fn-form
   "Given a `fn-tail` like
@@ -334,9 +329,9 @@
 
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
-  [error-context parsed & [fn-name]]
+  [error-context fixup-stacktrace? parsed & [fn-name]]
   `(let [~'&f ~(deparameterized-fn-form parsed fn-name)]
-     (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
+     (core/fn ~@(instrumented-fn-tail error-context fixup-stacktrace? (fn-schema parsed)))))
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
@@ -407,5 +402,8 @@
       (deparameterized-fn-form parsed)
       (let [error-context (if (symbol? (first fn-tail))
                             ;; We want the quoted symbol of first fn-tail:
-                            {:fn-name (list 'quote (first fn-tail))} {})]
-        (instrumented-fn-form error-context parsed)))))
+                            {:fn-name (list 'quote (first fn-tail))} {})
+            fixup-stacktrace? (macros/case
+                                :clj true
+                                :cljs false)]
+        (instrumented-fn-form error-context fixup-stacktrace? parsed)))))
