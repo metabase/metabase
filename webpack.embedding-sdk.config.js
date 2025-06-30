@@ -163,6 +163,8 @@ module.exports = (env) => {
           .execSync("git rev-parse HEAD")
           .toString()
           .trim(),
+        // In additional to the SDK env detection, it is used for unreachable code elimination.
+        // Bundlers remove unreachable code when the direct `process.env.IS_EMBEDDING_SDK === true` condition is used.
         IS_EMBEDDING_SDK: true,
       }),
       new webpack.DefinePlugin({
