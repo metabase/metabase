@@ -59,14 +59,6 @@
   overflow-wrap: anywhere;
 }
 
-.track {
-  position: absolute;
-  border-left: 1px solid var(--mb-base-color-orion-20);
-  border-bottom: 1px solid var(--mb-base-color-orion-20);
-  border-bottom-left-radius: 4px;
-  width: 10px;
-}
-
 .visibilityToggle {
   flex-shrink: 0;
   opacity: 0;
