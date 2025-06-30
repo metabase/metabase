@@ -10,10 +10,8 @@ import { Box, Loader, Stack, Text, Title } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
-import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 export const ProcessingStep = () => {
-  useForceLocaleRefresh();
   const siteUrl = useSetting("site-url");
 
   const { goToNextStep } = useEmbeddingSetup();
