@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import { type ComponentProps, forwardRef } from "react";
 
 import {
   setEditingParameter,
@@ -21,13 +21,19 @@ export interface DashboardParameterListProps
   isSortable?: boolean;
 }
 
-export function DashboardParameterList({
-  parameters,
-  isSortable = true,
-  widgetsVariant,
-  widgetsWithinPortal,
-  vertical,
-}: DashboardParameterListProps) {
+export const DashboardParameterList = forwardRef<
+  HTMLDivElement,
+  DashboardParameterListProps
+>(function DashboardParameterList(
+  {
+    parameters,
+    isSortable = true,
+    widgetsVariant,
+    widgetsWithinPortal,
+    vertical,
+  },
+  ref,
+) {
   const dispatch = useDispatch();
 
   const {
@@ -60,6 +66,7 @@ export function DashboardParameterList({
       widgetsVariant={widgetsVariant}
       widgetsWithinPortal={widgetsWithinPortal}
       vertical={vertical}
+      ref={ref}
     />
   );
-}
+});
