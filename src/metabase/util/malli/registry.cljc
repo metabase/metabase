@@ -2,11 +2,18 @@
   (:refer-clojure :exclude [declare def])
   (:require
    #?@(:clj ([malli.experimental.time :as malli.time]
-             [net.cgrand.macrovich :as macros]))
+             [net.cgrand.macrovich :as macros]
+             [metabase.util.performance :as perf]))
+   [clojure.string :as str]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.registry]
-   [malli.util :as mut])
+   [malli.util :as mut]
+   [metabase.util.log :as log])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
+
+;;; for clj we use perf/prewalk
+(comment walk/prewalk)
 
 (defonce ^:private cache (atom {}))
 
@@ -26,6 +33,43 @@
           x)
     x))
 
+(defn- fn-name [v]
+  (str/replace (str v) #"(.+)@.+" "$1"))
+
+(defn- schema-fingerprint [schema]
+  (#?(:clj perf/prewalk :cljs walk/prewalk)
+   (fn [v]
+     (cond
+       (or (nil? v)
+           (boolean? v)
+           (keyword? v)
+           (symbol? v)
+           (string? v)
+           (number? v)
+           (record? v)
+           (map? v)
+           (map-entry? v)
+           (vector? v)
+           (set? v)
+           (seq? v)
+           (char? v)
+           (var? v))
+       v
+
+       (mc/schema? v)
+       (mc/form v)
+
+       (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) v)
+       (str v)
+
+       (fn? v)
+       (fn-name v)
+
+       :else
+       (throw (ex-info "Unknown val" {:v v :type (type v) :class (#?(:clj class :cljs type) v)}))))
+
+   schema))
+
 (defn cached
   "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
   with [[metabase.util.malli.registry/def]]. If value doesn't exist, `value-thunk` is used to calculate (and cache)
@@ -34,11 +78,22 @@
   You generally shouldn't use this outside of this namespace unless you have a really good reason to do so! Make sure
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
-  (let [schema-key (schema-cache-key schema)]
-    (or (get (get @cache k) schema-key)     ; get-in is terribly inefficient
-        (let [v (value-thunk)]
-          (swap! cache assoc-in [k schema-key] v)
-          v))))
+  (let [schema-key (schema-cache-key schema)
+        cache-line (get @cache k)]
+    (if-let [cached-val (get cache-line schema-key)]
+      cached-val
+      (let [schema-fingerprint (schema-fingerprint schema-key)
+            v (value-thunk)]
+        (when-let [schema-key' (get-in @cache [:schema-fingerprint k schema-fingerprint])]
+          (throw (ex-info "clashing schema" {:schema schema :fingerprint schema-fingerprint}))
+          #?(:clj (binding [*out* *err*]
+                    (println (format "\nCaching schema with identical fingerprint in cache: %s vs %s with fingerprint %s"
+                                     (str schema-key) (str schema-key') (str schema-fingerprint)))))
+          (log/warnf "Caching schema with identical fingerprint in cache: %s vs %s with fingerprint %s" (str schema-key) (str schema-key') (str schema-fingerprint)))
+        (swap! cache #(-> %
+                          (assoc-in [k schema-key] v)
+                          (assoc-in [:schema-fingerprint k schema-fingerprint] schema-key)))
+        v))))
 
 (defn validator
   "Fetch a cached [[mc/validator]] for `schema`, creating one if needed. The cache is flushed whenever the registry
