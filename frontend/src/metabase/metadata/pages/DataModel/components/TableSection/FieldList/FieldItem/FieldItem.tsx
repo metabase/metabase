@@ -8,7 +8,7 @@ import EditableText from "metabase/common/components/EditableText";
 import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Flex, Group, Icon, rem } from "metabase/ui";
+import { Box, Card, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
@@ -84,72 +84,78 @@ export const FieldItem = ({ active, field, href }: Props) => {
   };
 
   return (
-    <Flex
-      align="flex-start"
+    <Card
       aria-label={field.display_name}
       bg={active ? "brand-light" : "bg-white"}
       c="text-medium"
-      className={cx(S.field, {
+      className={cx(S.card, {
         [S.active]: active,
       })}
-      component={Link}
-      direction="column"
       draggable={false}
-      gap={rem(12)}
-      justify="space-between"
-      mih={rem(40)}
-      pos="relative"
-      px="md"
-      py={rem(12)}
       role="listitem"
-      to={href}
-      w="100%"
-      wrap="nowrap"
-      onClick={handleClick}
+      shadow="xs"
+      p={0}
+      withBorder
     >
-      <Group flex="0 0 auto" gap="sm" maw="100%" wrap="nowrap">
-        <Icon className={S.icon} flex="0 0 auto" name={icon} />
+      <Flex
+        align="flex-start"
+        component={Link}
+        direction="column"
+        gap={rem(12)}
+        justify="space-between"
+        mih={rem(40)}
+        pos="relative"
+        px="md"
+        py={rem(12)}
+        to={href}
+        w="100%"
+        wrap="nowrap"
+        onClick={handleClick}
+      >
+        <Group flex="0 0 auto" gap="sm" maw="100%" wrap="nowrap">
+          <Icon className={S.icon} flex="0 0 auto" name={icon} />
+
+          <Box
+            className={cx(S.input, S.name)}
+            // TODO: fix EditableText or use something else
+            // https://linear.app/metabase/issue/SEM-429/data-model-inline-field-namedescription-inputs
+            component={EditableText}
+            fw="bold"
+            initialValue={field.display_name}
+            maxLength={254}
+            mb={rem(-4)}
+            miw={0}
+            ml={rem(-2)}
+            mt={rem(-3)}
+            placeholder={t`Give this field a name`}
+            px={rem(1)}
+            py={rem(2)}
+            tabIndex={undefined} // override the default 0 which breaks a11y
+            onChange={handleNameChange}
+            onClick={handleInputClick}
+          />
+        </Group>
 
         <Box
-          className={cx(S.input, S.name)}
+          className={S.input}
           // TODO: fix EditableText or use something else
           // https://linear.app/metabase/issue/SEM-429/data-model-inline-field-namedescription-inputs
           component={EditableText}
-          fw="bold"
-          initialValue={field.display_name}
-          maxLength={254}
+          initialValue={field.description ?? ""}
+          isMultiline
+          isOptional
+          maw="100%"
           mb={rem(-4)}
-          miw={0}
-          ml={rem(-2)}
           mt={rem(-3)}
-          placeholder={t`Give this field a name`}
+          mx={rem(-2)}
           px={rem(1)}
-          py={rem(2)}
+          py={0}
+          placeholder={t`No description yet`}
           tabIndex={undefined} // override the default 0 which breaks a11y
-          onChange={handleNameChange}
+          onChange={handleDescriptionChange}
           onClick={handleInputClick}
         />
-      </Group>
-
-      <Box
-        className={S.input}
-        // TODO: fix EditableText or use something else
-        // https://linear.app/metabase/issue/SEM-429/data-model-inline-field-namedescription-inputs
-        component={EditableText}
-        initialValue={field.description ?? ""}
-        isMultiline
-        isOptional
-        maw="100%"
-        mb={rem(-4)}
-        mt={rem(-3)}
-        mx={rem(-2)}
-        px={rem(1)}
-        py={0}
-        placeholder={t`No description yet`}
-        tabIndex={undefined} // override the default 0 which breaks a11y
-        onChange={handleDescriptionChange}
-        onClick={handleInputClick}
-      />
-    </Flex>
+      </Flex>
+    </Card>
   );
 };

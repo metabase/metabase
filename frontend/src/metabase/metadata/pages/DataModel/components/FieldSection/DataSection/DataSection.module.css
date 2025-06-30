@@ -7,3 +7,7 @@
 .disabledInputIcon {
   color: var(--mb-color-text-light);
 }
+
+.switchBody {
+  align-items: flex-start !important;
+}

@@ -1,7 +1,4 @@
-.field {
-  border-radius: var(--default-border-radius);
-  border: 1px solid var(--mb-color-border);
-
+.card {
   &:hover {
     &:not(.active) {
       background-color: var(--mb-color-background-light) !important;

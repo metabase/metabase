@@ -8,10 +8,10 @@ import {
   canCoerceFieldType,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Box, Flex, Icon, Stack, Switch, TextInput, rem } from "metabase/ui";
+import { Flex, Icon, Stack, Switch, TextInput, rem } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
-import { SectionPill } from "../../SectionPill";
+import { TitledSection } from "../../TitledSection";
 
 import S from "./DataSection.module.css";
 import SubInputFollowIllustration from "./illustrations/sub-input-follow.svg?component";
@@ -37,11 +37,7 @@ const DataSectionBase = ({ field }: Props) => {
   }, [field.coercion_strategy]);
 
   return (
-    <Stack gap="md">
-      <Box>
-        <SectionPill title={t`Data`} />
-      </Box>
-
+    <TitledSection title={t`Data`}>
       <TextInput
         classNames={{ input: S.disabledInput }}
         disabled
@@ -63,7 +59,7 @@ const DataSectionBase = ({ field }: Props) => {
 
         {canCoerceFieldType(field) && (
           <>
-            <Flex gap="xs" ml={rem(12)}>
+            <Flex gap="xs" ml={rem(12)} wrap="nowrap">
               {isCasting ? (
                 <SubInputFollowIllustration />
               ) : (
@@ -72,6 +68,9 @@ const DataSectionBase = ({ field }: Props) => {
 
               <Switch
                 checked={isCasting}
+                classNames={{
+                  body: S.switchBody,
+                }}
                 flex="1"
                 label={t`Cast to a specific data type`}
                 mt="md"
@@ -120,7 +119,7 @@ const DataSectionBase = ({ field }: Props) => {
           </>
         )}
       </Stack>
-    </Stack>
+    </TitledSection>
   );
 };
 

@@ -15,8 +15,8 @@ export const COLUMN_CONFIG: Record<Column, ColumnSizeConfig> = {
   },
   field: {
     flex: "9 1 0",
-    min: 280,
-    max: 640,
+    min: 320,
+    max: 680,
   },
   preview: {
     flex: "10 1 0",

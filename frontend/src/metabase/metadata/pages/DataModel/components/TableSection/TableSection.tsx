@@ -35,13 +35,14 @@ const TableSectionBase = ({ params, table }: Props) => {
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
   return (
-    <Stack data-testid="table-section" gap={0} p="xl" pt={0}>
+    <Stack data-testid="table-section" gap={0} pb="xl">
       <Box
         bg="accent-gray-light"
         className={S.header}
         pb="lg"
         pos="sticky"
         pt="xl"
+        px="xl"
         top={0}
       >
         <NameDescriptionInput
@@ -70,7 +71,7 @@ const TableSectionBase = ({ params, table }: Props) => {
         />
       </Box>
 
-      <Stack gap="lg">
+      <Stack gap="lg" px="xl">
         <Stack gap={12}>
           <Group align="center" gap="md" justify="space-between">
             <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
