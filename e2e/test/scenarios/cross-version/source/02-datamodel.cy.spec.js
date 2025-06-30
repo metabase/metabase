@@ -5,9 +5,9 @@ import {
   createSegment,
 } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
-const { ORDERS, ORDERS_ID, REVIEWS, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
+const { H } = cy;
 
-const sampleDBDataModelPage = `/admin/datamodel/database/${SAMPLE_DB_ID}`;
+const { ORDERS, ORDERS_ID, REVIEWS, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
 
 it("should configure data model settings", () => {
   cy.intercept("GET", "/api/segment").as("getSegments");
@@ -15,8 +15,11 @@ it("should configure data model settings", () => {
 
   cy.signInAsAdmin();
 
-  cy.visit("/admin/datamodel");
-  cy.location("pathname").should("eq", sampleDBDataModelPage);
+  H.DataModel.visit();
+  cy.location("pathname").should(
+    "eq",
+    `/admin/datamodel/database/${SAMPLE_DB_ID}`,
+  );
 
   // Remap ORDERS.PRODUCT_ID display value to PRODUCTS.TITLE
   cy.intercept("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`).as(
@@ -39,7 +42,7 @@ it("should configure data model settings", () => {
   cy.findByText("Title").click();
   cy.wait("@updateProductId");
 
-  cy.visit(sampleDBDataModelPage);
+  H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
 
   cy.get(".AdminList").findByText("Reviews").click();
   cy.intercept("POST", `/api/field/${REVIEWS.RATING}/values`).as(
@@ -74,7 +77,7 @@ it("should configure data model settings", () => {
   cy.wait("@remapRatingValues");
 
   // Hide PRODUCTS.EAN
-  cy.visit(sampleDBDataModelPage);
+  H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
   cy.get(".AdminList").findByText("Products").click();
 
   cy.intercept("PUT", `/api/field/${PRODUCTS.EAN}`).as("hideEan");

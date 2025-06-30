@@ -1,3 +1,10 @@
+/**
+ * @param {object} segment
+ * @param {string} segment.name
+ * @param {TableId} segment.table_id
+ * @param {string|null} [segment.description]
+ * @param {object} segment.definition
+ */
 export const createSegment = ({
   name,
   table_id,
