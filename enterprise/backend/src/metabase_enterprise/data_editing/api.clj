@@ -264,6 +264,7 @@
     ;; TODO make this variant more self-describing, it's not clear that this integer is a dashcard id.
     [:dashboard-action ms/PositiveInt]]
    [:map {:closed true}
+    [:name {:optional true} :string]
     [:inner-action ::unified-action.base]
     [:mapping {:optional true} [:maybe ::action.config.mappings]]
     [:param-map ::action.config.param-map]
@@ -285,10 +286,13 @@
   [scope :- ::types/scope.hydrated
    raw-id :- ::api-action-id-or-expression]
   (cond
-    (map? raw-id) (if-let [packed-id (:packed-id raw-id)]
-                    (merge
-                     {:inner-action (fetch-unified-action scope packed-id)}
-                     (dissoc raw-id :packed-id))
+    (map? raw-id) (if-let [action-id (:action-id raw-id)]
+                    (if-let [parameters (:parameters raw-id)]
+                      (merge {:inner-action (fetch-unified-action scope action-id)}
+                             {:param-map (u/for-ordered-map [p parameters] [(keyword (:id p)) (dissoc p :id)])}
+                             (dissoc raw-id :action-id :parameters))
+                      raw-id)
+                    ;; assume this is in the internal format already? probably don't want to support this.
                     raw-id)
     (pos-int? raw-id) {:action-id raw-id}
     (neg-int? raw-id) (let [[op param] (actions/unpack-encoded-action-id raw-id)]
@@ -362,7 +366,7 @@
 
 (defn- augment-params
   [{:keys [dashcard-id param-map] :as _action} input params]
-  ;; TODO cool optimization where we don'l fetch the row-data from the db if we only need the pk (or a subset of the pk)
+  ;; TODO cool optimization where we don't fetch the row-data from the db if we only need the pk (or a subset of the pk)
   (let [row (delay (let [{:keys [table_id]} (actions/cached-value
                                              [:dashcard-viz dashcard-id]
                                              #(t2/select-one-fn :visualization_settings :model/DashboardCard dashcard-id))]

@@ -73,6 +73,7 @@ import type {
   DashCardId,
   Dashboard,
   DashboardId,
+  DatabaseId,
   Database as DatabaseType,
   Dataset,
   DatasetData,
@@ -831,6 +832,8 @@ export const PLUGIN_TABLE_ACTIONS = {
   ConfigureTableActions: PluginPlaceholder as ComponentType<{
     value: TableActionDisplaySettings[] | undefined;
     cols: BasicTableViewColumn[];
+    databaseId: DatabaseId | undefined;
+    actionScope: ActionScope;
     onChange: (newValue: TableActionDisplaySettings[]) => void;
   }>,
 };

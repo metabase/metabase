@@ -192,6 +192,7 @@ export const EditTableDashcardVisualization = memo(
       );
     }, [data.cols, tableFieldMetadataMap, columnsConfig]);
     const hasBulkEditing = hasEditableAndVisibleColumns;
+    const hasRowSelection = hasBulkEditing || hasDeleteAction;
 
     const {
       rowActions,
@@ -393,6 +394,7 @@ export const EditTableDashcardVisualization = memo(
                 getColumnSortDirection={getColumnSortDirection}
                 rowActions={rowActions}
                 onActionClick={onRowActionButtonClick}
+                hasRowSelection={hasRowSelection}
                 rowSelection={rowSelection}
                 onRowSelectionChange={setRowSelection}
               />

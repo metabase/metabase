@@ -256,6 +256,7 @@ export const EditTableDataContainer = ({
                 onCellValueUpdate={handleCellValueUpdate}
                 onRowExpandClick={openUpdateRowModal}
                 onRowSelectionChange={setRowSelection}
+                hasRowSelection
                 rowSelection={rowSelection}
                 onColumnSort={handleChangeColumnSort}
               />

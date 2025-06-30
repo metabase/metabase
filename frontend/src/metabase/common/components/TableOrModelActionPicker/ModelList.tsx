@@ -2,14 +2,14 @@ import { useMemo } from "react";
 
 import type { ModelItem } from "metabase/common/components/DataPicker/types";
 import { ItemList, ListBox } from "metabase/common/components/EntityPicker";
-import type { ModelWithActionsItem } from "metabase-types/api";
+import type { CardId, SearchResult } from "metabase-types/api";
 
 interface Props {
   error: unknown;
   isLoading: boolean;
   isCurrentLevel: boolean;
   selectedItem: ModelItem | null;
-  models: ModelWithActionsItem[] | undefined;
+  models: SearchResult<CardId>[] | undefined;
   onClick: (item: ModelItem) => void;
 }
 
@@ -32,7 +32,7 @@ export const ModelList = ({
   }, [models]);
 
   return (
-    <ListBox data-testid="item-picker-level-0">
+    <ListBox data-testid="item-picker-level-1">
       <ItemList
         error={error}
         isCurrentLevel={isCurrentLevel}

@@ -5,6 +5,8 @@ import { uuid } from "metabase/lib/uuid";
 import { Button, Modal, Stack, Text } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type {
+  ActionScope,
+  DatabaseId,
   RowActionFieldSettings,
   TableAction,
   TableActionDisplaySettings,
@@ -19,12 +21,16 @@ import { useTableActionsEditingModal } from "./use-table-actions-editing-modal";
 type ConfigureTableActionsProps = {
   value: TableActionDisplaySettings[] | undefined;
   cols: BasicTableViewColumn[];
+  databaseId: DatabaseId | undefined;
+  actionScope: ActionScope;
   onChange: (newValue: TableActionDisplaySettings[]) => void;
 };
 
 export const ConfigureTableActions = ({
   value: tableActions,
   cols: columns,
+  databaseId,
+  actionScope,
   onChange,
 }: ConfigureTableActionsProps) => {
   const {
@@ -51,7 +57,6 @@ export const ConfigureTableActions = ({
         actionId: action.id,
         actionType: "data-grid/custom-action",
         parameterMappings,
-        enabled: true,
       };
 
       if (name && name !== action.name) {
@@ -59,21 +64,6 @@ export const ConfigureTableActions = ({
       }
 
       const newArray = tableActions ? [...tableActions, newItem] : [newItem];
-
-      onChange(newArray);
-    },
-    [onChange, tableActions],
-  );
-
-  const updateAction = useCallback(
-    (action: TableActionDisplaySettings) => {
-      if (!tableActions) {
-        return;
-      }
-
-      const newArray = tableActions.map((tableAction) => {
-        return tableAction.id !== action.id ? tableAction : action;
-      });
 
       onChange(newArray);
     },
@@ -98,16 +88,19 @@ export const ConfigureTableActions = ({
         actionId: action.id,
         actionType: "data-grid/custom-action",
         parameterMappings,
-        enabled: editingAction?.enabled ?? true,
       };
 
       if (name && name !== action.name) {
         newItem.name = name;
       }
 
-      updateAction(newItem);
+      const newArray = (tableActions || []).map((tableAction) => {
+        return tableAction.id !== newItem.id ? tableAction : newItem;
+      });
+
+      onChange(newArray);
     },
-    [updateAction, editingAction],
+    [onChange, tableActions],
   );
 
   const handleRemoveAction = useCallback(
@@ -138,7 +131,6 @@ export const ConfigureTableActions = ({
                 action={action}
                 onRemove={handleRemoveAction}
                 onEdit={setEditingAction}
-                onEnable={updateAction}
               />
             );
           })}
@@ -157,8 +149,10 @@ export const ConfigureTableActions = ({
         >
           <Modal.Overlay />
           <AddOrEditActionSettingsContent
+            actionScope={actionScope}
             actionSettings={editingAction}
             tableColumns={columns}
+            databaseId={databaseId}
             onSubmit={editingAction ? handleEditAction : handleAddAction}
             onClose={cancelEditAction}
           />

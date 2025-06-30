@@ -45,9 +45,9 @@
                     :sourceType "ask-user"})}))
 
 ;; TODO handle exposing new inputs required by the inner-action
-(defn- configuration-for-pending-action [{:keys [param-map] :as _action}]
+(defn- configuration-for-pending-action [{:keys [param-map] :as action}]
   ;; TODO Delegate to get this
-  {:title "TODO - depends on existing configuration if already saved, otherwise from the inner action as the default."
+  {:title      (:name action "TODO - depends on existing configuration if already saved, otherwise from the inner action as the default.")
    :parameters (for [[param-id param-settings] param-map]
                  (assoc param-settings :id (name param-id)))})
 

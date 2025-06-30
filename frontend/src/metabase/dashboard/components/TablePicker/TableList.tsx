@@ -29,7 +29,7 @@ import type {
 import S from "./TableList.module.css";
 
 type TableListProps = {
-  onSelect: (tableId: TableId) => void;
+  onSelect: (params: { tableId: TableId; databaseId: DatabaseId }) => void;
 };
 
 export const TableList = ({ onSelect }: TableListProps) => {
@@ -191,7 +191,9 @@ export const TableList = ({ onSelect }: TableListProps) => {
                   size: 16,
                 }}
                 className={S.filteredResult}
-                onSelect={onSelect}
+                onSelect={() =>
+                  onSelect({ tableId: item.id, databaseId: item.db_id })
+                }
                 renderTitle={(name) => (
                   <Group
                     wrap="nowrap"
@@ -279,9 +281,9 @@ export const TableList = ({ onSelect }: TableListProps) => {
                 name: "table",
                 size: 16,
               }}
-              onSelect={() => {
-                onSelect(item.id);
-              }}
+              onSelect={() =>
+                onSelect({ tableId: item.id, databaseId: item.db_id })
+              }
             />
           ))}
         </SelectList>

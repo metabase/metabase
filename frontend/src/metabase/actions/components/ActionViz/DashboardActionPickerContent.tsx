@@ -91,6 +91,7 @@ export const DashboardActionPickerContent = ({
     return (
       <TableOrModelActionPicker
         value={newActionInitialParentItem}
+        initialDbId={undefined}
         onChange={setAction}
         onClose={handleClose}
       />

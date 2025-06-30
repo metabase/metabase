@@ -8,12 +8,15 @@ import type {
   ModelItem,
   TableItem,
 } from "metabase/common/components/DataPicker";
+import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
 import { TableOrModelActionPicker } from "metabase/common/components/TableOrModelActionPicker";
-import { Button, Icon, Modal } from "metabase/ui";
+import { Button, Center, Icon, Modal } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
+  ActionScope,
   DataGridWritebackAction,
+  DatabaseId,
   RowActionFieldSettings,
   TableActionDisplaySettings,
 } from "metabase-types/api";
@@ -23,6 +26,8 @@ import { ActionParameterMappingForm } from "./ActionParameterMappingForm";
 interface Props {
   actionSettings: TableActionDisplaySettings | null | undefined;
   tableColumns: BasicTableViewColumn[];
+  databaseId: DatabaseId | undefined;
+  actionScope: ActionScope;
   onClose: () => void;
   onSubmit: (actionParams: {
     id?: string;
@@ -30,12 +35,12 @@ interface Props {
     name: string | undefined;
     parameterMappings: RowActionFieldSettings[];
   }) => void;
-  actions?: DataGridWritebackAction[];
 }
 
 export function AddOrEditActionSettingsContent({
   actionSettings,
   tableColumns,
+  databaseId,
   onClose,
   onSubmit,
 }: Props) {
@@ -58,17 +63,25 @@ export function AddOrEditActionSettingsContent({
   const showNewActionStep = !!newActionInitialParentItem;
 
   // TODO: replace this block with action describe api.
-  const { data: allActions } = useGetActionsQuery(
-    selectedPickerAction ? undefined : skipToken,
-  );
+  const {
+    data: allActions,
+    isLoading,
+    refetch: refetchActionsList,
+  } = useGetActionsQuery(selectedPickerAction ? undefined : skipToken);
 
   const action = useMemo(() => {
     if (selectedPickerAction) {
-      return allActions?.find(
+      const resultAction = allActions?.find(
         (action) => action.id === selectedPickerAction.id,
       );
+
+      if (allActions && !resultAction) {
+        refetchActionsList();
+      }
+
+      return resultAction;
     }
-  }, [allActions, selectedPickerAction]);
+  }, [allActions, selectedPickerAction, refetchActionsList]);
 
   const setAction = (newActionItem: ActionItem | undefined) => {
     setSelectedPickerAction(newActionItem);
@@ -113,10 +126,21 @@ export function AddOrEditActionSettingsContent({
     }
   }, [action]);
 
+  if (isLoading) {
+    return (
+      <Modal.Content>
+        <Center h="10rem">
+          <DelayedLoadingSpinner delay={300} />
+        </Center>
+      </Modal.Content>
+    );
+  }
+
   if (!selectedPickerAction || !action || showNewActionStep) {
     return (
       <TableOrModelActionPicker
         value={newActionInitialParentItem}
+        initialDbId={databaseId}
         onChange={setAction}
         onClose={onClose}
       />
