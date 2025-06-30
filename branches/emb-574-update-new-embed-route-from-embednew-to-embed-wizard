@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-513-persist-new-iframe-embed-flow-settings-to-user-settings",
     "hash": "c344d4bb618e5bcfb4aefb7706d632e7c5be0274"
+  },
+  "upstream": {
+    "branch": "emb-574-update-new-embed-route-from-embednew-to-embed-wizard"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 60300,
+        "gqlID": "PR_kwDOAczgH86cwsji"
+      }
+    }
   }
 }
