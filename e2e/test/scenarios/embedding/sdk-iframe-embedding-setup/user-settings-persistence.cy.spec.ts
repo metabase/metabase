@@ -50,7 +50,9 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
     cy.log("1. set chart embed settings to non-default values");
     getEmbedSidebar().within(() => {
+      capturePersistSettings();
       cy.findByLabelText("Allow downloads").click().should("be.checked");
+      cy.wait("@persistSettings");
 
       capturePersistSettings();
       cy.findByLabelText("Show chart title").click().should("not.be.checked");
@@ -102,7 +104,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
   });
 
-  it("persists brand color customization across page reloads", () => {
+  it("persists brand colors", () => {
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
     cy.log("1. change brand color to red");
@@ -159,6 +161,10 @@ const capturePersistSettings = () => {
 };
 
 const waitAndReload = () => {
-  cy.wait("@persistSettings");
-  cy.reload();
+  cy.wait("@persistSettings").then(() => {
+    // Reduce flakiness by waiting for settings to be saved.
+    cy.wait(500);
+
+    cy.reload();
+  });
 };
