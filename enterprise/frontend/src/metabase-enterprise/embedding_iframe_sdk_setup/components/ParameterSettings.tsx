@@ -45,7 +45,7 @@ export const ParameterSettings = () => {
       },
       [settings, updateSettings],
     ),
-    800,
+    500,
   );
 
   // Only show parameters for dashboards and questions
