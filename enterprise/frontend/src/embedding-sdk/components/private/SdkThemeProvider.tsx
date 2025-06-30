@@ -15,9 +15,15 @@ import { getApplicationColors } from "metabase-enterprise/settings/selectors";
 interface Props {
   theme?: MetabaseTheme;
   children: React.ReactNode;
+  // Used only in tests to disable the MantineProvider's CSS variables injection because it slows down the tests significantly.
+  withCssVariables?: boolean;
 }
 
-export const SdkThemeProvider = ({ theme, children }: Props) => {
+export const SdkThemeProvider = ({
+  theme,
+  children,
+  withCssVariables,
+}: Props) => {
   const font = useSelector(getFont);
   const appColors = useSelector((state) =>
     getApplicationColors(getSettings(state)),
@@ -32,7 +38,10 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
   }, [appColors, theme, font]);
 
   return (
-    <ThemeProvider theme={themeOverride}>
+    <ThemeProvider
+      theme={themeOverride}
+      mantineProviderProps={{ withCssVariables }}
+    >
       <GlobalSdkCssVariables />
       {children}
     </ThemeProvider>

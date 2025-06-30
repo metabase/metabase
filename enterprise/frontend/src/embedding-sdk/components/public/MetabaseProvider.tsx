@@ -95,6 +95,10 @@ export interface MetabaseProviderProps
 
 interface InternalMetabaseProviderProps extends MetabaseProviderProps {
   store: Store<SdkStoreState, Action>;
+  // Used only in tests to disable the MantineProvider's CSS variables injection because it slows down the tests significantly.
+  mantineProviderProps?: {
+    withCssVariables?: boolean;
+  };
 }
 
 export const MetabaseProviderInternal = ({
@@ -109,6 +113,7 @@ export const MetabaseProviderInternal = ({
   errorComponent,
   loaderComponent,
   allowConsoleLog,
+  mantineProviderProps,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
   useInitData({ authConfig, allowConsoleLog });
@@ -145,7 +150,10 @@ export const MetabaseProviderInternal = ({
     <SdkContextProvider>
       <EmotionCacheProvider>
         <Global styles={SCOPED_CSS_RESET} />
-        <SdkThemeProvider theme={theme}>
+        <SdkThemeProvider
+          theme={theme}
+          withCssVariables={mantineProviderProps?.withCssVariables}
+        >
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
           <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
             <LocaleProvider locale={locale || instanceLocale}>

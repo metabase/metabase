@@ -68,6 +68,10 @@ export function renderWithSDKProviders(
           {...props}
           {...sdkProviderProps}
           store={store}
+          // If we try to inject CSS variables to `.mb-wrapper`, it will slow the Jest tests down like crazy.
+          mantineProviderProps={{
+            withCssVariables: false,
+          }}
         />
       </MetabaseReduxProvider>
     );

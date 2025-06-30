@@ -9,7 +9,7 @@ import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
 import { type ReactNode, useMemo } from "react";
 
-import { isEmbeddingSdk, isJest } from "metabase/env";
+import { isEmbeddingSdk } from "metabase/env";
 
 import { getThemeOverrides } from "../../../theme";
 import { DatesProvider } from "../DatesProvider";
@@ -77,8 +77,6 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
       classNamesPrefix="mb-mantine"
       // This slows down unit tests like crazy
       cssVariablesSelector={isEmbeddingSdk ? ".mb-wrapper" : undefined}
-      // If we try to inject CSS variables to `.mb-wrapper`, it will slow the Jest tests down like crazy.
-      withCssVariables={!isJest}
       {...props.mantineProviderProps}
     >
       <_CompatibilityEmotionThemeProvider theme={theme}>
