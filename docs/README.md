@@ -222,9 +222,9 @@ Metabase's reference documentation.
 - [Usage analytics](./usage-and-performance-tools/usage-analytics.md)
 - [Admin tools](./usage-and-performance-tools/tools.md)
 
-### Cloud
+### Metabase Cloud
 
-- [Documentation for Metabase Cloud and Store](https://www.metabase.com/docs/latest/cloud/start)
+- [Documentation for Metabase Cloud and Store](./cloud/start.md)
 
 ### Metabase API
 
@@ -256,10 +256,6 @@ Metabase's reference documentation.
 ### [Discussion](https://discourse.metabase.com)
 
 Share and connect with other Metabasers.
-
-### [Metabase Cloud](https://www.metabase.com/docs/latest/cloud/start)
-
-For docs specific to Metabase Cloud plans.
 
 ### [Community stories](https://www.metabase.com/community)
 
