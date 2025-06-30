@@ -1,5 +1,5 @@
 import { updateIn } from "icepick";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -26,7 +26,8 @@ import { InviteUserForm } from "../InviteUserForm";
 import { SetupSection } from "../SetupSection";
 import type { NumberedStepProps } from "../types";
 
-import { StepDescription } from "./DatabaseStep.styled";
+import { useToast } from "metabase/common/hooks";
+import { Box } from "metabase/ui";
 
 export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted } = useStep("db_connection");
@@ -37,6 +38,7 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const isEmailConfigured = useSelector(getIsEmailConfigured);
 
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const handleEngineChange = (engine?: string) => {
     dispatch(updateDatabaseEngine(engine));
@@ -45,6 +47,9 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const handleDatabaseSubmit = async (database: DatabaseData) => {
     try {
       await dispatch(submitDatabase(database)).unwrap();
+      sendToast({
+        message: c("{0} is a database name").t`Connected to ${database.name}`,
+      });
     } catch (error) {
       throw getSubmitError(error);
     }
@@ -73,10 +78,10 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
       title={getStepTitle(database, invite, isStepCompleted)}
       label={stepLabel}
     >
-      <StepDescription>
+      <Box mt="sm" mb="xl">
         <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
         <div>{t`Not ready? Skip and play around with our Sample Database.`}</div>
-      </StepDescription>
+      </Box>
       <DatabaseForm
         initialValues={database}
         onSubmit={handleDatabaseSubmit}
