@@ -37,6 +37,7 @@ import {
   getFkTargetTableEntityNameOrNull,
   getOptions,
   getValue,
+  hydrateTableFields,
   is403Error,
 } from "./utils";
 
@@ -68,7 +69,7 @@ export const RemappingPicker = ({
           ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
         },
   );
-  const { data: fkTargetTable } = useGetTableQueryMetadataQuery(
+  const { data: fkTargetTableData } = useGetTableQueryMetadataQuery(
     fkTargetField?.table_id == null
       ? skipToken
       : {
@@ -77,6 +78,11 @@ export const RemappingPicker = ({
           ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
         },
   );
+  const fkTargetTable = useMemo(
+    () => hydrateTableFields(fkTargetTableData),
+    [fkTargetTableData],
+  );
+  const tables = useMemo(() => [fkTargetTable], [fkTargetTable]);
   const { data: fieldValues } = useGetFieldValuesQuery(id);
 
   const value = useMemo(() => getValue(field), [field]);
@@ -186,6 +192,7 @@ export const RemappingPicker = ({
               selectedTable={fkTargetTable}
               selectedTableId={fkTargetTable?.id}
               setFieldFn={handleFkRemappingFieldChange}
+              tables={tables}
               triggerElement={
                 <Select
                   data={[
