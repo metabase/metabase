@@ -33,6 +33,7 @@
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
+   [metabase.sync.sync-metadata :as sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.json :as json]
@@ -578,18 +579,33 @@
 (defn- generate-view-definition [name query]
   (format "CREATE OR REPLACE VIEW \"%s\" AS (%s)" name query))
 
-(mu/defn create-view-for-card
+(defn create-view-for-card
   "create view for card"
-  [{:keys [database_id dataset_query]}]
+  [driver db {:keys [dataset_query]}]
   (let [{:keys [query]} (qp.compile/compile dataset_query)
         view-name (generate-view-name query)
-        view-definition (generate-view-definition view-name query)
-        db (t2/select-one :model/Database :id database_id)
-        driver (:engine db)]
+        view-definition (generate-view-definition view-name query)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver db {:write? true}
      (fn [^Connection conn]
-       (jdbc/execute! {:connection conn} view-definition)))))
+       (jdbc/execute! {:connection conn} view-definition)
+       view-name))))
+
+(defn- turn-card-into-transform [{:keys [database_id] :as card}]
+  (assert (empty? (:parameters card)))
+  (let [db (t2/select-one :model/Database :id database_id)
+        driver (:engine db)
+        new-table-name (create-view-for-card driver db card)
+        _ (sync/sync-db-metadata! db)
+        table (t2/select-one :model/Table :name new-table-name)]
+    (-> card
+        (assoc
+         :type :transform
+         :table_id (:id table)
+         :dataset_query
+         {:database (:id db),
+          :type :query,
+          :query {:source-table (:id table)}}))))
 
 (mu/defn update-card!
   "Updates a card - impl"
