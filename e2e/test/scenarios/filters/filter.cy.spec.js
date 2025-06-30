@@ -1138,6 +1138,33 @@ describe("scenarios > question > filter", () => {
       });
     }
   });
+
+  it("should allow picking custom expressions in filter picker", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Find...").clear().type("coalesce");
+      cy.findByText("Custom Expressions").should("be.visible");
+      cy.findByText("coalesce").should("be.visible").click();
+
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "coalesce(value1, value2)",
+      );
+    });
+  });
+
+  it("should allow selecting custom expressions in filter picker with (", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Find...").clear().type("case(");
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "case(condition, output)",
+      );
+    });
+  });
 });
 
 function openExpressionEditorFromFreshlyLoadedPage() {
