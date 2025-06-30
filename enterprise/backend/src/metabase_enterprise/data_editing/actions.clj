@@ -6,8 +6,10 @@
    [metabase.actions.core :as actions]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [methodical.core :as methodical])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -44,24 +46,26 @@
                                    input+row (map vector inputs coerced)]
                          input+row)]
     (for [input inputs]
-      (assoc input :row (input->coerced input)))))
+
+      (u/prog1 (assoc input :row (input->coerced input))
+        (log/tracef "coerce row %s => %s" (:row input) (:row <>))))))
 
 (defn- perform-data-grid-action! [action-kw context inputs]
-  (let [next-inputs  (coerce-inputs inputs)]
+  (let [next-inputs (coerce-inputs inputs)]
     (perform-table-row-action! action-kw context next-inputs
                                (if (= :table.row/delete action-kw)
                                  identity
                                  post-process))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/create]
+(methodical/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/create]
   [_action context inputs]
   (perform-data-grid-action! :table.row/create context inputs))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/update]
+(methodical/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/update]
   [_action context inputs]
   (perform-data-grid-action! :table.row/update context inputs))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/delete]
+(methodical/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/delete]
   [_action context inputs]
   (perform-data-grid-action! :table.row/delete context inputs))
 
@@ -84,8 +88,6 @@
 (defmethod actions/normalize-action-arg-map :data-editing/undo [_action _input] {})
 (defmethod actions/normalize-action-arg-map :data-editing/redo [_action _input] {})
 
-(mr/def ::empty-map [:map {:closed true}])
-
 (defn- translate-undo-error [e]
   (case (:error (ex-data e))
     :undo/none            (ex-info (tru "Nothing to do")                                         {:status-code 204} e)
@@ -94,16 +96,16 @@
     :undo/conflict        (ex-info (tru "Your previous change has a conflict with another edit") {:status-code 409} e)
     e))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :data-editing/undo]
-  [_action context _inputs :- [:sequential ::empty-map]]
+(methodical/defmethod actions/perform-action!* [:sql-jdbc :data-editing/undo]
+  [_action context _inputs]
   (try
     {:context context
      :outputs (undo/undo! context (:user-id context) (:scope context))}
     (catch ExceptionInfo e
       (throw (translate-undo-error e)))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :data-editing/redo]
-  [_action context _inputs :- [:sequential ::empty-map]]
+(methodical/defmethod actions/perform-action!* [:sql-jdbc :data-editing/redo]
+  [_action context _inputs]
   (try
     {:context context
      :outputs (undo/redo! context (:user-id context) (:scope context))}
