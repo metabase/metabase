@@ -37,6 +37,8 @@ import type {
 } from "metabase-types/api";
 
 import {
+  HEADING_FONT_SIZE,
+  HEADING_FONT_WEIGHT,
   HeadingContent,
   HeadingTextInput,
   InputContainer,
@@ -141,8 +143,8 @@ export function Heading({
 
     const headingWidth = measureTextWidth(content, {
       family: fontFamily,
-      size: "22px",
-      weight: 700,
+      size: HEADING_FONT_SIZE,
+      weight: HEADING_FONT_WEIGHT,
     });
 
     const bufferSpace = 24;
