@@ -99,3 +99,125 @@
                         (testing "Should get only raw value with restricted permissions (reproducing bug)"
                           (is (= remapped-values [1 "Rustic Paper Wallet"])
                               "Even with no query-creating permissions, we still get the remapped value."))))))))))))))
+
+(deftest ^:sequential dashboard-remapping-conflict-scenarios-test
+  "Test various scenarios where FK1, FK2, and PK have different remapping configurations.
+   This tests the logic in find-common-remapping-target."
+  (testing "Remapping conflict resolution scenarios"
+    (mt/dataset test-data
+      (let [orders-product-id-field-id (mt/id :orders :product_id)
+            reviews-product-id-field-id (mt/id :reviews :product_id)]
+
+        (mt/with-temp [:model/Card {orders-card-id :id} {:dataset_query (mt/mbql-query orders)}
+                       :model/Card {reviews-card-id :id} {:dataset_query (mt/mbql-query reviews)}
+                       :model/Dashboard {dashboard-id :id} {:parameters [{:id "p1"
+                                                                          :name "Product ID"
+                                                                          :slug "p1"
+                                                                          :type "id"
+                                                                          :sectionId "id"
+                                                                          :default 1}]}
+                       :model/DashboardCard {} {:dashboard_id dashboard-id
+                                                :card_id orders-card-id
+                                                :parameter_mappings [{:card_id orders-card-id
+                                                                      :parameter_id "p1"
+                                                                      :target ["dimension" ["field" orders-product-id-field-id nil]]}]}
+                       :model/DashboardCard {} {:dashboard_id dashboard-id
+                                                :card_id reviews-card-id
+                                                :parameter_mappings [{:card_id reviews-card-id
+                                                                      :parameter_id "p1"
+                                                                      :target ["dimension" ["field" reviews-product-id-field-id nil]]}]}]
+
+          (testing "Scenario 1: FK1→A, FK2→B, PK→C should return C (PK wins)"
+            (mt/with-column-remappings [orders.product_id products.title
+                                        reviews.product_id products.category ; Different remapping
+                                        products.id products.title] ; PK remapping
+              (binding [api/*current-user-id* (mt/user->id :rasta)]
+                (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                      parameter (first (:parameters dashboard))
+                      remapped-values (params.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
+                  (is (= [1 "Rustic Paper Wallet"] remapped-values)
+                      "Should return PK remapping when FK remappings differ")))))
+
+          (testing "Scenario 2: FK1→A, FK2→A, PK→C should return A (common FK remapping wins)"
+            (mt/with-column-remappings [orders.product_id products.title
+                                        reviews.product_id products.title ; Same remapping as FK1
+                                        products.id products.category] ; Different PK remapping
+              (binding [api/*current-user-id* (mt/user->id :rasta)]
+                (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                      parameter (first (:parameters dashboard))
+                      remapped-values (params.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
+                  (is (= [1 "Rustic Paper Wallet"] remapped-values)
+                      "Should return common FK remapping when FKs agree")))))
+
+          (testing "Scenario 3: FK1→∅, FK2→A, PK→C should return A (FK remapping wins when partial)"
+            ;; Set up FK2 with remapping, but leave FK1 without remapping, PK with different remapping
+            (mt/with-column-remappings [reviews.product_id products.title
+                                        products.id products.category]
+              (binding [api/*current-user-id* (mt/user->id :rasta)]
+                (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                      parameter (first (:parameters dashboard))
+                      remapped-values (params.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
+                  (is (= [1 "Rustic Paper Wallet"] remapped-values)
+                      "Should return FK remapping when only some FKs have remapping")))))
+
+          (testing "Scenario 4: No remappings at all should return raw value"
+            ;; No remappings set up
+            (binding [api/*current-user-id* (mt/user->id :rasta)]
+              (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                    parameter (first (:parameters dashboard))
+                    remapped-values (params.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
+                (is (= [1] remapped-values)
+                    "Should return only raw value when no remappings are configured"))))
+
+          (testing "Scenario 5: Only PK remapping exists should return PK remapping"
+            (mt/with-column-remappings [products.id products.title]
+              (binding [api/*current-user-id* (mt/user->id :rasta)]
+                (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                      parameter (first (:parameters dashboard))
+                      remapped-values (params.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
+                  (is (= [1 "Rustic Paper Wallet"] remapped-values)
+                      "Should return PK remapping when only PK is remapped"))))))))))
+
+(deftest find-common-remapping-target-test
+  (testing "Finding common remapping targets"
+    (mt/dataset test-data
+      (let [orders-product-id-field-id (mt/id :orders :product_id)
+            reviews-product-id-field-id (mt/id :reviews :product_id)
+            products-title-field-id (mt/id :products :title)]
+
+        (testing "When both FK fields remap to the same target"
+          (mt/with-column-remappings [orders.product_id products.title
+                                      reviews.product_id products.title]
+            (is (= products-title-field-id
+                   (#'params.dashboard/find-common-remapping-target
+                    [orders-product-id-field-id reviews-product-id-field-id]))
+                "Should return common target when both FKs remap to same field")))
+
+        (testing "When FK fields remap to different targets"
+          (mt/with-column-remappings [orders.product_id products.title
+                                      reviews.product_id products.category]
+            (is (nil? (#'params.dashboard/find-common-remapping-target
+                       [orders-product-id-field-id reviews-product-id-field-id]))
+                "Should return nil when FKs remap to different fields")))
+
+        (testing "When only one FK field has remapping"
+          (mt/with-column-remappings [orders.product_id products.title]
+            (is (= products-title-field-id
+                   (#'params.dashboard/find-common-remapping-target
+                    [orders-product-id-field-id reviews-product-id-field-id]))
+                "Should return the single remapping target when only one FK has remapping")))
+
+        (testing "When no FK fields have remapping"
+          (is (nil? (#'params.dashboard/find-common-remapping-target
+                     [orders-product-id-field-id reviews-product-id-field-id]))
+              "Should return nil when no FKs have remapping"))
+
+        (testing "With empty field list"
+          (is (nil? (#'params.dashboard/find-common-remapping-target []))
+              "Should return nil for empty field list"))
+
+        (testing "With single field that has remapping"
+          (mt/with-column-remappings [orders.product_id products.title]
+            (is (= products-title-field-id
+                   (#'params.dashboard/find-common-remapping-target [orders-product-id-field-id]))
+                "Should return target for single FK with remapping")))))))
