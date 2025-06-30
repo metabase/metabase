@@ -1804,7 +1804,7 @@
                     {:display-name "18512#1"}
                     {:display-name "Products → Created At: Month"}))]
       (testing "RHS columns"
-        (let [cols (lib.join/join-condition-rhs-columns q2 card-2 lhs nil)]
+        (let [cols (lib.join/join-condition-rhs-columns q2 card-2 (lib/ref lhs) nil)]
           (is (=? [{:name                         "CREATED_AT"
                     :display-name                 "Created At: Month"
                     :lib/card-id                  2
