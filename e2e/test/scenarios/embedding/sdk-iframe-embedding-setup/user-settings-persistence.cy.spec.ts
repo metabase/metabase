@@ -161,7 +161,7 @@ const capturePersistSettings = () => {
 const waitAndReload = () => {
   cy.wait("@persistSettings").then(() => {
     // Reduce flakiness by waiting for settings to be saved.
-    cy.wait(500);
+    cy.wait(1000);
 
     cy.reload();
   });
