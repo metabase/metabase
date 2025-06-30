@@ -107,6 +107,32 @@ describe("AccordionList", () => {
     assertAbsence(["Foo", "Bar", "Baz"]);
   });
 
+  it("should correctly select items when searching", () => {
+    render(
+      <AccordionList<Item>
+        sections={SECTIONS}
+        globalSearch
+        searchable
+        searchProp={["name"]}
+      />,
+    );
+    const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
+    const CONTAINER = screen.getAllByRole("grid")[0];
+
+    fireEvent.change(SEARCH_FIELD, { target: { value: "Ba" } });
+    assertPresence(["Bar", "Baz"]);
+    assertAbsence(["Foo"]);
+
+    fireEvent.keyDown(CONTAINER, { key: "ArrowDown" });
+    expect(screen.getByLabelText("Bar").dataset.hascursor).toBe("true");
+
+    fireEvent.keyDown(CONTAINER, { key: "ArrowDown" });
+    expect(screen.getByLabelText("Baz").dataset.hascursor).toBe("true");
+
+    fireEvent.keyDown(CONTAINER, { key: "ArrowUp" });
+    expect(screen.getByLabelText("Bar").dataset.hascursor).toBe("true");
+  });
+
   it("should render with the search bar on top if globalSearch is set", () => {
     render(<AccordionList sections={SECTIONS} globalSearch searchable />);
     const SEARCH_FIELD = screen.getByPlaceholderText("Find...");

@@ -204,6 +204,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
             canToggleSections ? () => toggleSection(sectionIndex) : undefined
           }
           data-testid="list-section-header"
+          data-hascursor={hasCursor}
         >
           {icon && (
             <span
@@ -351,6 +352,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
         aria-disabled={!isClickable}
         isClickable={isClickable}
         data-element-id="list-item"
+        data-hascursor={hasCursor}
         className={cx(
           ListS.ListItem,
           CS.flex,
