@@ -18,6 +18,16 @@ type ValidateEvent<
     Record<Exclude<keyof T, keyof SimpleEventSchema>, never>,
 > = T;
 
+export type CustomSMTPSetupClickedEvent = ValidateEvent<{
+  event: "custom_smtp_setup_clicked";
+  event_detail: "self-hosted" | "cloud";
+}>;
+
+export type CustomSMTPSetupSuccessEvent = ValidateEvent<{
+  event: "custom_smtp_setup_success";
+  event_detail: "self-hosted" | "cloud";
+}>;
+
 type CSVUploadClickedEvent = ValidateEvent<{
   event: "csv_upload_clicked";
   triggered_from: "left-nav";
@@ -160,6 +170,8 @@ export type EventsClickedEvent = ValidateEvent<{
 }>;
 
 export type SimpleEvent =
+  | CustomSMTPSetupClickedEvent
+  | CustomSMTPSetupSuccessEvent
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
   | NewIFrameCardCreatedEvent

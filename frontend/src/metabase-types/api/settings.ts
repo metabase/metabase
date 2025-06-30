@@ -222,6 +222,7 @@ export const tokenFeatures = [
   "advanced_permissions",
   "audit_app",
   "cache_granular_controls",
+  "cloud-custom-smtp",
   "content_translation",
   "content_verification",
   "disable_password_login",
@@ -312,6 +313,13 @@ export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
 
 interface InstanceSettings {
   "admin-email": string;
+  "cloud-email-from-address": string | null;
+  "cloud-email-smtp-host": string | null;
+  "cloud-email-smtp-port": 465 | 587 | 2525 | null;
+  "cloud-email-smtp-security": "ssl" | "tls" | "starttls";
+  "cloud-email-smtp-username": string | null;
+  "cloud-email-smtp-password": string | null;
+  "cloud-smtp-enabled": boolean;
   "email-from-name": string | null;
   "email-from-address": string | null;
   "email-reply-to": string[] | null;

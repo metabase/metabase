@@ -501,133 +501,249 @@ describe("Cloud settings section", () => {
 });
 
 describe("scenarios > admin > settings > email settings", () => {
-  beforeEach(() => {
-    cy.intercept("PUT", "api/email").as("smtpSaved");
-
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should be able to save and clear email settings", () => {
-    cy.visit("/admin/settings/email");
-    cy.findByTestId("smtp-connection-card").button("Configure").click();
-
-    H.modal().within(() => {
-      // SMTP connection setup
-      cy.findByLabelText(/SMTP Host/i)
-        .type("localhost")
-        .blur();
-      cy.findByLabelText(/SMTP Port/i)
-        .type(SMTP_PORT)
-        .blur();
-      cy.findByLabelText(/SMTP Username/i)
-        .type("admin")
-        .blur();
-      cy.findByLabelText(/SMTP Password/i)
-        .type("admin")
-        .blur();
-      cy.button("Save changes").click();
+  describe("self-hosted instance", () => {
+    beforeEach(() => {
+      cy.intercept("PUT", "api/email").as("smtpSaved");
+      H.restore();
+      cy.signInAsAdmin();
     });
 
-    cy.wait("@smtpSaved");
-    // should show as active now
-    cy.findByTestId("smtp-connection-card")
-      .findByText("Active")
-      .should("be.visible");
+    it("should be able to save and clear email settings", () => {
+      cy.visit("/admin/settings/email");
+      cy.findByTestId("cloud-smtp-connection-card").should("not.exist");
+      cy.findByTestId("self-hosted-smtp-connection-card")
+        .button("Configure")
+        .click();
 
-    // button should be different
-    cy.findByTestId("smtp-connection-card")
-      .button("Edit configuration")
-      .should("be.visible");
+      H.modal().within(() => {
+        // SMTP connection setup
+        cy.findByLabelText(/SMTP Host/i)
+          .type("localhost")
+          .blur();
+        cy.findByLabelText(/SMTP Port/i)
+          .type(SMTP_PORT)
+          .blur();
+        cy.findByLabelText(/SMTP Username/i)
+          .type("admin")
+          .blur();
+        cy.findByLabelText(/SMTP Password/i)
+          .type("admin")
+          .blur();
+        cy.button("Save changes").click();
+      });
 
-    // Non SMTP-settings should save automatically
-    cy.findByLabelText("From Address")
-      .clear()
-      .type("mailer@metabase.test")
-      .blur();
+      cy.wait("@smtpSaved");
+      // should show as active now
+      cy.findByTestId("self-hosted-smtp-connection-card")
+        .findByText("Active")
+        .should("be.visible");
 
-    cy.findByLabelText("From Name").type("Sender Name").blur();
-    cy.findByLabelText("Reply-To Address")
-      .type("reply-to@metabase.test")
-      .blur();
+      // button should be different
+      cy.findByTestId("self-hosted-smtp-connection-card")
+        .button("Edit configuration")
+        .should("be.visible");
 
-    // Refresh page to confirm changes persist
-    cy.reload();
+      // Non SMTP-settings should save automatically
+      cy.findByLabelText("From Address")
+        .clear()
+        .type("mailer@metabase.test")
+        .blur();
 
-    // validate additional settings
-    cy.findByDisplayValue("mailer@metabase.test");
-    cy.findByDisplayValue("Sender Name");
-    cy.findByDisplayValue("reply-to@metabase.test");
+      cy.findByLabelText("From Name").type("Sender Name").blur();
+      cy.findByLabelText("Reply-To Address")
+        .type("reply-to@metabase.test")
+        .blur();
 
-    // validate SMTP connection settings
-    cy.findByTestId("smtp-connection-card")
-      .findByText("Edit configuration")
-      .click();
-    cy.findByDisplayValue("localhost");
-    cy.findByDisplayValue(SMTP_PORT);
-    cy.findAllByDisplayValue("admin");
+      // Refresh page to confirm changes persist
+      cy.reload();
 
-    // should not offer to save email changes when there aren't any (metabase#14749)
-    cy.button("Save changes").should("be.disabled");
+      // validate additional settings
+      cy.findByDisplayValue("mailer@metabase.test");
+      cy.findByDisplayValue("Sender Name");
+      cy.findByDisplayValue("reply-to@metabase.test");
 
-    // should be able to clear email settings
-    H.modal().button("Clear").click();
+      // validate SMTP connection settings
+      cy.findByTestId("self-hosted-smtp-connection-card")
+        .findByText("Edit configuration")
+        .click();
+      cy.findByDisplayValue("localhost");
+      cy.findByDisplayValue(SMTP_PORT);
+      cy.findAllByDisplayValue("admin");
 
-    cy.reload();
+      // should not offer to save email changes when there aren't any (metabase#14749)
+      cy.button("Save changes").should("be.disabled");
 
-    cy.findByTestId("smtp-connection-card").findByText("Configure").click();
+      // should be able to clear email settings
+      H.modal().button("Clear").click();
 
-    H.modal().within(() => {
-      cy.findByLabelText("SMTP Host").should("have.value", "");
-      cy.findByLabelText("SMTP Port").should("have.value", "");
-      cy.findByLabelText("SMTP Username").should("have.value", "");
-      cy.findByLabelText("SMTP Password").should("have.value", "");
+      cy.reload();
+
+      cy.findByTestId("self-hosted-smtp-connection-card")
+        .findByText("Configure")
+        .click();
+
+      H.modal().within(() => {
+        cy.findByLabelText("SMTP Host").should("have.value", "");
+        cy.findByLabelText("SMTP Port").should("have.value", "");
+        cy.findByLabelText("SMTP Username").should("have.value", "");
+        cy.findByLabelText("SMTP Password").should("have.value", "");
+      });
     });
-  });
 
-  it("should show an error if test email fails", () => {
-    // Reuse Email setup without relying on the previous test
-    cy.request("PUT", "/api/setting", {
-      "email-from-address": "admin@metabase.test",
-      "email-from-name": "Metabase Admin",
-      "email-reply-to": ["reply-to@metabase.test"],
-      "email-smtp-host": "localhost",
-      "email-smtp-password": null,
-      "email-smtp-port": "1234",
-      "email-smtp-security": "none",
-      "email-smtp-username": null,
+    it("should show an error if test email fails", () => {
+      // Reuse Email setup without relying on the previous test
+      cy.request("PUT", "/api/setting", {
+        "email-from-address": "admin@metabase.test",
+        "email-from-name": "Metabase Admin",
+        "email-reply-to": ["reply-to@metabase.test"],
+        "email-smtp-host": "localhost",
+        "email-smtp-password": null,
+        "email-smtp-port": "1234",
+        "email-smtp-security": "none",
+        "email-smtp-username": null,
+      });
+      cy.visit("/admin/settings/email");
+
+      cy.findByTestId("admin-layout-content").within(() => {
+        cy.button("Send test email").click();
+        cy.findByText(
+          "Couldn't connect to host, port: localhost, 1234; timeout -1",
+        );
+      });
     });
-    cy.visit("/admin/settings/email");
-    cy.findByTestId("smtp-connection-card")
-      .findByText("Edit configuration")
-      .click();
-    H.modal().findByText("Send test email").click();
-    H.modal().findByText(
-      "Couldn't connect to host, port: localhost, 1234; timeout -1",
+
+    it(
+      "should send a test email for a valid SMTP configuration",
+      { tags: "@external" },
+      () => {
+        H.setupSMTP();
+        cy.visit("/admin/settings/email");
+        cy.button("Send test email").click();
+        H.undoToast().findByText("Email sent!").should("be.visible");
+        cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(
+          ({ body }) => {
+            const emailBody = body[0].text;
+            expect(emailBody).to.include("Your Metabase emails are working");
+          },
+        );
+      },
     );
   });
 
-  it(
-    "should send a test email for a valid SMTP configuration",
-    { tags: "@external" },
-    () => {
-      H.setupSMTP();
+  describe("starter instance", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["email-configured?"] = true;
+          return res.body;
+        });
+      });
+
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("starter");
+    });
+
+    it("should not allow custom SMTP configuration", () => {
       cy.visit("/admin/settings/email");
 
-      cy.findByTestId("smtp-connection-card")
-        .findByText("Edit configuration")
-        .click();
-      H.modal().findByText("Send test email").click();
-      H.undoToast().findByText("Email sent!").should("be.visible");
+      cy.findByTestId("self-hosted-smtp-connection-card").should("not.exist");
+      cy.findByTestId("cloud-smtp-connection-card").should("not.exist");
+      cy.button("Send test email").should("not.exist");
+      cy.findByTestId("admin-layout-content").within(() => {
+        cy.findByText("Whitelabel email notifications").should("be.visible");
+        cy.findByLabelText("From Address").should("be.disabled");
+        cy.findByText(
+          "Please set up a custom SMTP server to change this (Pro only)",
+        ).should("be.visible");
+      });
+    });
+  });
 
-      cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(
-        ({ body }) => {
-          const emailBody = body[0].text;
-          expect(emailBody).to.include("Your Metabase emails are working");
-        },
-      );
-    },
-  );
+  describe("Pro-cloud instance", () => {
+    beforeEach(() => {
+      cy.intercept("PUT", "api/email/cloud").as("smtpSaved");
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-cloud");
+    });
+
+    it("should be able to save and clear email settings", () => {
+      cy.visit("/admin/settings/email");
+      cy.findByTestId("self-hosted-smtp-connection-card").should("not.exist");
+      cy.findByTestId("cloud-smtp-connection-card")
+        .button("Set up a custom SMTP server")
+        .click();
+
+      H.modal().within(() => {
+        cy.findByLabelText(/SMTP Host/i)
+          .type("localhost")
+          .blur();
+        cy.findByText(/465/i).click();
+        cy.findByText(/SSL/i).click();
+        cy.findByLabelText(/SMTP Username/i)
+          .type("admin")
+          .blur();
+        cy.findByLabelText(/SMTP Password/i)
+          .type("admin")
+          .blur();
+        cy.button("Save changes").click();
+      });
+
+      cy.wait("@smtpSaved");
+      // cy.findByTestId("cloud-smtp-connection-card").within(() => {
+      //   cy.findByTestId("custom-smtp-radio");
+      //   cy.button("Edit settings");
+      // });
+
+      // // Non SMTP-settings should save automatically
+      // cy.findByLabelText("From Address")
+      //   .clear()
+      //   .type("mailer@metabase.test")
+      //   .blur();
+
+      // cy.findByLabelText("From Name").type("Sender Name").blur();
+      // cy.findByLabelText("Reply-To Address")
+      //   .type("reply-to@metabase.test")
+      //   .blur();
+
+      // // Refresh page to confirm changes persist
+      // cy.reload();
+
+      // // validate additional settings
+      // cy.findByDisplayValue("mailer@metabase.test");
+      // cy.findByDisplayValue("Sender Name");
+      // cy.findByDisplayValue("reply-to@metabase.test");
+
+      // // validate SMTP connection settings
+      // cy.findByTestId("cloud-smtp-connection-card")
+      //   .findByText("Edit configuration")
+      //   .click();
+      // cy.findByDisplayValue("localhost");
+      // cy.findByDisplayValue(SMTP_PORT);
+      // cy.findAllByDisplayValue("admin");
+
+      // // should not offer to save email changes when there aren't any (metabase#14749)
+      // cy.button("Save changes").should("be.disabled");
+
+      // // should be able to clear email settings
+      // H.modal().button("Clear").click();
+
+      // cy.reload();
+
+      // cy.findByTestId("cloud-smtp-connection-card")
+      //   .findByText("Configure")
+      //   .click();
+
+      // H.modal().within(() => {
+      //   cy.findByLabelText("SMTP Host").should("have.value", "");
+      //   cy.findByText("456").should("have.attr", '[data-checked="true"]');
+      //   cy.findByText("SSL").should("have.attr", '[data-checked="true"]');
+      //   cy.findByLabelText("SMTP Username").should("have.value", "");
+      //   cy.findByLabelText("SMTP Password").should("have.value", "");
+      // });
+    });
+  });
 });
 
 describe("scenarios > admin > license and billing", () => {

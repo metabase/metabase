@@ -1,0 +1,23 @@
+.root {
+  background-color: var(--mb-color-bg-white);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+}
+
+.RadioCardRoot {
+  :hover {
+    background-color: var(--mb-color-bg-light);
+
+    .label {
+      color: var(--mb-color-brand);
+    }
+  }
+}
+
+.label {
+  font-weight: bold;
+}
+
+.indicator {
+  border: 1px solid gray;
+}

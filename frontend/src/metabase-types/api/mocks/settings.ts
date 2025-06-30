@@ -101,6 +101,7 @@ export const createMockTokenFeatures = (
   audit_app: false,
   cache_granular_controls: false,
   disable_password_login: false,
+  "cloud-custom-smtp": false,
   content_translation: false,
   content_verification: false,
   embedding: false,
@@ -178,6 +179,13 @@ export const createMockSettings = (
   ],
   "bug-reporting-enabled": false,
   "bcc-enabled?": true,
+  "cloud-smtp-enabled": false,
+  "cloud-email-from-address": null,
+  "cloud-email-smtp-host": "localhost",
+  "cloud-email-smtp-port": 465,
+  "cloud-email-smtp-security": "ssl",
+  "cloud-email-smtp-username": null,
+  "cloud-email-smtp-password": null,
   "cloud-gateway-ips": null,
   "custom-geojson": {
     us_states: {

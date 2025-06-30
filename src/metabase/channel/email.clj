@@ -2,6 +2,7 @@
   (:require
    [metabase.analytics.core :as analytics]
    [metabase.channel.settings :as channel.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -76,11 +77,21 @@
      {})))
 
 (defn- smtp-settings []
-  (-> {:host (channel.settings/email-smtp-host)
-       :user (channel.settings/email-smtp-username)
-       :pass (channel.settings/email-smtp-password)
-       :port (channel.settings/email-smtp-port)}
-      (add-ssl-settings (channel.settings/email-smtp-security))))
+  (merge (if (and (channel.settings/cloud-smtp-enabled) (premium-features/is-hosted?))
+           (-> {:host         (channel.settings/cloud-email-smtp-host)
+                :user         (channel.settings/cloud-email-smtp-username)
+                :pass         (channel.settings/cloud-email-smtp-password)
+                :port         (channel.settings/cloud-email-smtp-port)
+                :from-address (channel.settings/cloud-email-from-address)}
+               (add-ssl-settings (channel.settings/cloud-email-smtp-security)))
+           (-> {:host         (channel.settings/email-smtp-host)
+                :user         (channel.settings/email-smtp-username)
+                :pass         (channel.settings/email-smtp-password)
+                :port         (channel.settings/email-smtp-port)
+                :from-address (channel.settings/email-from-address)}
+               (add-ssl-settings (channel.settings/email-smtp-security))))
+         {:reply-to  (channel.settings/email-reply-to)
+          :from-name (channel.settings/email-from-name)}))
 
 (def ^:private EmailMessage
   [:and
@@ -106,12 +117,13 @@
     (when-not (channel.settings/email-smtp-host)
       (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
     ;; Now send the email
-    (let [to-type (if bcc? :bcc :to)]
-      (send-email! (smtp-settings)
+    (let [to-type (if bcc? :bcc :to)
+          smtp-settings (smtp-settings)]
+      (send-email! smtp-settings
                    (merge
-                    {:from    (if-let [from-name (channel.settings/email-from-name)]
-                                (str from-name " <" (channel.settings/email-from-address) ">")
-                                (channel.settings/email-from-address))
+                    {:from    (if-let [from-name (:from-name smtp-settings)]
+                                (str from-name " <" (:from-address smtp-settings) ">")
+                                (:from-address smtp-settings))
                      ;; FIXME: postal doesn't accept recipients if it's a set, need to fix this from upstream
                      to-type  (seq recipients)
                      :subject subject
@@ -120,7 +132,7 @@
                                 :text        message
                                 :html        [{:type    "text/html; charset=utf-8"
                                                :content message}])}
-                    (when-let [reply-to (channel.settings/email-reply-to)]
+                    (when-let [reply-to (:reply-to smtp-settings)]
                       {:reply-to reply-to}))))
     (catch Throwable e
       (analytics/inc! :metabase-email/message-errors)

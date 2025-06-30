@@ -130,6 +130,14 @@
   :visibility :settings-manager
   :audit      :getter)
 
+(defsetting cloud-email-from-address
+  (deferred-tru "The email address you want to use for the sender of emails from your custom SMTP server.")
+  :encryption :no
+  :feature   :cloud-custom-smtp
+  :default    "notifications@metabase.com"
+  :visibility :settings-manager
+  :audit      :getter)
+
 (defsetting email-from-name
   (deferred-tru "The name you want to use for the sender of emails.")
   :encryption :no
@@ -170,9 +178,23 @@
   :visibility :settings-manager
   :audit      :getter)
 
+(defsetting cloud-email-smtp-host
+  (deferred-tru "The address of the custom SMTP server that handles your emails.")
+  :encryption :when-encryption-key-set
+  :feature   :cloud-custom-smtp
+  :visibility :settings-manager
+  :audit      :getter)
+
 (defsetting email-smtp-username
   (deferred-tru "SMTP username.")
   :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :audit      :getter)
+
+(defsetting cloud-email-smtp-username
+  (deferred-tru "Custom SMTP server username.")
+  :encryption :when-encryption-key-set
+  :feature   :cloud-custom-smtp
   :visibility :settings-manager
   :audit      :getter)
 
@@ -183,12 +205,33 @@
   :sensitive? true
   :audit      :getter)
 
+(defsetting cloud-email-smtp-password
+  (deferred-tru "Custom SMTP server password.")
+  :encryption :when-encryption-key-set
+  :feature   :cloud-custom-smtp
+  :visibility :settings-manager
+  :sensitive? true
+  :audit      :getter)
+
 (defsetting email-smtp-port
   (deferred-tru "The port your SMTP server uses for outgoing emails.")
   :encryption :when-encryption-key-set
   :type       :integer
   :visibility :settings-manager
   :audit      :getter)
+
+(defsetting cloud-email-smtp-port
+  (deferred-tru "The port your custom SMTP server uses for outgoing emails. Only ports 465, 587, and 2525 are supported.")
+  :encryption :when-encryption-key-set
+  :type :integer
+  :feature :cloud-custom-smtp
+  :visibility :settings-manager
+  :audit :getter
+  :setter (fn [new-value]
+            (when (some? new-value)
+              (assert (#{465 587 2525} new-value)
+                      (tru "Invalid custom email-smtp-port! Only SMTP ports of 465, 587, or 2525 are allowed.")))
+            (setting/set-value-of-type! :integer :cloud-email-smtp-port new-value)))
 
 (defsetting email-smtp-security
   (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
@@ -201,6 +244,33 @@
                 (when (some? new-value)
                   (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
                 (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
+
+(defsetting cloud-email-smtp-security
+  (deferred-tru "SMTP secure connection protocol for your custom server. (tls, ssl, or starttls)")
+  :encryption :when-encryption-key-set
+  :feature    :cloud-custom-smtp
+  :type       :keyword
+  :default    :ssl
+  :visibility :settings-manager
+  :audit      :raw-value
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  (assert (#{:tls :ssl :starttls} (keyword new-value))
+                          (tru "Invalid cloud-email-smtp-security! Only values of tls, ssl, and starttls are allowed.")))
+                (setting/set-value-of-type! :keyword :cloud-email-smtp-security new-value)))
+
+(defsetting cloud-smtp-enabled
+  (deferred-tru "Whether to use the custom SMTP server rather than the standard settings.")
+  :encryption :no
+  :feature    :cloud-custom-smtp
+  :type       :boolean
+  :default    false
+  :visibility :settings-manager
+  :audit      :getter
+  :setter     (fn [new-value]
+                (when (and new-value (not (setting/get-value-of-type :string :cloud-email-smtp-host)))
+                  (throw (ex-info (tru "Cannot enable cloud-smtp when it is not configured.") {:status-code 400})))
+                (setting/set-value-of-type! :boolean :cloud-smtp-enabled new-value)))
 
 (defsetting email-max-recipients-per-second
   (deferred-tru "The maximum number of recipients, summed across emails, that can be sent per second.

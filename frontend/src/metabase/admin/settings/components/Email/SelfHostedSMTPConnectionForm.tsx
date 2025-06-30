@@ -9,10 +9,10 @@ import {
 } from "metabase/api";
 import {
   useDeleteEmailSMTPSettingsMutation,
-  useSendTestEmailMutation,
   useUpdateEmailSMTPSettingsMutation,
 } from "metabase/api/email";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { getErrorMessage } from "metabase/api/utils";
+import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormProvider,
@@ -22,23 +22,15 @@ import {
 } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import * as Errors from "metabase/lib/errors";
-import {
-  Box,
-  Button,
-  Flex,
-  Group,
-  Modal,
-  Radio,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Box, Button, Flex, Group, Modal, Radio, Stack } from "metabase/ui";
 import type {
   EmailSMTPSettings,
   SettingDefinitionMap,
-  Settings,
 } from "metabase-types/api";
 
 import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
+
+import { trackSMTPSetupSuccess } from "./analytics";
 
 const emailSettingKeys = [
   "email-smtp-host",
@@ -47,15 +39,6 @@ const emailSettingKeys = [
   "email-smtp-username",
   "email-smtp-password",
 ] as const;
-
-type FormValueProps = Pick<
-  Settings,
-  | "email-smtp-host"
-  | "email-smtp-port"
-  | "email-smtp-security"
-  | "email-smtp-username"
-  | "email-smtp-password"
->;
 
 const anySchema = Yup.mixed().nullable().default(null);
 
@@ -90,17 +73,19 @@ const getFormValueSchema = (
   });
 };
 
-export const SMTPConnectionForm = ({ onClose }: { onClose: () => void }) => {
+export const SelfHostedSMTPConnectionForm = ({
+  onClose,
+}: {
+  onClose: () => void;
+}) => {
   const [updateEmailSMTPSettings] = useUpdateEmailSMTPSettingsMutation();
-  const [sendTestEmail, sendTestEmailResult] = useSendTestEmailMutation();
   const [deleteEmailSMTPSettings] = useDeleteEmailSMTPSettingsMutation();
   const [sendToast] = useToast();
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
-  const isHosted = useSetting("is-hosted?");
-  const initialValues = useMemo<FormValueProps>(
+  const initialValues = useMemo<EmailSMTPSettings>(
     () => ({
-      "email-smtp-host": settingValues?.["email-smtp-host"] ?? null,
+      "email-smtp-host": settingValues?.["email-smtp-host"] ?? "",
       "email-smtp-port": settingValues?.["email-smtp-port"] ?? null,
       "email-smtp-security": settingValues?.["email-smtp-security"] ?? "none",
       "email-smtp-username": settingValues?.["email-smtp-username"] ?? "",
@@ -127,40 +112,26 @@ export const SMTPConnectionForm = ({ onClose }: { onClose: () => void }) => {
 
   const handleUpdateEmailSettings = useCallback(
     async (formData: EmailSMTPSettings) => {
-      const result = await updateEmailSMTPSettings(formData);
-      if (result.error) {
-        sendToast({
-          icon: "warning",
-          toastColor: "error",
-          message: isErrorWithMessage(result.error)
-            ? result.error.data.message
-            : t`Error updating email settings`,
-        });
-      } else {
+      try {
+        await updateEmailSMTPSettings(formData).unwrap();
+        trackSMTPSetupSuccess({ eventDetail: "self-hosted" });
         sendToast({
           message: t`Email settings updated`,
         });
         onClose();
+      } catch (error) {
+        sendToast({
+          icon: "warning",
+          toastColor: "error",
+          message: getErrorMessage(error, t`Error updating email settings`),
+        });
+
+        // throw to allow the form to handle the error
+        throw error;
       }
     },
     [updateEmailSMTPSettings, sendToast, onClose],
   );
-
-  const handleSendTestEmail = useCallback(async () => {
-    try {
-      await sendTestEmail().unwrap();
-      sendToast({
-        message: t`Email sent!`,
-        toastColor: "success",
-      });
-    } catch (error) {
-      sendToast({
-        icon: "warning",
-        toastColor: "error",
-        message: getTestEmailErrorMessage(error),
-      });
-    }
-  }, [sendTestEmail, sendToast]);
 
   const allSetByEnvVars = useMemo(() => {
     return (
@@ -172,7 +143,13 @@ export const SMTPConnectionForm = ({ onClose }: { onClose: () => void }) => {
   }, [settingsDetails]);
 
   return (
-    <Modal title={t`SMTP Configuration`} opened onClose={onClose} padding="xl">
+    <Modal
+      title={t`SMTP Configuration`}
+      opened
+      onClose={onClose}
+      padding="xl"
+      data-testid="self-hosted-smtp-connection-form"
+    >
       <Box data-testid="settings-updates" pt="lg">
         <FormProvider
           initialValues={initialValues}
@@ -251,49 +228,28 @@ export const SMTPConnectionForm = ({ onClose }: { onClose: () => void }) => {
                     placeholder={"nicetoseeyou"}
                   />
                 </SetByEnvVarWrapper>
-                {!isHosted && (
-                  <SetByEnvVarWrapper
-                    settingKey="email-smtp-password"
-                    settingDetails={settingsDetails?.["email-smtp-password"]}
-                  >
-                    <FormTextInput
-                      name="email-smtp-password"
-                      type="password"
-                      label={t`SMTP Password`}
-                      placeholder={"Shhh..."}
-                    />
-                  </SetByEnvVarWrapper>
-                )}
-
-                {Boolean(sendTestEmailResult.error) && (
-                  <Text
-                    role="alert"
-                    aria-label={getTestEmailErrorMessage(
-                      sendTestEmailResult.error,
-                    )}
-                    color="error"
-                    mb="1rem"
-                  >
-                    {getTestEmailErrorMessage(sendTestEmailResult.error)}
-                  </Text>
-                )}
+                <SetByEnvVarWrapper
+                  settingKey="email-smtp-password"
+                  settingDetails={settingsDetails?.["email-smtp-password"]}
+                >
+                  <FormTextInput
+                    name="email-smtp-password"
+                    type="password"
+                    label={t`SMTP Password`}
+                    placeholder={"Shhh..."}
+                  />
+                </SetByEnvVarWrapper>
                 <Flex mt="1rem" gap="md" justify="end">
-                  {!dirty && isValid && !isSubmitting && (
-                    <Button onClick={handleSendTestEmail}>
-                      {sendTestEmailResult.isLoading
-                        ? t`Sending...`
-                        : t`Send test email`}
-                    </Button>
-                  )}
                   <Button
                     onClick={handleClearEmailSettings}
-                    disabled={allSetByEnvVars}
+                    disabled={allSetByEnvVars || isSubmitting}
                   >
                     {t`Clear`}
                   </Button>
                   <FormSubmitButton
                     label={t`Save changes`}
                     disabled={!dirty || !isValid || isSubmitting}
+                    loading={isSubmitting}
                     variant="filled"
                   />
                 </Flex>
@@ -305,9 +261,3 @@ export const SMTPConnectionForm = ({ onClose }: { onClose: () => void }) => {
     </Modal>
   );
 };
-
-function getTestEmailErrorMessage(error: unknown): string {
-  return isErrorWithMessage(error)
-    ? error.data.message
-    : t`Error sending test email`;
-}
