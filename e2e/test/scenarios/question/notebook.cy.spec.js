@@ -1278,7 +1278,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it("should be possible to select custom expressions in the aggretion picker", () => {
+  it("should be possible to select custom expressions in the aggregation picker", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.summarize({ mode: "notebook" });
     H.popover().within(() => {
