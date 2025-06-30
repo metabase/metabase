@@ -22,6 +22,8 @@ export function openSeriesSettings(field, isBreakout = false) {
 
 export function openVizTypeSidebar() {
   cy.findByTestId("viz-type-button").click();
+
+  return cy.findByTestId("viz-type-button");
 }
 
 export function openVizSettingsSidebar() {
