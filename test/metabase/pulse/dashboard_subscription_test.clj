@@ -353,12 +353,13 @@
                                                                                :text (str "<https://testmb.com/dashboard/"
                                                                                           dashboard-id
                                                                                           "|*Sent from Metabase Test by Rasta Toucan*>")}])}]}
-                    {:title           pulse.test-util/card-name
-                     :rendered-info   {:attachments false
-                                       :content     true}
-                     :title_link      (str "https://testmb.com/question/" card-id)
-                     :attachment-name "image.png"
-                     :fallback        pulse.test-util/card-name}]}
+                    {:title             pulse.test-util/card-name
+                     :rendered-info     {:attachments false
+                                         :content     true}
+                     :inline-parameters []
+                     :title_link        (str "https://testmb.com/question/" card-id)
+                     :attachment-name   "image.png"
+                     :fallback          pulse.test-util/card-name}]}
                   (pulse.test-util/thunk->boolean pulse-results))))
          (testing "attached-results-text should be invoked exactly once"
            (is (= 1
@@ -404,11 +405,12 @@
                                                                              :text (str "<https://testmb.com/dashboard/"
                                                                                         dashboard-id
                                                                                         "|*Sent from Metabase Test by Rasta Toucan*>")}])}]}
-                  {:title           pulse.test-util/card-name
-                   :rendered-info   {:attachments false, :content true, :render/text true},
-                   :title_link      (str "https://testmb.com/question/" card-id)
-                   :attachment-name "image.png"
-                   :fallback        pulse.test-util/card-name}
+                  {:title             pulse.test-util/card-name
+                   :rendered-info     {:attachments false, :content true, :render/text true},
+                   :inline-parameters []
+                   :title_link        (str "https://testmb.com/question/" card-id)
+                   :attachment-name   "image.png"
+                   :fallback          pulse.test-util/card-name}
                   {:blocks [{:type "section" :text {:type "mrkdwn" :text "*header*"}}]}]}
                 (pulse.test-util/thunk->boolean pulse-results)))))}}))
 
@@ -449,11 +451,12 @@
                                                                              :text (str "<https://testmb.com/dashboard/"
                                                                                         dashboard-id
                                                                                         "|*Sent from Metabase Test by Rasta Toucan*>")}])}]}
-                  {:title           pulse.test-util/card-name
-                   :rendered-info   {:attachments false, :content true, :render/text true},
-                   :title_link      (str "https://testmb.com/question/" card-id)
-                   :attachment-name "image.png"
-                   :fallback        pulse.test-util/card-name}
+                  {:title             pulse.test-util/card-name
+                   :rendered-info     {:attachments false, :content true, :render/text true},
+                   :inline-parameters []
+                   :title_link        (str "https://testmb.com/question/" card-id)
+                   :attachment-name   "image.png"
+                   :fallback          pulse.test-util/card-name}
                   {:blocks [{:type "section" :text {:type "mrkdwn" :text "*# header, quote isn't escaped*"}}]}]}
                 (pulse.test-util/thunk->boolean pulse-results)))))}}))
 
@@ -489,7 +492,7 @@
                    [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
 
                               {:type "section",
-                               :fields [{:type "mrkdwn", :text "*State*\nCA, NY…"}         ;; "*State*\nCA, NY and NJ"
+                               :fields [{:type "mrkdwn", :text "*State*\nCA, NY…"}  ;; "*State*\nCA, NY and NJ"
                                         {:type "mrkdwn", :text "*Quarter and Y…"}]} ;; "*Quarter and Year*\nQ1, 2021"
                               {:type "section",
                                :fields (append-subscription-branding-content [{:type "mrkdwn",
@@ -497,11 +500,12 @@
                                                                                           dashboard-id
                                                                                           "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>")}])}]}
 
-                    {:title           pulse.test-util/card-name
-                     :rendered-info   {:attachments false, :content true, :render/text true},
-                     :title_link      (str "https://testmb.com/question/" card-id)
-                     :attachment-name "image.png"
-                     :fallback        pulse.test-util/card-name}]}
+                    {:title             pulse.test-util/card-name
+                     :rendered-info     {:attachments false, :content true, :render/text true},
+                     :inline-parameters []
+                     :title_link        (str "https://testmb.com/question/" card-id)
+                     :attachment-name   "image.png"
+                     :fallback          pulse.test-util/card-name}]}
                   (pulse.test-util/thunk->boolean pulse-results)))))}})))
 
 (deftest dashboard-with-header-filters-test
@@ -543,11 +547,12 @@
                                                                              :text (str "<https://testmb.com/dashboard/"
                                                                                         dashboard-id
                                                                                         "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>")}])}]}
-                  {:title           pulse.test-util/card-name
-                   :rendered-info   {:attachments false, :content true, :render/text true},
-                   :title_link      (str "https://testmb.com/question/" card-id)
-                   :attachment-name "image.png"
-                   :fallback        pulse.test-util/card-name}
+                  {:title             pulse.test-util/card-name
+                   :rendered-info     {:attachments false, :content true, :render/text true},
+                   :inline-parameters [],
+                   :title_link        (str "https://testmb.com/question/" card-id)
+                   :attachment-name   "image.png"
+                   :fallback          pulse.test-util/card-name}
                   {:blocks [{:type "section" :text {:type "mrkdwn" :text "*## Dashboard Header*"}}
                             {:type "section",
                              :fields [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}]}]}]}
