@@ -65,12 +65,12 @@ export function renderWithSDKProviders(
   const wrapper = (props: any) => {
     return (
       <MetabaseReduxProvider store={store}>
+        {/* If we try to inject CSS variables to `.mb-wrapper`, it will slow the Jest tests down like crazy. */}
         <themeProviderContext.Provider value={{ withCssVariables: false }}>
           <MetabaseProviderInternal
             {...props}
             {...sdkProviderProps}
             store={store}
-            // If we try to inject CSS variables to `.mb-wrapper`, it will slow the Jest tests down like crazy.
           />
         </themeProviderContext.Provider>
       </MetabaseReduxProvider>
