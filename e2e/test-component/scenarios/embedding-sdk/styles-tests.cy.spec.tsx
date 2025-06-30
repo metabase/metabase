@@ -1,6 +1,7 @@
 import { Button, MantineProvider } from "@mantine/core";
 import {
   CreateDashboardModal,
+  EditableDashboard,
   InteractiveDashboard,
   InteractiveQuestion,
   MetabaseProvider,
@@ -14,10 +15,13 @@ import {
   chartPathWithFillColor,
   createDashboard,
   createQuestion,
+  editDashboard,
   getDashboardCard,
   modal,
   moveDnDKitElement,
+  openClickBehaviorSidebar,
   openVizSettingsSidebar,
+  popover,
   tooltip,
   updateSetting,
 } from "e2e/support/helpers";
@@ -28,8 +32,21 @@ import {
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+import type { ConcreteFieldReference, Parameter } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+
+const DATE_FILTER: Parameter = {
+  id: "2",
+  name: "Date filter",
+  slug: "filter-date",
+  type: "date/all-options",
+};
+const CREATED_AT_FIELD_REF: ConcreteFieldReference = [
+  "field",
+  ORDERS.CREATED_AT,
+  { "base-type": "type/DateTime" },
+];
 
 describe("scenarios > embedding-sdk > styles", () => {
   beforeEach(() => {
@@ -325,7 +342,7 @@ describe("scenarios > embedding-sdk > styles", () => {
     });
   });
 
-  describe("modals and tooltips", () => {
+  describe("modals, popovers and tooltips", () => {
     it("legacy WindowModal modals should render with our styles", () => {
       // this test renders a create dashboard modal that, at this time, is using the legacy WindowModal
       cy.mount(
@@ -371,7 +388,7 @@ describe("scenarios > embedding-sdk > styles", () => {
       // TODO: good place for a visual regression test
     });
 
-    describe("tooltips/overlays styles", () => {
+    describe("popover/tooltips/overlays styles", () => {
       beforeEach(() => {
         signInAsAdminAndEnableEmbeddingSdk();
 
@@ -396,20 +413,49 @@ describe("scenarios > embedding-sdk > styles", () => {
                   row: 0,
                   col: 0,
                   card_id: ordersQuestionId,
+                  parameter_mappings: [
+                    {
+                      parameter_id: DATE_FILTER.id,
+                      card_id: ORDERS_QUESTION_ID,
+                      target: ["dimension", CREATED_AT_FIELD_REF],
+                    },
+                  ],
                 },
               ],
+              parameters: [DATE_FILTER],
             }),
           )
           .then((dashboard) => {
             cy.wrap(dashboard.body.id).as("dashboardId");
           });
-
         cy.signOut();
 
         cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
         cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
           "dashcardQuery",
         );
+      });
+
+      it("should render legacy Popover with our styles", () => {
+        cy.get("@dashboardId").then((dashboardId) => {
+          mountSdkContent(<EditableDashboard dashboardId={dashboardId} />, {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          });
+
+          editDashboard();
+          openClickBehaviorSidebar().within(() => {
+            cy.findByText("Update a dashboard filter").click();
+            cy.findAllByTestId("click-target-column").first().click();
+          });
+
+          popover()
+            .findByText("Columns")
+            .should("have.css", "font-family", "Impact");
+        });
       });
 
       it("should render Mantine tooltip with our styles", () => {
