@@ -191,7 +191,9 @@ describe("CreateOrEditQuestionAlertModal", () => {
     expect(pmOption).toHaveAttribute("data-active", "true");
 
     // Verify the "send once" switch is enabled
-    const sendOnceSwitch = screen.getByLabelText(/only send this alert once/i);
+    const sendOnceSwitch = screen.getByLabelText(
+      /delete this alert after it's triggered/i,
+    );
     expect(sendOnceSwitch).toBeChecked();
   });
 
@@ -230,7 +232,9 @@ describe("CreateOrEditQuestionAlertModal", () => {
     expect(minuteSelector).toHaveValue("5");
 
     // Verify the send once switch is not checked
-    const sendOnceSwitch = screen.getByLabelText(/only send this alert once/i);
+    const sendOnceSwitch = screen.getByLabelText(
+      /delete this alert after it's triggered/i,
+    );
     expect(sendOnceSwitch).not.toBeChecked();
   });
 
