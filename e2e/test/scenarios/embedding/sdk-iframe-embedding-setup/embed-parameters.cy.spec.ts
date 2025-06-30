@@ -105,6 +105,7 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
     cy.log("set default values for parameters");
     getEmbedSidebar().within(() => {
       cy.findByLabelText("ID").type("123").blur();
+      cy.wait(600); // wait the debounce duration
       cy.findByLabelText("Product ID").type("456").blur();
     });
 
