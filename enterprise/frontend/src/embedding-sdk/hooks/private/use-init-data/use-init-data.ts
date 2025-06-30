@@ -3,16 +3,17 @@ import { useMount } from "react-use";
 import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
-import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import {
+  useSdkDispatch,
+  useSdkSelector,
+  useSdkStore,
+} from "embedding-sdk/store";
 import { initAuth } from "embedding-sdk/store/auth";
 import {
   setFetchRefreshTokenFn,
   setMetabaseInstanceVersion,
 } from "embedding-sdk/store/reducer";
-import {
-  getFetchRefreshTokenFn,
-  getLoginStatus,
-} from "embedding-sdk/store/selectors";
+import { getFetchRefreshTokenFn } from "embedding-sdk/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
@@ -33,9 +34,9 @@ export const useInitData = ({
   // it fires them twice as well, making debugging harder as they show up twice in the network tab and in the logs
   const hasBeenInitialized = useRef(false);
 
+  const store = useSdkStore();
   const dispatch = useSdkDispatch();
 
-  const loginStatus = useSdkSelector(getLoginStatus);
   const fetchRefreshTokenFnFromStore = useSdkSelector(getFetchRefreshTokenFn);
 
   // This is outside of a useEffect otherwise calls done on the first render could use the wrong value
@@ -55,15 +56,19 @@ export const useInitData = ({
     if (hasBeenInitialized.current) {
       return;
     }
-    hasBeenInitialized.current = true;
 
     registerVisualizationsOnce();
 
-    // Note: this check is not actually needed in prod, but some of our tests start with a loginStatus already initialized
-    // and they don't mock the network requests so the tests fail
-    if (loginStatus.status === "uninitialized") {
-      dispatch(initAuth(authConfig));
+    const isAuthUninitialized =
+      store && store.getState().sdk.loginStatus.status === "uninitialized";
+
+    if (!isAuthUninitialized) {
+      return;
     }
+
+    hasBeenInitialized.current = true;
+
+    dispatch(initAuth(authConfig));
 
     const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
     api.requestClient = {

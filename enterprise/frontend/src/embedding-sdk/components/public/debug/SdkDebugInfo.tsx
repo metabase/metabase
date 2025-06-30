@@ -3,9 +3,6 @@ import dayjs from "dayjs";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 
-/**
- * @internal
- */
 export const SdkDebugInfo = (props: React.HTMLAttributes<HTMLDivElement>) => {
   const shortCommit = process.env.GIT_COMMIT?.slice(0, 7);
 

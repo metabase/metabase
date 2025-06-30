@@ -1,5 +1,5 @@
 import { waitForRequest } from "__support__/utils";
-import { defineMetabaseAuthConfig } from "embedding-sdk/components/public";
+import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-wrapper/lib/public/define-metabase-auth-config";
 
 import { MOCK_API_KEY, MOCK_INSTANCE_URL } from "../mocks/sso";
 

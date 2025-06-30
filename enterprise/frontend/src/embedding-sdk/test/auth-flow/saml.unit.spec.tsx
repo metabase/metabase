@@ -5,10 +5,10 @@ import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import {
   MetabaseProvider,
-  type MetabaseProviderProps,
   StaticQuestion,
-  defineMetabaseAuthConfig,
 } from "embedding-sdk/components/public";
+import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
+import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-wrapper/lib/public/define-metabase-auth-config";
 
 import {
   MOCK_INSTANCE_URL,
@@ -57,7 +57,8 @@ describe("Auth Flow - SAML", () => {
       1,
     );
 
-    expect(screen.queryByText("Initializing...")).not.toBeInTheDocument();
+    const loader = screen.queryByTestId("loading-indicator");
+    expect(loader).not.toBeInTheDocument();
 
     expect(
       // this is just something we know it's on the screen when everything is ok

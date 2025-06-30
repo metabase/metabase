@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import { StaticDashboard } from "embedding-sdk";
+import { StaticDashboard } from "embedding-sdk/components/public";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import {
   dashboardIdArgType,

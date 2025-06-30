@@ -1,5 +1,4 @@
 import React from "react";
-import { t } from "ttag";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk/components/private/PublicComponentStylesWrapper";
 import { SdkError } from "embedding-sdk/components/private/PublicComponentWrapper/SdkError";
@@ -23,11 +22,10 @@ const PublicComponentWrapperInner = React.forwardRef<
 
   let content = children;
 
-  if (loginStatus.status === "uninitialized") {
-    content = <div>{t`Initializing…`}</div>;
-  }
-
-  if (loginStatus.status === "loading") {
+  if (
+    loginStatus.status === "uninitialized" ||
+    loginStatus.status === "loading"
+  ) {
     content = <SdkLoader />;
   }
 
