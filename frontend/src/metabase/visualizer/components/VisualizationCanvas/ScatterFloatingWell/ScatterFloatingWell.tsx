@@ -1,15 +1,15 @@
 import { useDroppable } from "@dnd-kit/core";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
+import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
 import {
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
-import { isDraggedColumnItem } from "metabase/visualizer/utils";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
 import { isNumber } from "metabase-lib/v1/types/utils/isa";
 
@@ -25,13 +25,10 @@ export function ScatterFloatingWell() {
     id: DROPPABLE_ID.SCATTER_BUBBLE_SIZE_WELL,
   });
 
-  const canHandleActiveItem = useMemo(() => {
-    if (!active || !isDraggedColumnItem(active)) {
-      return false;
-    }
-    const { column } = active.data.current;
-    return isNumber(column);
-  }, [active]);
+  const canHandleActiveItem = useCanHandleActiveItem({
+    active,
+    isSuitableColumn: isNumber,
+  });
 
   const bubbleSize = columns.find(
     (col) => col.name === settings["scatter.bubble"],

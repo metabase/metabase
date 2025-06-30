@@ -14,20 +14,17 @@ import {
   arrayMove,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useMemo } from "react";
 
 import { Sortable } from "metabase/common/components/Sortable";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, type FlexProps, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
+import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
 import {
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
-import {
-  isArtificialColumn,
-  isDraggedColumnItem,
-} from "metabase/visualizer/utils";
+import { isArtificialColumn } from "metabase/visualizer/utils";
 import {
   removeColumn,
   updateSettings,
@@ -58,13 +55,10 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
   const rows = settings?.["funnel.rows"] ?? [];
   const rowKeys = rows.map((row) => row.key);
 
-  const isHighlighted = useMemo(() => {
-    if (!active || !isDraggedColumnItem(active)) {
-      return false;
-    }
-    const { column } = active.data.current;
-    return isDimension(column) && !isMetric(column);
-  }, [active]);
+  const canHandleActiveItem = useCanHandleActiveItem({
+    active,
+    isSuitableColumn: (column) => isDimension(column) && !isMetric(column),
+  });
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     const newIndex = rows.findIndex((row) => row.key === over?.id);
@@ -92,7 +86,7 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
   return (
     <Flex
       {...props}
-      bg={isHighlighted ? "var(--mb-color-brand-light)" : "bg-light"}
+      bg={canHandleActiveItem ? "var(--mb-color-brand-light)" : "bg-light"}
       p="sm"
       wrap="nowrap"
       style={{
@@ -101,11 +95,13 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
         overflowX: "auto",
         overflowY: "hidden",
         borderRadius: "var(--border-radius-xl)",
-        border: `1px ${borderStyle} ${isHighlighted ? "var(--mb-color-brand)" : "var(--border-color)"}`,
-        transform: isHighlighted ? "scale(1.025)" : "scale(1)",
+        border: `1px ${borderStyle} ${canHandleActiveItem ? "var(--mb-color-brand)" : "var(--border-color)"}`,
+        transform: canHandleActiveItem ? "scale(1.025)" : "scale(1)",
         transition:
           "transform 0.2s ease-in-out 0.2s, border-color 0.2s ease-in-out 0.2s, background 0.2s ease-in-out 0.2s",
-        outline: isHighlighted ? "1px solid var(--mb-color-brand)" : "none",
+        outline: canHandleActiveItem
+          ? "1px solid var(--mb-color-brand)"
+          : "none",
       }}
       ref={setNodeRef}
     >
