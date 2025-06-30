@@ -169,6 +169,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
             CS.textBold,
           )}
           style={{ color: color(colorProp) }}
+          data-testid="list-section-header"
         >
           {section.name}
         </div>
@@ -202,6 +203,8 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
           onClick={
             canToggleSections ? () => toggleSection(sectionIndex) : undefined
           }
+          data-testid="list-section-header"
+          data-hascursor={hasCursor}
         >
           {icon && (
             <span
@@ -349,6 +352,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
         aria-disabled={!isClickable}
         isClickable={isClickable}
         data-element-id="list-item"
+        data-hascursor={hasCursor}
         className={cx(
           ListS.ListItem,
           CS.flex,

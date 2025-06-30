@@ -1075,6 +1075,100 @@ describe("scenarios > question > filter", () => {
 
     H.popover().findByText("Created At").should("be.visible");
   });
+
+  it("should allow selecting a field on the source table using the table prefix", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.log("Columns from the source table should be visible");
+      filter("Orders");
+      verifySectionOrder(["Orders", "User"]);
+      verifyItemOrder(["ID", "Subtotal", "Tax", "Total"]);
+
+      cy.log("Columns from the source table should be possible to filter");
+      filter("Orders Sub");
+      verifySectionOrder(["Orders"]);
+      verifyItemOrder(["Subtotal", "Quantity", "User ID"]);
+
+      cy.log("Source table should match fuzzily");
+      filter("Arders");
+      verifySectionOrder(["User", "Orders"]);
+      verifyItemOrder(["Address", "ID", "Subtotal", "Tax", "Total"]);
+
+      cy.log("Source table should match fuzzily with field name");
+      filter("Ardors Sub");
+      verifySectionOrder(["Orders", "User"]);
+      verifyItemOrder(["Subtotal", "Address"]);
+
+      cy.log("Source table should match fuzzily with a fuzzy column name");
+      filter("Arders Sab");
+      verifySectionOrder(["Orders", "User"]);
+      verifyItemOrder(["Subtotal", "Address"]);
+
+      cy.log("It should match fields with spaces");
+      filter("Orders User ID");
+      verifySectionOrder(["Orders"]);
+      verifyItemOrder(["User ID", "Product ID"]);
+
+      cy.log("It should match fields directly");
+      filter("Ean");
+      verifySectionOrder(["Product", "Orders", "User"]);
+      verifyItemOrder(["Ean", "Vendor", "Created At"]);
+    });
+
+    function filter(searchText) {
+      cy.findByPlaceholderText("Find...").clear().type(searchText);
+    }
+
+    function verifySectionOrder(names) {
+      names.forEach((name, index) => {
+        cy.findAllByTestId("list-section-header")
+          .should("have.length.gte", names.length)
+          .eq(index)
+          .should("have.text", name);
+      });
+    }
+
+    function verifyItemOrder(names) {
+      names.forEach((name, index) => {
+        cy.findAllByTestId("dimension-list-item")
+          .should("have.length.gte", names.length)
+          .eq(index)
+          .should("have.text", name);
+      });
+    }
+  });
+
+  it("should allow picking custom expressions in filter picker", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Find...").clear().type("coalesce");
+      cy.findByText("Custom Expressions").should("be.visible");
+      cy.findByText("coalesce").should("be.visible").click();
+
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "coalesce(value1, value2)",
+      );
+    });
+  });
+
+  it("should allow selecting custom expressions in filter picker with (", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.log("typing a non-existing clause does nothing");
+      cy.findByPlaceholderText("Find...").clear().type("foo(");
+      H.CustomExpressionEditor.get().should("not.exist");
+
+      cy.findByPlaceholderText("Find...").clear().type("case(");
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "case(condition, output)",
+      );
+    });
+  });
 });
 
 function openExpressionEditorFromFreshlyLoadedPage() {
