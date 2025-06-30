@@ -394,8 +394,8 @@
   [& fn-tail]
   (let [parsed (parse-fn-tail fn-tail)
         instrument? (macros/case
-                     :cljs false
-                     :clj (instrument-ns? *ns*))]
+                      :cljs false
+                      :clj (instrument-ns? *ns*))]
     (if-not instrument?
       (deparameterized-fn-form parsed)
       (let [error-context (if (symbol? (first fn-tail))
