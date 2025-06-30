@@ -1,4 +1,5 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
+import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
@@ -8,7 +9,6 @@ import { TOOL_CALL_MESSAGES } from "../constants";
 
 import { sendAgentRequest, sendStreamedAgentRequest } from "./actions";
 import { createMessageId } from "./utils";
-import _ from "underscore";
 
 export type MetabotChatMessage = {
   id: string;
@@ -41,7 +41,7 @@ export interface MetabotState {
 }
 
 export const getMetabotInitialState = (): MetabotState => ({
-  useStreaming: true,
+  useStreaming: false,
   isProcessing: false,
   conversationId: uuid(),
   messages: [],

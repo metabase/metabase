@@ -19,6 +19,7 @@ function calculateFillerHeight(
     return node === fillerEl ? sum : sum + node.clientHeight;
   }, 0);
 
+  // when the container is scrollable, we need to factor in the top padding as well
   const paddingAdjustment = isScrollable ? 40 : 24;
   const containerHeight = scrollContainerEl.clientHeight;
   const fillerHeight = containerHeight - validElHeights - paddingAdjustment;
@@ -33,11 +34,10 @@ function resizeFillerArea(
   const scrollContainerEl = scrollContainerRef.current;
   const fillerEl = fillerRef.current;
   if (!scrollContainerEl || !fillerEl) {
-    console.warn("Tried to resize with unmounted DOM elements", {
+    return console.warn("Tried to resize with unmounted DOM elements", {
       scrollContainerEl,
       fillerEl,
     });
-    return;
   }
 
   const nextFillerHeight = calculateFillerHeight(scrollContainerEl, fillerEl);

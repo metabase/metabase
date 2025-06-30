@@ -111,9 +111,7 @@ export const MetabotChat = () => {
         <Box
           ref={scrollContainerRef}
           className={Styles.messagesContainer}
-          id="metabot-chat-content"
-          data-testid="metabot-chat-content"
-          style={{ background: "yellow" }}
+          data-testid="metabot-chat-messages"
         >
           {!hasMessages && !metabot.isDoingScience && (
             <>
@@ -160,8 +158,7 @@ export const MetabotChat = () => {
           {(hasMessages || metabot.isDoingScience) && (
             <Box
               className={Styles.messages}
-              id="metabot-chat-messages"
-              data-testid="metabot-chat-messages"
+              data-testid="metabot-chat-inner-messages"
             >
               {/* conversation messages */}
               {metabot.messages.map((message, index) => {
@@ -206,11 +203,7 @@ export const MetabotChat = () => {
               )}
 
               {/* filler - height gets set via ref mutation */}
-              <div
-                ref={fillerRef}
-                id="metabot-message-filler"
-                style={{ background: "blue" }}
-              />
+              <div ref={fillerRef} data-testid="metabot-message-filler" />
 
               {/* long convo warning */}
               {metabot.isLongConversation && (

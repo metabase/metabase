@@ -86,6 +86,138 @@ describe("Metabot UI", () => {
       assertChatVisibility("visible");
       lastChatMessage().should("have.text", "You, but don't tell anyone.");
     });
+
+    describe("scroll", () => {
+      it("should not show filler element if there are not messages", () => {
+        openMetabotViaSearchButton();
+        chatMessages().should("not.exist");
+        cy.findByTestId("metabot-message-filler").should("not.exist");
+      });
+
+      it("should correctly size the filler element to take remaining space if messages aren't scrollable", () => {
+        openMetabotViaSearchButton();
+
+        mockMetabotResponse({
+          statusCode: 200,
+          body: whoIsYourFavoriteResponse,
+        });
+
+        sendMetabotMessage("Who is your favorite?");
+        cy.findByTestId("metabot-chat-inner-messages")
+          .invoke("innerHeight")
+          .then((containerHeight) => {
+            cy.findByTestId("metabot-chat-inner-messages")
+              .children()
+              .then(($children) => {
+                const contentHeight = Array.from($children).reduce(
+                  (sum, child) => {
+                    return sum + child.clientHeight;
+                  },
+                  0,
+                );
+                expect(containerHeight).not.to.equal(undefined);
+                // we can get some subpixel differences, this isn't a big deal
+                expect(contentHeight).to.be.closeTo(containerHeight ?? 0, 1);
+              });
+          });
+      });
+
+      it("should resize filler element and auto-scroll to new prompt on subsequent messages", () => {
+        openMetabotViaSearchButton();
+
+        mockMetabotResponse({
+          statusCode: 200,
+          body: whoIsYourFavoriteResponse,
+        });
+
+        sendMetabotMessage("Who is your favorite?");
+
+        cy.log("test on message shorter than prompt");
+        const secondResponseMessage =
+          "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer auctor id erat non sollicitudin. ".repeat(
+            5,
+          );
+        const secondResponse = {
+          ...whoIsYourFavoriteResponse,
+          reactions: [
+            {
+              type: "metabot.reaction/message",
+              message: secondResponseMessage,
+            },
+          ],
+          history: [
+            ...whoIsYourFavoriteResponse.history,
+            { role: "user", content: "You really mean that?" },
+            { role: "assistant", content: secondResponseMessage },
+          ],
+        };
+        mockMetabotResponse({ statusCode: 200, body: secondResponse });
+        sendMetabotMessage("You really mean that?");
+        cy.log("scroll new prompt to top of the scroll area");
+        cy.findByTestId("metabot-chat-inner-messages")
+          .findByText("You really mean that?")
+          .invoke("scrollTop")
+          .then((scrollTop) => expect(scrollTop).to.equal(0));
+        cy.log(
+          "if the response is shorter than the scroll area, filler should have height",
+        );
+        cy.findByTestId("metabot-message-filler").then(($el) => {
+          expect($el[0].clientHeight).to.be.greaterThan(0);
+        });
+
+        const thirdResponseMessage =
+          "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer auctor id erat non sollicitudin. ".repeat(
+            50,
+          );
+        const thirdResponse = {
+          ...secondResponse,
+          reactions: [
+            {
+              type: "metabot.reaction/message",
+              message: thirdResponseMessage,
+            },
+          ],
+          history: [
+            ...secondResponse.history,
+            { role: "user", content: "Keep going..." },
+            { role: "assistant", content: thirdResponseMessage },
+          ],
+        };
+        mockMetabotResponse({ statusCode: 200, body: thirdResponse });
+        sendMetabotMessage("Keep going...");
+        cy.log(
+          "if the response is longer than the scroll area the filler height should be zero",
+        );
+        cy.findByTestId("metabot-message-filler").then(($el) => {
+          expect($el[0].clientHeight).to.equal(0);
+        });
+      });
+
+      it("should open metabot to the bottom of the conversation when reopened with message history", () => {
+        mockMetabotResponse({
+          statusCode: 200,
+          body: {
+            ...whoIsYourFavoriteResponse,
+            reactions: [
+              {
+                type: "metabot.reaction/message",
+                message: "You, but don't tell anyone. ".repeat(200),
+              },
+            ],
+          },
+        });
+        openMetabotViaSearchButton();
+        sendMetabotMessage("Who is your favorite?");
+
+        closeMetabotViaCloseButton();
+        openMetabotViaSearchButton();
+        cy.findByTestId("metabot-chat-inner-messages").then(($el) => {
+          const el = $el[0];
+          const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight;
+          expect(isAtBottom).to.be.true;
+        });
+      });
+    });
   });
 });
 
@@ -93,8 +225,6 @@ const whoIsYourFavoriteResponse = {
   reactions: [
     {
       type: "metabot.reaction/message",
-      "repl/message_color": "green",
-      "repl/message_emoji": "🤖",
       message: "You, but don't tell anyone.",
     },
   ],
