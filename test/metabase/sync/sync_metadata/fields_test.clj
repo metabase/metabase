@@ -523,7 +523,7 @@
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       (sync/sync-database! (mt/db))
 
-      (let [tables (t2/select-pks-set :model/Table :db_id (u/the-id (mt/db)))
+      (let [tables (t2/select-pks-set :model/Table :db_id (mt/id))
             birds-example-name-field (t2/select-one :model/Field :name "example_name" :table_id [:in tables])
             flocks-example-bird-name-field (t2/select-one :model/Field :name "example_bird_name" :table_id [:in tables])]
 
