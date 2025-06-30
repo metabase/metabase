@@ -5,6 +5,7 @@ import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
 import { useInitData } from "embedding-sdk/hooks";
+import { useMetabaseProviderStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-store";
 import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -161,20 +162,20 @@ export const MetabaseProviderInternal = ({
   );
 };
 
-/**
- * A component that provides the Metabase SDK context and theme.
- *
- * @function
- * @category MetabaseProvider
- */
 export const MetabaseProvider = memo(function MetabaseProvider(
   props: MetabaseProviderProps,
 ) {
-  // This makes the store stable across re-renders, but still not a singleton:
-  // we need a different store for each test or each storybook story
-  const storeRef = useRef<Store<SdkStoreState, Action> | undefined>(undefined);
+  const storeRef = useRef<Store<SdkStoreState, Action> | null>(null);
+  const metabaseProviderStore = useMetabaseProviderStore();
+
   if (!storeRef.current) {
-    storeRef.current = getSdkStore();
+    const existingStore = metabaseProviderStore?.sdkStore;
+
+    if (existingStore) {
+      storeRef.current = existingStore;
+    } else {
+      storeRef.current = getSdkStore();
+    }
   }
 
   return (

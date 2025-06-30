@@ -8,9 +8,9 @@ import {
 import { renderWithProviders } from "__support__/ui";
 import {
   MetabaseProvider,
-  type MetabaseProviderProps,
   StaticQuestion,
 } from "embedding-sdk/components/public";
+import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import {
   createMockCard,
   createMockCardQueryMetadata,

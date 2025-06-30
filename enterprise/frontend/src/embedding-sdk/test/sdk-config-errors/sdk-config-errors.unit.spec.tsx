@@ -9,8 +9,8 @@ import { waitForRequest } from "__support__/utils";
 import {
   MetabaseProvider,
   StaticQuestion,
-  defineMetabaseAuthConfig,
 } from "embedding-sdk/components/public";
+import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-wrapper/lib/public/define-metabase-auth-config";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import { createMockCard } from "metabase-types/api/mocks";
 

@@ -4,7 +4,7 @@ These docs are for building the sdk locally, if you just want to use the sdk, pl
 
 ## Build
 
-You can build the sdk with `yarn build-embedding-sdk`.
+You can build the sdk with `yarn build-embedding-sdk-package`.
 
 ### Watch
 

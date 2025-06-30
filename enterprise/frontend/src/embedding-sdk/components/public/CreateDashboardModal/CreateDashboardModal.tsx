@@ -63,12 +63,6 @@ const CreateDashboardModalInner = ({
   );
 };
 
-/**
- * Creates a dashboard
- *
- * @function
- * @category CreateDashboardModal
- */
 export const CreateDashboardModal = withPublicComponentWrapper(
   CreateDashboardModalInner,
 );

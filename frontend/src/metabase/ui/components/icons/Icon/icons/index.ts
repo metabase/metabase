@@ -1,4 +1,3 @@
-/* eslint-disable import/no-duplicates */
 import ten_thousand_component from "./10k.svg?component";
 import ten_thousand_source from "./10k.svg?source";
 import one_million_component from "./1m.svg?component";
