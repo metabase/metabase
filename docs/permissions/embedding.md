@@ -36,7 +36,7 @@ Let's say you have a table called **Data** that looks like this:
 | B         | ...     | ...      |
 | C         | ...     | ...      |
 
-To display a filtered version of **Data** to different tenants based on a `Tenant_ID`. You can create a [basic sandbox](./data-sandboxes.md#types-of-data-sandboxes).
+To display a filtered version of **Data** to different tenants based on a `Tenant_ID`, you can create a [basic sandbox](./data-sandboxes.md#types-of-data-sandboxes).
 
 That means Tenant A will see the rows where `Tenant_ID = A`, and Tenant B will see the rows where `Tenant_ID = B`.
 
@@ -44,7 +44,7 @@ Here's how the basic sandbox will work:
 
 1. **Create a group**, for example "Sandboxed Tenants", and add people's Metabase accounts to that group.
 2. **Add a user attribute**. For each person's account, [add a user attribute](../people-and-groups/managing.md#adding-a-user-attribute) like `Tenant_ID`, with the user attribute value set to "A", "B", or "C".
-3. **Sandbox the table** to apply the [row-level security based on user attributes](./data-sandboxes.md#types-of-data-sandboxes).
+3. **Sandbox the table** for the group to apply the [row-level security based on user attributes](./data-sandboxes.md#types-of-data-sandboxes).
 
 ### Restricting columns based on tenancy
 
@@ -76,7 +76,7 @@ When, for example, Tenant A logs in, they'll only see the `Tenant_ID` and `Metri
 
 ### Impersonation lets you manage access with database roles
 
-Impersonation lets you map user attributes to database roles, which lets you do row-level security based on the privileges you give eachd role.
+Impersonation lets you map user attributes to database roles, which lets you do row-level security based on the database privileges you give each role.
 
 Check out this [article on impersonation](https://www.metabase.com/learn/metabase-basics/administration/permissions/impersonation).
 
@@ -123,7 +123,7 @@ Say you have a single database with ten different tables, each corresponding to 
 
 2. **Grant table access** by going to **Permissions** > **Data** > **Databases** and granting your new group access to the customer's table. If you want customers to create questions and dashboards within their table, set **Create query** permissions to **Query builder**.
 
-   For employees who should only view data and create collections to house those specific questions and dashboards. See [collection permissions](./collections.md).
+   For employees who should only view data and create collections to house those specific questions and dashboards, see [collection permissions](./collections.md).
 
    Avoid granting native SQL editor access — it lets people query tables they shouldn't see.
 
@@ -137,7 +137,7 @@ Say you have a single database with ten different tables, each corresponding to 
 
 If you need native SQL queries:
 
-1. **Create a database-level user account** for your first customer (in your database, not in Metabase). This db user should only have access to their specific tables or schema. For Postgres for example, you could add a user via psql and only grant them permissions to their tables.
+1. **Create a database-level user account** for your first customer (in your database, not in Metabase). This database user should only have access to their specific tables or schema. For PostgreSQL for example, you could add a user via psql and only grant them permissions to their tables.
 
 2. **Connect Metabase to your database** using the database user account you just created. See [databases](../databases/connecting.md).
 
