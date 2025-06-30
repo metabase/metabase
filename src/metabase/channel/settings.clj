@@ -136,6 +136,7 @@
   :feature   :cloud-custom-smtp
   :default    "notifications@metabase.com"
   :visibility :settings-manager
+  :export?    false
   :audit      :getter)
 
 (defsetting email-from-name
@@ -183,6 +184,7 @@
   :encryption :when-encryption-key-set
   :feature   :cloud-custom-smtp
   :visibility :settings-manager
+  :export?    false
   :audit      :getter)
 
 (defsetting email-smtp-username
@@ -196,6 +198,7 @@
   :encryption :when-encryption-key-set
   :feature   :cloud-custom-smtp
   :visibility :settings-manager
+  :export?    false
   :audit      :getter)
 
 (defsetting email-smtp-password
@@ -211,6 +214,7 @@
   :feature   :cloud-custom-smtp
   :visibility :settings-manager
   :sensitive? true
+  :export?    false
   :audit      :getter)
 
 (defsetting email-smtp-port
@@ -227,6 +231,7 @@
   :feature :cloud-custom-smtp
   :visibility :settings-manager
   :audit :getter
+  :export?    false
   :setter (fn [new-value]
             (when (some? new-value)
               (assert (#{465 587 2525} new-value)
@@ -253,6 +258,7 @@
   :default    :ssl
   :visibility :settings-manager
   :audit      :raw-value
+  :export?    false
   :setter     (fn [new-value]
                 (when (some? new-value)
                   (assert (#{:tls :ssl :starttls} (keyword new-value))
@@ -267,6 +273,7 @@
   :default    false
   :visibility :settings-manager
   :audit      :getter
+  :export?    false
   :setter     (fn [new-value]
                 (when (and new-value (not (setting/get-value-of-type :string :cloud-email-smtp-host)))
                   (throw (ex-info (tru "Cannot enable cloud-smtp when it is not configured.") {:status-code 400})))

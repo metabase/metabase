@@ -31,8 +31,9 @@
    :cloud-email-smtp-port     :port
    :cloud-email-smtp-security :security})
 
-(defn- smtp->mb-setting [smtp-setting mb-to-smtp-map]
+(defn- smtp->mb-setting
   "Convert a SMTP setting to a Metabase setting name."
+  [smtp-setting mb-to-smtp-map]
   (get (set/map-invert mb-to-smtp-map) smtp-setting))
 
 (defn- check-features []
@@ -96,16 +97,6 @@
      [k (tru "{0} was autocorrected to {1}"
              (name (mb-to-smtp-map k))
              (u/upper-case-en v))])))
-
-(defn- env-var-values-by-email-setting
-  "Returns a map of setting names (keywords) and env var values.
-   If an env var is not set, the setting is not included in the result."
-  [mb-to-smtp-map]
-  (into {}
-        (for [setting-name (keys mb-to-smtp-map)
-              :let         [value (setting/env-var-value setting-name)]
-              :when        (some? value)]
-          [setting-name value])))
 
 (defn- check-and-update-settings [settings mb-to-smtp-map current-smtp-password]
   (perms/check-has-application-permission :setting)

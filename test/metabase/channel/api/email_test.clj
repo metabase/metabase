@@ -220,10 +220,10 @@
 
       (mt/with-premium-features [:cloud-custom-smtp]
         (testing "Cannot use non-secure settings"
-          (is (= (mt/user-http-request :crowberto :put 400 "email/cloud" (assoc default-cloud-email-settings :cloud-email-smtp-security "none"))
-                 "Invalid cloud-email-smtp-security value"))
-          (is (= (mt/user-http-request :crowberto :put 400 "email/cloud" (assoc default-cloud-email-settings :cloud-email-smtp-port 25))
-                 "Invalid cloud-email-smtp-port value")))
+          (is (= "Invalid cloud-email-smtp-security value"
+                 (mt/user-http-request :crowberto :put 400 "email/cloud" (assoc default-cloud-email-settings :cloud-email-smtp-security "none"))))
+          (is (= "Invalid cloud-email-smtp-port value"
+                 (mt/user-http-request :crowberto :put 400 "email/cloud" (assoc default-cloud-email-settings :cloud-email-smtp-port 25)))))
         (testing "Updating values with obfuscated password (#23919)"
           (mt/with-temporary-setting-values [cloud-email-smtp-host "www.test.com"
                                              cloud-email-smtp-password "preexisting"]

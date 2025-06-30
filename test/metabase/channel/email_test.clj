@@ -9,6 +9,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u :refer [prog1]]
@@ -365,7 +366,7 @@
                    (m/mapply email/send-message! params-with-problematic-file))))))))))
 
 (deftest send-message!-cloud-test
-  (metabase.premium-features.test-util/with-premium-features [:cloud-custom-smtp]
+  (premium-features.test-util/with-premium-features [:cloud-custom-smtp]
     (with-redefs [premium-features/is-hosted? (constantly true)]
       (tu/with-temporary-setting-values [email-from-address "standard@metabase.com"
                                          email-from-name "From Name"
