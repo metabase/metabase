@@ -1,5 +1,5 @@
 import { useDebouncedCallback } from "@mantine/hooks";
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 
 import { useUserSetting } from "metabase/common/hooks";
 import type { UserSettings } from "metabase-types/api";
@@ -9,12 +9,11 @@ export function usePersistByUserSetting<K extends keyof UserSettings, S>({
   settingKey,
   debounceMs,
 }: {
-  onLoad: (settings: S) => void;
+  onLoad: (settings: S | null) => void;
   settingKey: K;
   debounceMs: number;
 }) {
-  const loadedRef = useRef(false);
-
+  const [isUserSettingsLoaded, setIsUserSettingsLoaded] = useState(false);
   const [userSettingString, setUserSettingString] = useUserSetting(settingKey);
 
   const storeSetting = useDebouncedCallback(
@@ -24,20 +23,17 @@ export function usePersistByUserSetting<K extends keyof UserSettings, S>({
   );
 
   useEffect(() => {
-    if (loadedRef.current || !userSettingString) {
-      return;
+    if (!isUserSettingsLoaded) {
+      let settings: S | null = null;
+
+      try {
+        settings = JSON.parse(userSettingString as string) as S;
+      } catch (error) {}
+
+      onLoad(settings);
+      setIsUserSettingsLoaded(true);
     }
-
-    loadedRef.current = true;
-
-    try {
-      const parsedSettings = JSON.parse(userSettingString as string) as S;
-
-      if (parsedSettings) {
-        onLoad(parsedSettings);
-      }
-    } catch (error) {}
-  }, [userSettingString, onLoad]);
+  }, [isUserSettingsLoaded, userSettingString, onLoad]);
 
   return { storeSetting };
 }

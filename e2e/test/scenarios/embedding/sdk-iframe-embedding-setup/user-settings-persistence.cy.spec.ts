@@ -11,6 +11,9 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/activity/recent_views").as("recentActivity");
+    cy.intercept("PUT", "/api/setting/sdk-iframe-embed-setup-settings").as(
+      "persistSettings",
+    );
   });
 
   it("persists dashboard embed options after page reload with debounced saving", () => {
@@ -44,14 +47,17 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
 
     cy.log("5. Wait for debounced saving to complete");
-    cy.wait(3000);
+    cy.wait("@persistSettings");
 
     cy.log("6. Reload the page to test persistence");
     cy.reload();
     cy.wait("@dashboard");
 
     cy.log("7. Navigate back to embed options step");
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
+    getEmbedSidebar().within(() => {
+      cy.findByText("Next").click(); // Entity selection step
+      cy.findByText("Next").click(); // Embed options step
+    });
 
     cy.log("8. Verify persisted settings are restored (non-default values)");
     getEmbedSidebar().within(() => {
@@ -99,7 +105,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
 
     cy.log("5. Wait for debounced saving");
-    cy.wait(3000);
+    cy.wait("@persistSettings");
 
     cy.log("6. Reload and navigate back to options");
     cy.reload();
@@ -145,7 +151,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     H.getIframeBody().findByText("Save").should("not.exist");
 
     cy.log("4. Wait for debounced saving");
-    cy.wait(2000);
+    cy.wait("@persistSettings");
 
     cy.log("5. Reload and navigate back to exploration options");
     cy.reload();
@@ -190,7 +196,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       .should("have.css", "color", "rgb(255, 0, 0)");
 
     cy.log("4. Wait for debounced saving");
-    cy.wait(2000);
+    cy.wait("@persistSettings");
 
     cy.log("5. Reload and navigate back to options");
     cy.reload();
@@ -213,7 +219,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
 
     cy.log("2. Wait for persistence");
-    cy.wait(2000);
+    cy.wait("@persistSettings");
 
     cy.log("3. Switch to chart experience");
     getEmbedSidebar().within(() => {
@@ -228,7 +234,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
 
     cy.log("5. Wait and reload");
-    cy.wait(2000);
     cy.reload();
     cy.wait("@dashboard");
 

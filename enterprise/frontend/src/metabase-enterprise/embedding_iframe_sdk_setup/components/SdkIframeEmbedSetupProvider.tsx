@@ -1,10 +1,4 @@
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 
 import { useSetting } from "metabase/common/hooks";
@@ -40,8 +34,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   // We don't want to re-fetch the recent items every time we switch between
   // steps, therefore we load recent items once in the provider.
-  const { recentDashboards, recentQuestions, addRecentItem, isRecentsLoading } =
-    useRecentItems();
+  const { recentDashboards, recentQuestions, addRecentItem } = useRecentItems();
 
   const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
     "select-embed-experience",
@@ -82,8 +75,32 @@ export const SdkIframeEmbedSetupProvider = ({
     ...(settings.questionId && { questionId: Number(settings.questionId) }),
   });
 
+  const fallbackDashboardId =
+    recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID;
+
+  const onEmbedSettingsLoaded = useCallback(
+    (settings: SdkIframeEmbedSettings | null) => {
+      if (settings) {
+        setSettings(settings);
+      } else {
+        // Apply the default settings if the user settings are empty.
+        const defaults = getDefaultSdkIframeEmbedSettings(
+          "dashboard",
+          fallbackDashboardId,
+        );
+
+        setSettings(
+          (prev) => ({ ...prev, ...defaults }) as SdkIframeEmbedSettings,
+        );
+      }
+
+      setEmbedSettingsLoaded(true);
+    },
+    [fallbackDashboardId],
+  );
+
   const { storeSetting } = usePersistByUserSetting({
-    onLoad: setSettings,
+    onLoad: onEmbedSettingsLoaded,
     settingKey: "sdk-iframe-embed-setup-settings",
     debounceMs: PERSIST_EMBED_SETTINGS_DEBOUNCE_MS,
   });
@@ -111,23 +128,6 @@ export const SdkIframeEmbedSetupProvider = ({
     },
     [storeSetting],
   );
-
-  useEffect(() => {
-    if (!isEmbedSettingsLoaded && !isRecentsLoading) {
-      const defaultSettings = getDefaultSdkIframeEmbedSettings(
-        "dashboard",
-        recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
-      );
-
-      updateSettings(defaultSettings);
-      setEmbedSettingsLoaded(true);
-    }
-  }, [
-    isRecentsLoading,
-    isEmbedSettingsLoaded,
-    recentDashboards,
-    updateSettings,
-  ]);
 
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
