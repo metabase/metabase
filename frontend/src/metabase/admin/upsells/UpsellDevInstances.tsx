@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
+import { getStoreUrl } from "metabase/selectors/settings";
 import { Text } from "metabase/ui";
 
 import { UpsellBanner } from "./components";
-import { UPGRADE_URL } from "./constants";
 
 type SOURCE = "embedding-page" | "settings-general";
 
@@ -20,7 +20,7 @@ export function UpsellDevInstances({ source }: { source: SOURCE }) {
       title={t`Get a development instance`}
       campaign="dev_instances"
       buttonText={t`Set up`}
-      buttonLink={UPGRADE_URL}
+      buttonLink={getStoreUrl("account/new-dev-instance")}
       source={source}
     >
       <Text size="sm">
