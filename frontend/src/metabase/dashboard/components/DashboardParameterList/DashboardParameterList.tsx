@@ -24,7 +24,7 @@ export interface DashboardParameterListProps
 export function DashboardParameterList({
   parameters,
   isSortable = true,
-  widgetsVariant,
+  widgetsVariant = "subtle",
   widgetsWithinPortal,
   vertical,
 }: DashboardParameterListProps) {
