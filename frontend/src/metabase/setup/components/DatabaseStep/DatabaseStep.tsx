@@ -1,8 +1,10 @@
 import { updateIn } from "icepick";
 import { c, t } from "ttag";
 
+import { useToast } from "metabase/common/hooks";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { Box } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 import type { InviteInfo } from "metabase-types/store";
 
@@ -25,9 +27,6 @@ import { InactiveStep } from "../InactiveStep";
 import { InviteUserForm } from "../InviteUserForm";
 import { SetupSection } from "../SetupSection";
 import type { NumberedStepProps } from "../types";
-
-import { useToast } from "metabase/common/hooks";
-import { Box } from "metabase/ui";
 
 export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted } = useStep("db_connection");
