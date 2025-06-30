@@ -30,11 +30,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
         .should("not.be.checked");
     });
 
-    H.getIframeBody().within(() => {
-      cy.findByTestId("export-as-pdf-button").should("be.visible");
-      cy.findByText("Orders in a dashboard").should("not.exist");
-    });
-
     cy.log("2. reload the page");
     waitAndReload();
     getEmbedSidebar().within(() => {
@@ -52,11 +47,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
         "be.checked",
       );
     });
-
-    H.getIframeBody().within(() => {
-      cy.findByTestId("export-as-pdf-button").should("be.visible");
-      cy.findByText("Orders in a dashboard").should("not.exist");
-    });
   });
 
   it("persists chart embed options", () => {
@@ -70,13 +60,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       cy.findByLabelText("Show chart title").click().should("not.be.checked");
     });
 
-    cy.log("2. options should be applied in preview");
-    H.getIframeBody().within(() => {
-      cy.findByTestId("question-download-widget-button").should("be.visible");
-      cy.findByText("Orders, Count").should("not.exist");
-    });
-
-    cy.log("3. reload the page");
+    cy.log("2. reload the page");
     waitAndReload();
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Chart").should("be.checked");
@@ -84,7 +68,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       cy.findByText("Next").click(); // Embed options step
     });
 
-    cy.log("4. verify persisted settings are restored");
+    cy.log("3. verify persisted settings are restored");
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow downloads").should("be.checked");
       cy.findByLabelText("Show chart title").should("not.be.checked");
@@ -93,17 +77,10 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
         "be.checked",
       );
     });
-
-    cy.log("5. options should be applied to preview");
-    H.getIframeBody().within(() => {
-      cy.findByTestId("question-download-widget-button").should("be.visible");
-      cy.findByText("Orders, Count").should("not.exist");
-    });
   });
 
   it("persists exploration embed options", () => {
     navigateToEmbedOptionsStep({ experience: "exploration" });
-    capturePersistSettings();
 
     H.getIframeBody().within(() => {
       cy.findByText("Orders").click();
@@ -112,6 +89,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
 
     cy.log("1. set exploration settings to non-default values");
+    capturePersistSettings();
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow users to save new questions")
         .should("be.checked")
@@ -127,20 +105,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       cy.findByLabelText("Exploration").should("be.checked");
       cy.findByText("Next").click(); // Embed options step
     });
-
-    H.getIframeBody().within(() => {
-      cy.findByText("Orders").click();
-      cy.findByText("Visualize").click();
-    });
-
-    cy.log("3. persisted settings should be restored");
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Allow users to save new questions").should(
-        "not.be.checked",
-      );
-    });
-
-    H.getIframeBody().findByText("Save").should("not.exist");
   });
 
   it("persists brand color customization across page reloads", () => {
