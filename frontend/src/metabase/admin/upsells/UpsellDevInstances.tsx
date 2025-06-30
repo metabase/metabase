@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import { Text } from "metabase/ui";
 
 import { UpsellBanner } from "./components";
@@ -8,6 +9,12 @@ import { UPGRADE_URL } from "./constants";
 type SOURCE = "embedding-page" | "settings-general";
 
 export function UpsellDevInstances({ source }: { source: SOURCE }) {
+  const isDevMode = useSetting("development-mode?");
+
+  if (isDevMode) {
+    return null;
+  }
+
   return (
     <UpsellBanner
       title={t`Get a development instance`}

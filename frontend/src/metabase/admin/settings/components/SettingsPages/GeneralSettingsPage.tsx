@@ -25,6 +25,7 @@ export function GeneralSettingsPage() {
   return (
     <SettingsPageWrapper title={t`General`}>
       <DevInstanceBanner />
+
       <SettingsSection title={t`App config`}>
         <AdminSettingInput
           name="site-name"
