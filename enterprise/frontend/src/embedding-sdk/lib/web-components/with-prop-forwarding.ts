@@ -10,16 +10,8 @@ type PropForwardingConfig<TProps> = {
     key: string;
     parent: keyof TProps;
   }[];
-} & (
-  | {
-      childrenComponents: string[];
-      propsStorage?: never;
-    }
-  | {
-      childrenComponents?: never;
-      propsStorage: Partial<TProps>;
-    }
-);
+  childrenComponents?: string[];
+};
 
 export function withPropForwarding<TProps>(
   Constructor: WebComponentElementConstructor,
@@ -27,7 +19,6 @@ export function withPropForwarding<TProps>(
     childrenComponents,
     propertyNames,
     propMappings,
-    propsStorage,
   }: PropForwardingConfig<TProps>,
 ): WebComponentElementConstructor {
   return class extends Constructor {
@@ -105,30 +96,6 @@ export function withPropForwarding<TProps>(
     }
 
     private update() {
-      if (!childrenComponents?.length) {
-        this.updateProps();
-      } else {
-        this.updateChildren(childrenComponents);
-      }
-    }
-
-    private updateProps() {
-      if (!propsStorage) {
-        return;
-      }
-
-      (Object.keys(this.props) as (keyof TProps)[]).forEach((propName) => {
-        const value = this.props[propName];
-
-        if (!value || !Object.keys(value).length) {
-          return;
-        }
-
-        propsStorage[propName] = value;
-      });
-    }
-
-    private updateChildren(childrenComponents: string[]) {
       if (!childrenComponents?.length) {
         return;
       }

@@ -1,5 +1,7 @@
 import type { StoryFn } from "@storybook/react";
+import { useEffect, useRef } from "react";
 
+import type { CollectionBrowserWebComponentProps } from "embedding-sdk";
 import { getStorybookSdkAuthConfigForUser } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import type { MetabaseCollectionItem } from "embedding-sdk/types/collection";
 
@@ -10,7 +12,9 @@ const COLLECTION_ID = "root";
 const config = getStorybookSdkAuthConfigForUser("admin");
 (window as any).fetchRequestToken = config.fetchRequestToken;
 
-(window as any).onCollectionClick = (collection: MetabaseCollectionItem) => {
+(window as any).onCollectionClick = function onCollectionClick(
+  collection: MetabaseCollectionItem,
+) {
   // eslint-disable-next-line no-console
   console.log(collection);
 };
@@ -32,9 +36,24 @@ export default {
     ),
   ],
 };
+
 export const CollectionBrowser = () => (
   <collection-browser
     collection-id={COLLECTION_ID}
     on-click="onCollectionClick"
   />
 );
+
+export const CollectionBrowserWithDefinedProperties = () => {
+  const ref = useRef<HTMLElement & CollectionBrowserWebComponentProps>(null);
+
+  useEffect(() => {
+    if (!ref.current) {
+      return;
+    }
+
+    ref.current.onClick = (window as any).onCollectionClick;
+  }, []);
+
+  return <collection-browser ref={ref} collection-id={COLLECTION_ID} />;
+};

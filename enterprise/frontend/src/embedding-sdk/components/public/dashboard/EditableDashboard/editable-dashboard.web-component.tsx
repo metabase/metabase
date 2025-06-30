@@ -12,12 +12,19 @@ export type EditableDashboardWebComponentAttributes = {
   "dashboard-id": string;
 };
 
-const InteractiveDashboardWebComponent = createWebComponent<
-  Pick<EditableDashboardProps, "dashboardId">
->((props) => <EditableDashboard {...props} />, {
-  propTypes: {
-    dashboardId: "id",
-  },
-});
+export type EditableDashboardWebComponentProps = Pick<
+  EditableDashboardProps,
+  "dashboardId"
+>;
+
+const InteractiveDashboardWebComponent =
+  createWebComponent<EditableDashboardWebComponentProps>(
+    (props) => <EditableDashboard {...props} />,
+    {
+      propTypes: {
+        dashboardId: "id",
+      },
+    },
+  );
 
 registerWebComponent("editable-dashboard", InteractiveDashboardWebComponent);

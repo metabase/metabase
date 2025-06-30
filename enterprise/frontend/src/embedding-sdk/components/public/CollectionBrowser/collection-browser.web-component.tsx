@@ -10,16 +10,23 @@ import {
 
 export type CollectionBrowserWebComponentAttributes = {
   "collection-id": string;
-  "on-click": string;
+  "on-click"?: string;
 };
 
-const CollectionBrowserWebComponent = createWebComponent<
-  Pick<CollectionBrowserProps, "collectionId" | "onClick">
->((props) => <CollectionBrowser {...props} />, {
-  propTypes: {
-    collectionId: "id",
-    onClick: "function",
-  },
-});
+export type CollectionBrowserWebComponentProps = Pick<
+  CollectionBrowserProps,
+  "collectionId" | "onClick"
+>;
+
+const CollectionBrowserWebComponent =
+  createWebComponent<CollectionBrowserWebComponentProps>(
+    (props) => <CollectionBrowser {...props} />,
+    {
+      propTypes: {
+        collectionId: "id",
+        onClick: "function",
+      },
+    },
+  );
 
 registerWebComponent("collection-browser", CollectionBrowserWebComponent);

@@ -13,14 +13,21 @@ export type CreateDashboardModalWebComponentAttributes = {
   "on-create": string;
 };
 
-const CreateDashboardModalWebComponent = createWebComponent<
-  Pick<CreateDashboardModalProps, "initialCollectionId" | "onCreate">
->((props) => <CreateDashboardModal {...props} />, {
-  propTypes: {
-    initialCollectionId: "id",
-    onCreate: "function",
-  },
-});
+export type CreateDashboardModalWebComponentProps = Pick<
+  CreateDashboardModalProps,
+  "initialCollectionId" | "onCreate"
+>;
+
+const CreateDashboardModalWebComponent =
+  createWebComponent<CreateDashboardModalWebComponentProps>(
+    (props) => <CreateDashboardModal {...props} />,
+    {
+      propTypes: {
+        initialCollectionId: "id",
+        onCreate: "function",
+      },
+    },
+  );
 
 registerWebComponent(
   "create-dashboard-modal",

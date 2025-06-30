@@ -34,4 +34,5 @@ const MetabaseProviderWebComponent =
       },
     ],
   });
+
 registerWebComponent("metabase-provider", MetabaseProviderWebComponent);

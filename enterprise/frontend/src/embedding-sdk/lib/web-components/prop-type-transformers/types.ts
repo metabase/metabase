@@ -6,11 +6,16 @@ export type R2wcDefaultTransformersMap = {
   json: PropTypeTransformer;
 };
 
+export type PropertyPropTypeTransformerMap = {
+  property?: never;
+};
+
 export type CustomPropTypeTransformersMap = {
   id: PropTypeTransformer;
 };
 
 export type PropTypeTransformersMap = R2wcDefaultTransformersMap &
+  PropertyPropTypeTransformerMap &
   CustomPropTypeTransformersMap;
 
 export type PropTypeTransformer<TReturnValue = string | number> = (

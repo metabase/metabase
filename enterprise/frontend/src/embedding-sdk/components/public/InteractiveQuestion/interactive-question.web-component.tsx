@@ -12,13 +12,20 @@ export type InteractiveQuestionWebComponentAttributes = {
   "question-id": string;
 };
 
-const InteractiveQuestionWebComponent = createWebComponent<
-  Pick<InteractiveQuestionProps, "questionId">
->((props) => <InteractiveQuestion {...props} />, {
-  propertyNames: ["plugins"],
-  propTypes: {
-    questionId: "id",
-  },
-});
+export type InteractiveQuestionWebComponentProps = Pick<
+  InteractiveQuestionProps,
+  "questionId" | "plugins"
+>;
+
+const InteractiveQuestionWebComponent =
+  createWebComponent<InteractiveQuestionWebComponentProps>(
+    (props) => <InteractiveQuestion {...props} />,
+    {
+      propTypes: {
+        questionId: "id",
+        plugins: "property",
+      },
+    },
+  );
 
 registerWebComponent("interactive-question", InteractiveQuestionWebComponent);

@@ -13,13 +13,20 @@ export type InteractiveDashboardWebComponentAttributes = {
   "with-downloads"?: string;
 };
 
-const InteractiveDashboardWebComponent = createWebComponent<
-  Pick<InteractiveDashboardProps, "dashboardId" | "withDownloads">
->((props) => <InteractiveDashboard {...props} />, {
-  propTypes: {
-    dashboardId: "id",
-    withDownloads: "boolean",
-  },
-});
+export type InteractiveDashboardWebComponentProps = Pick<
+  InteractiveDashboardProps,
+  "dashboardId" | "withDownloads"
+>;
+
+const InteractiveDashboardWebComponent =
+  createWebComponent<InteractiveDashboardWebComponentProps>(
+    (props) => <InteractiveDashboard {...props} />,
+    {
+      propTypes: {
+        dashboardId: "id",
+        withDownloads: "boolean",
+      },
+    },
+  );
 
 registerWebComponent("interactive-dashboard", InteractiveDashboardWebComponent);

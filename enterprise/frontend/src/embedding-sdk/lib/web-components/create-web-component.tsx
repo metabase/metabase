@@ -1,5 +1,5 @@
 import type { R2WCBaseProps } from "@r2wc/core";
-import r2wc from "@r2wc/core";
+import r2wc from "@r2wc/react-to-web-component";
 import { type ReactNode, useMemo } from "react";
 
 import {
@@ -7,10 +7,6 @@ import {
   MetabaseProvider,
   type MetabaseTheme,
 } from "embedding-sdk";
-import {
-  getR2wcRenderer,
-  withPropForwarding,
-} from "embedding-sdk/lib/web-components";
 import { AttributeSerializer } from "embedding-sdk/lib/web-components/attribute-serializer";
 import type {
   MetabaseProviderInternalProps,
@@ -33,7 +29,6 @@ type MergedProps<TComponentProps> = R2WCBaseProps &
 
 type CreateWebComponentConfig<TComponentProps> = {
   propTypes: PropTypes<TComponentProps>;
-  propertyNames?: string[];
 };
 
 const transformProps = <TComponentProps,>(
@@ -80,13 +75,8 @@ const getCreatedWebComponentPropTypes = <TComponentProps,>(
 
 export const createWebComponent = <TComponentProps,>(
   component: (props: TComponentProps) => ReactNode,
-  { propTypes, propertyNames }: CreateWebComponentConfig<TComponentProps>,
+  { propTypes }: CreateWebComponentConfig<TComponentProps>,
 ): WebComponentElementConstructor => {
-  const {
-    renderer: { mount, update, unmount },
-    propsStorage,
-  } = getR2wcRenderer();
-
   const metabaseProviderPropTypes = {
     authConfig: "string",
     theme: "string",
@@ -94,7 +84,7 @@ export const createWebComponent = <TComponentProps,>(
   const createdWebComponentPropTypes =
     getCreatedWebComponentPropTypes(propTypes);
 
-  const Constructor = r2wc(
+  return r2wc(
     (props: MergedProps<TComponentProps>) => {
       const transformedProps = useMemo(
         () => transformProps(props, propTypes),
@@ -130,11 +120,5 @@ export const createWebComponent = <TComponentProps,>(
         ...createdWebComponentPropTypes,
       },
     },
-    { mount, update, unmount },
   );
-
-  return withPropForwarding(Constructor, {
-    propsStorage,
-    propertyNames,
-  });
 };
