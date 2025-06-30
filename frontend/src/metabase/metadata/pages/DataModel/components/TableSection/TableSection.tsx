@@ -73,26 +73,7 @@ const TableSectionBase = ({ params, table }: Props) => {
       <Stack gap="lg">
         <Stack gap={12}>
           <Group align="center" gap="md" justify="space-between">
-            <Group align="center" gap="md" h="100%" wrap="nowrap">
-              {!isSorting && <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>}
-
-              {isSorting && (
-                <FieldOrderPicker
-                  value={table.field_order}
-                  onChange={async (fieldOrder) => {
-                    await updateTable({
-                      id: table.id,
-                      field_order: fieldOrder,
-                    });
-
-                    sendToast({
-                      icon: "check",
-                      message: t`Field order updated`,
-                    });
-                  }}
-                />
-              )}
-            </Group>
+            <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
 
             <Group
               className={S.buttons}
@@ -121,6 +102,23 @@ const TableSectionBase = ({ params, table }: Props) => {
                   size="xs"
                   onClick={() => setIsSyncModalOpen(true)}
                 >{t`Sync options`}</Button>
+              )}
+
+              {isSorting && (
+                <FieldOrderPicker
+                  value={table.field_order}
+                  onChange={async (fieldOrder) => {
+                    await updateTable({
+                      id: table.id,
+                      field_order: fieldOrder,
+                    });
+
+                    sendToast({
+                      icon: "check",
+                      message: t`Field order updated`,
+                    });
+                  }}
+                />
               )}
 
               {isSorting && (

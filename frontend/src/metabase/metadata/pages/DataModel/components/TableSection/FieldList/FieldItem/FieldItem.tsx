@@ -85,15 +85,16 @@ export const FieldItem = ({ active, field, href }: Props) => {
 
   return (
     <Flex
+      align="flex-start"
       aria-label={field.display_name}
-      bg={active ? "brand-lighter" : "bg-white"}
+      bg={active ? "brand-light" : "bg-white"}
       c="text-medium"
       className={cx(S.field, {
         [S.active]: active,
       })}
       component={Link}
       direction="column"
-      align="flex-start"
+      draggable={false}
       gap={rem(12)}
       justify="space-between"
       mih={rem(40)}
@@ -105,7 +106,6 @@ export const FieldItem = ({ active, field, href }: Props) => {
       w="100%"
       wrap="nowrap"
       onClick={handleClick}
-      draggable={false}
     >
       <Group flex="0 0 auto" gap="sm" maw="100%" wrap="nowrap">
         <Icon className={S.icon} flex="0 0 auto" name={icon} />

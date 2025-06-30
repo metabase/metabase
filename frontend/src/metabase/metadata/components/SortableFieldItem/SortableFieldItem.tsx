@@ -3,7 +3,7 @@ import cx from "classnames";
 import { Sortable } from "metabase/common/components/Sortable";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Flex, Group, Icon, Text, rem } from "metabase/ui";
+import { Flex, Icon, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
@@ -29,16 +29,15 @@ export const SortableFieldItem = ({ active, disabled, field }: Props) => {
       id={id}
     >
       <Flex
-        align="center"
         aria-label={label}
-        bg={active ? "brand-lighter" : "bg-white"}
+        bg={active ? "brand-light" : "bg-white"}
         c="text-medium"
         className={cx(S.content, {
           [S.active]: active,
           [S.draggable]: draggable,
         })}
         draggable={draggable}
-        gap="md"
+        gap="sm"
         justify="space-between"
         mih={rem(40)}
         pos="relative"
@@ -48,15 +47,15 @@ export const SortableFieldItem = ({ active, disabled, field }: Props) => {
         w="100%"
         wrap="nowrap"
       >
-        <Group flex="0 0 auto" gap="sm" w="100%" wrap="nowrap">
-          <Icon className={S.icon} name={icon} />
+        <Icon className={S.icon} name={icon} />
 
-          <Text flex="1" fw="bold" lh="normal" lineClamp={1}>
-            {label}
-          </Text>
-        </Group>
+        <Text flex="1" fw="bold" lh="normal" lineClamp={1}>
+          {label}
+        </Text>
 
-        {draggable && <Icon className={S.grabber} name="grabber" />}
+        {draggable && (
+          <Icon className={S.grabber} flex="0 0 auto" name="grabber" />
+        )}
       </Flex>
     </Sortable>
   );
