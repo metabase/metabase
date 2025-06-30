@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { UpsellDevInstances } from "metabase/admin/upsells/UpsellDevInstances";
+import { UpsellDevInstances } from "metabase/admin/upsells";
 
 import {
   EmbeddingSdkOptionCard,
