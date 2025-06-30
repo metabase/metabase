@@ -64,12 +64,9 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
     cy.log("1. set chart embed settings to non-default values");
     getEmbedSidebar().within(() => {
-      cy.log("Turn on downloads (was off)");
       cy.findByLabelText("Allow downloads").click().should("be.checked");
 
       capturePersistSettings();
-
-      cy.log("Turn off chart title (was on)");
       cy.findByLabelText("Show chart title").click().should("not.be.checked");
     });
 
