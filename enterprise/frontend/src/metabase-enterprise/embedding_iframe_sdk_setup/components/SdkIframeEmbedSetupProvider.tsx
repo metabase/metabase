@@ -103,6 +103,7 @@ export const SdkIframeEmbedSetupProvider = ({
     onLoad: onEmbedSettingsLoaded,
     settingKey: "sdk-iframe-embed-setup-settings",
     debounceMs: PERSIST_EMBED_SETTINGS_DEBOUNCE_MS,
+    omitKeys: ["instanceUrl"],
   });
 
   const setAndPersistSettings = useCallback(

@@ -8,19 +8,21 @@ export function usePersistByUserSetting<K extends keyof UserSettings, S>({
   onLoad,
   settingKey,
   debounceMs,
+  omitKeys = [],
 }: {
   onLoad: (settings: S | null) => void;
   settingKey: K;
   debounceMs: number;
+  omitKeys?: (keyof S)[];
 }) {
   const [isUserSettingsLoaded, setIsUserSettingsLoaded] = useState(false);
   const [userSettingString, setUserSettingString] = useUserSetting(settingKey);
 
-  const storeSetting = useDebouncedCallback(
-    (settings: S) =>
-      setUserSettingString(JSON.stringify(settings) as UserSettings[K]),
-    debounceMs,
-  );
+  const storeSetting = useDebouncedCallback((settings: S) => {
+    const sanitizedSettings = _.omit(settings, omitKeys as string[]);
+
+    setUserSettingString(JSON.stringify(sanitizedSettings) as UserSettings[K]);
+  }, debounceMs);
 
   useEffect(() => {
     if (!isUserSettingsLoaded) {
