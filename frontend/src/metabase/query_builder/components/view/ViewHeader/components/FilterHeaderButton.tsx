@@ -61,6 +61,7 @@ export function FilterHeaderButton({
             leftSection={<Icon name={hasFilters ? "filter_plus" : "filter"} />}
             onClick={toggle}
             data-testid="question-filter-header"
+            data-filters-active={hasFilters}
           >
             {t`Filter`}
           </Button>
