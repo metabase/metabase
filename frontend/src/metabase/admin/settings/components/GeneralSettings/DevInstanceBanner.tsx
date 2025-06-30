@@ -1,4 +1,4 @@
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
@@ -16,12 +16,21 @@ export function DevInstanceBanner() {
   return (
     <Alert icon={<Icon name="info_filled" />}>
       {isHosted && (
-        <Text lh="1.25rem">{jt`This instance is in development mode and can be used for development or testing purposes only.
-        ${(<ExternalLink style={{ fontWeight: "bold" }} href={getStoreUrl()}>{t`Manage instance`}</ExternalLink>)}`}</Text>
+        <Text lh="1.25rem">
+          {t`This instance is in development mode and can be used for development or testing purposes only.`}
+          <ExternalLink style={{ fontWeight: "bold" }} href={getStoreUrl()}>
+            {t`Manage instance`}
+          </ExternalLink>
+        </Text>
       )}
       {!isHosted && (
-        <Text lh="1.25rem">{jt`This instance is in development mode and can be used for development or testing purposes only. To spin up more development instances, use your development license token.
-        ${(<ExternalLink style={{ fontWeight: "bold" }} href={getStoreUrl()}>{t`Get your token`}</ExternalLink>)}`}</Text>
+        <Text lh="1.25rem">
+          {t`This instance is in development mode and can be used for development or testing purposes only. To spin up more development instances, use your development license token.`}
+          <ExternalLink
+            style={{ fontWeight: "bold" }}
+            href={getStoreUrl()}
+          >{t`Get your token`}</ExternalLink>
+        </Text>
       )}
     </Alert>
   );
