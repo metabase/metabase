@@ -607,6 +607,9 @@
           :type :query,
           :query {:source-table (:id table)}}))))
 
+;;; (def card (t2/select-one :model/Card 115))
+;;; (turn-card-into-transform card)
+
 (mu/defn update-card!
   "Updates a card - impl"
   [id :- ms/PositiveInt
