@@ -1,7 +1,8 @@
+import userEvent from "@testing-library/user-event";
+
 import { screen, within } from "__support__/ui";
 import { BUY_STORAGE_URL } from "metabase/admin/upsells";
 
-import { openTab } from "./helpers";
 import { setupHostedInstance, setupProUpload } from "./setup";
 
 describe("Add data modal (Starter: hosted instance without the attached DWH)", () => {
@@ -192,7 +193,7 @@ async function assertSheetsOpened({
   title?: string;
   subtitle?: string;
 } = {}) {
-  await openTab("Google Sheets");
+  await userEvent.click(screen.getByRole("tab", { name: /Google Sheets$/ }));
 
   isAdmin
     ? expect(await screen.findByText("Manage imports")).toBeInTheDocument()
