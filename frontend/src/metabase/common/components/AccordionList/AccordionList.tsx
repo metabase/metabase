@@ -625,7 +625,7 @@ export class AccordionList<
           overflowY: "auto",
           outline: "none",
           maxWidth: width,
-          maxHeight: "inherit",
+          maxHeight,
           ...style,
         }}
         containerStyle={{
