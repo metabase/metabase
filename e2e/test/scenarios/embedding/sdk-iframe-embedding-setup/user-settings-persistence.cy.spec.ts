@@ -38,7 +38,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow downloads").should("be.checked");
       cy.findByLabelText("Show dashboard title").should("not.be.checked");
-      cy.log("Drill-through should remain at default (checked)");
       cy.findByLabelText("Allow users to drill through on data points").should(
         "be.checked",
       );
@@ -70,7 +69,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow downloads").should("be.checked");
       cy.findByLabelText("Show chart title").should("not.be.checked");
-      cy.log("Drill-through should remain at default (checked)");
       cy.findByLabelText("Allow users to drill through on data points").should(
         "be.checked",
       );
