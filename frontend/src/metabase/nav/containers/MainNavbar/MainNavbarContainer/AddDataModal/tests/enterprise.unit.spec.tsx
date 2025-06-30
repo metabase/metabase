@@ -5,7 +5,7 @@ import { setup } from "./setup";
 describe("AddDataModal (Unactivated enterprise binary)", () => {
   describe("Google Sheets panel", () => {
     it("should not exist on self-hosted instances", () => {
-      setup({ isHosted: false });
+      setup({ hashasEnterprisePlugins: true, isHosted: false });
 
       expect(
         screen.getByRole("tab", { name: /Database$/ }),
