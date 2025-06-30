@@ -187,6 +187,7 @@ Metabase's reference documentation.
 - [Database routing](./permissions/database-routing.md)
 - [Snippets folder permissions](./permissions/snippets.md)
 - [Notification permissions](./permissions/notifications.md)
+- [Configuring permissions for embedding](./permissions/embedding.md)
 
 ### Embedding
 
