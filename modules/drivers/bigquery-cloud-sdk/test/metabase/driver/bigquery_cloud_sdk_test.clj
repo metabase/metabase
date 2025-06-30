@@ -257,16 +257,25 @@
                                         :dataset-filters-type "inclusion"
                                         :dataset-filters-patterns "bls_qcew"))}]
       (mt/with-db db
-        (testing "describe-fields correctly partitions tables for a reducible result"
-          (let [orig-describe-dataset-fields-reducible @#'bigquery/describe-dataset-fields-reducible
-                invokation-count (atom 0)]
-            (with-redefs [bigquery/num-table-partitions 4
-                          bigquery/describe-dataset-fields-reducible
-                          (fn [& args]
-                            (swap! invokation-count inc)
-                            (apply orig-describe-dataset-fields-reducible args))]
-              (is (<= 22000 (count (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db))))))
-              (is (<= 20 @invokation-count)))))))))
+        (let [orig-describe-dataset-fields-reducible @#'bigquery/describe-dataset-fields-reducible]
+          (testing "describe-fields queries tables on demand"
+            (let [invokation-count (atom 0)]
+              (with-redefs [bigquery/num-table-partitions 4
+                            bigquery/describe-dataset-fields-reducible
+                            (fn [& args]
+                              (swap! invokation-count inc)
+                              (apply orig-describe-dataset-fields-reducible args))]
+                (is (not= [] (into [] (take 10) (driver/describe-fields :bigquery-cloud-sdk (mt/db)))))
+                (is (= 1 @invokation-count)))))
+          (testing "describe-fields correctly partitions tables for a reducible result"
+            (let [invokation-count (atom 0)]
+              (with-redefs [bigquery/num-table-partitions 4
+                            bigquery/describe-dataset-fields-reducible
+                            (fn [& args]
+                              (swap! invokation-count inc)
+                              (apply orig-describe-dataset-fields-reducible args))]
+                (is (<= 22000 (count (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db))))))
+                (is (<= 20 @invokation-count))))))))))
 
 (deftest sync-views-test
   (mt/test-driver :bigquery-cloud-sdk
