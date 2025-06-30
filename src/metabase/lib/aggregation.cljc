@@ -445,13 +445,13 @@
          (lib.metadata.calculation/visible-columns query stage-number)
          (lib.equality/find-matching-column column-ref))))
 
-(mu/defn aggregable-columns :- [:maybe [:sequential ::lib.schema.metadata/columns]]
+(mu/defn aggregable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Returns the columns that can be used in aggregation expressions."
   ([query :- ::lib.schema/query
     aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
    (aggregable-columns query -1 aggregation-position))
   ([query :- ::lib.schema/query
-    stage-number :- int
+    stage-number :- :int
     _aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
    (let [stage (lib.util/query-stage query stage-number)
          columns (into (vec (lib.metadata.calculation/visible-columns query stage-number stage))
