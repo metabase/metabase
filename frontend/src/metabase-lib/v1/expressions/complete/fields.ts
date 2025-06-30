@@ -44,7 +44,7 @@ export function suggestFields({ query, stageIndex, expressionIndex }: Options) {
   }
 
   const matcher = fuzzyMatcher(columns, {
-    keys: ["displayLabel", "displayLabelWithTable"],
+    keys: ["displayLabel", { name: "displayLabelWithTable", weight: 0.25 }],
   });
 
   return function (context: CompletionContext): CompletionResult | null {

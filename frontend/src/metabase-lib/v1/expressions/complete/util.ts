@@ -44,7 +44,11 @@ export function expressionClauseSnippet(clause: MBQLClauseFunctionConfig) {
 
 export function fuzzyMatcher(
   options: Completion[],
-  { keys = ["displayLabel"] }: { keys?: string[] } = {},
+  {
+    keys = ["displayLabel"],
+  }: {
+    keys?: (string | { name: string; weight?: number })[];
+  } = {},
 ) {
   const fuse = new Fuse(options, {
     keys,
@@ -55,7 +59,7 @@ export function fuzzyMatcher(
   return function (word: string) {
     return fuse
       .search(word)
-      .filter((result) => (result.score ?? 0) <= 0.35)
+      .filter((result) => (result.score ?? 0) <= 0.5)
       .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
       .map((result) => {
         const key = result.matches?.[0]?.key;
