@@ -1,3 +1,5 @@
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
+
 import { getEmbedSidebar, navigateToEntitySelectionStep } from "./helpers";
 
 const { H } = cy;
@@ -136,6 +138,34 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       .first()
       .should("have.css", "color", "rgb(255, 0, 0)");
   });
+
+  it("persists sso auth method", () => {
+    enableJwtAuth();
+    navigateToGetCodeStep({ experience: "dashboard" });
+
+    cy.log("1. select sso auth method");
+    getEmbedSidebar().within(() => {
+      capturePersistSettings();
+
+      cy.findByLabelText("Single sign-on (SSO)")
+        .should("not.be.disabled")
+        .click()
+        .should("be.checked");
+
+      codeBlock().should("not.contain", "useExistingUserSession");
+    });
+
+    cy.log("2. reload the page");
+    waitAndReload();
+    navigateToGetCodeStep({ experience: "dashboard" });
+
+    cy.log("3. auth method should persist");
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Existing Metabase Session").should("not.be.checked");
+      cy.findByLabelText("Single sign-on (SSO)").should("be.checked");
+      codeBlock().should("not.contain", "useExistingUserSession");
+    });
+  });
 });
 
 const navigateToEmbedOptionsStep = ({
@@ -149,6 +179,21 @@ const navigateToEmbedOptionsStep = ({
     cy.findByText("Next").click(); // Embed options step
   });
 };
+
+const navigateToGetCodeStep = ({
+  experience,
+}: {
+  experience: "dashboard" | "chart" | "exploration";
+}) => {
+  navigateToEntitySelectionStep({ experience });
+
+  getEmbedSidebar().within(() => {
+    cy.findByText("Next").click(); // Embed options step
+    cy.findByText("Get Code").click(); // Get code step
+  });
+};
+
+const codeBlock = () => cy.get(".cm-content");
 
 // We must capture at the last embed options to change,
 // otherwise we'd miss the last PUT request.
