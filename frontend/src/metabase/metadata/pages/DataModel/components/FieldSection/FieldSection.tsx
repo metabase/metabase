@@ -38,7 +38,7 @@ const FieldSectionBase = ({
   return (
     <Stack data-testid="field-section" gap={0} p="xl" pt={0}>
       <Box
-        bg="bg-white"
+        bg="accent-gray-light"
         className={S.header}
         pb="lg"
         pos="sticky"

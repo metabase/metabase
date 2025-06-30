@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
-import { Stack } from "metabase/ui";
+import { Repeat, Skeleton, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type {
   DatabaseId,
@@ -33,7 +33,7 @@ const ObjectDetailPreviewBase = ({
   fieldId,
   tableId,
 }: Props) => {
-  const { error, rawSeries } = useDataSample({
+  const { error, isFetching, rawSeries } = useDataSample({
     databaseId,
     field,
     fieldId,
@@ -46,6 +46,16 @@ const ObjectDetailPreviewBase = ({
 
   const data = rawSeries?.[0]?.data;
   const zoomedRow = data?.rows[0];
+
+  if (isFetching) {
+    return (
+      <Stack data-testid="loading-indicator" gap="sm" p="lg">
+        <Repeat times={5}>
+          <Skeleton h="2.5rem" />
+        </Repeat>
+      </Stack>
+    );
+  }
 
   if (!data || !zoomedRow) {
     return (

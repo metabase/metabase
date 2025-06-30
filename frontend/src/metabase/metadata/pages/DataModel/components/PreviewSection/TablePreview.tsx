@@ -2,17 +2,16 @@ import { memo } from "react";
 import _ from "underscore";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
+import { Repeat, Skeleton, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type {
   DatabaseId,
-  DatasetColumn,
   DatasetQuery,
   Field,
   FieldFilter,
   FieldId,
   FieldReference,
   RawSeries,
-  RowValues,
   TableId,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -30,7 +29,19 @@ interface Props {
 }
 
 const TablePreviewBase = (props: Props) => {
-  const { error, rawSeries } = useDataSample(props);
+  const { error, isFetching, rawSeries } = useDataSample(props);
+
+  if (isFetching) {
+    return (
+      <Stack data-testid="loading-indicator" gap="sm" p="xs">
+        <Skeleton h="2rem" w="6rem" />
+
+        <Repeat times={5}>
+          <Skeleton h="1.5rem" w="10rem" />
+        </Repeat>
+      </Stack>
+    );
+  }
 
   if (error) {
     return <Error message={error} />;
@@ -39,7 +50,7 @@ const TablePreviewBase = (props: Props) => {
   return (
     <Visualization
       // Setting queryBuilderMode to dataset will hide the object detail
-      // expaner column, which we don't want in this case
+      // expander column, which we don't want in this case
       queryBuilderMode="dataset"
       rawSeries={rawSeries}
     />
@@ -64,14 +75,6 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
     return base;
   }
 
-  const stubColumn: DatasetColumn = {
-    name: "__metabase_generated",
-    display_name: "—",
-    source: "generated",
-    semantic_type: "type/PK",
-  };
-  const stubValue = "—";
-
   const rawSeries: RawSeries = [
     {
       card: createMockCard({
@@ -80,10 +83,8 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
         visualization_settings: {},
       }),
       data: {
-        // create a stub column in the data
         ...data.data,
-        cols: [stubColumn, ...data.data.cols],
-        rows: getDistinctRows(data.data.rows.map((row) => [stubValue, ...row])),
+        rows: _.uniq(data.data.rows).slice(0, PREVIEW_ROW_COUNT),
       },
     },
   ];
@@ -109,11 +110,6 @@ function getPreviewQuery(
       limit: 50, // fetch more rows to increase probability of getting at least 5 unique values
     },
   };
-}
-
-function getDistinctRows(rows: RowValues[]) {
-  const distinctRows = _.uniq(rows, ([_stubValue, value]) => value);
-  return distinctRows.slice(0, PREVIEW_ROW_COUNT);
 }
 
 export const TablePreview = memo(TablePreviewBase);

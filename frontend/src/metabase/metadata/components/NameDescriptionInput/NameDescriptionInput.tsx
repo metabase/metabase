@@ -1,4 +1,4 @@
-import { Box, Flex, Icon, type IconName, rem } from "metabase/ui";
+import { Box, Icon, type IconName } from "metabase/ui";
 
 import { Input } from "./Input";
 import S from "./NameDescriptionInput.module.css";
@@ -33,18 +33,7 @@ export const NameDescriptionInput = ({
           root: S.name,
         }}
         fw="bold"
-        leftSection={
-          <Flex
-            align="center"
-            bg="brand"
-            className={S.iconContainer}
-            h={rem(24)}
-            justify="center"
-            w={rem(24)}
-          >
-            <Icon c="white" name={nameIcon} size={12} />
-          </Flex>
-        }
+        leftSection={<Icon c="brand" name={nameIcon} size={20} />}
         normalize={(newValue) => {
           if (typeof newValue !== "string") {
             return name;
