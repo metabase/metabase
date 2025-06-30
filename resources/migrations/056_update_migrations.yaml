@@ -201,6 +201,78 @@ databaseChangeLog:
             path: instance_analytics_views/users/v2/h2-users.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v56.2025-07-07T14:14:22
+      author: wotbrew
+      comment: Add column metabase_field.database_is_pk
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_pk
+                  remarks: Whether or not the field is part of the primary key (not user editable like semantic_type)
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: database_is_pk
+  - changeSet:
+      id: v56.2025-07-07T14:14:23
+      author: wotbrew
+      comment: Add column metabase_field.database_is_nullable
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_nullable
+                  remarks: Whether or not the field will accept nulls
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: database_is_nullable
+  - changeSet:
+      id: v56.2025-07-07T14:14:24
+      author: wotbrew
+      comment: Add column metabase_field.database_is_generated
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_generated
+                  remarks: Whether or not the column is computed and will not accept writes
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: database_is_generated
+  - changeSet:
+      id: v56.2025-07-07T14:14:25
+      author: wotbrew
+      comment: Add column metabase_field.database_default
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_default
+                  remarks: The dialect specific column default expression
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: database_default
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
