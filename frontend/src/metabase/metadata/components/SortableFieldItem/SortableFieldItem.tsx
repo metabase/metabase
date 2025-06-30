@@ -38,7 +38,6 @@ export const SortableFieldItem = ({ active, disabled, field }: Props) => {
         })}
         draggable={draggable}
         role="listitem"
-        shadow="xs"
         p={0}
         withBorder
       >

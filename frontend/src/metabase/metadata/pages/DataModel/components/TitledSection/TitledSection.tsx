@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import { Card, Stack, Text } from "metabase/ui";
 
+import S from "./TitledSection.module.css";
+
 interface Props {
   children?: ReactNode;
   title: string;
@@ -9,7 +11,7 @@ interface Props {
 
 export const TitledSection = ({ children, title }: Props) => {
   return (
-    <Card p="lg" pt="md" shadow="xs" withBorder>
+    <Card className={S.card} p="lg" pt="md" withBorder>
       <Stack gap="lg">
         <Text c="text-secondary" fw="bold" size="sm">
           {title}

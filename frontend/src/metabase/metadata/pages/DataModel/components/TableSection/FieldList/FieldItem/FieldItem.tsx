@@ -93,7 +93,6 @@ export const FieldItem = ({ active, field, href }: Props) => {
       })}
       draggable={false}
       role="listitem"
-      shadow="xs"
       p={0}
       withBorder
     >
