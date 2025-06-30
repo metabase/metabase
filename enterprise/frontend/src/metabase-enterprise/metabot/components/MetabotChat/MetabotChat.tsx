@@ -82,12 +82,7 @@ export const MetabotChat = () => {
     >
       <Box className={Styles.container} data-testid="metabot-chat">
         {/* header */}
-        <Box
-          ref={headerRef}
-          id="metabot-chat-header"
-          data-testid="metabot-chat-header"
-          className={Styles.header}
-        >
+        <Box ref={headerRef} className={Styles.header}>
           <Flex align-items="center">
             <Text lh={1} fz="sm" c="text-secondary">
               {t`Metabot isn't perfect. Double-check results.`}

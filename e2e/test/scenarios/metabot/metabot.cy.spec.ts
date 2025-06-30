@@ -87,7 +87,7 @@ describe("Metabot UI", () => {
       lastChatMessage().should("have.text", "You, but don't tell anyone.");
     });
 
-    describe("scroll", () => {
+    describe("scroll management", () => {
       it("should not show filler element if there are not messages", () => {
         openMetabotViaSearchButton();
         chatMessages().should("not.exist");

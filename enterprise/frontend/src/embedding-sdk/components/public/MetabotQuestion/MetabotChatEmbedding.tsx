@@ -52,9 +52,10 @@ export const MetabotChatEmbedding = ({
       return;
     }
     setMessage("");
-    const metabotRequestPromise = metabot.submitInput(trimmedInput, {
-      metabotId: EMBEDDING_METABOT_ID,
-    });
+    const metabotRequestPromise = metabot.submitInput(
+      trimmedInput,
+      EMBEDDING_METABOT_ID,
+    );
 
     metabotRequestPromise
       .then((result) => {

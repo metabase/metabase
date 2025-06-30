@@ -47,11 +47,7 @@ export const UserMessage = ({
   const clipboard = useClipboard();
 
   return (
-    <MessageContainer
-      data-message-id={message.id}
-      chatRole={message.role}
-      {...props}
-    >
+    <MessageContainer chatRole={message.role} {...props}>
       <Text
         className={cx(
           Styles.message,
@@ -85,11 +81,7 @@ export const AgentMessage = ({
   const clipboard = useClipboard();
 
   return (
-    <MessageContainer
-      data-message-id={message.id}
-      chatRole={message.role}
-      {...props}
-    >
+    <MessageContainer chatRole={message.role} {...props}>
       <AIMarkdown className={Styles.message}>{message.message}</AIMarkdown>
       {!hideActions && (
         <Flex className={Styles.messageActions}>
