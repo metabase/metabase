@@ -157,8 +157,9 @@ const SdkDashboardInner = ({
     dashboardId,
   });
 
-  const [renderModeState, setRenderMode] =
-    useState<Extract<RenderMode, "dashboard" | "queryBuilder">>("dashboard");
+  const [renderModeState, setRenderMode] = useState<
+    "dashboard" | "queryBuilder"
+  >("dashboard");
   const finalRenderMode: RenderMode = adhocQuestionUrl
     ? "question"
     : renderModeState;
