@@ -6,7 +6,7 @@ import {
 import {
   EditableDashboard,
   type EditableDashboardProps,
-} from "../InteractiveDashboard";
+} from "../EditableDashboard";
 
 export type EditableDashboardWebComponentAttributes = {
   "dashboard-id": string;

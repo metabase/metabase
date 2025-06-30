@@ -2,7 +2,7 @@ import type { StoryFn } from "@storybook/react";
 
 import { getStorybookSdkAuthConfigForUser } from "embedding-sdk/test/CommonSdkStoryWrapper";
 
-import "../metabase-provider.web-component";
+import "../../metabase-provider.web-component";
 import "./editable-dashboard.web-component";
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || 1;

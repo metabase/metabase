@@ -82,8 +82,8 @@ export { MetabotQuestion } from "./MetabotQuestion";
 
 // web components
 export * from "./metabase-provider.web-component";
-export * from "./InteractiveDashboard/interactive-dashboard.web-component";
-export * from "./InteractiveDashboard/editable-dashboard.web-component";
+export * from "./dashboard/InteractiveDashboard/interactive-dashboard.web-component";
+export * from "./dashboard/EditableDashboard/editable-dashboard.web-component";
 export * from "./InteractiveQuestion/interactive-question.web-component";
 export * from "./CollectionBrowser/collection-browser.web-component";
 export * from "./CreateDashboardModal/create-dashboard-modal.web-component";
