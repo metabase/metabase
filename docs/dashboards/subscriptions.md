@@ -132,7 +132,7 @@ The section to call out here is the **Set filter values for when this gets sent*
 
 See [Notification permissions](../permissions/notifications.md).
 
-## Removing Metabase branding from alerts
+## Removing Metabase branding from subscriptions
 
 See [Remove Metabase branding from exports](../questions/exporting-results.md#remove-metabase-branding-from-exports).
 
