@@ -106,13 +106,11 @@ export function hydrateTableFields(
 
   return {
     ...table,
-    fields: table.fields?.map((field) => {
-      return {
-        ...field,
-        displayName: () => getFieldDisplayName(field),
-        icon: () => getColumnIcon(Lib.legacyColumnTypeInfo(field)),
-        table,
-      };
-    }),
+    fields: table.fields?.map((field) => ({
+      ...field,
+      displayName: () => getFieldDisplayName(field),
+      icon: () => getColumnIcon(Lib.legacyColumnTypeInfo(field)),
+      table,
+    })),
   };
 }
