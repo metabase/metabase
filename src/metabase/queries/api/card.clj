@@ -572,7 +572,11 @@
           (api/column-will-change? :collection_id card-before-update card-updates))
       (assoc :collection_id collection-id))))
 
-;; TODO
+;; TODO: will need to make sure it is unique, else we risk overriding
+;; existing view that are not equal. if uniqueness can't be guaranteed by
+;; hashing, we may need to store view definitions (we'll most likely need
+;; that anyway) and compare
+
 (defn- generate-view-name [query]
   (str "mb_view_" (abs (hash query))))
 
