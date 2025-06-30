@@ -90,25 +90,38 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
     cy.log("2. reload the page");
     waitAndReload();
+
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Exploration").should("be.checked");
       cy.findByText("Next").click(); // Embed options step
+
+      cy.log("3. persisted settings should be restored");
+      cy.findByLabelText("Allow users to save new questions").should(
+        "not.be.checked",
+      );
     });
   });
 
   it("persists brand color customization across page reloads", () => {
     navigateToEmbedOptionsStep({ experience: "dashboard" });
-    capturePersistSettings();
 
     cy.log("1. change brand color to red");
     cy.findByLabelText("#509EE3").click();
 
     H.popover().within(() => {
+      capturePersistSettings();
+
       cy.findByDisplayValue("#509EE3")
         .should("be.visible")
         .clear()
-        .type("rgb(255, 0, 0)");
+        .type("rgb(255, 0, 0)")
+        .blur();
     });
+
+    H.getIframeBody()
+      .findAllByTestId("cell-data")
+      .first()
+      .should("have.css", "color", "rgb(255, 0, 0)");
 
     cy.log("2. reload the page");
     waitAndReload();
@@ -117,7 +130,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       cy.findByText("Next").click(); // Embed options step
     });
 
-    cy.log("3. verify brand color persistence");
+    cy.log("3. brand color should be persisted");
     H.getIframeBody()
       .findAllByTestId("cell-data")
       .first()
