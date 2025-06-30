@@ -32,6 +32,20 @@
           x)
     x))
 
+;; (defn- schema-cache-key
+;;   "Make schemas that aren't `=` to identical ones e.g.
+
+;;     [:re #\"\\d{4}\"]
+
+;;   work correctly as cache keys instead of creating new entries every time the code is evaluated."
+;;   [x]
+;;   (->> x
+;;        (#?(:clj perf/prewalk :cljs walk/prewalk)
+;;         (fn [child]
+;;           (cond-> child
+;;             (mc/schema?) mc/form
+;;             (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) child) str)))))
+
 (defn- fn-name [v]
   (str/replace (str v) #"(.+)@.+" "$1"))
 
