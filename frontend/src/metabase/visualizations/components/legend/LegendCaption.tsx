@@ -9,6 +9,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { IconProps } from "metabase/ui";
 import { Icon, Menu, Tooltip } from "metabase/ui";
+import { SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS } from "metabase/visualizations/lib/image-exports";
 
 import LegendActions from "./LegendActions";
 import {
@@ -87,13 +88,21 @@ export const LegendCaption = ({
         DashboardS.fullscreenNormalText,
         DashboardS.fullscreenNightText,
         EmbedFrameS.fullscreenNightText,
+
+        // html2canvas doesn't support `text-overflow: ellipsis` (#45499) https://github.com/niklasvh/html2canvas/issues/324
+        SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS,
       )}
       href={hasTitleMenuItems ? undefined : href}
       onClick={hasTitleMenuItems ? undefined : onSelectTitle}
       onFocus={handleFocus}
       onMouseEnter={handleMouseEnter}
     >
-      <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
+      <Ellipsified
+        data-testid="legend-caption-title"
+        className={SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS}
+      >
+        {title}
+      </Ellipsified>
       {title && hasTitleMenuItems && (
         <Icon
           style={{ flexShrink: 0, marginRight: 10 }}
