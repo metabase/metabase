@@ -18,7 +18,7 @@ export const getRecentItemCards = () =>
 
 export const visitNewEmbedPage = () => {
   cy.intercept("GET", "/api/dashboard/*").as("dashboard");
-  cy.visit("/embed/new");
+  cy.visit("/embed-wizard");
   cy.wait("@dashboard");
 
   cy.get("#iframe-embed-container").should(
