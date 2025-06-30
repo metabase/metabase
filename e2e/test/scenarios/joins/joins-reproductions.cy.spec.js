@@ -847,7 +847,7 @@ describe("issue 23293", () => {
 
       cy.findByTestId("qb-filters-panel").should(
         "contain",
-        "Product → Category is Doohickey",
+        "Orders → Category is Doohickey",
       );
       // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("header-cell")
@@ -991,8 +991,10 @@ describe("issue 29795", () => {
       cy.findByRole("option", { name: "USER_ID" }).click();
     });
 
-    H.visualize(() => {
-      cy.findAllByText(/User ID/i).should("have.length", 2);
+    H.visualize();
+    H.tableInteractive().within(() => {
+      cy.findByText("User ID").should("be.visible");
+      cy.findByText("native question → USER_ID").should("be.visible");
     });
   });
 });

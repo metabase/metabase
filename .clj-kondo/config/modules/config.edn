@@ -573,15 +573,16 @@
           metabase.lib.core
           metabase.lib.equality
           metabase.lib.field
+          metabase.lib.field.resolution
           metabase.lib.filter
           metabase.lib.ident
           metabase.lib.init
           metabase.lib.join.util
           metabase.lib.metadata
           metabase.lib.metadata.cached-provider
-          metabase.lib.metadata.calculation
           metabase.lib.metadata.invocation-tracker
           metabase.lib.metadata.protocols
+          metabase.lib.metadata.result-metadata
           metabase.lib.normalize
           metabase.lib.options
           metabase.lib.query
@@ -594,6 +595,7 @@
           metabase.lib.schema.expression.window
           metabase.lib.schema.id
           metabase.lib.schema.info
+          metabase.lib.schema.join
           metabase.lib.schema.literal
           metabase.lib.schema.metadata
           metabase.lib.schema.parameter

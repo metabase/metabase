@@ -1032,7 +1032,7 @@ describe("issue 49525", { tags: "@external" }, () => {
       // get the csv attachment file's contents
       cy.request({
         method: "GET",
-        url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${csvAttachment.fileName}`,
+        url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${csvAttachment.generatedFileName}`,
         encoding: "utf8",
       }).then((response) => {
         const csvContent = response.body;

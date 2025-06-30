@@ -83,7 +83,9 @@
                                                    (meta/field-metadata :checkins :venue-id)
                                                    (meta/field-metadata :venues :id))])
                                 (lib/with-join-fields :all))))
-        cols (m/index-by :id (lib/filterable-columns query))
+        cols (->> (lib/filterable-columns query)
+                  (map #(m/filter-vals some? %))
+                  (m/index-by :id))
         user-id-col (cols (meta/id :users :id))
         checkins-user-id-col (cols (meta/id :checkins :user-id))
         user-last-login-col (cols (meta/id :users :last-login))
@@ -101,7 +103,7 @@
                  :id (:id checkins-user-id-col)
                  :display-name "User ID: Auto binned"
                  :metabase.lib.join/join-alias "Checkins"}
-                (assoc (meta/field-metadata :users :id) :display-name "ID: Auto binned")]}
+                (assoc (m/filter-vals some? (meta/field-metadata :users :id)) :display-name "ID: Auto binned")]}
               (lib/expression-parts query (lib/= (lib/with-binning checkins-user-id-col {:strategy :default})
                                                  (lib/with-binning user-id-col {:strategy :default}))))))
     (testing "bucketing"
@@ -116,7 +118,7 @@
                  :metabase.lib.field/temporal-unit :day
                  :display-name "Date: Day"
                  :metabase.lib.join/join-alias "Checkins"}
-                (assoc (meta/field-metadata :users :last-login) :display-name "Last Login: Day")]}
+                (assoc (m/filter-vals some? (meta/field-metadata :users :last-login)) :display-name "Last Login: Day")]}
               (lib/expression-parts query (lib/= (lib/with-temporal-bucket checkins-date-col :day)
                                                  (lib/with-temporal-bucket user-last-login-col :day))))))))
 
@@ -145,7 +147,6 @@
                  :name (:name col)
                  :display-name (:display-name col)}
                 (lib/expression-parts query stage-number (lib.ref/ref col))))))
-
     (testing "unknown column reference"
       (let [unknown-ref [:field {:lib/uuid (str (random-uuid))} 12345678]]
         (mu/disable-enforcement
@@ -172,7 +173,6 @@
                  :name segment-name
                  :description segment-description}
                 (lib/expression-parts query stage-number (lib.ref/ref segment))))))
-
     (testing "unknown segment reference"
       (let [unknown-ref [:segment {:lib/uuid (str (random-uuid))} 101]]
         (mu/disable-enforcement
@@ -199,7 +199,6 @@
                  :name metric-name
                  :description metric-description}
                 (lib/expression-parts query stage-number (lib.ref/ref metric))))))
-
     (testing "unknown metric reference"
       (let [unknown-ref [:metric {:lib/uuid (str (random-uuid))} 101]]
         (mu/disable-enforcement
@@ -252,7 +251,7 @@
                                                                 1)))))
 
 (deftest ^:parallel normalize-expression-clause-test
-  (let [column (meta/field-metadata :checkins :date)]
+  (let [column (m/filter-vals some? (meta/field-metadata :checkins :date))]
     (testing "normalizes week-mode correctly"
       (doseq [[expected strings] {:us ["US" "us" "Us"], :iso ["ISO" "iso" "Iso"]}
               week-mode strings]
@@ -263,11 +262,11 @@
                                              :args [column week-mode]}))))))))
 
 (deftest ^:parallel case-or-if-parts-test
-  (let [query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
-        int-field    (meta/field-metadata :venues :category-id)
-        string-field (meta/field-metadata :venues :name)
-        dt-field     (meta/field-metadata :users :last-login)
-        boolean-field (meta/field-metadata :venues :category-id)
+  (let [query         (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        int-field     (m/filter-vals some? (meta/field-metadata :venues :category-id))
+        string-field  (m/filter-vals some? (meta/field-metadata :venues :name))
+        dt-field      (m/filter-vals some? (meta/field-metadata :users :last-login))
+        boolean-field (m/filter-vals some? (meta/field-metadata :venues :category-id))
         test-cases {(lib/case [[boolean-field int-field]])
                     {:operator :case
                      :options {}
@@ -328,9 +327,9 @@
 
 (deftest ^:parallel nested-case-or-if-parts-test
   (let [query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
-        int-field    (meta/field-metadata :venues :category-id)
-        string-field (meta/field-metadata :venues :name)
-        boolean-field (meta/field-metadata :venues :category-id)]
+        int-field     (m/filter-vals some? (meta/field-metadata :venues :category-id))
+        string-field  (m/filter-vals some? (meta/field-metadata :venues :name))
+        boolean-field (m/filter-vals some? (meta/field-metadata :venues :category-id))]
     (testing "deeply nested case/if should round-trip through expression-parts and expression-clause"
       (doseq [parts [{:lib/type :mbql/expression-parts
                       :operator :case
@@ -374,7 +373,7 @@
 
 (deftest ^:parallel string-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (meta/field-metadata :venues :name)]
+        column (m/filter-vals some? (meta/field-metadata :venues :name))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-empty column)
                               {:operator :is-empty, :column column}
@@ -445,7 +444,7 @@
 
 (deftest ^:parallel number-filter-parts-test
   (let [query         (lib.tu/venues-query)
-        column        (meta/field-metadata :venues :price)
+        column        (m/filter-vals some? (meta/field-metadata :venues :price))
         bigint-value  (u.number/bigint "9007199254740993")
         bigint-clause (lib.expression/value bigint-value)]
     (testing "clause to parts roundtrip"
@@ -481,8 +480,8 @@
 
 (deftest ^:parallel coordinate-filter-parts-test
   (let [query         (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
-        lat-column    (meta/field-metadata :people :latitude)
-        lon-column    (meta/field-metadata :people :longitude)
+        lat-column    (m/filter-vals some? (meta/field-metadata :people :latitude))
+        lon-column    (m/filter-vals some? (meta/field-metadata :people :longitude))
         bigint-value  (u.number/bigint "9007199254740993")
         bigint-clause (lib.expression/value bigint-value)]
     (testing "clause to parts roundtrip"
@@ -582,7 +581,7 @@
 
 (deftest ^:parallel specific-date-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (meta/field-metadata :checkins :date)]
+        column (m/filter-vals some? (meta/field-metadata :checkins :date))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/= column "2024-11-28")
                               {:operator   :=
@@ -647,7 +646,7 @@
 
 (deftest ^:parallel relative-date-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (meta/field-metadata :checkins :date)]
+        column (m/filter-vals some? (meta/field-metadata :checkins :date))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/time-interval column 0 :day)
                               {:column column
@@ -703,7 +702,7 @@
 
 (deftest ^:parallel exclude-date-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (meta/field-metadata :checkins :date)]
+        column (m/filter-vals some? (meta/field-metadata :checkins :date))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)
                               {:operator :is-null
@@ -789,7 +788,7 @@
 
 (deftest ^:parallel time-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (assoc (meta/field-metadata :checkins :date)
+        column (assoc (m/filter-vals some? (meta/field-metadata :checkins :date))
                       :base-type      :type/Time
                       :effective-type :type/Time)]
     (testing "clause to parts roundtrip"
@@ -836,7 +835,7 @@
 
 (deftest ^:parallel default-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (meta/field-metadata :venues :price)]
+        column (m/filter-vals some? (meta/field-metadata :venues :price))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column}
                               (lib.filter/not-null column)      {:operator :not-null, :column column}}]
@@ -852,7 +851,7 @@
         (lib.filter/and (lib.filter/is-null column) true)))))
 
 (deftest ^:parallel date-parts-display-name-test
-  (let [created-at (meta/field-metadata :products :created-at)
+  (let [created-at (m/filter-vals some? (meta/field-metadata :products :created-at))
         date-arg-1 "2023-11-02"
         date-arg-2 "2024-01-03"
         datetime-arg "2024-12-05T22:50:27"]

@@ -89,7 +89,7 @@
   (merge
    (or
     (when join-alias
-      (when-let [join (lib.join/resolve-join query stage-number join-alias)]
+      (when-let [join (lib.join/maybe-resolve-join query stage-number join-alias)]
         (lib.metadata.calculation/display-info query stage-number join)))
     (when table-id
       (when-let [table (lib.metadata/table query table-id)]
