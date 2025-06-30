@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import { BUY_STORAGE_URL, UpsellStorage } from "metabase/admin/upsells";
 import { skipToken } from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils/errors";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
@@ -117,7 +116,7 @@ export const GdriveAddDataPanel = () => {
   if (!showGdrive) {
     return (
       <PanelWrapper>
-        <ErrorAlert error={getErrorMessage(ERROR_MESSAGE)} />
+        <ErrorAlert error={ERROR_MESSAGE} />
       </PanelWrapper>
     );
   }
@@ -187,9 +186,7 @@ export const GdriveAddDataPanel = () => {
         {buttonText}
       </Button>
 
-      {status === "error" && (
-        <ErrorAlert error={getErrorMessage(ERROR_MESSAGE)} />
-      )}
+      {status === "error" && <ErrorAlert error={ERROR_MESSAGE} />}
     </PanelWrapper>
   );
 };
