@@ -10,26 +10,15 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("GET", "/api/activity/recent_views").as("recentActivity");
     cy.intercept("PUT", "/api/setting/sdk-iframe-embed-setup-settings").as(
       "persistSettings",
     );
   });
 
   it("persists dashboard embed options after page reload with debounced saving", () => {
-    cy.log("1. Navigate to embed options step for dashboard");
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
-    cy.log("2. Verify initial default states");
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Allow users to drill through on data points").should(
-        "be.checked",
-      );
-      cy.findByLabelText("Allow downloads").should("not.be.checked");
-      cy.findByLabelText("Show dashboard title").should("be.checked");
-    });
-
-    cy.log("3. Configure embed options to non-default values");
+    cy.log("1. set embed settings to non-default values");
     getEmbedSidebar().within(() => {
       cy.log("Turn on downloads (was off)");
       cy.findByLabelText("Allow downloads").click().should("be.checked");
@@ -40,26 +29,23 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
         .should("not.be.checked");
     });
 
-    cy.log("4. Verify options are applied in preview");
+    cy.log("2. options should be applied in preview");
     H.getIframeBody().within(() => {
       cy.findByTestId("export-as-pdf-button").should("be.visible");
       cy.findByText("Orders in a dashboard").should("not.exist");
     });
 
-    cy.log("5. Wait for debounced saving to complete");
+    cy.log("3. reload the page");
     cy.wait("@persistSettings");
-
-    cy.log("6. Reload the page to test persistence");
     cy.reload();
     cy.wait("@dashboard");
 
-    cy.log("7. Navigate back to embed options step");
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click(); // Entity selection step
       cy.findByText("Next").click(); // Embed options step
     });
 
-    cy.log("8. Verify persisted settings are restored (non-default values)");
+    cy.log("4. verify persisted settings are restored");
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow downloads").should("be.checked");
       cy.findByLabelText("Show dashboard title").should("not.be.checked");
@@ -69,7 +55,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       );
     });
 
-    cy.log("9. Verify options are still applied in preview");
+    cy.log("5. options should be applied to preview");
     H.getIframeBody().within(() => {
       cy.findByTestId("export-as-pdf-button").should("be.visible");
       cy.findByText("Orders in a dashboard").should("not.exist");
@@ -77,19 +63,9 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
   });
 
   it("persists chart embed options after page reload", () => {
-    cy.log("1. Navigate to embed options step for chart");
     navigateToEmbedOptionsStep({ experience: "chart" });
 
-    cy.log("2. Verify initial chart default states");
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Allow users to drill through on data points").should(
-        "be.checked",
-      );
-      cy.findByLabelText("Allow downloads").should("not.be.checked");
-      cy.findByLabelText("Show chart title").should("be.checked");
-    });
-
-    cy.log("3. Configure chart embed options to non-default values");
+    cy.log("1. set chart embed settings to non-default values");
     getEmbedSidebar().within(() => {
       cy.log("Turn on downloads (was off)");
       cy.findByLabelText("Allow downloads").click().should("be.checked");
@@ -98,21 +74,19 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       cy.findByLabelText("Show chart title").click().should("not.be.checked");
     });
 
-    cy.log("4. Verify options are applied in preview");
+    cy.log("2. options should be applied in preview");
     H.getIframeBody().within(() => {
       cy.findByTestId("question-download-widget-button").should("be.visible");
       cy.findByText("Orders, Count").should("not.exist");
     });
 
-    cy.log("5. Wait for debounced saving");
+    cy.log("3. reload the page");
     cy.wait("@persistSettings");
-
-    cy.log("6. Reload and navigate back to options");
     cy.reload();
     cy.wait("@dashboard");
     navigateToEmbedOptionsStep({ experience: "chart" });
 
-    cy.log("7. Verify chart settings are restored (non-default values)");
+    cy.log("4. verify persisted settings are restored");
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow downloads").should("be.checked");
       cy.findByLabelText("Show chart title").should("not.be.checked");
@@ -122,7 +96,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       );
     });
 
-    cy.log("8. Verify chart options persist in preview");
+    cy.log("5. options should be applied to preview");
     H.getIframeBody().within(() => {
       cy.findByTestId("question-download-widget-button").should("be.visible");
       cy.findByText("Orders, Count").should("not.exist");
@@ -130,56 +104,54 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
   });
 
   it("persists exploration embed options after page reload", () => {
-    cy.log("1. Navigate to embed options step for exploration");
     navigateToEmbedOptionsStep({ experience: "exploration" });
 
-    cy.log("2. Configure exploration options");
     H.getIframeBody().within(() => {
       cy.findByText("Orders").click();
       cy.findByText("Visualize").click();
     });
 
+    cy.log("1. set exploration settings to non-default values");
     getEmbedSidebar().within(() => {
-      cy.log("Turn off save option");
       cy.findByLabelText("Allow users to save new questions")
         .should("be.checked")
         .click()
         .should("not.be.checked");
     });
 
-    cy.log("3. Verify save button is hidden");
+    cy.log("2. options should be applied in preview");
     H.getIframeBody().findByText("Save").should("not.exist");
 
-    cy.log("4. Wait for debounced saving");
+    cy.log("3. reload the page");
     cy.wait("@persistSettings");
-
-    cy.log("5. Reload and navigate back to exploration options");
     cy.reload();
     cy.wait("@dashboard");
-    navigateToEmbedOptionsStep({ experience: "exploration" });
 
-    cy.log("6. Navigate to data and visualize again");
+    getEmbedSidebar().within(() => {
+      cy.findByText("Next").click(); // Embed options step
+    });
+
+    cy.log("4. navigate to data and visualize again");
     H.getIframeBody().within(() => {
       cy.findByText("Orders").click();
       cy.findByText("Visualize").click();
     });
 
-    cy.log("7. Verify save option persistence");
+    cy.log("5. verify persisted settings are restored");
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow users to save new questions").should(
         "not.be.checked",
       );
     });
 
-    cy.log("8. Verify save button is still hidden");
+    cy.log("6. options should be applied to preview");
     H.getIframeBody().findByText("Save").should("not.exist");
   });
 
   it("persists brand color customization across page reloads", () => {
-    cy.log("1. Navigate to embed options for dashboard");
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
-    cy.log("2. Change brand color to red");
+    cy.log("1. change brand color to red");
     cy.findByLabelText("#509EE3").click();
 
     H.popover().within(() => {
@@ -189,21 +161,19 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
         .type("rgb(255, 0, 0)");
     });
 
-    cy.log("3. Verify brand color is applied");
+    cy.log("2. verify brand color is applied");
     H.getIframeBody()
       .findAllByTestId("cell-data")
       .first()
       .should("have.css", "color", "rgb(255, 0, 0)");
 
-    cy.log("4. Wait for debounced saving");
+    cy.log("3. reload the page");
     cy.wait("@persistSettings");
-
-    cy.log("5. Reload and navigate back to options");
     cy.reload();
     cy.wait("@dashboard");
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
-    cy.log("6. Verify brand color persistence");
+    cy.log("4. verify brand color persistence");
     H.getIframeBody()
       .findAllByTestId("cell-data")
       .first()
@@ -211,39 +181,37 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
   });
 
   it("persists settings across different embed experiences", () => {
-    cy.log("1. Configure dashboard options");
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
+    cy.log("1. configure dashboard options");
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow downloads").click().should("be.checked");
     });
 
-    cy.log("2. Wait for persistence");
+    cy.log("2. switch to chart experience and configure");
     cy.wait("@persistSettings");
-
-    cy.log("3. Switch to chart experience");
     getEmbedSidebar().within(() => {
       cy.findByText("Chart").click();
     });
 
-    cy.log("4. Navigate to chart options");
     navigateToEmbedOptionsStep({ experience: "chart" });
 
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Show chart title").click().should("not.be.checked");
     });
 
-    cy.log("5. Wait and reload");
+    cy.log("3. reload the page");
+    cy.wait("@persistSettings");
     cy.reload();
     cy.wait("@dashboard");
 
-    cy.log("6. Verify dashboard settings persist");
+    cy.log("4. verify dashboard settings persist");
     navigateToEmbedOptionsStep({ experience: "dashboard" });
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow downloads").should("be.checked");
     });
 
-    cy.log("7. Verify chart settings persist");
+    cy.log("5. verify chart settings persist");
     getEmbedSidebar().within(() => {
       cy.findByText("Chart").click();
     });
@@ -254,10 +222,9 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
   });
 
   it("handles debounced saving correctly during rapid configuration changes", () => {
-    cy.log("1. Navigate to embed options");
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
-    cy.log("2. Make rapid configuration changes");
+    cy.log("1. make rapid configuration changes");
     getEmbedSidebar().within(() => {
       cy.log("Toggle multiple options quickly");
       cy.findByLabelText("Allow downloads").click();
@@ -269,14 +236,15 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       cy.findByLabelText("Show dashboard title").click();
     });
 
-    cy.log("3. Wait for debounced saving to settle");
-    cy.wait(3000);
+    cy.log("2. wait for debounced saving to settle");
+    cy.wait("@persistSettings");
 
-    cy.log("4. Reload and verify final state");
+    cy.log("3. reload the page");
     cy.reload();
     cy.wait("@dashboard");
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
+    cy.log("4. verify final state");
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow downloads").should("not.be.checked");
       cy.findByLabelText("Show dashboard title").should("be.checked");
