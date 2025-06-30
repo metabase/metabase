@@ -67,6 +67,7 @@
            (set? v)
            (seq? v)
            (char? v)
+           #?(:clj (class? v) :cljs nil)
            (var? v))
        v
 
