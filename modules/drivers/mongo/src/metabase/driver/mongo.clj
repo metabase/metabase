@@ -160,11 +160,12 @@
   7)
 
 (def ^:private ^:dynamic *leaf-fields-limit*
-  "Consider at most 1K leaf fields. That combined with [[describe-table-query-depth]] (= 7) gives at most 7K app-db
-  fields per collection."
+  "Consider at most 1K leaf paths to sync. That combined with [[describe-table-query-depth]] (= 7) gives at most 
+  7K app-db fields per collection."
   1000)
 
 (defn ^:dynamic *sample-stages*
+  "Stages to get sample of a collection in [[describe-table-pipeline]]. Dynamic for testing purposes."
   [collection-name sample-size]
   (let [start-n       (quot sample-size 2)
         end-n         (- sample-size start-n)]
