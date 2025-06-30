@@ -28,12 +28,14 @@ import {
 import {
   NO_X_AXIS_VALUES_ERROR_MESSAGE,
   applyVisualizationSettingsDataTransformations,
+  getCardColumnByDataKeyMap,
   getDatasetExtents,
   getDatasetKey,
   getJoinedCardsDataset,
   replaceValues,
   sortDataset,
 } from "./dataset";
+import * as seriesModule from "./series";
 import type {
   ChartDataset,
   LegacySeriesSettingsObjectKey,
@@ -120,7 +122,12 @@ describe("dataset transform functions", () => {
           base_type: "type/Integer",
         }),
       },
-      breakout: { index: 1, column: createMockColumn({ name: "type" }) },
+      breakout: {
+        breakoutDimensions: [
+          { index: 1, column: createMockColumn({ name: "type" }) },
+          // Add more breakouts here if needed for further tests
+        ],
+      },
     };
 
     const rawSeries1: SingleSeries = {
@@ -151,7 +158,7 @@ describe("dataset transform functions", () => {
         ],
         cols: [
           columns2.dimension.column,
-          columns2.breakout.column,
+          columns2.breakout.breakoutDimensions[0].column,
           columns2.metric.column,
         ],
       }),
@@ -647,6 +654,52 @@ describe("dataset transform functions", () => {
       expect(result[0][X_AXIS_DATA_KEY]).toBe(1);
       expect(result[1][X_AXIS_DATA_KEY]).toBe(5);
       expect(result[2][X_AXIS_DATA_KEY]).toBe(1000);
+    });
+  });
+
+  describe("getCardColumnByDataKeyMap", () => {
+    it("maps data keys using formatted breakout values", () => {
+      const card = createMockCard({ id: 1 });
+      const colA = createMockColumn({ name: "metricA" });
+      const breakoutCol1 = createMockColumn({ name: "type" });
+      const breakoutCol2 = createMockColumn({ name: "region" });
+
+      const data = createMockDatasetData({
+        rows: [
+          [1, "foo", "north", 100],
+          [2, "bar", "south", 200],
+        ],
+        cols: [
+          createMockColumn({ name: "id" }),
+          breakoutCol1,
+          breakoutCol2,
+          colA,
+        ],
+      });
+
+      const columns = {
+        dimension: { index: 0, column: data.cols[0] },
+        metric: { index: 3, column: colA },
+        breakout: {
+          breakoutDimensions: [
+            { index: 1, column: breakoutCol1 },
+            { index: 2, column: breakoutCol2 },
+          ],
+        },
+      };
+
+      jest.spyOn(seriesModule, "getBreakoutDistinctValues").mockReturnValue([
+        { raw: ["foo", "north"], formatted: "foo - north" },
+        { raw: ["bar", "south"], formatted: "bar - south" },
+      ]);
+
+      const result = getCardColumnByDataKeyMap({ card, data }, columns);
+
+      // The keys should use the formatted breakout value
+      expect(result).toHaveProperty("1:metricA:foo - north");
+      expect(result).toHaveProperty("1:metricA:bar - south");
+      expect(result["1:metricA:foo - north"]).toBe(colA);
+      expect(result["1:metricA:bar - south"]).toBe(colA);
     });
   });
 });

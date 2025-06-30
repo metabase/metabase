@@ -24,6 +24,10 @@ import type {
 import { getHexColor } from "metabase/visualizations/lib/color";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
+  getBreakoutDimensionsColumns,
+  getBreakoutDimensionsIndexes,
+} from "metabase/visualizations/lib/graph/columns";
+import {
   SERIES_COLORS_SETTING_KEY,
   SERIES_SETTING_KEY,
 } from "metabase/visualizations/shared/settings/series";
@@ -92,8 +96,23 @@ const createLegacySeriesObjectKey = (
 
 export const getBreakoutDistinctValues = (
   data: DatasetData,
-  breakoutIndex: number,
-) => Array.from(new Set<RowValue>(data.rows.map((row) => row[breakoutIndex])));
+  breakoutIndexes: number[],
+) => {
+  const seen = new Set<string>();
+  const distinct: { raw: RowValue[]; formatted: string }[] = [];
+  for (const row of data.rows) {
+    const raw = breakoutIndexes.map((idx) => row[idx]);
+    const key = JSON.stringify(raw);
+    const formatted = breakoutIndexes
+      .map((idx) => formatValue(row[idx], { column: data.cols[idx] }))
+      .join(" - ");
+    if (!seen.has(key)) {
+      seen.add(key);
+      distinct.push({ raw, formatted });
+    }
+  }
+  return distinct;
+};
 
 const getDefaultSeriesName = (
   columnDisplayNameOrFormattedBreakoutValue: string,
@@ -213,69 +232,75 @@ export const getCardSeriesModels = (
 
   // Charts with breakout have one series per a unique breakout value. They can have only one metric in such cases.
   const { metric, breakout } = columns;
-  const breakoutValues = getBreakoutDistinctValues(data, breakout.index);
+  const breakoutPairs = getBreakoutDistinctValues(
+    data,
+    getBreakoutDimensionsIndexes(breakout),
+  );
 
-  return breakoutValues.map((breakoutValue) => {
-    // Unfortunately, breakout series include formatted breakout values in the key
-    // which can be different based on a user's locale.
-    const formattedBreakoutValue =
-      breakoutValue != null && breakoutValue !== ""
-        ? String(
-            formatValue(breakoutValue, {
-              column: breakout.column,
-            }),
-          )
-        : NULL_DISPLAY_VALUE;
+  return breakoutPairs.map(
+    ({ raw: breakoutValue, formatted: formattedBreakoutValue }) => {
+      const cleanBreakoutValue =
+        breakoutValue[0] == null ? null : breakoutValue.join(" - ");
 
-    const vizSettingsKey = getSeriesVizSettingsKey(
-      metric.column,
-      hasMultipleCards,
-      isFirstCard,
-      1,
-      formattedBreakoutValue,
-      card.name,
-    );
-    const legacySeriesSettingsObjectKey =
-      createLegacySeriesObjectKey(vizSettingsKey);
-
-    const customName = settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title;
-    const tooltipName = metric.column.display_name;
-    const name =
-      customName ??
-      getDefaultSeriesName(
-        formattedBreakoutValue,
+      const cleanFormattedBreakoutValue =
+        cleanBreakoutValue != null && cleanBreakoutValue !== ""
+          ? formattedBreakoutValue
+          : NULL_DISPLAY_VALUE;
+      // Use formattedBreakoutValue for display, raw for dataKey
+      const vizSettingsKey = getSeriesVizSettingsKey(
+        metric.column,
         hasMultipleCards,
-        1, // only one metric when a chart has a breakout
-        true,
+        isFirstCard,
+        1,
+        cleanFormattedBreakoutValue,
         card.name,
       );
+      const legacySeriesSettingsObjectKey =
+        createLegacySeriesObjectKey(vizSettingsKey);
 
-    const color = getHexColor(
-      settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey],
-    );
+      const customName = settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title;
+      const tooltipName = metric.column.display_name;
+      const name =
+        customName ??
+        getDefaultSeriesName(
+          cleanFormattedBreakoutValue,
+          hasMultipleCards,
+          1,
+          true,
+          card.name,
+        );
 
-    const dataKey = getDatasetKey(metric.column, cardId, breakoutValue);
+      const color = getHexColor(
+        settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey],
+      );
 
-    return {
-      name,
-      tooltipName,
-      color,
-      visible: !hiddenSeries.includes(dataKey),
-      cardId,
-      column: metric.column,
-      columnIndex: metric.index,
-      vizSettingsKey,
-      legacySeriesSettingsObjectKey,
-      dataKey,
-      breakoutColumnIndex: breakout.index,
-      breakoutColumn: breakout.column,
-      breakoutValue,
-      bubbleSizeDataKey:
-        hasBubbleSize && columns.bubbleSize != null
-          ? getDatasetKey(columns.bubbleSize.column, cardId, breakoutValue)
-          : undefined,
-    };
-  });
+      const dataKey = getDatasetKey(metric.column, cardId, cleanBreakoutValue);
+
+      return {
+        name,
+        tooltipName,
+        color,
+        visible: !hiddenSeries.includes(dataKey),
+        cardId,
+        column: metric.column,
+        columnIndex: metric.index,
+        vizSettingsKey,
+        legacySeriesSettingsObjectKey,
+        dataKey,
+        breakoutColumnIndex: getBreakoutDimensionsIndexes(breakout),
+        breakoutColumn: getBreakoutDimensionsColumns(breakout),
+        cleanBreakoutValue,
+        bubbleSizeDataKey:
+          hasBubbleSize && columns.bubbleSize != null
+            ? getDatasetKey(
+                columns.bubbleSize.column,
+                cardId,
+                cleanBreakoutValue,
+              )
+            : undefined,
+      };
+    },
+  );
 };
 
 export const getDimensionModel = (
