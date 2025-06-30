@@ -8,8 +8,7 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.registry]
-   [malli.util :as mut]
-   [metabase.util.log :as log])
+   [malli.util :as mut])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 ;;; for clj we use perf/prewalk
@@ -85,11 +84,12 @@
       (let [schema-fingerprint (schema-fingerprint schema-key)
             v (value-thunk)]
         (when-let [schema-key' (get-in @cache [:schema-fingerprint k schema-fingerprint])]
-          (throw (ex-info "clashing schema" {:schema schema :fingerprint schema-fingerprint}))
-          #?(:clj (binding [*out* *err*]
-                    (println (format "\nCaching schema with identical fingerprint in cache: %s vs %s with fingerprint %s"
-                                     (str schema-key) (str schema-key') (str schema-fingerprint)))))
-          (log/warnf "Caching schema with identical fingerprint in cache: %s vs %s with fingerprint %s" (str schema-key) (str schema-key') (str schema-fingerprint)))
+          (throw (ex-info "clashing schema" {:schema schema
+                                             :key schema-key
+                                             :existing-key schema-key'
+                                             :fingerprint schema-fingerprint
+                                             :class (#?(:clj class :cljs type) schema)
+                                             :cache @cache})))
         (swap! cache #(-> %
                           (assoc-in [k schema-key] v)
                           (assoc-in [:schema-fingerprint k schema-fingerprint] schema-key)))
