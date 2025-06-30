@@ -1,7 +1,9 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getColumnIcon } from "metabase/common/utils/columns";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import * as Lib from "metabase-lib";
 import { getRemappings } from "metabase-lib/v1/queries/utils/field";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, FieldValue, Table } from "metabase-types/api";
@@ -85,4 +87,27 @@ export function getFieldRemappedValues(
   fieldValues: FieldValue[] | undefined,
 ): Map<number, string> {
   return new Map(getRemappings({ values: fieldValues }));
+}
+
+/**
+ * Adds 3 extra attributes to every Field, so that DataSelector does not break.
+ * DataSelector component expects metabase-lib/v1/metadata/Field objects (entity framework),
+ * but this modern module uses Field from metabase-types/api/field.ts instead.
+ */
+export function hydrateTableFields(
+  table: Table | undefined,
+): Table | undefined {
+  if (!table) {
+    return undefined;
+  }
+
+  return {
+    ...table,
+    fields: table.fields?.map((field) => ({
+      ...field,
+      displayName: () => field.display_name,
+      icon: () => getColumnIcon(Lib.legacyColumnTypeInfo(field)),
+      table,
+    })),
+  };
 }

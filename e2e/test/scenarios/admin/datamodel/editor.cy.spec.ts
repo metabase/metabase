@@ -838,8 +838,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("User ID").should("be.visible");
     });
 
-    // TODO: https://linear.app/metabase/issue/SEM-434
-    it.skip("should allow setting foreign key mapping for accessible tables", () => {
+    it("should allow setting foreign key mapping for accessible tables", () => {
       setDataModelPermissions({
         tableIds: [ORDERS_ID, REVIEWS_ID, PRODUCTS_ID],
       });
