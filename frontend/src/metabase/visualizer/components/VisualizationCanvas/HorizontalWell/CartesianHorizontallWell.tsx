@@ -6,6 +6,7 @@ import { isNotNull } from "metabase/lib/types";
 import { Flex, type FlexProps, Text } from "metabase/ui";
 import { getDefaultDimensionFilter } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
+import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
 import {
   getIsMultiseriesCartesianChart,
   getVisualizationType,
@@ -13,7 +14,6 @@ import {
   getVisualizerDatasetColumns,
   getVisualizerRawSettings,
 } from "metabase/visualizer/selectors";
-import { isDraggedColumnItem } from "metabase/visualizer/utils";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
 import { isDate, isString } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
@@ -61,14 +61,14 @@ export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
     return dimensions;
   }, [allDimensions, isMultiseries]);
 
-  const canHandleActiveItem = useMemo(() => {
-    if (!display || !active || !isDraggedColumnItem(active)) {
-      return false;
-    }
-    const { column } = active.data.current;
-    const isSuitableColumn = getDefaultDimensionFilter(display);
-    return isSuitableColumn(column);
-  }, [active, display]);
+  const isSuitableColumn = useMemo(() => {
+    return display ? getDefaultDimensionFilter(display) : () => false;
+  }, [display]);
+
+  const canHandleActiveItem = useCanHandleActiveItem({
+    active,
+    isSuitableColumn,
+  });
 
   const handleRemoveDimension = (dimension: DatasetColumn) => {
     dispatch(removeColumn({ name: dimension.name }));
