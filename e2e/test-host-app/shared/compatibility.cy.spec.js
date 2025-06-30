@@ -1,3 +1,4 @@
+import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdk,
@@ -21,7 +22,8 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
       url: `${CLIENT_HOST}/interactive-dashboard`,
     });
 
-    cy.findByTestId("embed-frame", { timeout: TIMEOUT_MS }).within(() => {
+    getSdkRoot().should("exist");
+    getSdkRoot().within(() => {
       cy.findByTestId("fixed-width-dashboard-header", {
         timeout: TIMEOUT_MS,
       }).within(() => {
