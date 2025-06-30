@@ -66,7 +66,7 @@
   and [[join-condition-rhs-columns]]."
   [condition  :- [:maybe ::lib.schema.expression/boolean]]
   (when condition
-    (lib.util.match/match-one condition
+    (lib.util.match/match-lite condition
       [(_operator :guard keyword?)
        _opts
        [:field _lhs-opts _lhs-id-or-name]
