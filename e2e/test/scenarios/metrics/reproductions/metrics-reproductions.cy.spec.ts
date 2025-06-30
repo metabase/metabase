@@ -178,8 +178,8 @@ describe("issue 32037", () => {
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("Total").click();
-      cy.findByPlaceholderText("Min").type("0");
-      cy.findByPlaceholderText("Max").type("100");
+      cy.findByPlaceholderText("Start of range").type("0");
+      cy.findByPlaceholderText("End of range").type("100");
       cy.button("Add filter").click();
     });
     cy.button("Save changes").should("be.enabled");

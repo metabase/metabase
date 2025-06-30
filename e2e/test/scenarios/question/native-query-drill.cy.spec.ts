@@ -203,8 +203,8 @@ describe("scenarios > question > native query drill", () => {
       H.tableHeaderClick("QUANTITY");
       H.popover().findByText("Filter by this column").click();
       H.popover().within(() => {
-        cy.findByPlaceholderText("Min").type("2");
-        cy.findByPlaceholderText("Max").type("5");
+        cy.findByPlaceholderText("Start of range").type("2");
+        cy.findByPlaceholderText("End of range").type("5");
         cy.button("Add filter").click();
         cy.wait("@dataset");
       });

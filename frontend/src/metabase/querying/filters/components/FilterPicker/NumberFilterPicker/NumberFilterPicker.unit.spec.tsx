@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
@@ -113,8 +113,8 @@ describe("NumberFilterPicker", () => {
 
       expect(screen.getByText("Total")).toBeInTheDocument();
       expect(screen.getByText("Between")).toBeInTheDocument();
-      expect(screen.getByPlaceholderText("Min")).toHaveValue("");
-      expect(screen.getByPlaceholderText("Max")).toHaveValue("");
+      expect(screen.getByPlaceholderText("Start of range")).toHaveValue("");
+      expect(screen.getByPlaceholderText("End of range")).toHaveValue("");
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
     });
 
@@ -205,8 +205,8 @@ describe("NumberFilterPicker", () => {
           });
 
           await setOperator("Between");
-          const leftInput = screen.getByPlaceholderText("Min");
-          const rightInput = screen.getByPlaceholderText("Max");
+          const leftInput = screen.getByPlaceholderText("Start of range");
+          const rightInput = screen.getByPlaceholderText("End of range");
           await userEvent.type(leftInput, String(leftValue));
           await userEvent.type(rightInput, String(rightValue));
           await userEvent.click(addFilterButton);
@@ -228,8 +228,8 @@ describe("NumberFilterPicker", () => {
         });
 
         await setOperator("Between");
-        const leftInput = screen.getByPlaceholderText("Min");
-        const rightInput = screen.getByPlaceholderText("Max");
+        const leftInput = screen.getByPlaceholderText("Start of range");
+        const rightInput = screen.getByPlaceholderText("End of range");
         await userEvent.type(leftInput, "5");
         await userEvent.type(rightInput, "-10.5");
         await userEvent.click(addFilterButton);
@@ -248,8 +248,8 @@ describe("NumberFilterPicker", () => {
           setup();
 
         await setOperator("Between");
-        const leftInput = screen.getByPlaceholderText("Min");
-        const rightInput = screen.getByPlaceholderText("Max");
+        const leftInput = screen.getByPlaceholderText("Start of range");
+        const rightInput = screen.getByPlaceholderText("End of range");
         await userEvent.type(leftInput, "5");
         await userEvent.type(rightInput, "-10.5{enter}");
 
@@ -421,8 +421,8 @@ describe("NumberFilterPicker", () => {
           });
 
           await setOperator("Between");
-          const leftInput = screen.getByPlaceholderText("Min");
-          const rightInput = screen.getByPlaceholderText("Max");
+          const leftInput = screen.getByPlaceholderText("Start of range");
+          const rightInput = screen.getByPlaceholderText("End of range");
           await userEvent.clear(leftInput);
           await userEvent.type(leftInput, `${leftValue}`);
           expect(updateButton).toBeEnabled();
@@ -562,6 +562,40 @@ describe("NumberFilterPicker", () => {
       await userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("between filter", () => {
+    it("should change inclusiveness on click and keypress", async () => {
+      setup(createQueryWithNumberFilter({ operator: "between" }));
+
+      const greaterButton = screen.getByRole("button", {
+        name: /toggle greater inclusiveness/,
+      });
+      const lessButton = screen.getByRole("button", {
+        name: /toggle less inclusiveness/,
+      });
+
+      expect(greaterButton).toBeInTheDocument();
+      expect(lessButton).toBeInTheDocument();
+
+      expect(getIcon("greater_than_or_equal")).toBeInTheDocument();
+
+      await userEvent.click(greaterButton);
+
+      expect(getIcon("greater_than")).toBeInTheDocument();
+
+      expect(getIcon("less_than_or_equal")).toBeInTheDocument();
+
+      await userEvent.click(lessButton);
+
+      expect(getIcon("less_than")).toBeInTheDocument();
+
+      await userEvent.click(lessButton);
+      await userEvent.click(greaterButton);
+
+      expect(getIcon("greater_than_or_equal")).toBeInTheDocument();
+      expect(getIcon("less_than_or_equal")).toBeInTheDocument();
     });
   });
 });
