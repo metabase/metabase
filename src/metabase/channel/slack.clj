@@ -325,10 +325,12 @@
    text-or-nil :- [:maybe :string]
    & [message-content]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
-  (let [base-params {:channel     channel-id
-                     :username    "MetaBot"
-                     :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-                     :text        text-or-nil}
+  (let [base-params {:channel      channel-id
+                     :username     "MetaBot"
+                     :icon_url     "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
+                     :text         text-or-nil
+                     :unfurl_links false
+                     :unfurl_media false}
 
         message-content
         (if (sequential? message-content)
