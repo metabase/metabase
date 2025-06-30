@@ -37,7 +37,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         );
       });
 
-      it.skip("allows to map to all relevant columns", () => {
+      it("allows to map to all relevant columns", () => {
         H.editDashboard();
 
         cy.log("## date columns");
