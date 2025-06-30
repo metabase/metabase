@@ -1,4 +1,5 @@
 import { useDroppable } from "@dnd-kit/core";
+import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -14,6 +15,7 @@ import { removeColumn } from "metabase/visualizer/visualizer.slice";
 import { isNumber } from "metabase-lib/v1/types/utils/isa";
 
 import { WellItem } from "../WellItem";
+import S from "../well.module.css";
 
 export function ScatterFloatingWell() {
   const dispatch = useDispatch();
@@ -44,15 +46,10 @@ export function ScatterFloatingWell() {
 
   return (
     <Box
-      p="md"
-      bg="bg-medium"
-      style={{
-        borderRadius: "var(--default-border-radius)",
-        outline:
-          isOver && canHandleActiveItem
-            ? "1px solid var(--mb-color-brand)"
-            : "none",
-      }}
+      className={cx(S.Well, {
+        [S.isOver]: isOver,
+        [S.isActive]: canHandleActiveItem,
+      })}
       ref={setNodeRef}
     >
       {bubbleSize ? (

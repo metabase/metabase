@@ -14,6 +14,7 @@ import {
   arrayMove,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import cx from "classnames";
 
 import { Sortable } from "metabase/common/components/Sortable";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -32,6 +33,7 @@ import {
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { WellItem, type WellItemProps } from "../WellItem";
+import S from "../well.module.css";
 
 export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
   const settings = useSelector(getVisualizerComputedSettings);
@@ -81,27 +83,17 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
     dispatch(removeColumn({ name: settings["funnel.dimension"] }));
   };
 
-  const borderStyle = rows.length > 0 ? "solid" : "dashed";
-
   return (
     <Flex
       {...props}
-      bg={canHandleActiveItem ? "var(--mb-color-brand-light)" : "bg-light"}
-      p="sm"
-      wrap="nowrap"
+      className={cx(S.Well, {
+        [S.isActive]: canHandleActiveItem,
+      })}
       style={{
         ...style,
         height: "100%",
         overflowX: "auto",
         overflowY: "hidden",
-        borderRadius: "var(--border-radius-xl)",
-        border: `1px ${borderStyle} ${canHandleActiveItem ? "var(--mb-color-brand)" : "var(--border-color)"}`,
-        transform: canHandleActiveItem ? "scale(1.025)" : "scale(1)",
-        transition:
-          "transform 0.2s ease-in-out 0.2s, border-color 0.2s ease-in-out 0.2s, background 0.2s ease-in-out 0.2s",
-        outline: canHandleActiveItem
-          ? "1px solid var(--mb-color-brand)"
-          : "none",
       }}
       ref={setNodeRef}
     >

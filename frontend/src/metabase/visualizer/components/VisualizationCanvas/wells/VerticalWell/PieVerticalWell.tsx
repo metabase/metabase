@@ -1,4 +1,6 @@
 import { useDroppable } from "@dnd-kit/core";
+import cx from "classnames";
+import { type ReactNode, forwardRef } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
@@ -15,8 +17,7 @@ import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
-
-import { WellBox } from "./WellBox";
+import S from "../well.module.css";
 
 export function PieVerticalWell() {
   return (
@@ -119,3 +120,28 @@ function PieDimensionWell() {
     </Box>
   );
 }
+
+interface WellBoxProps {
+  isHighlighted: boolean;
+  isOver: boolean;
+  children: ReactNode;
+}
+
+export const WellBox = forwardRef<HTMLDivElement, WellBoxProps>(
+  function WellBox({ children, isHighlighted, isOver, ...props }, ref) {
+    return (
+      <Box
+        {...props}
+        className={cx(S.Well, S.defaultBorderRadius, {
+          [S.isOver]: isOver,
+          [S.isActive]: isHighlighted,
+        })}
+        mih="120px"
+        w="150px"
+        ref={ref}
+      >
+        {children}
+      </Box>
+    );
+  },
+);
