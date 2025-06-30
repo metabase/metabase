@@ -14,7 +14,7 @@ import {
 } from "../context";
 import {
   useParameterList,
-  usePersistByUserSetting,
+  usePersistJsonViaUserSetting,
   useRecentItems,
 } from "../hooks";
 import type {
@@ -78,7 +78,7 @@ export const SdkIframeEmbedSetupProvider = ({
   const fallbackDashboardId =
     recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID;
 
-  const onEmbedSettingsLoaded = useCallback(
+  const handleEmbedSettingsRestored = useCallback(
     (settings: SdkIframeEmbedSettings | null) => {
       if (settings) {
         setSettings(settings);
@@ -99,11 +99,11 @@ export const SdkIframeEmbedSetupProvider = ({
     [fallbackDashboardId],
   );
 
-  const { storeSetting } = usePersistByUserSetting({
-    onLoad: onEmbedSettingsLoaded,
+  const { storeSetting } = usePersistJsonViaUserSetting({
     settingKey: "sdk-iframe-embed-setup-settings",
-    debounceMs: PERSIST_EMBED_SETTINGS_DEBOUNCE_MS,
     omitKeys: ["instanceUrl"],
+    onRestore: handleEmbedSettingsRestored,
+    debounceMs: PERSIST_EMBED_SETTINGS_DEBOUNCE_MS,
   });
 
   const setAndPersistSettings = useCallback(

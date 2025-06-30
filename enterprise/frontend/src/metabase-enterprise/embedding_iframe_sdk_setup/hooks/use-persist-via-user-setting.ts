@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { useUserSetting } from "metabase/common/hooks";
 import type { UserSettings } from "metabase-types/api";
 
-export function usePersistByUserSetting<K extends keyof UserSettings, S>({
-  onLoad,
+export function usePersistJsonViaUserSetting<K extends keyof UserSettings, S>({
+  onRestore,
   settingKey,
   debounceMs,
   omitKeys = [],
 }: {
-  onLoad: (settings: S | null) => void;
+  onRestore: (settings: S | null) => void;
   settingKey: K;
   debounceMs: number;
   omitKeys?: (keyof S)[];
@@ -32,10 +32,10 @@ export function usePersistByUserSetting<K extends keyof UserSettings, S>({
         settings = JSON.parse(userSettingString as string) as S;
       } catch (error) {}
 
-      onLoad(settings);
+      onRestore(settings);
       setIsUserSettingsLoaded(true);
     }
-  }, [isUserSettingsLoaded, userSettingString, onLoad]);
+  }, [isUserSettingsLoaded, userSettingString, onRestore]);
 
   return { storeSetting };
 }
