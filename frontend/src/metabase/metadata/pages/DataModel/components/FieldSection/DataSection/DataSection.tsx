@@ -8,12 +8,13 @@ import {
   canCoerceFieldType,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Flex, Icon, Stack, Switch, TextInput, rem } from "metabase/ui";
+import { Flex, Stack, Switch, rem } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
 import { TitledSection } from "../../TitledSection";
 
 import S from "./DataSection.module.css";
+import { LabeledValue } from "./LabeledValue";
 import SubInputFollowIllustration from "./illustrations/sub-input-follow.svg?component";
 import SubInputIllustration from "./illustrations/sub-input.svg?component";
 
@@ -38,24 +39,10 @@ const DataSectionBase = ({ field }: Props) => {
 
   return (
     <TitledSection title={t`Data`}>
-      <TextInput
-        classNames={{ input: S.disabledInput }}
-        disabled
-        label={t`Field name`}
-        rightSection={<Icon className={S.disabledInputIcon} name="lock" />}
-        rightSectionPointerEvents="none"
-        value={field.name}
-      />
+      <LabeledValue label={t`Field name`}>{field.name}</LabeledValue>
 
       <Stack gap={0}>
-        <TextInput
-          classNames={{ input: S.disabledInput }}
-          disabled
-          label={t`Data type`}
-          rightSection={<Icon className={S.disabledInputIcon} name="lock" />}
-          rightSectionPointerEvents="none"
-          value={field.database_type}
-        />
+        <LabeledValue label={t`Data type`}>{field.database_type}</LabeledValue>
 
         {canCoerceFieldType(field) && (
           <>
