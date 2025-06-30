@@ -179,7 +179,7 @@ export const getRoutes = (store) => {
           />
 
           <Route
-            path="embed/new"
+            path="embed-wizard"
             component={PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetup}
           />
 
