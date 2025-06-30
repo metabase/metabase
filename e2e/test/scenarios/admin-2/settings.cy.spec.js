@@ -662,6 +662,13 @@ describe("scenarios > admin > settings > email settings", () => {
 
   describe("Pro-cloud instance", () => {
     beforeEach(() => {
+      cy.intercept("DELETE", "api/email/cloud").as("smtpCleared");
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["email-configured?"] = true;
+          return res.body;
+        });
+      });
       cy.intercept("PUT", "api/email/cloud").as("smtpSaved");
       H.restore();
       cy.signInAsAdmin();
@@ -681,6 +688,8 @@ describe("scenarios > admin > settings > email settings", () => {
           .blur();
         cy.findByText(/465/i).click();
         cy.findByText(/SSL/i).click();
+        cy.findByDisplayValue(/465/i).should("have.attr", "checked");
+        cy.findByDisplayValue(/SSL/i).should("have.attr", "checked");
         cy.findByLabelText(/SMTP Username/i)
           .type("admin")
           .blur();
@@ -691,57 +700,54 @@ describe("scenarios > admin > settings > email settings", () => {
       });
 
       cy.wait("@smtpSaved");
-      // cy.findByTestId("cloud-smtp-connection-card").within(() => {
-      //   cy.findByTestId("custom-smtp-radio");
-      //   cy.button("Edit settings");
-      // });
+      cy.findByTestId("cloud-smtp-connection-card").within(() => {
+        // Button text should change
+        cy.button("Edit settings");
+        // Custom server should be auto-enabled
+        cy.findByRole("radio", { checked: true }).findByText(
+          "Custom SMTP Server",
+        );
+      });
 
-      // // Non SMTP-settings should save automatically
-      // cy.findByLabelText("From Address")
-      //   .clear()
-      //   .type("mailer@metabase.test")
-      //   .blur();
+      cy.findByLabelText("From Address")
+        .clear()
+        .type("mailer@metabase.test")
+        .blur();
 
-      // cy.findByLabelText("From Name").type("Sender Name").blur();
-      // cy.findByLabelText("Reply-To Address")
-      //   .type("reply-to@metabase.test")
-      //   .blur();
+      cy.findByLabelText("From Name").type("Sender Name").blur();
+      cy.findByLabelText("Reply-To Address")
+        .type("reply-to@metabase.test")
+        .blur();
 
-      // // Refresh page to confirm changes persist
-      // cy.reload();
+      // Refresh page to confirm changes persist
+      cy.reload();
 
-      // // validate additional settings
-      // cy.findByDisplayValue("mailer@metabase.test");
-      // cy.findByDisplayValue("Sender Name");
-      // cy.findByDisplayValue("reply-to@metabase.test");
+      // validate additional settings
+      cy.findByDisplayValue("mailer@metabase.test");
+      cy.findByDisplayValue("Sender Name");
+      cy.findByDisplayValue("reply-to@metabase.test");
 
-      // // validate SMTP connection settings
-      // cy.findByTestId("cloud-smtp-connection-card")
-      //   .findByText("Edit configuration")
-      //   .click();
-      // cy.findByDisplayValue("localhost");
-      // cy.findByDisplayValue(SMTP_PORT);
-      // cy.findAllByDisplayValue("admin");
+      // validate SMTP connection settings
+      cy.findByTestId("cloud-smtp-connection-card")
+        .findByText("Edit settings")
+        .click();
+      H.modal().within(() => {
+        cy.findByDisplayValue("localhost");
+        cy.findAllByDisplayValue("admin");
+        cy.button("Save changes").should("be.disabled");
+        cy.button("Clear").click();
+        cy.wait("@smtpCleared");
+        cy.findByLabelText("SMTP Host").should("have.value", "");
+        cy.findByDisplayValue(/465/i).should("have.attr", "checked");
+        cy.findByDisplayValue(/SSL/i).should("have.attr", "checked");
+        cy.findByLabelText("SMTP Username").should("have.value", "");
+        cy.findByLabelText("SMTP Password").should("have.value", "");
+        cy.findByRole("button", { name: "Close" }).click();
+      });
 
-      // // should not offer to save email changes when there aren't any (metabase#14749)
-      // cy.button("Save changes").should("be.disabled");
-
-      // // should be able to clear email settings
-      // H.modal().button("Clear").click();
-
-      // cy.reload();
-
-      // cy.findByTestId("cloud-smtp-connection-card")
-      //   .findByText("Configure")
-      //   .click();
-
-      // H.modal().within(() => {
-      //   cy.findByLabelText("SMTP Host").should("have.value", "");
-      //   cy.findByText("456").should("have.attr", '[data-checked="true"]');
-      //   cy.findByText("SSL").should("have.attr", '[data-checked="true"]');
-      //   cy.findByLabelText("SMTP Username").should("have.value", "");
-      //   cy.findByLabelText("SMTP Password").should("have.value", "");
-      // });
+      cy.findByTestId("cloud-smtp-connection-card").findByText(
+        "Set up a custom SMTP server",
+      );
     });
   });
 });
