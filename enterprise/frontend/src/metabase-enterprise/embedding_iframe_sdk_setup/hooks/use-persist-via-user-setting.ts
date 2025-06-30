@@ -1,5 +1,6 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 import { useEffect, useState } from "react";
+import _ from "underscore";
 
 import { useUserSetting } from "metabase/common/hooks";
 import type { UserSettings } from "metabase-types/api";
