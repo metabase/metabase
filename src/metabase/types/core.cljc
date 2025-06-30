@@ -474,6 +474,7 @@
 (coercion-hierarchies/define-types! :Coercion/DateTime->Date  :type/DateTime :type/Date)
 
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/YYYYMMDDHHMMSSBytes->Temporal :type/* :type/DateTime)
+(coercion-hierarchies/define-non-inheritable-type! :Coercion/ISO8601Bytes->Temporal :type/* :type/DateTime)
 
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/String->Float :type/Text :type/Float)
 
