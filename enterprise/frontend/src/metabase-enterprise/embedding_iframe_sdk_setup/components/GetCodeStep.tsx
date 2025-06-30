@@ -18,9 +18,13 @@ import { useSdkIframeEmbedSnippet } from "../hooks/use-sdk-iframe-embed-snippet"
 export const GetCodeStep = () => {
   const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
 
+  const isJwtEnabled = useSetting("jwt-enabled");
+  const isSamlEnabled = useSetting("saml-enabled");
   const isJwtConfigured = useSetting("jwt-configured");
   const isSamlConfigured = useSetting("saml-configured");
-  const isAnySsoConfigured = isJwtConfigured || isSamlConfigured;
+
+  const isSsoEnabledAndConfigured =
+    (isJwtEnabled && isJwtConfigured) || (isSamlEnabled && isSamlConfigured);
 
   const snippet = useSdkIframeEmbedSnippet();
 
@@ -56,7 +60,7 @@ export const GetCodeStep = () => {
               <Radio
                 value="sso"
                 label={t`Single sign-on (SSO)`}
-                disabled={!isAnySsoConfigured}
+                disabled={!isSsoEnabledAndConfigured}
               />
             </Stack>
           </Radio.Group>
