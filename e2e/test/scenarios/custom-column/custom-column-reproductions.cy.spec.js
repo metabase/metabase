@@ -1138,10 +1138,9 @@ describe("issue 49882", () => {
   });
 
   it("should update currently selected suggestion when suggestions list is updated (metabase#49882-4)", () => {
-    const selectProductVendor =
-      "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}";
+    const selectProductRating = "{downarrow}".repeat(8);
     H.enterCustomColumnDetails({
-      formula: `[Produ${selectProductVendor}`,
+      formula: `[Produ${selectProductRating}`,
       blur: false,
     });
 
