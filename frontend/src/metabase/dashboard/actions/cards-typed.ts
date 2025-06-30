@@ -9,6 +9,7 @@ import {
   getPositionForNewDashCard,
 } from "metabase/lib/dashboard_grid";
 import { createThunkAction } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
 import { getDefaultSize } from "metabase/visualizations";
@@ -64,6 +65,7 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   UNDO_TRASH_DASHBOARD_QUESTION_FROM_DASH,
   setDashCardAttributes,
+  setDashboardAttributes,
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import {
@@ -451,8 +453,13 @@ export const removeCardFromDashboard = createThunkAction(
     cardId: DashboardCard["card_id"];
   }) =>
     (dispatch, getState) => {
+      const dashboard = checkNotNull(getDashboard(getState()));
       const dashcards = getDashcardList(getState());
       const dashcard = getDashCardById(getState(), dashcardId);
+
+      const originalParameters = dashboard.parameters
+        ? [...dashboard.parameters]
+        : dashboard.parameters;
 
       dispatch(closeAddCardAutoWireToasts());
       dispatch(cancelFetchCardData(cardId, dashcardId));
@@ -474,7 +481,15 @@ export const removeCardFromDashboard = createThunkAction(
             ? t`Trashed and removed card`
             : t`Removed card`,
           undo: true,
-          action: () => dispatch(undoRemoveCardFromDashboard({ dashcardId })),
+          action: () =>
+            dispatch(
+              undoRemoveCardFromDashboard({
+                dashcardId,
+                originalParameters: hasInlineParameters(dashcard)
+                  ? originalParameters
+                  : undefined,
+              }),
+            ),
         }),
       );
 
@@ -484,9 +499,21 @@ export const removeCardFromDashboard = createThunkAction(
 
 const undoRemoveCardFromDashboard = createThunkAction(
   UNDO_REMOVE_CARD_FROM_DASH,
-  ({ dashcardId }) =>
+  ({ dashcardId, originalParameters }) =>
     (dispatch, getState) => {
+      const dashboardId = checkNotNull(getDashboardId(getState()));
       const dashcard = getDashCardById(getState(), dashcardId);
+
+      if (originalParameters) {
+        dispatch(
+          setDashboardAttributes({
+            id: dashboardId,
+            attributes: {
+              parameters: originalParameters,
+            },
+          }),
+        );
+      }
 
       if (!isVirtualDashCard(dashcard)) {
         const card = dashcard.card;
