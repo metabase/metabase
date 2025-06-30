@@ -36,6 +36,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       cy.findByText("110.93").click();
       cy.findByText("Filter by this value").should("not.exist");
     });
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("contain", '"isDrillThroughEnabled": false');
   });
 
   it("toggles downloads for dashboard", () => {
@@ -54,6 +58,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       .should("be.checked");
 
     H.getIframeBody().findByTestId("export-as-pdf-button").should("be.visible");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("contain", '"withDownloads": true');
   });
 
   it("toggles dashboard title for dashboards", () => {
@@ -72,6 +80,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       .should("not.be.checked");
 
     H.getIframeBody().findByText("Orders in a dashboard").should("not.exist");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("contain", '"withTitle": false');
   });
 
   it("toggles drill-through for charts", () => {
@@ -98,6 +110,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       cy.findByText("18,760").click();
       cy.findByText("See these Orders").should("not.exist");
     });
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("contain", '"isDrillThroughEnabled": false');
   });
 
   it("toggles downloads for charts", () => {
@@ -120,6 +136,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
     H.getIframeBody()
       .findByTestId("question-download-widget-button")
       .should("be.visible");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("contain", '"withDownloads": true');
   });
 
   it("toggles chart title for charts", () => {
@@ -136,6 +156,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       .should("not.be.checked");
 
     H.getIframeBody().findByText("Orders, Count").should("not.exist");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("contain", '"withTitle": false');
   });
 
   it("toggles save button for exploration", () => {
@@ -160,6 +184,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       .should("not.be.checked");
 
     H.getIframeBody().findByText("Save").should("not.exist");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("contain", '"isSaveEnabled": false');
   });
 
   it("can change brand color", () => {
@@ -186,6 +214,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       .findAllByTestId("cell-data")
       .first()
       .should("have.css", "color", "rgb(255, 0, 0)");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("contain", '"brand": "#FF0000"');
   });
 });
 
@@ -200,3 +232,5 @@ const navigateToEmbedOptionsStep = ({
     cy.findByText("Next").click(); // Embed options step
   });
 };
+
+const codeBlock = () => cy.get(".cm-content");
