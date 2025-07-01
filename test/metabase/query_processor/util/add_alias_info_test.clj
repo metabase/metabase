@@ -47,8 +47,9 @@
                                                   :fields       [&Cat.categories.name]}]
                                   :fields       [$id
                                                  &Cat.categories.name]}
-                   ;; THIS REF IS WRONG -- it should not be using `Cat` because the join is in the source query rather than
-                   ;; in the current stage. However, we should be smart enough to try to figure out what they meant.
+                   ;; THIS REF IS WRONG -- it should not be using `Cat` because the join is in the source query rather
+                   ;; than in the current stage. However, we should be smart enough to try to figure out what they
+                   ;; meant.
                    :breakout     [&Cat.categories.name]}))]
     (testing ":query -> :source-query"
       (is (=? (lib.tu.macros/$ids venues
@@ -185,7 +186,6 @@
                                [:field %date {::add/source-table $$checkins
                                               ::add/source-alias "DATE"}]
                                [:value nil {:base_type         :type/Date
-                                            :effective_type    :type/Date
                                             :database_type     "DATE"
                                             :name              "DATE"}]]})
               (add-alias-info
@@ -323,7 +323,6 @@
                                                             ::add/desired-alias "Q2__P2__CATEGORY"}]
                                 [:value 1 {:base_type         :type/Text
                                            :database_type     "CHARACTER VARYING"
-                                           :effective_type    :type/Text
                                            :name              "CATEGORY"
                                            :semantic_type     :type/Category}]]
                     :fields [[:field %products.category {:join-alias "Q2"
@@ -417,7 +416,7 @@
                           [:field
                            "strange count"
                            outer-count-opts]
-                          [:value 10 {:base_type :type/Integer, :effective_type :type/Integer}]]}))
+                          [:value 10 {:base_type :type/Integer}]]}))
             (-> (lib.tu.macros/mbql-query venues
                   {:source-query {:source-table $$venues
                                   :aggregation  [[:aggregation-options
@@ -487,7 +486,6 @@
                                           "Doohickey"
                                           {:base_type         :type/Text
                                            :database_type     "CHARACTER VARYING"
-                                           :effective_type    :type/Text
                                            :name              "CATEGORY"
                                            :semantic_type     :type/Category}]]}
                  :fields       [[:field
@@ -636,9 +634,8 @@
                                :base_type      :type/Integer
                                :effective_type :type/Integer
                                :semantic_type  nil
-                               :fingerprint
-                               {:global {:distinct-count 1, :nil% 0}
-                                :type   #:type{:Number {:min 1, :q1 1, :q3 1, :max 1, :sd nil, :avg 1}}}})]
+                               :fingerprint    {:global {:distinct-count 1, :nil% 0}
+                                                :type   #:type{:Number {:min 1, :q1 1, :q3 1, :max 1, :sd nil, :avg 1}}}})]
     (lib/composed-metadata-provider
      meta/metadata-provider
      (providers.mock/mock-metadata-provider
@@ -660,22 +657,22 @@
                                   :native   {:template-tags {} :query "select 1 as b1, 2 as b2;"}}
                 :result-metadata [(result-metadata-for "B1")
                                   (result-metadata-for "B2")]}
-               {:name            "Joined"
-                :id              3
-                :database-id     (meta/id)
-                :type            :model
-                :dataset-query   {:database (meta/id)
-                                  :type     :query
-                                  :query    {:joins
-                                             [{:fields :all
-                                               :alias "Model B - A1"
-                                               :strategy :inner-join
-                                               :condition
-                                               [:=
-                                                [:field "A1" {:base-type :type/Integer}]
-                                                [:field "B1" {:base-type :type/Integer, :join-alias "Model B - A1"}]]
-                                               :source-table "card__2"}]
-                                             :source-table "card__1"}}}]}))))
+               {:name          "Joined"
+                :id            3
+                :database-id   (meta/id)
+                :type          :model
+                :dataset-query {:database (meta/id)
+                                :type     :query
+                                :query    {:joins
+                                           [{:fields       :all
+                                             :alias        "Model B - A1"
+                                             :strategy     :inner-join
+                                             :condition
+                                             [:=
+                                              [:field "A1" {:base-type :type/Integer}]
+                                              [:field "B1" {:base-type :type/Integer, :join-alias "Model B - A1"}]]
+                                             :source-table "card__2"}]
+                                           :source-table "card__1"}}}]}))))
 
 (deftest ^:parallel models-with-joins-and-renamed-columns-test
   (testing "an MBQL model with an explicit join and customized field names generate correct SQL (#40252)"
