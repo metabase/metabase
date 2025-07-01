@@ -40,7 +40,7 @@ function BannerBody({
   return (
     <Text lh="1.25rem">
       {copyText}{" "}
-      <Anchor fw="bold" href={getStoreUrl()}>
+      <Anchor fw="bold" href={getStoreUrl()} target="_blank">
         {linkText}
       </Anchor>
     </Text>
