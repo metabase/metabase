@@ -603,7 +603,7 @@
         new-table-name (create-view-for-card driver db card)
         _ (sync/sync-db-metadata! db)
         table (t2/select-one :model/Table :name new-table-name)]
-    {:type :transform
+    {;; :type :transform
      :table_id (:id table)
      :dataset_query
      {:database (:id db),

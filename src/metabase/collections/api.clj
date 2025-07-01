@@ -1005,6 +1005,8 @@
   []
   (collection-detail (api/read-check (collection/trash-collection))))
 
+ ;;models=dashboard&models=dataset&models=card&models=metric&models=snippet&models=collection&pinned_state=is_not_pinned&limit=25&offset=0&sort_column=name&sort_direction=asc
+
 (api.macros/defendpoint :get "/:id/items"
   "Fetch a specific Collection's items with the following options:
 
