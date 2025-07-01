@@ -649,6 +649,7 @@ H.describeWithSnowplow("scenarios > admin > settings > email settings", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/session/properties", (req) => {
         req.continue((res) => {
+          // in an actual cloud starter instance this gets configured via env vars
           res.body["email-configured?"] = true;
           return res.body;
         });
@@ -680,6 +681,7 @@ H.describeWithSnowplow("scenarios > admin > settings > email settings", () => {
       cy.intercept("DELETE", "api/email/cloud").as("smtpCleared");
       cy.intercept("GET", "/api/session/properties", (req) => {
         req.continue((res) => {
+          // in an actual pro-cloud instance this gets configured via env vars
           res.body["email-configured?"] = true;
           return res.body;
         });
