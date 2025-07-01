@@ -4,8 +4,8 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
-import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
+import { LeaveConfirmationModalContent } from "metabase/common/components/LeaveConfirmationModal";
+import Modal from "metabase/common/components/Modal";
 import {
   cancelEditingDashboard,
   fetchDashboard,

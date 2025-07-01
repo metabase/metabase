@@ -6,13 +6,13 @@ import {
   useGetSettingsQuery,
   useUpdateGoogleAuthMutation,
 } from "metabase/api";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import {
   useDocsUrl,
   useHasTokenFeature,
   useSetting,
 } from "metabase/common/hooks";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
 import {
   Form,
   FormErrorMessage,

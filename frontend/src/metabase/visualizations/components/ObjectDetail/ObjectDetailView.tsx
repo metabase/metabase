@@ -5,10 +5,10 @@ import _ from "underscore";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { skipToken, useListActionsQuery } from "metabase/api";
+import { NotFound } from "metabase/common/components/ErrorPages";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import Modal from "metabase/common/components/Modal";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { NotFound } from "metabase/components/ErrorPages";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Modal from "metabase/components/Modal";
 import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi, MetabaseApi } from "metabase/services";

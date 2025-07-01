@@ -4,9 +4,9 @@ import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
+import AdminHeader from "metabase/common/components/AdminHeader";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import AdminHeader from "metabase/components/AdminHeader";
-import { PaginationControls } from "metabase/components/PaginationControls";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 
 import { TaskPicker } from "../../components/TaskPicker";

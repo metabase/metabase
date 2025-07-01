@@ -5,10 +5,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { UpsellBetterSupport } from "metabase/admin/upsells";
+import AdminHeader from "metabase/common/components/AdminHeader";
+import Code from "metabase/common/components/Code";
+import { CopyButton } from "metabase/common/components/CopyButton";
 import { useSetting } from "metabase/common/hooks";
-import AdminHeader from "metabase/components/AdminHeader";
-import Code from "metabase/components/Code";
-import { CopyButton } from "metabase/components/CopyButton";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";

@@ -4,8 +4,8 @@ import { jt, t } from "ttag";
 
 import Button from "metabase/common/components/Button";
 import ExternalLink from "metabase/common/components/ExternalLink";
+import Modal from "metabase/common/components/Modal";
 import { useDocsUrl } from "metabase/common/hooks";
-import Modal from "metabase/components/Modal";
 
 import SlackAppsLink from "../SlackAppsLink";
 import SlackBadge from "../SlackBadge";

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { LeftNavPaneItem } from "metabase/components/LeftNavPane";
+import { LeftNavPaneItem } from "metabase/common/components/LeftNavPane";
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_ADMIN_TROUBLESHOOTING } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";

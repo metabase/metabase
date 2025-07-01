@@ -3,8 +3,8 @@ import { forwardRef, useCallback, useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
 import CollectionDropTarget from "metabase/common/components/dnd/CollectionDropTarget";
-import { TreeNode } from "metabase/components/tree/TreeNode";
-import type { TreeNodeProps } from "metabase/components/tree/types";
+import { TreeNode } from "metabase/common/components/tree/TreeNode";
+import type { TreeNodeProps } from "metabase/common/components/tree/types";
 import { getCollectionIcon } from "metabase/entities/collections/utils";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";

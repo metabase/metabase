@@ -9,7 +9,7 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import FormField from "metabase/common/components/FormField/FormField";
 import FormInput from "metabase/common/components/FormInput";
 import FormSelect from "metabase/common/components/FormSelect";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import ModalWithTrigger from "metabase/common/components/ModalWithTrigger";
 import { closeSidebar } from "metabase/dashboard/actions";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { Form, FormProvider } from "metabase/forms";

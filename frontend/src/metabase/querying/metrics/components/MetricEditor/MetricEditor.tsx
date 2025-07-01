@@ -1,8 +1,8 @@
 import { forwardRef, useState } from "react";
 
+import { LeaveConfirmationModalContent } from "metabase/common/components/LeaveConfirmationModal";
+import Modal from "metabase/common/components/Modal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
-import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
