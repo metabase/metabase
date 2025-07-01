@@ -858,18 +858,18 @@ function checkDashboardParameters<T = string>({
 
   cy.log("no default value, non-required, has current value");
   setValue(NO_DEFAULT_NON_REQUIRED, otherValue);
-  filter(NO_DEFAULT_NON_REQUIRED)
-    .findByText(otherValueFormatted)
-    .should("exist");
+  filter(NO_DEFAULT_NON_REQUIRED).should("contain.text", otherValueFormatted);
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "clear");
   checkResetAllFiltersShown();
 
   // reset all filters
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
-  filter(NO_DEFAULT_NON_REQUIRED)
-    .findByText(NO_DEFAULT_NON_REQUIRED)
-    .should("exist");
+  filter(NO_DEFAULT_NON_REQUIRED).should(
+    "contain.text",
+    NO_DEFAULT_NON_REQUIRED,
+  );
+
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
   checkResetAllFiltersHidden();
 
@@ -878,21 +878,22 @@ function checkDashboardParameters<T = string>({
 
   // clear with status button
   clearButton(NO_DEFAULT_NON_REQUIRED).click();
-  filter(NO_DEFAULT_NON_REQUIRED)
-    .findByText(NO_DEFAULT_NON_REQUIRED)
-    .should("exist");
+  filter(NO_DEFAULT_NON_REQUIRED).should(
+    "contain.text",
+    NO_DEFAULT_NON_REQUIRED,
+  );
+
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
   checkResetAllFiltersHidden();
 
   cy.log("has default value, non-required, current value same as default");
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
-  filter(DEFAULT_NON_REQUIRED)
-    .findByText(defaultValueFormatted)
-    .should("exist");
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
+
   checkResetAllFiltersHidden();
 
   clearButton(DEFAULT_NON_REQUIRED).click();
-  filter(DEFAULT_NON_REQUIRED).findByText(DEFAULT_NON_REQUIRED).should("exist");
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", DEFAULT_NON_REQUIRED);
   checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
   checkResetAllFiltersShown();
 
@@ -900,23 +901,20 @@ function checkDashboardParameters<T = string>({
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
-  filter(DEFAULT_NON_REQUIRED)
-    .findByText(defaultValueFormatted)
-    .should("exist");
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
 
   // revert so that we can try resetting with status button as well
   clearButton(DEFAULT_NON_REQUIRED).click();
 
   cy.log("has default value, non-required, no current value");
-  filter(DEFAULT_NON_REQUIRED).findByText(DEFAULT_NON_REQUIRED).should("exist");
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", DEFAULT_NON_REQUIRED);
   checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
   checkResetAllFiltersShown();
 
   // reset with status button
   resetButton(DEFAULT_NON_REQUIRED).click();
-  filter(DEFAULT_NON_REQUIRED)
-    .findByText(defaultValueFormatted)
-    .should("exist");
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
+
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
   checkResetAllFiltersHidden();
 
@@ -925,16 +923,15 @@ function checkDashboardParameters<T = string>({
   );
 
   updateValue(DEFAULT_NON_REQUIRED, otherValue);
-  filter(DEFAULT_NON_REQUIRED).findByText(otherValueFormatted).should("exist");
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", otherValueFormatted);
   checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
   checkResetAllFiltersShown();
 
   // reset all filters
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
-  filter(DEFAULT_NON_REQUIRED)
-    .findByText(defaultValueFormatted)
-    .should("exist");
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
+
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
   checkResetAllFiltersHidden();
 
@@ -943,9 +940,8 @@ function checkDashboardParameters<T = string>({
 
   // reset with status button
   resetButton(DEFAULT_NON_REQUIRED).click();
-  filter(DEFAULT_NON_REQUIRED)
-    .findByText(defaultValueFormatted)
-    .should("exist");
+  filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
+
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
   checkResetAllFiltersHidden();
 
@@ -955,14 +951,14 @@ function checkDashboardParameters<T = string>({
 
   cy.log("has default value, required, current value different than default");
   updateValue(DEFAULT_REQUIRED, otherValue);
-  filter(DEFAULT_REQUIRED).findByText(otherValueFormatted).should("exist");
+  filter(DEFAULT_REQUIRED).should("contain.text", otherValueFormatted);
   checkStatusIcon(DEFAULT_REQUIRED, "reset");
   checkResetAllFiltersShown();
 
   // reset all filters
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Reset all filters").click();
-  filter(DEFAULT_REQUIRED).findByText(defaultValueFormatted).should("exist");
+  filter(DEFAULT_REQUIRED).should("contain.text", defaultValueFormatted);
   checkStatusIcon(DEFAULT_REQUIRED, "none");
   checkResetAllFiltersHidden();
 
@@ -971,7 +967,7 @@ function checkDashboardParameters<T = string>({
 
   // reset with status button
   resetButton(DEFAULT_REQUIRED).click();
-  filter(DEFAULT_REQUIRED).findByText(defaultValueFormatted).should("exist");
+  filter(DEFAULT_REQUIRED).should("contain.text", defaultValueFormatted);
   checkStatusIcon(DEFAULT_REQUIRED, "none");
   checkResetAllFiltersHidden();
 
@@ -1004,54 +1000,54 @@ function checkParameterSidebarDefaultValue<T = string>({
   editFilter(NO_DEFAULT_NON_REQUIRED);
   H.dashboardParameterSidebar().within(() => {
     filter("Default value").scrollIntoView();
-    filter("Default value").findByText("No default").should("exist");
+    filter("Default value").findByText("No default");
     checkStatusIcon("Default value", "chevron");
   });
 
   setValue("Default value", otherValue);
 
   H.dashboardParameterSidebar().within(() => {
-    filter("Default value").findByText(otherValueFormatted).should("exist");
+    filter("Default value").should("contain.text", otherValueFormatted);
     checkStatusIcon("Default value", "clear");
 
     clearButton("Default value").click();
-    filter("Default value").findByText("No default").should("exist");
+    filter("Default value").should("contain.text", "No default");
     checkStatusIcon("Default value", "chevron");
   });
 
   cy.log(DEFAULT_NON_REQUIRED);
   editFilter(DEFAULT_NON_REQUIRED);
   H.dashboardParameterSidebar().within(() => {
-    filter("Default value").findByText(defaultValueFormatted).should("exist");
+    filter("Default value").should("contain.text", defaultValueFormatted);
     checkStatusIcon("Default value", "clear");
 
     clearButton("Default value").click();
-    filter("Default value").findByText("No default").should("exist");
+    filter("Default value").should("contain.text", "No default");
     checkStatusIcon("Default value", "chevron");
   });
 
   setValue("Default value", otherValue);
 
   H.dashboardParameterSidebar().within(() => {
-    filter("Default value").findByText(otherValueFormatted).should("exist");
+    filter("Default value").should("contain.text", otherValueFormatted);
     checkStatusIcon("Default value", "clear");
   });
 
   cy.log(DEFAULT_REQUIRED);
   editFilter(DEFAULT_REQUIRED);
   H.dashboardParameterSidebar().within(() => {
-    filter("Default value").findByText(defaultValueFormatted).should("exist");
+    filter("Default value").should("contain.text", defaultValueFormatted);
     checkStatusIcon("Default value", "clear");
 
     clearButton("Default value").click();
-    filter("Default value (required)").findByText("No default").should("exist");
+    filter("Default value (required)").should("contain.text", "No default");
     checkStatusIcon("Default value (required)", "chevron");
   });
 
   updateValue("Default value (required)", otherValue);
 
   H.dashboardParameterSidebar().within(() => {
-    filter("Default value").findByText(otherValueFormatted).should("exist");
+    filter("Default value").should("contain.text", otherValueFormatted);
     checkStatusIcon("Default value", "clear");
   });
 }
