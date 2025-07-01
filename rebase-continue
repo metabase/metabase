@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "stack",
+        "restack"
+      ],
+      "branch": "emb-549-end-to-end-tests-for-selecting-resource-to-embed-for-new"
+    }
+  ]
 }
