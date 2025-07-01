@@ -11,7 +11,6 @@
 }
 
 .nameInput {
-  padding-left: 44px !important; /* override mantine styles */
   border-end-start-radius: 0;
   border-end-end-radius: 0;
 }

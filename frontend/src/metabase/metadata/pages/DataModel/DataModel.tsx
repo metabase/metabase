@@ -1,7 +1,8 @@
 import { useWindowEvent } from "@mantine/hooks";
 import type { Location } from "history";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { useGetTableQueryMetadataQuery } from "metabase/api";
@@ -40,7 +41,12 @@ export const DataModel = ({ children, location, params }: Props) => {
     error,
     isLoading,
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(tableId));
+  const fieldsById = useMemo(() => {
+    return _.indexBy(table?.fields ?? [], (field) => getRawTableFieldId(field));
+  }, [table]);
   const field = table?.fields?.find((field) => field.id === fieldId);
+  const parentField =
+    field?.parent_id != null ? fieldsById[field.parent_id] : undefined;
   const [previewType, setPreviewType] = useState<PreviewType>("table");
 
   const handlePreviewClick = () => {
@@ -125,6 +131,7 @@ export const DataModel = ({ children, location, params }: Props) => {
                       <FieldSection
                         databaseId={databaseId}
                         field={field}
+                        parent={parentField}
                         isPreviewOpen={isPreviewOpen}
                         /**
                          * Make sure internal component state is reset when changing fields.
