@@ -314,7 +314,7 @@
      results)))
 
 (defn- maybe-add-nested-fields [nested-column-lookup col nfc-path root-database-position]
-  (let [new-path ((fnil conj []) nfc-path (:name col))
+  (let [new-path (conj (or nfc-path []) (:name col))
         nested-fields (get nested-column-lookup new-path)]
     (cond-> (assoc col :database-position root-database-position)
       (and (= :type/Dictionary (:base-type col)) nested-fields)
