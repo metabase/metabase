@@ -70,11 +70,11 @@
                                   ;;      staging and beta users.
                                   ;;      for now it doesn't tell you the type or the possible values, BUT maybe we want the wrapping
                                   ;;      component to know that (it just doesn't get saved)
-                                  :parameters [{:id "a", :sourceType "ask-user"}
-                                               {:id "b", :sourceType "ask-user"}
-                                               {:id "c", :sourceType "ask-user"}
-                                               {:id "d", :sourceType "ask-user"}
-                                               {:id "e", :sourceType "ask-user"}]}}
+                                  :parameters [{:id "a", :displayName "A", :sourceType "ask-user"}
+                                               {:id "b", :displayName "B", :sourceType "ask-user"}
+                                               {:id "c", :displayName "C", :sourceType "ask-user"}
+                                               {:id "d", :displayName "D", :sourceType "ask-user"}
+                                               {:id "e", :displayName "E", :sourceType "ask-user"}]}}
                         (req {:scope     {:model-id (:id model)
                                           :table-id (:id table)}
                               :action_id {:action-id (:id action)}})))))))))))
@@ -85,15 +85,15 @@
     (mt/test-drivers #{:h2 :postgres}
       (data-editing.tu/with-data-editing-enabled! true
         (testing "saved actions"
-          (let [expected-id-params  [{:id "id"         :sourceType "ask-user"}]
-                expected-row-params [{:id "user_id"    :sourceType "ask-user"}
-                                     {:id "product_id" :sourceType "ask-user"}
-                                     {:id "subtotal"   :sourceType "ask-user"}
-                                     {:id "tax"        :sourceType "ask-user"}
-                                     {:id "total"      :sourceType "ask-user"}
-                                     {:id "discount"   :sourceType "ask-user"}
-                                     {:id "created_at" :sourceType "ask-user"}
-                                     {:id "quantity"   :sourceType "ask-user"}]
+          (let [expected-id-params           [{:id "id",         :displayName "ID",         :sourceType "ask-user"}]
+                expected-row-params          [{:id "user_id",    :displayName "User ID",    :sourceType "ask-user"}
+                                              {:id "product_id", :displayName "Product ID", :sourceType "ask-user"}
+                                              {:id "subtotal",   :displayName "Subtotal",   :sourceType "ask-user"}
+                                              {:id "tax"         :displayName "Tax",        :sourceType "ask-user"}
+                                              {:id "total"       :displayName "Total",      :sourceType "ask-user"}
+                                              {:id "discount"    :displayName "Discount",   :sourceType "ask-user"}
+                                              {:id "created_at"  :displayName "Created At", :sourceType "ask-user"}
+                                              {:id "quantity"    :displayName "Quantity",   :sourceType "ask-user"}]
                 action-kind->expected-params {"row/create" expected-row-params
                                               "row/update" (concat expected-id-params expected-row-params)
                                               "row/delete" expected-id-params}]
@@ -124,11 +124,11 @@
 
         (let [;; TODO the form for configuring a row action will need to know that ID is meant to be "locked" to
               ;;      the pk of the table underlying the data-grid.
-              expected-id-params   [{:id "id"        :sourceType "ask-user"}]
-              expected-row-params  [{:id "text"      :sourceType "ask-user"}
-                                    {:id "int"       :sourceType "ask-user"}
-                                    {:id "timestamp" :sourceType "ask-user"}
-                                    {:id "date"      :sourceType "ask-user"}]]
+              expected-id-params   [{:id "id"        :displayName "ID",        :sourceType "ask-user"}]
+              expected-row-params  [{:id "text"      :displayName "Text",      :sourceType "ask-user"}
+                                    {:id "int"       :displayName "Int",       :sourceType "ask-user"}
+                                    {:id "timestamp" :displayName "Timestamp", :sourceType "ask-user"}
+                                    {:id "date"      :displayName "Date",      :sourceType "ask-user"}]]
 
           (testing "table actions"
             (let [scope {:table-id test-table}
@@ -242,6 +242,7 @@
                                                 ;;      What does the FE really write? Have we messed anything up?
                                                 ;;      Have we missed any cases?
                                                  :parameterMappings [{:parameterId       "id"
+                                                                      :displayName       "Identifier"
                                                                       :sourceType        "ask-user"}
                                                                      {:parameterId       "int"
                                                                       :sourceType        "constant"
@@ -265,11 +266,11 @@
               (testing "custom table action on a data-grid"
                 (is (=? {:status 200
                          :body   {:parameters
-                                  [{:id "id",   :sourceType "ask-user"}
-                                   {:id "int",  :sourceType "constant", :value 42}
-                                   {:id "text", :sourceType "row-data", :sourceValueTarget "text", :visibility "readonly"}
-                                   {:id "timestamp", :visibility "hidden"}
-                                   {:id "date",      :sourceType "ask-user"}]}}
+                                  [{:id "id", :displayName "Identifier", :sourceType "ask-user"}
+                                   {:id "int", :displayName "Int", :sourceType "constant", :value 42}
+                                   {:id "text", :displayName "Text", :sourceType "row-data", :sourceValueTarget "text", :visibility "readonly"}
+                                   {:id "timestamp", :displayName "Timestamp", :visibility "hidden"}
+                                   {:id "date", :displayName "Date", :sourceType "ask-user"}]}}
                         (req {:action_id "dashcard:unknown:update"
                               :scope     {:dashcard-id (:id dashcard)}})))))))))))
 
@@ -319,7 +320,10 @@
                                               :actionType        "data-grid/custom-action"
                                               :parameterMappings [{:parameterId "id", :sourceType "ask-user"}
                                                                   ;; missing name
-                                                                  {:parameterId "status", :sourceType "ask-user"}]
+                                                                  {:parameterId       "status",
+                                                                   :displayName       "How u?"
+                                                                   :sourceType        "row-data"
+                                                                   :sourceValueTarget "text"}]
                                               :enabled           true}]}}]
           ;; insert a row for the row action
           (mt/user-http-request :crowberto :post 200
@@ -327,18 +331,18 @@
                                 {:rows [{:text "a very important string"}]})
 
           (testing "configure for unsaved action will contains all action params"
-            (is (=? {:parameters [{:id "id", :sourceType "ask-user"}
-                                  {:id "name", :sourceType "ask-user"}
-                                  {:id "status", :sourceType "ask-user"}]}
+            (is (=? {:parameters [{:id "id",     :displayName "ID",     :sourceType "ask-user"}
+                                  {:id "name",   :displayName "Name",   :sourceType "ask-user"}
+                                  {:id "status", :displayName "Status", :sourceType "ask-user"}]}
                     (mt/user-http-request :crowberto :post 200
                                           "action/v2/config-form" {:action_id "dashcard:unknown:default"
                                                                    :scope     {:dashcard-id (:id dashcard)}}))))
 
           (testing "saved configurations includes any new parameter if exists"
-            (is (=? {:parameters [{:id "id", :sourceType "ask-user"}
-                                  {:id "status", :sourceType "ask-user"}
+            (is (=? {:parameters [{:id "id",     :displayName "ID",     :sourceType "ask-user"}
+                                  {:id "status", :displayName "How u?", :sourceType "row-data", :sourceValueTarget "text"}
                                   ;; name is added even though it's not originally in the saved parameterMappings
-                                  {:id "name", :sourceType "ask-user"}]}
+                                  {:id "name",   :displayName "Name",   :sourceType "ask-user"}]}
                     (mt/user-http-request :crowberto :post 200
                                           "action/v2/config-form" {:action_id "dashcard:unknown:configured"
                                                                    :scope     {:dashcard-id (:id dashcard)}})))))))))
@@ -382,15 +386,15 @@
     (mt/test-drivers #{:h2 :postgres}
       (data-editing.tu/with-data-editing-enabled! true
         (testing "saved actions"
-          (let [mapped-pk-params    [{:id "id"         :sourceType "row-data"}]
-                pending-row-params  [{:id "user_id"    :sourceType "row-data"}
-                                     {:id "product_id" :sourceType "ask-user"}
-                                     {:id "subtotal"   :sourceType "constant" :value 10}
-                                     {:id "tax"        :sourceType "constant" :value 0}
-                                     {:id "total"      :sourceType "constant" :value 0}
-                                     {:id "discount"   :sourceType "constant" :value 10}
-                                     {:id "created_at" :sourceType "ask-user"}
-                                     {:id "quantity"   :sourceType "constant" :value 1}]
+          (let [mapped-pk-params    [{:id "id"         :displayName "ID",         :sourceType "row-data"}]
+                pending-row-params  [{:id "user_id"    :displayName "User ID",    :sourceType "row-data"}
+                                     {:id "product_id" :displayName "Product ID", :sourceType "ask-user"}
+                                     {:id "subtotal"   :displayName "Subtotal",   :sourceType "constant" :value 10}
+                                     {:id "tax"        :displayName "Tax",        :sourceType "constant" :value 0}
+                                     {:id "total"      :displayName "Total",      :sourceType "constant" :value 0}
+                                     {:id "discount"   :displayName "Discount",   :sourceType "constant" :value 10}
+                                     {:id "created_at" :displayName "Created At", :sourceType "ask-user"}
+                                     {:id "quantity"   :displayName "Quantity",   :sourceType "constant" :value 1}]
                 action-kind->params {"row/create" pending-row-params
                                      "row/update" (concat mapped-pk-params pending-row-params)
                                      "row/delete" mapped-pk-params}]
