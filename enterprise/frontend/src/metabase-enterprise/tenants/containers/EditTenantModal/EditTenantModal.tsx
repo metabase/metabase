@@ -33,7 +33,7 @@ export const EditTenantModal = ({ params, onClose }: EditUserModalProps) => {
   const [updateTenant] = useUpdateTenantMutation();
 
   const initialValues = useMemo(
-    () => _.pick(tenant, ["id", "name", "slug"]),
+    () => _.pick(tenant, ["id", "name", "slug", "attributes"]),
     [tenant],
   );
 
