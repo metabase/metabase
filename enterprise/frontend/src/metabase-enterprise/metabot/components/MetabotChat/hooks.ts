@@ -7,25 +7,23 @@ function calculateFillerHeight(
   const scrollContent = Array.from(
     scrollContainerEl.children?.[0]?.children ?? [],
   );
-  const isScrollable =
-    scrollContainerEl.scrollHeight > scrollContainerEl.clientHeight;
-
   const lastUserMessageIndex = scrollContent.findLastIndex(
     (el) => el.getAttribute("data-message-role") === "user",
   );
   const currentPromptEls = scrollContent.slice(lastUserMessageIndex);
   const validEls = currentPromptEls.filter((node) => node);
-  const validElHeights = validEls.reduce((sum, node) => {
+  const nonFillerElsHeight = validEls.reduce((sum, node) => {
     return node === fillerEl ? sum : sum + node.clientHeight;
   }, 0);
 
   // when the container is scrollable, we need to factor in the top padding as well
-  const paddingAdjustment = isScrollable ? 40 : 24;
   const containerHeight = scrollContainerEl.clientHeight;
-  const remaningSpace = containerHeight - validElHeights - paddingAdjustment;
-  const fillerHeight = Math.max(0, remaningSpace);
+  const style = getComputedStyle(scrollContainerEl);
+  const paddingAdjustment =
+    parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+  const contentHeight = containerHeight - paddingAdjustment;
 
-  return Math.floor(fillerHeight);
+  return Math.max(0, contentHeight - nonFillerElsHeight);
 }
 
 function resizeFillerArea(
@@ -53,14 +51,31 @@ export function useScrollManager(hasMessages: boolean) {
   const headerRef = useRef<HTMLDivElement>(null);
   const fillerRef = useRef<HTMLDivElement>(null);
 
-  const rafRef = useRef<number>();
+  const scrollToBottomRafRef = useRef<number>();
+  const resizeRafRef = useRef<number>();
+  const scrollToPromptRafRef = useRef<number>();
+
+  // clean animations on clean up if needed
+  useEffect(function cancelAnimations() {
+    return () => {
+      if (scrollToBottomRafRef.current) {
+        cancelAnimationFrame(scrollToBottomRafRef.current);
+      }
+      if (resizeRafRef.current) {
+        cancelAnimationFrame(resizeRafRef.current);
+      }
+      if (scrollToPromptRafRef.current) {
+        cancelAnimationFrame(scrollToPromptRafRef.current);
+      }
+    };
+  }, []);
 
   const scheduleFillerResize = useCallback(() => {
     // only schedule if nothing has been for this frame
-    if (!rafRef.current) {
-      rafRef.current = requestAnimationFrame(() => {
+    if (!resizeRafRef.current) {
+      resizeRafRef.current = requestAnimationFrame(() => {
         resizeFillerArea(scrollContainerRef, fillerRef);
-        rafRef.current = undefined;
+        resizeRafRef.current = undefined;
       });
     }
   }, []);
@@ -76,9 +91,10 @@ export function useScrollManager(hasMessages: boolean) {
       // resize filler + scroll to the absolute bottom on mount
       scheduleFillerResize();
       if (scrollContainerEl) {
-        requestAnimationFrame(() => {
+        scrollToBottomRafRef.current = requestAnimationFrame(() => {
           // put in a RAF so it happens after filler resize
           scrollContainerEl.scrollTop = scrollContainerEl.scrollHeight;
+          scrollToBottomRafRef.current = undefined;
         });
       }
 
@@ -116,8 +132,9 @@ export function useScrollManager(hasMessages: boolean) {
           const top = promptOffsetTop - headerHeight;
 
           // put in a RAF so it happens after filler resize
-          requestAnimationFrame(() => {
+          scrollToPromptRafRef.current = requestAnimationFrame(() => {
             scrollContainerEl.scrollTo({ top, behavior: "smooth" });
+            scrollToPromptRafRef.current = undefined;
           });
         }
       });
