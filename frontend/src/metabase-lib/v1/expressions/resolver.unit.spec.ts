@@ -2,8 +2,10 @@ import { resolver as makeResolver } from "./resolver";
 import {
   expressions,
   fields,
+  findDimensions,
   metrics,
   query,
+  queryWithAggregation,
   segments,
   stageIndex,
 } from "./test/shared";
@@ -251,6 +253,9 @@ describe("resolver", () => {
   );
 
   describe("expressionMode = aggregation", () => {
+    const query = queryWithAggregation;
+    const { fields, expressions, segments, metrics } = findDimensions(query);
+
     const resolve = makeResolver({
       query,
       stageIndex,
