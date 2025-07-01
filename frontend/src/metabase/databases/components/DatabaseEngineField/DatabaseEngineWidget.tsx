@@ -273,13 +273,13 @@ const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
     <EngineEmptyStateRoot>
       <EngineEmptyIcon name="search" size={32} />
       {isHosted ? (
-        <EngineEmptyText>{t`Didn't find anything`}</EngineEmptyText>
+        <EngineEmptyText>{t`Didn’t find anything`}</EngineEmptyText>
       ) : (
-        <EngineEmptyText>{jt`Don't see your database? Check out our ${(
+        <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
           <ExternalLink key="link" href={docsUrl}>
             {t`Community Drivers`}
           </ExternalLink>
-        )} page to see if it's available for self-hosting.`}</EngineEmptyText>
+        )} page to see if it’s available for self-hosting.`}</EngineEmptyText>
       )}
     </EngineEmptyStateRoot>
   );
