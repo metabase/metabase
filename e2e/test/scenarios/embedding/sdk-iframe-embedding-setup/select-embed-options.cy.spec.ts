@@ -259,7 +259,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_option_changed",
-      event_detail: "brand",
+      event_detail: "theme",
     });
 
     cy.log("table header cell should now be red");
