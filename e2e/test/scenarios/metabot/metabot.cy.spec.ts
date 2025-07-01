@@ -73,7 +73,7 @@ describe("Metabot UI", () => {
       sendMetabotMessage("Who is your favorite?");
       lastChatMessage().should(
         "have.text",
-        "I'm currently offline, try again later.",
+        "Metabot is currently offline. Please try again later.",
       );
     });
 
