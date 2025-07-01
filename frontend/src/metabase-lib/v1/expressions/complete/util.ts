@@ -75,15 +75,18 @@ export function fuzzyMatcher(
         const indices = Array.from(longestMatch?.indices ?? []);
         const key = longestMatch?.key;
 
+        const item = result.item;
+
         const displayLabel = key
-          ? (result.item[key as keyof typeof result.item] as string | undefined)
+          ? (item[key as keyof typeof item] as string | undefined)
           : null;
 
-        return {
-          ...result.item,
-          displayLabel: displayLabel ?? result.item.displayLabel,
-          matches: indices,
-        };
+        // We need to preserve item identity here, so we need to return the original item
+        // possible with updated values for displayLabel and matches
+        item.displayLabel = displayLabel ?? item.displayLabel;
+        item.matches = indices;
+
+        return item;
       });
   };
 }
