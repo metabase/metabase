@@ -100,7 +100,8 @@
                             remapped-values (params.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
 
                         (testing "Should get only raw value with restricted permissions (reproducing bug)"
-                          (is (= remapped-values [1 "Rustic Paper Wallet"])
+                          (is (= [1 "Rustic Paper Wallet"]
+                                 remapped-values)
                               "Even with no query-creating permissions, we still get the remapped value."))))))))))))))
 
 (deftest ^:sequential dashboard-remapping-conflict-scenarios-test
