@@ -12,9 +12,7 @@ const COLLECTION_ID = "root";
 const config = getStorybookSdkAuthConfigForUser("admin");
 (window as any).fetchRequestToken = config.fetchRequestToken;
 
-(window as any).onCollectionClick = function onCollectionClick(
-  collection: MetabaseCollectionItem,
-) {
+(window as any).onCollectionClick = (collection: MetabaseCollectionItem) => {
   // eslint-disable-next-line no-console
   console.log(collection);
 };

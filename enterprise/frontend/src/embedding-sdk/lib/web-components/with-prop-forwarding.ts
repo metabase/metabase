@@ -1,7 +1,7 @@
-import kebabCase from "kebab-case";
-
-import { AttributeSerializer } from "embedding-sdk/lib/web-components/attribute-serializer";
+import { toDashedCase } from "embedding-sdk/lib/string";
 import type { WebComponentElementConstructor } from "embedding-sdk/types/web-components";
+
+import { jsonTransform } from "./r2wc/transforms/json";
 
 type PropForwardingConfig<TProps> = {
   propertyNames?: (keyof TProps)[];
@@ -110,8 +110,8 @@ export function withPropForwarding<TProps>(
           return;
         }
 
-        const attributeName = kebabCase(propName.toString(), false);
-        const serialized = AttributeSerializer.serializeAttributeValue(value);
+        const attributeName = toDashedCase(propName.toString());
+        const serialized = jsonTransform.stringify(value);
 
         children.forEach((child) => {
           child.setAttribute(attributeName, serialized);

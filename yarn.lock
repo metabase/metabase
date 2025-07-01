@@ -3100,18 +3100,6 @@
   resolved "https://registry.yarnpkg.com/@popperjs/core/-/core-2.10.2.tgz#0798c03351f0dea1a5a4cabddf26a55a7cbee590"
   integrity sha512-IXf3XA7+XyN7CP9gGh/XB0UxVMlvARGEgGXLubFICsUMGz6Q+DU+i4gGlpOxTjKvXjkJDJC8YdqdKkDj9qZHEQ==
 
-"@r2wc/core@^1.0.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@r2wc/core/-/core-1.2.0.tgz#a86cd2f732f499a4de8fa23b037053323f3749ed"
-  integrity sha512-vAfiuS5KywtV54SRzc4maEHcpdgeUyJzln+ATpNCOkO+ArIuOkTXd92b5YauVAd0A8B2rV/y9OeVW19vb73bUQ==
-
-"@r2wc/react-to-web-component@^2.0.4":
-  version "2.0.4"
-  resolved "https://registry.yarnpkg.com/@r2wc/react-to-web-component/-/react-to-web-component-2.0.4.tgz#a2b001b938ad4c3af8a64f520a73eb6028d60304"
-  integrity sha512-g1dtTTEGETNUimYldTW+2hxY3mmJZjzPEca0vqCutUht2GHmpK9mT5r/urmEI7uSbOkn6HaymosgVy26lvU1JQ==
-  dependencies:
-    "@r2wc/core" "^1.0.0"
-
 "@radix-ui/react-compose-refs@1.0.1":
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/@radix-ui/react-compose-refs/-/react-compose-refs-1.0.1.tgz#7ed868b66946aa6030e580b1ffca386dd4d21989"
@@ -13887,11 +13875,6 @@ kbar@^0.1.0-beta.45:
     fuse.js "^6.6.2"
     react-virtual "^2.8.2"
     tiny-invariant "^1.2.0"
-
-kebab-case@^2.0.2:
-  version "2.0.2"
-  resolved "https://registry.yarnpkg.com/kebab-case/-/kebab-case-2.0.2.tgz#d12157283733ae2136482a5ac4cb20f42ea79b65"
-  integrity sha512-NhIP7vecGtqJfNZ85ct0yRQfx//gCJHapJCBZP6/BBcBw/U218Jw7YX7rO6TI5/cCp5dJvlIjN3vbcRTqq7nWA==
 
 keyv@^3.0.0:
   version "3.1.0"

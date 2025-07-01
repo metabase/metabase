@@ -10,7 +10,7 @@ import {
 
 export type CreateDashboardModalWebComponentAttributes = {
   "initial-collection-id": string;
-  "on-create": string;
+  "on-create"?: string;
 };
 
 export type CreateDashboardModalWebComponentProps = Pick<
