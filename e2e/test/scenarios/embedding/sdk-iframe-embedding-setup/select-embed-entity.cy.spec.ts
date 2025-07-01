@@ -23,6 +23,9 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+
+    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
   it("can select a recent dashboard to embed", () => {
@@ -36,7 +39,6 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     );
 
     visitNewEmbedPage();
-    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
 
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click();
@@ -69,7 +71,6 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     logRecent("card", ORDERS_COUNT_QUESTION_ID);
 
     visitNewEmbedPage();
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     getEmbedSidebar().within(() => {
       cy.findByText("Chart").click();
