@@ -159,6 +159,22 @@ export type EventsClickedEvent = ValidateEvent<{
   triggered_from: "chart" | "collection";
 }>;
 
+export type MoveQuestionsIntoDashboardViewedEvent = ValidateEvent<{
+  event: "move_questions_into_dashboard_viewed";
+  target_id: null;
+  triggered_from: "collection_menu";
+  duration_ms: null;
+  result: string;
+}>;
+
+export type MoveQuestionsIntoDashboardConfirmedEvent = ValidateEvent<{
+  event: "move_questions_into_dashboard_confirmed";
+  target_id: null;
+  triggered_from: "move_questions_into_dashboards_modal";
+  duration_ms: number;
+  result: string;
+}>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -179,4 +195,6 @@ export type SimpleEvent =
   | VisualizeAnotherWayClickedEvent
   | VisualizerModalEvent
   | EmbeddingSetupStepSeenEvent
-  | EventsClickedEvent;
+  | EventsClickedEvent
+  | MoveQuestionsIntoDashboardViewedEvent
+  | MoveQuestionsIntoDashboardConfirmedEvent;
