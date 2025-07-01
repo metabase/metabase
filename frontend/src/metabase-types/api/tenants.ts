@@ -1,9 +1,12 @@
+import type { AttributeMap } from "./user";
+
 export type Tenant = {
   id: number;
   name: string;
   slug: string;
   member_count: number;
   is_active: boolean;
+  attributes: AttributeMap | null;
 };
 
 export type CreateTenantInput = Pick<Tenant, "name" | "slug">;

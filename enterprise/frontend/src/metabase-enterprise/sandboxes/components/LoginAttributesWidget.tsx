@@ -12,11 +12,13 @@ import { getDisabledTenantUserAttribute } from "../utils";
 interface Props extends HTMLAttributes<HTMLDivElement> {
   name: string;
   title?: string;
+  description?: string;
 }
 
 export const LoginAttributesWidget = ({
   name = "login_attributes",
   title = t`Attributes`,
+  description,
   className,
   style,
 }: Props) => {
@@ -33,7 +35,12 @@ export const LoginAttributesWidget = ({
   const { data } = useGetTenantQuery(values.tenant_id ?? skipToken);
 
   return (
-    <FormField className={className} style={style} title={title}>
+    <FormField
+      className={className}
+      style={style}
+      title={title}
+      description={description}
+    >
       <MappingEditor
         disabledValues={getDisabledTenantUserAttribute(data)}
         value={value || {}}
