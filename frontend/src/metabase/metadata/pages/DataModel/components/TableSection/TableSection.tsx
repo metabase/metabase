@@ -11,7 +11,7 @@ import {
   NameDescriptionInput,
   SortableFieldList,
 } from "metabase/metadata/components";
-import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { Box, Button, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
@@ -29,6 +29,8 @@ interface Props {
 const TableSectionBase = ({ params, table }: Props) => {
   const { fieldId, ...parsedParams } = parseRouteParams(params);
   const [updateTable] = useUpdateTableMutation();
+  const [updateTableSorting, { isLoading: isChangingSorting }] =
+    useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const [sendToast] = useToast();
   const [isSorting, setIsSorting] = useState(false);
@@ -83,6 +85,10 @@ const TableSectionBase = ({ params, table }: Props) => {
               justify="flex-end"
               wrap="nowrap"
             >
+              {isChangingSorting && (
+                <Loader size="xs" data-testid="loading-indicator" />
+              )}
+
               {!isSorting && (
                 <Button
                   h={32}
@@ -109,7 +115,7 @@ const TableSectionBase = ({ params, table }: Props) => {
                 <FieldOrderPicker
                   value={table.field_order}
                   onChange={async (fieldOrder) => {
-                    await updateTable({
+                    await updateTableSorting({
                       id: table.id,
                       field_order: fieldOrder,
                     });
