@@ -26,6 +26,7 @@ import { FIXED_METABOT_IDS, METABOT_ERR_MSG } from "./constants";
 import { MetabotProvider } from "./context";
 import {
   type MetabotState,
+  getHistory,
   getMetabotInitialState,
   metabotReducer,
 } from "./state";
@@ -239,6 +240,35 @@ describe("metabot-streaming", () => {
       // should auto-clear input + refocus
       expect(await input()).toHaveValue("");
       expect(await input()).toHaveFocus();
+    });
+
+    it("should properly handle partial messages", async () => {
+      setup();
+
+      const [pause1] = createPauses(2);
+      mockAgentEndpoint({
+        stream: createMockReadableStream(
+          (async function* () {
+            yield `0:"You, but "\n`;
+            await pause1.promise;
+            yield `0:"don't tell anyone."\n`;
+            yield `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
+          })(),
+        ),
+      });
+
+      await enterChatMessage("Who is your favorite?");
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", "You, but"],
+      ]);
+
+      pause1.resolve();
+
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", "You, but don't tell anyone."],
+      ]);
     });
   });
 
@@ -477,6 +507,29 @@ describe("metabot-streaming", () => {
         { content: "Who is your favorite?", role: "user" },
         { content: "You, but don't tell anyone.", role: "assistant" },
       ]);
+    });
+
+    it("should merge text chunks in the history", async () => {
+      const { store } = setup();
+      mockAgentEndpoint({
+        textChunks: [
+          `0:"You, but "`,
+          `0:"don't tell anyone."`,
+          `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+        ],
+      });
+
+      const initialHistory = getHistory(store.getState() as any);
+      expect(initialHistory).toEqual([]);
+
+      await enterChatMessage("Who is your favorite?");
+
+      const finalHistory = getHistory(store.getState() as any);
+      expect(finalHistory).toHaveLength(2);
+      expect(finalHistory[0].role).toBe("user");
+      expect(finalHistory[0].content).toBe("Who is your favorite?");
+      expect(finalHistory[1].role).toBe("assistant");
+      expect(finalHistory[1].content).toBe("You, but don't tell anyone.");
     });
   });
 });

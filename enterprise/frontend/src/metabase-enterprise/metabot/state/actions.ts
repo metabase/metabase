@@ -29,6 +29,7 @@ import { type MetabotErrorMessage, metabot } from "./reducer";
 import {
   getAgentErrorMessages,
   getAgentRequestMetadata,
+  getHistory,
   getIsProcessing,
   getLastMessage,
   getMetabotConversationId,
@@ -38,6 +39,7 @@ import {
 import { createMessageId } from "./utils";
 
 export const {
+  addAgentTextDelta,
   addAgentMessage,
   addAgentErrorMessage,
   addUserMessage,
@@ -253,7 +255,7 @@ export const sendStreamedAgentRequest = createAsyncThunk<
               .exhaustive();
           },
           onTextPart: (part) => {
-            dispatch(addAgentMessage({ message: String(part) }));
+            dispatch(addAgentTextDelta(String(part)));
           },
           onToolCallPart: (part) => dispatch(toolCallStart(part)),
           onToolResultPart: (part) => dispatch(toolCallEnd(part)),
@@ -267,7 +269,7 @@ export const sendStreamedAgentRequest = createAsyncThunk<
 
       return fulfillWithValue({
         conversation_id: body.conversation_id,
-        history: [...body.history, ...response.history],
+        history: [...getHistory(getState() as any), ...response.history],
         state,
       });
     } catch (error) {
