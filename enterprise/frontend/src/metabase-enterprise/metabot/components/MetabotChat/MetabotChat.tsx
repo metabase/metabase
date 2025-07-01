@@ -232,14 +232,10 @@ export const MetabotChat = () => {
               data-testid="metabot-chat-input"
               w="100%"
               leftSection={
-                <Box
-                  h="100%"
-                  pt="11px"
-                  onDoubleClick={() => metabot.toggleStreaming()}
-                >
+                <Box h="100%" pt="11px" onDoubleClick={metabot.toggleStreaming}>
                   <Icon
                     name="metabot"
-                    c={metabot.useStreaming ? "warning" : "brand"}
+                    c={metabot.useStreaming ? "brand" : "warning"}
                   />
                 </Box>
               }
