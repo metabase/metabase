@@ -3,6 +3,8 @@
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+
 import "metabase/lib/dayjs";
 
 // Import the EE plugins required by the embedding sdk.
@@ -10,6 +12,9 @@ import "sdk-ee-plugins";
 
 // Imports which are only applicable to the embedding sdk, and not the new iframe embedding.
 import "sdk-specific-imports";
+
+// Enable SDK mode as we are in the SDK bundle
+EMBEDDING_SDK_CONFIG.isSdk = true;
 
 export * from "./hooks/public";
 export * from "./components/public";
