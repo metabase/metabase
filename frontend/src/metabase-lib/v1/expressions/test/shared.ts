@@ -200,7 +200,7 @@ function findAggregation(query: Lib.Query, name: string) {
   if (query !== queryWithAggregation) {
     return null;
   }
-  const aggregations = Lib.aggregations(query, stageIndex);
+  const aggregations = Lib.aggregableColumns(query, stageIndex);
   for (const aggregation of aggregations) {
     const info = Lib.displayInfo(query, stageIndex, aggregation);
     if (info.displayName === name) {

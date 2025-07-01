@@ -249,12 +249,34 @@ describe("resolver", () => {
         expect(resolve("number", "BAR")).toEqual(expressions.BAR_UPPER);
         expect(resolve("number", "bar")).toEqual(expressions.BAR_LOWER);
       });
+
+      describe("should never resolve aggregations", () => {
+        const query = queryWithAggregation;
+
+        const resolve = makeResolver({
+          query,
+          stageIndex,
+          expressionMode,
+        });
+
+        it.each(["number", "datetime", "string", "boolean"] as const)(
+          "type = %s",
+          (type) => {
+            expect(() => resolve(type, "Bar Aggregation")).toThrow(
+              type === "boolean"
+                ? "Unknown Segment or boolean column: Bar Aggregation"
+                : "Unknown column: Bar Aggregation",
+            );
+          },
+        );
+      });
     },
   );
 
   describe("expressionMode = aggregation", () => {
     const query = queryWithAggregation;
-    const { fields, expressions, segments, metrics } = findDimensions(query);
+    const { fields, expressions, segments, metrics, aggregations } =
+      findDimensions(query);
 
     const resolve = makeResolver({
       query,
@@ -293,6 +315,12 @@ describe("resolver", () => {
           "Unknown Segment or boolean column: Foo Metric",
         );
       });
+
+      it("should not resolve aggregations", () => {
+        expect(() => boolean("Bar Aggregation")).toThrow(
+          "Unknown Segment or boolean column: Bar Aggregation",
+        );
+      });
     });
 
     describe("type = string", () => {
@@ -325,6 +353,10 @@ describe("resolver", () => {
       it("should resolve metrics", () => {
         expect(string("Foo Metric")).toEqual(metrics.FOO);
       });
+
+      it("should resolve aggregations", () => {
+        expect(string("Bar Aggregation")).toEqual(aggregations.BAR_AGGREGATION);
+      });
     });
 
     describe("type = number", () => {
@@ -353,6 +385,10 @@ describe("resolver", () => {
       it("should resolve metrics", () => {
         expect(number("Foo Metric")).toEqual(metrics.FOO);
       });
+
+      it("should resolve aggregations", () => {
+        expect(number("Bar Aggregation")).toEqual(aggregations.BAR_AGGREGATION);
+      });
     });
 
     describe("type = datetime", () => {
@@ -376,6 +412,12 @@ describe("resolver", () => {
 
       it("should resolve metrics", () => {
         expect(datetime("Foo Metric")).toEqual(metrics.FOO);
+      });
+
+      it("should resolve aggregations", () => {
+        expect(datetime("Bar Aggregation")).toEqual(
+          aggregations.BAR_AGGREGATION,
+        );
       });
     });
 
@@ -406,6 +448,10 @@ describe("resolver", () => {
       it("should resolve metrics", () => {
         expect(any("Foo Metric")).toEqual(metrics.FOO);
       });
+
+      it("should resolve aggregations", () => {
+        expect(any("Bar Aggregation")).toEqual(aggregations.BAR_AGGREGATION);
+      });
     });
 
     describe("type = expression", () => {
@@ -432,6 +478,12 @@ describe("resolver", () => {
 
       it("should resolve metrics", () => {
         expect(expression("Foo Metric")).toEqual(metrics.FOO);
+      });
+
+      it("should resolve aggregations", () => {
+        expect(expression("Bar Aggregation")).toEqual(
+          aggregations.BAR_AGGREGATION,
+        );
       });
     });
 
@@ -467,6 +519,12 @@ describe("resolver", () => {
 
       it("should resolve metrics", () => {
         expect(aggregation("Foo Metric")).toEqual(metrics.FOO);
+      });
+
+      it("should resolve aggregations", () => {
+        expect(aggregation("Bar Aggregation")).toEqual(
+          aggregations.BAR_AGGREGATION,
+        );
       });
     });
 
