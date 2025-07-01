@@ -23,26 +23,20 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-
-    H.createDashboard({ name: SECOND_DASHBOARD_NAME }).then(
-      ({ body: { id: dashboardId } }) => {
-        cy.wrap(dashboardId).as("secondDashboardId");
-      },
-    );
-
-    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
 
   it("can select a recent dashboard to embed", () => {
     cy.log("add two dashboards to activity log");
-    H.visitDashboard("@secondDashboardId");
-    cy.wait("@dashboard");
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.wait("@dashboard");
+
+    H.createDashboard({ name: SECOND_DASHBOARD_NAME }).then(
+      ({ body: { id: secondDashboardId } }) => {
+        logRecent("dashboard", secondDashboardId);
+        logRecent("dashboard", ORDERS_DASHBOARD_ID);
+      },
+    );
 
     visitNewEmbedPage();
+    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
 
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click();
@@ -71,12 +65,11 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
 
   it("can select a recent question to embed", () => {
     cy.log("add two questions to activity log");
-    H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-    cy.wait("@cardQuery");
-    H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-    cy.wait("@cardQuery");
+    logRecent("card", ORDERS_BY_YEAR_QUESTION_ID);
+    logRecent("card", ORDERS_COUNT_QUESTION_ID);
 
     visitNewEmbedPage();
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     getEmbedSidebar().within(() => {
       cy.findByText("Chart").click();
@@ -106,6 +99,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
   });
 
   it("can search and select a dashboard", () => {
+    H.createDashboard({ name: SECOND_DASHBOARD_NAME });
     visitNewEmbedPage();
 
     getEmbedSidebar().within(() => {
@@ -214,3 +208,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     });
   });
 });
+
+const logRecent = (model: "dashboard" | "card", modelId: number | string) =>
+  cy.request("POST", "/api/activity/recents", {
+    context: "selection",
+    model: model,
+    model_id: modelId,
+  });

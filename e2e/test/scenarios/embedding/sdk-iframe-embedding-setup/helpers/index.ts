@@ -14,6 +14,7 @@ export const getRecentItemCards = () =>
   cy.findAllByTestId("embed-recent-item-card");
 
 export const visitNewEmbedPage = () => {
+  cy.intercept("GET", "/api/dashboard/**").as("dashboard");
   cy.visit("/embed/new");
   cy.wait("@dashboard");
 };
