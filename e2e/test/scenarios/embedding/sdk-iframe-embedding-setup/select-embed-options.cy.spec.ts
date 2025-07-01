@@ -6,224 +6,281 @@ import {
 
 const { H } = cy;
 
-describe("scenarios > embedding > sdk iframe embed setup > select embed options", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+H.describeWithSnowplow(
+  "scenarios > embedding > sdk iframe embed setup > select embed options",
+  () => {
+    beforeEach(() => {
+      H.restore();
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+      H.enableTracking();
 
-    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-  });
-
-  it("toggles drill-throughs for dashboards", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
-
-    getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
-      .should("be.checked");
-
-    cy.log("drill-through should be enabled in the preview");
-    H.getIframeBody().within(() => {
-      cy.findByText("110.93").click();
-      cy.findByText("Filter by this value").should("be.visible");
+      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     });
 
-    cy.log("turn off drill-through");
-    getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
-      .click()
-      .should("not.be.checked");
-
-    cy.log("drill-through should be disabled in the preview");
-    H.getIframeBody().within(() => {
-      cy.findByText("110.93").click();
-      cy.findByText("Filter by this value").should("not.exist");
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
     });
 
-    cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"isDrillThroughEnabled": false');
-  });
+    it("toggles drill-throughs for dashboards", () => {
+      navigateToEmbedOptionsStep({ experience: "dashboard" });
 
-  it("toggles downloads for dashboard", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
+      getEmbedSidebar()
+        .findByLabelText("Allow users to drill through on data points")
+        .should("be.checked");
 
-    getEmbedSidebar()
-      .findByLabelText("Allow downloads")
-      .should("not.be.checked");
+      cy.log("drill-through should be enabled in the preview");
+      H.getIframeBody().within(() => {
+        cy.findByText("110.93").click();
+        cy.findByText("Filter by this value").should("be.visible");
+      });
 
-    H.getIframeBody().findByTestId("export-as-pdf-button").should("not.exist");
+      cy.log("turn off drill-through");
+      getEmbedSidebar()
+        .findByLabelText("Allow users to drill through on data points")
+        .click()
+        .should("not.be.checked");
 
-    cy.log("turn on downloads");
-    getEmbedSidebar()
-      .findByLabelText("Allow downloads")
-      .click()
-      .should("be.checked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_option_changed",
+        event_detail: "isDrillThroughEnabled",
+      });
 
-    H.getIframeBody().findByTestId("export-as-pdf-button").should("be.visible");
+      cy.log("drill-through should be disabled in the preview");
+      H.getIframeBody().within(() => {
+        cy.findByText("110.93").click();
+        cy.findByText("Filter by this value").should("not.exist");
+      });
 
-    cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withDownloads": true');
-  });
-
-  it("toggles dashboard title for dashboards", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
-
-    getEmbedSidebar()
-      .findByLabelText("Show dashboard title")
-      .should("be.checked");
-
-    H.getIframeBody().findByText("Orders in a dashboard").should("be.visible");
-
-    cy.log("turn off title");
-    getEmbedSidebar()
-      .findByLabelText("Show dashboard title")
-      .click()
-      .should("not.be.checked");
-
-    H.getIframeBody().findByText("Orders in a dashboard").should("not.exist");
-
-    cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withTitle": false');
-  });
-
-  it("toggles drill-through for charts", () => {
-    navigateToEmbedOptionsStep({ experience: "chart" });
-
-    getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
-      .should("be.checked");
-
-    cy.log("drill-through should be disabled by default in chart preview");
-    H.getIframeBody().within(() => {
-      cy.findByText("18,760").click();
-      cy.findByText("See these Orders").should("exist");
+      cy.log("snippet should be updated");
+      getEmbedSidebar().findByText("Get Code").click();
+      codeBlock().should("contain", '"isDrillThroughEnabled": false');
     });
 
-    cy.log("turn off drill-through");
-    getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
-      .click()
-      .should("not.be.checked");
+    it("toggles downloads for dashboard", () => {
+      navigateToEmbedOptionsStep({ experience: "dashboard" });
 
-    cy.log("drill-through should be disabled in chart preview");
-    H.getIframeBody().within(() => {
-      cy.findByText("18,760").click();
-      cy.findByText("See these Orders").should("not.exist");
+      getEmbedSidebar()
+        .findByLabelText("Allow downloads")
+        .should("not.be.checked");
+
+      H.getIframeBody()
+        .findByTestId("export-as-pdf-button")
+        .should("not.exist");
+
+      cy.log("turn on downloads");
+      getEmbedSidebar()
+        .findByLabelText("Allow downloads")
+        .click()
+        .should("be.checked");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_option_changed",
+        event_detail: "withDownloads",
+      });
+
+      H.getIframeBody()
+        .findByTestId("export-as-pdf-button")
+        .should("be.visible");
+
+      cy.log("snippet should be updated");
+      getEmbedSidebar().findByText("Get Code").click();
+      codeBlock().should("contain", '"withDownloads": true');
     });
 
-    cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"isDrillThroughEnabled": false');
-  });
+    it("toggles dashboard title for dashboards", () => {
+      navigateToEmbedOptionsStep({ experience: "dashboard" });
 
-  it("toggles downloads for charts", () => {
-    navigateToEmbedOptionsStep({ experience: "chart" });
+      getEmbedSidebar()
+        .findByLabelText("Show dashboard title")
+        .should("be.checked");
 
-    getEmbedSidebar()
-      .findByLabelText("Allow downloads")
-      .should("not.be.checked");
+      H.getIframeBody()
+        .findByText("Orders in a dashboard")
+        .should("be.visible");
 
-    H.getIframeBody()
-      .findByTestId("question-download-widget-button")
-      .should("not.exist");
+      cy.log("turn off title");
+      getEmbedSidebar()
+        .findByLabelText("Show dashboard title")
+        .click()
+        .should("not.be.checked");
 
-    cy.log("turn on downloads");
-    getEmbedSidebar()
-      .findByLabelText("Allow downloads")
-      .click()
-      .should("be.checked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_option_changed",
+        event_detail: "withTitle",
+      });
 
-    H.getIframeBody()
-      .findByTestId("question-download-widget-button")
-      .should("be.visible");
+      H.getIframeBody().findByText("Orders in a dashboard").should("not.exist");
 
-    cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withDownloads": true');
-  });
-
-  it("toggles chart title for charts", () => {
-    navigateToEmbedOptionsStep({ experience: "chart" });
-
-    cy.log("chart title should be visible by default");
-    getEmbedSidebar().findByLabelText("Show chart title").should("be.checked");
-    H.getIframeBody().findByText("Orders, Count").should("be.visible");
-
-    cy.log("turn off title");
-    getEmbedSidebar()
-      .findByLabelText("Show chart title")
-      .click()
-      .should("not.be.checked");
-
-    H.getIframeBody().findByText("Orders, Count").should("not.exist");
-
-    cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withTitle": false');
-  });
-
-  it("toggles save button for exploration", () => {
-    navigateToEmbedOptionsStep({ experience: "exploration" });
-
-    H.getIframeBody().within(() => {
-      cy.findByText("Orders").click();
-      cy.findByText("Visualize").click();
+      cy.log("snippet should be updated");
+      getEmbedSidebar().findByText("Get Code").click();
+      codeBlock().should("contain", '"withTitle": false');
     });
 
-    getEmbedSidebar()
-      .findByLabelText("Allow users to save new questions")
-      .should("be.checked");
+    it("toggles drill-through for charts", () => {
+      navigateToEmbedOptionsStep({ experience: "chart" });
 
-    cy.log("save button should be visible by default");
-    H.getIframeBody().findByText("Save").should("be.visible");
+      getEmbedSidebar()
+        .findByLabelText("Allow users to drill through on data points")
+        .should("be.checked");
 
-    cy.log("turn off save option");
-    getEmbedSidebar()
-      .findByLabelText("Allow users to save new questions")
-      .click()
-      .should("not.be.checked");
+      cy.log("drill-through should be disabled by default in chart preview");
+      H.getIframeBody().within(() => {
+        cy.findByText("18,760").click();
+        cy.findByText("See these Orders").should("exist");
+      });
 
-    H.getIframeBody().findByText("Save").should("not.exist");
+      cy.log("turn off drill-through");
+      getEmbedSidebar()
+        .findByLabelText("Allow users to drill through on data points")
+        .click()
+        .should("not.be.checked");
 
-    cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"isSaveEnabled": false');
-  });
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_option_changed",
+        event_detail: "isDrillThroughEnabled",
+      });
 
-  it("can change brand color", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
+      cy.log("drill-through should be disabled in chart preview");
+      H.getIframeBody().within(() => {
+        cy.findByText("18,760").click();
+        cy.findByText("See these Orders").should("not.exist");
+      });
 
-    cy.log("brand color should be visible");
-    getEmbedSidebar().within(() => {
-      cy.findByText("Brand Color").should("be.visible");
+      cy.log("snippet should be updated");
+      getEmbedSidebar().findByText("Get Code").click();
+      codeBlock().should("contain", '"isDrillThroughEnabled": false');
     });
 
-    cy.log("click on brand color picker");
-    cy.findByLabelText("#509EE3").click();
+    it("toggles downloads for charts", () => {
+      navigateToEmbedOptionsStep({ experience: "chart" });
 
-    cy.log("change brand color to red");
-    H.popover().within(() => {
-      cy.findByDisplayValue("#509EE3")
-        .should("be.visible")
-        .clear()
-        .type("rgb(255, 0, 0)");
+      getEmbedSidebar()
+        .findByLabelText("Allow downloads")
+        .should("not.be.checked");
+
+      H.getIframeBody()
+        .findByTestId("question-download-widget-button")
+        .should("not.exist");
+
+      cy.log("turn on downloads");
+      getEmbedSidebar()
+        .findByLabelText("Allow downloads")
+        .click()
+        .should("be.checked");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_option_changed",
+        event_detail: "withDownloads",
+      });
+
+      H.getIframeBody()
+        .findByTestId("question-download-widget-button")
+        .should("be.visible");
+
+      cy.log("snippet should be updated");
+      getEmbedSidebar().findByText("Get Code").click();
+      codeBlock().should("contain", '"withDownloads": true');
     });
 
-    cy.log("table header cell should now be red");
-    H.getIframeBody()
-      .findAllByTestId("cell-data")
-      .first()
-      .should("have.css", "color", "rgb(255, 0, 0)");
+    it("toggles chart title for charts", () => {
+      navigateToEmbedOptionsStep({ experience: "chart" });
 
-    cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"brand": "#FF0000"');
-  });
-});
+      cy.log("chart title should be visible by default");
+      getEmbedSidebar()
+        .findByLabelText("Show chart title")
+        .should("be.checked");
+      H.getIframeBody().findByText("Orders, Count").should("be.visible");
+
+      cy.log("turn off title");
+      getEmbedSidebar()
+        .findByLabelText("Show chart title")
+        .click()
+        .should("not.be.checked");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_option_changed",
+        event_detail: "withTitle",
+      });
+
+      H.getIframeBody().findByText("Orders, Count").should("not.exist");
+
+      cy.log("snippet should be updated");
+      getEmbedSidebar().findByText("Get Code").click();
+      codeBlock().should("contain", '"withTitle": false');
+    });
+
+    it("toggles save button for exploration", () => {
+      navigateToEmbedOptionsStep({ experience: "exploration" });
+
+      H.getIframeBody().within(() => {
+        cy.findByText("Orders").click();
+        cy.findByText("Visualize").click();
+      });
+
+      getEmbedSidebar()
+        .findByLabelText("Allow users to save new questions")
+        .should("be.checked");
+
+      cy.log("save button should be visible by default");
+      H.getIframeBody().findByText("Save").should("be.visible");
+
+      cy.log("turn off save option");
+      getEmbedSidebar()
+        .findByLabelText("Allow users to save new questions")
+        .click()
+        .should("not.be.checked");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_option_changed",
+        event_detail: "isSaveEnabled",
+      });
+
+      H.getIframeBody().findByText("Save").should("not.exist");
+
+      cy.log("snippet should be updated");
+      getEmbedSidebar().findByText("Get Code").click();
+      codeBlock().should("contain", '"isSaveEnabled": false');
+    });
+
+    it("can change brand color", () => {
+      navigateToEmbedOptionsStep({ experience: "dashboard" });
+
+      cy.log("brand color should be visible");
+      getEmbedSidebar().within(() => {
+        cy.findByText("Brand Color").should("be.visible");
+      });
+
+      cy.log("click on brand color picker");
+      cy.findByLabelText("#509EE3").click();
+
+      cy.log("change brand color to red");
+      H.popover().within(() => {
+        cy.findByDisplayValue("#509EE3")
+          .should("be.visible")
+          .clear()
+          .type("rgb(255, 0, 0)");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_option_changed",
+        event_detail: "brand",
+      });
+
+      cy.log("table header cell should now be red");
+      H.getIframeBody()
+        .findAllByTestId("cell-data")
+        .first()
+        .should("have.css", "color", "rgb(255, 0, 0)");
+
+      cy.log("snippet should be updated");
+      getEmbedSidebar().findByText("Get Code").click();
+      codeBlock().should("contain", '"brand": "#FF0000"');
+    });
+  },
+);
 
 const navigateToEmbedOptionsStep = ({
   experience,
