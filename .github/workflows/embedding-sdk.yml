@@ -158,6 +158,7 @@ jobs:
 
   # See `bin/backward-compatibility-test.js` for the documentation of this workflow.
   cross-version-for-breaking-changes:
+    name: "[NOT REQUIRED - Experimental] detect breaking changes with cross versions tests"
     # run on: every pr that targets a release branch, it does NOT run for pr targeting master
     if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.') }}
     uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
