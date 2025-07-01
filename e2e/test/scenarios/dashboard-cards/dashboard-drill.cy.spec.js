@@ -266,11 +266,12 @@ describe("scenarios > dashboard > dashboard drill", () => {
     // check that param was set to "foo"
     cy.location("search").should("eq", "?my_param=foo");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("My Param")
-      .parent()
-      .within(() => {
-        cy.findByText("foo");
-      });
+    H.filterWidget("My Param").findByText("foo");
+    // cy.findByText("My Param")
+    //   .parent()
+    //   .within(() => {
+    //     cy.findByText("foo");
+    //   });
   });
 
   it("should open the same dashboard when a custom URL click behavior points to the same dashboard (metabase#22702)", () => {
