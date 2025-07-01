@@ -28,6 +28,15 @@ export const getMessages = createSelector(
   (metabot) => metabot.messages,
 );
 
+export const getLastMessage = createSelector(getMessages, (messages) =>
+  _.last(messages),
+);
+
+export const getAgentErrorMessages = createSelector(
+  getMetabot,
+  (metabot) => metabot.errorMessages,
+);
+
 // if the message id provided is an agent id the first user message
 // that precedes it will be returned. if a user message id is provided
 // that exact message will be returned.
@@ -48,24 +57,20 @@ export const getUserPromptForMessageId = createSelector(
   },
 );
 export const getLastAgentMessagesByType = createSelector(
-  getMessages,
-  (messages) => {
-    const lastMessage = _.last(messages);
-    if (!lastMessage || lastMessage.role === "user") {
-      return [];
+  [getMessages, getAgentErrorMessages],
+  (messages, errorMessages) => {
+    if (errorMessages.length > 0) {
+      return errorMessages.map(({ message }) => message);
     }
 
-    const start =
-      messages.findLastIndex(
-        (msg) => msg.role !== "agent" || msg.type !== lastMessage.type,
-      ) + 1;
+    const start = messages.findLastIndex((msg) => msg.role !== "agent") + 1;
     return messages.slice(start).map(({ message }) => message);
   },
 );
 
-export const getActiveToolCall = createSelector(
+export const getToolCalls = createSelector(
   getMetabot,
-  (metabot) => metabot.activeToolCall,
+  (metabot) => metabot.toolCalls,
 );
 
 export const getIsProcessing = createSelector(
