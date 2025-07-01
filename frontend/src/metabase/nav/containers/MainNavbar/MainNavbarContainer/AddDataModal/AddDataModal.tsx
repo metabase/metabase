@@ -70,6 +70,7 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
           classNames={{
             list: S.list,
             tab: S.tab,
+            tabLabel: S.tabLabel,
           }}
           h="100%"
         >

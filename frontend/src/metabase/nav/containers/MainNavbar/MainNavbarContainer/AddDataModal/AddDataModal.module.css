@@ -12,6 +12,10 @@
   gap: 2px;
 }
 
+.tabLabel {
+  text-align: start;
+}
+
 .panelContainer {
   display: flex;
   flex-direction: column;
