@@ -19,8 +19,6 @@ export type MetabaseProviderWebComponentProps = {
   apiKey?: MetabaseAuthConfigWithJwt["apiKey"];
   metabaseInstanceUrl?: MetabaseAuthConfigWithJwt["metabaseInstanceUrl"];
   fetchRequestToken?: MetabaseAuthConfigWithJwt["fetchRequestToken"];
-  authConfig?: MetabaseAuthConfig;
-  theme?: MetabaseTheme;
 };
 
 export type MetabaseProviderWebComponentContextProps = {
@@ -38,9 +36,11 @@ const MetabaseProviderWebComponent = createWebComponent<
     metabaseInstanceUrl: "string",
     fetchRequestToken: "function",
     apiKey: "string",
+  },
+  contextPropTypes: {
     // These are passed as properties only, not as attributes
-    authConfig: "noop",
-    theme: "noop",
+    authConfig: "json",
+    theme: "json",
   },
   defineContext: {
     childrenComponents: [
@@ -53,9 +53,11 @@ const MetabaseProviderWebComponent = createWebComponent<
     ],
     provider: (instance) => ({
       authConfig: {
-        metabaseInstanceUrl: instance.metabaseInstanceUrl,
-        fetchRequestToken: instance.fetchRequestToken,
-        apiKey: instance.apiKey,
+        ...{
+          metabaseInstanceUrl: instance.metabaseInstanceUrl,
+          fetchRequestToken: instance.fetchRequestToken,
+          apiKey: instance.apiKey,
+        },
         ...instance.authConfig,
       } as MetabaseAuthConfig,
       theme: instance.theme as MetabaseTheme,

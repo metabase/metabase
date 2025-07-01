@@ -19,6 +19,7 @@ type CreateWebComponentConfig<TComponentProps, TContextProps> = {
   withProviders?: boolean;
   shadow?: "open" | null;
   propTypes: R2wcPropTypes<TComponentProps>;
+  contextPropTypes: R2wcPropTypes<TContextProps>;
   defineContext?: R2wcOptions<TComponentProps, TContextProps>["defineContext"];
 };
 
@@ -28,6 +29,7 @@ export const createWebComponent = <TComponentProps, TContextProps = never>(
     withProviders = true,
     shadow = "open",
     propTypes,
+    contextPropTypes,
     defineContext,
   }: CreateWebComponentConfig<TComponentProps, TContextProps>,
 ): WebComponentElementConstructor => {
@@ -64,6 +66,7 @@ export const createWebComponent = <TComponentProps, TContextProps = never>(
         ...metabaseProviderPropTypes,
         ...propTypes,
       },
+      contextProps: contextPropTypes,
       defineContext,
     },
   );

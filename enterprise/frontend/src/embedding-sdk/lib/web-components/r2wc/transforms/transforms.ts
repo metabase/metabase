@@ -7,8 +7,8 @@ import { numberTransform } from "./number";
 import { stringTransform } from "./string";
 
 export interface Transform<TValue> {
-  stringify?: (value: TValue) => string;
-  parse?: (value: string) => TValue;
+  stringify: (value: TValue) => string;
+  parse: (value: string) => TValue;
 }
 
 export const transforms = {

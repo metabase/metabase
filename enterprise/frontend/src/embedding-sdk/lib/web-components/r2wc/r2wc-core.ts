@@ -1,7 +1,6 @@
 import type { ComponentType } from "react";
 import type { Root } from "react-dom/client";
 
-import { jsonTransform } from "embedding-sdk/lib/web-components/r2wc/transforms/json";
 import { noopTransform } from "embedding-sdk/lib/web-components/r2wc/transforms/noop";
 
 import { toDashedCase } from "../../string";
@@ -17,10 +16,13 @@ export interface R2wcOptions<TProps, TContextProps = never> {
   props?:
     | PropNames<TProps>
     | Partial<Record<PropName<TProps>, R2wcPropTransformType>>;
+  contextProps?: Partial<
+    Record<PropName<TContextProps>, R2wcPropTransformType>
+  >;
   events?: PropNames<TProps> | Partial<Record<PropName<TProps>, EventInit>>;
   defineContext?: {
     childrenComponents: string[];
-    provider: (instance: HTMLElement & TProps) => TContextProps;
+    provider: (instance: HTMLElement & TProps & TContextProps) => TContextProps;
   };
 }
 
@@ -68,6 +70,10 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
   const propNames = Array.isArray(options.props)
     ? options.props.slice()
     : (Object.keys(options.props) as PropNames<TProps>);
+  const contextPropNames = Object.keys(
+    options.contextProps ?? {},
+  ) as PropNames<TContextProps>;
+
   const eventNames = Array.isArray(options.events)
     ? options.events.slice()
     : (Object.keys(options.events) as PropNames<TProps>);
@@ -216,24 +222,34 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
         return;
       }
 
+      // Pass the context props to all observed children
       Object.keys(contextProps).forEach((prop) => {
         // @ts-expect-error dynamic key
-        const value = contextProps[prop];
+        const rawValue = contextProps[prop];
 
-        if (!value) {
-          return;
+        const type =
+          options.contextProps?.[prop as keyof typeof options.contextProps];
+        const transform = type ? transforms[type] : null;
+
+        if (transform && transform !== noopTransform) {
+          // @ts-expect-error dynamic value
+          const value = transform.stringify(rawValue);
+
+          if (value === undefined) {
+            return;
+          }
+
+          const attributeName = toDashedCase(prop.toString());
+
+          children.forEach((child) => {
+            child.setAttribute(attributeName, value);
+          });
         }
-
-        const attributeName = toDashedCase(prop.toString());
-        const serialized = jsonTransform.stringify?.(value) ?? "";
-
-        children.forEach((child) => {
-          child.setAttribute(attributeName, serialized);
-        });
       });
     }
   }
 
+  // Define getters/setters for regular props
   for (const prop of propNames) {
     const attribute = mapPropAttribute[prop];
     const type = propTypes[prop];
@@ -260,6 +276,21 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
         } else {
           this[renderSymbol]();
         }
+      },
+    });
+  }
+
+  // Define getters/setters for context props
+  for (const contextProp of contextPropNames) {
+    Object.defineProperty(ReactWebComponent.prototype, contextProp, {
+      enumerable: true,
+      configurable: true,
+      get() {
+        return this[propsSymbol][contextProp];
+      },
+      set(value) {
+        this[propsSymbol][contextProp] = value;
+        this[renderSymbol]();
       },
     });
   }
