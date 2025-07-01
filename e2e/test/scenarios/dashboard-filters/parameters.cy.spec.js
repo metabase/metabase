@@ -2128,7 +2128,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.button("Add filter").click();
       });
 
-      H.dashboardParametersContainer().button("Apply").click();
+      H.applyFilterButton().click();
 
       H.getDashboardCard(0)
         .findByText(/No results/)
