@@ -6,8 +6,9 @@ import { setupAdvancedPermissions } from "./setup";
 
 describe("Add data modal (EE with token)", () => {
   describe("Database panel", () => {
-    it("should not offer a setting manager to manage databases", () => {
+    it("should not offer a setting manager to manage databases", async () => {
       setupAdvancedPermissions({ isAdmin: false, canManageSettings: true });
+      await userEvent.click(screen.getByRole("tab", { name: /Database$/ }));
 
       expect(
         screen.getByRole("tab", { name: /Database$/ }),
@@ -25,7 +26,6 @@ describe("Add data modal (EE with token)", () => {
         canUpload: true,
       });
 
-      await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
       expect(screen.getByText("Manage uploads")).toBeInTheDocument();
       expect(screen.getByText("Enable uploads")).toBeInTheDocument();
     });
@@ -38,7 +38,6 @@ describe("Add data modal (EE with token)", () => {
         canUpload: true,
       });
 
-      await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
       expect(screen.getByText("Manage uploads")).toBeInTheDocument();
     });
 
@@ -58,7 +57,6 @@ describe("Add data modal (EE with token)", () => {
         canUpload: false,
       });
 
-      await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
       expect(screen.getByText("Manage uploads")).toBeInTheDocument();
     });
   });
