@@ -33,7 +33,7 @@ const BETWEEN_TEST_CASES = [
 const EXPECTED_OPERATORS = [
   "Equal to",
   "Not equal to",
-  "Between",
+  "Range",
   "Greater than",
   "Greater than or equal to",
   "Less than",
@@ -112,7 +112,7 @@ describe("NumberFilterPicker", () => {
       setup();
 
       expect(screen.getByText("Total")).toBeInTheDocument();
-      expect(screen.getByText("Between")).toBeInTheDocument();
+      expect(screen.getByText("Range")).toBeInTheDocument();
       expect(screen.getByPlaceholderText("Start of range")).toHaveValue("");
       expect(screen.getByPlaceholderText("End of range")).toHaveValue("");
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
@@ -204,7 +204,7 @@ describe("NumberFilterPicker", () => {
             name: "Add filter",
           });
 
-          await setOperator("Between");
+          await setOperator("Range");
           const leftInput = screen.getByPlaceholderText("Start of range");
           const rightInput = screen.getByPlaceholderText("End of range");
           await userEvent.type(leftInput, String(leftValue));
@@ -227,7 +227,7 @@ describe("NumberFilterPicker", () => {
           name: "Add filter",
         });
 
-        await setOperator("Between");
+        await setOperator("Range");
         const leftInput = screen.getByPlaceholderText("Start of range");
         const rightInput = screen.getByPlaceholderText("End of range");
         await userEvent.type(leftInput, "5");
@@ -247,7 +247,7 @@ describe("NumberFilterPicker", () => {
         const { onChange, getNextFilterParts, getNextFilterColumnName } =
           setup();
 
-        await setOperator("Between");
+        await setOperator("Range");
         const leftInput = screen.getByPlaceholderText("Start of range");
         const rightInput = screen.getByPlaceholderText("End of range");
         await userEvent.type(leftInput, "5");
@@ -267,7 +267,7 @@ describe("NumberFilterPicker", () => {
       it("should add a filter with many values", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup();
 
-        await userEvent.click(screen.getByText("Between"));
+        await userEvent.click(screen.getByText("Range"));
         await userEvent.click(screen.getByText("Equal to"));
         const input = screen.getByPlaceholderText("Enter a number");
         await userEvent.type(input, "-5");
@@ -305,7 +305,7 @@ describe("NumberFilterPicker", () => {
     it("should handle invalid input", async () => {
       setup();
 
-      await userEvent.click(screen.getByText("Between"));
+      await userEvent.click(screen.getByText("Range"));
       await userEvent.click(screen.getByText("Equal to"));
       await userEvent.type(
         screen.getByPlaceholderText("Enter a number"),
@@ -396,7 +396,7 @@ describe("NumberFilterPicker", () => {
           );
 
           expect(screen.getByText("Total")).toBeInTheDocument();
-          expect(screen.getByText("Between")).toBeInTheDocument();
+          expect(screen.getByText("Range")).toBeInTheDocument();
           expect(
             screen.getByDisplayValue(String(leftValue)),
           ).toBeInTheDocument();
@@ -420,7 +420,7 @@ describe("NumberFilterPicker", () => {
             name: "Update filter",
           });
 
-          await setOperator("Between");
+          await setOperator("Range");
           const leftInput = screen.getByPlaceholderText("Start of range");
           const rightInput = screen.getByPlaceholderText("End of range");
           await userEvent.clear(leftInput);
