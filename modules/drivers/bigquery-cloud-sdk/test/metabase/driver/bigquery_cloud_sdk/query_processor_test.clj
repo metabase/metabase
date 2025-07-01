@@ -22,24 +22,18 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
-   [metabase.test.data.impl :as data.impl]
-   [metabase.test.data.interface :as tx]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]))
 
-(defn ^:private get-test-data-name
-  []
-  (bigquery.tx/test-dataset-id
-   (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db*
-                                  (tx/default-dataset :bigquery-cloud-sdk)))))
+(def ^:private test-db-name (bigquery.tx/test-dataset-id "test_data"))
 
 (defn- with-test-db-name
   "Replaces instances of v4_test_data with the full per-test-run DB name (aka dataset ID)"
   [x]
   (cond
-    (string? x) (str/replace x "v4_test_data" (get-test-data-name))
+    (string? x) (str/replace x "v4_test_data" test-db-name)
     (map? x)    (update-vals x with-test-db-name)
     (vector? x) (mapv with-test-db-name x)
     (list?   x) (map with-test-db-name x)
@@ -362,7 +356,7 @@
                                                [:field %id {:add/source-table $$reviews}]]]
                                    :limit    1})
                   filter-clause (get-in query [:query :filter])]
-              (is (= [(str (format "TIMESTAMP_MILLIS(%s.reviews.rating)" (get-test-data-name))
+              (is (= [(str (format "TIMESTAMP_MILLIS(%s.reviews.rating)" test-db-name)
                            " = "
                            "TIMESTAMP_TRUNC(TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -30 day), day)")]
                      (sql/format-expr (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause))))
@@ -610,7 +604,7 @@
                            :type       :native
                            :native     {:query         (str "SELECT count(*)\n"
                                                             (format "FROM `%s.attempts`\n"
-                                                                    (get-test-data-name))
+                                                                    (bigquery.tx/test-dataset-id "attempted_murders"))
                                                             "WHERE {{d}}")
                                         :template-tags {"d" {:name         "d"
                                                              :display-name "Date"
@@ -694,7 +688,7 @@
                            :type :native
                            :native {:query (str "SELECT count(*)\n"
                                                 (format "FROM `%s.attempts`\n"
-                                                        (get-test-data-name))
+                                                        (bigquery.tx/test-dataset-id "attempted_murders"))
                                                 "WHERE {{d}}")
                                     :template-tags {"d" {:name         "d"
                                                          :display-name "Date"
@@ -1135,7 +1129,7 @@
                                         "  `v4_sample_dataset.orders`"
                                         "LIMIT"
                                         "  10"]]
-                              (str/replace line #"\Qv4_sample_dataset\E" (get-test-data-name)))}
+                              (str/replace line #"\Qv4_sample_dataset\E" test-db-name))}
                (-> (mt/mbql-query orders
                      {:aggregation [[:aggregation-options
                                      [:percentile $orders.quantity 0.5]
@@ -1266,7 +1260,7 @@
              (-> (qp.compile/compile query)
                  :query
                  (->> (driver/prettify-native-form :bigquery-cloud-sdk))
-                 (str/replace #"sha_[a-z0-9]+_test_data" "test_data")
+                 (str/replace #"v4_test_data__transient_\d+" "test_data")
                  str/split-lines))))))
 
 (deftest ^:parallel case-expression-with-default-Date-case-DateTime-test
