@@ -242,9 +242,8 @@
       (some-> dashcard
               (process-virtual-dashcard parameters)
               (resolve-inline-parameters parameters)
-              escape-heading-markdown
               :visualization_settings
-              (assoc :type :text)))
+              (assoc :type :heading)))
 
     ;; text cards have existed for a while and I'm not sure if all existing text cards
     ;; will have virtual_card.display = "text", so assume everything else is a text card

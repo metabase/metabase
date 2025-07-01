@@ -195,8 +195,8 @@
                                             (-> dashcard :visualization_settings :inline_parameters))]
      (cond-> {:attachments (merge title-attachments body-attachments)
               :content [:p
-                      ;; Provide a horizontal scrollbar for tables that overflow container width.
-                      ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
+                        ;; Provide a horizontal scrollbar for tables that overflow container width.
+                        ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
                         [:div
                          [:a {:href        attachment-href
                               :target      "_blank"
@@ -209,7 +209,7 @@
                           description
                           (when (seq inline-parameters)
                             [:div {:style (style/style {:padding-bottom :16px})}
-                             (render.util/render-filters inline-parameters)])
+                             (render.util/render-parameters inline-parameters)])
                           [:div {:class "pulse-body"
                                  :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
                                                       :display :block

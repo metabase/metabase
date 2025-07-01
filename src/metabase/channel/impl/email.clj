@@ -78,8 +78,16 @@
 
     :text
     (let [inline-params   (:inline_parameters part)
-          rendered-params (when (seq inline-params) (render.util/render-filters inline-params))]
+          rendered-params (when (seq inline-params) (render.util/render-parameters inline-params))]
       {:content (str (markdown/process-markdown (:text part) :html)
+                     rendered-params)})
+
+    :heading
+    (let [inline-params   (:inline_parameters part)
+          rendered-params (when (seq inline-params) (render.util/render-parameters inline-params))
+          heading-text    (:text part)
+          style           (if (seq inline-params) {:margin-bottom "4px"} {})]
+      {:content (str (html [:h2 {:style style} heading-text])
                      rendered-params)})
     :tab-title
     {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html)}))
@@ -268,7 +276,7 @@
                                                                           (pulse-unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
                                                     :filters            (some-> (seq parameters)
                                                                                 (impl.util/remove-inline-parameters dashboard_parts)
-                                                                                (render.util/render-filters))})
+                                                                                (render.util/render-parameters))})
                                   (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
     (construct-emails template message-context-fn attachments recipients)))
 

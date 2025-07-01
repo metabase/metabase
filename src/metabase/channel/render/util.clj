@@ -183,46 +183,19 @@
      ;; Return in row-major format
      :rows (apply mapv vector unzipped-rows)}))
 
-(defn render-filters
-  "Renders dashboard parameters as a Hiccup table.
-   Each parameter is rendered in a separate row with its name and value.
-   The `parameters` argument should be a collection of parameter maps."
+(defn render-parameters
+  "Renders parameters as inline left-aligned spans for use inside a dashcard."
   [parameters]
-  (let [cells (map
-               (fn [filter]
-                 [:td {:class "filter-cell"
-                       :style (style/style {:width "50%"
-                                            :padding "0px"
-                                            :vertical-align "baseline"})}
-                  [:table {:cellpadding "0"
-                           :cellspacing "0"
-                           :width "100%"
-                           :height "100%"}
-                   [:tr
-                    [:td
-                     {:style (style/style {:color style/color-text-medium
-                                           :min-width "100px"
-                                           :width "50%"
-                                           :padding "4px 4px 4px 0"
-                                           :vertical-align "baseline"})}
-                     (:name filter)]
-                    [:td
-                     {:style (style/style {:color style/color-text-dark
-                                           :min-width "100px"
-                                           :width "50%"
-                                           :padding "4px 16px 4px 8px"
-                                           :vertical-align "baseline"})}
-                     (shared.params/value-string filter (system/site-locale))]]]])
-               parameters)
-        rows  (partition-all 2 cells)]
-    (html
-     [:table {:style (style/style {:table-layout    :fixed
-                                   :border-collapse :collapse
-                                   :cellpadding     "0"
-                                   :cellspacing     "0"
-                                   :width           "100%"
-                                   :font-size       "12px"
-                                   :font-weight     700
-                                   :margin-top      "8px"})}
-      (for [row rows]
-        [:tr {} row])])))
+  (html
+   (let [locale (system/site-locale)]
+     [:div {:style (style/style {:font-size "14px"
+                                 :font-weight 700
+                                 :padding-bottom "8px"})}
+      (for [{:keys [name] :as param} parameters]
+        [:div
+         {:style (style/style {:margin-bottom "4px"})}
+         [:span {:style (style/style {:color style/color-text-dark
+                                      :padding-right "8px"})}
+          name]
+         [:span {:style (style/style {:color style/color-text-medium})}
+          (shared.params/value-string param locale)]])])))
