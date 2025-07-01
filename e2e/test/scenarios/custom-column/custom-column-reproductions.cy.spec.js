@@ -1138,12 +1138,13 @@ describe("issue 49882", () => {
   });
 
   it("should update currently selected suggestion when suggestions list is updated (metabase#49882-4)", () => {
-    const selectProductRating = "{downarrow}".repeat(8);
     H.enterCustomColumnDetails({
-      formula: `[Produ${selectProductRating}`,
+      formula: "[Produ",
       blur: false,
       focus: false,
     });
+
+    Cypress._.times(8, () => cy.realPress("ArrowDown"));
 
     H.CustomExpressionEditor.completion("Product → Rating").should(
       "be.visible",
