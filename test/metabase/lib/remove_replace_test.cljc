@@ -2,6 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [mb.hawk.assert-exprs.approximately-equal :refer [same]]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -513,12 +514,12 @@
       (is (=? (map lib.options/ident aggregations)
               (map lib.options/ident replaced-aggregations))))
     (testing "replacing with dependent should cascade keeping valid parts"
-      (is (=? {:stages [{:aggregation [[:max {} [:field {} (meta/id :venues :price)]]
-                                       (second aggregations)]
-                         :expressions [[:aggregation {:lib/expression-name "expr"} string?]]}
+      (is (=? {:stages [{:aggregation [[:max {:lib/uuid (same :agg0-id)} [:field {} (meta/id :venues :price)]]
+                                       (second aggregations)
+                                       [:aggregation {:name "expr", :display-name "expr"} (same :agg0-id)]]}
                         {:filters [[:= {} [:field {} "max"] 1]]}]}
               (-> query
-                  (as-> <> (lib/expression <> "expr" (lib/aggregation-ref <> 0)))
+                  (as-> <> (lib/aggregate <> (lib/with-expression-name (lib/aggregation-ref <> 0) "expr")))
                   (lib/append-stage)
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
                   (lib/replace-clause 0 (first aggregations) (lib/max (meta/field-metadata :venues :price)))))))
