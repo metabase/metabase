@@ -1142,6 +1142,7 @@ describe("issue 49882", () => {
     H.enterCustomColumnDetails({
       formula: `[Produ${selectProductRating}`,
       blur: false,
+      focus: false,
     });
 
     H.CustomExpressionEditor.completion("Product → Rating").should(
