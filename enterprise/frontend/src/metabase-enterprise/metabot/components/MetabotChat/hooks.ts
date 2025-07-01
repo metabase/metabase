@@ -22,9 +22,10 @@ function calculateFillerHeight(
   // when the container is scrollable, we need to factor in the top padding as well
   const paddingAdjustment = isScrollable ? 40 : 24;
   const containerHeight = scrollContainerEl.clientHeight;
-  const fillerHeight = containerHeight - validElHeights - paddingAdjustment;
+  const remaningSpace = containerHeight - validElHeights - paddingAdjustment;
+  const fillerHeight = Math.max(0, remaningSpace);
 
-  return Math.max(0, fillerHeight);
+  return Math.floor(fillerHeight);
 }
 
 function resizeFillerArea(
