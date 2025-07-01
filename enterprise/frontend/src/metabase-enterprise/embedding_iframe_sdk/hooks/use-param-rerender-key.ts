@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 
+import { sortObject } from "metabase-lib/v1/utils";
+
 import type { SdkIframeEmbedSettings } from "../../embedding_iframe_sdk/types/embed";
 
 /**
@@ -13,13 +15,16 @@ export const useParamRerenderKey = (settings: SdkIframeEmbedSettings) =>
         .with(
           { dashboardId: P.nonNullable },
           (settings) =>
-            `dashboard-${JSON.stringify(settings.initialParameters)}`,
+            `dashboard-${stableStringify(settings.initialParameters)}`,
         )
         .with(
           { questionId: P.nonNullable },
           (settings) =>
-            `question-${JSON.stringify(settings.initialSqlParameters)}`,
+            `question-${stableStringify(settings.initialSqlParameters)}`,
         )
         .otherwise(() => null),
     [settings],
   );
+
+// Stringify with sorted keys to ensure stable orders.
+const stableStringify = <T>(obj: T): string => JSON.stringify(sortObject(obj));
