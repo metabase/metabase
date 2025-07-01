@@ -986,7 +986,7 @@ describe("issue 36508", () => {
     H.popover().within(() => {
       cy.findByText("Summaries").click();
       cy.findByText("Distinct values of Email").click();
-      cy.findByText("Between").click();
+      cy.findByText("Range").click();
     });
 
     H.popover()

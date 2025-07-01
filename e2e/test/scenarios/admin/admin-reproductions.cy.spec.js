@@ -237,9 +237,7 @@ describe("(metabase#46714)", () => {
       cy.findByText("Total").click();
     });
 
-    cy.findByLabelText("Filter operator")
-      .should("have.text", "Between")
-      .click();
+    cy.findByLabelText("Filter operator").should("have.text", "Range").click();
     // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Less than").click();
     cy.findByLabelText("Filter operator").should("have.text", "Less than");

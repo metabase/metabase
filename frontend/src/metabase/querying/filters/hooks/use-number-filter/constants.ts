@@ -27,6 +27,7 @@ export const OPERATOR_OPTIONS: Record<
   between: {
     operator: "between",
     valueCount: 2,
+    name: "Range",
   },
   ">=": {
     operator: ">=",

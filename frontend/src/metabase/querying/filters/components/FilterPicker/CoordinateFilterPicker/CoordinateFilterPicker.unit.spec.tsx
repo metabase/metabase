@@ -34,7 +34,7 @@ const EXPECTED_OPERATORS = [
   "Is",
   "Is not",
   "Inside",
-  "Between",
+  "Range",
   "Greater than",
   "Greater than or equal to",
   "Less than",
@@ -117,7 +117,7 @@ describe("CoordinateFilterPicker", () => {
       setup();
 
       expect(screen.getByText("User → Latitude")).toBeInTheDocument();
-      expect(screen.getByText("Between")).toBeInTheDocument();
+      expect(screen.getByText("Range")).toBeInTheDocument();
       expect(screen.getByPlaceholderText("Start of range")).toHaveValue("");
       expect(screen.getByPlaceholderText("End of range")).toHaveValue("");
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
@@ -188,7 +188,7 @@ describe("CoordinateFilterPicker", () => {
             name: "Add filter",
           });
 
-          await setOperator("Between");
+          await setOperator("Range");
           const leftInput = screen.getByPlaceholderText("Start of range");
           const rightInput = screen.getByPlaceholderText("End of range");
           await userEvent.type(leftInput, String(leftValue));
@@ -211,7 +211,7 @@ describe("CoordinateFilterPicker", () => {
           name: "Add filter",
         });
 
-        await setOperator("Between");
+        await setOperator("Range");
         const leftInput = screen.getByPlaceholderText("Start of range");
         const rightInput = screen.getByPlaceholderText("End of range");
         await userEvent.type(leftInput, "5");
@@ -231,7 +231,7 @@ describe("CoordinateFilterPicker", () => {
         const { onChange, getNextFilterParts, getNextFilterColumnNames } =
           setup();
 
-        await setOperator("Between");
+        await setOperator("Range");
         const leftInput = screen.getByPlaceholderText("Start of range");
         const rightInput = screen.getByPlaceholderText("End of range");
         await userEvent.type(leftInput, "5");
@@ -333,7 +333,7 @@ describe("CoordinateFilterPicker", () => {
       it("should add a filter with many values", async () => {
         const { getNextFilterParts, getNextFilterColumnNames } = setup();
 
-        await userEvent.click(screen.getByText("Between"));
+        await userEvent.click(screen.getByText("Range"));
         await userEvent.click(screen.getByText("Is"));
         const input = screen.getByPlaceholderText("Enter a number");
         await userEvent.type(input, "5");
@@ -353,7 +353,7 @@ describe("CoordinateFilterPicker", () => {
 
     it("should handle invalid input", async () => {
       setup();
-      await userEvent.click(screen.getByText("Between"));
+      await userEvent.click(screen.getByText("Range"));
       await userEvent.click(screen.getByText("Is"));
       await userEvent.type(
         screen.getByPlaceholderText("Enter a number"),
@@ -443,7 +443,7 @@ describe("CoordinateFilterPicker", () => {
           setup(opts);
 
           expect(screen.getByText("User → Latitude")).toBeInTheDocument();
-          expect(screen.getByText("Between")).toBeInTheDocument();
+          expect(screen.getByText("Range")).toBeInTheDocument();
           expect(
             screen.getByDisplayValue(String(leftValue)),
           ).toBeInTheDocument();
@@ -466,7 +466,7 @@ describe("CoordinateFilterPicker", () => {
             name: "Update filter",
           });
 
-          await setOperator("Between");
+          await setOperator("Range");
           const leftInput = screen.getByPlaceholderText("Start of range");
           const rightInput = screen.getByPlaceholderText("End of range");
           await userEvent.clear(leftInput);
@@ -615,7 +615,7 @@ describe("CoordinateFilterPicker", () => {
       expect(screen.getByText("200")).toBeInTheDocument();
       expect(updateButton).toBeEnabled();
 
-      await setOperator("Between");
+      await setOperator("Range");
 
       expect(screen.getByDisplayValue("-100")).toBeInTheDocument();
       expect(screen.getByDisplayValue("200")).toBeInTheDocument();
