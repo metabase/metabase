@@ -6,264 +6,264 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
-H.describeWithSnowplow(
-  "scenarios > embedding > sdk iframe embed setup > embed parameters",
-  () => {
-    beforeEach(() => {
-      H.restore();
-      H.resetSnowplow();
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-      H.enableTracking();
+const suiteTitle =
+  "scenarios > embedding > sdk iframe embed setup > embed parameters";
 
-      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-      cy.intercept("GET", "/api/card/**").as("card");
+H.describeWithSnowplow(suiteTitle, () => {
+  beforeEach(() => {
+    H.restore();
+    H.resetSnowplow();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.enableTracking();
 
-      const dashboardParameters = [
-        {
-          name: "ID",
-          slug: "id",
-          id: "11111111",
-          type: "id",
-        },
-        {
-          name: "Product ID",
-          slug: "product_id",
-          id: "22222222",
-          type: "id",
-        },
-      ];
+    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("GET", "/api/card/**").as("card");
 
-      H.createQuestionAndDashboard({
-        questionDetails: {
-          name: "Orders table",
-          query: { "source-table": ORDERS_ID },
-        },
-        dashboardDetails: {
-          name: "Dashboard with Parameters",
-          parameters: dashboardParameters,
-        },
-      }).then(({ body: card }) => {
-        H.editDashboardCard(card, {
-          parameter_mappings: dashboardParameters.map((parameter) => ({
-            card_id: card.card_id,
-            parameter_id: parameter.id,
-            target: ["dimension", ["field", ORDERS.ID, null]],
-          })),
-        });
+    const dashboardParameters = [
+      {
+        name: "ID",
+        slug: "id",
+        id: "11111111",
+        type: "id",
+      },
+      {
+        name: "Product ID",
+        slug: "product_id",
+        id: "22222222",
+        type: "id",
+      },
+    ];
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Orders table",
+        query: { "source-table": ORDERS_ID },
+      },
+      dashboardDetails: {
+        name: "Dashboard with Parameters",
+        parameters: dashboardParameters,
+      },
+    }).then(({ body: card }) => {
+      H.editDashboardCard(card, {
+        parameter_mappings: dashboardParameters.map((parameter) => ({
+          card_id: card.card_id,
+          parameter_id: parameter.id,
+          target: ["dimension", ["field", ORDERS.ID, null]],
+        })),
       });
+    });
 
-      H.createNativeQuestion({
-        name: "Question with Parameters",
-        native: {
-          query: "SELECT * FROM orders WHERE id = {{id}}",
-          "template-tags": {
-            id: {
-              id: "11111111",
-              name: "id",
-              "display-name": "ID",
-              type: "number",
-              default: null,
-            },
+    H.createNativeQuestion({
+      name: "Question with Parameters",
+      native: {
+        query: "SELECT * FROM orders WHERE id = {{id}}",
+        "template-tags": {
+          id: {
+            id: "11111111",
+            name: "id",
+            "display-name": "ID",
+            type: "number",
+            default: null,
           },
         },
-      });
+      },
+    });
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  it("loads parameters into parameter settings", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: "Dashboard with Parameters",
     });
 
-    afterEach(() => {
-      H.expectNoBadSnowplowEvents();
+    getEmbedSidebar().within(() => {
+      cy.findByText("Parameters").should("be.visible");
+
+      cy.log("parameter inputs should be visible");
+      cy.findByLabelText("ID").should("be.visible");
+      cy.findByLabelText("Product ID").should("be.visible");
+
+      cy.log("parameters should be visible by default");
+
+      parameterVisibilityToggle("id").should(
+        "have.attr",
+        "data-hidden",
+        "false",
+      );
+
+      parameterVisibilityToggle("product_id").should(
+        "have.attr",
+        "data-hidden",
+        "false",
+      );
+    });
+  });
+
+  it("can set default parameter values", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: "Dashboard with Parameters",
     });
 
-    it("loads parameters into parameter settings", () => {
-      navigateToEmbedOptionsStep({
-        experience: "dashboard",
-        resourceName: "Dashboard with Parameters",
-      });
+    cy.log("set default value for id");
+    getEmbedSidebar().findByLabelText("ID").type("123").blur();
 
-      getEmbedSidebar().within(() => {
-        cy.findByText("Parameters").should("be.visible");
-
-        cy.log("parameter inputs should be visible");
-        cy.findByLabelText("ID").should("be.visible");
-        cy.findByLabelText("Product ID").should("be.visible");
-
-        cy.log("parameters should be visible by default");
-
-        parameterVisibilityToggle("id").should(
-          "have.attr",
-          "data-hidden",
-          "false",
-        );
-
-        parameterVisibilityToggle("product_id").should(
-          "have.attr",
-          "data-hidden",
-          "false",
-        );
-      });
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "initialParameters",
     });
 
-    it("can set default parameter values", () => {
-      navigateToEmbedOptionsStep({
-        experience: "dashboard",
-        resourceName: "Dashboard with Parameters",
-      });
+    H.getIframeBody()
+      .findByTestId("dashboard-parameters-widget-container")
+      .findByLabelText("ID")
+      .should("contain", "123");
 
-      cy.log("set default value for id");
-      getEmbedSidebar().findByLabelText("ID").type("123").blur();
+    cy.log("set default value for product id");
+    getEmbedSidebar().findByLabelText("Product ID").type("456").blur();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "initialParameters",
+    });
+
+    H.getIframeBody()
+      .findByTestId("dashboard-parameters-widget-container")
+      .findByLabelText("Product ID")
+      .should("contain", "456");
+
+    cy.log("both default values should be in the code snippet");
+    getEmbedSidebar().within(() => {
+      cy.findByText("Get Code").click();
+      codeBlock().should("contain", '"initialParameters"');
+      codeBlock().should("contain", '"id": "123"');
+      codeBlock().should("contain", '"product_id": "456"');
+    });
+  });
+
+  it("can hide dashboard parameters", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: "Dashboard with Parameters",
+    });
+
+    cy.log("hide both parameters");
+    getEmbedSidebar().within(() => {
+      parameterVisibilityToggle("id").click();
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_option_changed",
-        event_detail: "initialParameters",
+        event_detail: "hiddenParameters",
       });
 
-      H.getIframeBody()
-        .findByTestId("dashboard-parameters-widget-container")
-        .findByLabelText("ID")
-        .should("contain", "123");
-
-      cy.log("set default value for product id");
-      getEmbedSidebar().findByLabelText("Product ID").type("456").blur();
+      parameterVisibilityToggle("product_id").click();
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_option_changed",
-        event_detail: "initialParameters",
-      });
-
-      H.getIframeBody()
-        .findByTestId("dashboard-parameters-widget-container")
-        .findByLabelText("Product ID")
-        .should("contain", "456");
-
-      cy.log("both default values should be in the code snippet");
-      getEmbedSidebar().within(() => {
-        cy.findByText("Get Code").click();
-        codeBlock().should("contain", '"initialParameters"');
-        codeBlock().should("contain", '"id": "123"');
-        codeBlock().should("contain", '"product_id": "456"');
+        event_detail: "hiddenParameters",
       });
     });
 
-    it("can hide dashboard parameters", () => {
-      navigateToEmbedOptionsStep({
-        experience: "dashboard",
-        resourceName: "Dashboard with Parameters",
-      });
+    cy.log("parameter widget container should not exist");
+    H.getIframeBody()
+      .findByTestId("dashboard-parameters-widget-container")
+      .should("not.exist");
 
-      cy.log("hide both parameters");
-      getEmbedSidebar().within(() => {
-        parameterVisibilityToggle("id").click();
+    cy.log("code snippet should contain the hidden parameters");
+    getEmbedSidebar().within(() => {
+      cy.findByText("Get Code").click();
+      codeBlock().should("contain", '"hiddenParameters"');
+      codeBlock().should("contain", '"id"');
+      codeBlock().should("contain", '"product_id"');
+    });
+  });
 
-        H.expectUnstructuredSnowplowEvent({
-          event: "embed_wizard_option_changed",
-          event_detail: "hiddenParameters",
-        });
-
-        parameterVisibilityToggle("product_id").click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: "embed_wizard_option_changed",
-          event_detail: "hiddenParameters",
-        });
-      });
-
-      cy.log("parameter widget container should not exist");
-      H.getIframeBody()
-        .findByTestId("dashboard-parameters-widget-container")
-        .should("not.exist");
-
-      cy.log("code snippet should contain the hidden parameters");
-      getEmbedSidebar().within(() => {
-        cy.findByText("Get Code").click();
-        codeBlock().should("contain", '"hiddenParameters"');
-        codeBlock().should("contain", '"id"');
-        codeBlock().should("contain", '"product_id"');
-      });
+  it("can set default parameters for SQL questions", () => {
+    navigateToEmbedOptionsStep({
+      experience: "chart",
+      resourceName: "Question with Parameters",
     });
 
-    it("can set default parameters for SQL questions", () => {
-      navigateToEmbedOptionsStep({
-        experience: "chart",
-        resourceName: "Question with Parameters",
-      });
-
-      getEmbedSidebar().within(() => {
-        cy.findByText("Parameters").should("be.visible");
-        cy.findByLabelText("ID").should("be.visible");
-      });
-
-      H.getIframeBody()
-        .findByText(/missing required parameters/)
-        .should("exist");
-
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("ID").type("123").blur();
-      });
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_option_changed",
-        event_detail: "initialSqlParameters",
-      });
-
-      H.getIframeBody().within(() => {
-        cy.findByText(/missing required parameters/).should("not.exist");
-        cy.findByText("123").should("be.visible");
-
-        // value in a subtotal field
-        cy.findAllByText("75.41").first().should("be.visible");
-      });
-
-      getEmbedSidebar().within(() => {
-        cy.findByText("Get Code").click();
-        codeBlock().should("contain", '"initialSqlParameters"');
-        codeBlock().should("contain", '"id": "123"');
-      });
+    getEmbedSidebar().within(() => {
+      cy.findByText("Parameters").should("be.visible");
+      cy.findByLabelText("ID").should("be.visible");
     });
 
-    it("shows no parameters message for dashboards without parameters", () => {
-      navigateToEmbedOptionsStep({
-        experience: "dashboard",
-        resourceName: "Orders in a dashboard",
-      });
+    H.getIframeBody()
+      .findByText(/missing required parameters/)
+      .should("exist");
 
-      getEmbedSidebar().within(() => {
-        cy.findByText(
-          "Parameters are not available for this dashboard.",
-        ).should("be.visible");
-      });
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("ID").type("123").blur();
     });
 
-    it("shows no parameters message for charts without parameters", () => {
-      navigateToEmbedOptionsStep({
-        experience: "chart",
-        resourceName: "Orders, Count",
-      });
-
-      getEmbedSidebar().within(() => {
-        cy.findByText("Parameters are not available for this chart.").should(
-          "be.visible",
-        );
-      });
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "initialSqlParameters",
     });
 
-    it("should not show parameter settings for exploration template", () => {
-      navigateToEntitySelectionStep({ experience: "exploration" });
+    H.getIframeBody().within(() => {
+      cy.findByText(/missing required parameters/).should("not.exist");
+      cy.findByText("123").should("be.visible");
 
-      getEmbedSidebar().within(() => {
-        cy.log("go to embed options step");
-        cy.findByText("Next").click();
-
-        cy.log("should still contain appearance and behavior");
-        cy.findByText("Appearance").should("be.visible");
-        cy.findByText("Behavior").should("be.visible");
-
-        cy.log("should not contain parameters");
-        cy.findByText("Parameters").should("not.exist");
-      });
+      // value in a subtotal field
+      cy.findAllByText("75.41").first().should("be.visible");
     });
-  },
-);
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Get Code").click();
+      codeBlock().should("contain", '"initialSqlParameters"');
+      codeBlock().should("contain", '"id": "123"');
+    });
+  });
+
+  it("shows no parameters message for dashboards without parameters", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: "Orders in a dashboard",
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Parameters are not available for this dashboard.").should(
+        "be.visible",
+      );
+    });
+  });
+
+  it("shows no parameters message for charts without parameters", () => {
+    navigateToEmbedOptionsStep({
+      experience: "chart",
+      resourceName: "Orders, Count",
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Parameters are not available for this chart.").should(
+        "be.visible",
+      );
+    });
+  });
+
+  it("should not show parameter settings for exploration template", () => {
+    navigateToEntitySelectionStep({ experience: "exploration" });
+
+    getEmbedSidebar().within(() => {
+      cy.log("go to embed options step");
+      cy.findByText("Next").click();
+
+      cy.log("should still contain appearance and behavior");
+      cy.findByText("Appearance").should("be.visible");
+      cy.findByText("Behavior").should("be.visible");
+
+      cy.log("should not contain parameters");
+      cy.findByText("Parameters").should("not.exist");
+    });
+  });
+});
 
 const navigateToEmbedOptionsStep = ({
   experience,

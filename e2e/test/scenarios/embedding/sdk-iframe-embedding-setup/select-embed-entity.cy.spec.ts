@@ -18,10 +18,10 @@ const SECOND_DASHBOARD_NAME = "Acme Inc";
 const FIRST_QUESTION_NAME = "Orders, Count";
 const SECOND_QUESTION_NAME = "Orders, Count, Grouped by Created At (year)";
 
-const suite =
+const suiteTitle =
   "scenarios > embedding > sdk iframe embed setup > select embed entity";
 
-H.describeWithSnowplow(suite, () => {
+H.describeWithSnowplow(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
