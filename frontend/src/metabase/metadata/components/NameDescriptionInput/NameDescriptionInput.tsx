@@ -74,6 +74,7 @@ export const NameDescriptionInput = ({
         size="lg"
         styles={{
           section: {
+            // limit the flicker when element is being measured for the first time
             visibility: width === 0 ? "hidden" : undefined,
           },
           input: {

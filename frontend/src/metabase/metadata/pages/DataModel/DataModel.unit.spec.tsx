@@ -151,6 +151,7 @@ const JSON_FIELD_NESTED = createMockField({
   id: 2,
   name: "version",
   display_name: "Version",
+  parent_id: getRawTableFieldId(JSON_FIELD_ROOT),
   nfc_path: ["JSON", "version"],
 });
 
@@ -661,10 +662,9 @@ describe("DataModel", () => {
         getTableSectionFieldNameInput(JSON_FIELD_NESTED.display_name),
       ).toBeInTheDocument();
 
-      // TODO: assert presence of prefix for JSON-unfolded column
-      // TODO: https://linear.app/metabase/issue/SEM-460/show-prefix-for-json-unfolded-columns
-      // const section = screen.getByLabelText(JSON_FIELD_NESTED.name);
-      // expect(within(section).getByText("JSON.version")).toBeInTheDocument();
+      expect(
+        getTableSectionField(JSON_FIELD_NESTED.display_name),
+      ).toHaveTextContent(`${JSON_FIELD_ROOT.display_name}:`);
     });
 
     describe("navigation", () => {
