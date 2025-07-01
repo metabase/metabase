@@ -688,7 +688,7 @@
                                                (assoc :result_metadata           metadata
                                                       :verified-result-metadata? true))
 
-          card-updates                       (cond->> card-updates
+          card-updates                       (cond-> card-updates
                                                is-transform-after-update?
                                                (merge (transform-updates card-before-update)))
 
