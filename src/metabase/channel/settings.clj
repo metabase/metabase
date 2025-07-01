@@ -130,7 +130,7 @@
   :visibility :settings-manager
   :audit      :getter)
 
-(defsetting cloud-email-from-address
+(defsetting override-email-from-address
   (deferred-tru "The email address you want to use for the sender of emails from your custom SMTP server.")
   :encryption :no
   :feature   :cloud-custom-smtp
@@ -179,7 +179,7 @@
   :visibility :settings-manager
   :audit      :getter)
 
-(defsetting cloud-email-smtp-host
+(defsetting override-email-smtp-host
   (deferred-tru "The address of the custom SMTP server that handles your emails.")
   :encryption :when-encryption-key-set
   :feature   :cloud-custom-smtp
@@ -193,7 +193,7 @@
   :visibility :settings-manager
   :audit      :getter)
 
-(defsetting cloud-email-smtp-username
+(defsetting override-email-smtp-username
   (deferred-tru "Custom SMTP server username.")
   :encryption :when-encryption-key-set
   :feature   :cloud-custom-smtp
@@ -208,7 +208,7 @@
   :sensitive? true
   :audit      :getter)
 
-(defsetting cloud-email-smtp-password
+(defsetting override-email-smtp-password
   (deferred-tru "Custom SMTP server password.")
   :encryption :when-encryption-key-set
   :feature   :cloud-custom-smtp
@@ -224,7 +224,7 @@
   :visibility :settings-manager
   :audit      :getter)
 
-(defsetting cloud-email-smtp-port
+(defsetting override-email-smtp-port
   (deferred-tru "The port your custom SMTP server uses for outgoing emails. Only ports 465, 587, and 2525 are supported.")
   :encryption :when-encryption-key-set
   :type :integer
@@ -250,7 +250,7 @@
                   (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
                 (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
 
-(defsetting cloud-email-smtp-security
+(defsetting override-email-smtp-security
   (deferred-tru "SMTP secure connection protocol for your custom server. (tls, ssl, or starttls)")
   :encryption :when-encryption-key-set
   :feature    :cloud-custom-smtp
@@ -265,7 +265,7 @@
                           (tru "Invalid cloud-email-smtp-security! Only values of tls, ssl, and starttls are allowed.")))
                 (setting/set-value-of-type! :keyword :cloud-email-smtp-security new-value)))
 
-(defsetting cloud-smtp-enabled
+(defsetting override-smtp-enabled
   (deferred-tru "Whether to use the custom SMTP server rather than the standard settings.")
   :encryption :no
   :feature    :cloud-custom-smtp

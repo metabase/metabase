@@ -86,12 +86,12 @@
 
 (defn- smtp-settings []
   (merge (if (and (channel.settings/cloud-smtp-enabled) (premium-features/is-hosted?))
-           (-> {:host         (channel.settings/cloud-email-smtp-host)
-                :user         (channel.settings/cloud-email-smtp-username)
-                :pass         (channel.settings/cloud-email-smtp-password)
-                :port         (channel.settings/cloud-email-smtp-port)
-                :from-address (channel.settings/cloud-email-from-address)}
-               (add-ssl-settings (channel.settings/cloud-email-smtp-security)))
+           (-> {:host         (channel.settings/override-email-smtp-host)
+                :user         (channel.settings/override-email-smtp-username)
+                :pass         (channel.settings/override-email-smtp-password)
+                :port         (channel.settings/override-email-smtp-port)
+                :from-address (channel.settings/override-email-from-address)}
+               (add-ssl-settings (channel.settings/override-email-smtp-security)))
            (-> {:host         (channel.settings/email-smtp-host)
                 :user         (channel.settings/email-smtp-username)
                 :pass         (channel.settings/email-smtp-password)
