@@ -16,7 +16,7 @@
            (#'api.email/humanize-error-messages @#'api.email/mb-to-smtp-settings
                                                 {::email/error (Exception. "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar")})))
     (is (= {:errors {:cloud-email-smtp-host "Wrong host or port", :cloud-email-smtp-port "Wrong host or port"}}
-           (#'api.email/humanize-error-messages @#'api.email/cloud-mb-to-smtp-settings
+           (#'api.email/humanize-error-messages @#'api.email/override-mb-to-smtp-settings
                                                 {::email/error (Exception. "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar")}))))
   (is (= {:message "Sorry, something went wrong. Please try again. Error: Some unexpected message"}
          (#'api.email/humanize-error-messages @#'api.email/mb-to-smtp-settings
@@ -32,7 +32,7 @@
              (#'api.email/humanize-error-messages @#'api.email/mb-to-smtp-settings {::email/error exception})))
       (is (= {:errors {:cloud-email-smtp-username "Wrong username or password"
                        :cloud-email-smtp-password "Wrong username or password"}}
-             (#'api.email/humanize-error-messages @#'api.email/cloud-mb-to-smtp-settings {::email/error exception}))))))
+             (#'api.email/humanize-error-messages @#'api.email/override-mb-to-smtp-settings {::email/error exception}))))))
 
 (defn- email-settings
   []
