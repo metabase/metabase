@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 
 import { Badge, Stack, Text } from "metabase/ui";
 
@@ -8,13 +8,16 @@ interface Props {
 }
 
 export const LabeledValue = ({ children, label }: Props) => {
+  const id = useId();
+
   return (
     <Stack gap="sm">
-      <Text c="text-primary" component="label" fw="bold">
+      <Text c="text-primary" component="label" fw="bold" id={id}>
         {label}
       </Text>
 
       <Badge
+        aria-labelledby={id}
         bg="accent-gray-light"
         c="text-primary"
         fw="normal"

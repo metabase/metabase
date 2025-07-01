@@ -30,7 +30,7 @@ export const DataModel = {
     get: getFieldSection,
     getNameInput: getFieldNameInput,
     getDescriptionInput: getFieldDescriptionInput,
-    getDataTypeInput: getFieldDataTypeInput,
+    getDataType: getFieldDataType,
     getCoercionToggle: getFieldCoercionToggle,
     getCoercionInput: getFieldCoercionInput,
     getSemanticTypeInput: getFieldSemanticTypeInput,
@@ -220,7 +220,7 @@ function getFieldDescriptionInput() {
   );
 }
 
-function getFieldDataTypeInput() {
+function getFieldDataType() {
   return getFieldSection().findByLabelText("Data type");
 }
 
