@@ -48,15 +48,17 @@
    (format "*%s*\n%s" (:name parameter) (shared.params/value-string parameter (system/site-locale)))
    attachment-text-length-limit))
 
-(defn- inline-params-block
-  [inline-parameters]
-  (when (seq inline-parameters)
-    {:type "section"
-     :fields (mapv
-              (fn [parameter]
-                {:type "mrkdwn"
-                 :text (parameter-markdown parameter)})
-              inline-parameters)}))
+(defn- maybe-append-params-block
+  "Appends an inline parameters block to a collection of blocks if parameters exist."
+  [blocks inline-parameters]
+  (if (seq inline-parameters)
+    (conj blocks {:type "section"
+                  :fields (mapv
+                           (fn [parameter]
+                             {:type "mrkdwn"
+                              :text (parameter-markdown parameter)})
+                           inline-parameters)})
+    blocks))
 
 (defn- text->markdown-block
   ([text]
@@ -66,12 +68,11 @@
    (let [mrkdwn (markdown/process-markdown text :slack)]
      (when (not (str/blank? mrkdwn))
        {:blocks
-        (->> [{:type "section"
-               :text {:type "mrkdwn"
-                      :text (truncate mrkdwn block-text-length-limit)}}
-              (inline-params-block inline-parameters)]
-             (remove nil?)
-             vec)}))))
+        (maybe-append-params-block
+         [{:type "section"
+           :text {:type "mrkdwn"
+                  :text (truncate mrkdwn block-text-length-limit)}}]
+         inline-parameters)}))))
 
 (defn- part->attachment-data
   [part]
@@ -117,31 +118,27 @@
 
     (:render/text rendered-info)
     {:blocks
-     (->> [{:type "section"
-            :text {:type     "mrkdwn"
-                   :text     (mkdwn-link-text title_link title)
-                   :verbatim true}}
-           (inline-params-block inline-parameters)
-           {:type "section"
-            :text {:type "plain_text"
-                   :text (:render/text rendered-info)}}]
-          (remove nil?)
-          vec)}
+     (-> [{:type "section"
+           :text {:type     "mrkdwn"
+                  :text     (mkdwn-link-text title_link title)
+                  :verbatim true}}]
+         (maybe-append-params-block inline-parameters)
+         (conj {:type "section"
+                :text {:type "plain_text"
+                       :text (:render/text rendered-info)}}))}
 
     :else
     (let [image-bytes   (channel.render/png-from-render-info rendered-info slack-width)
           {file-id :id} (slack/upload-file! image-bytes attachment-name)]
       {:blocks
-       (->> [{:type "section"
-              :text {:type     "mrkdwn"
-                     :text     (mkdwn-link-text title_link title)
-                     :verbatim true}}
-             (inline-params-block inline-parameters)
-             {:type       "image"
-              :slack_file {:id file-id}
-              :alt_text   title}]
-            (remove nil?)
-            vec)})))
+       (-> [{:type "section"
+             :text {:type     "mrkdwn"
+                    :text     (mkdwn-link-text title_link title)
+                    :verbatim true}}]
+           (maybe-append-params-block inline-parameters)
+           (conj {:type       "image"
+                  :slack_file {:id file-id}
+                  :alt_text   title}))})))
 
 (def ^:private SlackMessage
   [:map {:closed true}
