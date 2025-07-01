@@ -7,50 +7,44 @@ import {
   setParameterValueToDefault,
 } from "metabase/dashboard/actions";
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME } from "metabase/dashboard/constants";
-import {
-  getDashboardComplete,
-  getEditingParameter,
-  getIsEditing,
-  getIsNightMode,
-  getTabHiddenParameterSlugs,
-} from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDashboardContext } from "metabase/dashboard/context";
+import { useDispatch } from "metabase/lib/redux";
+import { ParametersList } from "metabase/parameters/components/ParametersList";
 import type { Parameter } from "metabase-types/api";
 
-import { ParametersList } from "../../../parameters/components/ParametersList";
-
-interface DashboardParameterListProps
+export interface DashboardParameterListProps
   extends Pick<
     ComponentProps<typeof ParametersList>,
     "widgetsVariant" | "widgetsWithinPortal" | "vertical"
   > {
   parameters: Array<Parameter & { value: unknown }>;
   isSortable?: boolean;
-  isFullscreen: boolean;
 }
 
 export function DashboardParameterList({
   parameters,
   isSortable = true,
-  isFullscreen,
   widgetsVariant,
   widgetsWithinPortal,
   vertical,
 }: DashboardParameterListProps) {
-  const dashboard = useSelector(getDashboardComplete);
-  const editingParameter = useSelector(getEditingParameter);
-  const hiddenParameterSlugs = useSelector(getTabHiddenParameterSlugs);
-  const isEditing = useSelector(getIsEditing);
-  const isNightMode = useSelector(getIsNightMode);
-  const shouldRenderAsNightMode = isNightMode && isFullscreen;
   const dispatch = useDispatch();
+
+  const {
+    editingParameter,
+    shouldRenderAsNightMode,
+    isFullscreen,
+    isEditing,
+    dashboard,
+    hideParameters,
+  } = useDashboardContext();
 
   return (
     <ParametersList
       className={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME}
       parameters={parameters}
       editingParameter={editingParameter}
-      hideParameters={hiddenParameterSlugs}
+      hideParameters={hideParameters}
       dashboard={dashboard}
       isSortable={isSortable}
       isFullscreen={isFullscreen}

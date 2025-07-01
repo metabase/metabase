@@ -55,21 +55,33 @@
    :inner-join
    :full-join])
 
+(defn- normalize-join [join]
+  (when join
+    (let [{:keys [fields], :as join} (common/normalize-map join)]
+      (cond-> join
+        (and (not (keyword? fields)) (empty? fields))
+        (dissoc :fields)
+
+        (seq (:source-metadata join))
+        (-> (assoc-in [:stages (dec (count (:stages join))) :lib/stage-metadata] {:lib/type :metadata/results
+                                                                                  :columns  (:source-metadata join)})
+            (dissoc :source-metadata))))))
+
 (mr/def ::join
-  [:map
-   {:default {}, :decode/normalize (fn [join]
-                                     (let [{:keys [fields], :as join} (common/normalize-map join)]
-                                       (cond-> join
-                                         (and (not (keyword? fields)) (empty? fields))
-                                         (dissoc :fields))))}
-   [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
-   [:lib/options ::common/options]
-   [:stages      [:ref :metabase.lib.schema/stages]]
-   [:conditions  ::conditions]
-   [:alias       ::alias]
-   [:ident    {:optional true} ::common/non-blank-string]
-   [:fields   {:optional true} ::fields]
-   [:strategy {:optional true} ::strategy]])
+  [:and
+   [:map
+    {:default {}, :decode/normalize normalize-join}
+    [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
+    [:lib/options ::common/options]
+    [:stages      [:ref :metabase.lib.schema/stages]]
+    [:conditions  ::conditions]
+    [:alias       ::alias]
+    [:ident    {:optional true} ::common/non-blank-string]
+    [:fields   {:optional true} ::fields]
+    [:strategy {:optional true} ::strategy]]
+   [:fn
+    {:error/message "join should not have metadata attached directly to them; attach metadata to their last stage instead"}
+    (complement (some-fn :lib/stage-metadata :source-metadata))]])
 
 (mr/def ::joins
   [:and

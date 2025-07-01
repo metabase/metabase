@@ -275,10 +275,10 @@
                                                      (:show-column-totals pivot-options))))
             (is (=? {:status    :completed
                      :row_count 156
-                     :data {:cols [{:ident (get-in query [:query :breakout-idents 0])}
-                                   {:ident (get-in query [:query :breakout-idents 1])}
-                                   {:name  "pivot-grouping"}
-                                   {:ident (get-in query [:query :aggregation-idents 0])}]}}
+                     :data {:cols [{:lib/desired-column-alias "CATEGORY"}
+                                   {:lib/desired-column-alias "CREATED_AT"}
+                                   {:lib/desired-column-alias "pivot-grouping"}
+                                   {:lib/desired-column-alias "count"}]}}
                     (qp.pivot/run-pivot-query (assoc query :info {:visualization-settings viz-settings}))))))))))
 
 (deftest ^:parallel nested-question-pivot-aggregation-names-test

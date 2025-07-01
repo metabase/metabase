@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { buildTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Dashboard,
@@ -52,26 +53,31 @@ const setup = ({ parameterValues, isEditingParameter, ...props }: Options) => {
   const dashboard = props.dashboard || defaultProps.dashboard;
   const dashcard = props.dashcard || defaultProps.dashcard;
 
-  renderWithProviders(<Heading {...defaultProps} {...props} />, {
-    storeInitialState: {
-      dashboard: createMockDashboardState({
-        parameterValues,
-        dashboards: {
-          [dashboard.id]: {
-            ...dashboard,
-            dashcards: dashboard.dashcards.map((dc) => dc.id),
+  renderWithProviders(
+    <MockDashboardContext dashboard={dashboard} isEditing={props.isEditing}>
+      <Heading {...defaultProps} {...props} />
+    </MockDashboardContext>,
+    {
+      storeInitialState: {
+        dashboard: createMockDashboardState({
+          parameterValues,
+          dashboards: {
+            [dashboard.id]: {
+              ...dashboard,
+              dashcards: dashboard.dashcards.map((dc) => dc.id),
+            },
           },
-        },
-        dashcards: { [dashcard.id]: dashcard },
-        sidebar: isEditingParameter
-          ? {
-              name: "editParameter",
-              props: { parameterId: "param" },
-            }
-          : undefined,
-      }),
+          dashcards: { [dashcard.id]: dashcard },
+          sidebar: isEditingParameter
+            ? {
+                name: "editParameter",
+                props: { parameterId: "param" },
+              }
+            : undefined,
+        }),
+      },
     },
-  });
+  );
 };
 
 describe("Text", () => {

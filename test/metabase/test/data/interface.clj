@@ -11,6 +11,7 @@
    [buddy.core.hash :as buddy-hash]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
+   [clojure.test :as t]
    [clojure.tools.reader.edn :as edn]
    [environ.core :as env]
    [mb.hawk.hooks]
@@ -1100,3 +1101,15 @@
   (defmethod driver/database-supports? [driver :test/column-impersonation]
     [_driver _feature _database]
     false))
+
+(defn tracking-access-note
+  "Generic tracking access note"
+  []
+  (if (:ci env/env)
+    (format "CI: %s %s %s"
+            (str t/*testing-vars*)
+            (get env/env :github-actor)
+            (get env/env :github-head-ref))
+    (format "DEV: %s %s"
+            (str t/*testing-vars*)
+            (:user env/env))))

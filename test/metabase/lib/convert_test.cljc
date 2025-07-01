@@ -1233,3 +1233,44 @@
     "2020-10-20T10:20:00"
     "2020-10-20T10:20:00Z"
     "10:20:00"))
+
+(deftest ^:parallel round-trip-joins-metadata-test
+  (testing "when converting a join, preserve metadata correctly"
+    (let [legacy {:database (meta/id)
+                  :type     :query
+                  :query    {:source-table (meta/id :categories)
+                             :fields       [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+                             :joins        [{:alias           "CATEGORIES__via__CATEGORY_ID"
+                                             :ident           (u/generate-nano-id)
+                                             :source-table    (meta/id :venues)
+                                             :condition       [:=
+                                                               [:field (meta/id :venues :category-id) nil]
+                                                               [:field (meta/id :categories :id) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+                                             :strategy        :left-join
+                                             :fk-field-id     (meta/id :venues :category-id)
+                                             :source-metadata [{:name "ID", :display_name "ID", :base_type :type/Integer}]}]}}]
+      (testing "legacy => MBQL 5"
+        (is (=? {:stages [{:joins [{:lib/type           :mbql/join
+                                    :stages             [{:lib/stage-metadata {:lib/type :metadata/results
+                                                                               :columns  [{:lib/type     :metadata/column
+                                                                                           :name         "ID"
+                                                                                           :display-name "ID"}]}}]
+                                    :lib/stage-metadata (symbol "nil #_\"key is not present.\"")
+                                    :source-metadata    (symbol "nil #_\"key is not present.\"")}]}]}
+                (-> legacy lib.convert/->pMBQL))))
+      (testing "legacy => MBQL 5 => legacy"
+        (is (=? {:query {:joins [{:alias           "CATEGORIES__via__CATEGORY_ID"
+                                  :source-metadata [{:lib/type     (symbol "nil #_\"key is not present.\"")
+                                                     :name         "ID"
+                                                     :display_name "ID"
+                                                     :base_type    :type/Integer}]}]}}
+                (-> legacy lib.convert/->pMBQL lib.convert/->legacy-MBQL))))
+      (testing "legacy => MBQL 5 => legacy => MBQL 5"
+        (is (=? {:stages [{:joins [{:lib/type           :mbql/join
+                                    :stages             [{:lib/stage-metadata {:lib/type :metadata/results
+                                                                               :columns  [{:lib/type     :metadata/column
+                                                                                           :name         "ID"
+                                                                                           :display-name "ID"}]}}]
+                                    :lib/stage-metadata (symbol "nil #_\"key is not present.\"")
+                                    :source-metadata    (symbol "nil #_\"key is not present.\"")}]}]}
+                (-> legacy lib.convert/->pMBQL lib.convert/->legacy-MBQL lib.convert/->pMBQL)))))))

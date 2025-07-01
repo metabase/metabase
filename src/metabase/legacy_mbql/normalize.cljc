@@ -223,11 +223,14 @@
 
 (defn- normalize-value-opts
   [opts]
-  (some-> opts
-          lib.schema.common/normalize-map
-          ;; `:value` in legacy MBQL expects `snake_case` keys for type info keys.
-          (m/update-existing :base_type keyword)
-          (m/update-existing :semantic_type keyword)))
+  (when opts
+    (-> opts
+        (update-keys (fn [k]
+                       (keyword (u/->snake_case_en k))))
+        (m/update-existing :base_type      keyword)
+        (m/update-existing :effective_type keyword)
+        (m/update-existing :semantic_type  keyword)
+        (m/update-existing :unit           keyword))))
 
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.
@@ -396,7 +399,10 @@
             :cljs (implements? cljs.core.IEditableCollection metadata))]}
   (let [m (transient metadata)]
     (-> (reduce #(update-existing! %1 %2 keyword) m
-                [:base_type :effective_type :semantic_type :visibility_type :source :unit])
+                [:base_type :effective_type :semantic_type :visibility_type :source :unit
+                 ;; HACK ! Not even a legacy key, but now that we keep `:lib/` keys around we should normalize it just
+                 ;; so test results don't get kooky
+                 :lib/source])
         (update-existing! :field_ref normalize-field-ref)
         (update-existing! :fingerprint #?(:clj perf/keywordize-keys :cljs walk/keywordize-keys))
         (update-existing! :binning_info #(m/update-existing % :binning_strategy keyword))
@@ -440,10 +446,8 @@
    :info            {:metadata/model-metadata identity
                      ;; the original query that runs through qp.pivot should be ignored here entirely
                      :pivot/original-query    (fn [_] nil)
-                     ;; don't try to normalize the keys in viz-settings or `:alias/escaped->original` passed in as
-                     ;; part of `:info`.
+                     ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
                      :visualization-settings  identity
-                     :alias/escaped->original identity
                      :context                 maybe-normalize-token}
    :parameters      {::sequence normalize-query-parameter}
    ;; TODO -- when does query ever have a top-level `:context` key??
@@ -534,14 +538,16 @@
   (canonicalize-mbql-clause (wrap-implicit-field-id clause)))
 
 (defmethod canonicalize-mbql-clause :field
-  [[_ id-or-name opts]]
-  {:pre [((some-fn map? nil?) opts)]}
-  (if (is-clause? :field id-or-name)
-    (let [[_ nested-id-or-name nested-opts] id-or-name]
-      (canonicalize-mbql-clause [:field nested-id-or-name (not-empty (merge nested-opts opts))]))
-    ;; remove empty stuff from the options map. The `remove-empty-clauses` step will further remove empty stuff
-    ;; afterwards
-    [:field id-or-name (not-empty opts)]))
+  [[_ id-or-name opts, :as clause]]
+  (if-not ((some-fn map? nil?) opts)
+    ;; this is an MBQL 5+ clause, ignore it.
+    clause
+    (if (is-clause? :field id-or-name)
+      (let [[_ nested-id-or-name nested-opts] id-or-name]
+        (canonicalize-mbql-clause [:field nested-id-or-name (not-empty (merge nested-opts opts))]))
+      ;; remove empty stuff from the options map. The `remove-empty-clauses` step will further remove empty stuff
+      ;; afterwards
+      [:field id-or-name (not-empty opts)])))
 
 (defmethod canonicalize-mbql-clause :aggregation
   [[_tag index opts]]
