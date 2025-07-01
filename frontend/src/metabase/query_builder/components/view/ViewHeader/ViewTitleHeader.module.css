@@ -11,7 +11,7 @@
     }
 
     /* this pevents the divider between the button group from changing color */
-    &:hover&[data-filters-active="true"] {
+    &:hover&.FiltersActive {
       border-right-color: var(--mb-color-border);
     }
   }
