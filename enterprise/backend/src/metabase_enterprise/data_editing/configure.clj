@@ -2,6 +2,7 @@
   (:require
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
+   [metabase.models.humanization :as humanization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -16,6 +17,7 @@
   ;; make the shape more idiomatically Clojure, and maybe we should just wait until we've finalized the shape.
   [:map {:closed true}
    [:id                                 :string]
+   [:displayName                        :string]
    ;; omitted if we have visibility != null
    [:sourceType       {:optional true}  [:enum "ask-user" "row-data" "constant"]]
    ;; omitted if we have visibility != null
@@ -39,17 +41,22 @@
                    api/check-404)]
     {:title      (:name action)
      :parameters (for [param (:parameters action)]
-                   {:id         (case (:type action)
-                                  :query (:slug param)
-                                  :implicit (:id param))
-                    :sourceType "ask-user"})}))
+                   {:id          (case (:type action)
+                                   :query (:slug param)
+                                   :implicit (:id param))
+                    :displayName (or (:displayName param)
+                                     (:display-name param)
+                                     (humanization/name->human-readable-name (:slug param)))
+                    :sourceType  "ask-user"})}))
 
 ;; TODO handle exposing new inputs required by the inner-action
 (defn- configuration-for-pending-action [{:keys [param-map] :as action}]
   ;; TODO Delegate to get this
   {:title      (:name action "TODO - depends on existing configuration if already saved, otherwise from the inner action as the default.")
    :parameters (for [[param-id param-settings] param-map]
-                 (assoc param-settings :id (name param-id)))})
+                 (-> param-settings
+                     (assoc :id (name param-id))
+                     (update :displayName #(or % (humanization/name->human-readable-name (name param-id))))))})
 
 (mu/defn- configuration-for-table-action
   [table-id :- pos-int?
@@ -63,6 +70,7 @@
                                :table.row/update true
                                :table.row/delete (isa? (:semantic_type field) :type/PK))]
                    {:id               (:name field)
+                    :displayName      (:display_name field)
                     :sourceType       "ask-user"})}))
 
 (defn- combine-configurations
