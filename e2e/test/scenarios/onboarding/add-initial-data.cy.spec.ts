@@ -131,7 +131,7 @@ describe("Add data modal", () => {
 
   it("should hide Getting Started but still offer to add data for white labeled instances", () => {
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     // The condition will not kick in without changing the app name. Do not remove this API call.
     cy.request("PUT", "/api/setting/application-name", {
       value: "FooBar, Inc.",
