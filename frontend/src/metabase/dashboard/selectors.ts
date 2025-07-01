@@ -7,6 +7,7 @@ import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
+import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,
@@ -451,9 +452,9 @@ export const getDashCardInlineValuePopulatedParameters = createSelector(
     if (!dashcard || !hasInlineParameters(dashcard)) {
       return [];
     }
-    const inlineParameters = dashcard.inline_parameters.map((parameterId) =>
-      parameters.find((p) => p.id === parameterId),
-    );
+    const inlineParameters = dashcard.inline_parameters
+      .map((parameterId) => parameters.find((p) => p.id === parameterId))
+      .filter(isNotNull);
     return _getValuePopulatedParameters({
       parameters: inlineParameters,
       values: parameterValues,
