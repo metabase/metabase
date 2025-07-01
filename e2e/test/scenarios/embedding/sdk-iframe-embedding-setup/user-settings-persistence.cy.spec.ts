@@ -185,11 +185,10 @@ const navigateToGetCodeStep = ({
 }: {
   experience: "dashboard" | "chart" | "exploration";
 }) => {
-  navigateToEntitySelectionStep({ experience });
+  navigateToEmbedOptionsStep({ experience });
 
   getEmbedSidebar().within(() => {
-    cy.findByText("Next").click(); // Embed options step
-    cy.findByText("Get Code").click(); // Get code step
+    cy.findByText("Get Code").click();
   });
 };
 
