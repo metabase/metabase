@@ -1,18 +1,17 @@
-import React from "react";
-import { type Root, createRoot } from "react-dom/client";
+import React, { type ComponentType } from "react";
+import { createRoot } from "react-dom/client";
 
-import { type R2wcOptions, r2wcCore } from "./r2wc-core";
+import {
+  type R2wcOptions,
+  type R2wcRenderContext,
+  r2wcCore,
+} from "./r2wc-core";
 
-interface Context<Props extends object> {
-  root: Root;
-  ReactComponent: React.ComponentType<Props>;
-}
-
-function mount<Props extends object>(
+function mount<TProps extends object>(
   container: HTMLElement,
-  ReactComponent: React.ComponentType<Props>,
-  props: Props,
-): Context<Props> {
+  ReactComponent: ComponentType<TProps>,
+  props: TProps,
+): R2wcRenderContext<TProps> {
   const root = createRoot(container);
 
   const element = React.createElement(ReactComponent, props);
@@ -24,21 +23,27 @@ function mount<Props extends object>(
   };
 }
 
-function update<Props extends object>(
-  { root, ReactComponent }: Context<Props>,
-  props: Props,
+function update<TProps extends object>(
+  { root, ReactComponent }: R2wcRenderContext<TProps>,
+  props: TProps,
 ): void {
   const element = React.createElement(ReactComponent, props);
   root.render(element);
 }
 
-function unmount<Props extends object>({ root }: Context<Props>): void {
+function unmount<TProps extends object>({
+  root,
+}: R2wcRenderContext<TProps>): void {
   root.unmount();
 }
 
-export function r2wc<Props extends object>(
-  ReactComponent: React.ComponentType<Props>,
-  options: R2wcOptions<Props> = {},
+export function r2wc<TProps extends object, TContextProps = never>(
+  ReactComponent: React.ComponentType<TProps>,
+  options: R2wcOptions<TProps, TContextProps> = {},
 ): CustomElementConstructor {
-  return r2wcCore(ReactComponent, options, { mount, update, unmount });
+  return r2wcCore<TProps, TContextProps>(ReactComponent, options, {
+    mount,
+    update,
+    unmount,
+  });
 }

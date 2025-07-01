@@ -23,7 +23,7 @@ const InteractiveQuestionWebComponent =
     {
       propTypes: {
         questionId: "id",
-        plugins: "property",
+        plugins: "json",
       },
     },
   );

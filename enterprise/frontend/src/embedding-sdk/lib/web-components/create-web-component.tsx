@@ -1,67 +1,70 @@
 import type { ReactNode } from "react";
 
 import {
-  type MetabaseAuthConfig,
   MetabaseProvider,
-  type MetabaseTheme,
+  type MetabaseProviderWebComponentContextProps,
 } from "embedding-sdk";
-import type {
-  MetabaseProviderInternalProps,
-  WebComponentElementConstructor,
-} from "embedding-sdk/types/web-components";
+import type { WebComponentElementConstructor } from "embedding-sdk/types/web-components";
 import { ShadowRootProvider } from "metabase/embedding-sdk/components";
 
 import { r2wc } from "./r2wc";
-import type { R2wcBaseProps } from "./r2wc/r2wc-core";
-import { jsonTransform } from "./r2wc/transforms/json";
-import type { Transform } from "./r2wc/transforms/transforms";
+import type { R2wcBaseProps, R2wcOptions } from "./r2wc/r2wc-core";
 import type { R2wcPropTypes } from "./r2wc/types";
 
 type MergedProps<TComponentProps> = R2wcBaseProps &
-  Record<keyof MetabaseProviderInternalProps, string> &
+  MetabaseProviderWebComponentContextProps &
   TComponentProps;
 
-type CreateWebComponentConfig<TComponentProps> = {
+type CreateWebComponentConfig<TComponentProps, TContextProps> = {
+  withProviders?: boolean;
+  shadow?: "open" | null;
   propTypes: R2wcPropTypes<TComponentProps>;
+  defineContext?: R2wcOptions<TComponentProps, TContextProps>["defineContext"];
 };
 
-const parse = <TValue,>(value: string) =>
-  (jsonTransform as Transform<TValue>).parse(value);
-
-export const createWebComponent = <TComponentProps,>(
+export const createWebComponent = <TComponentProps, TContextProps = never>(
   component: (props: TComponentProps) => ReactNode,
-  { propTypes }: CreateWebComponentConfig<TComponentProps>,
+  {
+    withProviders = true,
+    shadow = "open",
+    propTypes,
+    defineContext,
+  }: CreateWebComponentConfig<TComponentProps, TContextProps>,
 ): WebComponentElementConstructor => {
   const metabaseProviderPropTypes = {
-    authConfig: "string",
-    theme: "string",
+    authConfig: "json",
+    theme: "json",
   } as const;
 
   return r2wc(
     (props: MergedProps<TComponentProps>) => {
       const { container, authConfig, theme, ...componentProps } = props;
 
-      if (!authConfig) {
-        return;
+      const componentElement = component(componentProps as TComponentProps);
+
+      if (!withProviders) {
+        return componentElement;
+      }
+
+      if (!authConfig || !Object.keys(authConfig).length) {
+        return null;
       }
 
       return (
         <ShadowRootProvider>
-          <MetabaseProvider
-            authConfig={parse<MetabaseAuthConfig>(authConfig)}
-            theme={parse<MetabaseTheme | undefined>(theme)}
-          >
-            {component(componentProps as TComponentProps)}
+          <MetabaseProvider authConfig={authConfig} theme={theme}>
+            {componentElement}
           </MetabaseProvider>
         </ShadowRootProvider>
       );
     },
     {
-      shadow: "open",
+      shadow: shadow ?? undefined,
       props: {
         ...metabaseProviderPropTypes,
         ...propTypes,
       },
+      defineContext,
     },
   );
 };

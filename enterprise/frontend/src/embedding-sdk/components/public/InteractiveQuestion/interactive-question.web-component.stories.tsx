@@ -39,10 +39,17 @@ const withDefinedProperties = (Story: StoryFn) => {
     }
 
     ref.current.authConfig = config;
-    ref.current.theme = {
-      colors: { brand: "blue" },
-      fontFamily: "Impact",
-    };
+
+    setTimeout(() => {
+      if (!ref.current) {
+        return;
+      }
+
+      ref.current.theme = {
+        colors: { brand: "blue" },
+        fontFamily: "Impact",
+      };
+    }, 3000);
   });
 
   return (
