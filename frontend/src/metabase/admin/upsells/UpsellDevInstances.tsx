@@ -20,8 +20,9 @@ export function UpsellDevInstances({ source }: { source: SOURCE }) {
       title={t`Get a development instance`}
       campaign="dev_instances"
       buttonText={t`Set up`}
-      buttonLink={getStoreUrl("dev instance upsell")}
+      buttonLink={getStoreUrl("account/new-dev-instance")}
       source={source}
+      dismissable
     >
       <Text size="sm">
         {t`Test out code in staging in a separate Metabase instance before deploying to production.`}
