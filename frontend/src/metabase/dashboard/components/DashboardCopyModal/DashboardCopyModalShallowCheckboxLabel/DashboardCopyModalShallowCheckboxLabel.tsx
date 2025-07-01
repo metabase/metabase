@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import Tooltip from "metabase/common/components/Tooltip";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 
 import S from "./DashboardCopyModalShallowCheckboxLabel.module.css";
 
@@ -13,7 +12,7 @@ export const DashboardCopyModalShallowCheckboxLabel = ({
   <div className={S.checkboxLabelRoot}>
     {t`Only duplicate the dashboard`}
     <Tooltip
-      tooltip={
+      label={
         hasDashboardQuestions
           ? t`Only available when none of the questions are saved to the dashboard.`
           : t`If you check this, the cards in the duplicated dashboard will reference the original questions.`

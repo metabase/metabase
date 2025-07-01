@@ -14,15 +14,12 @@ import KeyValuePairChartTooltip from "./KeyValuePairChartTooltip";
 import StackedDataTooltip from "./StackedDataTooltip";
 import TimelineEventTooltip from "./TimelineEventTooltip";
 
-export interface ChartTooltipProps {
+interface ChartTooltipProps {
   hovered?: HoveredObject | null;
   settings: VisualizationSettings;
 }
 
-export const ChartTooltipContent = ({
-  hovered,
-  settings,
-}: ChartTooltipProps) => {
+const ChartTooltipContent = ({ hovered, settings }: ChartTooltipProps) => {
   if (!hovered) {
     return null;
   }

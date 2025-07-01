@@ -5,10 +5,9 @@ import { t } from "ttag";
 import Button from "metabase/common/components/Button";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import TippyPopover from "metabase/common/components/Popover/TippyPopover";
-import DeprecatedTooltip from "metabase/common/components/Tooltip";
 import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, ParameterTarget } from "metabase-types/api";
@@ -134,7 +133,7 @@ export const DashCardCardParameterMapperButton = ({
     ]);
 
   return (
-    <DeprecatedTooltip tooltip={buttonTooltip}>
+    <Tooltip label={buttonTooltip}>
       <TippyPopover
         visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}
         onClickOutside={() => setIsDropdownVisible(false)}
@@ -191,7 +190,7 @@ export const DashCardCardParameterMapperButton = ({
           {buttonIcon}
         </Flex>
       </TippyPopover>
-    </DeprecatedTooltip>
+    </Tooltip>
   );
 };
 
