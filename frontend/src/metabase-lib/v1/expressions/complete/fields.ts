@@ -5,6 +5,7 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
 
 import { formatIdentifier } from "../identifier";
+import { columnsForExpressionMode } from "../mode";
 
 import type { CompletionResult } from "./types";
 import { content, fuzzyMatcher, tokenAtPos } from "./util";
@@ -16,17 +17,9 @@ export type Options = {
   expressionMode: Lib.ExpressionMode;
 };
 
-export function suggestFields({
-  query,
-  stageIndex,
-  expressionIndex,
-  expressionMode,
-}: Options) {
-  const f =
-    expressionMode === "aggregation"
-      ? Lib.aggregableColumns
-      : Lib.expressionableColumns;
-  const columns = f(query, stageIndex, expressionIndex)?.map((column) => {
+export function suggestFields(options: Options) {
+  const { query, stageIndex } = options;
+  const columns = columnsForExpressionMode(options).map((column) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, column);
     return {
       type: "field",

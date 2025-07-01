@@ -5,6 +5,7 @@ import * as Lib from "metabase-lib";
 
 import { CompileError } from "./errors";
 import { EDITOR_FK_SYMBOLS, getDisplayNameWithSeparator } from "./identifier";
+import { columnsForExpressionMode } from "./mode";
 import type { Node } from "./pratt";
 import type { ExpressionType } from "./types";
 
@@ -22,14 +23,12 @@ type Options = {
 
 export function resolver(options: Options): Resolver {
   const { query, stageIndex, expressionMode } = options;
-  const f =
-    expressionMode === "aggregation"
-      ? Lib.aggregableColumns
-      : Lib.expressionableColumns;
 
   const metrics = _.memoize(() => Lib.availableMetrics(query, stageIndex));
   const segments = _.memoize(() => Lib.availableSegments(query, stageIndex));
-  const columns = _.memoize(() => f(query, stageIndex));
+  const columns = _.memoize(() =>
+    columnsForExpressionMode({ query, stageIndex, expressionMode }),
+  );
   const cache = infoCache(options);
 
   return function (type, name, node) {
