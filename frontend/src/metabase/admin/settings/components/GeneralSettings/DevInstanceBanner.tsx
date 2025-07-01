@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { getStoreUrl } from "metabase/selectors/settings";
-import { Alert, Icon, Text } from "metabase/ui";
+import { Alert, Anchor, Icon, Text } from "metabase/ui";
 
 export function DevInstanceBanner() {
   const isDevMode = useSetting("development-mode?");
@@ -41,9 +40,9 @@ function BannerBody({
   return (
     <Text lh="1.25rem">
       {copyText}{" "}
-      <ExternalLink style={{ fontWeight: "bold" }} href={getStoreUrl()}>
+      <Anchor fw="bold" href={getStoreUrl()}>
         {linkText}
-      </ExternalLink>
+      </Anchor>
     </Text>
   );
 }
