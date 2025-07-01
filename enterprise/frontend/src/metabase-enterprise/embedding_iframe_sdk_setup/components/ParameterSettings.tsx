@@ -67,7 +67,7 @@ export const ParameterSettings = () => {
         {availableParameters.map((param) => {
           const placeholder = match(param.default)
             .with(P.array(), (arr) => arr.join(", "))
-            .with(P.nullish, () => `Default ${param.name.toLowerCase()}`)
+            .with(P.nullish, () => param.name.toLowerCase())
             .otherwise((val) => val.toString());
 
           return (
