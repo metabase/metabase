@@ -36,7 +36,12 @@ type Section = BaseSection<Item> & {
   key?: string;
 };
 
-const SEARCH_PROP = ["name", "displayName", "combinedDisplayName"] as const;
+const SEARCH_PROP = [
+  "name",
+  "displayName",
+  "combinedDisplayName",
+  "longDisplayName",
+] as const;
 
 export interface FilterColumnPickerProps {
   className?: string;
@@ -190,6 +195,7 @@ function getSections({
           stageIndex,
           combinedName: `${columnInfo.table?.name ?? ""} ${columnInfo.name}`,
           combinedDisplayName: `${columnInfo.table?.displayName ?? ""} ${columnInfo.displayName}`,
+          longDisplayName: columnInfo.longDisplayName,
         };
       });
       const segments = groupInfo.isSourceTable
