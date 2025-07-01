@@ -106,7 +106,7 @@ describe("scenarios > joins > custom expressions", () => {
     cy.signInAsNormalUser();
   });
 
-  describe("expressions in join conditions", () => {
+  describe("should support expressions in join conditions", () => {
     TEST_CASES.forEach(
       ({ operator, lhsExpression, rhsExpression, expectedRowCount }) => {
         it(`${lhsExpression} ${operator} ${rhsExpression}`, () => {
