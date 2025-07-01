@@ -18,6 +18,8 @@ export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
 export const SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS =
   "saving-dom-image-display-none";
+export const SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS =
+  "saving-dom-image-overflow-visible";
 export const PARAMETERS_MARGIN_BOTTOM = 12;
 
 export const saveDomImageStyles = css`
@@ -27,6 +29,9 @@ export const saveDomImageStyles = css`
     }
     .${SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS} {
       display: none;
+    }
+    .${SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS} {
+      overflow: visible;
     }
 
     .${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME} {

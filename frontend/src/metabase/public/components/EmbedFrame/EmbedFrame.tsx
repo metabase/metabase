@@ -17,7 +17,7 @@ import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-param
 import { getDashboardType } from "metabase/dashboard/utils";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
-import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
+import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
@@ -285,12 +285,13 @@ export const EmbedFrame = ({
                   enableParameterRequiredBehavior
                 }
               />
-              {dashboard && <FilterApplyButton />}
             </FixedWidthContainer>
           </FullWidthContainer>
         )}
         <Body>{children}</Body>
       </ContentContainer>
+
+      {dashboard && <FilterApplyToast position="fixed" />}
       {isFooterEnabled && (
         <Footer
           data-testid="embed-frame-footer"
