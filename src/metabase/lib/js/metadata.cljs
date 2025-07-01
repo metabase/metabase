@@ -302,6 +302,7 @@
                                           "breakout"    :source/breakouts
                                           (keyword "source" v))
       :metabase.lib.field/temporal-unit (keyword v)
+      :inherited-temporal-unit          (keyword v)
       :semantic-type                    (keyword v)
       :visibility-type                  (keyword v)
       :id                               (parse-field-id v)

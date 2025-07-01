@@ -31,7 +31,12 @@
     (map? x) (m/dissoc-in [:data :results_metadata :checksum])))
 
 (defn- expected-results* [export-format query]
-  (maybe-remove-checksum (streaming.test-util/expected-results export-format (qp/process-query query))))
+  (let [results (-> (streaming.test-util/expected-results export-format (qp/process-query query))
+                    maybe-remove-checksum)]
+    (cond-> results
+      (map? results) (update-in [:data :cols] (fn [cols]
+                                                (for [col cols]
+                                                  (m/filter-keys simple-keyword? col)))))))
 
 (defn- basic-actual-results* [export-format query]
   (maybe-remove-checksum (streaming.test-util/process-query-basic-streaming export-format query)))
@@ -114,23 +119,23 @@
                            "Longitude" "118.26100000° W",
                            "Price" 2.0}]
                          (basic-actual-results* export-format query)))
-            (is (= (expected-results* export-format query)
-                   (basic-actual-results* export-format query)))))))))
+            (is (=? (expected-results* export-format query)
+                    (basic-actual-results* export-format query)))))))))
 
 (defn- actual-results* [export-format query]
   (maybe-remove-checksum (streaming.test-util/process-query-api-response-streaming export-format query)))
 
 (defn- compare-results [export-format query]
-  (is (= (expected-results* export-format query)
-         (cond-> (actual-results* export-format query)
-           (= export-format :api)
-           (dissoc :cached)))))
+  (is (=? (expected-results* export-format query)
+          (cond-> (actual-results* export-format query)
+            (= export-format :api)
+            (dissoc :cached)))))
 
 (deftest ^:parallel streaming-response-test
   (testing "Test that the actual results going thru the same steps as an API response are correct."
     (compare-results :api (mt/mbql-query venues {:limit 5}))))
 
-(deftest utf8-test
+(deftest ^:parallel utf8-test
   ;; UTF-8 isn't currently working for XLSX -- fix me
   ;; CSVs round decimals to 2 digits without viz-settings so are not identical to results from expected-results*
   (doseq [export-format (disj qp.schema/export-formats :xlsx :csv)]

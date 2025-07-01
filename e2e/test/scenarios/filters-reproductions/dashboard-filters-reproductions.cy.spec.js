@@ -4471,7 +4471,7 @@ describe("issue 55678", () => {
     });
     H.popover().findByText("See this Order").click();
     H.queryBuilderFiltersPanel()
-      .findByText("Created At is Apr 1–30, 2022")
+      .findByText("Created At: Month is Apr 1–30, 2022")
       .should("be.visible");
     H.assertQueryBuilderRowCount(1);
   });

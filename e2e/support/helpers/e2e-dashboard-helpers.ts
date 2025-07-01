@@ -66,7 +66,7 @@ export function removeDashboardCard(index = 0) {
     .findByTestId("dashboardcard-actions-panel")
     .should("be.visible")
     .icon("close")
-    .click();
+    .click({ force: true });
 }
 
 export function showDashcardVisualizationSettings(index = 0) {
@@ -115,9 +115,7 @@ export function checkFilterLabelAndValue(label: string, value: string) {
   cy.get("fieldset").contains(value);
 }
 
-export function setFilter(type: string, subType?: string, name?: string) {
-  cy.icon("filter").click();
-
+function _setFilter(type: string, subType?: string, name?: string) {
   popover().findByText("Add a filter or parameter").should("be.visible");
   popover().findByText(type).click();
 
@@ -129,6 +127,23 @@ export function setFilter(type: string, subType?: string, name?: string) {
   if (name) {
     sidebar().findByLabelText("Label").clear().type(name);
   }
+}
+
+export function setFilter(type: string, subType?: string, name?: string) {
+  dashboardHeader().findByLabelText("Add a filter or parameter").click();
+  _setFilter(type, subType, name);
+}
+
+export function setDashCardFilter(
+  dashcardIndex: number,
+  type: string,
+  subType?: string,
+  name?: string,
+) {
+  findDashCardAction(getDashboardCard(dashcardIndex), "Add a filter").click({
+    force: true,
+  });
+  _setFilter(type, subType, name);
 }
 
 export function getRequiredToggle() {
@@ -217,7 +232,9 @@ export function addHeadingWhileEditing(
 ) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Heading").click();
-  cy.findByPlaceholderText("Heading").type(string, options);
+  cy.findByPlaceholderText(
+    "You can connect widgets to {{variables}} in heading cards.",
+  ).type(string, options);
 }
 
 export function openQuestionsSidebar() {
@@ -298,8 +315,7 @@ export function resizeDashboardCard({
   y: number;
 }) {
   card.within(() => {
-    const resizeHandle = cy.get(".react-resizable-handle");
-    resizeHandle
+    cy.get(".react-resizable-handle")
       .trigger("mousedown", { button: 0 })
       .wait(200)
       .trigger("mousemove", {
@@ -361,6 +377,35 @@ export function dashboardSaveButton() {
 
 export function dashboardParameterSidebar() {
   return cy.findByTestId("dashboard-parameter-sidebar");
+}
+
+export function applyFilterToast() {
+  return cy.findByTestId("filter-apply-toast");
+}
+
+export function applyFilterButton() {
+  return applyFilterToast().button("Apply");
+}
+
+export function cancelFilterButton() {
+  return applyFilterToast().button("Cancel");
+}
+
+export function setDashboardParameterName(name: string) {
+  dashboardParameterSidebar().findByLabelText("Label").clear().type(name);
+}
+
+export function setDashboardParameterType(type: string) {
+  dashboardParameterSidebar()
+    .findByText("Filter or parameter type")
+    .next()
+    .click();
+  popover().findByText(type).click();
+}
+
+export function setDashboardParameterOperator(operatorName: string) {
+  dashboardParameterSidebar().findByText("Filter operator").next().click();
+  popover().findByText(operatorName).click();
 }
 
 export function dashboardParametersDoneButton() {

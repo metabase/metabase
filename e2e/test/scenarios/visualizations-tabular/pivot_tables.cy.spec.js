@@ -1083,16 +1083,14 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     it("should persist column sizes in visualization settings", () => {
       H.visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
-      const leftHeaderColHandle = cy
-        .findAllByTestId("pivot-table-resize-handle")
-        .first();
-      // eslint-disable-next-line no-unsafe-element-filtering
-      const totalHeaderColHandle = cy
-        .findAllByTestId("pivot-table-resize-handle")
-        .last();
+      const leftHeaderColHandle = () =>
+        cy.findAllByTestId("pivot-table-resize-handle").first();
+      const totalHeaderColHandle = () =>
+        // eslint-disable-next-line no-unsafe-element-filtering
+        cy.findAllByTestId("pivot-table-resize-handle").last();
 
-      dragColumnHeader(leftHeaderColHandle, -100);
-      dragColumnHeader(totalHeaderColHandle, 100);
+      dragColumnHeader(leftHeaderColHandle(), -100);
+      dragColumnHeader(totalHeaderColHandle(), 100);
 
       cy.findByTestId("pivot-table").within(() => {
         cy.findByText("User → Source").should(($headerTextEl) => {

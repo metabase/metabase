@@ -34,6 +34,8 @@
   ([timezone-id temporal-str col viz-settings]
    ((datetime/make-temporal-str-formatter timezone-id col viz-settings) temporal-str)))
 
+;;; TODO (Cam 6/18/25) -- these fail for me locally with `Dec` instead of `December` -- see
+;;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1750288689214359
 (deftest format-temporal-str-test
   (mt/with-temporary-setting-values [custom-formatting nil]
     (testing "Null values do not blow up"
