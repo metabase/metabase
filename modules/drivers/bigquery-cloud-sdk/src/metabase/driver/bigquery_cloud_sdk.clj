@@ -18,7 +18,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [net.cgrand.xforms :as x]
+   [net.cgrand.xforms :as xforms]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -367,7 +367,7 @@
                           (log/warnf e "error in describe-fields for dataset: %s" dataset-id)))
         nested-column-lookup (get-nested-columns-for-tables driver database project-id dataset-id table-names)]
     (eduction
-     (x/by-key :table_name (x/into []))
+     (xforms/by-key :table_name (xforms/into []))
      (mapcat #(->> (describe-dataset-rows nested-column-lookup dataset-id %)
                    (sort-by (juxt :table-name :database-position :name))))
      named-rows)))
