@@ -40,7 +40,7 @@ const DashboardActionMenuInner = ({
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboard?.id ?? null,
-    parameterQueryParams: location.query,
+    parameterQueryParams: location?.query,
     refetchData: false,
   });
 
@@ -48,14 +48,21 @@ const DashboardActionMenuInner = ({
     dashboard ?? undefined,
     refreshDashboard,
   );
+
+  // solely for the dependency list below, so we don't ever have an undefined
+  const pathname = location?.pathname ?? "";
   useRegisterShortcut(
     [
       {
         id: "dashboard-send-to-trash",
-        perform: () => onChangeLocation(`${location?.pathname}/archive`),
+        perform: () => {
+          if (pathname) {
+            onChangeLocation(`${pathname}/archive`);
+          }
+        },
       },
     ],
-    [location.pathname],
+    [pathname],
   );
 
   if (!dashboard) {

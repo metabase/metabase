@@ -193,7 +193,7 @@ describe("scenarios > public > dashboard", () => {
     });
 
     cy.findByTestId("scalar-value").should("have.text", COUNT_ALL);
-    cy.button("Apply").should("not.exist");
+    H.applyFilterToast().should("not.exist");
 
     H.filterWidget().click();
     H.popover().within(() => {
@@ -203,8 +203,8 @@ describe("scenarios > public > dashboard", () => {
 
     cy.findByTestId("scalar-value").should("have.text", COUNT_ALL);
 
-    cy.button("Apply").should("be.visible").click();
-    cy.button("Apply").should("not.exist");
+    H.applyFilterButton().click();
+    H.applyFilterToast().should("not.exist");
     cy.findByTestId("scalar-value").should("have.text", COUNT_DOOHICKEY);
   });
 

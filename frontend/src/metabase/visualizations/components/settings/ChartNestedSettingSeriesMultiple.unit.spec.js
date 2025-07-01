@@ -2,6 +2,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { DashboardChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -36,11 +37,13 @@ const setup = (seriesDisplay, numberOfSeries = 1, changeSeriesName = false) => {
     .fill(1)
     .map((s, index) => getSeries(seriesDisplay, index, changeSeriesName));
   return renderWithProviders(
-    <DashboardChartSettings
-      series={series}
-      initial={{ section: "Display" }}
-      isDashboard={true}
-    />,
+    <MockDashboardContext>
+      <DashboardChartSettings
+        series={series}
+        initial={{ section: "Display" }}
+        isDashboard={true}
+      />
+    </MockDashboardContext>,
   );
 };
 
