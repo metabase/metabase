@@ -85,7 +85,7 @@
      {})))
 
 (defn- smtp-settings []
-  (merge (if (and (channel.settings/cloud-smtp-enabled) (premium-features/is-hosted?))
+  (merge (if (and (channel.settings/override-smtp-enabled) (premium-features/is-hosted?))
            (-> {:host         (channel.settings/override-email-smtp-host)
                 :user         (channel.settings/override-email-smtp-username)
                 :pass         (channel.settings/override-email-smtp-password)
