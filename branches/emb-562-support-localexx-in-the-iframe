@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-506-live-previews-for-new-iframe-embed-flow",
     "hash": "d7f354b2b52876d21636e6ba0785eb571cfa13f1"
+  },
+  "upstream": {
+    "branch": "emb-562-support-localexx-in-the-iframe"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 60350,
+        "gqlID": "PR_kwDOAczgH86c-Doq"
+      }
+    }
   }
 }
