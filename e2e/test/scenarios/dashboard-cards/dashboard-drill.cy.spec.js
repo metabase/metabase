@@ -265,7 +265,6 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     // check that param was set to "foo"
     cy.location("search").should("eq", "?my_param=foo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     H.filterWidget("My Param").findByText("foo");
   });
 
