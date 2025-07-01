@@ -11,6 +11,7 @@
    [metabase.channel.models.channel :as models.channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.shared :as channel.shared]
@@ -86,7 +87,7 @@
     (let [inline-params   (:inline_parameters part)
           rendered-params (when (seq inline-params) (render.util/render-parameters inline-params))
           heading-text    (:text part)
-          style           (if (seq inline-params) {:margin-bottom "4px"} {})]
+          style           (style/style (if (seq inline-params) {:margin-bottom "4px"} {}))]
       {:content (str (html [:h2 {:style style} heading-text])
                      rendered-params)})
     :tab-title
