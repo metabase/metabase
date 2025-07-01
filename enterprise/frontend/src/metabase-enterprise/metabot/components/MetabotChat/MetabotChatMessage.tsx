@@ -11,6 +11,12 @@ import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import Styles from "./MetabotChat.module.css";
 
+interface MessageProps extends FlexProps {
+  message: MetabotChatMessage;
+  onRetry?: (messageId: string) => void;
+  hideActions: boolean;
+}
+
 export const MessageContainer = ({
   chatRole,
   className,
@@ -35,10 +41,9 @@ export const MessageContainer = ({
 export const UserMessage = ({
   message,
   className,
+  hideActions = false,
   ...props
-}: FlexProps & {
-  message: MetabotChatMessage;
-}) => {
+}: Omit<MessageProps, "onRetry">) => {
   const clipboard = useClipboard();
 
   return (
@@ -51,15 +56,17 @@ export const UserMessage = ({
       >
         {message.message}
       </Text>
-      <Flex className={Styles.messageActions}>
-        <ActionIcon
-          onClick={() => clipboard.copy(message.message)}
-          h="sm"
-          data-testid="metabot-chat-message-copy"
-        >
-          <Icon name="copy" size="1rem" />
-        </ActionIcon>
-      </Flex>
+      {!hideActions && (
+        <Flex className={Styles.messageActions}>
+          <ActionIcon
+            onClick={() => clipboard.copy(message.message)}
+            h="sm"
+            data-testid="metabot-chat-message-copy"
+          >
+            <Icon name="copy" size="1rem" />
+          </ActionIcon>
+        </Flex>
+      )}
     </MessageContainer>
   );
 };
@@ -68,44 +75,39 @@ export const AgentMessage = ({
   message,
   className,
   onRetry,
+  hideActions = false,
   ...props
-}: FlexProps & {
-  message: MetabotChatMessage;
-  onRetry?: (messageId: string) => void;
-}) => {
+}: MessageProps) => {
   const clipboard = useClipboard();
 
   return (
     <MessageContainer chatRole={message.role} {...props}>
       <AIMarkdown className={Styles.message}>{message.message}</AIMarkdown>
-      <Flex className={Styles.messageActions}>
-        <ActionIcon
-          onClick={() => clipboard.copy(message.message)}
-          h="sm"
-          data-testid="metabot-chat-message-copy"
-        >
-          <Icon name="copy" size="1rem" />
-        </ActionIcon>
-        {onRetry && (
+      {!hideActions && (
+        <Flex className={Styles.messageActions}>
           <ActionIcon
-            onClick={() => onRetry(message.id)}
+            onClick={() => clipboard.copy(message.message)}
             h="sm"
-            data-testid="metabot-chat-message-retry"
+            data-testid="metabot-chat-message-copy"
           >
-            <Icon name="revert" size="1rem" />
+            <Icon name="copy" size="1rem" />
           </ActionIcon>
-        )}
-      </Flex>
+          {onRetry && (
+            <ActionIcon
+              onClick={() => onRetry(message.id)}
+              h="sm"
+              data-testid="metabot-chat-message-retry"
+            >
+              <Icon name="revert" size="1rem" />
+            </ActionIcon>
+          )}
+        </Flex>
+      )}
     </MessageContainer>
   );
 };
 
-export const Message = (
-  props: FlexProps & {
-    message: MetabotChatMessage;
-    onRetry?: (messageId: string) => void;
-  },
-) => {
+export const Message = (props: MessageProps) => {
   return props.message.role === "agent" ? (
     <AgentMessage {...props} />
   ) : (

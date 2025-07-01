@@ -1,6 +1,7 @@
 import cx from "classnames";
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { c, jt, t } from "ttag";
+import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
@@ -23,18 +24,16 @@ import { useMetabotAgent } from "../../hooks";
 import Styles from "./MetabotChat.module.css";
 import { AgentErrorMessage, Message } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
-import { useAutoscrollMessages } from "./hooks";
+import { useScrollManager } from "./hooks";
 
 export const MetabotChat = () => {
-  const messagesRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
-
   const metabot = useMetabotAgent();
-
-  useAutoscrollMessages(headerRef, messagesRef, metabot.messages);
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
+
+  const { scrollContainerRef, headerRef, fillerRef } =
+    useScrollManager(hasMessages);
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery({
     metabot_id: metabot.metabotId,
@@ -83,11 +82,7 @@ export const MetabotChat = () => {
     >
       <Box className={Styles.container} data-testid="metabot-chat">
         {/* header */}
-        <Box
-          data-testid="metabot-chat-header"
-          className={Styles.header}
-          ref={headerRef}
-        >
+        <Box ref={headerRef} className={Styles.header}>
           <Flex align-items="center">
             <Text lh={1} fz="sm" c="text-secondary">
               {t`Metabot isn't perfect. Double-check results.`}
@@ -109,55 +104,57 @@ export const MetabotChat = () => {
 
         {/* chat messages */}
         <Box
+          ref={scrollContainerRef}
           className={Styles.messagesContainer}
           data-testid="metabot-chat-messages"
-          ref={messagesRef}
         >
-          {/* empty state with no suggested prompts */}
-          {!hasMessages && (
-            <Flex
-              h="100%"
-              gap="md"
-              direction="column"
-              align="center"
-              justify="center"
-              data-testid="metabot-empty-chat-info"
-            >
-              <Box component={EmptyDashboardBot} w="6rem" />
-              <Text
-                c="text-light"
-                maw="12rem"
-                ta="center"
-              >{t`I can help you explore your metrics and models.`}</Text>
-            </Flex>
-          )}
-
-          {/* empty state with suggested prompts */}
-          {!hasMessages && (
-            <Stack
-              gap="sm"
-              className={Styles.promptSuggestionsContainer}
-              data-testid="metabot-prompt-suggestions"
-            >
-              <>
-                {suggestedPrompts.map(({ prompt }, index) => (
-                  <Box key={index}>
-                    <Button
-                      fz="sm"
-                      size="xs"
-                      onClick={() => handleSubmitInput(prompt)}
-                      className={Styles.promptSuggestionButton}
-                    >
-                      {prompt}
-                    </Button>
-                  </Box>
-                ))}
-              </>
-            </Stack>
+          {!hasMessages && !metabot.isDoingScience && (
+            <>
+              {/* empty state */}
+              <Flex
+                h="100%"
+                gap="md"
+                direction="column"
+                align="center"
+                justify="center"
+                data-testid="metabot-empty-chat-info"
+              >
+                <Box component={EmptyDashboardBot} w="6rem" />
+                <Text
+                  c="text-light"
+                  maw="12rem"
+                  ta="center"
+                >{t`I can help you explore your metrics and models.`}</Text>
+              </Flex>
+              {/* empty state with suggested prompts */}
+              <Stack
+                gap="sm"
+                className={Styles.promptSuggestionsContainer}
+                data-testid="metabot-prompt-suggestions"
+              >
+                <>
+                  {suggestedPrompts.map(({ prompt }, index) => (
+                    <Box key={index}>
+                      <Button
+                        fz="sm"
+                        size="xs"
+                        onClick={() => handleSubmitInput(prompt)}
+                        className={Styles.promptSuggestionButton}
+                      >
+                        {prompt}
+                      </Button>
+                    </Box>
+                  ))}
+                </>
+              </Stack>
+            </>
           )}
 
           {(hasMessages || metabot.isDoingScience) && (
-            <Box className={Styles.messages}>
+            <Box
+              className={Styles.messages}
+              data-testid="metabot-chat-inner-messages"
+            >
               {/* conversation messages */}
               {metabot.messages.map((message, index) => {
                 const canRetry =
@@ -171,6 +168,11 @@ export const MetabotChat = () => {
                     data-testid="metabot-chat-message"
                     message={message}
                     onRetry={canRetry ? handleRetryMessage : undefined}
+                    hideActions={
+                      metabot.isDoingScience &&
+                      metabot.messages.length === index + 1 &&
+                      message.role === "agent"
+                    }
                   />
                 );
               })}
@@ -188,8 +190,15 @@ export const MetabotChat = () => {
               {metabot.isDoingScience && (
                 <MetabotThinking
                   toolCalls={metabot.useStreaming ? metabot.toolCalls : []}
+                  hideLoader={
+                    metabot.useStreaming &&
+                    _.last(metabot.messages)?.role === "agent"
+                  }
                 />
               )}
+
+              {/* filler - height gets set via ref mutation */}
+              <div ref={fillerRef} data-testid="metabot-message-filler" />
 
               {/* long convo warning */}
               {metabot.isLongConversation && (
