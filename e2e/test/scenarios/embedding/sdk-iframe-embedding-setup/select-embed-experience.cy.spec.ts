@@ -125,7 +125,7 @@ H.describeWithSnowplow(suiteTitle, () => {
   });
 
   it("localizes the iframe preview when ?locale is passed", () => {
-    cy.visit("/embed/new?locale=fr");
+    cy.visit("/embed-iframe?locale=fr");
     cy.wait("@dashboard");
 
     // TODO: update this test once "Exploration" is localized in french.
