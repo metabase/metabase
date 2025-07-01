@@ -432,16 +432,14 @@ export function DashCardVisualization({
     return () => clearTimeout(timeoutId);
   }, [lastLoad]);
 
-  const display = question?.display();
-  const renderLoadingView = useMemo(() => {
-    return function DashboardLoadingView() {
-      return (
-        <div className={cx(CS.px2, CS.pb2, CS.fullHeight)}>
-          <ChartSkeleton display={display} />
-        </div>
-      );
-    };
-  }, [display]);
+  const renderLoadingView = () => (
+    <div
+      data-testid="loading-indicator"
+      className={cx(CS.px2, CS.pb2, CS.fullHeight)}
+    >
+      <ChartSkeleton display={question?.display()} />
+    </div>
+  );
 
   return (
     <Visualization
