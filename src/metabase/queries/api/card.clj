@@ -609,6 +609,7 @@
         ;; _ (sync-metadata/sync-db-metadata! db)
         _ (sync/sync-database! db)
         table (t2/select-one :model/Table :name new-table-name)]
+    ;; the FE doesn't know what to do with :type :transform, so we just pretend it's still a question for the purposes of this demo
     {;; :type :transform
      :type :question
      :table_id (:id table)

@@ -467,7 +467,6 @@
 
 (defmethod collection-children-query :transform
   [_ collection options]
-  (def x [collection options])
   (card-query :transform collection options))
 
 (defmethod post-process-collection-children :dataset
