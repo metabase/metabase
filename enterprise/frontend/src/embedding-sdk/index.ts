@@ -14,6 +14,7 @@ import "sdk-ee-plugins";
 import "sdk-specific-imports";
 
 // Enable SDK mode as we are in the SDK bundle
+// This applies to SDK derivatives such as new iframe embedding.
 EMBEDDING_SDK_CONFIG.isSdk = true;
 
 export * from "./hooks/public";
