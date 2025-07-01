@@ -1,5 +1,7 @@
 name: E2E Cross-version Tests
 
+# See `bin/backward-compatibility-test.js` for the documentation of this workflow.
+
 on:
   workflow_dispatch:
     inputs:
