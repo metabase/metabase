@@ -17,6 +17,12 @@ export const visitNewEmbedPage = () => {
   cy.intercept("GET", "/api/dashboard/**").as("dashboard");
   cy.visit("/embed/new");
   cy.wait("@dashboard");
+
+  cy.get("#iframe-embed-container").should(
+    "have.attr",
+    "data-iframe-loaded",
+    "true",
+  );
 };
 
 export const assertRecentItemName = (
