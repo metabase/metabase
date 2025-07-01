@@ -72,7 +72,7 @@ export const InteractiveQuestionProvider = ({
       await onBeforeSave?.(sdkQuestion, saveContext);
 
       const createdQuestion = await handleCreateQuestion(question);
-      onSave?.(sdkQuestion, saveContext);
+      onSave?.(transformSdkQuestion(createdQuestion), saveContext);
 
       // Set the latest saved question object to update the question title.
       replaceQuestion(createdQuestion);
