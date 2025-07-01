@@ -4,6 +4,7 @@ import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
 import { Box, Flex, Icon, Text, Title } from "metabase/ui";
 
+import { UpsellWrapperDismissable } from "../UpsellWrapperDismissable";
 import { UPGRADE_URL } from "../constants";
 
 import { UpsellGem } from "./UpsellGem";
@@ -107,4 +108,6 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   );
 };
 
-export const UpsellBanner = UpsellWrapper(_UpsellBanner);
+export const UpsellBanner = UpsellWrapper(
+  UpsellWrapperDismissable(_UpsellBanner),
+);
