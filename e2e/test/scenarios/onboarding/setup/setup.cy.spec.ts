@@ -344,7 +344,7 @@ describe("scenarios > setup", () => {
       .click();
 
     cy.findByTestId("database-form").within(() => {
-      cy.findByLabelText("Search for a database").type("SQL");
+      cy.findByLabelText("Search for a database").type("lite").blur();
       cy.findByText("SQLite").click();
       cy.findByLabelText("Display name").type(dbName);
       cy.findByLabelText("Filename").type("./resources/sqlite-fixture.db", {
