@@ -48,7 +48,7 @@ const config: StorybookConfig = {
           Buffer: ["buffer", "Buffer"],
         }),
         new webpack.EnvironmentPlugin({
-          IS_EMBEDDING_SDK: false,
+          IS_EMBEDDING_SDK: "false",
         }),
       ],
       module: {

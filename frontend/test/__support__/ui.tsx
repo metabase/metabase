@@ -26,6 +26,7 @@ import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider } from "metabase/ui";
+import { themeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -232,6 +233,7 @@ export function TestWrapper({
   withDND,
   withUndos,
   theme,
+  withCssVariables = false,
 }: {
   children: React.ReactElement;
   store: any;
@@ -241,23 +243,23 @@ export function TestWrapper({
   withDND: boolean;
   withUndos?: boolean;
   theme?: MantineThemeOverride;
+  withCssVariables?: boolean;
 }): JSX.Element {
   return (
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <ThemeProvider
-          theme={theme}
-          mantineProviderProps={{ withCssVariables: false }}
-        >
-          <GlobalStylesForTest />
+        <themeProviderContext.Provider value={{ withCssVariables }}>
+          <ThemeProvider theme={theme}>
+            <GlobalStylesForTest />
 
-          <MaybeKBar hasKBar={withKBar}>
-            <MaybeRouter hasRouter={withRouter} history={history}>
-              {children}
-            </MaybeRouter>
-          </MaybeKBar>
-          {withUndos && <UndoListing />}
-        </ThemeProvider>
+            <MaybeKBar hasKBar={withKBar}>
+              <MaybeRouter hasRouter={withRouter} history={history}>
+                {children}
+              </MaybeRouter>
+            </MaybeKBar>
+            {withUndos && <UndoListing />}
+          </ThemeProvider>
+        </themeProviderContext.Provider>
       </MaybeDNDProvider>
     </MetabaseReduxProvider>
   );
@@ -415,9 +417,9 @@ const ThemeProviderWrapper = ({
   children,
   ...props
 }: React.PropsWithChildren) => (
-  <ThemeProvider mantineProviderProps={{ withCssVariables: false }} {...props}>
-    {children}
-  </ThemeProvider>
+  <themeProviderContext.Provider value={{ withCssVariables: false }}>
+    <ThemeProvider {...props}>{children}</ThemeProvider>
+  </themeProviderContext.Provider>
 );
 
 export function renderWithTheme(children: React.ReactElement) {

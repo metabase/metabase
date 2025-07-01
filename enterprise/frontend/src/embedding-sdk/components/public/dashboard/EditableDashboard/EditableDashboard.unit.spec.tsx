@@ -1,6 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
+import {
+  setupCollectionItemsEndpoint,
+  setupEmbeddingDataPickerDecisionEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { createMockCollection } from "metabase-types/api/mocks";
 
 import {
   type SetupSdkDashboardOptions,
@@ -88,6 +95,35 @@ describe("EditableDashboard", () => {
 
     expect(
       dashboardHeader.getByLabelText("Exit fullscreen"),
+    ).toBeInTheDocument();
+  });
+
+  it("should allow to create a new question", async () => {
+    await setup();
+    // These endpoints are used in the simple data picker
+    setupCollectionItemsEndpoint({
+      collection: createMockCollection(ROOT_COLLECTION),
+      collectionItems: [],
+    });
+    setupEmbeddingDataPickerDecisionEndpoints("flat");
+    setupSearchEndpoints([]);
+
+    expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
+
+    await userEvent.click(
+      within(screen.getByTestId("dashboard-header")).getByLabelText(
+        "Edit dashboard",
+      ),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add questions" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "New Question" }));
+
+    // We should render the simple data picker at this point
+    expect(screen.queryByTestId("dashboard-header")).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Pick your starting data" }),
     ).toBeInTheDocument();
   });
 });

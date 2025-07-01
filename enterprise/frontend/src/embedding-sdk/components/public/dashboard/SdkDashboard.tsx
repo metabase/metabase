@@ -3,10 +3,14 @@ import {
   type PropsWithChildren,
   type ReactNode,
   useEffect,
+  useState,
 } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
+import { InteractiveQuestionProvider } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   DashboardNotFoundError,
   PublicComponentWrapper,
@@ -91,6 +95,8 @@ export type SdkDashboardProps = PropsWithChildren<
     DashboardEventHandlersProps
 >;
 
+type RenderMode = "dashboard" | "question" | "queryBuilder";
+
 export type SdkDashboardInnerProps = SdkDashboardProps &
   Partial<
     Pick<
@@ -151,6 +157,13 @@ const SdkDashboardInner = ({
     dashboardId,
   });
 
+  const [renderModeState, setRenderMode] = useState<
+    "dashboard" | "queryBuilder"
+  >("dashboard");
+  const finalRenderMode: RenderMode = adhocQuestionUrl
+    ? "question"
+    : renderModeState;
+
   const errorPage = useSdkSelector(getErrorPage);
   const dispatch = useSdkDispatch();
   useEffect(() => {
@@ -194,6 +207,9 @@ const SdkDashboardInner = ({
           ? navigateToNewCardFromDashboard
           : onNavigateToNewCardFromDashboard
       }
+      onNewQuestion={() => {
+        setRenderMode("queryBuilder");
+      }}
       downloadsEnabled={displayOptions.downloadsEnabled}
       background={displayOptions.background}
       bordered={displayOptions.bordered}
@@ -212,28 +228,43 @@ const SdkDashboardInner = ({
         dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
       }}
     >
-      {adhocQuestionUrl ? (
-        <SdkDashboardStyledWrapperWithRef className={className} style={style}>
-          <InteractiveAdHocQuestion
-            questionPath={adhocQuestionUrl}
-            onNavigateBack={onNavigateBackToDashboard}
-            {...drillThroughQuestionProps}
-          >
-            {AdHocQuestionView && <AdHocQuestionView />}
-          </InteractiveAdHocQuestion>
-        </SdkDashboardStyledWrapperWithRef>
-      ) : (
-        <SdkDashboardProvider plugins={plugins} onEditQuestion={onEditQuestion}>
-          {children ?? (
-            <SdkDashboardStyledWrapperWithRef
-              className={className}
-              style={style}
+      {match(finalRenderMode)
+        .with("question", () => (
+          <SdkDashboardStyledWrapperWithRef className={className} style={style}>
+            <InteractiveAdHocQuestion
+              // `adhocQuestionUrl` would have value if renderMode is "question"
+              questionPath={adhocQuestionUrl!}
+              onNavigateBack={onNavigateBackToDashboard}
+              {...drillThroughQuestionProps}
             >
-              <Dashboard className={EmbedFrameS.EmbedFrame} />
-            </SdkDashboardStyledWrapperWithRef>
-          )}
-        </SdkDashboardProvider>
-      )}
+              {AdHocQuestionView && <AdHocQuestionView />}
+            </InteractiveAdHocQuestion>
+          </SdkDashboardStyledWrapperWithRef>
+        ))
+        .with("dashboard", () => (
+          <SdkDashboardProvider
+            plugins={plugins}
+            onEditQuestion={onEditQuestion}
+          >
+            {children ?? (
+              <SdkDashboardStyledWrapperWithRef
+                className={className}
+                style={style}
+              >
+                <Dashboard className={EmbedFrameS.EmbedFrame} />
+              </SdkDashboardStyledWrapperWithRef>
+            )}
+          </SdkDashboardProvider>
+        ))
+        .with("queryBuilder", () => (
+          <InteractiveQuestionProvider questionId="new">
+            <InteractiveQuestionDefaultView
+              withResetButton
+              withChartTypeSelector
+            />
+          </InteractiveQuestionProvider>
+        ))
+        .exhaustive()}
     </DashboardContextProvider>
   );
 };
