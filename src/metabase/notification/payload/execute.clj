@@ -112,13 +112,6 @@
         inline-parameters     (filter #(inline-parameters-ids (:id %)) parameters)]
     (assoc-in dashcard [:visualization_settings :inline_parameters] inline-parameters)))
 
-(defn- escape-heading-markdown
-  [dashcard]
-  ;; If there's no heading text, the heading is empty, so we return nil.
-  (when (get-in dashcard [:visualization_settings :text])
-    (update-in dashcard [:visualization_settings :text]
-               #(str "## " %))))
-
 (defn- escape-markdown-chars?
   "Heading cards should not escape characters."
   [dashcard]
