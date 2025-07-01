@@ -326,18 +326,9 @@ const CONVERSION = defineClauses(
       description: () => t`Converts a datetime string or bytes to a datetime.`,
       hasOptions: true,
       validator(_value, mode) {
-        const validModes = [
-          "iso",
-          "simple",
-          "isobytes",
-          "simplebytes",
-          "unixmilliseconds",
-          "unixseconds",
-          "unixmicroseconds",
-          "unixnanoseconds",
-        ];
+        const validModes = ["iso", "simple", "isobytes", "simplebytes"];
 
-        if (mode !== undefined && validModes.includes(mode)) {
+        if (mode !== undefined && !validModes.includes(mode)) {
           return t`Invalid mode: ${mode}`;
         }
       },
