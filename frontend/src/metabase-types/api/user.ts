@@ -4,6 +4,7 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 
 export type UserId = number;
 export type UserAttribute = string;
+export type AttributeMap = Record<UserAttribute, UserAttribute>;
 
 export interface BaseUser {
   id: UserId;
@@ -24,7 +25,7 @@ export interface BaseUser {
 }
 
 export interface User extends BaseUser {
-  login_attributes: Record<UserAttribute, UserAttribute> | null;
+  login_attributes: AttributeMap | null;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
   is_installer: boolean;
   has_invited_second_user: boolean;
