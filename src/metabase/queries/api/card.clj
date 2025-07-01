@@ -576,9 +576,10 @@
 ;; existing view that are not equal. if uniqueness can't be guaranteed by
 ;; hashing, we may need to store view definitions (we'll most likely need
 ;; that anyway) and compare
-
 (defn- generate-view-name [query]
   (str "mb_view_" (abs (hash query))))
+
+;; TODO: we likely don't want CREATE OR REPLACE, and always generate a new name
 
 (defn- generate-view-definition [name query]
   (format "CREATE OR REPLACE VIEW \"%s\" AS (%s)" name query))
@@ -595,21 +596,19 @@
        (jdbc/execute! {:connection conn} view-definition)
        view-name))))
 
-(defn- turn-card-into-transform [{:keys [database_id] :as card}]
+(defn- transform-updates [{:keys [database_id] :as card}]
   (assert (empty? (:parameters card)))
   (let [db (t2/select-one :model/Database :id database_id)
         driver (:engine db)
         new-table-name (create-view-for-card driver db card)
         _ (sync/sync-db-metadata! db)
         table (t2/select-one :model/Table :name new-table-name)]
-    (-> card
-        (assoc
-         :type :transform
-         :table_id (:id table)
-         :dataset_query
-         {:database (:id db),
-          :type :query,
-          :query {:source-table (:id table)}}))))
+    {:type :transform
+     :table_id (:id table)
+     :dataset_query
+     {:database (:id db),
+      :type :query,
+      :query {:source-table (:id table)}}}))
 
 ;;; (def card (t2/select-one :model/Card 115))
 ;;; (turn-card-into-transform card)
@@ -635,7 +634,10 @@
                                 (api/updates-with-archived-directly card-before-update card-updates))
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
-                                 (card/model? card-updates))]
+                                 (card/model? card-updates))
+        is-transform-after-update? (if (nil? type)
+                                     (card/transform? card-before-update)
+                                     (card/transform? card-updates))]
     ;; Do various permissions checks
     (doseq [f [check-allowed-to-move
                check-allowed-to-modify-query
@@ -665,6 +667,11 @@
                                                metadata
                                                (assoc :result_metadata           metadata
                                                       :verified-result-metadata? true))
+
+          card-updates                       (cond->> card-updates
+                                               is-transform-after-update?
+                                               (merge (transform-updates card-before-update)))
+
           card                               (-> (card/update-card! {:card-before-update    card-before-update
                                                                      :card-updates          card-updates
                                                                      :actor                 @api/*current-user*

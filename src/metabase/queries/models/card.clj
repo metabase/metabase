@@ -131,6 +131,11 @@
   [card]
   (= (keyword (:type card)) :model))
 
+(defn transform?
+  "Returns true if `card` is a transform."
+  [card]
+  (= (keyword (:type card)) :transform))
+
 (defn lib-query
   "Given a card with at least its `:dataset_query` field, this returns the `metabase.lib` form of the query.
 
