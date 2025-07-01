@@ -17,8 +17,8 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
-  Box,
   Flex,
+  Group,
   type IconName,
   type IconProps,
   Menu,
@@ -402,7 +402,7 @@ export function DashCardVisualization({
     const title = settings["card.title"] ?? series?.[0].card.name ?? "";
 
     return (
-      <Box mr="sm">
+      <Group mr="sm">
         {inlineParameters.length > 0 && (
           <DashboardParameterList
             className={S.InlineParametersList}
@@ -411,21 +411,24 @@ export function DashCardVisualization({
             widgetsVariant="subtle"
           />
         )}
-        <DashCardMenu
-          question={question}
-          result={result}
-          dashcard={dashcard}
-          onEditVisualization={onEditVisualization}
-          openUnderlyingQuestionItems={
-            onChangeCardAndRun && (title ? undefined : titleMenuItems)
-          }
-        />
-      </Box>
+        {!isEditing && (
+          <DashCardMenu
+            question={question}
+            result={result}
+            dashcard={dashcard}
+            onEditVisualization={onEditVisualization}
+            openUnderlyingQuestionItems={
+              onChangeCardAndRun && (title ? undefined : titleMenuItems)
+            }
+          />
+        )}
+      </Group>
     );
   }, [
     dashboard,
     dashcard,
     dashcardMenu,
+    isEditing,
     inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
