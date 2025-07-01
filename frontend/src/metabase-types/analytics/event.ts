@@ -162,7 +162,7 @@ export type EventsClickedEvent = ValidateEvent<{
 export type MoveQuestionsIntoDashboardViewedEvent = ValidateEvent<{
   event: "move_questions_into_dashboard_viewed";
   target_id: null;
-  triggered_from: "collection_menu";
+  triggered_from: "move_questions_into_dashboards_modal";
   duration_ms: null;
   result: string;
 }>;
