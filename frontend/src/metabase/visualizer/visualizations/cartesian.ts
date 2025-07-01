@@ -213,6 +213,18 @@ export function addDimensionColumnToCartesianChart(
   };
 }
 
+/**
+ * Returns a slot where the column can be added to a cartesian chart,
+ * or undefined if no suitable slot is found.
+ *
+ * @param state the current state of the visualizer
+ * @param settings the computed visualization settings
+ * @param datasets the selected datasets
+ * @param dataSourceColumns the current data source columns (not used )
+ * @param column the column to find a slot for
+ * @returns a string representing the slot where the column should be added,
+ *          or undefined if no suitable slot is found.
+ */
 export function findColumnSlotForCartesianChart(
   state: Pick<
     VisualizerVizDefinitionWithColumns,
@@ -239,12 +251,20 @@ export function findColumnSlotForCartesianChart(
       return "scatter.bubble";
     }
   } else {
+    const metrics = settings["graph.metrics"] ?? [];
+
     if (isDimension(column) && !isMetric(column)) {
       // Filtering out nulls as computed 'graph.dimensions' can be `[null]` sometimes
       const ownDimensions =
         state.settings["graph.dimensions"] ??
         settings["graph.dimensions"]?.filter(Boolean) ??
         [];
+
+      // No breakout when there are more than one metric
+      if (ownDimensions.length > 0 && metrics.length > 1) {
+        return undefined;
+      }
+
       if (ownDimensions.length === 0) {
         return "graph.dimensions";
       } else {
