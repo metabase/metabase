@@ -621,17 +621,17 @@
 ;;; (def card (t2/select-one :model/Card 115))
 ;;; (turn-card-into-transform card)
 
-(comment
+#_(comment
 
-  (def cu (toucan2.core/select-one :model/Card :name "q3 orders"))
+    (def cu (toucan2.core/select-one :model/Card :name "q3 orders"))
 
-  (metabase.request.session/with-current-user 1
-    (update-card! 114 {:type :transform} false))
+    (metabase.request.session/with-current-user 1
+      (update-card! 114 {:type :transform} false))
 
-  (metabase.request.session/with-current-user 1
-    (update-card! 116 {:type :transform} false))
+    (metabase.request.session/with-current-user 1
+      (update-card! 116 {:type :transform} false))
 
-  (toucan2.core/update! :model/Card :id 116 {:type "question"}))
+    (toucan2.core/update! :model/Card :id 116 {:type "question"}))
 
 (mu/defn update-card!
   "Updates a card - impl"

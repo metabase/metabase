@@ -877,6 +877,7 @@
            config
            content-verification
            dashboards
+           driver
            embedding
            events
            legacy-mbql
@@ -893,6 +894,7 @@
            request
            revisions
            search
+           sync
            util
            view-log
            warehouse-schema}}
