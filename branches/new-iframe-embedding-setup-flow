@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "master",
-    "hash": "3584d9410d1da311567d1eb5d6c64e0b74750735"
+    "hash": "1324a86e65cedaa9bc4d69a59f8d011b7914e674"
   },
   "upstream": {
     "branch": "new-iframe-embedding-setup-flow"
