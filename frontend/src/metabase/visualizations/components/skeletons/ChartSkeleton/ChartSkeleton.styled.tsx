@@ -15,5 +15,6 @@ const fadingKeyframes = keyframes`
   }
 `;
 export const animationStyles = css`
+  opacity: 0.1;
   animation: ${fadingKeyframes} 1.5s infinite;
 `;
