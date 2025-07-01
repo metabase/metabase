@@ -37,7 +37,6 @@ import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/compo
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
-import { SearchButton } from "metabase/nav/components/search/SearchButton";
 import type { PaletteAction } from "metabase/palette/types";
 import {
   NotFoundPlaceholder,
@@ -703,7 +702,7 @@ export const PLUGIN_METABOT = {
   getMetabotRoutes: () => null as React.ReactElement | null,
   MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: (_state: State) => false,
-  SearchButton: SearchButton,
+  getSearchButton: () => require("metabase/nav/components/search/SearchButton"),
 };
 
 type DashCardMenuItemGetter = (

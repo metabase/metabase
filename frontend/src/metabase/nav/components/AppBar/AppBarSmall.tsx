@@ -65,6 +65,8 @@ const AppBarSmall = ({
     setSearchActive(false);
   }, []);
 
+  const SearchButton = PLUGIN_METABOT.getSearchButton();
+
   return (
     <AppBarRoot>
       {isHeaderVisible && (
@@ -87,7 +89,7 @@ const AppBarSmall = ({
                   />
                 ) : (
                   <Flex justify="end">
-                    <PLUGIN_METABOT.SearchButton />
+                    <SearchButton />
                   </Flex>
                 ))}
             </AppBarSearchContainer>

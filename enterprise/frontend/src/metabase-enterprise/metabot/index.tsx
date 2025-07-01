@@ -67,7 +67,7 @@ if (hasPremiumFeature("metabot_v3")) {
     }, [searchText, startNewConversation]);
   };
 
-  PLUGIN_METABOT.SearchButton = MetabotSearchButton;
+  PLUGIN_METABOT.getSearchButton = () => MetabotSearchButton;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 }

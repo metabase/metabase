@@ -3,7 +3,7 @@ import utc from "dayjs/plugin/utc";
 
 import { useUpdateSettingMutation } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { isEEBuild } from "metabase/lib/utils";
+import { isEEBuild } from "metabase/lib/ee-utils";
 import type { TokenStatus } from "metabase-types/api";
 
 dayjs.extend(utc);

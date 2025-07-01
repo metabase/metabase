@@ -1,4 +1,4 @@
-import { isEEBuild } from "metabase/lib/utils";
+import { isEEBuild } from "metabase/lib/ee-utils";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 
 import { SettingsLicense } from "../SettingsLicense";

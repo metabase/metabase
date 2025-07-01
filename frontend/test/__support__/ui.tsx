@@ -18,12 +18,10 @@ import { Route, Router, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
-import { Api } from "metabase/api";
+import { Api } from "metabase/api/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
-import { makeMainReducers } from "metabase/reducers-main";
-import { publicReducers } from "metabase/reducers-public";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider } from "metabase/ui";
 import type { State } from "metabase-types/store";
@@ -159,6 +157,9 @@ export function getTestStoreAndWrapper({
   let { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { publicReducers } = require("metabase/reducers-public");
+
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
     initialState = _.pick(initialState, ...publicReducerNames) as State;
@@ -173,6 +174,8 @@ export function getTestStoreAndWrapper({
   const history = withRouter ? browserHistory : undefined;
 
   let reducers;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { makeMainReducers } = require("metabase/reducers-main");
 
   if (mode === "public") {
     reducers = publicReducers;

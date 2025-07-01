@@ -1,6 +1,5 @@
+import { act, waitFor } from "@testing-library/react";
 import type fetchMock from "fetch-mock";
-
-import { act, waitFor } from "./ui";
 
 export const getNextId = (() => {
   let id = 0;
