@@ -419,7 +419,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         H.chartLegendItems().should("have.length", 2);
 
         // Remove 2nd data source
-        H.removeDataSource(Q2_NAME, { throughMenu: true });
+        H.removeDataSource(Q2_NAME);
         H.dataImporter().within(() => {
           cy.findByText(Q2_NAME).should("not.exist");
           cy.findAllByText("Count").should("have.length", 1);
@@ -521,7 +521,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         H.chartLegendItems().should("have.length", 2);
 
         // Remove 2nd data source
-        H.removeDataSource(Q2_NAME, { throughMenu: true });
+        H.removeDataSource(Q2_NAME);
         H.dataImporter().within(() => {
           cy.findByText(Q2_NAME).should("not.exist");
           cy.findAllByText("Count").should("have.length", 1);

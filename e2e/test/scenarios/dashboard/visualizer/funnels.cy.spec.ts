@@ -155,7 +155,7 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
       });
 
       // Remove a data source
-      H.removeDataSource(VIEWS_COLUMN_CARD.name, { throughMenu: true });
+      H.removeDataSource(VIEWS_COLUMN_CARD.name);
       H.dataImporter().within(() => {
         cy.findByText(VIEWS_COLUMN_CARD.name).should("not.exist");
         cy.findByText("Views").should("not.exist");
