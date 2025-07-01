@@ -2,7 +2,7 @@ import { useMount } from "react-use";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
-import { Box, Flex, Text, Title } from "metabase/ui";
+import { Box, Flex, Icon, Text, Title } from "metabase/ui";
 
 import { UPGRADE_URL } from "../constants";
 
@@ -29,6 +29,8 @@ export type UpsellBannerProps = {
   source: string;
   children: React.ReactNode;
   style?: React.CSSProperties;
+  dismissable?: boolean;
+  onDismiss?: () => void;
 } & CardLinkProps;
 
 export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
@@ -39,6 +41,8 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   campaign,
   source,
   children,
+  dismissable = false,
+  onDismiss,
   ...props
 }: UpsellBannerProps) => {
   const url = useUpsellLink({
@@ -70,23 +74,35 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
         </Box>
       </Flex>
 
-      {buttonLink !== undefined ? (
-        <ExternalLink
-          onClickCapture={() => trackUpsellClicked({ source, campaign })}
-          href={url}
-          className={S.UpsellCTALink}
-        >
-          {buttonText}
-        </ExternalLink>
-      ) : (
-        <Link
-          onClickCapture={() => trackUpsellClicked({ source, campaign })}
-          to={internalLink}
-          className={S.UpsellCTALink}
-        >
-          {buttonText}
-        </Link>
-      )}
+      <Flex align="center" gap="md">
+        {buttonLink !== undefined ? (
+          <ExternalLink
+            onClickCapture={() => trackUpsellClicked({ source, campaign })}
+            href={url}
+            className={S.UpsellCTALink}
+          >
+            {buttonText}
+          </ExternalLink>
+        ) : (
+          <Link
+            onClickCapture={() => trackUpsellClicked({ source, campaign })}
+            to={internalLink}
+            className={S.UpsellCTALink}
+          >
+            {buttonText}
+          </Link>
+        )}
+
+        {dismissable && onDismiss && (
+          <Icon
+            name="close"
+            onClick={onDismiss}
+            style={{ cursor: "pointer" }}
+            size={16}
+            color="text-medium"
+          />
+        )}
+      </Flex>
     </Box>
   );
 };

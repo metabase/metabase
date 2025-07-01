@@ -1,3 +1,4 @@
+import { action } from "@storybook/addon-actions";
 import type { ComponentProps } from "react";
 
 import { ReduxProvider } from "__support__/storybook";
@@ -76,4 +77,19 @@ export const Default = {
 
 export const Secondary = {
   render: SecondaryTemplate,
+};
+
+export const Dismissable = {
+  render: (args: UpsellBannerProps) => (
+    <ReduxProvider>
+      <Box>
+        <_UpsellBanner {...args} dismissable />
+      </Box>
+    </ReduxProvider>
+  ),
+  args: {
+    ...args,
+    dismissable: true,
+    onDismiss: action("dismiss"),
+  },
 };

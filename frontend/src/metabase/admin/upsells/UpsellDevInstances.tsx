@@ -20,7 +20,7 @@ export function UpsellDevInstances({ source }: { source: SOURCE }) {
       title={t`Get a development instance`}
       campaign="dev_instances"
       buttonText={t`Set up`}
-      buttonLink={getStoreUrl("account/new-dev-instance")}
+      buttonLink={getStoreUrl("dev instance upsell")}
       source={source}
     >
       <Text size="sm">
