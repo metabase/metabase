@@ -5,6 +5,8 @@ import type { Route, WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { DebugProvider } from "metabase/common/components/DebugMenu/DebugContext";
+import { DebugMenu } from "metabase/common/components/DebugMenu/DebugMenu";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
 import CS from "metabase/css/core/index.css";
 import {
@@ -153,9 +155,12 @@ export const DashboardApp = ({
         }}
         dashboardActions={DASHBOARD_APP_ACTIONS}
       >
-        <DashboardAppInner location={location} route={route}>
-          {children}
-        </DashboardAppInner>
+        <DebugProvider>
+          <DebugMenu />
+          <DashboardAppInner location={location} route={route}>
+            {children}
+          </DashboardAppInner>
+        </DebugProvider>
       </DashboardContextProvider>
     </ErrorBoundary>
   );
