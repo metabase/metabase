@@ -96,7 +96,7 @@ const NewItemMenuView = ({
         <Menu.Item
           key="embed"
           component={ForwardRefLink}
-          to="/embed-wizard"
+          to="/embed-iframe"
           leftSection={<Icon name="embed" />}
         >
           {t`Embed`}
