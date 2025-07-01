@@ -315,7 +315,8 @@
         (instrumented-arity error-context schema)))))
 
 (defn instrumented-fn-form
-  "Given a `fn-tail` like
+  "Nota Bene: not safe for expansion into Clojurescript!
+  Given a `fn-tail` like
 
     ([x :- :int y] (+ 1 2))
 
@@ -393,6 +394,7 @@
   fix this later."
   [& fn-tail]
   (let [parsed (parse-fn-tail fn-tail)
+        ;; Match mu/defn behavior:
         instrument? (macros/case
                       :cljs false
                       :clj (instrument-ns? *ns*))]
