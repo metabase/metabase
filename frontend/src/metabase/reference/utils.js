@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { assoc } from "icepick";
 import { t } from "ttag";
 
-import { humanize, titleize } from "metabase/lib/formatting";
+import { humanize, titleize } from "metabase/lib/formatting/strings";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";

@@ -9,7 +9,7 @@ import EmptyState from "metabase/common/components/EmptyState";
 import S from "metabase/common/components/List/List.module.css";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { assignUserColors } from "metabase/lib/formatting";
+import { assignUserColors } from "metabase/lib/formatting/colors";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
 

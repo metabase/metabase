@@ -1,7 +1,7 @@
 import { memoize } from "metabase/common/hooks/use-memoized-callback";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import { formatValue } from "metabase/lib/formatting/value";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
   ChartDataset,

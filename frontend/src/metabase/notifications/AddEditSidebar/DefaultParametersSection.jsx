@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { Badge } from "metabase/common/components/Badge";
 import CS from "metabase/css/core/index.css";
-import { conjunct } from "metabase/lib/formatting";
+import { conjunct } from "metabase/lib/formatting/strings";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { Icon } from "metabase/ui";
 

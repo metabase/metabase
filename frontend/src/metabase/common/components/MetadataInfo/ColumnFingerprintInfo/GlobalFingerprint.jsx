@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import { msgid, ngettext, t } from "ttag";
 
 import { useGetFieldValuesQuery } from "metabase/api";
-import { formatNumber } from "metabase/lib/formatting";
+import { formatNumber } from "metabase/lib/formatting/numbers";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 

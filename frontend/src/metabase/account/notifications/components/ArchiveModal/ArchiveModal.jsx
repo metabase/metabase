@@ -5,7 +5,7 @@ import { t } from "ttag";
 import Button from "metabase/common/components/Button";
 import ModalContent from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { formatChannelRecipients } from "metabase/lib/pulse";
 import Settings from "metabase/lib/settings";
 

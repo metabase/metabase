@@ -8,7 +8,7 @@ import _ from "underscore";
 import IconBorder from "metabase/common/components/IconBorder";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting/value";
 import { Icon } from "metabase/ui";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {

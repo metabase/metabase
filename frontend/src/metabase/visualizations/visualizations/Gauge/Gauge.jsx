@@ -9,7 +9,7 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting/value";
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {

@@ -1,7 +1,7 @@
 import type { NumberLike, StringLike } from "@visx/scale";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting/value";
 import { isEmpty } from "metabase/lib/validate";
 import { getFormattingOptionsWithoutScaling } from "metabase/visualizations/echarts/cartesian/model/util";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
