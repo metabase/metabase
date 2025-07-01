@@ -397,7 +397,7 @@
      (mapcat (fn [dataset-id]
                (let [table-names (or (seq (sort table-names)) (list-table-names driver database project-id dataset-id))]
                  (eduction
-                  (x/partition num-table-partitions num-table-partitions [])
+                  (xforms/partition num-table-partitions num-table-partitions [])
                   (mapcat #(describe-dataset-fields-reducible driver database project-id dataset-id %))
                   table-names))))
      (sort dataset-ids))))
