@@ -3,10 +3,12 @@ import {
   type PropsWithChildren,
   type ReactNode,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { InteractiveQuestionProvider } from "embedding-sdk/components/private/InteractiveQuestion/context";
@@ -172,6 +174,9 @@ const SdkDashboardInner = ({
     }
   }, [dispatch, dashboardId]);
 
+  // Now only used when rerendering the dashboard after creating a new question from the dashboard.
+  const refetchDashboardRef = useRef(_.noop);
+
   if (isLocaleLoading || isLoading) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
@@ -227,6 +232,10 @@ const SdkDashboardInner = ({
         dispatch(setEditingDashboard(dashboard));
         dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
       }}
+      // We only want the dashboard view to be rerendered, so the new dashboard questions are loaded after being created.
+      setRefetchDashboard={(refetchDashboard) => {
+        refetchDashboardRef.current = refetchDashboard;
+      }}
     >
       {match(finalRenderMode)
         .with("question", () => (
@@ -260,6 +269,16 @@ const SdkDashboardInner = ({
           <InteractiveQuestionProvider
             questionId="new"
             targetDashboardId={dashboardId}
+            /**
+             * This is called on both the question creation and editing.
+             * Since we will only render this query builder when users
+             * are creating a new question, we don't really need to worry
+             * about the editing.
+             */
+            onSave={() => {
+              setRenderMode("dashboard");
+              refetchDashboardRef.current();
+            }}
           >
             <InteractiveQuestionDefaultView
               withResetButton

@@ -74,6 +74,10 @@ export type DashboardContextOwnProps = {
   onNewQuestion?: () => void;
 };
 
+type DashboardContextProviderOwnProps = {
+  setRefetchDashboard?: (refetch: () => void) => void;
+};
+
 export type DashboardContextOwnResult = {
   shouldRenderAsNightMode: boolean;
   dashboardIdProp: DashboardContextOwnProps["dashboardId"];
@@ -87,7 +91,9 @@ export type DashboardControls = UseAutoScrollToDashcardResult &
 export type DashboardContextProps = DashboardContextOwnProps &
   Partial<DashboardControls>;
 
-type ContextProps = DashboardContextProps & ReduxProps;
+type ContextProps = DashboardContextProps &
+  DashboardContextProviderOwnProps &
+  ReduxProps;
 
 export type DashboardContextReturned = DashboardContextOwnResult &
   Omit<DashboardContextOwnProps, "dashboardId"> &
@@ -150,6 +156,7 @@ const DashboardContextProviderInner = ({
   reset,
   closeDashboard,
   navigateToNewCardFromDashboard,
+  setRefetchDashboard = noop,
   ...reduxProps
 }: PropsWithChildren<ContextProps>) => {
   const dispatch = useDispatch();
@@ -285,8 +292,18 @@ const DashboardContextProviderInner = ({
     if (dashboardIdProp && dashboardId && dashboardId !== previousDashboardId) {
       reset();
       fetchData(dashboardId);
+      setRefetchDashboard(() => {
+        fetchData(dashboardId);
+      });
     }
-  }, [dashboardId, fetchData, dashboardIdProp, previousDashboardId, reset]);
+  }, [
+    dashboardId,
+    fetchData,
+    dashboardIdProp,
+    previousDashboardId,
+    reset,
+    setRefetchDashboard,
+  ]);
 
   useEffect(() => {
     if (dashboard) {
