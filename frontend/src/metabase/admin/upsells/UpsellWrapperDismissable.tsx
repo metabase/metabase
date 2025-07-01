@@ -14,10 +14,8 @@ type UpsellWrapperDismissableProps = {
  */
 export function UpsellWrapperDismissable<
   Props extends UpsellWrapperDismissableProps,
->(
-  Component: React.ComponentType<Props>,
-): React.ComponentType<Props & { onDismiss: never }> {
-  const MaybeWrappedComponent = (props: Props & { onDismiss: never }) => {
+>(Component: React.ComponentType<Props>): React.ComponentType<Props> {
+  const MaybeWrappedComponent = (props: Props) => {
     if (!props.dismissable) {
       return <Component {...props} />;
     }
