@@ -47,6 +47,7 @@ export const InteractiveQuestionProvider = ({
   initialSqlParameters,
   withDownloads,
   variant,
+  targetDashboardId,
 }: InteractiveQuestionProviderProps) => {
   const handleCreateQuestion = useCreateQuestion();
   const handleSaveQuestion = useSaveQuestion();
@@ -100,6 +101,7 @@ export const InteractiveQuestionProvider = ({
     options,
     deserializedCard,
     initialSqlParameters,
+    targetDashboardId,
   });
 
   const globalPlugins = useSdkSelector(getPlugins);

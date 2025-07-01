@@ -55,6 +55,7 @@ export function useLoadQuestion({
   // Passed when navigating from `InteractiveDashboard` or `EditableDashboard`
   deserializedCard,
   initialSqlParameters,
+  targetDashboardId,
 }: LoadSdkQuestionParams): LoadQuestionHookResult {
   const dispatch = useSdkDispatch();
 
@@ -96,6 +97,7 @@ export function useLoadQuestion({
           deserializedCard,
           questionId: questionId,
           initialSqlParameters,
+          targetDashboardId,
         }),
       );
 

@@ -257,7 +257,10 @@ const SdkDashboardInner = ({
           </SdkDashboardProvider>
         ))
         .with("queryBuilder", () => (
-          <InteractiveQuestionProvider questionId="new">
+          <InteractiveQuestionProvider
+            questionId="new"
+            targetDashboardId={dashboardId}
+          >
             <InteractiveQuestionDefaultView
               withResetButton
               withChartTypeSelector
