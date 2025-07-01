@@ -419,8 +419,13 @@
 
 ;; we make a fake feature for the tests
 (defmethod driver/database-supports? [::driver/driver ::yyyymmddhhss-binary-timestamps]
-  [driver _feature _database]
-  (not (contains? drivers-without-binary-coercion-support driver)))
+  [_driver _feature _database]
+  true)
+
+(doseq [driver drivers-without-binary-coercion-support]
+  (defmethod driver/database-supports? [driver ::yyyymmddhhss-binary-timestamps]
+    [_driver _feature _database]
+    false))
 
 (defmulti yyyymmddhhmmss-binary-dates-expected-rows
   "Expected rows for the [[yyyymmddhhmmss-binary-dates]] test below."
@@ -618,8 +623,17 @@
                 (assoc (mt/mbql-query times)
                        :middleware {:format-rows? false})))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::no-binary-coercion]
+  [_driver _feature _database]
+  false)
+
+(doseq [driver drivers-without-binary-coercion-support]
+  (defmethod driver/database-supports? [driver ::no-binary-coercion]
+    [_driver _feature _database]
+    true))
+
 (deftest ^:parallel no-binary-drivers-throws-exception
-  (mt/test-drivers (set/intersection (mt/normal-drivers) drivers-without-binary-coercion-support)
+  (mt/test-drivers (mt/normal-drivers-with-feature ::no-binary-coercion)
     (doseq [coercion-strategy [:Coercion/YYYYMMDDHHMMSSBytes->Temporal
                                :Coercion/ISO8601Bytes->Temporal]]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not support"
