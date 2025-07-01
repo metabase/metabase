@@ -23,7 +23,7 @@ export const SdkIframeEmbedPreview = () => {
 
   useEffect(() => {
     const script = document.createElement("script");
-    script.src = "/app/embed.js";
+    script.src = `${instanceUrl}/app/embed.js`;
     document.body.appendChild(script);
 
     script.onload = () => {
