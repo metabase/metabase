@@ -14,18 +14,23 @@ export const SelectEmbedResourceMissingRecents = ({
 }) => {
   const embedIcon = experience === "dashboard" ? "dashboard" : "bar";
 
-  const emptyStateDescription = match(experience)
+  const description = match(experience)
+    .with("dashboard", () => t`You haven't visited any dashboards recently.`)
+    .with("chart", () => t`You haven't visited any charts recently.`)
+    .otherwise(() => null);
+
+  const searchLink = match(experience)
     .with(
       "dashboard",
       () =>
         c("{0} is a link button to search for dashboards")
-          .jt`You haven't visited any dashboards recently. ${(<br />)} You can ${(<Anchor size="sm" onClick={openPicker} inline>{t`search for dashboards`}</Anchor>)} to embed.`,
+          .jt`You can ${(<Anchor size="sm" onClick={openPicker} inline>{t`search for dashboards`}</Anchor>)} to embed.`,
     )
     .with(
       "chart",
       () =>
         c("{0} is a link button to search for charts")
-          .jt`You haven't visited any charts recently. ${(<br />)} You can ${(<Anchor size="sm" onClick={openPicker} inline>{t`search for charts`}</Anchor>)} to embed.`,
+          .jt`You can ${(<Anchor size="sm" onClick={openPicker} inline>{t`search for charts`}</Anchor>)} to embed.`,
     )
     .otherwise(() => null);
 
@@ -43,8 +48,12 @@ export const SelectEmbedResourceMissingRecents = ({
           {getEmptyStateTitle(experience)}
         </Text>
 
-        <Text size="sm" c="text-medium" ta="center" lh="lg">
-          {emptyStateDescription}
+        <Text size="sm" c="text-medium" ta="center">
+          {description}
+        </Text>
+
+        <Text size="sm" c="text-medium" ta="center">
+          {searchLink}
         </Text>
       </Stack>
     </Stack>
