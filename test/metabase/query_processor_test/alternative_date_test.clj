@@ -407,22 +407,20 @@
      ["bar" (.getBytes "20200421164300")]
      ["baz" (.getBytes "20210421164300")]]]])
 
-(def drivers-without-binary-coercion-support #{:athena
-                                               :bigquery-cloud-sdk
-                                               :clickhouse
-                                               :databricks
-                                               :druid
-                                               :snowflake
-                                               :sparksql
-                                               :sqlserver
-                                               :vertica})
-
 ;; we make a fake feature for the tests
 (defmethod driver/database-supports? [::driver/driver ::yyyymmddhhss-binary-timestamps]
   [_driver _feature _database]
   true)
 
-(doseq [driver drivers-without-binary-coercion-support]
+(doseq [driver #{:athena
+                 :bigquery-cloud-sdk
+                 :clickhouse
+                 :databricks
+                 :druid
+                 :snowflake
+                 :sparksql
+                 :sqlserver
+                 :vertica}]
   (defmethod driver/database-supports? [driver ::yyyymmddhhss-binary-timestamps]
     [_driver _feature _database]
     false))
@@ -624,13 +622,8 @@
                        :middleware {:format-rows? false})))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::no-binary-coercion]
-  [_driver _feature _database]
-  false)
-
-(doseq [driver drivers-without-binary-coercion-support]
-  (defmethod driver/database-supports? [driver ::no-binary-coercion]
-    [_driver _feature _database]
-    true))
+  [driver _feature _database]
+  (not (driver/database-supports? driver ::yyyymmddhhss-binary-timestamps)))
 
 (deftest ^:parallel no-binary-drivers-throws-exception
   (mt/test-drivers (mt/normal-drivers-with-feature ::no-binary-coercion)
