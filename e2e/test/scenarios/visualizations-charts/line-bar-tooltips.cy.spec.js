@@ -372,7 +372,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        buttonText: "Visualize another way",
+      });
 
       updateColumnTitle(originalName, customName);
 
@@ -501,7 +503,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        buttonText: "Visualize another way",
+      });
 
       updateColumnTitle(originalAvgSeriesName, customAvgSeriesName);
       updateColumnTitle(originalCumSumSeriesName, customCumSumSeriesName);
@@ -648,7 +652,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        buttonText: "Visualize another way",
+      });
 
       updateColumnTitle(originalAvgSeriesName, updatedOriginalAvgSeriesName);
       updateColumnTitle(
@@ -726,7 +732,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        buttonText: "Visualize another way",
+      });
 
       updateColumnTitle(originalName, updatedName);
 
@@ -794,7 +802,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        buttonText: "Visualize another way",
+      });
 
       updateColumnTitle(originalSeriesName, updatedOriginalSeriesName);
       updateColumnTitle(addedSeriesName, updatedAddedSeriesName);
