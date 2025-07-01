@@ -47,6 +47,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   type DashboardContextProps,
   DashboardContextProvider,
+  useDashboardContext,
 } from "metabase/dashboard/context";
 import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
@@ -54,6 +55,7 @@ import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
+import type { DashboardId } from "metabase-types/api";
 
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion";
 
@@ -266,25 +268,13 @@ const SdkDashboardInner = ({
           </SdkDashboardProvider>
         ))
         .with("queryBuilder", () => (
-          <InteractiveQuestionProvider
-            questionId="new"
+          <DashboardQueryBuilder
             targetDashboardId={dashboardId}
-            /**
-             * This is called on both the question creation and editing.
-             * Since we will only render this query builder when users
-             * are creating a new question, we don't really need to worry
-             * about the editing.
-             */
             onSave={() => {
               setRenderMode("dashboard");
               refetchDashboardRef.current();
             }}
-          >
-            <InteractiveQuestionDefaultView
-              withResetButton
-              withChartTypeSelector
-            />
-          </InteractiveQuestionProvider>
+          />
         ))
         .exhaustive()}
     </DashboardContextProvider>
@@ -313,4 +303,38 @@ function SdkDashboardParameterList(
   const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
 
   return <DashboardParameterList parameters={parameters} {...props} />;
+}
+
+type DashboardQueryBuilderProps = {
+  targetDashboardId: DashboardId;
+  onSave: () => void;
+};
+
+/**
+ * The sole reason this is extracted into a separate component is to access the dashboard context
+ */
+function DashboardQueryBuilder({
+  targetDashboardId,
+  onSave,
+}: DashboardQueryBuilderProps) {
+  const dispatch = useSdkDispatch();
+  const { dashboard } = useDashboardContext();
+  return (
+    <InteractiveQuestionProvider
+      questionId="new"
+      targetDashboardId={targetDashboardId}
+      /**
+       * This is called on both the question creation and editing.
+       * Since we will only render this query builder when users
+       * are creating a new question, we don't really need to worry
+       * about the editing.
+       */
+      onSave={() => {
+        onSave();
+        dispatch(setEditingDashboard(dashboard));
+      }}
+    >
+      <InteractiveQuestionDefaultView withResetButton withChartTypeSelector />
+    </InteractiveQuestionProvider>
+  );
 }
