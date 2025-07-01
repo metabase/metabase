@@ -264,7 +264,7 @@ export const moveColumnDown = (column, distance) => {
 
 export const moveDnDKitElement = (
   element,
-  { horizontal = 0, vertical = 0, onBeforeDragEnd = null } = {},
+  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
 ) => {
   element
     .trigger("pointerdown", 0, 0, {
@@ -295,7 +295,7 @@ export const moveDnDKitElement = (
 
 export const moveDnDKitListElement = (
   dataTestId,
-  { startIndex, dropIndex, onBeforeDragEnd = null } = {},
+  { startIndex, dropIndex, onBeforeDragEnd = () => {} } = {},
 ) => {
   const selector = new RegExp(dataTestId);
 
