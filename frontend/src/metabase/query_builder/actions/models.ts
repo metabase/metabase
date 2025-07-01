@@ -30,8 +30,10 @@ export const turnQuestionIntoModel =
       return;
     }
 
+    // wip
     const model = question
       .setType("model")
+      // .setType("transform")
       .setPinned(true)
       .setDisplay("table")
       .setSettings({});

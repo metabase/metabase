@@ -1,6 +1,7 @@
 (ns metabase.queries.api.card
   "/api/card endpoints."
   (:require
+   #_[metabase.sync.sync-metadata :as sync-metadata]
    [clojure.java.jdbc :as jdbc]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
@@ -33,7 +34,7 @@
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
-   [metabase.sync.sync-metadata :as sync]
+   [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.json :as json]
@@ -576,13 +577,14 @@
 ;; existing view that are not equal. if uniqueness can't be guaranteed by
 ;; hashing, we may need to store view definitions (we'll most likely need
 ;; that anyway) and compare
-(defn- generate-view-name [query]
-  (str "mb_view_" (abs (hash query))))
+(defn- generate-view-name [_query]
+  ;; TODO: something better than millis
+  (str "mb_view_" (System/currentTimeMillis)))
 
 ;; TODO: we likely don't want CREATE OR REPLACE, and always generate a new name
 
 (defn- generate-view-definition [name query]
-  (format "CREATE OR REPLACE VIEW \"%s\" AS (%s)" name query))
+  (format "CREATE OR REPLACE VIEW \"%s\" AS\n\t(%s)" name query))
 
 (defn create-view-for-card
   "create view for card"
@@ -590,6 +592,8 @@
   (let [{:keys [query]} (qp.compile/compile dataset_query)
         view-name (generate-view-name query)
         view-definition (generate-view-definition view-name query)]
+    (log/fatalf "Transform view:\n\n%s\n"
+                view-definition)
     (sql-jdbc.execute/do-with-connection-with-options
      driver db {:write? true}
      (fn [^Connection conn]
@@ -601,9 +605,12 @@
   (let [db (t2/select-one :model/Database :id database_id)
         driver (:engine db)
         new-table-name (create-view-for-card driver db card)
-        _ (sync/sync-db-metadata! db)
+        ;; ?analysis
+        ;; _ (sync-metadata/sync-db-metadata! db)
+        _ (sync/sync-database! db)
         table (t2/select-one :model/Table :name new-table-name)]
     {;; :type :transform
+     :type :question
      :table_id (:id table)
      :dataset_query
      {:database (:id db),
@@ -612,6 +619,18 @@
 
 ;;; (def card (t2/select-one :model/Card 115))
 ;;; (turn-card-into-transform card)
+
+(comment
+
+  (def cu (toucan2.core/select-one :model/Card :name "q3 orders"))
+
+  (metabase.request.session/with-current-user 1
+    (update-card! 114 {:type :transform} false))
+
+  (metabase.request.session/with-current-user 1
+    (update-card! 116 {:type :transform} false))
+
+  (toucan2.core/update! :model/Card :id 116 {:type "question"}))
 
 (mu/defn update-card!
   "Updates a card - impl"
