@@ -1,8 +1,10 @@
 import type { FC } from "react";
 
-import { r2wcCore } from "./r2wc-core";
+import { type R2wcRenderContext, r2wcCore } from "./r2wc-core";
 
-const mount = jest.fn(() => ({ why: "context" }));
+const mount = jest.fn(
+  () => ({ why: "context" }) as unknown as R2wcRenderContext<unknown>,
+);
 const unmount = jest.fn();
 const update = jest.fn();
 

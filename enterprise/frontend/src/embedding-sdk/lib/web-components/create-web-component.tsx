@@ -19,7 +19,7 @@ type CreateWebComponentConfig<TComponentProps, TContextProps> = {
   withProviders?: boolean;
   shadow?: "open" | null;
   propTypes: R2wcPropTypes<TComponentProps>;
-  contextPropTypes: R2wcPropTypes<TContextProps>;
+  contextPropTypes?: R2wcPropTypes<TContextProps>;
   defineContext?: R2wcOptions<TComponentProps, TContextProps>["defineContext"];
 };
 
