@@ -2,7 +2,6 @@
   "Tests for columns that mimic dates: integral types as UNIX timestamps and string columns as ISO8601DateTimeString and
   related types."
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
