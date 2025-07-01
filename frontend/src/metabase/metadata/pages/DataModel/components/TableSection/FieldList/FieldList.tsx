@@ -17,7 +17,6 @@ export const FieldList = ({ activeFieldId, getFieldHref, table }: Props) => {
   const fields = useMemo(() => {
     return _.sortBy(table.fields ?? [], (item) => item.position);
   }, [table.fields]);
-
   const fieldsById = useMemo(() => {
     return _.indexBy(fields, (field) => getRawTableFieldId(field));
   }, [fields]);
