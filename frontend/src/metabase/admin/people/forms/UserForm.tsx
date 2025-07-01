@@ -16,7 +16,7 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { Button } from "metabase/ui";
-import type { User } from "metabase-types/api";
+import type { User, UserId } from "metabase-types/api";
 
 const localUserSchema = Yup.object({
   first_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
@@ -31,6 +31,7 @@ interface UserFormProps {
   submitText?: string;
   external?: boolean;
   edit?: boolean;
+  userId?: UserId | null;
 }
 
 export const UserForm = ({
@@ -40,6 +41,7 @@ export const UserForm = ({
   submitText = t`Update`,
   external = false,
   edit = false,
+  userId,
 }: UserFormProps) => {
   return (
     <FormProvider
@@ -81,7 +83,7 @@ export const UserForm = ({
               disabled={edit}
             />
           )}
-          <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes />
+          <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes userId={userId} />
           <FormFooter>
             <FormErrorMessage inline />
             <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
