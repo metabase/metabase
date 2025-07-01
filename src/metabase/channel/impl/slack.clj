@@ -89,8 +89,11 @@
          :attachment-name   "image.png"
          :fallback          card-name})
 
-      (:text :heading)
+      :text
       (text->markdown-block (:text part) (:inline_parameters part))
+
+      :heading
+      (text->markdown-block (format "## %s" (:text part)) (:inline_parameters part))
 
       :tab-title
       (text->markdown-block (format "# %s" (:text part))))))
