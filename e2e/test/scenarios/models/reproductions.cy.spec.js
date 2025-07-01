@@ -1025,7 +1025,7 @@ function mapModelColumnToDatabase({ table, field }) {
   H.popover().findByRole("option", { name: table }).click();
   H.popover().findByRole("option", { name: field }).click();
   cy.contains(`${table} → ${field}`).should("be.visible");
-  cy.findByDisplayValue(field);
+  cy.findAllByDisplayValue(field);
   cy.findByLabelText("Description").should("not.be.empty");
 }
 
@@ -1281,56 +1281,112 @@ describe("issue 53556 - nested question based on native model with remapped valu
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["January 2024", "140", "18"],
-        ["February 2024", "140", "17"],
+        ["January 2024", "140  –  160", "18"],
+        ["February 2024", "140  –  160", "17"],
       ],
     });
 
     cy.log("Sort by Total in ascending order");
-    H.tableHeaderClick("Total");
+    H.tableHeaderClick("Total: 8 bins");
     H.popover()
       .findAllByTestId("click-actions-sort-control-sort.ascending")
       .click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["December 2023", "-60", "1"],
-        ["September 2022", "0", "2"],
+        ["December 2023", "-60  –  -40", "1"],
+        ["September 2022", "0  –  20", "2"],
       ],
     });
 
     cy.log("Sort by Created At in descending order");
-    H.tableHeaderClick("Created At");
+    H.tableHeaderClick("Created At: Month");
     H.popover()
       .findAllByTestId("click-actions-sort-control-sort.descending")
       .click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["April 2026", "20", "27"],
-        ["April 2026", "40", "57"],
+        ["April 2026", "20  –  40", "27"],
+        ["April 2026", "40  –  60", "57"],
       ],
     });
 
     cy.log("Sort by Created At in ascending order");
-    H.tableHeaderClick("Created At");
+    H.tableHeaderClick("Created At: Month");
     H.popover()
       .findAllByTestId("click-actions-sort-control-sort.ascending")
       .click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["April 2022", "40", "1"],
-        ["May 2022", "20", "1"],
+        ["April 2022", "40  –  60", "1"],
+        ["May 2022", "20  –  40", "1"],
       ],
+    });
+  });
+});
+
+describe("issue 52465 - model with linked columns can still be aggregated", () => {
+  const questionDetails = {
+    name: "52465",
+    type: "model",
+    native: {
+      query: `
+SELECT
+  "ID" AS "id orders",
+  "SOURCE" AS "source orders"
+FROM
+  "PEOPLE"
+`,
+      "template-tags": {},
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("Create model, set metadata, distinct", () => {
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
+        "schema",
+      );
+      cy.visit(`/model/${id}/metadata`);
+      cy.wait("@schema");
+
+      selectModelColumn("source orders");
+      mapModelColumnToDatabase({ table: "People", field: "Source" });
+
+      cy.intercept("PUT", "/api/card/*").as("updateModel");
+      cy.button("Save changes").click();
+      cy.wait("@updateModel");
+
+      const nestedQuestionDetails = {
+        query: {
+          "source-table": `card__${id}`,
+        },
+      };
+
+      H.createQuestion(nestedQuestionDetails, {
+        wrapId: true,
+        idAlias: "nestedQuestionId",
+      });
+
+      H.visitQuestion("@nestedQuestionId");
+      cy.findByText("Source").click();
+      cy.findByText("Distinct values").click();
+
+      H.assertQueryBuilderRowCount(1);
     });
   });
 });
@@ -1570,10 +1626,6 @@ describe("issue 31309", () => {
 
     H.modal().within(() => {
       cy.findByText("Duplicate").click();
-    });
-
-    H.modal().within(() => {
-      cy.findByText("Not now").click();
     });
 
     H.openQuestionActions();

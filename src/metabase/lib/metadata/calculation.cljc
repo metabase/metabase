@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
@@ -308,8 +309,10 @@
    [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
    ;; if this is a ColumnGroup, is it the main one?
    [:is-main-group {:optional true} [:maybe :boolean]]
-   ;; For the `:table` field of a Column, is this the source table, or a joined table?
+   ;; if this is a Table, is it the source table of the query?
    [:is-source-table {:optional true} [:maybe :boolean]]
+   ;; if this is a Card, is it the source card of the query?
+   [:is-source-card {:optional true} [:maybe :boolean]]
    ;; does this column occur in the breakout clause?
    [:is-breakout-column {:optional true} [:maybe :boolean]]
    ;; does this column occur in the order-by clause?
@@ -420,8 +423,8 @@
     [:merge
      ColumnMetadataWithSource
      [:map
-      [:lib/source-column-alias  ::lib.schema.common/non-blank-string]
-      [:lib/desired-column-alias [:string {:min 1, :max 60}]]]]]
+      [:lib/source-column-alias  ::lib.schema.metadata/source-column-alias]
+      [:lib/desired-column-alias ::lib.schema.metadata/desired-column-alias]]]]
    [:fn
     ;; should be dev-facing only, so don't need to i18n
     {:error/message "Column :lib/desired-column-alias values must be distinct, regardless of case, for each stage!"
@@ -431,7 +434,7 @@
     (fn [columns]
       (or
        (empty? columns)
-       (apply distinct? (map (comp u/lower-case-en :lib/desired-column-alias) columns))))]])
+       (apply distinct? (map :lib/desired-column-alias columns))))]])
 
 (mr/def ::unique-name-fn
   "Stateful function with the signature
@@ -446,7 +449,7 @@
 (def ReturnedColumnsOptions
   "Schema for options passed to [[returned-columns]] and [[returned-columns-method]]."
   [:map
-   [:include-remaps? {:optional true} :boolean]
+   [:include-remaps? {:optional true, :default false} :boolean]
    ;; has the signature (f str) => str
    [:unique-name-fn {:optional true} ::unique-name-fn]])
 
@@ -472,7 +475,7 @@
 
 (def ^:dynamic *propagate-binning-and-bucketing*
   "Enable propagation of ref's `:temporal-unit` into `:inherited-temporal-unit` of a column or setting of
-  the `:was-binned` option.
+  the `:lib/original-binning` option.
 
   Temporal unit should be conveyed into `:inherited-temporal-unit` only when _column is created from ref_ that contains
   that has temporal unit set and column's metadata is generated _under `returned-columns` call_.
@@ -480,11 +483,11 @@
   Point is, that `:inherited-temporal-unit` should be added only to column metadata that's generated for use on next
   stages.
 
-  `:was-binned` is used similarly as `:inherited-temporal-unit`. It helps to identify fields that were binned on
-  previous stages. Thanks to that, it is possible to avoid presetting binning for previously binned fields when
-  breakout column popover is opened in query builder.
+  `:lib/original-binning` is used similarly as `:inherited-temporal-unit`. It helps to identify fields that were
+  binned on previous stages. Thanks to that, it is possible to avoid presetting binning for previously binned fields
+  when breakout column popover is opened in query builder.
 
-  The value is used in [[metabase.lib.field/resolve-field-metadata]]."
+  The value is used in [[metabase.lib.field.resolution/resolve-field-ref]]."
   false)
 
 (mu/defn returned-columns :- [:maybe ColumnsWithUniqueAliases]
@@ -508,11 +511,7 @@
     options        :- [:maybe ReturnedColumnsOptions]]
    (let [options (merge (default-returned-columns-options) options)]
      (binding [*propagate-binning-and-bucketing* true]
-       (u/prog1 (returned-columns-method query stage-number x options)
-         (lib.metadata.ident/assert-idents-present! <> {:query        query
-                                                        :stage-number stage-number
-                                                        :target       x
-                                                        :options      options}))))))
+       (returned-columns-method query stage-number x options)))))
 
 (def VisibleColumnsOptions
   "Schema for options passed to [[visible-columns]] and [[visible-columns-method]]."
@@ -602,21 +601,27 @@
                                                       :target       x
                                                       :options      options})))))
 
-(defn remapped-columns
+(mu/defn remapped-columns
   "Given a seq of columns, return metadata for any remapped columns, if the `:include-remaps?` option is set."
-  [query stage-number source-cols {:keys [include-remaps? unique-name-fn] :as _options}]
+  [query :- map?
+   stage-number
+   source-cols
+   {:keys [include-remaps? unique-name-fn] :as _options} :- [:map
+                                                             [:unique-name-fn ::unique-name-fn]]]
   (when (and include-remaps?
-             (= (lib.util/canonical-stage-index query stage-number) 0))
-    (for [column source-cols
-          :let [remapped (lib.metadata/remapped-field query column)]
-          :when remapped]
-      (assoc remapped
-             :lib/source               (:lib/source column) ;; TODO: What's the right source for a remap?
-             :lib/source-column-alias  (column-name query stage-number remapped)
-             :lib/hack-original-name   (or ((some-fn :lib/hack-original-name :name) column)
-                                           (:name remapped))
-             :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query remapped))
-             :ident                    (lib.metadata.ident/remap-ident (:ident remapped) (:ident column))))))
+             (lib.util/first-stage? query stage-number))
+    (let [existing-ids (into #{} (keep :id) source-cols)]
+      (for [column source-cols
+            :let   [remapped (lib.metadata/remapped-field query column)]
+            :when  (and remapped
+                        (not (existing-ids (:id remapped))))]
+        (assoc remapped
+               :lib/source               (:lib/source column) ;; TODO: What's the right source for a remap?
+               :lib/source-column-alias  (column-name query stage-number remapped)
+               :lib/hack-original-name   (or ((some-fn :lib/hack-original-name :name) column)
+                                             (:name remapped))
+               :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query remapped))
+               :ident                    (lib.metadata.ident/remap-ident (:ident remapped) (:ident column)))))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
@@ -636,7 +641,10 @@
 
   Does not include columns that would be implicitly joinable via multiple hops."
   [query stage-number column-metadatas unique-name-fn]
-  (let [existing-table-ids (into #{} (map :table-id) column-metadatas)
+  (let [remap-target-ids (into #{} (keep (comp :field-id :lib/external-remap)) column-metadatas)
+        existing-table-ids (into #{} (comp (remove (comp remap-target-ids :id))
+                                           (map :table-id))
+                                 column-metadatas)
         fk-fields (into [] (filter (every-pred :fk-target-field-id (comp number? :id))) column-metadatas)
         id->target-fields (m/index-by :id (lib.metadata/bulk-metadata
                                            query :metadata/column (into #{} (map :fk-target-field-id) fk-fields)))
@@ -646,26 +654,28 @@
                                              :keys [fk-target-field-id]
                                              :as   source}]
                                          (-> (id->target-fields fk-target-field-id)
-                                             (assoc ::source-field-id   source-field-id
-                                                    ::source-join-alias (:metabase.lib.join/join-alias source)
+                                             (assoc ::fk-field-id   source-field-id
+                                                    ::fk-field-name (lib.field.util/inherited-column-name source)
+                                                    ::fk-join-alias (:metabase.lib.join/join-alias source)
                                                     ::fk-ident          fk-ident))))
                                   (remove #(contains? existing-table-ids (:table-id %))))
                             fk-fields)
         id->table (m/index-by :id (lib.metadata/bulk-metadata
                                    query :metadata/table (into #{} (map :table-id) target-fields)))]
     (into []
-          (mapcat (fn [{:keys [table-id], ::keys [fk-ident source-field-id source-join-alias]}]
+          (mapcat (fn [{:keys [table-id], ::keys [fk-ident fk-field-id fk-field-name fk-join-alias]}]
                     (let [table-metadata (id->table table-id)
                           options        {:unique-name-fn               unique-name-fn
                                           :include-implicitly-joinable? false}]
                       (for [field (visible-columns-method query stage-number table-metadata options)
                             :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)
-                                   field (assoc field
-                                                :ident                    ident
-                                                :fk-field-id              source-field-id
-                                                :fk-join-alias            source-join-alias
-                                                :lib/source               :source/implicitly-joinable
-                                                :lib/source-column-alias  (:name field))]]
+                                   field (m/assoc-some field
+                                                       :ident                    ident
+                                                       :fk-field-id              fk-field-id
+                                                       :fk-field-name            fk-field-name
+                                                       :fk-join-alias            fk-join-alias
+                                                       :lib/source               :source/implicitly-joinable
+                                                       :lib/source-column-alias  (:name field))]]
                         (assoc field :lib/desired-column-alias (unique-name-fn
                                                                 (lib.join.util/desired-alias query field)))))))
           target-fields)))

@@ -15,7 +15,6 @@ import type {
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   Dashboard,
@@ -69,6 +68,11 @@ export interface VisualizationTheme {
     goalLine: {
       label: {
         fontSize: number;
+      };
+    };
+    splitLine: {
+      lineStyle: {
+        color: string;
       };
     };
   };
@@ -224,7 +228,7 @@ export type VisualizationPassThroughProps = {
    * Items that will be shown in a menu when the title is clicked.
    * Used for visualizer cards to jump to underlying questions
    */
-  titleMenuItems?: React.ReactNode;
+  titleMenuItems?: React.ReactNode[];
 
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;
@@ -336,7 +340,6 @@ export type VisualizationDefinition = {
   checkRenderable: (
     series: Series,
     settings: VisualizationSettings,
-    query?: NativeQuery | null,
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;

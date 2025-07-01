@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.types.core-test :as mty]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -71,7 +72,15 @@
                                  1234                                              ; int
                                  1594067133360                                     ; long
                                  "2007-12-03T10:15:30.00Z"                         ; string
-                                 (java.time.ZonedDateTime/of 2016 01 01 20 04 0 0 java.time.ZoneOffset/UTC)]))))))))))
+                                 (java.time.ZonedDateTime/of 2016 01 01 20 04 0 0 java.time.ZoneOffset/UTC)]))))
+            (testing "we respect effective_type"
+              (is (= {:global {:distinct-count 2
+                               :nil%           0.0}
+                      :type   {:type/DateTime {:earliest "1970-01-01T00:00:01.234Z"
+                                               :latest   "2007-12-03T10:15:30Z"}}}
+                     (transduce identity
+                                (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Text :effective_type :type/Temporal}))
+                                ["2007-12-03T10:15:30.00Z" "1970-01-01T00:00:01.234Z"]))))))))))
 
 (deftest ^:parallel disambiguate-test
   (testing "We should correctly disambiguate multiple competing multimethods (DateTime and FK in this case)"
@@ -99,6 +108,12 @@
          (transduce identity
                     (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Number}))
                     [1.0 2.0 3.0])))
+  (testing "we respect effective_type"
+    (is (= {:global {:distinct-count 4, :nil% 0.0},
+            :type {:type/Number {:min 1.0, :q1 1.15, :q3 2.15, :max 2.3, :sd 0.6027713773341707, :avg 1.65}}}
+           (transduce identity
+                      (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Text :effective_type :type/Number}))
+                      ["1" "2" "1.3" "2.3"]))))
   (testing "We should robustly survive weird values such as NaN, Infinity, and nil"
     (is (= {:global {:distinct-count 7
                      :nil%           0.25}
@@ -187,3 +202,10 @@
       (are [x] (not (#'fingerprinters/valid-serialized-json? x))
         "bob"
         "[bob]"))))
+
+(deftest ^:parallel fingerprinters-support-all-coercions-test
+  (testing "fingerprinters support all defined coercions"
+    (is
+     (every? (fn [c] (some #(isa? c %) @#'fingerprinters/supported-coercions))
+             (disj (descendants :Coercion/*)
+                   ::mty/Coerce-BigInteger-To-Instant ::mty/Coerce-Int-To-Str)))))

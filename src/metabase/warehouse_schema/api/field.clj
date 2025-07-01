@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.api.field
   (:require
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
@@ -17,6 +18,7 @@
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
    [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2])
@@ -142,14 +144,17 @@
        (when removed-fk?
          (clear-dimension-on-fk-change! field))
        (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-       (t2/update! :model/Field id
-                   (u/select-keys-when (assoc body
-                                              :fk_target_field_id (when-not removed-fk? fk-target-field-id)
-                                              :effective_type effective-type
-                                              :coercion_strategy coercion-strategy)
-                                       :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
-                                                  :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
-                                       :non-nil #{:display_name :settings}))))
+       (let [body (assoc body
+                         :fk_target_field_id (when-not removed-fk? fk-target-field-id)
+                         :effective_type effective-type
+                         :coercion_strategy coercion-strategy)]
+         (schema.field-user-settings/upsert-user-settings field body)
+         (t2/update! :model/Field
+                     id
+                     (u/select-keys-when body
+                                         {:present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type
+                                                     :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
+                                          :non-nil #{:display_name :visibility_type :settings}})))))
     (when (some? json-unfolding)
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
@@ -158,6 +163,7 @@
                  (t2/hydrate :dimensions :has_field_values)
                  (field/hydrate-target-with-write-perms))
       (when (not= effective-type (:effective_type field))
+        (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})
         (quick-task/submit-task! (fn [] (sync/refingerprint-field! <>)))))))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
@@ -253,6 +259,7 @@
    FieldValues."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
+  (analytics/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
   (let [field (api/write-check (t2/select-one :model/Field :id id))]
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't

@@ -4,7 +4,7 @@ import * as Lib from "metabase-lib";
 export function getFilterValue(
   query: Lib.Query,
   stageIndex: number,
-  filterClause?: Lib.FilterClause,
+  filterClause?: Lib.Filterable,
 ): BooleanFilterValue {
   if (!filterClause) {
     return "true";

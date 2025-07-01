@@ -3,6 +3,7 @@ import type {
   LocalFieldReference,
   Parameter,
   ParameterValueOrArray,
+  VisualizerColumnValueSource,
 } from "metabase-types/api";
 
 import type { Card } from "./card";
@@ -41,7 +42,6 @@ export interface DatasetColumn {
   display_name: string;
   description?: string | null;
   source: string;
-  aggregation_index?: number;
   database_type?: string;
   active?: boolean;
   entity_id?: string;
@@ -49,7 +49,6 @@ export interface DatasetColumn {
   nfc_path?: string[] | null;
   parent_id?: number | null;
   position?: number;
-  source_alias?: string;
 
   aggregation_type?: AggregationType;
 
@@ -94,6 +93,10 @@ export interface DatasetData {
     query: string;
   };
   is_sandboxed?: boolean;
+  "pivot-export-options"?: {
+    "show-row-totals"?: boolean;
+    "show-column-totals"?: boolean;
+  };
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -170,6 +173,11 @@ export interface NativeDatasetResponse {
 
 export type SingleSeries = {
   card: Card;
+  /**
+   * A record that maps visualizer series keys (in the form of COLUMN_1,
+   * COLUMN_2, etc.) to their original values (count, avg, etc.).
+   */
+  columnValuesMapping?: Record<string, VisualizerColumnValueSource[]>;
 } & Pick<Dataset, "data" | "error" | "started_at">;
 
 export type RawSeries = SingleSeries[];
@@ -183,6 +191,7 @@ export type TemplateTagType =
   | "text"
   | "number"
   | "date"
+  | "temporal-unit" // e.g. for mb.time_grouping()
   | "dimension"
   | "snippet";
 

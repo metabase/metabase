@@ -7,10 +7,10 @@ import {
   isRootCollection,
   isRootPersonalCollection,
 } from "metabase/collections/utils";
-import { useHasDashboardQuestionCandidates } from "metabase/components/MoveQuestionsIntoDashboardsModal/hooks";
-import { UserHasSeen } from "metabase/components/UserHasSeen/UserHasSeen";
-import { UserHasSeenAll } from "metabase/components/UserHasSeen/UserHasSeenAll";
-import { ForwardRefLink } from "metabase/core/components/Link";
+import { ForwardRefLink } from "metabase/common/components/Link";
+import { useHasDashboardQuestionCandidates } from "metabase/common/components/MoveQuestionsIntoDashboardsModal/hooks";
+import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
+import { UserHasSeenAll } from "metabase/common/components/UserHasSeen/UserHasSeenAll";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { ActionIcon, Badge, Icon, Indicator, Menu, Tooltip } from "metabase/ui";
@@ -146,6 +146,7 @@ export const CollectionMenu = ({
               <Indicator
                 disabled={hasSeenAll}
                 size={6}
+                offset={6}
                 data-testid="menu-indicator-root"
               >
                 <ActionIcon size={32} variant="viewHeader">

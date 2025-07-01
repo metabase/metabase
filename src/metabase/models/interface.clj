@@ -14,6 +14,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
+   [metabase.models.resolution]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
@@ -37,6 +38,10 @@
    (toucan2.instance Instance)))
 
 (set! *warn-on-reflection* true)
+
+;;; even tho this gets loaded by `.init`, it's important for REPL usage it gets loaded ASAP so other model namespaces
+;;; work correctly so I'm including it here as well to make the REPL work nicer -- Cam
+(comment metabase.models.resolution/keep-me)
 
 (p/import-vars
  [models.dispatch
@@ -496,7 +501,7 @@
         ; don't stomp on `:updated_at` if it's already explicitly specified.
         changes-already-include-updated-at? (some #{:updated_at} changed-fields)
         has-non-ignored-fields? (seq (set/difference changed-fields (non-timestamped-fields obj)))
-        should-set-updated-at? (or (empty? changed-fields) (and has-non-ignored-fields? (not changes-already-include-updated-at?)))]
+        should-set-updated-at? (and has-non-ignored-fields? (not changes-already-include-updated-at?))]
     (cond-> obj
       should-set-updated-at? (assoc :updated_at (now)))))
 
@@ -541,6 +546,7 @@
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
 
 ;; --- helper fns
 (defn changes-with-pk
@@ -703,13 +709,6 @@
   `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.permissions.models.permissions/set-has-full-permissions-for-set?))
 
-(def ^{:arglists '([read-or-write model object-id] [read-or-write object] [perms-set])}
-  current-user-has-partial-permissions?
-  "Implementation of [[can-read?]]/[[can-write?]] for the old permissions system. `true` if the current user has *partial*
-  permissions for the paths returned by its implementation of [[perms-objects-set]]. (`read-or-write` is either `:read` or
-  `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
-  (partial check-perms-with-fn 'metabase.permissions.models.permissions/set-has-partial-permissions-for-set?))
-
 (defmethod can-read? ::read-policy.always-allow
   ([_instance]
    true)
@@ -722,23 +721,11 @@
   ([_model _pk]
    true))
 
-(defmethod can-read? ::read-policy.partial-perms-for-perms-set
-  ([instance]
-   (current-user-has-partial-permissions? :read instance))
-  ([model pk]
-   (current-user-has-partial-permissions? :read model pk)))
-
 (defmethod can-read? ::read-policy.full-perms-for-perms-set
   ([instance]
    (current-user-has-full-permissions? :read instance))
   ([model pk]
    (current-user-has-full-permissions? :read model pk)))
-
-(defmethod can-write? ::write-policy.partial-perms-for-perms-set
-  ([instance]
-   (current-user-has-partial-permissions? :write instance))
-  ([model pk]
-   (current-user-has-partial-permissions? :write model pk)))
 
 (defmethod can-write? ::write-policy.full-perms-for-perms-set
   ([instance]

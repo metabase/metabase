@@ -1,6 +1,14 @@
 import { t } from "ttag";
 
-export function getErrorMessage() {
+export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
+
+// NOTE: this is not ideal, but will get fixed w/ BOT-189 allowing us to use fixed entity_ids
+export const FIXED_METABOT_IDS = {
+  DEFAULT: 1 as const,
+  EMBEDDED: 2 as const,
+};
+
+export function getAgentOfflineError() {
   return t`I'm currently offline, try again later.`;
 }
 

@@ -5,11 +5,11 @@ import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import Button from "metabase/core/components/Button";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import FormInput from "metabase/core/components/FormInput";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormTextArea from "metabase/core/components/FormTextArea";
+import Button from "metabase/common/components/Button";
+import FormErrorMessage from "metabase/common/components/FormErrorMessage";
+import FormInput from "metabase/common/components/FormInput";
+import FormSubmitButton from "metabase/common/components/FormSubmitButton";
+import FormTextArea from "metabase/common/components/FormTextArea";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
 import { Form, FormProvider } from "metabase/forms";

@@ -113,15 +113,11 @@ export const getUsedDataSources = createSelector(
 );
 
 export const getIsMultiseriesCartesianChart = createSelector(
-  [
-    getVisualizationType,
-    getVisualizerColumnValuesMapping,
-    getVisualizerRawSettings,
-  ],
-  (display, columnValuesMapping, settings) =>
+  [getVisualizationType, getVisualizerColumnValuesMapping],
+  (display, columnValuesMapping) =>
     display &&
     isCartesianChart(display) &&
-    shouldSplitVisualizerSeries(columnValuesMapping, settings),
+    shouldSplitVisualizerSeries(columnValuesMapping),
 );
 
 const getVisualizerDatasetData = createSelector(
@@ -177,11 +173,29 @@ export const getVisualizerRawSeries = createSelector(
     getVisualizerFlatRawSeries,
     getVisualizerColumnValuesMapping,
     getIsMultiseriesCartesianChart,
+    getUsedDataSources,
   ],
-  (flatSeries, columnValuesMapping, isMultiseriesCartesianChart): RawSeries => {
-    return isMultiseriesCartesianChart
-      ? splitVisualizerSeries(flatSeries, columnValuesMapping)
+  (
+    flatSeries,
+    columnValuesMapping,
+    isMultiseriesCartesianChart,
+    dataSources,
+  ): RawSeries => {
+    const dataSourceNameMap = Object.fromEntries(
+      dataSources.map((dataSource) => [dataSource.id, dataSource.name]),
+    );
+    const series = isMultiseriesCartesianChart
+      ? splitVisualizerSeries(
+          flatSeries,
+          columnValuesMapping,
+          dataSourceNameMap,
+        )
       : flatSeries;
+
+    return series.map((s) => ({
+      ...s,
+      columnValuesMapping,
+    }));
   },
 );
 

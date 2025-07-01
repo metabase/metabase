@@ -2,16 +2,15 @@ import { forwardRef } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { SectionHeader } from "metabase/admin/settings/components/SettingsLicense";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useSetting } from "metabase/common/hooks";
-import { Text } from "metabase/ui";
+import { Icon, Text } from "metabase/ui";
 import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 
 import { StillNeedHelp } from "../StillNeedHelp";
 
 import {
   BillingExternalLink,
-  BillingExternalLinkIcon,
   BillingInfoCard,
   BillingInfoRowContainer,
   BillingInternalLink,
@@ -44,6 +43,7 @@ const BillingInfoValue = ({
     return (
       <BillingInternalLink
         to={internalLinkMap[lineItem.link]}
+        href={internalLinkMap[lineItem.link]}
         data-testid="test-link"
         {...props}
       >
@@ -60,7 +60,7 @@ const BillingInfoValue = ({
         <Text fw="bold" color="currentColor">
           {formattedValue}
         </Text>
-        <BillingExternalLinkIcon size="16" name="external" />
+        <Icon ml="sm" size="16" name="external" />
       </BillingExternalLink>
     );
   }
@@ -96,11 +96,7 @@ function BillingInfoRow({
   return (
     <ErrorBoundary errorComponent={EmptyErrorComponent}>
       <BillingInfoRowContainer extraPadding={extraPadding} {...props}>
-        <Text
-          color="text-md"
-          maw="15rem"
-          data-testid={`billing-info-key-${id}`}
-        >
+        <Text c="text-md" maw="15rem" data-testid={`billing-info-key-${id}`}>
           {lineItem.name}
         </Text>
         <BillingInfoValue
@@ -120,7 +116,7 @@ export const BillingInfoTable = ({
   const airgap_enabled = useSetting("airgap-enabled");
   return (
     <>
-      <SectionHeader>{t`Billing`}</SectionHeader>
+      <SettingHeader id="billing" title={t`Billing`} />
       <BillingInfoCard flat>
         {billingInfo.content?.map((lineItem, index, arr) => (
           <BillingInfoRow

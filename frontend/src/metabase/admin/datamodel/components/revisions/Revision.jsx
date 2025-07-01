@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import UserAvatar from "metabase/components/UserAvatar";
+import UserAvatar from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 
 import RevisionDiff from "./RevisionDiff";
@@ -81,7 +81,7 @@ export default class Revision extends Component {
               <strong>{this.getName()}</strong> {this.getAction()}
             </span>
             <span className={cx(CS.flexAlignRight, CS.h5)}>
-              {moment(revision.timestamp).format("MMMM DD, YYYY")}
+              {dayjs(revision.timestamp).format("MMMM DD, YYYY")}
             </span>
           </div>
           {message && <p>&quot;{message}&quot;</p>}

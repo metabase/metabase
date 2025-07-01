@@ -155,12 +155,12 @@
    [:map
 
     [:type        [:= :array]]
-    [:items       [:multi
-                   {:dispatch map?}
-                   [true [:ref ::parameter.schema]]
-                   ;; for a tuple. I don't think this is correct, I think you're supposed to use `prefixItems` -- see
-                   ;; https://stackoverflow.com/questions/57464633/how-to-define-a-json-array-with-concrete-item-definition-for-every-index-i-e-a
-                   [false [:sequential [:ref ::parameter.schema]]]]]
+    [:items           {:optional true} [:multi
+                                        {:dispatch map?}
+                                        [true [:ref ::parameter.schema]]
+                                        ;; for a tuple. I don't think this is correct, I think you're supposed to use `prefixItems` -- see
+                                        ;; https://stackoverflow.com/questions/57464633/how-to-define-a-json-array-with-concrete-item-definition-for-every-index-i-e-a
+                                        [false [:sequential [:ref ::parameter.schema]]]]]
     [:uniqueItems     {:optional true} :boolean]
     [:additionalItems {:optional true} :boolean] ; for tuples
     [:minItems        {:optional true} integer?]

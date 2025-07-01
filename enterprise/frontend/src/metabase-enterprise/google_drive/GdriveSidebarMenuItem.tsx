@@ -2,11 +2,12 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import { Button, Flex, Icon, Menu, Text, Tooltip } from "metabase/ui";
+import { Button, Flex, Icon, Menu, Text } from "metabase/ui";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 
+import { GdriveErrorMenuItem } from "./GdriveErrorMenuItem";
 import { trackSheetConnectionClick } from "./analytics";
-import { getErrorMessage, getStatus, useShowGdrive } from "./utils";
+import { getStatus, useShowGdrive } from "./utils";
 
 export function GdriveSidebarMenuItem({ onClick }: { onClick: () => void }) {
   const showGdrive = useShowGdrive();
@@ -33,53 +34,37 @@ export function GdriveSidebarMenuItem({ onClick }: { onClick: () => void }) {
     .otherwise(() => t`Google Sheets`);
 
   const helperText = match(status)
-    .with("error", () => t`Connection error`)
     .with("not-connected", () => null)
     .with("syncing", () => t`Syncing files...`)
     .with("active", () => t`Connected`)
     .otherwise(() => null);
 
-  const errorMessage = getErrorMessage(error);
-
-  const MaybeTooltip = ({ children }: { children: React.ReactNode }) =>
-    status === "error" ? (
-      <Tooltip label={errorMessage} position="bottom" maw="20rem">
-        {children}
-      </Tooltip>
-    ) : (
-      <>{children}</>
-    );
-
   return (
-    <Menu.Item onClick={handleClick} disabled={status === "syncing"}>
-      <Flex gap="sm" align="flex-start" justify="space-between" w="100%">
-        <Flex>
-          <Icon name="google_sheet" mt="xs" mr="sm" />
-          <div>
-            <Text
-              fw="bold"
-              c={status === "syncing" ? "text-light" : "text-dark"}
-            >
-              {buttonText}
-            </Text>
-            {helperText && (
-              <MaybeTooltip>
+    <>
+      <Menu.Item onClick={handleClick}>
+        <Flex gap="sm" align="flex-start" justify="space-between" w="100%">
+          <Flex>
+            <Icon name="google_sheet" mt="xs" mr="sm" />
+            <div>
+              <Text fw="bold">{buttonText}</Text>
+              {helperText && (
                 <Text
                   size="sm"
                   c={status === "error" ? "error" : "text-medium"}
                 >
                   {helperText}
                 </Text>
-              </MaybeTooltip>
-            )}
-          </div>
+              )}
+            </div>
+          </Flex>
+          {status === "active" && (
+            <Button variant="subtle" onClick={handleClick}>
+              {t`Add New`}
+            </Button>
+          )}
         </Flex>
-        {status === "active" && (
-          <Button variant="subtle" onClick={handleClick}>
-            {t`Add New`}
-          </Button>
-        )}
-      </Flex>
-    </Menu.Item>
+      </Menu.Item>
+      {status === "error" && <GdriveErrorMenuItem error={error ?? folder} />}
+    </>
   );
 }

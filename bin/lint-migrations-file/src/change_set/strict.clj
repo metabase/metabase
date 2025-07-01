@@ -122,30 +122,6 @@
    (some change-types-supporting-rollback (mapcat keys changes))
    (contains? change-set :rollback)))
 
-(def ^:private change-types-requiring-preconditions
-  #{:createTable
-    :dropTable
-    :addColumn
-    :dropColumn
-    :createIndex
-    :dropIndex
-    :addForeignKeyConstraint
-    :dropForeignKeyConstraint})
-
-(defn- precondition-present-when-required?
-  "Ensures that certain changeSet types include a preCondition. The intent is for the preCondition to ensure that the changeSet is
-  idempotent by checking whether the table/column/index/etc does not exist before trying to create it. (Or inversely, that it does
-  exist before trying to drop it.)
-
-  We don't currently assert on the structure of the preCondition to provide flexibility if there are cases where idempotence is not
-  desired."
-  [{:keys [id changes] :as change-set}]
-  (or
-   (int? id)
-   (< (major-version id) 51)
-   (not-any? change-types-requiring-preconditions (mapcat keys changes))
-   (contains? change-set :preConditions)))
-
 (defn- disallow-delete-cascade-with-add-column
   "Returns false if addColumn changeSet uses deleteCascade. See Metabase issue #14321"
   [{:keys [changes]}]
@@ -160,7 +136,6 @@
 (s/def ::change-set
   (s/and
    rollback-present-when-required?
-   precondition-present-when-required?
    disallow-delete-cascade-with-add-column
    (s/keys :req-un [::id ::author ::changes ::comment]
            :opt-un [::preConditions])))

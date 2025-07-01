@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import _ from "underscore";
 
 import { coercions_for_type, is_coerceable } from "cljs/metabase.types.core";
@@ -281,8 +281,8 @@ export default class Field extends Base {
   getDefaultDateTimeUnit() {
     try {
       const fingerprint = this.fingerprint.type["type/DateTime"];
-      const days = moment(fingerprint.latest).diff(
-        moment(fingerprint.earliest),
+      const days = dayjs(fingerprint.latest).diff(
+        dayjs(fingerprint.earliest),
         "day",
       );
 
@@ -305,6 +305,15 @@ export default class Field extends Base {
   }
 
   // REMAPPINGS
+
+  static remappedField(fields: Field[]): Field | null {
+    const remappedFields = fields.map((field) => field.remappedField());
+    const remappedFieldIds = new Set(remappedFields.map((field) => field?.id));
+    if (remappedFields[0] != null && remappedFieldIds.size === 1) {
+      return remappedFields[0];
+    }
+    return null;
+  }
 
   remappedField() {
     return this.remappedInternalField() ?? this.remappedExternalField();

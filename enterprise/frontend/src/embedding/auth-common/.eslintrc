@@ -1,0 +1,20 @@
+{
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": [
+              "embedding-sdk/*",
+              "metabase/*",
+              "!embedding-sdk/errors",
+              "!embedding-sdk/types"
+            ],
+            "message": "Keep imports in auth-common to a minimum as it is used in embed.js for iframe embedding."
+          }
+        ]
+      }
+    ]
+  }
+}

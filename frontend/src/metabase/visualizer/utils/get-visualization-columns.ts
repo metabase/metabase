@@ -32,6 +32,9 @@ export const getVisualizationColumns = (
   if (isScalarFunnel(visualizerDefinition)) {
     const [mainDataSource] = dataSources;
     const mainDataset = datasets[mainDataSource.id];
+    if (!mainDataset || !!mainDataset.error) {
+      return [];
+    }
 
     const metricColumnName = settings["funnel.metric"];
     const dimensionColumnName = settings["funnel.dimension"];
@@ -50,7 +53,7 @@ export const getVisualizationColumns = (
         if (typeof columnMapping !== "string") {
           const datasetColumn = datasets[
             columnMapping.sourceId
-          ]?.data.cols.find((col) => col.name === columnMapping.originalName);
+          ]?.data?.cols?.find((col) => col.name === columnMapping.originalName);
 
           const dataSource = dataSources.find(
             (dataSource) => dataSource.id === columnMapping.sourceId,

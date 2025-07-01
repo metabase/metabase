@@ -20,3 +20,18 @@ export function CANNOT_CONNECT_TO_INSTANCE({
     { status },
   );
 }
+
+export function INVALID_AUTH_METHOD({ method }: { method: string }) {
+  return new MetabaseError(
+    "INVALID_AUTH_METHOD",
+    `Invalid auth method: '${method}'. Allowed values are 'saml' or 'jwt'.`,
+    { method },
+  );
+}
+
+export function AUTH_TIMEOUT() {
+  return new MetabaseError(
+    "AUTH_TIMEOUT",
+    "Authentication has not been completed in time.",
+  );
+}

@@ -88,9 +88,8 @@
            ~reverse-migration-body)))))
 
 (defn no-op
-  "No-op logging rollback function"
-  [n]
-  (log/info "No rollback for: " n))
+  "No-op rollback function; does not log to avoid confusion #44400"
+  [_n])
 
 (defmacro define-migration
   "Define a custom migration without a reverse migration."

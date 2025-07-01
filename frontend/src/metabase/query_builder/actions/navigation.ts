@@ -78,14 +78,21 @@ export const popState = createThunkAction(
       }
     }
 
-    const { queryBuilderMode: queryBuilderModeFromURL, ...uiControls } =
-      getQueryBuilderModeFromLocation(location);
+    const {
+      queryBuilderMode: queryBuilderModeFromURL,
+      datasetEditorTab: datasetEditorTabFromURL,
+      ...uiControls
+    } = getQueryBuilderModeFromLocation(location);
 
-    if (getQueryBuilderMode(getState()) !== queryBuilderModeFromURL) {
+    if (
+      getQueryBuilderMode(getState()) !== queryBuilderModeFromURL ||
+      getDatasetEditorTab(getState()) !== datasetEditorTabFromURL
+    ) {
       await dispatch(
         setQueryBuilderMode(queryBuilderModeFromURL, {
+          datasetEditorTab: datasetEditorTabFromURL,
           ...uiControls,
-          shouldUpdateUrl: queryBuilderModeFromURL === "dataset",
+          shouldUpdateUrl: false,
         }),
       );
     }

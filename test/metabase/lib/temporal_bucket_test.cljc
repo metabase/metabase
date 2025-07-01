@@ -20,14 +20,35 @@
         0  "Today"
         1  "Tomorrow"
         2  "Next 2 days")))
-  (testing :month
-    (are [n expected] (= expected
-                         (lib.temporal-bucket/describe-temporal-interval n :month))
-      -2 "Previous 2 months"
-      -1 "Previous month"
-      0  "This month"
-      1  "Next month"
-      2  "Next 2 months"))
+  (doseq [unit [:day nil]]
+    (testing (str (pr-str unit) " including current")
+      (are [n expected] (= expected
+                           (lib.temporal-bucket/describe-temporal-interval n unit {:include-current true}))
+        -2 "Previous 2 days or today"
+        -1 "Today or yesterday"
+        0  "Today"
+        1  "Today or tomorrow"
+        2  "Next 2 days or today")))
+  (doseq [unit [:millisecond :second :minute :hour :week :month :quarter :year]
+          :let [ustr (name unit)]]
+    (testing unit
+      (are [n expected] (= expected
+                           (lib.temporal-bucket/describe-temporal-interval n unit {:include-current false}))
+        -2 (str "Previous 2 " ustr "s")
+        -1 (str "Previous " ustr)
+        0  (str "This " ustr)
+        1  (str "Next " ustr)
+        2  (str "Next 2 " ustr "s"))))
+  (doseq [unit [:millisecond :second :minute :hour :week :month :quarter :year]
+          :let [ustr (name unit)]]
+    (testing (str unit " including current")
+      (are [n expected] (= expected
+                           (lib.temporal-bucket/describe-temporal-interval n unit {:include-current true}))
+        -2 (str "Previous 2 " ustr "s or this " ustr)
+        -1 (str "Previous " ustr " or this " ustr)
+        0  (str "This " ustr)
+        1  (str "Next " ustr " or this " ustr)
+        2  (str "Next 2 " ustr "s or this " ustr))))
   (testing "unknown unit"
     (are [n] (= "Unknown unit"
                 (lib.temporal-bucket/describe-temporal-interval n :century))

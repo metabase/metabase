@@ -1,14 +1,21 @@
 import userEvent from "@testing-library/user-event";
 import type { Location } from "history";
-import { type InjectedRouter, Link, Route, withRouter } from "react-router";
+import {
+  type InjectedRouter,
+  Link,
+  Route,
+  type WithRouterProps,
+  withRouter,
+} from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
+import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { createTabSlug } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type { DashboardTab } from "metabase-types/api";
 import type { DashboardState, State } from "metabase-types/store";
 
@@ -37,11 +44,11 @@ function setup({
 
   const RoutedDashboardComponent = withRouter(
     ({ location }: { location: Location }) => {
-      const { selectedTabId } = useDashboardTabs({ dashboardId: 1 });
+      const { selectedTabId } = useDashboardTabs();
       useDashboardUrlQuery(createMockRouter(), location);
       return (
         <>
-          <DashboardTabs dashboardId={1} isEditing={isEditing} />
+          <DashboardTabs />
           <span>Selected tab id is {selectedTabId}</span>
           <br />
           <span>Path is {location.pathname + location.search}</span>
@@ -67,7 +74,24 @@ function setup({
     <>
       <Route
         path="dashboard/:slug(/:tabSlug)"
-        component={RoutedDashboardComponent}
+        component={(props: WithRouterProps) => {
+          return (
+            <MockDashboardContext
+              dashboardId={1}
+              dashboard={{
+                ...TEST_DASHBOARD_STATE.dashboards[1],
+                dashcards: TEST_DASHBOARD_STATE.dashboards[1].dashcards.map(
+                  (dcId) => TEST_DASHBOARD_STATE.dashcards[dcId],
+                ),
+                tabs: tabs ?? TEST_DASHBOARD_STATE.dashboards[1].tabs,
+              }}
+              navigateToNewCardFromDashboard={null}
+              isEditing={isEditing}
+            >
+              <RoutedDashboardComponent {...props} />
+            </MockDashboardContext>
+          );
+        }}
       />
       <Route path="someotherpath" component={OtherComponent} />
     </>,

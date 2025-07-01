@@ -7,7 +7,8 @@ import {
   shell,
   unBooleanify,
 } from "./cypress-runner-utils";
-import { startSampleAppContainers } from "./start-sample-app-containers/startSampleAppContainers";
+import { startHostAppContainers } from "./embedding-sdk/host-apps/start-host-app-containers";
+import { startSampleAppContainers } from "./embedding-sdk/sample-apps/start-sample-app-containers";
 
 // if you want to change these, set them as environment variables in your shell
 const userOptions = {
@@ -21,11 +22,12 @@ const userOptions = {
   SHOW_BACKEND_LOGS: false,
   GENERATE_SNAPSHOTS: true,
   QUIET: false,
+  TZ: "UTC",
   ...booleanify(process.env),
 };
 
 const derivedOptions = {
-  CYPRESS_ALL_FEATURES_TOKEN: userOptions.ENTERPRISE_TOKEN,
+  CYPRESS_MB_ALL_FEATURES_TOKEN: userOptions.ENTERPRISE_TOKEN,
   QA_DB_ENABLED: userOptions.START_CONTAINERS,
   BUILD_JAR: userOptions.BACKEND_PORT === 4000,
   START_BACKEND: userOptions.BACKEND_PORT === 4000,
@@ -60,6 +62,7 @@ printBold(`Running Cypress with options:
   - START_BACKEND      : ${options.START_BACKEND}
   - OPEN_UI            : ${options.OPEN_UI}
   - SHOW_BACKEND_LOGS  : ${options.SHOW_BACKEND_LOGS}
+  - TZ                 : ${options.TZ}
 `);
 
 const init = async () => {
@@ -120,6 +123,13 @@ const init = async () => {
     case "metabase-nextjs-sdk-embedding-sample-e2e":
     case "shoppy-e2e":
       await startSampleAppContainers(options.TEST_SUITE);
+      break;
+
+    case "vite-6-host-app-e2e":
+    case "next-15-app-router-host-app-e2e":
+    case "next-15-pages-router-host-app-e2e":
+    case "angular-20-host-app-e2e":
+      await startHostAppContainers(options.TEST_SUITE);
       break;
   }
 

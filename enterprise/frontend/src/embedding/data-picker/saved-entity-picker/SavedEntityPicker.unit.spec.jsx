@@ -11,7 +11,7 @@ import {
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
-import SavedEntityPicker from "./SavedEntityPicker";
+import { SavedEntityPicker } from "./SavedEntityPicker";
 
 const CURRENT_USER = {
   id: 1,
@@ -24,12 +24,12 @@ const COLLECTIONS = {
     id: CURRENT_USER.personal_collection_id,
     name: "My personal collection",
     personal_owner_id: CURRENT_USER.id,
-    here: ["dataset"],
+    here: ["card"],
   }),
   REGULAR: createMockCollection({
     id: 1,
     name: "Regular collection",
-    here: ["dataset"],
+    here: ["card"],
   }),
 };
 
@@ -48,20 +48,17 @@ function mockCollectionItemsEndpoint() {
         createMockCollectionItem({
           id: 2,
           name: "a",
-          model: "dataset",
         }),
         createMockCollectionItem({
           id: 3,
           name: "A",
-          model: "dataset",
         }),
         createMockCollectionItem({
           id: 1,
           name: "B",
-          model: "dataset",
         }),
       ],
-      models: ["dataset"],
+      models: ["card"],
       limit: null,
       offset: null,
     },
@@ -76,7 +73,11 @@ async function setup() {
   mockCollectionItemsEndpoint();
 
   renderWithProviders(
-    <SavedEntityPicker onSelect={jest.fn()} onBack={jest.fn()} />,
+    <SavedEntityPicker
+      type="question"
+      onSelect={jest.fn()}
+      onBack={jest.fn()}
+    />,
   );
   await waitForLoaderToBeRemoved();
 }

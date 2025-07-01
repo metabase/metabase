@@ -68,6 +68,10 @@ describe("scenarios > filters > sql filters > field filter", () => {
         H.removeFieldValuesValue(0);
         cy.findByText("Set to default").click();
       });
+
+      cy.log("make sure the dialog is gone");
+      cy.findByRole("dialog").should("not.exist");
+
       H.filterWidget()
         .findByTestId("field-set-content")
         .should("have.text", "10");

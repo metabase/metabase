@@ -648,7 +648,7 @@ describe("issue 29076", () => {
     cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as("cardQuery");
 
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
@@ -954,10 +954,7 @@ describe("issue 34382", () => {
   }
 
   function applyFilter() {
-    H.dashboardParametersContainer()
-      .findByRole("button", { name: "Apply" })
-      .click();
-
+    cy.findByRole("button", { name: "Apply" }).click();
     cy.wait("@dashcardQuery");
   }
 

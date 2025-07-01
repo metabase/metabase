@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
@@ -88,7 +89,7 @@
   (merge
    (or
     (when join-alias
-      (when-let [join (lib.join/resolve-join query stage-number join-alias)]
+      (when-let [join (lib.join/maybe-resolve-join query stage-number join-alias)]
         (lib.metadata.calculation/display-info query stage-number join)))
     (when table-id
       (when-let [table (lib.metadata/table query table-id)]
@@ -102,7 +103,7 @@
     :is-implicitly-joinable false}))
 
 (defmethod display-info-for-group-method :group-type/join.implicit
-  [query stage-number {:keys [fk-field-id], :as _column-group}]
+  [query stage-number {:keys [fk-field-id fk-field-name fk-join-alias], :as _column-group}]
   (merge
    (when-let [;; TODO: This is clumsy and expensive; there is likely a neater way to find the full FK column.
               ;; Note that using `lib.metadata/field` is out - we need to respect metadata overrides etc. in models, and
@@ -110,6 +111,8 @@
               fk-column (->> (lib.util/query-stage query stage-number)
                              (lib.metadata.calculation/visible-columns query stage-number)
                              (m/find-first #(and (= (:id %) fk-field-id)
+                                                 (= (lib.field.util/inherited-column-name %) fk-field-name)
+                                                 (= (lib.join.util/current-join-alias %) fk-join-alias)
                                                  (:fk-target-field-id %))))]
      (let [fk-info (lib.metadata.calculation/display-info query stage-number fk-column)]
        ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
@@ -134,6 +137,7 @@
   [column-metadata]
   {::group-type :group-type/join.implicit,
    :fk-field-id (:fk-field-id column-metadata)
+   :fk-field-name (:fk-field-name column-metadata)
    :fk-join-alias (:fk-join-alias column-metadata)})
 
 (defmethod column-group-info-method :source/joins

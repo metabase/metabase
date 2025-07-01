@@ -87,19 +87,6 @@ export function isValidTimeInterval(interval: number, unit: DurationInputArg2) {
   return !Number.isNaN(diff);
 }
 
-export function formatFrame(frame: "first" | "last" | "mid") {
-  switch (frame) {
-    case "first":
-      return t`first`;
-    case "last":
-      return t`last`;
-    case "mid":
-      return t`15th (Midpoint)`;
-    default:
-      return frame;
-  }
-}
-
 export function getDateStyleFromSettings() {
   const customFormattingSettings = MetabaseSettings.get("custom-formatting");
   return customFormattingSettings?.["type/Temporal"]?.date_style;

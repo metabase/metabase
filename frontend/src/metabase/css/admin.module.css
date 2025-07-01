@@ -178,24 +178,3 @@
     background-position: 0% 50%;
   }
 }
-
-.SwagButton {
-  padding: 10px 14px;
-  display: flex;
-  gap: 0.5rem;
-  justify-content: center;
-  align-items: center;
-  background: linear-gradient(320deg, #1883e2, #fb5fb0);
-  background-size: 400% 400%;
-  animation: animation-name 6s ease infinite;
-  border-radius: 0.5rem;
-  margin-left: 1rem;
-  margin-right: 1rem;
-  color: var(--mb-color-text-white);
-  cursor: pointer;
-}
-
-.LameSwag {
-  background: var(--mb-color-bg-medium);
-  color: var(--mb-color-text-light);
-}

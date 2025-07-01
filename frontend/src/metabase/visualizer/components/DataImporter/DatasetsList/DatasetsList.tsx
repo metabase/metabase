@@ -101,7 +101,7 @@ export function DatasetsList({
       ? {
           q: search,
           limit: 10,
-          models: ["card"],
+          models: ["card", "dataset", "metric"],
           include_dashboard_questions: true,
           include_metadata: true,
         }

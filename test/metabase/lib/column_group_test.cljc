@@ -317,7 +317,7 @@
               :card              (:categories (lib.tu/mock-cards))
               :metadata-provider (lib.tu/metadata-provider-with-mock-cards)}
              {:message           "Native Card"
-              :card              ((lib.tu/mock-cards) :categories/native)
+              :card              (:categories/native (lib.tu/mock-cards))
               :metadata-provider (lib.tu/metadata-provider-with-mock-cards)}]]
       (testing message
         (let [cols   (rhs-columns (lib.tu/venues-query) card)
@@ -415,26 +415,27 @@
                {:display-name "User"
                 :is-from-join false,
                 :is-implicitly-joinable true}
-               {:display-name "Product"
+               ;; we always use LONG display names when the column comes from a previous stage.
+               {:display-name "Mock orders card → Product"
                 :is-from-join false,
                 :is-implicitly-joinable true}
-               {:display-name "User"
+               {:display-name "Mock orders card → User"
                 :is-from-join false,
                 :is-implicitly-joinable true}]
               (map #(lib/display-info query %) groups)))
-      (is (=? [{:lib/desired-column-alias "PEOPLE__via__USER_ID__ID", :fk-join-alias nil}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__ADDRESS", :fk-join-alias nil}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__EMAIL", :fk-join-alias nil}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__PASSWORD", :fk-join-alias nil}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__NAME", :fk-join-alias nil}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__CITY", :fk-join-alias nil}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__LONGITUDE", :fk-join-alias nil}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__STATE", :fk-join-alias nil}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__SOURCE", :fk-join-alias nil}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__BIRTH_DATE", :fk-join-alias nil}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__ZIP", :fk-join-alias nil}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__LATITUDE", :fk-join-alias nil}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__CREATED_AT", :fk-join-alias nil}]
+      (is (=? [{:lib/desired-column-alias "PEOPLE__via__USER_ID__ID"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__ADDRESS"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__EMAIL"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__PASSWORD"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__NAME"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__CITY"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__LONGITUDE"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__STATE"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__SOURCE"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__BIRTH_DATE"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__ZIP"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__LATITUDE"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__CREATED_AT"}]
               (::lib.column-group/columns product-1)))
       (is (=? [{:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__ID", :fk-join-alias "Mock orders card"}
                {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__ADDRESS", :fk-join-alias "Mock orders card"}

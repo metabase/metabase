@@ -10,16 +10,23 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import {
+  MockDashboardContext,
+  type MockDashboardContextProps,
+} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
 import {
+  createMockActionDashboardCard,
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
   createMockDataset,
   createMockDatasetData,
   createMockHeadingDashboardCard,
+  createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
+  createMockPlaceholderDashboardCard,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
@@ -77,34 +84,45 @@ function setup({
   dashboard = testDashboard,
   dashcard = tableDashcard,
   dashcardData = tableDashcardData,
+  isEditing,
+  dashcardMenu,
   ...props
-}: Partial<DashCardProps> & { dashcardData?: DashCardDataMap } = {}) {
+}: Partial<DashCardProps> &
+  Pick<MockDashboardContextProps, "dashcardMenu" | "isEditing"> & {
+    dashboard?: NonNullable<MockDashboardContextProps["dashboard"]>;
+    dashcardData?: DashCardDataMap;
+  } = {}) {
   const onReplaceCard = jest.fn();
 
   renderWithProviders(
-    <DashCard
+    <MockDashboardContext
+      dashboardId={dashboard.id}
       dashboard={dashboard}
-      dashcard={dashcard}
-      gridItemWidth={4}
-      totalNumGridCols={24}
-      slowCards={{}}
-      isEditing={false}
-      isEditingParameter={false}
-      {...props}
-      onReplaceCard={onReplaceCard}
-      isTrashedOnRemove={false}
-      onRemove={jest.fn()}
-      markNewCardSeen={jest.fn()}
       navigateToNewCardFromDashboard={jest.fn()}
-      onReplaceAllDashCardVisualizationSettings={jest.fn()}
-      onUpdateVisualizationSettings={jest.fn()}
-      showClickBehaviorSidebar={jest.fn()}
       onChangeLocation={jest.fn()}
-      downloadsEnabled
-      autoScroll={false}
+      downloadsEnabled={{ results: true }}
+      slowCards={{}}
+      isEditing={isEditing}
+      isEditingParameter={false}
+      dashcardMenu={dashcardMenu}
       reportAutoScrolledToDashcard={jest.fn()}
-      onEditVisualization={jest.fn()}
-    />,
+    >
+      <DashCard
+        dashcard={dashcard}
+        gridItemWidth={4}
+        totalNumGridCols={24}
+        {...props}
+        onReplaceCard={onReplaceCard}
+        isTrashedOnRemove={false}
+        onRemove={jest.fn()}
+        markNewCardSeen={jest.fn()}
+        onReplaceAllDashCardVisualizationSettings={jest.fn()}
+        onUpdateVisualizationSettings={jest.fn()}
+        showClickBehaviorSidebar={jest.fn()}
+        autoScroll={false}
+        onEditVisualization={jest.fn()}
+      />
+    </MockDashboardContext>,
     {
       storeInitialState: {
         dashboard: createMockDashboardState({
@@ -198,8 +216,8 @@ describe("DashCard", () => {
     expect(screen.getByText("What a cool section")).toBeVisible();
   });
 
-  it("should not display the ellipsis menu for (unsaved) xray dashboards (metabase#33637)", () => {
-    setup({ isXray: true });
+  it("should not display the ellipsis menu for dashboards whose dashcardMenu is null (i.e. for X-rays - metabase#33637)", () => {
+    setup({ dashcardMenu: null });
     expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
@@ -209,8 +227,15 @@ describe("DashCard", () => {
     expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
-  it("should not display the 'Download results' action when dashcard query is running in public/embedded dashboards", () => {
-    setup({ isPublicOrEmbedded: true, dashcardData: {} });
+  it("should not display the 'Download results' action when dashcard menu options are empty (like when dashcard query is running in public/embedded dashboards)", () => {
+    setup({
+      dashcardMenu: {
+        withDownloads: false,
+        withEditLink: false,
+        customItems: [],
+      },
+      dashcardData: {},
+    });
     // in this case the dashcard menu would be empty so it's not rendered at all
     expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
@@ -244,6 +269,74 @@ describe("DashCard", () => {
     it("should show a 'replace card' action", async () => {
       setup({ isEditing: true });
       expect(screen.getByLabelText("Replace")).toBeInTheDocument();
+    });
+
+    it("should not show the chevron icon (VIZ-1111)", () => {
+      setup({
+        isEditing: true,
+        dashcard: createMockDashboardCard({
+          series: [
+            createMockCard({
+              id: 115,
+              display: "line",
+              visualization_settings: {
+                "graph.x_axis.scale": "timeseries",
+                "graph.dimensions": ["CREATED_AT"],
+                "graph.metrics": ["avg"],
+              },
+            }),
+          ],
+          card: createMockCard({
+            name: "Hello I'm a card",
+            type: "question",
+            id: 49,
+          }),
+          visualization_settings: {
+            visualization: {
+              display: "line",
+              columnValuesMapping: {
+                COLUMN_1: [
+                  {
+                    sourceId: "card:49",
+                    originalName: "DATE_RECEIVED",
+                    name: "COLUMN_1",
+                  },
+                ],
+                COLUMN_2: [
+                  {
+                    sourceId: "card:49",
+                    originalName: "avg",
+                    name: "COLUMN_2",
+                  },
+                ],
+                COLUMN_3: [
+                  {
+                    sourceId: "card:115",
+                    originalName: "avg",
+                    name: "COLUMN_3",
+                  },
+                ],
+                COLUMN_4: [
+                  {
+                    sourceId: "card:115",
+                    originalName: "CREATED_AT",
+                    name: "COLUMN_4",
+                  },
+                ],
+              },
+              settings: {
+                "graph.x_axis.scale": "timeseries",
+                "graph.dimensions": ["COLUMN_1", "COLUMN_4"],
+                "graph.metrics": ["COLUMN_2", "COLUMN_3"],
+                "card.title": "Oh my, another card",
+              },
+            },
+          },
+          dashboard_id: 21,
+        }),
+      });
+
+      expect(queryIcon("chevrondown")).not.toBeInTheDocument();
     });
 
     it("should show a 'replace card' action for erroring queries", async () => {
@@ -322,6 +415,42 @@ describe("DashCard", () => {
         isEditing: true,
       });
       expect(screen.queryByLabelText("Replace")).not.toBeInTheDocument();
+    });
+
+    describe("'add filter' action", () => {
+      it("should be visible for heading cards", () => {
+        const headingCard = createMockHeadingDashboardCard();
+        setup({
+          dashboard: {
+            ...testDashboard,
+            dashcards: [headingCard],
+          },
+          dashcard: headingCard,
+          dashcardData: {},
+          isEditing: true,
+        });
+        expect(screen.getByLabelText("Add a filter")).toBeInTheDocument();
+      });
+
+      it.each([
+        ["question", createMockDashboardCard()],
+        ["action", createMockActionDashboardCard()],
+        ["text", createMockTextDashboardCard()],
+        ["link", createMockLinkDashboardCard()],
+        ["iframe", createMockIFrameDashboardCard()],
+        ["placeholder", createMockPlaceholderDashboardCard()],
+      ])("should not be visible for %s cards", (_, dashcard) => {
+        setup({
+          dashboard: {
+            ...testDashboard,
+            dashcards: [dashcard],
+          },
+          dashcard,
+          dashcardData: {},
+          isEditing: true,
+        });
+        expect(screen.queryByLabelText("Add a filter")).not.toBeInTheDocument();
+      });
     });
   });
 });

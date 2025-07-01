@@ -7,12 +7,12 @@ import "./shared";
 
 // PLUGINS:
 
-import "./hosting";
 import "./tools";
 import "./sandboxes";
 import "./auth";
 import "./caching";
 import "./collections";
+import "./content_translation";
 import "./content_verification";
 import "./database_routing";
 import "./whitelabel";
@@ -31,10 +31,8 @@ import "./model_persistence";
 import "./feature_level_permissions";
 import "./application_permissions";
 import "./group_managers";
-import "./llm_autodescription";
 import "./upload_management";
 import "./resource_downloads";
 import "./user_provisioning";
 import "./clean_up";
-import "./troubleshooting";
 import "./metabot";

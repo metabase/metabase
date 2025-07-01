@@ -13,22 +13,22 @@ import {
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  METABASE_INSTANCE_URL,
   createQuestion,
   popover,
   tableAllFieldsHiddenImage,
   tableHeaderClick,
   tableInteractive,
 } from "e2e/support/helpers";
+import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
 import {
-  METABASE_INSTANCE_URL,
-  mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   mountSdkContent,
   mountSdkContentAndAssertNoKnownErrors,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
-import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
+} from "e2e/support/helpers/embedding-sdk-component-testing";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { Box, Button, Modal } from "metabase/ui";
 const { H } = cy;
 
@@ -495,6 +495,48 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
         cy.log("should show the question's visualization");
         cy.findByText("Product ID").should("be.visible");
         cy.findByText("Max of Quantity").should("be.visible");
+      });
+    });
+  });
+
+  it("should show the editor when switching from existing question to new question (metabase#60075)", () => {
+    const TestComponent = ({
+      initialQuestionId,
+    }: {
+      initialQuestionId: string | number;
+    }) => {
+      const [questionId, setQuestionId] = useState<string | number>(
+        initialQuestionId,
+      );
+
+      return (
+        <Box>
+          <InteractiveQuestion questionId={questionId} />
+          <Button onClick={() => setQuestionId("new")}>New Question</Button>
+        </Box>
+      );
+    };
+
+    cy.get<number>("@questionId").then((questionId) => {
+      mountSdkContent(<TestComponent initialQuestionId={questionId} />);
+
+      cy.log("shows an existing question initially");
+      getSdkRoot().within(() => {
+        cy.findByText("Product ID").should("be.visible");
+        cy.findByText("Max of Quantity").should("be.visible");
+      });
+
+      cy.log("switch to questionId=new");
+      cy.findByText("New Question").click();
+
+      getSdkRoot().within(() => {
+        cy.log("should show the query builder");
+        cy.findByText("Pick your starting data").should("be.visible");
+
+        cy.log("should not show an empty visualization state (metabase#60075)");
+        cy.findByText(/To run your code, click on the Run button/).should(
+          "not.exist",
+        );
       });
     });
   });

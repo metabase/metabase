@@ -1,5 +1,9 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -911,14 +915,14 @@ describe("issue 32020", () => {
     H.popover().within(() => {
       cy.findByText("Sum of ...").click();
       cy.findByText(question2Details.name).click();
-      cy.findByText("Max of Longitude").click();
+      cy.findByText("Q2 → Max of Longitude").click();
     });
 
     cy.log("visualize and check results");
     H.visualize();
     H.tableInteractive().within(() => {
       cy.findByText("Sum of Sum of Total").should("be.visible");
-      cy.findByText("Sum of Q2 → Max").should("be.visible");
+      cy.findByText("Sum of Q2 → Max of Longitude").should("be.visible");
     });
   });
 });
@@ -1202,7 +1206,7 @@ describe("issue 31960", () => {
 
     H.popover().findByText("See these Orders").click();
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Jul 10–16, 2022")
+      .findByText("Created At: Week is Jul 10–16, 2022")
       .should("be.visible");
     H.assertQueryBuilderRowCount(rowCount);
   });
@@ -1442,8 +1446,8 @@ describe("issue 19894", () => {
     H.popover().findByText("Q1").click();
     H.popover().findByText("Q2").click();
 
-    H.popover().findByText("Category").should("be.visible");
-    H.popover().findByText("Sum of Price").should("be.visible");
+    H.popover().findByText("Q2 - Category → Category").should("be.visible");
+    H.popover().findByText("Q2 - Category → Sum of Price").should("be.visible");
 
     H.popover().findByText("Q1").click();
 
@@ -1703,7 +1707,7 @@ describe("issue 39771", () => {
     H.openNotebook();
     H.getNotebookStep("summarize", { stage: 1 })
       .findByTestId("breakout-step")
-      .findByText("Created At: Month: Quarter of year")
+      .findByText("Created At: Quarter of year")
       .click();
 
     H.popover().findByText("by quarter of year").realHover();
@@ -2520,5 +2524,150 @@ describe("issue 53036", () => {
       cy.icon("play").should("be.visible");
       cy.icon("add").click();
     });
+  });
+});
+
+describe("issue 57697", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.createQuestion(
+      {
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PRODUCTS.PRICE, { binning: { strategy: "default" } }],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should not show the binning in the name of the column when binning in the summarize sidebar  (metabase#57697)", () => {
+    H.summarize();
+    H.sidebar()
+      .filter(":visible")
+      .within(() => {
+        cy.findByText("Price").should("be.visible");
+        cy.findByText("Price: Auto binned").should("not.exist");
+      });
+  });
+});
+
+describe("issue 32499", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("Self-join columns can be edited independently", () => {
+    H.createQuestion(
+      {
+        name: "Model",
+        type: "model",
+        query: {
+          "source-table": ORDERS_ID,
+          fields: [
+            ["field", ORDERS.ID, null],
+            ["field", ORDERS.USER_ID, null],
+          ],
+          joins: [
+            {
+              fields: [["field", ORDERS.USER_ID, { "join-alias": "Orders" }]],
+              alias: "Orders",
+              "source-table": ORDERS_ID,
+              strategy: "left-join",
+              condition: [
+                "=",
+                ["field", ORDERS.ID, null],
+                ["field", ORDERS.ID, { "join-alias": "Orders" }],
+              ],
+            },
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openQuestionActions("Edit metadata");
+
+    const columns = [
+      { original: "Orders → User ID", modified: "JOIN COLUMN" },
+      { original: "User ID", modified: "ORIGINAL COLUMN" },
+    ];
+
+    // we can click the headers and modify their names
+    for (const { original, modified } of columns) {
+      H.tableHeaderClick(original);
+      cy.findByLabelText("Display name")
+        .should("have.value", original)
+        .click()
+        .clear()
+        .type(modified);
+    }
+
+    // the modified names are now in the headers
+    for (const { modified } of columns) {
+      H.tableHeaderColumn(modified).should("exist");
+    }
+  });
+});
+
+describe("issue 23449", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  const checkTable = () => {
+    H.assertTableData({
+      columns: ["ID", "Product ID", "Reviewer", "Rating", "Created At"],
+      firstRows: [[1, 1, "christ", "E", "May 15, 2024, 8:25 PM"]],
+    });
+  };
+
+  it("Remapped fields should work in a model (metabase#23449)", () => {
+    cy.log("set the metadata for review");
+    cy.visit(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${SAMPLE_DATABASE.REVIEWS_ID}`,
+    );
+
+    cy.findByTestId("column-RATING").findByLabelText("Field settings").click();
+    cy.findAllByTestId("select-button").contains("Use original value").click();
+    cy.findByLabelText("Custom mapping").click();
+
+    cy.findByDisplayValue("1").clear().type("A");
+    cy.findByDisplayValue("2").clear().type("B");
+    cy.findByDisplayValue("3").clear().type("C");
+    cy.findByDisplayValue("4").clear().type("D");
+    cy.findByDisplayValue("5").clear().type("E");
+
+    cy.button("Save").click();
+
+    cy.log("make a model on Reviews");
+    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.navigationSidebar().findByLabelText("Browse models").click();
+    cy.findByLabelText("Create a new model").click();
+    cy.findByRole("link", { name: /Use the notebook editor/ }).click();
+    H.entityPickerModal().findByText("Reviews").click();
+
+    cy.log("Remove Body column");
+    cy.findByLabelText("Pick columns").click();
+    H.popover().findByText("Body").click();
+
+    cy.log("save model");
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+
+    cy.log("confirm save in a modal");
+    H.modal().button("Save").click();
+
+    cy.log("check that the data renders");
+    checkTable();
+
+    cy.log("reload to flush cached results and check again");
+    cy.findByTestId("qb-header").button("Refresh").click();
+    checkTable();
   });
 });

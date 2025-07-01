@@ -7,7 +7,7 @@ import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { interceptPerformanceRoutes } from "../performance/helpers/e2e-performance-helpers";
 
 import {
-  BASE_POSTGRES_MIRROR_DB_INFO,
+  BASE_POSTGRES_DESTINATION_DB_INFO,
   DB_ROUTER_USERS,
   configurDbRoutingViaAPI,
   createDbWithIdentifierTable,
@@ -26,7 +26,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
 
     H.restore("postgres-writable");
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     Object.values(DB_ROUTER_USERS).forEach((user) => {
       // @ts-expect-error - this isn't typed yet
       cy.createUserFromRawData(user);
@@ -41,18 +41,18 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
         router_database_id: this.leadDbId,
         databases: [
           {
-            ...BASE_POSTGRES_MIRROR_DB_INFO,
+            ...BASE_POSTGRES_DESTINATION_DB_INFO,
             name: "destination_one",
             details: {
-              ...BASE_POSTGRES_MIRROR_DB_INFO.details,
+              ...BASE_POSTGRES_DESTINATION_DB_INFO.details,
               dbname: "destination_one",
             },
           },
           {
-            ...BASE_POSTGRES_MIRROR_DB_INFO,
+            ...BASE_POSTGRES_DESTINATION_DB_INFO,
             name: "destination_two",
             details: {
-              ...BASE_POSTGRES_MIRROR_DB_INFO.details,
+              ...BASE_POSTGRES_DESTINATION_DB_INFO.details,
               dbname: "destination_two",
             },
           },

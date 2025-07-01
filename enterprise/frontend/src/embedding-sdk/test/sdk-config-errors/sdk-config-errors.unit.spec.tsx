@@ -116,7 +116,7 @@ describe("SDK auth errors for JWT authentication", () => {
 
   it("should show a message when fetchRequestToken doesn't return a json object", async () => {
     const authConfig = defineMetabaseAuthConfig({
-      ...defaultAuthConfig,
+      metabaseInstanceUrl: MOCK_INSTANCE_URL,
       // @ts-expect-error -- testing error path
       fetchRequestToken: async () => "not a json object",
     });
@@ -140,7 +140,7 @@ describe("SDK auth errors for JWT authentication", () => {
 
   it("if a custom `fetchRequestToken` throws an error, it should display it", async () => {
     const authConfig = defineMetabaseAuthConfig({
-      ...defaultAuthConfig,
+      metabaseInstanceUrl: MOCK_INSTANCE_URL,
       fetchRequestToken: async () => {
         throw new Error("Custom error message");
       },

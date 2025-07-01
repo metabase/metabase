@@ -5,12 +5,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
+import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
+import { ForwardRefLink } from "metabase/common/components/Link";
+import LogoIcon from "metabase/common/components/LogoIcon";
+import Modal from "metabase/common/components/Modal";
 import { useSetting } from "metabase/common/hooks";
-import { ErrorDiagnosticModalWrapper } from "metabase/components/ErrorPages/ErrorDiagnosticModal";
-import { trackErrorDiagnosticModalOpened } from "metabase/components/ErrorPages/analytics";
-import LogoIcon from "metabase/components/LogoIcon";
-import Modal from "metabase/components/Modal";
-import { ForwardRefLink } from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import {
   getCanAccessOnboardingPage,
@@ -85,7 +85,7 @@ function ProfileLink({
         event: `Navbar;Profile Dropdown;Enter Admin`,
       },
       {
-        title: t`Keyboard Shortcuts`,
+        title: t`Keyboard shortcuts`,
         icon: null,
         action: () => dispatch(setOpenModal("help")),
       },
@@ -147,7 +147,7 @@ function ProfileLink({
             <ActionIcon
               size="lg"
               variant="subtle"
-              color="text-medium"
+              c="text-dark"
               aria-label={t`Settings`}
             >
               <Icon name="gear" size={16} />

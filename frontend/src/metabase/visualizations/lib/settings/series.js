@@ -25,6 +25,10 @@ export function keyForSingleSeries(single) {
   return single.card._seriesKey || String(single.card.name);
 }
 
+function hasSingleSeriesKey(single) {
+  return Boolean(single.card._seriesKey || single.card.name);
+}
+
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
 
 export function seriesSetting({ readDependencies = [], def } = {}) {
@@ -223,10 +227,28 @@ export function seriesSetting({ readDependencies = [], def } = {}) {
     }),
     // colors must be computed as a whole rather than individually
     [SERIES_COLORS_SETTING_KEY]: {
-      getValue(series, settings) {
-        const keys = series.map((single) => keyForSingleSeries(single));
-        return getSeriesColors(keys, settings);
-      },
+      getValue: getColors,
     },
   };
+}
+
+/**
+ * Exported for testing purposes.
+ * Computes the colors for the series based on their keys and settings.
+ * It filters out series that do not have a single key and maps them to their keys.
+ * Then it retrieves the colors using the `getSeriesColors` function.
+ * @param {Array} series - The series to compute colors for.
+ * @param {Object} settings - The visualization settings.
+ * @returns {Object} - An object mapping series keys to their colors.
+ */
+export function getColors(series, settings) {
+  const originalKeys = [];
+
+  const keys = series.filter(hasSingleSeriesKey).map((s) => {
+    const key = keyForSingleSeries(s);
+    originalKeys.push(s.columnValuesMapping?.[key]?.[0]?.originalName);
+    return key;
+  });
+
+  return getSeriesColors(keys, settings, originalKeys);
 }

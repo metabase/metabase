@@ -129,8 +129,8 @@
              (or (not (lib.underlying/aggregation-sourced? query column))
                  (seq dimensions))
              (not (lib.types.isa/structured?  column))
-             (not (lib.types.isa/primary-key? column))
-             (not (lib.types.isa/foreign-key? column)))
+             (not (lib.drill-thru.common/primary-key? query stage-number column))
+             (not (lib.drill-thru.common/foreign-key? query stage-number column)))
     ;; For aggregate columns, we want to introduce a new stage when applying the drill-thru.
     ;; [[lib.drill-thru.column-filter/prepare-query-for-drill-addition]] handles this. (#34346)
     (when-let [drill-details (lib.drill-thru.column-filter/prepare-query-for-drill-addition

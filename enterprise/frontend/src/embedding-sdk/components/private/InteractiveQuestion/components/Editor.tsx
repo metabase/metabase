@@ -22,6 +22,7 @@ export type InteractiveQuestionEditorProps = {
    * Callback function executed when changes are applied
    */
   onApply?: () => void;
+  hasVisualizeButton?: boolean;
 };
 
 /**
@@ -34,6 +35,7 @@ export type InteractiveQuestionEditorProps = {
  */
 export const Editor = ({
   onApply = () => {},
+  hasVisualizeButton = true,
 }: InteractiveQuestionEditorProps) => {
   // Loads databases and metadata so we can show notebook steps for the selected data source
   useDatabaseListQuery();
@@ -72,7 +74,7 @@ export const Editor = ({
             await queryQuestion();
           }}
           setQueryBuilderMode={() => {}}
-          hasVisualizeButton={true}
+          hasVisualizeButton={hasVisualizeButton}
         />
       </ScrollArea>
     )

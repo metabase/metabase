@@ -1,8 +1,12 @@
 (ns lint-migrations-file-test
   (:require
+   [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [lint-migrations-file :as lint-migrations-file]))
+
+(set! *warn-on-reflection* true)
 
 (defn- mock-change-set
   [& keyvals]
@@ -30,12 +34,21 @@
                         :remarks   "Wow"}
                        (apply array-map keyvals))})
 
+(defn- validate-file [file & changes]
+  (#'lint-migrations-file/validate-migrations
+   {:databaseChangeLog changes}
+   file))
+
+(defn- get-001-update-migrations-file []
+  (first (filter #(str/ends-with? "001_update_migrations.yaml" (.getName %)) (#'lint-migrations-file/migration-files))))
+
 (defn- validate [& changes]
   (#'lint-migrations-file/validate-migrations
-   {:databaseChangeLog changes}))
+   {:databaseChangeLog changes}
+   (get-001-update-migrations-file)))
 
 (defn- validate-ex-info [& changes]
-  (try (#'lint-migrations-file/validate-migrations {:databaseChangeLog changes})
+  (try (#'lint-migrations-file/validate-migrations {:databaseChangeLog changes} (get-001-update-migrations-file))
        (catch Exception e (ex-data e))))
 
 (defmacro is-thrown-with-error-info? [msg info & body]
@@ -98,7 +111,7 @@
            #"Invalid change set\."
            (validate
             (mock-change-set
-             :id id
+             :id (format "v45.00-%03d" id)
              :changes [(mock-add-column-changes :columns [(mock-column :name "A")
                                                           (mock-column :name "B")])])))))))
 
@@ -123,11 +136,11 @@
   (testing "Make sure we don't use onDelete in constraints"
     (doseq [id         [1 200]
             change-set [(mock-change-set
-                         :id id
+                         :id (str "v45.00-" id)
                          :changes [(mock-add-column-changes
                                     :columns [(mock-column :constraints {:onDelete "CASCADE"})])])
                         (mock-change-set
-                         :id id
+                         :id (str "v45.00-" id)
                          :changes [(mock-create-table-changes
                                     :columns [(mock-column :constraints {:onDelete "CASCADE"})])])]]
       (testing (format "Change set =\n%s" (pr-str change-set))
@@ -143,7 +156,7 @@
          #"Invalid change set\."
          (validate
           (mock-change-set
-           :id 200
+           :id "v45.00-001"
            :changes [(update (mock-create-table-changes) :createTable dissoc :remarks)]))))))
 
 (deftest allow-multiple-sql-changes-if-dbmses-are-different
@@ -199,6 +212,40 @@
         "invalid minute" "v49.2024-01-01T10:60:00"
         "invalid second" "v49.2024-01-01T10:30:60"))))
 
+(deftest ^:parallel validate-id-in-file-test
+  (letfn [(validate-id [id file]
+            (validate-file (io/file file) (mock-change-set :id id)))]
+    (testing "001_update_migrations.yaml"
+      (let [file "001_update_migrations.yaml"]
+        (is (= :ok
+               (validate-id "v42.00-000" file)))
+        (is (= :ok
+               (validate-id "v45.00-000" file)))
+        (is (= :ok
+               (validate-id "v55.2024-01-01T10:30:00" file)))
+        (is
+         (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"Change set IDs are in the wrong file"
+          (validate-id "v56.2024-01-01T10:30:00" file)))))
+    (testing "later versions"
+      (is (= :ok
+             (validate-id "v56.2024-01-01T10:30:00" "056_update_migrations.yaml")))
+      (is (= :ok
+             (validate-id "v99.2024-01-01T10:30:00" "099_update_migrations.yaml")))
+      (is (= :ok
+             (validate-id "v500.2024-01-01T10:30:00" "500_update_migrations.yaml")))
+      (is
+       (thrown-with-msg?
+        clojure.lang.ExceptionInfo
+        #"Change set IDs are in the wrong file"
+        (validate-id "v55.2024-01-01T10:30:00" "056_update_migrations.yaml")))
+      (is
+       (thrown-with-msg?
+        clojure.lang.ExceptionInfo
+        #"Change set IDs are in the wrong file"
+        (validate-id "v57.2024-01-01T10:30:00" "056_update_migrations.yaml"))))))
+
 (deftest prevent-text-types-test
   (testing "should allow \"${text.type}\" columns from being added"
     (is (= :ok
@@ -251,35 +298,6 @@
                                             :rollback {:sql {:sql "select 1"}}))))))
   (testing "change types with automatic rollback support are allowed"
     (is (= :ok (validate (mock-change-set :id "v49.2024-01-01T10:30:00" :changes [(mock-add-column-changes)]))))))
-
-(deftest require-precondition-test
-  (testing "certain change types require preConditions"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Invalid change set\."
-         (validate (mock-change-set
-                    :id "v51.2024-01-01T10:30:00"
-                    :changes [(mock-create-table-changes)])))))
-
-  (testing "other change types are exempt"
-    (is (= :ok
-           (validate
-            (mock-change-set
-             :changes
-             [{:sql {:dbms "h2", :sql "1"}}])))))
-
-  (testing "nil preConditions is allowed"
-    (is (= :ok
-           (validate (mock-change-set
-                      :id "v51.2024-01-01T10:30:00"
-                      :changes [(mock-create-table-changes)]
-                      :preConditions nil)))))
-
-  (testing "changeSets prior to v51 are exempt"
-    (is (= :ok
-           (validate (mock-change-set
-                      :id "v50.2024-01-01T10:30:00"
-                      :changes [(mock-create-table-changes)]))))))
 
 (deftest disallow-deletecascade-in-addcolumn-test
   (testing "addColumn with deleteCascade fails"

@@ -15,18 +15,22 @@ export * from "./hooks/public";
 export * from "./components/public";
 
 export type {
-  ButtonProps,
-  ChartColor,
   CustomDashboardCardMenuItem,
   DashCardMenuItem,
   DashboardCardCustomMenuItem,
   DashboardCardMenuCustomElement,
+  DashboardCardMenu,
+} from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
+
+export type {
+  ButtonProps,
+  ChartColor,
   EntityTypeFilterKeys,
-  IconName,
   LoginStatus,
   MetabaseAuthConfig,
   MetabaseAuthConfigWithApiKey,
-  MetabaseAuthConfigWithSSO,
+  MetabaseAuthConfigWithJwt,
+  MetabaseAuthConfigWithSaml,
   MetabaseClickActionPluginsConfig,
   MetabaseColors,
   MetabaseClickAction,
@@ -60,4 +64,7 @@ export type {
   MetabaseEmbeddingSessionToken,
 } from "./types/refresh-token";
 
-export type { EmbeddingEntityType } from "metabase/embedding-sdk/store.ts";
+export type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+
+export type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+export type { IconName } from "metabase/embedding-sdk/types/icon";

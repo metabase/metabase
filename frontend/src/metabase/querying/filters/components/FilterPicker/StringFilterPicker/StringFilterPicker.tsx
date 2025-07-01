@@ -134,7 +134,7 @@ function StringValueInput({
 }: StringValueInputProps) {
   if (type === "exact") {
     return (
-      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
+      <Box p="md" pb={0} mah="25vh" style={{ overflow: "auto" }}>
         <StringFilterValuePicker
           query={query}
           stageIndex={stageIndex}
@@ -144,6 +144,7 @@ function StringValueInput({
           autoFocus
           onChange={onChange}
         />
+        <Box pt="md" />
       </Box>
     );
   }

@@ -1,10 +1,9 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import Card from "metabase/components/Card";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Link from "metabase/core/components/Link";
-import { Icon } from "metabase/ui";
+import Card from "metabase/common/components/Card";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
 
 export const BillingInfoCard = styled(Card)`
   margin-top: 1rem;
@@ -30,23 +29,3 @@ const linkStyles = css`
 export const BillingInternalLink = styled(Link)(linkStyles);
 
 export const BillingExternalLink = styled(ExternalLink)(linkStyles);
-
-export const BillingExternalLinkIcon = styled(Icon)`
-  margin-left: 0.25rem;
-`;
-
-export const StoreButtonLink = styled(ExternalLink)`
-  display: inline-flex;
-  background-color: var(--mb-color-brand);
-  color: var(--mb-color-text-white);
-  align-items: center;
-  font-weight: bold;
-  padding: 0.75rem 1rem;
-  margin-top: 1rem;
-  border-radius: 6px;
-
-  &:hover {
-    opacity: 0.88;
-    transition: all 200ms linear;
-  }
-`;

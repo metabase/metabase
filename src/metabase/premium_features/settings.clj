@@ -182,6 +182,10 @@
   "Should we enable extra knobs around permissions (block access, connection impersonation, etc.)?"
   :advanced-permissions)
 
+(define-premium-feature ^{:added "0.56.0"} enable-content-translation?
+  "Should we enable translation of user-generated content, like question names?"
+  :content-translation)
+
 (define-premium-feature ^{:added "0.41.0"} enable-content-verification?
   "Should we enable verified content, like verified questions and models (and more in the future, like actions)?"
   :content-verification)
@@ -213,10 +217,6 @@
 (define-premium-feature enable-upload-management?
   "Should we allow admins to clean up tables created from uploads?"
   :upload-management)
-
-(define-premium-feature table-data-editing?
-  "Should we allow users to edit the data within tables?"
-  :table-data-editing)
 
 (define-premium-feature has-attached-dwh?
   "Does the Metabase Cloud instance have an internal data warehouse attached?"
@@ -254,16 +254,22 @@
   "Should we allow users to embed the SDK in iframes?"
   :embedding-iframe-sdk)
 
+(define-premium-feature ^{:added "0.55.0"} enable-ai-entity-analysis?
+  "Should Metabase do AI analysis on entities?"
+  :ai-entity-analysis)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
    :ai_sql_generation              (enable-ai-sql-generation?)
+   :ai_entity_analysis             (enable-ai-entity-analysis?)
    :attached_dwh                   (has-attached-dwh?)
    :audit_app                      (enable-audit-app?)
    :cache_granular_controls        (enable-cache-granular-controls?)
    :cache_preemptive               (enable-preemptive-caching?)
    :collection_cleanup             (enable-collection-cleanup?)
    :config_text_file               (enable-config-text-file?)
+   :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)

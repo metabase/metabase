@@ -5,10 +5,10 @@ import _ from "underscore";
 
 import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import Modal from "metabase/components/Modal";
-import QuestionSavedModal from "metabase/components/QuestionSavedModal";
-import { AddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDashModal";
-import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
+import { AddToDashSelectDashModal } from "metabase/common/components/AddToDashSelectDashModal";
+import Modal from "metabase/common/components/Modal";
+import QuestionSavedModal from "metabase/common/components/QuestionSavedModal";
+import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -154,17 +154,26 @@ export function QueryModals({
       },
     ) => {
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
+      const isModel = newQuestion.type() === "model";
 
       if (isDashboardQuestion) {
         navigateToDashboardQuestionDashboard(
           newQuestion,
           options?.dashboardTabId,
         );
+      } else if (isModel) {
+        onCloseModal();
+        setQueryBuilderMode("view");
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
     },
-    [onOpenModal, navigateToDashboardQuestionDashboard],
+    [
+      onOpenModal,
+      navigateToDashboardQuestionDashboard,
+      setQueryBuilderMode,
+      onCloseModal,
+    ],
   );
 
   switch (modal) {

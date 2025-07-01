@@ -189,12 +189,13 @@ describe("scenarios > account > notifications", () => {
       cy.findByTestId("notifications-list").within(() => {
         cy.findByText("Check daily at 2:00 AM").should("exist");
 
-        const notificationCard = cy
-          .findByText("Check daily at 2:00 AM")
-          .closest("[data-testid=notification-alert-item]")
-          .should("exist");
+        const notificationCard = () =>
+          cy
+            .findByText("Check daily at 2:00 AM")
+            .closest("[data-testid=notification-alert-item]")
+            .should("exist");
 
-        notificationCard.within(() => {
+        notificationCard().within(() => {
           cy.findByText("Created by you", { exact: false }).should("exist");
           cy.icon("close").should("exist").click();
         });

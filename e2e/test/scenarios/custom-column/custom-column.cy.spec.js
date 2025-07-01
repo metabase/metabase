@@ -636,7 +636,7 @@ describe("scenarios > question > custom column", () => {
 
     H.queryBuilderMain().findByText("MiscDate").should("be.visible");
     cy.findByTestId("qb-filters-panel")
-      .findByText("MiscDate is in the previous 30 years")
+      .findByText("MiscDate is in the previous 30 years or this year")
       .should("be.visible");
   });
 
@@ -686,6 +686,46 @@ describe("scenarios > question > custom column", () => {
     // That's because the caret position after refocusing on textarea
     // would still be after the 3rd character
     H.CustomExpressionEditor.value().should("equal", "1 + 12");
+  });
+
+  it("should format the expression when pressing the format keyboard shortcut", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({ formula: "1+1" });
+
+    // `1+1` (3 chars) is reformatted to `1 + 1` (5 chars)
+    H.CustomExpressionEditor.focus();
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+
+    H.CustomExpressionEditor.formatButton().should("be.visible");
+    H.CustomExpressionEditor.get()
+      .get(".cm-editor")
+      .realPress(["Shift", metaKey, "f"]);
+    H.CustomExpressionEditor.value().should("equal", "1 + 1");
+
+    // Make sure the cursor is at the end of the expression
+    H.CustomExpressionEditor.type("2");
+    H.CustomExpressionEditor.value().should("equal", "1 + 12");
+  });
+
+  it("should not try formatting the expression when it's invalid using the keyboard shortcut", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({ formula: "1+" });
+
+    H.CustomExpressionEditor.focus();
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+
+    cy.realPress(["Shift", metaKey, "f"]);
+    H.CustomExpressionEditor.value().should("equal", "1+");
+
+    // Make sure the cursor is at the end of the expression
+    H.CustomExpressionEditor.type("2");
+    H.CustomExpressionEditor.value().should("equal", "1+2");
   });
 
   it("should format long expressions on multiple lines", () => {
@@ -827,6 +867,9 @@ describe("scenarios > question > custom column", () => {
     H.getNotebookStep("expression").button("Filter").click();
     H.clauseStepPopover().within(() => {
       cy.findByText("If").click();
+    });
+    H.selectFilterOperator("Is");
+    H.clauseStepPopover().within(() => {
       cy.findByPlaceholderText("Enter some text").type("Other");
       cy.button("Add filter").click();
     });

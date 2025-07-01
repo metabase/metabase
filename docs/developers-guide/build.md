@@ -76,7 +76,7 @@ Once you've installed all the build tools, you'll need to clone the [Metabase re
 cd ~/workspace
 ```
 
-{:start="3"} 3. Run the following command to “clone” Metabase into this folder, using the URL of the Metabase repository on GitHub:
+3. Run the following command to “clone” Metabase into this folder, using the URL of the Metabase repository on GitHub:
 
 ```
 git clone https://github.com/metabase/metabase
@@ -88,7 +88,7 @@ This is the part that you’ll use over and over.
 
 The “official” branch of Metabase is called `master`, and other feature development branches get merged into it when they’re approved. So if you want to try out a feature before then, you’ll need to know the name of that branch so you can switch over to it. Here’s what to do:
 
-{:start="4"} 4. Open up your terminal app
+4. Open up your terminal app
 
 5. Navigate to where you're storing the Metabase code. If you followed this guide exactly, you'd get there by entering this command:
 
@@ -127,7 +127,7 @@ The “official” branch of Metabase is called `master`, and other feature deve
 
 ## Run Metabase
 
-{:start="9"} 9. Now we’ll start up the backend server of Metabase with:
+9. Now we’ll start up the backend server of Metabase with:
 
 ```
 clojure -M:run
@@ -143,7 +143,7 @@ yarn build-hot
 
 If you're having trouble with this step, make sure you are using the LTS version of [Node.js (http://nodejs.org/)](http://nodejs.org/).
 
-{:start="11"} 11. In your web browser of choice, navigate to `http://localhost:3000`, where you should see Metabase!
+11. In your web browser of choice, navigate to `http://localhost:3000`, where you should see Metabase!
 
 This is the local “server” on your computer, and 3000 is the “port” that Metabase is running on. You can have multiple different apps running on different ports on your own computer. Note that if you share any URLs with others that begin with `localhost`, they won’t be able to access them because your computer by default isn’t open up to the whole world, for security.
 

@@ -766,6 +766,30 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
       cy.findByRole("dialog").should("not.exist");
     });
   });
+
+  describe("issue 57388", () => {
+    it("should be possible to reset a required text filter to it's default value (metabase#57388)", () => {
+      const textFilter = {
+        name: "Filter",
+        slug: "filter",
+        id: "75d67d39",
+        type: "string/=",
+        required: true,
+        sectionId: "string",
+        default: ["Gizmo", "Gadget", "Widget", "Doohickey"],
+      };
+      createDashboardWithParameters(ORDERS_QUESTION, PRODUCTS_CATEGORY_FIELD, [
+        textFilter,
+      ]);
+
+      filter(textFilter.name).click();
+      H.popover().within(() => {
+        cy.findByText("Select all").click();
+        cy.findByText("Set to default").click();
+      });
+      H.filterWidget().eq(0).should("contain.text", "4 selections");
+    });
+  });
 });
 
 function createDashboardWithParameters(
@@ -1075,7 +1099,7 @@ function checkResetAllFiltersWorksAcrossTabs({
   addDateFilter(PARAMETER_A.name, "01/01/2024");
   filter(PARAMETER_A.name).should("have.text", "January 1, 2024");
   if (!autoApplyFilters) {
-    cy.button("Apply").click();
+    H.applyFilterButton().click();
   }
   checkResetAllFiltersShown();
   H.getDashboardCard(0).findByText("116.01").should("be.visible");
@@ -1088,7 +1112,7 @@ function checkResetAllFiltersWorksAcrossTabs({
 
   addDateFilter(PARAMETER_B.name, "01/01/2023");
   if (!autoApplyFilters) {
-    cy.button("Apply").click();
+    H.applyFilterButton().click();
   }
   checkResetAllFiltersShown();
   filter(PARAMETER_B.name).should("have.text", "January 1, 2023");
@@ -1120,7 +1144,7 @@ function checkResetAllFiltersToDefaultWorksAcrossTabs({
   updateDateFilter(PARAMETER_A.name, "01/01/2024");
   filter(PARAMETER_A.name).should("have.text", "January 1, 2024");
   if (!autoApplyFilters) {
-    cy.button("Apply").click();
+    H.applyFilterButton().click();
   }
   checkResetAllFiltersShown();
   H.getDashboardCard(0).findByText("116.01").should("be.visible");
@@ -1133,7 +1157,7 @@ function checkResetAllFiltersToDefaultWorksAcrossTabs({
 
   updateDateFilter(PARAMETER_B.name, "01/01/2023");
   if (!autoApplyFilters) {
-    cy.button("Apply").click();
+    H.applyFilterButton().click();
   }
   checkResetAllFiltersShown();
   filter(PARAMETER_B.name).should("have.text", "January 1, 2023");

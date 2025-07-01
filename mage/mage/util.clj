@@ -5,7 +5,8 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [mage.color :as c]))
+   [mage.color :as c]
+   [puget.printer :as puget]))
 
 (set! *warn-on-reflection* true)
 
@@ -21,15 +22,15 @@
   "Run a blocking shell command and return the output as a trimmed string.
 
   Will throw an exception if the command returns a non-zero exit code."
-  [cmd]
-  (->> (shell {:out :string :dir project-root-directory} cmd)
+  [& cmd]
+  (->> (apply shell {:out :string :dir project-root-directory} cmd)
        :out
        str/trim-newline))
 
 (defn shl
   "Run a shell command and return the output as a vector of lines."
-  [cmd]
-  (-> cmd sh str/split-lines vec))
+  [& cmd]
+  (-> (apply sh cmd) str/split-lines vec))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Git Stuff
@@ -141,3 +142,11 @@
         (throw e))
       (finally
         (reset! done? true)))))
+
+(defn- without-slash [s] (str/replace s #"/$" ""))
+
+(defn pp [& xs]
+  (doseq [x xs] (puget/cprint x)))
+
+(defn pp-line [& xs]
+  (doseq [x xs] (puget/cprint x {:width 10e20})))

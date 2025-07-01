@@ -1,4 +1,5 @@
 import {
+  activateToken,
   assertChatVisibility,
   chatMessages,
   closeMetabotViaCloseButton,
@@ -10,7 +11,6 @@ import {
   popover,
   restore,
   sendMetabotMessage,
-  setTokenFeatures,
 } from "e2e/support/helpers";
 
 describe("Metabot UI", () => {
@@ -40,7 +40,7 @@ describe("Metabot UI", () => {
 
   describe("EE", () => {
     beforeEach(() => {
-      setTokenFeatures("all");
+      activateToken("bleeding-edge");
       cy.visit("/");
       cy.wait("@sessionProperties");
     });
@@ -63,7 +63,6 @@ describe("Metabot UI", () => {
 
       mockMetabotResponse({
         statusCode: 200,
-        delay: 100, // small delay to detect loading state
         body: whoIsYourFavoriteResponse,
       });
       sendMetabotMessage("Who is your favorite?");
@@ -76,6 +75,16 @@ describe("Metabot UI", () => {
         "have.text",
         "I'm currently offline, try again later.",
       );
+    });
+
+    it("should allow starting a new metabot conversation via the /metabot/new", () => {
+      mockMetabotResponse({
+        statusCode: 200,
+        body: whoIsYourFavoriteResponse,
+      });
+      cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
+      assertChatVisibility("visible");
+      lastChatMessage().should("have.text", "You, but don't tell anyone.");
     });
   });
 });

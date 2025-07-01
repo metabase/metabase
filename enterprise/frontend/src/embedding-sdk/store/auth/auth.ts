@@ -1,5 +1,10 @@
-import * as Yup from "yup";
-
+import {
+  connectToInstanceAuthSso,
+  jwtDefaultRefreshTokenFunction,
+  openSamlLoginPopup,
+  samlTokenStorage,
+  validateSessionToken,
+} from "embedding/auth-common";
 import type {
   MetabaseAuthConfig,
   MetabaseEmbeddingSessionToken,
@@ -9,39 +14,44 @@ import * as MetabaseError from "embedding-sdk/errors";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
 import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
 import type { SdkStoreState } from "embedding-sdk/store/types";
+import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { requestSessionTokenFromEmbedJs } from "metabase-enterprise/embedding_iframe_sdk/utils";
 import type { Settings } from "metabase-types/api";
 
 import { getOrRefreshSession } from "../reducer";
 import { getFetchRefreshTokenFn } from "../selectors";
 
-import { jwtDefaultRefreshTokenFunction } from "./jwt";
-import { openSamlLoginPopup } from "./saml";
-import { samlTokenStorage } from "./saml-token-storage";
-
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
-  async (authConfig: MetabaseAuthConfig, { dispatch }) => {
+  async (
+    { metabaseInstanceUrl, preferredAuthMethod, apiKey }: MetabaseAuthConfig,
+    { dispatch },
+  ) => {
     // remove any stale tokens that might be there from a previous session=
     samlTokenStorage.remove();
 
     // Setup JWT or API key
     const isValidInstanceUrl =
-      authConfig.metabaseInstanceUrl &&
-      authConfig.metabaseInstanceUrl?.length > 0;
-    const isValidApiKeyConfig = authConfig.apiKey && getIsLocalhost();
+      metabaseInstanceUrl && metabaseInstanceUrl?.length > 0;
+    const isValidApiKeyConfig = apiKey && getIsLocalhost();
 
     if (isValidApiKeyConfig) {
       // API key setup
-      api.apiKey = authConfig.apiKey;
+      api.apiKey = apiKey;
+    } else if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
+      // Use existing user session. Do nothing.
     } else if (isValidInstanceUrl) {
       // SSO setup
       api.onBeforeRequest = async () => {
         const session = await dispatch(
-          getOrRefreshSession(authConfig.metabaseInstanceUrl),
+          getOrRefreshSession({
+            metabaseInstanceUrl,
+            preferredAuthMethod,
+          }),
         ).unwrap();
         if (session?.id) {
           api.sessionToken = session.id;
@@ -50,7 +60,10 @@ export const initAuth = createAsyncThunk(
       try {
         // verify that the session is actually valid before proceeding
         await dispatch(
-          getOrRefreshSession(authConfig.metabaseInstanceUrl),
+          getOrRefreshSession({
+            metabaseInstanceUrl,
+            preferredAuthMethod,
+          }),
         ).unwrap();
       } catch (e) {
         // TODO: Fix this. For some reason the instanceof check keeps returning `false`. I'd rather not do this
@@ -96,106 +109,68 @@ export const initAuth = createAsyncThunk(
 export const refreshTokenAsync = createAsyncThunk(
   "sdk/token/REFRESH_TOKEN",
   async (
-    url: MetabaseAuthConfig["metabaseInstanceUrl"],
+    {
+      metabaseInstanceUrl,
+      preferredAuthMethod,
+    }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "preferredAuthMethod">,
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
-    const customGetRefreshToken =
-      getFetchRefreshTokenFn(getState() as SdkStoreState) ?? null;
+    const state = getState() as SdkStoreState;
 
-    const session = await getRefreshToken(url, customGetRefreshToken);
+    if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSdkIframeEmbedAuth) {
+      return requestSessionTokenFromEmbedJs();
+    }
 
-    if (!session || typeof session !== "object") {
-      throw MetabaseError.INVALID_SESSION_OBJECT({
-        expected: "{ jwt: string }",
-        actual: JSON.stringify(session, null, 2),
-      });
-    }
-    if ("status" in session && session.status !== "ok") {
-      if ("message" in session && typeof session.message === "string") {
-        throw MetabaseError.INVALID_SESSION_OBJECT({
-          expected: "{ jwt: string }",
-          actual: session.message,
-        });
-      }
-      if (typeof session.status === "string") {
-        throw MetabaseError.INVALID_SESSION_OBJECT({
-          expected: "{ jwt: string }",
-          actual: session.status,
-        });
-      }
-    }
-    if (!sessionSchema.isValidSync(session)) {
-      throw MetabaseError.INVALID_SESSION_SCHEMA({
-        expected: "{ id: string, exp: number, iat: number, status: string }",
-        actual: JSON.stringify(session, null, 2),
-      });
-    }
+    const customGetRefreshToken = getFetchRefreshTokenFn(state) ?? undefined;
+
+    const session = await getRefreshToken({
+      metabaseInstanceUrl,
+      preferredAuthMethod,
+      fetchRequestToken: customGetRefreshToken,
+    });
+    validateSessionToken(session);
+
     return session;
   },
 );
 
-const getRefreshToken = async (
-  url: MetabaseAuthConfig["metabaseInstanceUrl"],
-  customFetchRequestToken:
-    | MetabaseAuthConfig["fetchRequestToken"]
-    | null = null,
-) => {
-  const urlResponseJson = await connectToInstanceAuthSso(url);
+const getRefreshToken = async ({
+  metabaseInstanceUrl,
+  preferredAuthMethod,
+  fetchRequestToken: customGetRequestToken,
+}: Pick<
+  MetabaseAuthConfig,
+  "metabaseInstanceUrl" | "fetchRequestToken" | "preferredAuthMethod"
+>) => {
+  const urlResponseJson = await connectToInstanceAuthSso(metabaseInstanceUrl, {
+    preferredAuthMethod,
+    headers: getSdkRequestHeaders(),
+  });
   const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
-    return await openSamlLoginPopup(responseUrl);
+    const token = await openSamlLoginPopup(responseUrl);
+    samlTokenStorage.set(token);
+
+    return token;
   }
   if (method === "jwt") {
     return jwtDefaultRefreshTokenFunction(
       responseUrl,
-      url,
-      hash,
-      customFetchRequestToken,
+      metabaseInstanceUrl,
+      getSdkRequestHeaders(hash),
+      customGetRequestToken,
     );
   }
-  throw new Error(
-    `Unknown or missing method: ${method}, response: ${JSON.stringify(urlResponseJson, null, 2)}`,
-  );
+  throw MetabaseError.INVALID_AUTH_METHOD({ method });
 };
 
-const sessionSchema = Yup.object({
-  id: Yup.string().required(),
-  exp: Yup.number().required(),
-  // We should also receive `iat` and `status` in the response, but we don't actually need them
-  // as we don't use them, so we don't throw an error if they are missing
-});
-
-async function connectToInstanceAuthSso(url: string) {
-  try {
-    const urlResponse = await fetch(`${url}/auth/sso`, getSdkRequestHeaders());
-    if (!urlResponse.ok) {
-      throw MetabaseError.CANNOT_CONNECT_TO_INSTANCE({
-        instanceUrl: url,
-        status: urlResponse.status,
-      });
-    }
-    return await urlResponse.json();
-  } catch (e) {
-    // If the error is already a MetabaseError, just rethrow
-    if (e instanceof MetabaseError.MetabaseError) {
-      throw e;
-    }
-    throw MetabaseError.CANNOT_CONNECT_TO_INSTANCE({
-      instanceUrl: url,
-      status: (e as any)?.status,
-    });
-  }
-}
-
-export function getSdkRequestHeaders(hash?: string) {
+export function getSdkRequestHeaders(hash?: string): Record<string, string> {
   return {
-    headers: {
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
-      "X-Metabase-Client": "embedding-sdk-react",
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
-      "X-Metabase-Client-Version": getEmbeddingSdkVersion(),
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
-      ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
-    },
+    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    "X-Metabase-Client": "embedding-sdk-react",
+    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    "X-Metabase-Client-Version": getEmbeddingSdkVersion(),
+    // eslint-disable-next-line no-literal-metabase-strings -- header name
+    ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
   };
 }

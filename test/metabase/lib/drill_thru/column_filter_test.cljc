@@ -8,8 +8,7 @@
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.types.isa :as lib.types.isa]))
+   [metabase.lib.test-util :as lib.tu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -17,10 +16,9 @@
   (testing "column-filter is available for any header click, and nothing else"
     (canned/canned-test
      :drill-thru/column-filter
-     (fn [test-case context {:keys [click]}]
+     (fn [test-case _context {:keys [click]}]
        (and (= click :header)
-            (not (:native? test-case))
-            (not (lib.types.isa/structured? (:column context))))))))
+            (not (:native? test-case)))))))
 
 (def ^:private key-ops
   [{:lib/type :operator/filter, :short :=,        :display-name-variant :default}
@@ -371,10 +369,70 @@
                :column     {:operators text-ops}}
               (colfilter fk))))))
 
+(deftest ^:parallel structured-column-operators-test
+  (testing "different structured column types get appropriate operators"
+    (let [provider (lib.tu/merged-mock-metadata-provider
+                    meta/metadata-provider
+                    {:fields [{:id            (meta/id :products :vendor)
+                               :base-type     :type/Text
+                               :semantic-type :type/SerializedJSON} ; text-based JSON (base type = text)
+                              {:id             (meta/id :products :category)
+                               :base-type      :type/JSON ; native JSON type
+                               :effective-type :type/JSON
+                               :semantic-type  nil}]})
+          query (lib/query provider (meta/table-metadata :products))
+          columns (lib/returned-columns query)
+
+          serialized-json-col (m/find-first #(= (:name %) "VENDOR") columns)
+          native-json-col (m/find-first #(= (:name %) "CATEGORY") columns)
+
+          get-drill-operators (fn [column]
+                                (let [context {:column     column
+                                               :column-ref (lib/ref column)
+                                               :value      nil}
+                                      drill (->> (lib/available-drill-thrus query -1 context)
+                                                 (m/find-first #(= (:type %) :drill-thru/column-filter)))]
+                                  (when drill
+                                    (->> (:column drill)
+                                         :operators
+                                         (mapv :short)))))]
+      (testing "SerializedJSON (string-based) gets full text operators"
+        (is (= #{:= :!= :contains :does-not-contain :is-empty :not-empty :starts-with :ends-with}
+               (set (get-drill-operators serialized-json-col)))))
+
+      (testing "native JSON gets only default operators"
+        (is (= #{:is-null :not-null}
+               (set (get-drill-operators native-json-col))))))))
+
+(deftest ^:parallel applies-column-filter-test-structured
+  (testing "applying column-filter to structured JSON columns"
+    (lib.drill-thru.tu/test-drill-application
+     {:click-type     :header
+      :query-type     :unaggregated
+      :query-table    "PRODUCTS"
+      :column-name    "VENDOR"
+      :drill-type     :drill-thru/column-filter
+      :expected       {:type       :drill-thru/column-filter
+                       :initial-op {:short :=}
+                       :column     {:lib/type :metadata/column
+                                    :name "VENDOR"}}
+      :drill-args     ["contains" "Acme"]
+      :custom-query   (-> (lib.tu/merged-mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [{:id (meta/id :products :vendor)
+                                      :semantic-type :type/SerializedJSON}]})
+                          (lib/query (meta/table-metadata :products)))
+      :expected-query {:stages
+                       [{:filters
+                         [[:contains {}
+                           [:field {}
+                            (lib.drill-thru.tu/field-key= (meta/id :products :vendor) "VENDOR")]
+                           "Acme"]]}]}})))
+
 ;; TODO: Bring back this test. It doesn't work in CLJ due to the inconsistencies noted in #38558.
 #_(deftest ^:parallel leaky-model-ref-test
     (testing "input `:column-ref` must be used for the drill, in case a model leaks metadata like `:join-alias` (#38034)"
-      (let [query      (lib/query lib.tu/metadata-provider-with-mock-cards (lib.tu/mock-cards :model/products-and-reviews))
+      (let [query      (lib/query lib.tu/metadata-provider-with-mock-cards (:model/products-and-reviews (lib.tu/mock-cards)))
             retcols    (lib/returned-columns query)
             by-id      (m/index-by :id retcols)
             reviews-id (by-id (meta/id :reviews :id))

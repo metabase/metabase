@@ -1,11 +1,14 @@
 (ns metabase.parameters.chain-filter-test
   (:require
    [clojure.test :refer :all]
+   [malli.error :as me]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -48,6 +51,19 @@
       :has_more_values false}"
   [n result]
   (update result :values #(take n %)))
+
+(deftest ^:parallel special-form-filter-clause-test
+  (testing "Can handle multi-arg string filters when chaining (#57287)"
+    (doseq [value ["Omer" ["Omer"] ["Omer" "Clovis"]]]
+      (testing (str "with value " (pr-str value))
+        (are [op] (nil? (->> (#'chain-filter/filter-clause (mt/id :venues)
+                                                           {:field-id (mt/id :venues :name)
+                                                            :op op
+                                                            :value value
+                                                            :options nil})
+                             (mr/explain mbql.s/Filter)
+                             me/humanize))
+          :starts-with :ends-with :contains :does-not-contain)))))
 
 (deftest chain-filter-test
   (testing "Show me expensive restaurants"

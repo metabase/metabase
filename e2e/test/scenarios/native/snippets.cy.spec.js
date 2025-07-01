@@ -29,7 +29,9 @@ describe("scenarios > question > snippets", () => {
     }
 
     cy.log("Add a snippet of that text");
-    cy.findByTestId("native-query-editor-sidebar").icon("snippet").click();
+    cy.findByTestId("native-query-editor-action-buttons")
+      .icon("snippet")
+      .click();
     cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
@@ -192,7 +194,7 @@ describe("scenarios > question > snippets (EE)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   ["admin", "normal"].forEach((user) => {

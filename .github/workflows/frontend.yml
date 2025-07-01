@@ -27,6 +27,13 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
+      - name: Restore ESLint cache
+        uses: actions/cache@v4
+        with:
+          path: .eslintcache
+          key: eslintcache-${{ hashFiles('yarn.lock', '.eslintrc.js') }}
+          restore-keys: |
+            eslintcache-
       - name: Compile CLJS
         run: yarn build-pure:cljs
       - name: Find CSS variables that are used but never defined

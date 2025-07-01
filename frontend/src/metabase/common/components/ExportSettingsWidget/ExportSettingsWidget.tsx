@@ -87,6 +87,11 @@ export const ExportSettingsWidget = ({
         data={formatOptions}
         value={selectedFormat}
         onChange={onChangeFormat}
+        styles={{
+          root: {
+            backgroundColor: "var(--mb-color-background-light)",
+          },
+        }}
       />
 
       {canConfigureFormatting ? (
@@ -96,7 +101,15 @@ export const ExportSettingsWidget = ({
           checked={isFormattingEnabled}
           onChange={() => onToggleFormatting()}
           description={formattingLabel}
-          styles={{ inner: { alignSelf: "flex-start" } }}
+          styles={{
+            inner: { alignSelf: "flex-start" },
+            label: {
+              color: "var(--mb-color-text-primary)",
+            },
+            description: {
+              color: "var(--mb-color-text-secondary)",
+            },
+          }}
         />
       ) : null}
       {arePivotedExportsEnabled && canConfigurePivoting ? (
@@ -105,6 +118,11 @@ export const ExportSettingsWidget = ({
           label={t`Keep the data pivoted`}
           checked={isPivotingEnabled}
           onChange={() => onTogglePivoting()}
+          styles={{
+            label: {
+              color: "var(--mb-color-text-primary)",
+            },
+          }}
         />
       ) : null}
     </Stack>

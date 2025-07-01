@@ -47,7 +47,6 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY, {
       idAlias: "productsCountByCreatedAtAndCategoryQuestionId",
-      entityIdAlias: "productsCountByCreatedAtAndCategoryQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_AVERAGE_BY_CREATED_AT, {
@@ -97,7 +96,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
       // Ensure the chart legend contains original series name
       H.chartLegend().within(() => {
-        cy.findByText("Count (Products by Created At (Month))").should("exist");
+        cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
       });
 
       // Edit series settings
@@ -124,9 +123,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       // Ensure the chart legend contains renamed series
       H.chartLegend().within(() => {
         cy.findByText("Series B").should("exist");
-        cy.findByText("Count (Products by Created At (Month))").should(
-          "not.exist",
-        );
+        cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("not.exist");
       });
       H.chartPathWithFillColor("#DCDFE0");
     };
@@ -196,12 +193,10 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       H.assertWellItemsCount({ vertical: 3 });
     });
 
-    H.saveDashcardVisualizerModal("create");
+    H.saveDashcardVisualizerModal({ mode: "create" });
     // Wait for card queries before saving the dashboard
     H.getDashboardCard(0).within(() => {
-      cy.findByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
-        "exist",
-      );
+      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
       cy.findByText("Created At: Month").should("exist");
     });
 
@@ -209,9 +204,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
     // Making sure the card renders after saving the dashboard
     H.getDashboardCard(0).within(() => {
-      cy.findByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
-        "exist",
-      );
+      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
       cy.findByText("Created At: Month").should("exist");
     });
   });
@@ -260,6 +253,24 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
   });
 
+  it("should preserve default colors (VIZ-1211)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.openQuestionsSidebar();
+
+    H.sidebar().within(() => {
+      cy.findByRole("menuitem", {
+        name: ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
+      }).click();
+    });
+
+    H.showDashcardVisualizerModal(1);
+
+    H.modal().within(() => {
+      H.chartPathWithFillColor("#509EE3").should("have.length", 4);
+    });
+  });
+
   it("should handle implicit viz settings (VIZ-947)", () => {
     function assertDataSourceColumnSelected(
       columnName: string,
@@ -284,7 +295,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       assertDataSourceColumnSelected("Average of Quantity", false);
       assertDataSourceColumnSelected("Created At: Year");
       assertDataSourceColumnSelected("Product → Category", false);
-      H.chartPathWithFillColor("#88BF4D").should("have.length", 5);
+      H.chartPathWithFillColor("#509EE3").should("have.length", 5);
       H.verticalWell().findAllByTestId("well-item").should("have.length", 1);
       H.horizontalWell().findAllByTestId("well-item").should("have.length", 1);
 

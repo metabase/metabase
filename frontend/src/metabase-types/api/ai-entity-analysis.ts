@@ -14,10 +14,3 @@ export interface AIQuestionAnalysisParams {
   description?: string;
   timelineEvents?: TimelineEventInfo[];
 }
-
-export interface AIDashboardAnalysisParams {
-  imageBase64: string;
-  name?: string;
-  description?: string;
-  tabName?: string;
-}
