@@ -38,11 +38,11 @@ describe("AddDataModal", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should have database tab selected by default", () => {
+  it("should have csv tab selected by default", () => {
     setup();
 
-    const databaseTab = screen.getByRole("tab", { name: /Database$/ });
-    expect(databaseTab).toHaveAttribute("data-active", "true");
+    const csvTab = screen.getByRole("tab", { name: /CSV$/ });
+    expect(csvTab).toHaveAttribute("data-active", "true");
   });
 
   it("should allow to change tabs", async () => {
@@ -51,27 +51,28 @@ describe("AddDataModal", () => {
     const databaseTab = screen.getByRole("tab", { name: /Database$/ });
     const csvTab = screen.getByRole("tab", { name: /CSV$/ });
 
-    expect(databaseTab).toHaveAttribute("data-active", "true");
-    await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
-    expect(databaseTab).not.toHaveAttribute("data-active");
     expect(csvTab).toHaveAttribute("data-active", "true");
+    await userEvent.click(screen.getByRole("tab", { name: /Database$/ }));
+    expect(csvTab).not.toHaveAttribute("data-active");
+    expect(databaseTab).toHaveAttribute("data-active", "true");
   });
 
   it("should maintain the tab selection state", async () => {
     setup();
 
-    const databaseTab = screen.getByRole("tab", { name: /Database$/ });
-    expect(databaseTab).toHaveAttribute("data-active", "true");
+    const csvTab = screen.getByRole("tab", { name: /CSV$/ });
+    expect(csvTab).toHaveAttribute("data-active", "true");
 
-    await userEvent.click(databaseTab);
+    await userEvent.click(csvTab);
     // Tab should remain selected after clicking
-    expect(databaseTab).toHaveAttribute("data-active", "true");
+    expect(csvTab).toHaveAttribute("data-active", "true");
   });
 
   describe("database panel", () => {
-    it("should show database panel for admin users", () => {
+    it("should show database panel for admin users", async () => {
       setup({ isAdmin: true });
 
+      await userEvent.click(screen.getByRole("tab", { name: /Database$/ }));
       expect(
         screen.getByRole("tab", { name: /Database$/ }),
       ).toBeInTheDocument();
@@ -84,9 +85,10 @@ describe("AddDataModal", () => {
       ).toBeInTheDocument();
     });
 
-    it("should show limited view for non-admin users", () => {
+    it("should show limited view for non-admin users", async () => {
       setup({ isAdmin: false });
 
+      await userEvent.click(screen.getByRole("tab", { name: /Database$/ }));
       expect(
         screen.getByRole("tab", { name: /Database$/ }),
       ).toBeInTheDocument();
@@ -114,10 +116,11 @@ describe("AddDataModal", () => {
     it("should show CSV panel for admin users", async () => {
       setup({ isAdmin: true, uploadsEnabled: true });
 
-      await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
       expect(screen.getByText("Manage uploads")).toBeInTheDocument();
 
-      expect(screen.getByText("Drag and drop a file here")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Drag and drop a file here"),
+      ).toBeInTheDocument();
       expect(
         screen.getByText(".csv or .tsv files, 50 MB max"),
       ).toBeInTheDocument();
@@ -128,7 +131,6 @@ describe("AddDataModal", () => {
     it("should prompt the admin to enable uploads", async () => {
       setup({ isAdmin: true, uploadsEnabled: false });
 
-      await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
       expect(screen.getByText("Manage uploads")).toBeInTheDocument();
       expect(
         screen.getByRole("heading", { name: "Upload CSV files" }),
@@ -146,7 +148,6 @@ describe("AddDataModal", () => {
     it("should prompt the admin to enable uploads with an upsell on a hosted instance", async () => {
       setup({ isAdmin: true, uploadsEnabled: false, isHosted: true });
 
-      await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
       expect(screen.getByText("Manage uploads")).toBeInTheDocument();
       expect(screen.getByText("Enable uploads")).toBeInTheDocument();
       expect(screen.getByText("Add Metabase Storage")).toBeInTheDocument();
@@ -155,7 +156,6 @@ describe("AddDataModal", () => {
     it("regular user should be instructed to contact their admin in order to enable uploads", async () => {
       setup({ isAdmin: false, uploadsEnabled: false, canUpload: true });
 
-      await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
       expect(screen.queryByText("Manage uploads")).not.toBeInTheDocument();
       expect(
         screen.getByRole("heading", { name: "Upload CSV files" }),
@@ -180,7 +180,6 @@ describe("AddDataModal", () => {
     it("regular user should be instructed to contact their admin in order to gain upload permissions", async () => {
       setup({ isAdmin: false, uploadsEnabled: true, canUpload: false });
 
-      await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
       expect(screen.queryByText("Manage uploads")).not.toBeInTheDocument();
       expect(
         screen.getByRole("heading", { name: "Upload CSV files" }),
@@ -205,10 +204,11 @@ describe("AddDataModal", () => {
     it("should show CSV panel for a regular user with sufficient permissions", async () => {
       setup({ isAdmin: false, uploadsEnabled: true, canUpload: true });
 
-      await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
       expect(screen.queryByText("Manage uploads")).not.toBeInTheDocument();
 
-      expect(screen.getByText("Drag and drop a file here")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Drag and drop a file here"),
+      ).toBeInTheDocument();
       expect(
         screen.getByText(".csv or .tsv files, 50 MB max"),
       ).toBeInTheDocument();
@@ -219,7 +219,6 @@ describe("AddDataModal", () => {
     describe("file input upload", () => {
       it("should handle proper file upload", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
-        await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
 
         await inputUpload(csvFile);
         await assertFileAccepted(csvFile.name);
@@ -240,7 +239,6 @@ describe("AddDataModal", () => {
        */
       it("should error when the file is too large", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
-        await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
 
         await inputUpload(largeFile);
         await expectError("Sorry, this file is too large");
@@ -250,41 +248,37 @@ describe("AddDataModal", () => {
     describe("file upload via the dropzone", () => {
       it("should handle regular file drop", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
-        await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
 
-        dropUpload([csvFile]);
+        await dropUpload([csvFile]);
         await assertFileAccepted(csvFile.name);
 
         // It allows the same file to be uploaded again
-        dropUpload([csvFile]);
+        await dropUpload([csvFile]);
         await assertFileAccepted(csvFile.name);
 
         // It should update with a new file
-        dropUpload([tsvFile]);
+        await dropUpload([tsvFile]);
         await assertFileAccepted(tsvFile.name);
       });
 
       it("should error when multiple files are dropped at once", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
-        await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
 
-        dropUpload([csvFile, tsvFile]);
+        await dropUpload([csvFile, tsvFile]);
         await expectError("Please upload files individually");
       });
 
       it("should error when wrong file type is dropped", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
-        await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
 
-        dropUpload([mp3File]);
+        await dropUpload([mp3File]);
         await expectError("Sorry, this file type is not supported");
       });
 
       it("should error when the file is too large", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
-        await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
 
-        dropUpload([largeFile]);
+        await dropUpload([largeFile]);
         await expectError("Sorry, this file is too large");
       });
     });
@@ -292,45 +286,41 @@ describe("AddDataModal", () => {
     describe("combo upload (input -> drop)", () => {
       it("should update the accepted file", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
-        await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
 
         await inputUpload(csvFile);
         await assertFileAccepted(csvFile.name);
 
-        dropUpload([tsvFile]);
+        await dropUpload([tsvFile]);
         await assertFileAccepted(tsvFile.name);
       });
 
       it("should nullify the accepted file", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
-        await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
 
         await inputUpload(csvFile);
         await assertFileAccepted(csvFile.name);
 
-        dropUpload([csvFile, tsvFile]);
+        await dropUpload([csvFile, tsvFile]);
         await expectError("Please upload files individually");
       });
 
       it("should update the error", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
-        await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
 
         await inputUpload(largeFile);
         await expectError("Sorry, this file is too large");
 
-        dropUpload([csvFile, tsvFile]);
+        await dropUpload([csvFile, tsvFile]);
         await expectError("Please upload files individually");
       });
 
       it("should nullify the error", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
-        await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
 
         await inputUpload(largeFile);
         await expectError("Sorry, this file is too large");
 
-        dropUpload([tsvFile]);
+        await dropUpload([tsvFile]);
         await assertFileAccepted(tsvFile.name);
       });
     });
@@ -338,9 +328,8 @@ describe("AddDataModal", () => {
     describe("combo upload (drop -> input)", () => {
       it("should update the accepted file", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
-        await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
 
-        dropUpload([tsvFile]);
+        await dropUpload([tsvFile]);
         await assertFileAccepted(tsvFile.name);
 
         await inputUpload(csvFile);
@@ -349,9 +338,8 @@ describe("AddDataModal", () => {
 
       it("should nullify the accepted file", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
-        await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
 
-        dropUpload([tsvFile]);
+        await dropUpload([tsvFile]);
         await assertFileAccepted(tsvFile.name);
 
         await inputUpload(largeFile);
@@ -360,9 +348,8 @@ describe("AddDataModal", () => {
 
       it("should update the error", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
-        await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
 
-        dropUpload([csvFile, tsvFile]);
+        await dropUpload([csvFile, tsvFile]);
         await expectError("Please upload files individually");
 
         await inputUpload(largeFile);
@@ -371,9 +358,8 @@ describe("AddDataModal", () => {
 
       it("should nullify the error", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
-        await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
 
-        dropUpload([csvFile, tsvFile]);
+        await dropUpload([csvFile, tsvFile]);
         await expectError("Please upload files individually");
 
         await inputUpload(csvFile);
@@ -399,15 +385,15 @@ describe("AddDataModal", () => {
 });
 
 async function inputUpload(fileorFiles: File | File[]) {
-  const input: HTMLInputElement = screen.getByTestId(
+  const input: HTMLInputElement = await screen.findByTestId(
     "add-data-modal-upload-csv-input",
   );
   expect(input).toBeInTheDocument();
   await userEvent.upload(input, fileorFiles);
 }
 
-function dropUpload(files: File[]) {
-  const dropzone = screen.getByTestId("add-data-modal-csv-dropzone");
+async function dropUpload(files: File[]) {
+  const dropzone = await screen.findByTestId("add-data-modal-csv-dropzone");
   expect(dropzone).toBeInTheDocument();
   const dropEvent = {
     dataTransfer: {
