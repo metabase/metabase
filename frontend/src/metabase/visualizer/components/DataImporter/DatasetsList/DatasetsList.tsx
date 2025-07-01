@@ -141,7 +141,7 @@ export function DatasetsList({
       required_non_temporal_dimension_ids,
     },
     {
-      skip: !visualizationType || !visualizationColumns,
+      skip: muted,
       refetchOnMountOrArgChange: true,
     },
   );
@@ -169,7 +169,7 @@ export function DatasetsList({
   );
 
   const items = useMemo(() => {
-    if (!visualizationType || !columns || !settings || !computedSettings) {
+    if (!search && dataSources.length === 0) {
       return allRecents
         .filter((maybeCard) =>
           ["card", "dataset", "metric"].includes(maybeCard.model),
@@ -200,7 +200,7 @@ export function DatasetsList({
 
         return getIsCompatible({
           currentDataset: {
-            display: visualizationType,
+            display: visualizationType ?? null,
             columns,
             settings,
             computedSettings,
@@ -221,6 +221,8 @@ export function DatasetsList({
     computedSettings,
     datasets,
     allRecents,
+    search,
+    dataSources.length,
   ]);
 
   const additionalProps =
