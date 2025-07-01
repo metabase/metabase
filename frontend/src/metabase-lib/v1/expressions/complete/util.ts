@@ -54,18 +54,26 @@ export function fuzzyMatcher(
     keys,
     includeScore: true,
     includeMatches: true,
+    findAllMatches: true,
   });
 
   return function (word: string) {
     return fuse
       .search(word)
-      .filter((result) => (result.score ?? 0) <= 0.5)
+      .filter((result) => (result.score ?? 0) <= 0.6)
       .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
       .map((result) => {
-        const key = result.matches?.[0]?.key;
-        const matches = result.matches?.flatMap((match) =>
-          match.key === key ? (match.indices ?? []) : [],
+        const matchLengths = (result.matches ?? []).map((match) =>
+          match.indices
+            .map((range) => range[1] - range[0])
+            .reduce((a, b) => a + b, 0),
         );
+        const longestMatchLength = Math.max(...matchLengths);
+        const longestMatchIndex = matchLengths.indexOf(longestMatchLength);
+
+        const longestMatch = result.matches?.[longestMatchIndex];
+        const indices = longestMatch?.indices ?? [];
+        const key = longestMatch?.key;
 
         const displayLabel = key
           ? (result.item[key as keyof typeof result.item] as string | undefined)
@@ -74,7 +82,7 @@ export function fuzzyMatcher(
         return {
           ...result.item,
           displayLabel: displayLabel ?? result.item.displayLabel,
-          matches,
+          matches: indices,
         };
       });
   };

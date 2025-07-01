@@ -142,7 +142,11 @@ describe("suggestAggregations", () => {
           {
             label: "StandardDeviation",
             displayLabel: "StandardDeviation",
-            matches: [[0, 10]],
+            matches: [
+              [0, 10],
+              [12, 13],
+              [16, 16],
+            ],
             type: "aggregation",
             icon: "function",
             apply: expect.any(Function),
