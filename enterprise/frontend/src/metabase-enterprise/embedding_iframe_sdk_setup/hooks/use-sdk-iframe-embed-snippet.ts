@@ -5,6 +5,7 @@ import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedTagSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
+import { filterEmptySettings } from "../utils/filter-empty-settings";
 
 export function useSdkIframeEmbedSnippet() {
   const { settings } = useSdkIframeEmbedSetupContext();
