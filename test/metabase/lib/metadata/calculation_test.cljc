@@ -77,7 +77,7 @@
     (let [query      (lib.tu/venues-query)
           field-id   (inc (apply max (map :id (lib/visible-columns query))))]
       (mu/disable-enforcement
-        (is (=? {:name              (str field-id)
+        (is (=? {:name              "Unknown Field"
                  :display-name      "Unknown Field"
                  :long-display-name "join → Unknown Field"}
                 (lib/display-info query [:field {:join-alias "join"} field-id])))))))
@@ -536,26 +536,13 @@
                          (lib/with-fields [(meta/field-metadata :orders :id)
                                            (meta/field-metadata :orders :product-id)
                                            (meta/field-metadata :orders :subtotal)]))
-          exp-main   [{:name  "ID"
-                       :ident (meta/ident :orders :id)}
-                      {:name  "PRODUCT_ID"
-                       :ident (meta/ident :orders :product-id)}
-                      {:name  "SUBTOTAL"
-                       :ident (meta/ident :orders :subtotal)}]
-          exp-join1  [{:name  "PRICE"
-                       :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :venues :price)
-                                                                          (:ident join1))}
-                      {:name  "CATEGORY_ID"
-                       :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :venues :category-id)
-                                                                          (:ident join1))}
-                      {:name  "NAME"
-                       :ident (lib.metadata.ident/remap-ident
-                               (meta/ident :categories :name)
-                               (lib.metadata.ident/explicitly-joined-ident
-                                (meta/ident :venues :category-id) (:ident join1)))}]
-          exp-join2  [{:name  "CATEGORY"
-                       :ident (lib.metadata.ident/explicitly-joined-ident
-                               (meta/ident :products :category) (:ident join2))}]
+          exp-main   [{:name  "ID"}
+                      {:name  "PRODUCT_ID"}
+                      {:name  "SUBTOTAL"}]
+          exp-join1  [{:name  "PRICE"}
+                      {:name  "CATEGORY_ID"}
+                      {:name  "NAME"}]
+          exp-join2  [{:name  "CATEGORY"}]
           cols       (fn [query]
                        (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))]
       (is (=? (concat exp-main exp-join1 exp-join2)
@@ -627,8 +614,7 @@
          {:name "QUANTITY",   :lib/source :source/card, :table-id orders-id}
          {:name "CREATED_AT", :lib/source :source/card, :table-id orders-id}
          {:name "PRODUCT_ID", :lib/source :source/card, :table-id orders-id, :fk-target-field-id (meta/id :products :id)}
-         {:name "USER_ID",    :lib/source :source/card, :table-id orders-id, :fk-target-field-id (meta/id :people :id)}
-         {:name "TITLE",      :lib/source :source/card, :table-id products-id}]
+         {:name "USER_ID",    :lib/source :source/card, :table-id orders-id, :fk-target-field-id (meta/id :people :id)}]
         ;; card1 has the same fields as card2, except EAN, which is not added by the join
         card1-fields
         (into [] (remove (comp #{"EAN"} :name)) card2-fields)

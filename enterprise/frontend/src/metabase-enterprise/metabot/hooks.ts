@@ -6,13 +6,14 @@ import { useMetabotContext } from "metabase/metabot";
 
 import {
   type MetabotPromptSubmissionResult,
-  getActiveToolCall,
+  getAgentErrorMessages,
   getIsLongMetabotConversation,
   getIsProcessing,
   getLastAgentMessagesByType,
   getMessages,
   getMetabotId,
   getMetabotVisible,
+  getToolCalls,
   getUseStreaming,
   resetConversation as resetConversationAction,
   retryPrompt,
@@ -30,8 +31,15 @@ export const useMetabotAgent = () => {
   const messages = useSelector(getMessages as any) as ReturnType<
     typeof getMessages
   >;
+  const errorMessages = useSelector(getAgentErrorMessages as any) as ReturnType<
+    typeof getAgentErrorMessages
+  >;
   const isProcessing = useSelector(getIsProcessing as any) as ReturnType<
     typeof getIsProcessing
+  >;
+
+  const visible = useSelector(getMetabotVisible as any) as ReturnType<
+    typeof getMetabotVisible
   >;
 
   const setVisible = useCallback(
@@ -56,6 +64,10 @@ export const useMetabotAgent = () => {
 
   const submitInput = useCallback(
     async (prompt: string, metabotId?: string) => {
+      if (!visible) {
+        setVisible(true);
+      }
+
       const context = await getChatContext();
       const action = await dispatch(
         submitInputAction({
@@ -71,7 +83,7 @@ export const useMetabotAgent = () => {
 
       return action;
     },
-    [dispatch, getChatContext, prepareRetryIfUnsuccesful],
+    [dispatch, getChatContext, prepareRetryIfUnsuccesful, setVisible, visible],
   );
 
   const retryMessage = useCallback(
@@ -110,10 +122,9 @@ export const useMetabotAgent = () => {
     metabotId: useSelector(getMetabotId as any) as ReturnType<
       typeof getMetabotId
     >,
-    visible: useSelector(getMetabotVisible as any) as ReturnType<
-      typeof getMetabotVisible
-    >,
+    visible,
     messages,
+    errorMessages,
     lastAgentMessages: useSelector(
       getLastAgentMessagesByType as any,
     ) as ReturnType<typeof getLastAgentMessagesByType>,
@@ -125,8 +136,8 @@ export const useMetabotAgent = () => {
     startNewConversation,
     submitInput,
     isDoingScience: isProcessing,
-    activeToolCall: useSelector(getActiveToolCall as any) as ReturnType<
-      typeof getActiveToolCall
+    toolCalls: useSelector(getToolCalls as any) as ReturnType<
+      typeof getToolCalls
     >,
     useStreaming: useSelector(getUseStreaming as any) as ReturnType<
       typeof getUseStreaming

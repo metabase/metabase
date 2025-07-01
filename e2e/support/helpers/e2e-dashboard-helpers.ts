@@ -379,6 +379,18 @@ export function dashboardParameterSidebar() {
   return cy.findByTestId("dashboard-parameter-sidebar");
 }
 
+export function applyFilterToast() {
+  return cy.findByTestId("filter-apply-toast");
+}
+
+export function applyFilterButton() {
+  return applyFilterToast().button("Apply");
+}
+
+export function cancelFilterButton() {
+  return applyFilterToast().button("Cancel");
+}
+
 export function setDashboardParameterName(name: string) {
   dashboardParameterSidebar().findByLabelText("Label").clear().type(name);
 }

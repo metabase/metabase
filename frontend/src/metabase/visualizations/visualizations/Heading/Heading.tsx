@@ -6,10 +6,10 @@ import { t } from "ttag";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { DashCardParameterMapper } from "metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper";
 import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
+import { useDashboardContext } from "metabase/dashboard/context";
 import {
   getDashCardInlineValuePopulatedParameters,
   getDashcardParameterMappingOptions,
-  getEditingParameter,
   getIsEditingParameter,
   getParameterValues,
 } from "metabase/dashboard/selectors";
@@ -32,8 +32,6 @@ import {
 } from "./Heading.styled";
 
 interface HeadingProps {
-  isEditing: boolean;
-  isFullscreen: boolean;
   isMobile: boolean;
   onUpdateVisualizationSettings: ({ text }: { text: string }) => void;
   dashcard: VirtualDashboardCard;
@@ -49,12 +47,12 @@ export function Heading({
   dashboard,
   dashcard,
   settings,
-  isEditing,
-  isFullscreen,
   gridSize,
   onUpdateVisualizationSettings,
   isMobile,
 }: HeadingProps) {
+  const { isEditing } = useDashboardContext();
+
   const inlineParameters = useSelector((state) =>
     getDashCardInlineValuePopulatedParameters(state, dashcard?.id),
   );
@@ -184,7 +182,6 @@ export function Heading({
           <ParametersList
             isNarrow={isNarrow}
             parameters={inlineParameters}
-            isFullscreen={isFullscreen}
             widgetsVariant="subtle"
           />
         )}
@@ -212,7 +209,6 @@ export function Heading({
         <ParametersList
           isNarrow={isNarrow}
           parameters={inlineParameters}
-          isFullscreen={isFullscreen}
           widgetsVariant="subtle"
         />
       )}
@@ -228,7 +224,8 @@ interface ParametersListProps
 function ParametersList(props: ParametersListProps) {
   const { isNarrow, ...rest } = props;
 
-  const editingParameter = useSelector(getEditingParameter);
+  const { editingParameter } = useDashboardContext();
+
   const parametersWithValues = useMemo(
     () => rest.parameters.filter((p) => p.value != null),
     [rest.parameters],

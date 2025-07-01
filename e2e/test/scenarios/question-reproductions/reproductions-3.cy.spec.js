@@ -915,14 +915,14 @@ describe("issue 32020", () => {
     H.popover().within(() => {
       cy.findByText("Sum of ...").click();
       cy.findByText(question2Details.name).click();
-      cy.findByText("Max of Longitude").click();
+      cy.findByText("Q2 → Max of Longitude").click();
     });
 
     cy.log("visualize and check results");
     H.visualize();
     H.tableInteractive().within(() => {
       cy.findByText("Sum of Sum of Total").should("be.visible");
-      cy.findByText("Sum of Q2 → Max").should("be.visible");
+      cy.findByText("Sum of Q2 → Max of Longitude").should("be.visible");
     });
   });
 });
@@ -1206,7 +1206,7 @@ describe("issue 31960", () => {
 
     H.popover().findByText("See these Orders").click();
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Jul 10–16, 2022")
+      .findByText("Created At: Week is Jul 10–16, 2022")
       .should("be.visible");
     H.assertQueryBuilderRowCount(rowCount);
   });
@@ -1446,8 +1446,8 @@ describe("issue 19894", () => {
     H.popover().findByText("Q1").click();
     H.popover().findByText("Q2").click();
 
-    H.popover().findByText("Category").should("be.visible");
-    H.popover().findByText("Sum of Price").should("be.visible");
+    H.popover().findByText("Q2 - Category → Category").should("be.visible");
+    H.popover().findByText("Q2 - Category → Sum of Price").should("be.visible");
 
     H.popover().findByText("Q1").click();
 
@@ -1707,7 +1707,7 @@ describe("issue 39771", () => {
     H.openNotebook();
     H.getNotebookStep("summarize", { stage: 1 })
       .findByTestId("breakout-step")
-      .findByText("Created At: Month: Quarter of year")
+      .findByText("Created At: Quarter of year")
       .click();
 
     H.popover().findByText("by quarter of year").realHover();
