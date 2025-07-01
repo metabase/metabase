@@ -8,7 +8,7 @@ import EditableText from "metabase/common/components/EditableText";
 import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Card, Flex, Group, Icon, rem } from "metabase/ui";
+import { Box, Card, Flex, Group, Icon, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
@@ -18,9 +18,10 @@ interface Props {
   active?: boolean;
   field: Field;
   href: string;
+  parent: Field | undefined;
 }
 
-export const FieldItem = ({ active, field, href }: Props) => {
+export const FieldItem = ({ active, field, href, parent }: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
@@ -112,8 +113,21 @@ export const FieldItem = ({ active, field, href }: Props) => {
         w="100%"
         wrap="nowrap"
       >
-        <Group flex="0 0 auto" gap="sm" maw="100%" wrap="nowrap">
-          <Icon className={S.icon} flex="0 0 auto" name={icon} />
+        <Group align="center" flex="0 0 auto" gap={0} maw="100%" wrap="nowrap">
+          <Icon className={S.icon} flex="0 0 auto" mr="sm" name={icon} />
+
+          {parent && (
+            <Text
+              c="text-light"
+              lh="var(--mantine-line-height)"
+              mb={rem(-4)}
+              mr="xs"
+              mt={rem(-3)}
+            >
+              {parent.display_name}
+              {":"}
+            </Text>
+          )}
 
           <Box
             className={cx(S.input, S.name)}

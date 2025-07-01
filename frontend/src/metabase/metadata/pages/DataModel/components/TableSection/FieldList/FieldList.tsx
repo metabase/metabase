@@ -18,15 +18,22 @@ export const FieldList = ({ activeFieldId, getFieldHref, table }: Props) => {
     return _.sortBy(table.fields ?? [], (item) => item.position);
   }, [table.fields]);
 
+  const fieldsById = useMemo(() => {
+    return _.indexBy(fields, (field) => getRawTableFieldId(field));
+  }, [fields]);
+
   return (
     <Stack gap={rem(12)}>
       {fields.map((field) => {
         const id = getRawTableFieldId(field);
+        const parent =
+          field.parent_id != null ? fieldsById[field.parent_id] : undefined;
 
         return (
           <FieldItem
             active={id === activeFieldId}
             field={field}
+            parent={parent}
             href={getFieldHref(id)}
             key={id}
           />
