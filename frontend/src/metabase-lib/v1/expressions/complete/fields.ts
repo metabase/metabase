@@ -13,6 +13,7 @@ export type Options = {
   query: Lib.Query;
   stageIndex: number;
   expressionIndex?: number;
+  expressionMode: Lib.ExpressionMode;
 };
 
 export function suggestFields({
