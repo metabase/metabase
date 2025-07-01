@@ -5,7 +5,7 @@ import { Anchor, Icon, Stack, Text } from "metabase/ui";
 
 import type { SdkIframeEmbedSetupExperience } from "../types";
 
-export const SelectEmbedEntityMissingRecents = ({
+export const SelectEmbedResourceMissingRecents = ({
   experience,
   openPicker,
 }: {
@@ -34,7 +34,7 @@ export const SelectEmbedEntityMissingRecents = ({
       align="center"
       gap="md"
       py="xl"
-      data-testid="embed-entity-missing-recents"
+      data-testid="embed-resource-missing-recents"
     >
       <Icon name={embedIcon} size={48} c="text-light" />
 

@@ -12,10 +12,10 @@ import type {
   SdkIframeEmbedSetupRecentItem,
 } from "../types";
 
-import { SelectEmbedEntityMissingRecents } from "./SelectEmbedEntityMissingRecents";
-import S from "./SelectEmbedEntityStep.module.css";
+import { SelectEmbedResourceMissingRecents } from "./SelectEmbedResourceMissingRecents";
+import S from "./SelectEmbedResourceStep.module.css";
 
-export const SelectEmbedEntityStep = () => {
+export const SelectEmbedResourceStep = () => {
   const {
     experience,
     settings,
@@ -58,7 +58,7 @@ export const SelectEmbedEntityStep = () => {
     }
   };
 
-  const handlePickerModalEntitySelect = (
+  const handlePickerModalResourceSelect = (
     item: SdkIframeEmbedSetupRecentItem,
   ) => {
     // Resource picker modal returns numeric ids.
@@ -68,7 +68,7 @@ export const SelectEmbedEntityStep = () => {
     closePicker();
     updateEmbedSettings(experience, resourceId);
 
-    // Add the current entity to the top of the recent items list
+    // Add the current resource to the top of the recent items list
     const resourceType = experience === "dashboard" ? "dashboard" : "question";
     addRecentItem(resourceType, {
       id: resourceId,
@@ -82,7 +82,7 @@ export const SelectEmbedEntityStep = () => {
       p="md"
       key={recentItem.id}
       onClick={() => updateEmbedSettings(experience, recentItem.id)}
-      className={S.EntityCard}
+      className={S.ResourceCard}
       data-selected={selectedItemId === recentItem.id}
       data-testid="embed-recent-item-card"
     >
@@ -102,10 +102,10 @@ export const SelectEmbedEntityStep = () => {
     </Card>
   );
 
-  const renderSelectEntityList = () => {
+  const renderSelectResourceList = () => {
     if (recentItems.length === 0) {
       return (
-        <SelectEmbedEntityMissingRecents
+        <SelectEmbedResourceMissingRecents
           experience={experience}
           openPicker={openPicker}
         />
@@ -137,7 +137,7 @@ export const SelectEmbedEntityStep = () => {
               ? { id: selectedItemId, model: "dashboard" }
               : undefined
           }
-          onChange={handlePickerModalEntitySelect}
+          onChange={handlePickerModalResourceSelect}
           onClose={closePicker}
           options={MODAL_OPTIONS}
         />
@@ -151,7 +151,7 @@ export const SelectEmbedEntityStep = () => {
           value={
             selectedItemId ? { id: selectedItemId, model: "card" } : undefined
           }
-          onChange={handlePickerModalEntitySelect}
+          onChange={handlePickerModalResourceSelect}
           onClose={closePicker}
           options={MODAL_OPTIONS}
         />
@@ -185,7 +185,7 @@ export const SelectEmbedEntityStep = () => {
           )}
         </Group>
 
-        {renderSelectEntityList()}
+        {renderSelectResourceList()}
       </Card>
 
       {renderPickerModal()}

@@ -1,12 +1,12 @@
-import { SelectEmbedEntityStep } from "./components/SelectEmbedEntityStep";
 import { SelectEmbedExperienceStep } from "./components/SelectEmbedExperienceStep";
+import { SelectEmbedResourceStep } from "./components/SelectEmbedResourceStep";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupStep,
 } from "./types";
 
-/** The maximum number of recent items to show in the entity selection step. */
-export const EMBED_ENTITY_LIST_MAX_RECENTS = 6;
+/** The maximum number of recent items to show in the resource selection step. */
+export const EMBED_RESOURCE_LIST_MAX_RECENTS = 6;
 
 export const EMBED_EXPERIENCES = [
   {
@@ -38,8 +38,8 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
     component: SelectEmbedExperienceStep,
   },
   {
-    id: "select-embed-entity",
-    component: SelectEmbedEntityStep,
+    id: "select-embed-resource",
+    component: SelectEmbedResourceStep,
     skipFor: ["exploration"],
   },
   {
