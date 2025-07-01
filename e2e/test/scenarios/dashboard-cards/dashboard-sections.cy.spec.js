@@ -152,7 +152,9 @@ function selectQuestion(question) {
 }
 
 function overwriteDashCardTitle(index, originalTitle, newTitle) {
-  H.showDashcardVisualizerModalSettings(index);
+  H.showDashcardVisualizerModalSettings(index, {
+    buttonText: "Edit question",
+  });
   cy.findByDisplayValue(originalTitle).clear().type(newTitle).blur();
   H.saveDashcardVisualizerModalSettings();
 }

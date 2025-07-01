@@ -136,7 +136,7 @@ describe("issue 44171", () => {
     H.sidebar().findByText("Metric 44171-A").click();
 
     H.showDashboardCardActions(0);
-    H.findDashCardAction(H.getDashboardCard(0), "Edit visualization").click();
+    H.findDashCardAction(H.getDashboardCard(0), "Edit question").click();
     H.modal().within(() => {
       H.switchToAddMoreData();
       H.addDataset("Metric 44171-B");

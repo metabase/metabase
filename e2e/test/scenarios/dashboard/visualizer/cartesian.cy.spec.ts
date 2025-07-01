@@ -264,7 +264,9 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       }).click();
     });
 
-    H.showDashcardVisualizerModal(1);
+    H.showDashcardVisualizerModal(1, {
+      buttonText: "Visualize another way",
+    });
 
     H.modal().within(() => {
       H.chartPathWithFillColor("#509EE3").should("have.length", 4);
@@ -601,7 +603,9 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         .should("have.length", 2);
 
       H.editDashboard();
-      H.showDashcardVisualizerModal(0);
+      H.showDashcardVisualizerModal(0, {
+        buttonText: "Visualize another way",
+      });
 
       H.modal().within(() => {
         cy.findAllByTestId("legend-item").should("have.length", 2);

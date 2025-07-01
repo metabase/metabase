@@ -154,7 +154,9 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       },
     );
 
-    H.showDashcardVisualizerModal(1);
+    H.showDashcardVisualizerModal(1, {
+      buttonText: "Visualize another way",
+    });
 
     H.modal().within(() => {
       cy.button("Add more data").click();
