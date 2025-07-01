@@ -356,7 +356,7 @@ export const CreateOrEditQuestionAlertModal = ({
         </AlertModalSettingsBlock>
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch
-            label={t`Only send this alert once`}
+            label={t`Delete this Alert after it's triggered`}
             styles={{
               label: {
                 lineHeight: "1.5rem",
