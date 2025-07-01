@@ -29,6 +29,8 @@ export const useParameterList = ({
   );
 
   const metadata = useSelector(getMetadata);
+
+  // We cannot use `metadata` directly, otherwise hooks will re-run on every metadata change.
   const metadataRef = useLatest(metadata);
 
   // Extract parameters from the loaded dashboard/card
