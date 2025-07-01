@@ -34,7 +34,8 @@ export const SdkIframeEmbedSetupProvider = ({
 
   // We don't want to re-fetch the recent items every time we switch between
   // steps, therefore we load recent items once in the provider.
-  const { recentDashboards, recentQuestions, addRecentItem } = useRecentItems();
+  const { recentDashboards, recentQuestions, addRecentItem, isRecentsLoading } =
+    useRecentItems();
 
   const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
     "select-embed-experience",
@@ -108,6 +109,7 @@ export const SdkIframeEmbedSetupProvider = ({
     omitKeys: ["instanceUrl"],
     onRestore: handleEmbedSettingsRestored,
     debounceMs: PERSIST_EMBED_SETTINGS_DEBOUNCE_MS,
+    skipRestore: isRecentsLoading,
   });
 
   const setAndPersistSettings = useCallback(
