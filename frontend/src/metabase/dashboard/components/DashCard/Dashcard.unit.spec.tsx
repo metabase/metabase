@@ -362,10 +362,9 @@ describe("DashCard", () => {
         isEditing: true,
       });
 
-      expect(screen.getByLabelText("Edit visualization")).toBeInTheDocument();
       expect(
-        screen.queryByLabelText("Visualize another way"),
-      ).not.toBeInTheDocument();
+        screen.getByLabelText("Visualize another way"),
+      ).toBeInTheDocument();
       expect(
         screen.queryByLabelText("Show visualization options"),
       ).not.toBeInTheDocument();
