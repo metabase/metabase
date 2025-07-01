@@ -1,16 +1,13 @@
 import type { ChangeEvent, KeyboardEvent } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useDebounce } from "react-use";
 import { jt, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
-import {
-  FieldLabel,
-  FieldLabelContainer,
-  FieldRoot,
-} from "metabase/common/components/FormField/FormField.styled";
-import Input from "metabase/common/components/Input";
+import { HiddenAriaMessage } from "metabase/common/components/HiddenAriaMessage";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { TextInput } from "metabase/ui/components/inputs/TextInput";
 
 import type { EngineOption } from "../../types";
 import { getEngineLogo } from "../../utils/engine";
@@ -116,21 +113,23 @@ const EngineSearch = ({
     [options, isExpanded, isSearching, searchText],
   );
 
-  useEffect(() => {
+  const debouncedAriaMessage = useMemo(() => {
     if (!searchText && visibleOptions.length === 0) {
-      setDbOptionsAriaMessage("");
-      return;
+      return "";
     }
 
-    const message = visibleOptions.length
-      ? `${visibleOptions.length} ${visibleOptions.length === 1 ? "result" : "results"} found. Use arrow keys to navigate.`
-      : "No results found.";
-
-    setDbOptionsAriaMessage("");
-    const timeout = setTimeout(() => setDbOptionsAriaMessage(message), 50);
-
-    return () => clearTimeout(timeout);
+    return visibleOptions.length
+      ? t`${visibleOptions.length} ${visibleOptions.length === 1 ? t`result` : t`results`} found. Use arrow keys to navigate.`
+      : t`No results found.`;
   }, [searchText, visibleOptions]);
+
+  useDebounce(
+    () => {
+      setDbOptionsAriaMessage(debouncedAriaMessage);
+    },
+    50,
+    [debouncedAriaMessage],
+  );
 
   const optionCount = visibleOptions.length;
   const activeOption = isNavigating ? visibleOptions[activeIndex] : undefined;
@@ -160,38 +159,21 @@ const EngineSearch = ({
 
   return (
     <EngineSearchRoot role="combobox">
-      <FieldRoot orientation="vertical" alignment="end">
-        <FieldLabelContainer orientation="vertical" hasDescription={false}>
-          <FieldLabel htmlFor="search-for-a-database" hasError={false}>
-            {t`Search for a database`}
-          </FieldLabel>
-        </FieldLabelContainer>
-        <Input
-          id="search-for-a-database"
-          value={searchText}
-          autoFocus
-          aria-autocomplete="list"
-          aria-controls={getListBoxId(rootId)}
-          aria-activedescendant={getListOptionId(rootId, activeOption)}
-          fullWidth
-          onChange={handleSearch}
-          onKeyDown={handleKeyDown}
-        />
-        <div
-          className="visually-hidden"
-          aria-live="polite"
-          aria-atomic="true"
-          style={{
-            position: "absolute",
-            left: "-9999px",
-            width: "1px",
-            height: "1px",
-            overflow: "hidden",
-          }}
-        >
-          {dbOptionsAriaMessage}
-        </div>
-      </FieldRoot>
+      <TextInput
+        label={t`Search for a database`}
+        value={searchText}
+        autoFocus
+        aria-autocomplete="list"
+        aria-controls={getListBoxId(rootId)}
+        aria-activedescendant={getListOptionId(rootId, activeOption)}
+        onChange={handleSearch}
+        onKeyDown={handleKeyDown}
+      />
+      <HiddenAriaMessage
+        ariaLive="polite"
+        ariaAtomic={true}
+        message={dbOptionsAriaMessage}
+      />
       {visibleOptions.length ? (
         <EngineList
           rootId={rootId}
@@ -291,13 +273,13 @@ const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
     <EngineEmptyStateRoot>
       <EngineEmptyIcon name="search" size={32} />
       {isHosted ? (
-        <EngineEmptyText>{t`Didn’t find anything`}</EngineEmptyText>
+        <EngineEmptyText>{t`Didn't find anything`}</EngineEmptyText>
       ) : (
-        <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
+        <EngineEmptyText>{jt`Don't see your database? Check out our ${(
           <ExternalLink key="link" href={docsUrl}>
             {t`Community Drivers`}
           </ExternalLink>
-        )} page to see if it’s available for self-hosting.`}</EngineEmptyText>
+        )} page to see if it's available for self-hosting.`}</EngineEmptyText>
       )}
     </EngineEmptyStateRoot>
   );
