@@ -117,8 +117,7 @@ e2e_ci: &e2e_ci
   - ".github/workflows/e2e-*"
 
 e2e_specs: &e2e_specs
-  - "**/*.cy.*.js"
-  - "**/*.cy.*.ts"
+  - e2e/!(test-host-app)**/*.cy.*.{js,ts}
 
 e2e_cross_version: &e2e_cross_version
   - ".github/workflows/e2e-cross-version.yml"
