@@ -1,4 +1,4 @@
-const validTabArray = ["db", "csv", "gsheet"] as const;
+const validTabArray = ["db", "csv", "gsheets"] as const;
 const validTabs = new Set<string>(validTabArray);
 
 type AddDataTab = (typeof validTabArray)[number];

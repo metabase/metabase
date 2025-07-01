@@ -595,10 +595,8 @@ export const PLUGIN_UPLOAD_MANAGEMENT = {
   GdriveSyncStatus: PluginPlaceholder,
   GdriveConnectionModal:
     PluginPlaceholder as ComponentType<GdriveConnectionModalProps>,
-  GdriveSidebarMenuItem: PluginPlaceholder as ComponentType<{
-    onClick: () => void;
-  }>,
   GdriveDbMenu: PluginPlaceholder,
+  GdriveAddDataPanel: PluginPlaceholder,
 };
 
 export const PLUGIN_IS_EE_BUILD = {
