@@ -25,7 +25,7 @@ describe("Add data modal (EE with token)", () => {
         canUpload: true,
       });
 
-      await openTab("CSV");
+      await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
       expect(screen.getByText("Manage uploads")).toBeInTheDocument();
       expect(screen.getByText("Enable uploads")).toBeInTheDocument();
     });
@@ -38,7 +38,7 @@ describe("Add data modal (EE with token)", () => {
         canUpload: true,
       });
 
-      await openTab("CSV");
+      await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
       expect(screen.getByText("Manage uploads")).toBeInTheDocument();
     });
 
@@ -58,14 +58,8 @@ describe("Add data modal (EE with token)", () => {
         canUpload: false,
       });
 
-      await openTab("CSV");
+      await userEvent.click(screen.getByRole("tab", { name: /CSV$/ }));
       expect(screen.getByText("Manage uploads")).toBeInTheDocument();
     });
   });
 });
-
-async function openTab(tabName: string) {
-  await userEvent.click(
-    screen.getByRole("tab", { name: new RegExp(`${tabName}$`) }),
-  );
-}
