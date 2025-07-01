@@ -1,14 +1,15 @@
 import { useMount } from "react-use";
+import { t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
-import { Box, Flex, Icon, Text, Title } from "metabase/ui";
+import { Box, Flex, Icon, Text, Title, UnstyledButton } from "metabase/ui";
 
-import { UpsellWrapperDismissable } from "../UpsellWrapperDismissable";
 import { UPGRADE_URL } from "../constants";
 
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
+import { UpsellWrapperDismissable } from "./UpsellWrapperDismissable";
 import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
@@ -95,12 +96,13 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
         )}
 
         {dismissable && onDismiss && (
-          <Icon
+          <UnstyledButton
+            role="button"
+            component={Icon}
+            size="1rem"
             name="close"
+            aria-label={t`Dismiss banner`}
             onClick={onDismiss}
-            style={{ cursor: "pointer" }}
-            size={16}
-            color="text-medium"
           />
         )}
       </Flex>

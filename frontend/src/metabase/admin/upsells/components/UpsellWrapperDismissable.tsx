@@ -12,10 +12,12 @@ type UpsellWrapperDismissableProps = {
  *
  * @param Component - The component to wrap.
  */
-export function UpsellWrapperDismissable<
-  Props extends UpsellWrapperDismissableProps,
->(Component: React.ComponentType<Props>): React.ComponentType<Props> {
-  const MaybeWrappedComponent = (props: Props) => {
+export function UpsellWrapperDismissable<Props>(
+  Component: React.ComponentType<Props & UpsellWrapperDismissableProps>,
+): React.ComponentType<Props & UpsellWrapperDismissableProps> {
+  const MaybeWrappedComponent = (
+    props: Props & UpsellWrapperDismissableProps,
+  ) => {
     if (!props.dismissable) {
       return <Component {...props} />;
     }
