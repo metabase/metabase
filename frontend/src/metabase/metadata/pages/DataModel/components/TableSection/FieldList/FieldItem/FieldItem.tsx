@@ -102,6 +102,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
         align="flex-start"
         component={Link}
         direction="column"
+        draggable={false}
         gap={rem(12)}
         justify="space-between"
         mih={rem(40)}
@@ -111,6 +112,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
         to={href}
         w="100%"
         wrap="nowrap"
+        onClick={handleClick}
       >
         <Group flex="0 0 auto" gap="sm" maw="100%" wrap="nowrap">
           <Icon className={S.icon} flex="0 0 auto" name={icon} />
