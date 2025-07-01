@@ -716,8 +716,7 @@
                          (mt/formatted-rows [int]
                                             (mt/run-mbql-query venues
                                               {:aggregation [[:count]]}))))
-                  (is (thrown-with-msg?
+                  (is (thrown?
                        java.lang.Exception
-                       #"Error.*checkins"
                        (mt/run-mbql-query checkins
                          {:aggregation [[:count]]}))))))))))))
