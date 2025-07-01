@@ -1,6 +1,6 @@
 import { SkeletonImage } from "./SankeySkeleton.styled";
 
-const FunnelSkeleton = (): JSX.Element => {
+const SankeySkeleton = (): JSX.Element => {
   return (
     <SkeletonImage
       xmlns="http://www.w3.org/2000/svg"
@@ -30,4 +30,4 @@ const FunnelSkeleton = (): JSX.Element => {
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FunnelSkeleton;
+export default SankeySkeleton;
