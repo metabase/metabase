@@ -21,7 +21,7 @@ interface Props {
   databaseId: DatabaseId;
   field: Field;
   isPreviewOpen: boolean;
-  parent: Field | undefined;
+  parent?: Field;
   onPreviewClick: () => void;
 }
 

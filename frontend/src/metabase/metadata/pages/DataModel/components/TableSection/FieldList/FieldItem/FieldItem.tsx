@@ -18,7 +18,7 @@ interface Props {
   active?: boolean;
   field: Field;
   href: string;
-  parent: Field | undefined;
+  parent?: Field;
 }
 
 export const FieldItem = ({ active, field, href, parent }: Props) => {

@@ -13,7 +13,7 @@ interface Props {
   active?: boolean;
   disabled?: boolean;
   field: Field;
-  parent: Field | undefined;
+  parent?: Field | undefined;
 }
 
 export const SortableFieldItem = ({
