@@ -17,10 +17,10 @@
 .isActive {
   border-color: var(--mb-color-brand);
   background-color: var(--mb-color-brand-lighter);
-  transform: scale(1.025);
 }
 
 .isOver {
+  transform: scale(1.025);
   outline: 1px solid var(--mb-color-brand);
   background-color: var(--mb-color-brand-light);
 }
