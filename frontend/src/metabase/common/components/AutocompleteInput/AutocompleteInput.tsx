@@ -16,7 +16,7 @@ export interface AutocompleteInputProps extends Omit<InputProps, "onChange"> {
   options?: string[];
   filterOptions?: (value: string | undefined, options: string[]) => string[];
   onOptionSelect?: (value: string) => void;
-  onChangeSettings: (settings: Partial<VisualizationSettings>) => void;
+  onChangeSettings?: (settings: Partial<VisualizationSettings>) => void;
   onChange: (value: string) => void;
 }
 

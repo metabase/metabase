@@ -8,7 +8,7 @@ interface ChartSettingLinkUrlInputProps {
   onChange: (value: string) => void;
   id?: string;
   options?: string[];
-  onChangeSettings: (settings: Partial<VisualizationSettings>) => void;
+  onChangeSettings?: (settings: Partial<VisualizationSettings>) => void;
 }
 
 const linkVariablePattern = /.*{{([^{}]*)$/;
