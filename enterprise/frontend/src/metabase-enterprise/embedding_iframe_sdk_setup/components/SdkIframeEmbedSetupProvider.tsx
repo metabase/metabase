@@ -109,6 +109,9 @@ export const SdkIframeEmbedSetupProvider = ({
     omitKeys: ["instanceUrl"],
     onRestore: handleEmbedSettingsRestored,
     debounceMs: PERSIST_EMBED_SETTINGS_DEBOUNCE_MS,
+
+    // Wait until recents are loaded before restoring the settings.
+    // This ensures the fallback id contains the most recent resource.
     skipRestore: isRecentsLoading,
   });
 
