@@ -49,7 +49,6 @@ export const SortableFieldItem = ({
       >
         <Flex
           gap={0}
-          justify="space-between"
           mih={rem(40)}
           pos="relative"
           px="md"
@@ -57,10 +56,17 @@ export const SortableFieldItem = ({
           w="100%"
           wrap="nowrap"
         >
-          <Icon className={S.icon} mr="sm" name={icon} />
+          <Icon className={S.icon} flex="0 0 auto" mr="sm" name={icon} />
 
           {parent && (
-            <Text c="text-light" lh="var(--mantine-line-height)" mr="xs">
+            <Text
+              c="text-light"
+              flex="0 0 auto"
+              lh="normal"
+              lineClamp={1}
+              maw="50%"
+              mr="xs"
+            >
               {parent.display_name}
               {":"}
             </Text>

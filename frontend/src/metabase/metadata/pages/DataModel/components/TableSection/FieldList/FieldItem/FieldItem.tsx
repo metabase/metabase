@@ -121,7 +121,10 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
           {parent && (
             <Text
               c="text-light"
-              lh="var(--mantine-line-height)"
+              flex="0 0 auto"
+              lh="normal"
+              lineClamp={1}
+              maw="50%"
               mb={rem(-4)}
               mr="xs"
               mt={rem(-3)}
