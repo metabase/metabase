@@ -41,7 +41,7 @@ export interface MetabotState {
 }
 
 export const getMetabotInitialState = (): MetabotState => ({
-  useStreaming: false,
+  useStreaming: true,
   isProcessing: false,
   conversationId: uuid(),
   messages: [],
