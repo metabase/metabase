@@ -13,7 +13,6 @@ export const trackEmbedWizardExperienceSelected = (
   trackSimpleEvent({
     event: "embed_wizard_experience_selected",
     event_detail: experience,
-    triggered_from: "embed_wizard",
   });
 
 export const trackEmbedWizardResourceSelected = (
@@ -24,13 +23,11 @@ export const trackEmbedWizardResourceSelected = (
     event: "embed_wizard_resource_selected",
     target_id: resourceId,
     event_detail: experience,
-    triggered_from: "embed_wizard",
   });
 
 export const trackEmbedWizardCodeCopied = () =>
   trackSimpleEvent({
     event: "embed_wizard_code_copied",
-    triggered_from: "embed_wizard",
   });
 
 export const trackEmbedWizardSettingsUpdated = (
@@ -60,7 +57,6 @@ export const trackEmbedWizardSettingsUpdated = (
       trackSimpleEvent({
         event: "embed_wizard_auth_selected",
         event_detail: settings.useExistingUserSession ? "user-session" : "sso",
-        triggered_from: "embed_wizard",
       });
 
       return;
@@ -69,7 +65,6 @@ export const trackEmbedWizardSettingsUpdated = (
     trackSimpleEvent({
       event: "embed_wizard_option_changed",
       event_detail: settingKey,
-      triggered_from: "embed_wizard",
     });
   });
 };

@@ -158,14 +158,14 @@ H.describeWithSnowplow(
         H.expectUnstructuredSnowplowEvent({
           event: "embed_wizard_option_changed",
           event_detail: "hiddenParameters",
-          });
+        });
 
         parameterVisibilityToggle("product_id").click();
 
         H.expectUnstructuredSnowplowEvent({
           event: "embed_wizard_option_changed",
           event_detail: "hiddenParameters",
-          });
+        });
       });
 
       cy.log("parameter widget container should not exist");
