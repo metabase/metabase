@@ -8,11 +8,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import * as H from "e2e/support/helpers";
 import {
-  editDashboard,
-  openVizSettingsSidebar,
-  showDashcardVisualizerModalSettings,
-} from "e2e/support/helpers";
-import {
   mountSdkContent,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
@@ -98,7 +93,7 @@ describe("scenarios > embedding-sdk > popovers", () => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />);
     });
 
-    openVizSettingsSidebar();
+    H.openVizSettingsSidebar();
 
     getSdkRoot().within(() => {
       cy.findByTestId("chartsettings-sidebar").findByText("Display").click();
@@ -123,7 +118,7 @@ describe("scenarios > embedding-sdk > popovers", () => {
       <InteractiveQuestion questionId={ORDERS_BY_YEAR_QUESTION_ID} />,
     );
 
-    openVizSettingsSidebar();
+    H.openVizSettingsSidebar();
 
     getSdkRoot().within(() => {
       cy.findByTestId("settings-count").click();
@@ -144,8 +139,8 @@ describe("scenarios > embedding-sdk > popovers", () => {
     });
 
     getSdkRoot().within(() => {
-      editDashboard();
-      showDashcardVisualizerModalSettings(0);
+      H.editDashboard();
+      H.showDashcardVisualizerModalSettings(0);
 
       cy.findAllByTestId("color-selector-button").first().click();
 
@@ -164,7 +159,7 @@ describe("scenarios > embedding-sdk > popovers", () => {
       <InteractiveQuestion questionId={ORDERS_BY_YEAR_QUESTION_ID} />,
     );
 
-    openVizSettingsSidebar();
+    H.openVizSettingsSidebar();
 
     getSdkRoot().within(() => {
       cy.findByTestId("color-selector-button").click();
@@ -186,6 +181,31 @@ describe("scenarios > embedding-sdk > popovers", () => {
         cy.findByTestId("color-selector-popover").click(1, 1);
         cy.findByTestId("color-selector-popover").should("be.visible");
       });
+    });
+  });
+
+  it("should prevent closing the ComparisonPicker when clicking it", () => {
+    cy.get<string>("@questionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+    });
+
+    cy.findByTestId("chart-type-selector-button").click();
+    cy.findByRole("menu").within(() => {
+      cy.findByText("Trend").click();
+    });
+
+    H.openVizSettingsSidebar();
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("comparisons-widget-button").click();
+
+      // Clicking at the edge of the ComparisonPicker popover to be sure that the click does not close it
+      cy.findByTestId("comparison-picker-dropdown").click(2, 2);
+      cy.findByTestId("comparison-picker-dropdown").should("be.visible");
+
+      // Clicking outside of the ComparisonPicker popover to be sure that the click closes it
+      cy.findByTestId("chartsettings-sidebar").click(1, 1);
+      cy.findByTestId("comparison-picker-dropdown").should("not.exist");
     });
   });
 });
