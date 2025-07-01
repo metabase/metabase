@@ -108,6 +108,6 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   );
 };
 
-export const UpsellBanner = UpsellWrapper(
-  UpsellWrapperDismissable(_UpsellBanner),
+export const UpsellBanner = UpsellWrapperDismissable(
+  UpsellWrapper(_UpsellBanner),
 );
