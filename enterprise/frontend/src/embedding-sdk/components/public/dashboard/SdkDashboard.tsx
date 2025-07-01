@@ -24,6 +24,7 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import type { MetabaseQuestion } from "embedding-sdk/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import { useLocale } from "metabase/common/hooks/use-locale";
@@ -49,7 +50,10 @@ import {
   DashboardContextProvider,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
+import {
+  getDashboardComplete,
+  getDashboardHeaderValuePopulatedParameters,
+} from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
@@ -168,6 +172,14 @@ const SdkDashboardInner = ({
     ? "question"
     : renderModeState;
 
+  // Now only used when rerendering the dashboard after creating a new question from the dashboard.
+  const refetchDashboardRef = useRef(_.noop);
+
+  const [newDashboardQuestionId, setNewDashboardQuestionId] =
+    useState<number>();
+
+  const dashboard = useSelector(getDashboardComplete);
+
   const errorPage = useSdkSelector(getErrorPage);
   const dispatch = useSdkDispatch();
   useEffect(() => {
@@ -175,9 +187,6 @@ const SdkDashboardInner = ({
       dispatch(resetErrorPage());
     }
   }, [dispatch, dashboardId]);
-
-  // Now only used when rerendering the dashboard after creating a new question from the dashboard.
-  const refetchDashboardRef = useRef(_.noop);
 
   if (isLocaleLoading || isLoading) {
     return (
@@ -238,6 +247,11 @@ const SdkDashboardInner = ({
       setRefetchDashboard={(refetchDashboard) => {
         refetchDashboardRef.current = refetchDashboard;
       }}
+      autoScrollToDashcardId={
+        dashboard?.dashcards.find(
+          (dashcard) => dashcard.card_id === newDashboardQuestionId,
+        )?.id
+      }
     >
       {match(finalRenderMode)
         .with("question", () => (
@@ -270,7 +284,8 @@ const SdkDashboardInner = ({
         .with("queryBuilder", () => (
           <DashboardQueryBuilder
             targetDashboardId={dashboardId}
-            onSave={() => {
+            onSave={(question) => {
+              setNewDashboardQuestionId(question.id);
               setRenderMode("dashboard");
               refetchDashboardRef.current();
             }}
@@ -307,7 +322,7 @@ function SdkDashboardParameterList(
 
 type DashboardQueryBuilderProps = {
   targetDashboardId: DashboardId;
-  onSave: () => void;
+  onSave: (question: MetabaseQuestion) => void;
 };
 
 /**
@@ -329,8 +344,8 @@ function DashboardQueryBuilder({
        * are creating a new question, we don't really need to worry
        * about the editing.
        */
-      onSave={() => {
-        onSave();
+      onSave={(question) => {
+        onSave(question);
         dispatch(setEditingDashboard(dashboard));
       }}
     >
