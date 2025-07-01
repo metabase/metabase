@@ -278,8 +278,7 @@
   ;; the parameter. There's probably _some_ way to structure things that would make this "duplicate" call unneeded, but
   ;; I haven't figured out what that is yet
   (if (is-raw-field? field)
-    [:field (:column field) {:base-type :type/Raw
-                             :effective-type (:effective-type field)}]
+    [:raw (:column field)]
     [:field
      (u/the-id field)
      {:base-type                     (:base-type field)
