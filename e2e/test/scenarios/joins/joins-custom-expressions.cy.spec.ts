@@ -1,87 +1,102 @@
 const { H } = cy;
 
 type TestCase = {
+  operator: string;
   lhsExpression: string;
   rhsExpression: string;
-  expectedScalarValue: string;
+  expectedRowCount: number;
 };
 
-function testJoin({
-  lhsExpression,
-  rhsExpression,
-  expectedScalarValue,
-}: TestCase) {
-  cy.log(`${lhsExpression} = ${rhsExpression}`);
-  H.openOrdersTable({ mode: "notebook" });
-  H.join();
-  H.entityPickerModal().within(() => {
-    H.entityPickerModalTab("Tables").click();
-    cy.findByText("Reviews").click();
-  });
-  H.popover().within(() => {
-    cy.findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({ formula: lhsExpression });
-    cy.button("Done").click();
-  });
-  H.popover().within(() => {
-    cy.findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({ formula: rhsExpression });
-    cy.button("Done").click();
-  });
-  H.summarize({ mode: "notebook" });
-  H.popover().findByText("Count of rows").click();
-  H.visualize();
-  cy.findByTestId("scalar-value").should("have.text", expectedScalarValue);
-}
-
-const LITERAL_TEST_CASES: TestCase[] = [
+const TEST_CASES: TestCase[] = [
   {
-    lhsExpression: "0",
-    rhsExpression: "0",
-    expectedScalarValue: "20,861,120",
-  },
-  {
+    operator: "=",
     lhsExpression: "1",
     rhsExpression: "1",
-    expectedScalarValue: "20,861,120",
+    expectedRowCount: 1112,
   },
   {
-    lhsExpression: "1",
-    rhsExpression: "0",
-    expectedScalarValue: "18,760",
-  },
-  {
+    operator: "=",
     lhsExpression: "false",
     rhsExpression: "false",
-    expectedScalarValue: "20,861,120",
+    expectedRowCount: 1112,
   },
   {
-    lhsExpression: "true",
-    rhsExpression: "true",
-    expectedScalarValue: "20,861,120",
+    operator: "=",
+    lhsExpression: '"A"',
+    rhsExpression: '"A"',
+    expectedRowCount: 1112,
   },
   {
+    operator: "!=",
+    lhsExpression: "1",
+    rhsExpression: "1",
+    expectedRowCount: 1,
+  },
+  {
+    operator: "!=",
     lhsExpression: "false",
-    rhsExpression: "true",
-    expectedScalarValue: "18,760",
-  },
-];
-
-const EXPRESSION_TEST_CASES: TestCase[] = [
-  {
-    lhsExpression: "1 + 2",
-    rhsExpression: "2 + 1",
-    expectedScalarValue: "20,861,120",
+    rhsExpression: "false",
+    expectedRowCount: 1,
   },
   {
+    operator: "!=",
+    lhsExpression: '"A"',
+    rhsExpression: '"A"',
+    expectedRowCount: 1,
+  },
+  {
+    operator: ">",
+    lhsExpression: "1",
+    rhsExpression: "1",
+    expectedRowCount: 1,
+  },
+  {
+    operator: ">=",
+    lhsExpression: "1",
+    rhsExpression: "1",
+    expectedRowCount: 1112,
+  },
+  {
+    operator: "<",
+    lhsExpression: "1",
+    rhsExpression: "1",
+    expectedRowCount: 1,
+  },
+  {
+    operator: "<=",
+    lhsExpression: "1",
+    rhsExpression: "1",
+    expectedRowCount: 1112,
+  },
+  {
+    operator: ">",
+    lhsExpression: "[ID] + 1",
+    rhsExpression: "[ID] - 1",
+    expectedRowCount: 2,
+  },
+  {
+    operator: ">=",
+    lhsExpression: "[ID] + 1",
+    rhsExpression: "[ID] - 1",
+    expectedRowCount: 3,
+  },
+  {
+    operator: "<",
     lhsExpression: "[ID] + [User ID]",
-    rhsExpression: "[ID] + [Rating]",
-    expectedScalarValue: "19,048",
+    rhsExpression: "[ID] - [Product ID]",
+    expectedRowCount: 1109,
   },
   {
-    lhsExpression: "month([Created At])",
-    rhsExpression: "month([Created At]",
-    expectedScalarValue: "1,761,044",
+    operator: "<=",
+    lhsExpression: "[ID] + [User ID]",
+    rhsExpression: "[ID] - [Product ID]",
+    expectedRowCount: 1110,
+  },
+  {
+    operator: "=",
+    lhsExpression: "year([Created At])",
+    rhsExpression: "year([Created At])",
+    expectedRowCount: 452,
   },
 ];
 
@@ -91,11 +106,41 @@ describe("scenarios > joins > custom expressions", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should support literals in join conditions", () => {
-    LITERAL_TEST_CASES.forEach(testJoin);
-  });
+  describe("expressions in join conditions", () => {
+    TEST_CASES.forEach(
+      ({ operator, lhsExpression, rhsExpression, expectedRowCount }) => {
+        it(`${lhsExpression} ${operator} ${rhsExpression}`, () => {
+          H.openOrdersTable({ mode: "notebook" });
 
-  it("should support expressions in join conditions", () => {
-    EXPRESSION_TEST_CASES.forEach(testJoin);
+          H.join();
+          H.entityPickerModal().within(() => {
+            H.entityPickerModalTab("Tables").click();
+            cy.findByText("Reviews").click();
+          });
+          H.popover().within(() => {
+            cy.findByText("Custom Expression").click();
+            H.enterCustomColumnDetails({ formula: lhsExpression });
+            cy.button("Done").click();
+          });
+          H.popover().within(() => {
+            cy.findByText("Custom Expression").click();
+            H.enterCustomColumnDetails({ formula: rhsExpression });
+            cy.button("Done").click();
+          });
+          H.getNotebookStep("join").findByLabelText("Change operator").click();
+          H.popover().findByText(operator).click();
+
+          H.filter({ mode: "notebook" });
+          H.popover().within(() => {
+            cy.findByText("ID").click();
+            cy.findByPlaceholderText("Enter an ID").type("1");
+            cy.button("Add filter").click();
+          });
+
+          H.visualize();
+          H.assertQueryBuilderRowCount(expectedRowCount);
+        });
+      },
+    );
   });
 });
