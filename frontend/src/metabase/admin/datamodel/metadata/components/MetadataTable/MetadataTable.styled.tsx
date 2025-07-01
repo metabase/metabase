@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 
 import Input from "metabase/common/components/Input/Input";
-import InputBlurChange from "metabase/components/InputBlurChange";
+import InputBlurChange from "metabase/common/components/InputBlurChange";
 import { color } from "metabase/lib/colors";
 
 export const TableName = styled.div`

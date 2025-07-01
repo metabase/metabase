@@ -17,10 +17,12 @@ import {
   useGetRemappedDashboardParameterValueQuery,
   useGetRemappedParameterValueQuery,
 } from "metabase/api";
-import ExplicitSize from "metabase/components/ExplicitSize";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import TokenField, { parseStringValue } from "metabase/components/TokenField";
-import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
+import ExplicitSize from "metabase/common/components/ExplicitSize";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import TokenField, {
+  parseStringValue,
+} from "metabase/common/components/TokenField";
+import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { parseNumber } from "metabase/lib/number";

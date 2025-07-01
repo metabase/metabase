@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import EmptyState from "metabase/components/EmptyState";
-import { NoObjectError } from "metabase/components/errors/NoObjectError";
+import EmptyState from "metabase/common/components/EmptyState";
+import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
 import { Flex, Stack } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";

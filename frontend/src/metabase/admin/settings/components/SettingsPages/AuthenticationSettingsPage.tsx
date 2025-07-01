@@ -1,7 +1,7 @@
 import { UpsellSSO } from "metabase/admin/upsells";
 import { useGetSettingsQuery } from "metabase/api";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 import { Box, Flex, Stack } from "metabase/ui";
 

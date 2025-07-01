@@ -5,7 +5,7 @@ import styled from "@emotion/styled";
 import { forwardRef } from "react";
 
 import Link from "metabase/common/components/Link";
-import Label from "metabase/components/type/Label";
+import Label from "metabase/common/components/type/Label";
 import { alpha, color } from "metabase/lib/colors";
 import { Icon, type IconProps } from "metabase/ui";
 

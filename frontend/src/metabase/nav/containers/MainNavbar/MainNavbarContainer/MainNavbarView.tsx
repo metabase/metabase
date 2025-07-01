@@ -5,9 +5,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { Tree } from "metabase/common/components/tree";
 import { useHasTokenFeature, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
-import { Tree } from "metabase/components/tree";
 import { OnboardingDismissedToast } from "metabase/home/components/Onboarding";
 import {
   getCanAccessOnboardingPage,

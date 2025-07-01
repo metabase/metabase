@@ -2,7 +2,7 @@ import {
   useGetPermissionsGroupQuery,
   useListUserMembershipsQuery,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 

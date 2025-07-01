@@ -5,7 +5,7 @@ import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/Inter
 import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { Flex, Icon, Paper, Stack, Text } from "metabase/ui";
-import { getAgentOfflineError } from "metabase-enterprise/metabot/constants";
+import { METABOT_ERR_MSG } from "metabase-enterprise/metabot/constants";
 
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
 import { QuestionDetails } from "./QuestionDetails";
@@ -51,7 +51,7 @@ interface MessageProps {
   message: string;
 }
 function Message({ message }: MessageProps) {
-  const isErrorMessage = message === getAgentOfflineError();
+  const isErrorMessage = message === METABOT_ERR_MSG.agentOffline;
   if (isErrorMessage) {
     return (
       <Paper shadow="sm" p="lg" w="100%" maw="41.5rem" radius="lg" ta="center">
