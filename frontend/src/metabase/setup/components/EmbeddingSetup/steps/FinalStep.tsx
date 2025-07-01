@@ -25,7 +25,7 @@ import type { StepProps } from "./embeddingSetupSteps";
 
 export const FinalStep = ({ nextStep }: StepProps) => {
   const { url: docsUrl } = useDocsUrl("embedding/interactive-embedding");
-  const { createdDashboardIds } = useEmbeddingSetup();
+  const { createdDashboardIds, trackEmbeddingSetupClick } = useEmbeddingSetup();
 
   const { loading, value: dashboards } = useAsync(async () => {
     const dashboardPromises = createdDashboardIds.map((id) =>
@@ -98,7 +98,12 @@ export const FinalStep = ({ nextStep }: StepProps) => {
         {tabs.map((tab) => (
           <Tabs.Panel key={tab.url} value={tab.url}>
             <Box mt="md">
-              <CodeSnippet code={getEmbedCode(tab.url)} />
+              <CodeSnippet
+                code={getEmbedCode(tab.url)}
+                onCopy={() => {
+                  trackEmbeddingSetupClick("snippet-copied");
+                }}
+              />
             </Box>
 
             {/* This shows a loader while the iframe is loading, it's ugly as it's a different loader than the one inside the iframe,
@@ -134,7 +139,7 @@ export const FinalStep = ({ nextStep }: StepProps) => {
           variant="subtle"
           color="text-primary"
           onClick={() => {
-            // TODO: EMB-548 add analytics event
+            trackEmbeddingSetupClick("ill-do-this-later");
             nextStep();
           }}
         >
@@ -149,7 +154,13 @@ export const FinalStep = ({ nextStep }: StepProps) => {
   );
 };
 
-export const CodeSnippet = ({ code }: { code: string }) => {
+export const CodeSnippet = ({
+  code,
+  onCopy,
+}: {
+  code: string;
+  onCopy?: () => void;
+}) => {
   return (
     <Group
       px="lg"
@@ -162,7 +173,7 @@ export const CodeSnippet = ({ code }: { code: string }) => {
       }}
     >
       <Code flex={1} dangerouslySetInnerHTML={{ __html: highlight(code) }} />
-      <CopyButton value={code} />
+      <CopyButton value={code} onCopy={onCopy} />
     </Group>
   );
 };

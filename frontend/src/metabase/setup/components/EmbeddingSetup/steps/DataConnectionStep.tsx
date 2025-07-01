@@ -11,7 +11,8 @@ import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 
 export const DataConnectionStep = () => {
   const dispatch = useDispatch();
-  const { setDatabase, goToNextStep } = useEmbeddingSetup();
+  const { setDatabase, goToNextStep, trackEmbeddingSetupClick } =
+    useEmbeddingSetup();
 
   const handleSubmit = async (databaseData: DatabaseData) => {
     const createdDatabase = await dispatch(createDatabase(databaseData));
@@ -31,7 +32,10 @@ export const DataConnectionStep = () => {
       <DatabaseForm
         onSubmit={handleSubmit}
         onEngineChange={() => {}}
-        onCancel={() => dispatch(push("/"))}
+        onCancel={() => {
+          trackEmbeddingSetupClick("add-data-later-or-skip");
+          dispatch(push("/"));
+        }}
       />
     </Stack>
   );

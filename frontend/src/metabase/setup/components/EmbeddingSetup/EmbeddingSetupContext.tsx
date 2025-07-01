@@ -9,6 +9,7 @@ import {
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
+import type { EmbeddingSetupClickEvent } from "metabase-types/analytics";
 import type { DashboardId, DatabaseData, Table } from "metabase-types/api";
 
 import { DataConnectionStep } from "./steps/DataConnectionStep";
@@ -52,6 +53,9 @@ type EmbeddingSetupContextType = {
   totalSteps: number;
   goToNextStep: () => void;
   StepComponent: (typeof STEP_COMPONENTS)[number];
+  trackEmbeddingSetupClick: (
+    eventDetail: EmbeddingSetupClickEvent["event_detail"],
+  ) => void;
 };
 
 const EmbeddingSetupContext = createContext<EmbeddingSetupContextType | null>(
@@ -106,6 +110,17 @@ export const EmbeddingSetupProvider = ({
     });
   }, [stepKey]);
 
+  const trackEmbeddingSetupClick = useCallback(
+    (eventDetail: EmbeddingSetupClickEvent["event_detail"]) => {
+      trackSimpleEvent({
+        event: "embedding_setup_click",
+        event_detail: eventDetail,
+        triggered_from: stepKey,
+      });
+    },
+    [stepKey],
+  );
+
   return (
     <EmbeddingSetupContext.Provider
       value={{
@@ -126,6 +141,7 @@ export const EmbeddingSetupProvider = ({
         totalSteps,
         goToNextStep,
         StepComponent,
+        trackEmbeddingSetupClick,
       }}
     >
       {children}
