@@ -259,23 +259,23 @@
       (mt/with-db db
         (let [orig-describe-dataset-fields-reducible @#'bigquery/describe-dataset-fields-reducible]
           (testing "describe-fields queries tables on demand"
-            (let [invokation-count (atom 0)]
+            (let [invocation-count (atom 0)]
               (with-redefs [bigquery/num-table-partitions 4
                             bigquery/describe-dataset-fields-reducible
                             (fn [& args]
-                              (swap! invokation-count inc)
+                              (swap! invocation-count inc)
                               (apply orig-describe-dataset-fields-reducible args))]
                 (is (not= [] (into [] (take 10) (driver/describe-fields :bigquery-cloud-sdk (mt/db)))))
-                (is (= 1 @invokation-count)))))
+                (is (= 1 @invocation-count)))))
           (testing "describe-fields correctly partitions tables for a reducible result"
-            (let [invokation-count (atom 0)]
+            (let [invocation-count (atom 0)]
               (with-redefs [bigquery/num-table-partitions 4
                             bigquery/describe-dataset-fields-reducible
                             (fn [& args]
-                              (swap! invokation-count inc)
+                              (swap! invocation-count inc)
                               (apply orig-describe-dataset-fields-reducible args))]
                 (is (<= 22000 (count (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db))))))
-                (is (<= 20 @invokation-count))))))))))
+                (is (<= 20 @invocation-count))))))))))
 
 (deftest sync-views-test
   (mt/test-driver :bigquery-cloud-sdk
