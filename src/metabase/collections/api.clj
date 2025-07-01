@@ -232,6 +232,7 @@
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
   #{"card"       ; SavedQuestion
     "dataset"    ; Model. TODO : update this
+    "transform"
     "metric"
     "collection"
     "dashboard"
@@ -402,6 +403,7 @@
                     [(h2x/literal (case card-type
                                     :model "dataset"
                                     :metric  "metric"
+                                    :transform "transform"
                                     "card"))
                      :model]
                     [:u.id :last_edit_user]
@@ -410,9 +412,11 @@
                     [:u.last_name :last_edit_last_name]
                     [:r.timestamp :last_edit_timestamp]
                     [:mr.status :moderated_status]]
-                    (#{:question :model} card-type)
+
+                    (#{:question :model :transform} card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
+       ;; TODO: audit
        :left-join [[:revision :r] [:and
                                    [:= :r.model_id :c.id]
                                    [:= :r.most_recent true]
@@ -439,7 +443,11 @@
                      :metric
                      [:= :c.type (h2x/literal "metric")]
 
+                     :transform
+                     [:= :c.type (h2x/literal "transform")]
+
                      [:= :c.type (h2x/literal "question")])]}
+      ;; TODO: audit
       (cond-> (= :model card-type)
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
@@ -456,6 +464,11 @@
 (defmethod collection-children-query :card
   [_ collection options]
   (card-query :question collection options))
+
+(defmethod collection-children-query :transform
+  [_ collection options]
+  (def x [collection options])
+  (card-query :transform collection options))
 
 (defmethod post-process-collection-children :dataset
   [_ options collection rows]
@@ -761,6 +774,7 @@
     :card       :model/Card
     :dataset    :model/Card
     :metric     :model/Card
+    :transform  :model/Card
     :dashboard  :model/Dashboard
     :pulse      :model/Pulse
     :snippet    :model/NativeQuerySnippet
@@ -950,7 +964,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
+  (let [valid-models (for [model-kw [:collection :transform :dataset :metric :card :dashboard :pulse :snippet :timeline]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
@@ -1013,7 +1027,7 @@
                                           [:sort_direction             {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
                                           [:official_collections_first {:optional true} [:maybe ms/MaybeBooleanValue]]
                                           [:show_dashboard_questions   {:default false} [:maybe ms/BooleanValue]]]]
-  (let [model-kwds (set (map keyword (u/one-or-many models)))
+  (let [model-kwds (conj (set (map keyword (u/one-or-many models))) :transform)
         collection (api/read-check :model/Collection id)]
     (u/prog1 (collection-children collection
                                   {:show-dashboard-questions? show_dashboard_questions
