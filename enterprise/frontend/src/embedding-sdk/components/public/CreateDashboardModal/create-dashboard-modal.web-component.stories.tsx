@@ -10,7 +10,9 @@ const COLLECTION_ID = "root";
 const config = getStorybookSdkAuthConfigForUser("admin");
 (window as any).fetchRequestToken = config.fetchRequestToken;
 
-(window as any).onDashboardCreate = (dashboard: MetabaseDashboard) => {
+(window as any).onDashboardCreate = function onDashboardCreate(
+  dashboard: MetabaseDashboard,
+) {
   // eslint-disable-next-line no-console
   console.log(dashboard);
 };
