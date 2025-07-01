@@ -114,7 +114,7 @@ describe("suggestSegments", () => {
           displayLabel: "Foo",
           type: "segment",
           icon: "segment",
-          matches: [[0, 2]],
+          matches: [[0, 1]],
         },
       ],
     });

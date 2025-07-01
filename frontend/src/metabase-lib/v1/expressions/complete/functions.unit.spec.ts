@@ -208,11 +208,7 @@ describe("suggestFunctions", () => {
       ).toEqual({
         label: "regexExtract",
         displayLabel: "regexExtract",
-        matches: [
-          [0, 3],
-          [5, 5],
-          [8, 8],
-        ],
+        matches: [[0, 3]],
         icon: "function",
         type: "function",
         apply: expect.any(Function),

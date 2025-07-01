@@ -54,26 +54,16 @@ export function fuzzyMatcher(
     keys,
     includeScore: true,
     includeMatches: true,
-    findAllMatches: true,
   });
 
   return function (word: string) {
     return fuse
       .search(word)
-      .filter((result) => (result.score ?? 0) <= 0.6)
+      .filter((result) => (result.score ?? 0) <= 0.5)
       .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
       .map((result) => {
-        const matchLengths = (result.matches ?? []).map((match) =>
-          match.indices
-            .map((range) => range[1] - range[0])
-            .reduce((a, b) => a + b, 0),
-        );
-        const longestMatchLength = Math.max(...matchLengths);
-        const longestMatchIndex = matchLengths.indexOf(longestMatchLength);
-
-        const longestMatch = result.matches?.[longestMatchIndex];
-        const indices = Array.from(longestMatch?.indices ?? []);
-        const key = longestMatch?.key;
+        const key = result.matches?.[0]?.key;
+        const indices = result.matches?.[0]?.indices;
 
         const item = result.item;
 
@@ -84,7 +74,7 @@ export function fuzzyMatcher(
         // We need to preserve item identity here, so we need to return the original item
         // possible with updated values for displayLabel and matches
         item.displayLabel = displayLabel ?? item.displayLabel;
-        item.matches = indices;
+        item.matches = Array.from(indices ?? []);
 
         return item;
       });

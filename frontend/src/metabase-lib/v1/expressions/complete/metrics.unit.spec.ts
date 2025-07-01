@@ -135,7 +135,7 @@ describe("suggestMetrics", () => {
             displayLabel: "FOO",
             icon: "metric",
             label: "[FOO]",
-            matches: [[0, 2]],
+            matches: [[0, 1]],
             type: "metric",
           },
         ],

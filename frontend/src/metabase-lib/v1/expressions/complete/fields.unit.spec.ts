@@ -210,11 +210,7 @@ describe("suggestFields", () => {
           displayLabelWithTable: "People → Latitude",
           icon: "location",
           column: expect.any(Object),
-          matches: [
-            [0, 2],
-            [12, 12],
-            [14, 14],
-          ],
+          matches: [[0, 2]],
         },
         {
           type: "field",
@@ -223,11 +219,7 @@ describe("suggestFields", () => {
           displayLabelWithTable: "People → Longitude",
           icon: "location",
           column: expect.any(Object),
-          matches: [
-            [0, 2],
-            [13, 13],
-            [15, 15],
-          ],
+          matches: [[0, 2]],
         },
         {
           type: "field",
@@ -236,10 +228,7 @@ describe("suggestFields", () => {
           displayLabelWithTable: "People → Address",
           icon: "string",
           column: expect.any(Object),
-          matches: [
-            [0, 2],
-            [11, 13],
-          ],
+          matches: [[0, 2]],
         },
         {
           type: "field",
@@ -257,10 +246,7 @@ describe("suggestFields", () => {
           displayLabelWithTable: "People → Email",
           icon: "string",
           column: expect.any(Object),
-          matches: [
-            [0, 2],
-            [7, 7],
-          ],
+          matches: [[0, 2]],
         },
         {
           type: "field",
@@ -278,10 +264,7 @@ describe("suggestFields", () => {
           displayLabelWithTable: "People → Name",
           icon: "string",
           column: expect.any(Object),
-          matches: [
-            [0, 2],
-            [10, 10],
-          ],
+          matches: [[0, 2]],
         },
         {
           type: "field",
@@ -290,10 +273,7 @@ describe("suggestFields", () => {
           displayLabelWithTable: "People → Password",
           icon: "string",
           column: expect.any(Object),
-          matches: [
-            [0, 2],
-            [9, 10],
-          ],
+          matches: [[0, 2]],
         },
         {
           type: "field",
@@ -302,12 +282,7 @@ describe("suggestFields", () => {
           displayLabelWithTable: "People → Source",
           icon: "string",
           column: expect.any(Object),
-          matches: [
-            [0, 2],
-            [7, 7],
-            [9, 9],
-            [12, 12],
-          ],
+          matches: [[0, 2]],
         },
         {
           type: "field",
@@ -316,11 +291,7 @@ describe("suggestFields", () => {
           displayLabelWithTable: "People → State",
           icon: "location",
           column: expect.any(Object),
-          matches: [
-            [0, 2],
-            [7, 7],
-            [11, 11],
-          ],
+          matches: [[0, 2]],
         },
         {
           type: "field",
@@ -338,10 +309,7 @@ describe("suggestFields", () => {
           displayLabelWithTable: "People → Birth Date",
           icon: "calendar",
           column: expect.any(Object),
-          matches: [
-            [0, 2],
-            [16, 16],
-          ],
+          matches: [[0, 2]],
         },
         {
           type: "field",
@@ -350,11 +318,7 @@ describe("suggestFields", () => {
           displayLabelWithTable: "People → Created At",
           icon: "calendar",
           column: expect.any(Object),
-          matches: [
-            [0, 2],
-            [9, 9],
-            [12, 12],
-          ],
+          matches: [[0, 2]],
         },
       ],
     });
@@ -409,10 +373,7 @@ describe("suggestFields", () => {
       type: "field",
       icon: "string",
       column: expect.any(Object),
-      matches: [
-        [0, 2],
-        [7, 7],
-      ],
+      matches: [[0, 2]],
     });
     expect(result?.options[1]).toEqual({
       displayLabel: "Foo → ID",
