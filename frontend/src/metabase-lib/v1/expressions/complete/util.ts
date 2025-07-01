@@ -72,7 +72,7 @@ export function fuzzyMatcher(
         const longestMatchIndex = matchLengths.indexOf(longestMatchLength);
 
         const longestMatch = result.matches?.[longestMatchIndex];
-        const indices = longestMatch?.indices ?? [];
+        const indices = Array.from(longestMatch?.indices ?? []);
         const key = longestMatch?.key;
 
         const displayLabel = key
