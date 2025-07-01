@@ -1,11 +1,3 @@
 {
-  "continuations": [
-    {
-      "command": [
-        "upstack",
-        "restack"
-      ],
-      "branch": "emb-510-initial-and-hidden-parameter-settings-for-new-iframe-embed"
-    }
-  ]
+  "continuations": null
 }
