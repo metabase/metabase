@@ -162,7 +162,9 @@ describe("Snowplow tracking", () => {
       });
 
       // remove a dataset
-      H.removeDataSource(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name);
+      H.removeDataSource(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name, {
+        throughMenu: true,
+      });
       H.expectUnstructuredSnowplowEvent({
         event: "visualizer_data_changed",
         event_detail: "visualizer_datasource_removed",

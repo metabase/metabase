@@ -65,6 +65,8 @@ export const ColumnsList = (props: ColumnListProps) => {
     dispatch(removeColumn({ name: columnRefName, well: "all" }));
   };
 
+  const isSingleDataSource = dataSources.length === 1;
+
   return (
     <Flex
       px={12}
@@ -97,52 +99,74 @@ export const ColumnsList = (props: ColumnListProps) => {
               <Text truncate mr={4} flex={1}>
                 {source.name}
               </Text>
-              <Menu position="bottom-end">
-                <Menu.Target>
-                  <ToolbarButton
-                    className={S.ActionsButton}
-                    icon="ellipsis"
-                    data-testid="datasource-actions-button"
-                    aria-label={t`Datasource actions`}
-                  />
-                </Menu.Target>
-                <Menu.Dropdown data-testid="datasource-actions-dropdown">
-                  <Menu.Item
-                    key="reset_data_source"
-                    leftSection={<Icon name="revert" />}
-                    onClick={() => {
-                      trackSimpleEvent({
-                        event: "visualizer_data_changed",
-                        event_detail: "visualizer_datasource_reset",
-                        triggered_from: "visualizer-modal",
-                        event_data: source.id,
-                      });
-                      onResetDataSource(source);
-                    }}
-                    aria-label="Reset data source"
-                    data-testid="reset-datasource-button"
-                  >
-                    {t`Reset to defaults`}
-                  </Menu.Item>
-                  <Menu.Item
-                    key="remove_data_source"
-                    leftSection={<Icon name="close" />}
-                    onClick={() => {
-                      trackSimpleEvent({
-                        event: "visualizer_data_changed",
-                        event_detail: "visualizer_datasource_removed",
-                        triggered_from: "visualizer-modal",
-                        event_data: source.id,
-                      });
-                      onRemoveDataSource(source);
-                    }}
-                    data-testid="remove-datasource-button"
-                    aria-label="Remove data source"
-                  >
-                    {t`Remove`}
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
+              {!isLoading && isSingleDataSource && (
+                <Menu position="bottom-end">
+                  <Menu.Target>
+                    <ToolbarButton
+                      className={S.ActionsButton}
+                      icon="ellipsis"
+                      data-testid="datasource-actions-button"
+                      aria-label={t`Datasource actions`}
+                    />
+                  </Menu.Target>
+                  <Menu.Dropdown data-testid="datasource-actions-dropdown">
+                    <Menu.Item
+                      key="reset_data_source"
+                      leftSection={<Icon name="revert" />}
+                      onClick={() => {
+                        trackSimpleEvent({
+                          event: "visualizer_data_changed",
+                          event_detail: "visualizer_datasource_reset",
+                          triggered_from: "visualizer-modal",
+                          event_data: source.id,
+                        });
+                        onResetDataSource(source);
+                      }}
+                      aria-label="Reset data source"
+                      data-testid="reset-datasource-button"
+                    >
+                      {t`Reset to defaults`}
+                    </Menu.Item>
+                    <Menu.Item
+                      key="remove_data_source"
+                      leftSection={<Icon name="close" />}
+                      onClick={() => {
+                        trackSimpleEvent({
+                          event: "visualizer_data_changed",
+                          event_detail: "visualizer_datasource_removed",
+                          triggered_from: "visualizer-modal",
+                          event_data: source.id,
+                        });
+                        onRemoveDataSource(source);
+                      }}
+                      data-testid="remove-datasource-button"
+                      aria-label="Remove data source"
+                    >
+                      {t`Remove`}
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              )}
+              {!isLoading && !isSingleDataSource && (
+                <Icon
+                  style={{ flexShrink: 0 }}
+                  className={S.ActionsButton}
+                  name="close"
+                  ml="auto"
+                  size={12}
+                  aria-label={t`Remove`}
+                  cursor="pointer"
+                  onClick={() => {
+                    trackSimpleEvent({
+                      event: "visualizer_data_changed",
+                      event_detail: "visualizer_datasource_removed",
+                      triggered_from: "visualizer-modal",
+                      event_data: source.id,
+                    });
+                    onRemoveDataSource(source);
+                  }}
+                />
+              )}
             </Flex>
             {!isCollapsed && dataset && dataset.data.cols && (
               <Box ml={12} mt={2}>
