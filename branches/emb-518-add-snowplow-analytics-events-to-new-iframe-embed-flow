@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-513-persist-new-iframe-embed-flow-settings-to-user-settings",
-    "hash": "cb3588c04279478f38cc8970778e79d49aca3b38"
+    "hash": "87bcea7e21378b1576f4f47339d71e97d5ac91b0"
   },
   "upstream": {
     "branch": "emb-518-add-snowplow-analytics-events-to-new-iframe-embed-flow"
