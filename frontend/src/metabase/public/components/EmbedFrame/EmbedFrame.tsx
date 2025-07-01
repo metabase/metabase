@@ -15,6 +15,7 @@ import {
 } from "metabase/dashboard/constants";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { getDashboardType } from "metabase/dashboard/utils";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
@@ -22,7 +23,6 @@ import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import { useSyncUrlParameters } from "metabase/query_builder/hooks/use-sync-url-parameters";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box } from "metabase/ui";
@@ -108,7 +108,7 @@ export const EmbedFrame = ({
   withFooter = true,
 }: EmbedFrameProps) => {
   useGlobalTheme(theme);
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+  const isEmbeddingSdk = EMBEDDING_SDK_CONFIG.isSdk;
   const hasEmbedBranding = useSelector(
     (state) => !getSetting(state, "hide-embed-branding?"),
   );

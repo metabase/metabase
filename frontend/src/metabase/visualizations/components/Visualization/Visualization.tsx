@@ -19,6 +19,7 @@ import ExplicitSize from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
@@ -27,7 +28,6 @@ import {
   getIsShowingRawTable,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconName, IconProps } from "metabase/ui";
@@ -203,7 +203,7 @@ const mapStateToProps = (state: State): StateProps => ({
   hasDevWatermark: getTokenFeature(state, "development-mode"),
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
-  isEmbeddingSdk: getIsEmbeddingSdk(state),
+  isEmbeddingSdk: EMBEDDING_SDK_CONFIG.isSdk,
   scrollToLastColumn: getUiControls(state)?.scrollToLastColumn,
 });
 

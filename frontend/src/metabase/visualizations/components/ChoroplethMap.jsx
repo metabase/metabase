@@ -12,10 +12,10 @@ import { getMetabaseInstanceUrl } from "embedding-sdk/store/selectors";
 import Link from "metabase/common/components/Link";
 import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import { formatValue } from "metabase/lib/formatting";
 import { connect, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Text } from "metabase/ui";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
@@ -110,7 +110,7 @@ function shouldUseCompactFormatting(groups, formatMetric) {
 }
 
 const mapStateToProps = (state) => ({
-  isSdk: getIsEmbeddingSdk(state),
+  isSdk: EMBEDDING_SDK_CONFIG.isSdk,
   sdkMetabaseInstanceUrl: getMetabaseInstanceUrl(state),
 });
 

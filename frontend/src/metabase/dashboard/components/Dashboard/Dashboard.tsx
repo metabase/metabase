@@ -7,13 +7,13 @@ import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
@@ -58,7 +58,7 @@ function Dashboard({ className }: { className?: string }) {
     closeSidebar,
   } = useDashboardContext();
 
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+  const isEmbeddingSdk = EMBEDDING_SDK_CONFIG.isSdk;
 
   const canWrite = Boolean(dashboard?.can_write);
   const canRestore = Boolean(dashboard?.can_restore);
