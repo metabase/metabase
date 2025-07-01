@@ -16,10 +16,10 @@ import {
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
 import Button from "metabase/common/components/Button";
+import { LeaveConfirmationModal } from "metabase/common/components/LeaveConfirmationModal";
+import Modal from "metabase/common/components/Modal";
+import ModalContent from "metabase/common/components/ModalContent";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";

@@ -6,9 +6,8 @@ import {
   useDeleteMembershipMutation,
   useUpdateMembershipMutation,
 } from "metabase/api";
+import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
-import Alert from "metabase/components/Alert";
 import {
   canEditMembership,
   getGroupNameLocalized,
@@ -21,6 +20,7 @@ import { addUndo } from "metabase/redux/undo";
 import { Box } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
+import Alert from "./Alert";
 import { GroupMembersTable } from "./GroupMembersTable";
 
 interface GroupDetailProps {

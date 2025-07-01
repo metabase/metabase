@@ -2,8 +2,8 @@ import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-trans
 import {
   SaveQuestionForm,
   SaveQuestionTitle,
-} from "metabase/components/SaveQuestionForm";
-import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/context";
+} from "metabase/common/components/SaveQuestionForm";
+import { SaveQuestionProvider } from "metabase/common/components/SaveQuestionForm/context";
 import { Stack, Title } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../context";

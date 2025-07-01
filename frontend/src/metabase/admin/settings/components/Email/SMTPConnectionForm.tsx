@@ -8,7 +8,7 @@ import * as Yup from "yup";
 
 import type { SettingElement } from "metabase/admin/settings/types";
 import { UpsellHosting } from "metabase/admin/upsells";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
 import {
   Form,
