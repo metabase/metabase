@@ -9,7 +9,6 @@ import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/s
 import { isEmbeddingSdk } from "metabase/env";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
-import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
@@ -88,8 +87,6 @@ export function DashboardParameterPanel() {
           data-testid="fixed-width-filters"
         >
           <DashboardParameterList parameters={parameters} />
-
-          <FilterApplyButton />
         </FixedWidthContainer>
       </FullWidthContainer>
     </span>
