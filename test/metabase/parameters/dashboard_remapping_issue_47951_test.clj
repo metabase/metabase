@@ -86,11 +86,14 @@
             (testing "With restricted permissions (view-data only, no create-queries)"
               ;; Set up restricted permissions: no create-queries on products table
               (perms.test-util/with-perm-for-group-and-table! (perms-group/all-users) (mt/id :reviews)
-                :perms/create-queries :no
+                :perms/view-data :blocked
+                ;; :perms/create-queries :no
                 (perms.test-util/with-perm-for-group-and-table! (perms-group/all-users) (mt/id :orders)
-                  :perms/create-queries :no
+                  :perms/view-data :blocked
+                  ;; :perms/create-queries :no
                   (perms.test-util/with-perm-for-group-and-table! (perms-group/all-users) products-table-id
-                    :perms/create-queries :no
+                    :perms/view-data :blocked
+                    ;; :perms/create-queries :no
                     (binding [api/*current-user-id* (mt/user->id :rasta)]
                       (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
                             parameter (first (:parameters dashboard))
