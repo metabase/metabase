@@ -195,29 +195,6 @@ const DashboardContextProviderInner = ({
     [onError],
   );
 
-  const fetchId = useCallback(
-    async (idToFetch: DashboardId) => {
-      try {
-        const { id, isError } = await dispatch(
-          fetchEntityId({ type: "dashboard", id: idToFetch }),
-        );
-        if (isError || id === null) {
-          handleError({
-            status: 404,
-            message: "Not found",
-            name: "Not found",
-          });
-        }
-        setDashboardId(id);
-      } catch (e) {
-        handleError(e);
-      }
-
-      return;
-    },
-    [dispatch, handleError],
-  );
-
   const fetchData = useCallback(
     async (dashboardId: DashboardId) => {
       const hasDashboardChanged = dashboardId !== previousDashboardId;
@@ -282,7 +259,27 @@ const DashboardContextProviderInner = ({
     if (dashboardIdProp !== dashboardId) {
       fetchId(dashboardIdProp);
     }
-  }, [dashboardId, dispatch, fetchId, handleError, dashboardIdProp]);
+
+    async function fetchId(idToFetch: DashboardId) {
+      try {
+        const { id, isError } = await dispatch(
+          fetchEntityId({ type: "dashboard", id: idToFetch }),
+        );
+        if (isError || id === null) {
+          handleError({
+            status: 404,
+            message: "Not found",
+            name: "Not found",
+          });
+        }
+        setDashboardId(id);
+      } catch (e) {
+        handleError(e);
+      }
+
+      return;
+    }
+  }, [dashboardId, dashboardIdProp, dispatch, handleError]);
 
   useEffect(() => {
     if (dashboardIdProp && dashboardId && dashboardId !== previousDashboardId) {
