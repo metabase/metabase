@@ -237,6 +237,67 @@ describe(
   },
 );
 
+describe("exercise binary datetime() cast function", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should correctly convert iso bytes", () => {
+    H.createNativeQuestion(
+      {
+        native: {
+          query: `
+          SELECT CAST('2024-05-21 10:10:03' AS bytea) AS date_time
+          `,
+        },
+      },
+      { visitQuestion: true },
+    );
+    cy.findByTestId("qb-header").findByText("Explore results").click();
+    cy.findByTestId("notebook-button").click();
+
+    addCustomColumn({
+      name: "parsed_date",
+      expression: 'datetime([date_time], "isobytes")',
+    });
+
+    H.visualize();
+
+    cy.findAllByTestId("header-cell").eq(1).should("have.text", "parsed_date");
+    cy.findAllByTestId("cell-data")
+      .eq(3)
+      .should("have.text", "May 21, 2024, 10:10 AM");
+  });
+
+  it("should correctly convert simple bytes", () => {
+    H.createNativeQuestion(
+      {
+        native: {
+          query: `
+          SELECT CAST('20240521101003' AS bytea) AS date_time
+          `,
+        },
+      },
+      { visitQuestion: true },
+    );
+    cy.findByTestId("qb-header").findByText("Explore results").click();
+    cy.findByTestId("notebook-button").click();
+
+    addCustomColumn({
+      name: "parsed_date",
+      expression: 'datetime([date_time], "simplebytes")',
+    });
+
+    H.visualize();
+
+    cy.findAllByTestId("header-cell").eq(1).should("have.text", "parsed_date");
+    cy.findAllByTestId("cell-data")
+      .eq(3)
+      .should("have.text", "May 21, 2024, 10:10 AM");
+  });
+});
+
 function startNewQuestion() {
   H.startNewQuestion();
   H.entityPickerModal().within(() => {
