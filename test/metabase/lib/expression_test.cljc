@@ -620,7 +620,7 @@
           expr (->> (lib/aggregable-columns query2 nil)
                     (m/find-first (comp #{expr-name} :name))
                     (lib/* 2))]
-      (is (=? {:message (format "Cycle detected: %s → %s" expr-name expr-name)}
+      (is (=? {:message (str "Cycle detected: " expr-name " → " expr-name)}
               (lib.expression/diagnose-expression query2 0 :aggregation expr 1))))))
 
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
