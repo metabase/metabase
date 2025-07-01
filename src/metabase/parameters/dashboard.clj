@@ -145,13 +145,13 @@
       (fn [] (chain-filter dashboard param-key constraint-param-key->value query))))))
 
 (defn- find-common-remapping-target
-  "Check if all FK field-ids have identical remappings to the same display field.
-   Returns the common target field-id if found, nil otherwise."
+  "Check if ALL field-ids have identical remappings to the same display field.
+   Returns the common target field-id if ALL fields have the same remapping, nil otherwise."
   [field-ids]
-  (let [remappings (keep chain-filter/remapping field-ids)
+  (let [remappings (map chain-filter/remapping field-ids)
         target-field-ids (map :id remappings)]
-    (when (and (seq target-field-ids)
-               (= 1 (count (set target-field-ids))))
+    (when (and (every? some? remappings) ; All fields must have remappings
+               (= 1 (count (set target-field-ids)))) ; All remappings must point to same target
       (first target-field-ids))))
 
 (defn dashboard-param-remapped-value
@@ -173,10 +173,12 @@
           value
           #(let [field-ids (into #{} (map :field-id (param->fields param)))]
              (-> (if (= (count field-ids) 1)
+                   ;; Single field case - use its remapping directly
                    (chain-filter/chain-filter (first field-ids) (chain-filter-constraints dashboard (assoc constraint-param-key->value param-key value))
                                               :relax-fk-requirement? true :limit 1)
-                   (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
-                     (let [common-display-field (find-common-remapping-target field-ids)]
+                   ;; Multiple fields case - only proceed if they have a common remapping target
+                   (when-let [common-display-field (find-common-remapping-target field-ids)]
+                     (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
                        (chain-filter/chain-filter pk-field-id
                                                   [{:field-id pk-field-id, :op :=, :value value}]
                                                   :limit 1
