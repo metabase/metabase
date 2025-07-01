@@ -73,6 +73,7 @@
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?
+  known-features
   premium-embedding-token
   site-uuid-for-premium-features-token-checks
   token-features

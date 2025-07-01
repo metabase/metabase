@@ -72,7 +72,7 @@
 
 (def ^:private premium-features
   "Set of defined premium feature keywords."
-  (atom #{}))
+  (atom (sorted-set)))
 
 (defn- default-premium-feature-getter [feature]
   (fn []
@@ -304,3 +304,8 @@
   :setter     :none
   :getter     -token-features
   :doc        false)
+
+(defn known-features
+  "Set of all known premium features."
+  []
+  @premium-features)

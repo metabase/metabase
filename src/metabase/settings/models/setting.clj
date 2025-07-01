@@ -150,12 +150,14 @@
 ;; This is called `LocalOption` rather than `DatabaseLocalOption` or something like that because we intend to also add
 ;; User-Local Settings at some point in the future. The will use the same options
 (def ^:private LocalOption
-  "Schema for valid values of `:database-local`. See [[metabase.settings.models.setting]] docstring for description of what these
-  options mean."
+  "Schema for valid values of `:database-local`. See [[metabase.settings.models.setting]] docstring for description of
+  what these options mean."
   [:enum :only :allowed :never])
 
 (def ^:private SettingDefinition
   [:map
+   ;; if you're trying to set other keys then you have a typo!
+   {:closed true}
    [:name        :keyword]
    [:munged-name :string]
    [:namespace   :symbol]
@@ -164,69 +166,57 @@
    ;; Use `:doc` to include a map with additional documentation, for use when generating the environment variable docs
    ;; from source. To exclude a setting from documenation, set to `false`. See metabase.cmd.env-var-dox.
    [:description :any]
-
    [:doc     :any]
    [:default :any]
-
    ;; all values are stored in DB as Strings,
    [:type Type]
-
    ;; different getters/setters take care of parsing/unparsing
    [:getter ifn?]
-   [:setter ifn?]
-
-   ;; an init function can be used to seed initial values
-   [:init [:maybe ifn?]]
-
-   ;; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
-   [:tag :symbol]
-
-   ;; is this sensitive (never show in plaintext), like a password? (default: false)
+   [:setter ifn?]   ;; an init function can be used to seed initial values
+   [:init [:maybe ifn?]]   ;; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
+   [:tag :symbol]   ;; is this sensitive (never show in plaintext), like a password? (default: false)
    [:sensitive? :boolean]
-
    ;; where this setting should be visible (default: :admin)
    [:visibility Visibility]
-
    ;; should this setting be encrypted. Available options are `:no` or `:when-encryption-key-set` (the setting will be
    ;; encrypted when `MB_ENCRYPTION_SECRET_KEY` is set, otherwise we can't encrypt). This is required for `:timestamp`,
    ;; `:json`, and `:csv`-typed settings. Defaults to `:no` for all other types.
    [:encryption [:enum :no :when-encryption-key-set]]
-
    ;; should this setting be serialized?
    [:export? :boolean]
-
    ;; should the getter always fetch this value "fresh" from the DB? (default: false)
    [:cache? :boolean]
-
    ;; if non-nil, contains the Metabase version in which this setting was deprecated
    [:deprecated [:maybe :string]]
-
    ;; whether this Setting can be Database-local or User-local. See [[metabase.settings.models.setting]] docstring for more info.
    [:database-local LocalOption]
    [:user-local     LocalOption]
-
    ;; should this setting be read from env vars?
    [:can-read-from-env? :boolean]
-
    ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
    ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
    ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
    [:on-change [:maybe ifn?]]
-
    ;; If non-nil, determines the Enterprise feature flag required to use this setting. If the feature is not enabled,
    ;; the setting will behave the same as if `enabled?` returns `false` (see below).
-   [:feature [:maybe :keyword]]
-
+   [:feature [:maybe [:and
+                      :keyword
+                      [:fn
+                       {:error/message "known premium feature"}
+                       (fn [k]
+                         (contains? ((requiring-resolve 'metabase.premium-features.core/known-features)) k))]]]]
    ;; Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
    ;; exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled.
    [:enabled? [:maybe ifn?]]
-
    ;; Keyword that determines what kind of audit log entry should be created when this setting is written. Options are
    ;; `:never`, `:no-value`, `:raw-value`, and `:getter`. User- and database-local settings are never audited. `:getter`
    ;; should be used for most non-sensitive settings, and will log the value returned by its getter, which may be a
    ;; the default getter or a custom one.
    ;; (default: `:no-value`)
-   [:audit [:maybe [:enum :never :no-value :raw-value :getter]]]])
+   [:audit [:maybe [:enum :never :no-value :raw-value :getter]]]
+   ;; Boolean that determines if this setting is included in the list of all settings when settings are listed through
+   ;; either the `GET /api/session/properties` or `GET /api/setting` endpoints.
+   [:include-in-list? {:optional true} [:maybe :boolean]]])
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -1525,7 +1515,8 @@
         (doseq [{v :value k :key}
                 (t2/select :setting {:for :update :where [:and
                                                           [:in :key (map setting-name settings)]
-                                                          ;; these are *definitely* decrypted already, let's not bother looking
+                                                          ;; these are *definitely* decrypted already, let's not bother
+                                                          ;; looking
                                                           [:not [:in :value ["true" "false"]]]]})
                 :let [decrypted-v (encryption/maybe-decrypt v)]
                 :when (not= decrypted-v v)]
