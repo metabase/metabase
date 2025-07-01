@@ -144,4 +144,4 @@ Save it to the "Admins collection" you created in the setup (or any collection t
 
 - [Basic sandboxes: setting row-level permissions](https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions)
 - [Custom sandboxes: limiting access to columns](https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions)
-- [Configuring permissions for different customer schemas](https://www.metabase.com/learn/metabase-basics/administration/permissions/multi-tenant-permissions)
+- [Configuring permissions for embedding](../permissions/embedding.md)
