@@ -47,7 +47,10 @@
    [:json-unfolding             {:optional true} :boolean]
    [:nfc-path                   {:optional true} [:any]]
    [:custom                     {:optional true} :map]
+   [:database-default           {:optional true} :string]
    [:database-is-auto-increment {:optional true} :boolean]
+   [:database-is-generated      {:optional true} :boolean]
+   [:database-is-nullable       {:optional true} :boolean]
    ;; nullable for databases that don't support field partition
    [:database-partitioned       {:optional true} [:maybe :boolean]]
    [:database-required          {:optional true} :boolean]
