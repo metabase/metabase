@@ -201,7 +201,7 @@ databaseChangeLog:
                   name: original_dataset_query
                   remarks: the dataset_query that is source of cards transform
                   # TODO: Verif
-                  type: varchar(max)
+                  type: ${text.type}
       # on rollback: all the original query definitions should be written back to the report_card
       rollback:
         # Backfill the original report_card dataset queries
