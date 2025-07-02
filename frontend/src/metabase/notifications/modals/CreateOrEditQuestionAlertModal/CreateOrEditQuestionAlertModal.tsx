@@ -190,12 +190,14 @@ export const CreateOrEditQuestionAlertModal = ({
       }
 
       if (result.error) {
+        const errorText =
+          getResponseErrorMessage(result.error) ?? t`An error occurred`;
+
         dispatch(
           addUndo({
             icon: "warning",
             toastColor: "error",
-            message:
-              getResponseErrorMessage(result.error) ?? t`An error occurred`,
+            message: t`Failed save alert. ${errorText}`,
           }),
         );
 
@@ -230,8 +232,7 @@ export const CreateOrEditQuestionAlertModal = ({
           addUndo({
             icon: "warning",
             toastColor: "error",
-            message:
-              getResponseErrorMessage(result.error) ?? t`An error occurred`,
+            message: t`Failed to send test alert. ${getResponseErrorMessage(result.error) ?? t`An error occurred`}`,
           }),
         );
       }
