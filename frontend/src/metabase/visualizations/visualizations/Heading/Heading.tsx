@@ -1,13 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
-import type { ComponentProps, MouseEvent } from "react";
-import { forwardRef, useEffect, useMemo, useState } from "react";
+import type { MouseEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import CS from "metabase/css/core/index.css";
+import { CollapsibleDashboardParameterList } from "metabase/dashboard/components/CollapsibleDashboardParameterList";
 import { DashCardParameterMapper } from "metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper";
-import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useResponsiveParameterList } from "metabase/dashboard/hooks/use-responsive-parameter-list";
 import {
@@ -21,7 +18,7 @@ import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import { getSetting } from "metabase/selectors/settings";
-import { Box, Flex, Icon, Menu } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
@@ -181,8 +178,8 @@ export function Heading({
       >
         {leftContent}
         {inlineParameters.length > 0 && (
-          <ParametersList
-            isNarrow={shouldCollapseList}
+          <CollapsibleDashboardParameterList
+            isCollapsed={shouldCollapseList}
             parameters={inlineParameters}
             widgetsVariant="subtle"
             ref={parameterListRef}
@@ -209,8 +206,8 @@ export function Heading({
         {content}
       </HeadingContent>
       {inlineParameters.length > 0 && (
-        <ParametersList
-          isNarrow={shouldCollapseList}
+        <CollapsibleDashboardParameterList
+          isCollapsed={shouldCollapseList}
           parameters={inlineParameters}
           widgetsVariant="subtle"
           ref={parameterListRef}
@@ -219,89 +216,3 @@ export function Heading({
     </Flex>
   );
 }
-
-interface ParametersListProps
-  extends ComponentProps<typeof DashboardParameterList> {
-  isNarrow: boolean;
-}
-
-const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
-  function ParametersList(props, ref) {
-    const { isNarrow, ...rest } = props;
-
-    const { editingParameter } = useDashboardContext();
-
-    const parametersWithValues = useMemo(
-      () => rest.parameters.filter((p) => p.value != null),
-      [rest.parameters],
-    );
-
-    const parametersListCommonProps = {
-      ...rest,
-      isSortable: false,
-      widgetsPopoverPosition: "bottom-end" as const,
-    };
-
-    const renderContent = () => {
-      if (isNarrow) {
-        if (editingParameter) {
-          const parameters = rest.parameters.filter(
-            (p) => p.id === editingParameter.id,
-          );
-          return (
-            <DashboardParameterList
-              {...parametersListCommonProps}
-              parameters={parameters}
-            />
-          );
-        }
-        return (
-          <Menu>
-            <Menu.Target data-testid="show-filter-parameter-button">
-              <ToolbarButton
-                aria-label={t`Show filters`}
-                tooltipLabel={t`Show filters`}
-                onClick={(e) => {
-                  // To avoid focusing the input when clicking the button
-                  e.stopPropagation();
-                }}
-              >
-                <Icon name="filter" />
-                {parametersWithValues.length > 0 && (
-                  <span data-testid="show-filter-parameter-count">
-                    &nbsp;{parametersWithValues.length}
-                  </span>
-                )}
-              </ToolbarButton>
-            </Menu.Target>
-            <Menu.Dropdown
-              data-testid="show-filter-parameter-dropdown"
-              style={{ overflow: "visible" }}
-            >
-              <DashboardParameterList
-                {...parametersListCommonProps}
-                widgetsWithinPortal={false}
-                vertical
-              />
-            </Menu.Dropdown>
-          </Menu>
-        );
-      }
-
-      return <DashboardParameterList {...parametersListCommonProps} />;
-    };
-
-    return (
-      <>
-        {/* Invisible expanded parameter list for measurements */}
-        <DashboardParameterList
-          {...parametersListCommonProps}
-          className={cx(CS.absolute, CS.hidden, CS.pointerEventsNone)}
-          hasTestIdProps={false}
-          ref={ref}
-        />
-        {renderContent()}
-      </>
-    );
-  },
-);
