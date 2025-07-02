@@ -6,17 +6,24 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
-import { getDashcardData } from "metabase/dashboard/selectors";
+import {
+  getDashCardInlineValuePopulatedParameters,
+  getDashcardData,
+} from "metabase/dashboard/selectors";
 import {
   getVirtualCardType,
-  isHeadingDashCard,
-  isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
+import {
+  Flex,
+  Group,
+  type IconName,
+  type IconProps,
+  Menu,
+  Title,
+} from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -30,7 +37,8 @@ import {
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
   CardId,
@@ -44,6 +52,8 @@ import type {
   VisualizationSettings,
   VisualizerDataSourceId,
 } from "metabase-types/api";
+
+import { DashboardParameterList } from "../DashboardParameterList";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
@@ -62,6 +72,8 @@ import {
 interface DashCardVisualizationProps {
   dashcard: DashboardCard;
   series: Series;
+  question: Question | null;
+  metadata: Metadata;
   getHref?: () => string | undefined;
 
   gridSize: {
@@ -101,6 +113,8 @@ interface DashCardVisualizationProps {
 export function DashCardVisualization({
   dashcard,
   series: untranslatedRawSeries,
+  question,
+  metadata,
   getHref,
   gridSize,
   gridItemWidth,
@@ -135,12 +149,9 @@ export function DashCardVisualization({
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
-  const metadata = useSelector(getMetadata);
-  const question = useMemo(() => {
-    return isQuestionCard(dashcard.card)
-      ? new Question(dashcard.card, metadata)
-      : null;
-  }, [dashcard.card, metadata]);
+  const inlineParameters = useSelector((state) =>
+    getDashCardInlineValuePopulatedParameters(state, dashcard.id),
+  );
 
   const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
     untranslatedRawSeries,
@@ -379,7 +390,6 @@ export function DashCardVisualization({
         dashboard,
         dashcardMenu,
         result,
-        isEditing,
       })
     ) {
       return null;
@@ -392,21 +402,34 @@ export function DashCardVisualization({
     const title = settings["card.title"] ?? series?.[0].card.name ?? "";
 
     return (
-      <DashCardMenu
-        question={question}
-        result={result}
-        dashcard={dashcard}
-        onEditVisualization={onEditVisualization}
-        openUnderlyingQuestionItems={
-          onChangeCardAndRun && (title ? undefined : titleMenuItems)
-        }
-      />
+      <Group mr="sm">
+        {inlineParameters.length > 0 && (
+          <DashboardParameterList
+            className={S.InlineParametersList}
+            parameters={inlineParameters}
+            isSortable={false}
+            widgetsVariant="subtle"
+          />
+        )}
+        {!isEditing && (
+          <DashCardMenu
+            question={question}
+            result={result}
+            dashcard={dashcard}
+            onEditVisualization={onEditVisualization}
+            openUnderlyingQuestionItems={
+              onChangeCardAndRun && (title ? undefined : titleMenuItems)
+            }
+          />
+        )}
+      </Group>
     );
   }, [
     dashboard,
     dashcard,
     dashcardMenu,
     isEditing,
+    inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
     question,
@@ -423,11 +446,7 @@ export function DashCardVisualization({
       className={cx(CS.flexFull, {
         [CS.overflowAuto]: visualizationOverlay,
         [CS.overflowHidden]: !visualizationOverlay,
-
-        // Heading dashcards configure pointer events on their own
-        // to make the inner input and inline filters interactive.
-        [CS.pointerEventsNone]:
-          isEditingDashboardLayout && !isHeadingDashCard(dashcard),
+        [CS.pointerEventsNone]: isEditingDashboardLayout,
       })}
       dashboard={dashboard ?? undefined}
       dashcard={dashcard}
