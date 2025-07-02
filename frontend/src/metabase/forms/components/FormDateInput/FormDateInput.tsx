@@ -49,6 +49,7 @@ export const FormDateInput = forwardRef(function FormDateInput(
 
   return (
     <DateInput
+      fw="bold"
       {...props}
       id={id}
       ref={ref}
