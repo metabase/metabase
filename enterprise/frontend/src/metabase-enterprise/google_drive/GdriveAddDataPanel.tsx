@@ -88,14 +88,17 @@ export const GdriveAddDataPanel = ({
   const [isConnectionModalOpen, { open: openConnectionModal }] =
     useDisclosure(false);
 
-  const { errorMessage, isDeletingFolderLink, onDelete } =
-    useDeleteGdriveFolderLink({
-      onSuccess: () => {
-        // As soon as we disconnect, we want to show a new connection modal again
-        closeConnectionDetails();
-        openConnectionModal();
-      },
-    });
+  const {
+    errorMessage: deleteError,
+    isDeletingFolderLink,
+    onDelete,
+  } = useDeleteGdriveFolderLink({
+    onSuccess: () => {
+      // As soon as we disconnect, we want to show a new connection modal again
+      closeConnectionDetails();
+      openConnectionModal();
+    },
+  });
 
   const isAdmin = useSelector(getUserIsAdmin);
   const hasStorage = useHasTokenFeature("attached_dwh");
@@ -143,11 +146,7 @@ export const GdriveAddDataPanel = ({
       getDisconnectModalStrings({ reconnect: true });
 
     return (
-      <PanelWrapper
-        title={title}
-        // eslint-disable-next-line no-literal-metabase-strings -- admin only string
-        subtitle={bodyCopy}
-      >
+      <PanelWrapper title={title} subtitle={bodyCopy}>
         <Stack gap="sm" mt="sm">
           <Button
             variant="filled"
@@ -167,6 +166,11 @@ export const GdriveAddDataPanel = ({
             {connectButtonText}
           </Button>
         </Stack>
+        {deleteError && (
+          <Text fz="sm" c="danger">
+            {deleteError}
+          </Text>
+        )}
       </PanelWrapper>
     );
   }
