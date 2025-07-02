@@ -336,25 +336,24 @@ export function AggregationPicker({
   }
 
   return (
-    <Box className={className} c="summarize" data-testid="aggregation-picker">
-      <AccordionList<Item, Section>
-        sections={sections}
-        onChange={handleChange}
-        onChangeSection={handleSectionChange}
-        onChangeSearchText={handleChangeSearchText}
-        itemIsSelected={checkIsItemSelected}
-        renderItemName={renderItemName}
-        renderItemDescription={omitItemDescription}
-        renderItemExtra={renderItemIcon}
-        renderItemWrapper={renderItemWrapper}
-        // disable scrollbars inside the list
-        style={{ overflow: "visible" }}
-        maxHeight={Infinity}
-        withBorders
-        globalSearch
-        fuzzySearch
-      />
-    </Box>
+    <AccordionList<Item, Section>
+      data-testid="aggregation-picker"
+      style={{ color: "var(--mb-color-summarize)" }}
+      sections={sections}
+      onChange={handleChange}
+      onChangeSection={handleSectionChange}
+      onChangeSearchText={handleChangeSearchText}
+      itemIsSelected={checkIsItemSelected}
+      renderItemName={renderItemName}
+      renderItemDescription={omitItemDescription}
+      renderItemExtra={renderItemIcon}
+      renderItemWrapper={renderItemWrapper}
+      maxHeight={Infinity}
+      itemTestId="dimension-list-item"
+      withBorders
+      globalSearch
+      fuzzySearch
+    />
   );
 }
 

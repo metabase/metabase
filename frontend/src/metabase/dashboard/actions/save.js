@@ -115,6 +115,7 @@ export const updateDashboardAndCards = createThunkAction(
           size_y: dc.size_y,
           series: dc.series,
           visualization_settings: dc.visualization_settings,
+          inline_parameters: dc.inline_parameters,
           parameter_mappings: dc.parameter_mappings,
         }));
       const tabsToUpdate = (dashboard.tabs ?? [])

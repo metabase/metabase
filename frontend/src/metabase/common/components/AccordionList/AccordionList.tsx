@@ -341,12 +341,6 @@ export class AccordionList<
 
       this.toggleSection(cursor.sectionIndex);
     }
-
-    const searchRow = this.getRows().findIndex((row) => row.type === "search");
-
-    if (searchRow >= 0 && this.isVirtualized()) {
-      this.listRef.current?.scrollToRow(searchRow);
-    }
   };
 
   getRows = (): Row<TItem, TSection>[] => {
@@ -567,11 +561,14 @@ export class AccordionList<
       cursor != null ? rows.findIndex(this.isRowSelected) : undefined;
 
     const searchRowIndex = rows.findIndex((row) => row.type === "search");
+    const hasSearch = searchRowIndex >= 0;
 
     if (!this.isVirtualized()) {
       return (
         <Box
-          className={cx(S.accordionListRoot, className)}
+          className={cx(S.accordionListRoot, className, {
+            [S.hasSearch]: hasSearch,
+          })}
           ref={this.listRootRef}
           role="tree"
           onKeyDown={this.handleKeyDown}
@@ -621,15 +618,21 @@ export class AccordionList<
       <List
         id={id}
         ref={this.listRef}
-        className={className}
+        className={cx(className, { [S.hasSearch]: hasSearch })}
         style={{
           // HACK - Ensure the component can scroll
           // This is a temporary fix to handle cases where the parent component doesn’t pass in the correct `maxHeight`
           overflowY: "auto",
           outline: "none",
+          maxWidth: width,
+          maxHeight,
           ...style,
         }}
-        containerStyle={{ pointerEvents: "auto" }}
+        containerStyle={{
+          pointerEvents: "auto",
+          overflow: "auto",
+          maxHeight: "inherit",
+        }}
         // @ts-expect-error: TODO
         width={width}
         height={height}

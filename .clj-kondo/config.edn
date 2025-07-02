@@ -76,8 +76,13 @@
    ;;
    ;; TODO -- these should all be made thread safe if possible or renamed so they end in `!`. Then we can remove them
    ;; from this list because by default anything ending in `!` is considered to be thread-unsafe
+   ;;
+   ;; TODO (Cam 6/19/25) -- move this into the `test-helpers/config.edn` file so they can live with their friends.
    :parallel/unsafe
-   #{clojure.core/alter-var-root
+   #{java.util.Locale/setDefault
+     java.lang.System/setProperty
+     java.lang.System/setProperties
+     clojure.core/alter-var-root
      clojure.core/with-redefs
      clojure.core/with-redefs-fn
      metabase.actions.test-util/with-actions
@@ -96,7 +101,6 @@
      metabase.test.util/with-all-users-permission
      metabase.test.util/with-discarded-collections-perms-changes
      metabase.test.util/with-env-keys-renamed-by
-     metabase.test.util/with-locale
      metabase.test.util/with-model-cleanup
      metabase.test.util/with-non-admin-groups-no-root-collection-for-namespace-perms
      metabase.test.util/with-non-admin-groups-no-root-collection-perms
@@ -119,7 +123,6 @@
      metabase.test/with-fake-inbox
      metabase.test/with-group
      metabase.test/with-group-for-user
-     metabase.test/with-locale
      metabase.test/with-log-level
      metabase.test/with-model-cleanup
      metabase.test/with-non-admin-groups-no-root-collection-for-namespace-perms
@@ -690,6 +693,8 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
    :name    printable-namespaces}
   {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\..*"
    :name    metabase-lib}
+  {:pattern "^metabase\\.lib\\..*"
+   :name    metabase-lib-excluding-legacy-mbql}
   ;;
   ;; QP source namespaces: `metabase.query-processor.*`, `metabase-enterprise.sandbox.query-processor.*`, and
   ;; `metabase.driver.*`, excluding `-test` namespaces.
@@ -769,6 +774,11 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
      toucan.models              {:message "Don't use application database inside MLv2 code"}
      toucan.util.test           {:message "Don't use application database inside MLv2 code"}
      toucan2.core               {:message "Don't use application database inside MLv2 code"}}}}
+
+  metabase-lib-excluding-legacy-mbql
+  {:linters
+   {:discouraged-var
+    {metabase.legacy-mbql.util/unique-name-generator {:message "Use metabase.lib.util/unique-name-generator or non-truncating-unique-name-generator"}}}}
 
   driver-namespaces
   {:linters

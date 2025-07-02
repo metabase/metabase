@@ -1,12 +1,15 @@
 import { EditorSelection, type EditorState } from "@codemirror/state";
 import { useDisclosure } from "@mantine/hooks";
-import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  CodeMirror,
+  type CodeMirrorRef,
+} from "metabase/common/components/CodeMirror";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
@@ -77,7 +80,7 @@ export function Editor(props: EditorProps) {
     initialExpressionClause,
   } = props;
 
-  const ref = useRef<ReactCodeMirrorRef>(null);
+  const ref = useRef<CodeMirrorRef>(null);
   const metadata = useSelector(getMetadata);
   const [isFunctionBrowserOpen, { toggle: toggleFunctionBrowser }] =
     useDisclosure();
@@ -168,6 +171,11 @@ export function Editor(props: EditorProps) {
           indentWithTab={false}
           autoFocus
           onCreateEditor={applyInitialSnippet}
+          autoCorrect="off"
+          tabIndex={0}
+          onFormat={
+            error === null && isValidated ? formatExpression : undefined
+          }
         />
         <Errors error={error} />
 

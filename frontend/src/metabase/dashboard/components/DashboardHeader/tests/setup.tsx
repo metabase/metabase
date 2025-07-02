@@ -10,6 +10,8 @@ import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pul
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { getDefaultTab } from "metabase/dashboard/actions";
+import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import {
   createMockDashboard,
   createMockDashboardCard,
@@ -18,7 +20,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
-import { DashboardHeader, type DashboardHeaderProps } from "../DashboardHeader";
+import { DashboardHeader } from "../DashboardHeader";
 
 const DASHCARD = createMockDashboardCard();
 
@@ -97,25 +99,29 @@ export const setup = async ({
 
   setupNotificationChannelsEndpoints(channelData.channels);
 
-  const dashboardHeaderProps: DashboardHeaderProps = {
-    dashboard,
-    isFullscreen: false,
-    isNightMode: false,
-    hasNightModeToggle: false,
-    isAdditionalInfoVisible: false,
-    refreshPeriod: 0,
-    setRefreshElapsedHook: jest.fn(),
-    onRefreshPeriodChange: jest.fn(),
-    onNightModeChange: jest.fn(),
-    onFullscreenChange: jest.fn(),
-    parameterQueryParams: {},
-  };
-
   renderWithProviders(
     <Route
       path="*"
-      component={() => <DashboardHeader {...dashboardHeaderProps} />}
-    ></Route>,
+      component={() => (
+        <MockDashboardContext
+          dashboardId={dashboard.id}
+          dashboard={dashboard}
+          isFullscreen={false}
+          isNightMode={false}
+          hasNightModeToggle={false}
+          isAdditionalInfoVisible={false}
+          refreshPeriod={0}
+          setRefreshElapsedHook={jest.fn()}
+          onRefreshPeriodChange={jest.fn()}
+          onNightModeChange={jest.fn()}
+          onFullscreenChange={jest.fn()}
+          parameterQueryParams={{}}
+          dashboardActions={DASHBOARD_APP_ACTIONS}
+        >
+          <DashboardHeader />
+        </MockDashboardContext>
+      )}
+    />,
     {
       withRouter: true,
       storeInitialState: {

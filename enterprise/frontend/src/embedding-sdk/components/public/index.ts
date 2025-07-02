@@ -14,11 +14,15 @@ export {
 } from "./CreateDashboardModal";
 export { CreateQuestion, type CreateQuestionProps } from "./CreateQuestion";
 export {
-  EditableDashboard,
+  StaticDashboard,
   InteractiveDashboard,
-  type EditableDashboardProps,
-  type InteractiveDashboardProps,
-} from "./InteractiveDashboard";
+  EditableDashboard,
+} from "./dashboard";
+export type {
+  StaticDashboardProps,
+  InteractiveDashboardProps,
+  EditableDashboardProps,
+} from "./dashboard";
 export {
   InteractiveQuestion,
   type BaseInteractiveQuestionProps,
@@ -48,7 +52,6 @@ export {
   type MetabaseProviderProps,
 } from "./MetabaseProvider";
 export { ModifyQuestion } from "./ModifyQuestion";
-export { StaticDashboard, type StaticDashboardProps } from "./StaticDashboard";
 export { StaticQuestion, type StaticQuestionProps } from "./StaticQuestion";
 
 // These functions looks useless but it's a trick to have a way to type the config

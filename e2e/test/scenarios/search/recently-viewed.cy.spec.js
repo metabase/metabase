@@ -59,13 +59,9 @@ describe("search > recently viewed", () => {
     assertRecentlyViewedItem(1, "Orders", "Question");
     assertRecentlyViewedItem(2, "People", "Table");
 
-    const recentlyViewedItems = cy.findAllByTestId(
-      "recently-viewed-item-title",
-    );
-
     cy.intercept("/api/dataset").as("dataset");
 
-    recentlyViewedItems.eq(2).click();
+    cy.findAllByTestId("recently-viewed-item-title").eq(2).click();
     cy.wait("@dataset");
 
     cy.findByPlaceholderText("Search…").click();
@@ -129,7 +125,7 @@ describe("search > recently viewed > enterprise features", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     H.createModerationReview({
       status: "verified",
