@@ -138,36 +138,24 @@
 (deftest ^:parallel test-external-table
   (mt/test-driver :redshift
     (testing "expects spectrum schema to exist"
-      (is (=? [{:description     nil
-                :table_id        (mt/id :extsales)
-                :semantic_type    nil
+      (is (=? [{:table_id        (mt/id :extsales)
                 :name            "buyerid"
-                :settings        nil
                 :source          :fields
                 :field_ref       [:field (mt/id :extsales :buyerid) nil]
-                :nfc_path        nil
-                :parent_id       nil
                 :id              (mt/id :extsales :buyerid)
                 :visibility_type :normal
                 :display_name    "Buyerid"
                 :base_type       :type/Integer
-                :effective_type  :type/Integer
-                :coercion_strategy nil}
-               {:description     nil
-                :table_id        (mt/id :extsales)
-                :semantic_type    nil
+                :effective_type  :type/Integer}
+               {:table_id        (mt/id :extsales)
                 :name            "salesid"
-                :settings        nil
                 :source          :fields
                 :field_ref       [:field (mt/id :extsales :salesid) nil]
-                :nfc_path        nil
-                :parent_id       nil
                 :id              (mt/id :extsales :salesid)
                 :visibility_type :normal
                 :display_name    "Salesid"
                 :base_type       :type/Integer
-                :effective_type  :type/Integer
-                :coercion_strategy nil}]
+                :effective_type  :type/Integer}]
               ;; in different Redshift instances, the fingerprint on these columns is different.
               (map #(dissoc % :fingerprint)
                    (get-in (qp/process-query (mt/mbql-query extsales

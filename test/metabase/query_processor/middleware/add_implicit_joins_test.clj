@@ -718,135 +718,135 @@
 
 (deftest ^:parallel dont-add-duplicate-fields-test
   (testing "Don't add duplicate `:fields` to parent query if they are only different because of namespaced options"
-    (is (query= (lib.tu.macros/mbql-query orders
-                  {:source-query {:source-table $$orders
-                                  :joins        [{:source-table $$products
-                                                  :alias        "PRODUCTS__via__PRODUCT_ID"
-                                                  :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]
-                                                  :fields       :none
-                                                  :strategy     :left-join
-                                                  :fk-field-id  %product-id}]
-                                  :fields       [[:field
-                                                  %product-id
-                                                  {::namespaced true}]
-                                                 [:field
-                                                  %products.title
-                                                  {:source-field %product-id
-                                                   :join-alias   "PRODUCTS__via__PRODUCT_ID"
-                                                   ::namespaced  true}]]}
-                   :fields       [[:field %product-id {::namespaced true}]
-                                  [:field
-                                   %products.title
-                                   {:source-field %product-id
-                                    :join-alias   "PRODUCTS__via__PRODUCT_ID"
-                                    ::namespaced  true}]]})
-                (-> (lib.tu.macros/mbql-query orders
-                      {:source-query    {:source-table $$orders
-                                         :fields       [[:field
-                                                         %product-id
-                                                         {::namespaced true}]
-                                                        [:field
-                                                         %products.title
-                                                         {:source-field %product-id, ::namespaced true}]]}
-                       :source-metadata [{:base_type         :type/Text
-                                          :coercion_strategy nil
-                                          :display_name      "Product → Title"
-                                          :effective_type    :type/Text
-                                          :field_ref         $product-id->products.title
-                                          :fingerprint       nil
-                                          :id                93899
-                                          :name              "TITLE"
-                                          :parent_id         nil
-                                          :semantic_type     nil
-                                          :settings          nil
-                                          :table_id          $$products}]
-                       :fields          [[:field %product-id {::namespaced true}]
-                                         [:field
-                                          %products.title
-                                          {:source-field %product-id, ::namespaced true}]]})
-                    add-implicit-joins
-                    (m/dissoc-in [:query :source-metadata]))))))
+    (is (=? (lib.tu.macros/mbql-query orders
+              {:source-query {:source-table $$orders
+                              :joins        [{:source-table $$products
+                                              :alias        "PRODUCTS__via__PRODUCT_ID"
+                                              :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                              :fields       :none
+                                              :strategy     :left-join
+                                              :fk-field-id  %product-id}]
+                              :fields       [[:field
+                                              %product-id
+                                              {::namespaced true}]
+                                             [:field
+                                              %products.title
+                                              {:source-field %product-id
+                                               :join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                               ::namespaced  true}]]}
+               :fields       [[:field %product-id {::namespaced true}]
+                              [:field
+                               %products.title
+                               {:source-field %product-id
+                                :join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                ::namespaced  true}]]})
+            (-> (lib.tu.macros/mbql-query orders
+                  {:source-query    {:source-table $$orders
+                                     :fields       [[:field
+                                                     %product-id
+                                                     {::namespaced true}]
+                                                    [:field
+                                                     %products.title
+                                                     {:source-field %product-id, ::namespaced true}]]}
+                   :source-metadata [{:base_type         :type/Text
+                                      :coercion_strategy nil
+                                      :display_name      "Product → Title"
+                                      :effective_type    :type/Text
+                                      :field_ref         $product-id->products.title
+                                      :fingerprint       nil
+                                      :id                93899
+                                      :name              "TITLE"
+                                      :parent_id         nil
+                                      :semantic_type     nil
+                                      :settings          nil
+                                      :table_id          $$products}]
+                   :fields          [[:field %product-id {::namespaced true}]
+                                     [:field
+                                      %products.title
+                                      {:source-field %product-id, ::namespaced true}]]})
+                add-implicit-joins
+                (m/dissoc-in [:query :source-metadata]))))))
 
 (deftest ^:parallel resolve-implicit-joins-in-join-conditions-test
   (testing "Should be able to resolve implicit joins inside a join `:condition`"
-    (is (query= (lib.tu.macros/mbql-query orders
-                  {:source-query {:source-table $$orders
-                                  :fields       [$product-id]}
-                   :joins        [{:source-table $$products
-                                   :alias        "PRODUCTS__via__PRODUCT_ID"
-                                   :condition    [:=
-                                                  $product-id
-                                                  [:field
-                                                   %products.id
-                                                   {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
-                                   :fields       :none
-                                   :strategy     :left-join
-                                   :fk-field-id  %product-id}
-                                  {:source-table $$products
-                                   :alias        "Products"
-                                   :condition    [:=
-                                                  [:field
-                                                   %products.category
-                                                   {:join-alias   "PRODUCTS__via__PRODUCT_ID"
-                                                    :source-field %product-id}]
-                                                  &Products.products.category]
-                                   :fields       :none}]})
-                (add-implicit-joins
-                 (lib.tu.macros/mbql-query orders
-                   {:source-query {:source-table $$orders
-                                   :fields       [$product-id]}
-                    :joins        [{:source-table $$products
-                                    :alias        "Products"
-                                    :condition    [:=
-                                                   $product-id->products.category
-                                                   &Products.products.category]
-                                    :fields       :none}]}))))))
+    (is (=? (lib.tu.macros/mbql-query orders
+              {:source-query {:source-table $$orders
+                              :fields       [$product-id]}
+               :joins        [{:source-table $$products
+                               :alias        "PRODUCTS__via__PRODUCT_ID"
+                               :condition    [:=
+                                              $product-id
+                                              [:field
+                                               %products.id
+                                               {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                               :fields       :none
+                               :strategy     :left-join
+                               :fk-field-id  %product-id}
+                              {:source-table $$products
+                               :alias        "Products"
+                               :condition    [:=
+                                              [:field
+                                               %products.category
+                                               {:join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                                :source-field %product-id}]
+                                              &Products.products.category]
+                               :fields       :none}]})
+            (add-implicit-joins
+             (lib.tu.macros/mbql-query orders
+               {:source-query {:source-table $$orders
+                               :fields       [$product-id]}
+                :joins        [{:source-table $$products
+                                :alias        "Products"
+                                :condition    [:=
+                                               $product-id->products.category
+                                               &Products.products.category]
+                                :fields       :none}]}))))))
 
 (deftest ^:parallel use-source-query-implicit-joins-for-join-conditions-test
   (testing "Implicit join inside a join `:condition` should use implicit join from source query if available (#20519)"
     (mt/dataset test-data
-      (is (query= (lib.tu.macros/mbql-query orders
-                    {:source-query {:source-table $$orders
-                                    :joins        [{:source-table $$products
-                                                    :alias        "PRODUCTS__via__PRODUCT_ID"
-                                                    :condition    [:=
-                                                                   $product-id
-                                                                   [:field
-                                                                    %products.id
-                                                                    {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
-                                                    :fields       :none
-                                                    :strategy     :left-join
-                                                    :fk-field-id  %product-id}]
-                                    :breakout     [[:field
-                                                    %products.category
-                                                    {:join-alias   "PRODUCTS__via__PRODUCT_ID"
-                                                     :source-field %product-id}]]
-                                    :aggregation  [[:count]]}
-                     :joins        [{:source-table $$products
-                                     :alias        "Products"
-                                     :condition    [:=
-                                                    [:field
-                                                     %products.category
-                                                     {:join-alias   "PRODUCTS__via__PRODUCT_ID"
-                                                      :source-field %product-id}]
-                                                    &Products.products.category]
-                                     :fields       :none}]
-                     :fields       [[:field
-                                     %products.category
-                                     {:join-alias   "PRODUCTS__via__PRODUCT_ID"
-                                      :source-field %product-id}]]})
-                  (add-implicit-joins
-                   (lib.tu.macros/mbql-query orders
-                     {:source-query {:source-table $$orders
-                                     :breakout     [$product-id->products.category]
-                                     :aggregation  [[:count]]}
-                      :joins        [{:source-table $$products
-                                      :alias        "Products"
-                                      :condition    [:=
-                                                     $product-id->products.category
-                                                     &Products.products.category]
-                                      :fields       :none}]
-                      :fields       [$product-id->products.category]})))))))
+      (is (=? (lib.tu.macros/mbql-query orders
+                {:source-query {:source-table $$orders
+                                :joins        [{:source-table $$products
+                                                :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                :condition    [:=
+                                                               $product-id
+                                                               [:field
+                                                                %products.id
+                                                                {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                                                :fields       :none
+                                                :strategy     :left-join
+                                                :fk-field-id  %product-id}]
+                                :breakout     [[:field
+                                                %products.category
+                                                {:join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                                 :source-field %product-id}]]
+                                :aggregation  [[:count]]}
+                 :joins        [{:source-table $$products
+                                 :alias        "Products"
+                                 :condition    [:=
+                                                [:field
+                                                 %products.category
+                                                 {:join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                                  :source-field %product-id}]
+                                                &Products.products.category]
+                                 :fields       :none}]
+                 :fields       [[:field
+                                 %products.category
+                                 {:join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                  :source-field %product-id}]]})
+              (add-implicit-joins
+               (lib.tu.macros/mbql-query orders
+                 {:source-query {:source-table $$orders
+                                 :breakout     [$product-id->products.category]
+                                 :aggregation  [[:count]]}
+                  :joins        [{:source-table $$products
+                                  :alias        "Products"
+                                  :condition    [:=
+                                                 $product-id->products.category
+                                                 &Products.products.category]
+                                  :fields       :none}]
+                  :fields       [$product-id->products.category]})))))))
 
 (deftest ^:parallel metadata-join-alias-test
   (mt/dataset test-data
@@ -860,7 +860,7 @@
                       {:source-query {:source-table $$orders
                                       :fields [$id]}
                        :source-metadata [{:field_ref $orders.product-id->category}]})]
-          (is (query= query (add-implicit-joins query)))))
+          (is (=? query (add-implicit-joins query)))))
       (testing "#26631 Case 1: Join query with implicit join into query with nested query with implicit join as source"
         (is (=? (lib.tu.macros/mbql-query products
                   {:source-query {:source-table $$orders
@@ -907,30 +907,30 @@
   ;;   See [[metabase.parameters.custom-values-test/with-mbql-card-test]].
   (testing "`:join-alias` is correctly updated in metadata fields containing `:source-field`"
     (testing "#26631 Case 2: Join query with implicit join into a query with a table as source"
-      (is (query= (lib.tu.macros/mbql-query products
-                    {:source-table $$products
-                     :joins [{:join-alias "Q2"
-                              :fields :all
-                              :condition [:= $category &Q2.$orders.product-id->category]
-                              :strategy :left-join
-                              :source-query {:source-table $$orders
-                                             :aggregation [[:count]]
-                                             :breakout [&PRODUCTS__via__PRODUCT_ID.$orders.product-id->category]
-                                             :joins [{:alias "PRODUCTS__via__PRODUCT_ID"
-                                                      :fields :none
-                                                      :strategy :left-join
-                                                      :condition [:= $orders.product-id &PRODUCTS__via__PRODUCT_ID.$id]
-                                                      :source-table $$products
-                                                      :fk-field-id %orders.product-id}]}
-                              :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID.$orders.product-id->category}]}]})
-                  (add-implicit-joins
-                   (lib.tu.macros/mbql-query products
-                     {:source-table $$products
-                      :joins [{:join-alias "Q2"
-                               :fields :all
-                               :condition [:= $category &Q2.$orders.product-id->category]
-                               :strategy :left-join
-                               :source-query {:source-table $$orders
-                                              :aggregation [[:count]]
-                                              :breakout [$orders.product-id->category]}
-                               :source-metadata [{:field_ref $orders.product-id->category}]}]})))))))
+      (is (=? (lib.tu.macros/mbql-query products
+                {:source-table $$products
+                 :joins [{:join-alias "Q2"
+                          :fields :all
+                          :condition [:= $category &Q2.$orders.product-id->category]
+                          :strategy :left-join
+                          :source-query {:source-table $$orders
+                                         :aggregation [[:count]]
+                                         :breakout [&PRODUCTS__via__PRODUCT_ID.$orders.product-id->category]
+                                         :joins [{:alias "PRODUCTS__via__PRODUCT_ID"
+                                                  :fields :none
+                                                  :strategy :left-join
+                                                  :condition [:= $orders.product-id &PRODUCTS__via__PRODUCT_ID.$id]
+                                                  :source-table $$products
+                                                  :fk-field-id %orders.product-id}]}
+                          :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID.$orders.product-id->category}]}]})
+              (add-implicit-joins
+               (lib.tu.macros/mbql-query products
+                 {:source-table $$products
+                  :joins [{:join-alias "Q2"
+                           :fields :all
+                           :condition [:= $category &Q2.$orders.product-id->category]
+                           :strategy :left-join
+                           :source-query {:source-table $$orders
+                                          :aggregation [[:count]]
+                                          :breakout [$orders.product-id->category]}
+                           :source-metadata [{:field_ref $orders.product-id->category}]}]})))))))

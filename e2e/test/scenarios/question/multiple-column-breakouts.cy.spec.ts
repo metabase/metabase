@@ -4,6 +4,7 @@ import type {
   DashboardDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
+import { moveDnDKitListElement } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -628,14 +629,20 @@ describe("scenarios > question > multiple column breakouts", () => {
 
           cy.log("move a column from rows to columns");
           H.openVizSettingsSidebar();
-          H.dragField(2, 3);
+          moveDnDKitListElement("drag-handle", {
+            startIndex: 2,
+            dropIndex: 3,
+          });
           cy.wait("@pivotDataset");
           cy.findByTestId("pivot-table")
             .findAllByText(columnNamePattern)
             .should("have.length", 2);
 
           cy.log("move a column from columns to rows");
-          H.dragField(4, 1);
+          moveDnDKitListElement("drag-handle", {
+            startIndex: 4,
+            dropIndex: 1,
+          });
           cy.wait("@pivotDataset");
           cy.findByTestId("pivot-table")
             .findAllByText(columnNamePattern)
@@ -653,6 +660,43 @@ describe("scenarios > question > multiple column breakouts", () => {
           questionDetails: questionWith5NumBinsBreakoutsDetails,
           columnNamePattern: /^Total: \d+ bins$/,
         });
+      });
+
+      it("should not be able to move columns items into measures and vice-versa", () => {
+        H.createQuestion(questionWith5TemporalBreakoutsDetails, {
+          visitQuestion: true,
+        });
+
+        const columnNamePattern = /^Created At/;
+
+        cy.log("change display and assert the default settings");
+        H.openVizTypeSidebar();
+        cy.findByTestId("chart-type-sidebar")
+          .findByTestId("Pivot Table-button")
+          .click();
+        cy.wait("@pivotDataset");
+        cy.findByTestId("pivot-table")
+          .findAllByText(columnNamePattern)
+          .should("have.length", 3);
+
+        cy.log("move an item from columns to measures");
+        H.openVizSettingsSidebar();
+        moveDnDKitListElement("drag-handle", {
+          startIndex: 2,
+          dropIndex: 5,
+        });
+        cy.findByTestId("pivot-table")
+          .findAllByText(columnNamePattern)
+          .should("have.length", 3);
+
+        cy.log("move an item from measures to columns");
+        moveDnDKitListElement("drag-handle", {
+          startIndex: 5,
+          dropIndex: 2,
+        });
+        cy.findByTestId("pivot-table")
+          .findAllByText(columnNamePattern)
+          .should("have.length", 3);
       });
     });
 
@@ -689,10 +733,10 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.editDashboard();
         cy.findByTestId("fixed-width-filters").findByText("Unit1").click();
         H.getDashboardCard().findByText("Select…").click();
-        H.popover().findAllByText("Created At").eq(0).click();
+        H.popover().findByText("Created At: Year").click();
         cy.findByTestId("fixed-width-filters").findByText("Unit2").click();
         H.getDashboardCard().findByText("Select…").click();
-        H.popover().findAllByText("Created At").eq(1).click();
+        H.popover().findByText("Created At: Month").click();
         H.saveDashboard();
         cy.wait("@dashcardQuery");
 
@@ -709,7 +753,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
         cy.log("set parameters in a public dashboard");
         cy.signInAsAdmin();
-        cy.get("@dashboardId").then(H.visitPublicDashboard);
+        cy.get<number>("@dashboardId").then(H.visitPublicDashboard);
         cy.wait("@publicDashcardQuery");
         setParametersAndAssertResults("@publicDashcardQuery");
 
@@ -806,7 +850,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             "Expression1",
             "Expression2",
           ],
-          firstRows: [["-60", "-50", "1", "40", "140"]],
+          firstRows: [["-60  –  -40", "-50  –  -45", "1", "40", "140"]],
         });
 
         cy.log("'max-bins' breakouts");
@@ -823,7 +867,9 @@ describe("scenarios > question > multiple column breakouts", () => {
             "Expression1",
             "Expression2",
           ],
-          firstRows: [["20.00000000° N", "20.00000000° N", "87", "120", "220"]],
+          firstRows: [
+            ["20° N  –  40° N", "20° N  –  30° N", "87", "120", "220"],
+          ],
         });
       });
 
@@ -976,8 +1022,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Total: 10 bins", "Total: 50 bins", "Count"],
           firstRows: [
-            ["20", "20", "214"],
-            ["20", "25", "396"],
+            ["20  –  40", "20  –  25", "214"],
+            ["20  –  40", "25  –  30", "396"],
           ],
         });
         H.assertQueryBuilderRowCount(7);
@@ -996,8 +1042,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Latitude: 20°", "Latitude: 10°", "Count"],
           firstRows: [
-            ["20.00000000° N", "20.00000000° N", "87"],
-            ["20.00000000° N", "30.00000000° N", "1,176"],
+            ["20° N  –  40° N", "20° N  –  30° N", "87"],
+            ["20° N  –  40° N", "30° N  –  40° N", "1,176"],
           ],
         });
         H.assertQueryBuilderRowCount(4);
@@ -1127,8 +1173,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Total: 10 bins", "Total: 50 bins", "Count"],
           firstRows: [
-            ["-60", "-50", "1"],
-            ["0", "5", "1"],
+            ["-60  –  -40", "-50  –  -45", "1"],
+            ["0  –  20", "5  –  10", "1"],
           ],
         });
 
@@ -1142,8 +1188,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Latitude: 20°", "Latitude: 10°", "Count"],
           firstRows: [
-            ["20.00000000° N", "20.00000000° N", "1"],
-            ["20.00000000° N", "30.00000000° N", "1"],
+            ["20° N  –  40° N", "20° N  –  30° N", "1"],
+            ["20° N  –  40° N", "30° N  –  40° N", "1"],
           ],
         });
       });
@@ -1294,8 +1340,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Total: 10 bins", "Total: 50 bins", "Count"],
           firstRows: [
-            ["20", "20", "214"],
-            ["20", "25", "396"],
+            ["20  –  40", "20  –  25", "214"],
+            ["20  –  40", "25  –  30", "396"],
           ],
         });
         H.assertQueryBuilderRowCount(7);
@@ -1313,8 +1359,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Latitude: 20°", "Latitude: 10°", "Count"],
           firstRows: [
-            ["20.00000000° N", "20.00000000° N", "87"],
-            ["20.00000000° N", "30.00000000° N", "1,176"],
+            ["20° N  –  40° N", "20° N  –  30° N", "87"],
+            ["20° N  –  40° N", "30° N  –  40° N", "1,176"],
           ],
         });
         H.assertQueryBuilderRowCount(4);

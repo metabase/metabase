@@ -15,7 +15,7 @@ import S from "./DashboardTabs.module.css";
 import { useDashboardTabs } from "./use-dashboard-tabs";
 
 export function DashboardTabs() {
-  const { isEditing = false, isNightMode } = useDashboardContext();
+  const { isEditing = false, shouldRenderAsNightMode } = useDashboardContext();
 
   const {
     tabs,
@@ -73,7 +73,7 @@ export function DashboardTabs() {
       gap="lg"
       w="100%"
       className={cx(S.dashboardTabs, {
-        [S.isNightMode]: isNightMode,
+        [S.isNightMode]: shouldRenderAsNightMode,
       })}
     >
       <TabRow<SelectedTabId>

@@ -91,7 +91,7 @@
                                                                               {:generous? true}))
                                          (range (count existing-breakouts)))]
          (mapv #(let [positions  (column->breakout-positions %)]
-                  (cond-> (assoc % :lib/hide-bin-bucket? true)
+                  (cond-> %
                     positions (assoc :breakout-positions positions)))
                columns))))))
 
