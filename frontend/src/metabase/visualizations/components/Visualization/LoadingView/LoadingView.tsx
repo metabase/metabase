@@ -11,7 +11,7 @@ import {
   StyledLoadingSpinner,
 } from "./LoadingView.styled";
 
-interface LoadingViewProps {
+export interface LoadingViewProps {
   isSlow: CardSlownessStatus;
   expectedDuration?: number;
 }
