@@ -1,9 +1,13 @@
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
 
+export type DismissibleProps = {
+  dismissable: boolean;
+  onDismiss: () => void;
+};
+
 type UpsellWrapperDismissableProps = {
-  dismissable?: boolean;
   campaign: string;
-  onDismiss?: () => void;
+  dismissable?: boolean;
 };
 
 /**

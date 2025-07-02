@@ -7,9 +7,12 @@ import { Box, Flex, Icon, Text, Title, UnstyledButton } from "metabase/ui";
 
 import { UPGRADE_URL } from "../constants";
 
+import {
+  type DismissibleProps,
+  UpsellWrapperDismissable,
+} from "./UpsellBannerDismissable";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
-import { UpsellWrapperDismissable } from "./UpsellWrapperDismissable";
 import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
@@ -24,16 +27,18 @@ type CardLinkProps =
       buttonLink?: never;
     };
 
-export type UpsellBannerProps = {
+type UpsellBannerPropsBase = {
   title: string;
   buttonText: string;
   campaign: string;
   source: string;
   children: React.ReactNode;
   style?: React.CSSProperties;
-  dismissable?: boolean;
-  onDismiss?: () => void;
-} & CardLinkProps;
+};
+
+export type UpsellBannerProps =
+  | (UpsellBannerPropsBase & CardLinkProps)
+  | (UpsellBannerPropsBase & CardLinkProps & DismissibleProps);
 
 export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   title,
@@ -43,8 +48,6 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   campaign,
   source,
   children,
-  dismissable = false,
-  onDismiss,
   ...props
 }: UpsellBannerProps) => {
   const url = useUpsellLink({
@@ -95,14 +98,14 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
           </Link>
         )}
 
-        {dismissable && onDismiss && (
+        {"dismissible" in props && "onDismiss" in props && (
           <UnstyledButton
             role="button"
             component={Icon}
             size="1rem"
             name="close"
             aria-label={t`Dismiss banner`}
-            onClick={onDismiss}
+            onClick={props.onDismiss}
           />
         )}
       </Flex>
