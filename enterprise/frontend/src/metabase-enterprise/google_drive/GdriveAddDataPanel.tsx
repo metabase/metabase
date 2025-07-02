@@ -32,9 +32,9 @@ import {
   GdriveConnectionModal,
 } from "metabase-enterprise/google_drive";
 
+import { getDisconnectModalStrings } from "./GdriveConnectionModal.strings";
 import { trackSheetConnectionClick } from "./analytics";
 import { getStatus, useDeleteGdriveFolderLink, useShowGdrive } from "./utils";
-import { getDisconnectModalStrings } from "./GdriveConnectionModal.strings";
 
 const PanelWrapper = ({
   title = t`Connect Google Sheets`,
@@ -148,23 +148,25 @@ export const GdriveAddDataPanel = ({
         // eslint-disable-next-line no-literal-metabase-strings -- admin only string
         subtitle={bodyCopy}
       >
-        <Button
-          variant="filled"
-          color="danger"
-          loading={isDeletingFolderLink}
-          onClick={onDelete}
-          w={INNER_WIDTH}
-        >
-          {disconnectButtonText}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={closeConnectionDetails}
-          disabled={isDeletingFolderLink}
-          w={INNER_WIDTH}
-        >
-          {connectButtonText}
-        </Button>
+        <Stack gap="sm" mt="sm">
+          <Button
+            variant="filled"
+            color="danger"
+            loading={isDeletingFolderLink}
+            onClick={onDelete}
+            w={INNER_WIDTH}
+          >
+            {disconnectButtonText}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={closeConnectionDetails}
+            disabled={isDeletingFolderLink}
+            w={INNER_WIDTH}
+          >
+            {connectButtonText}
+          </Button>
+        </Stack>
       </PanelWrapper>
     );
   }
