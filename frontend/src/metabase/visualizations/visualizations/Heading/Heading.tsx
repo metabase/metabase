@@ -287,7 +287,6 @@ const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
 
     const parametersListCommonProps = {
       ...rest,
-      widgetsVariant: "subtle" as const,
       isSortable: false,
     };
 

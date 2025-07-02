@@ -31,7 +31,7 @@ export const DashboardParameterList = forwardRef<
     className,
     parameters,
     isSortable = true,
-    widgetsVariant,
+    widgetsVariant = "subtle",
     widgetsWithinPortal,
     vertical,
     hasTestIdProps = true,
