@@ -744,7 +744,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.filterWidget()
         .findByRole("listitem")
-        .should("have.text", "Antwan Fisher");
+        .should("have.text", "Text:\u00a0Antwan Fisher");
 
       cy.log("verify filter resetting works");
 

@@ -895,7 +895,9 @@ describe("issue 19494", () => {
   }
 
   function checkAppliedFilter(name, value) {
-    cy.findByText(name).closest("fieldset").contains(value);
+    cy.findByText(name, { exact: false })
+      .closest('[data-testid="parameter-widget"]')
+      .contains(value);
   }
 
   beforeEach(() => {
@@ -3549,6 +3551,12 @@ describe("issue 44790", () => {
 });
 
 describe("issue 34955", () => {
+  function checkAppliedFilter(name, value) {
+    cy.contains('[data-testid="parameter-widget"]', name, {
+      exact: false,
+    }).contains(value);
+  }
+
   const ccName = "Custom Created At";
 
   const questionDetails = {
@@ -3624,29 +3632,21 @@ describe("issue 34955", () => {
     });
   });
 
-  it("should connect specific date filter (`Between`) to the temporal custom column (metabase#34955-1)", () => {
+  it("should connect specific date filter (`Between`) to the temporal custom column (metabase#34955)", () => {
     cy.get("@dashboardId").then((dashboard_id) => {
       // Apply filter through URL to prevent the typing flakes
       cy.visit(`/dashboard/${dashboard_id}?on=&between=2024-01-01~2024-03-01`);
-      // eslint-disable-next-line no-unsafe-element-filtering
-      cy.findAllByTestId("field-set-content")
-        .last()
-        .should("contain", "January 1, 2024 - March 1, 2024");
+      checkAppliedFilter("Between", "January 1, 2024 - March 1, 2024");
 
       cy.findAllByTestId("cell-data")
         .filter(":contains(January 1, 2024, 7:26 AM)")
         .should("have.length", 2);
     });
-  });
 
-  // TODO: Once the issue is fixed, merge into a single repro to avoid unnecessary overhead!
-  it.skip("should connect specific date filter (`On`) to the temporal custom column (metabase#34955-2)", () => {
     cy.get("@dashboardId").then((dashboard_id) => {
       // Apply filter through URL to prevent the typing flakes
       cy.visit(`/dashboard/${dashboard_id}?on=2024-01-01&between=`);
-      cy.findAllByTestId("field-set-content")
-        .first()
-        .should("contain", "January 1, 2024");
+      checkAppliedFilter("On", "January 1, 2024");
 
       cy.findAllByTestId("cell-data")
         .filter(":contains(January 1, 2024, 7:26 AM)")
