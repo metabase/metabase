@@ -174,7 +174,7 @@ export function DashCardVisualization({
     });
 
     if (missingCols.flat().length > 0) {
-      return `Some columns are missing, this card might not render correctly.`;
+      return t`Some columns are missing, this card might not render correctly.`;
     }
   }, [dashcard, rawSeries]);
 
