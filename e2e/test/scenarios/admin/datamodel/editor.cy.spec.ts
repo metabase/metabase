@@ -165,7 +165,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         .blur();
       cy.wait("@updateField");
 
-      H.undoToast().should("contain.text", "Display name for Tax updated");
+      H.undoToast().should("contain.text", "Field name updated");
       H.DataModel.TableSection.getFieldNameInput("New tax").should(
         "be.visible",
       );
@@ -190,7 +190,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         .blur();
       cy.wait("@updateField");
 
-      H.undoToast().should("contain.text", "Description for Total updated");
+      H.undoToast().should("contain.text", "Field description updated");
       H.DataModel.TableSection.getFieldDescriptionInput("Total").should(
         "have.value",
         "New description",
@@ -215,7 +215,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       H.DataModel.TableSection.getFieldDescriptionInput("Total").clear().blur();
       cy.wait("@updateField");
 
-      H.undoToast().should("contain.text", "Description for Total updated");
+      H.undoToast().should("contain.text", "Field description updated");
       H.DataModel.TableSection.getFieldDescriptionInput("Total").should(
         "have.value",
         "",
@@ -544,7 +544,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       H.DataModel.FieldSection.getNameInput().clear().type("New tax").blur();
       cy.wait("@updateField");
 
-      H.undoToast().should("contain.text", "Display name for Tax updated");
+      H.undoToast().should("contain.text", "Field name updated");
       H.DataModel.FieldSection.getNameInput().should("have.value", "New tax");
       H.DataModel.TableSection.getFieldNameInput("New tax").should(
         "be.visible",
@@ -571,7 +571,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         .blur();
       cy.wait("@updateField");
 
-      H.undoToast().should("contain.text", "Description for Total updated");
+      H.undoToast().should("contain.text", "Field description updated");
       H.DataModel.FieldSection.getDescriptionInput().should(
         "have.value",
         "New description",
@@ -755,7 +755,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         .blur();
       cy.wait("@updateField");
 
-      H.undoToast().should("contain.text", "Display name for Tax updated");
+      H.undoToast().should("contain.text", "Field name updated");
       H.DataModel.TableSection.getFieldNameInput("New tax").should(
         "be.visible",
       );
@@ -783,7 +783,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       H.DataModel.FieldSection.getNameInput().clear().type("New total").blur();
       cy.wait("@updateField");
 
-      H.undoToast().should("contain.text", "Display name for Total updated");
+      H.undoToast().should("contain.text", "Field name updated");
       H.DataModel.FieldSection.getNameInput().should("have.value", "New total");
       H.DataModel.TableSection.getFieldNameInput("New total")
         .scrollIntoView()

@@ -283,6 +283,7 @@ describe("scenarios > admin > datamodel", () => {
         .clear()
         .type("New orders")
         .blur();
+      cy.wait("@updateField");
       H.undoToast().should("contain.text", "Table name updated");
       H.undoToast().icon("close").click();
       TablePicker.getTable("New orders").should("be.visible");
@@ -296,6 +297,7 @@ describe("scenarios > admin > datamodel", () => {
         .clear()
         .type("New description")
         .blur();
+      cy.wait("@updateField");
       H.undoToast().should("contain.text", "Table description updated");
 
       cy.reload();
@@ -306,7 +308,7 @@ describe("scenarios > admin > datamodel", () => {
       );
     });
 
-    it("should remap FK display value from the table section", () => {
+    it("should allow to change name and description of a field", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -315,15 +317,25 @@ describe("scenarios > admin > datamodel", () => {
 
       TableSection.getFieldNameInput("Product ID")
         .clear()
-        .type("Remapped Product ID")
-        .realPress("Tab");
+        .type("New Product ID")
+        .blur();
       cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Field name updated");
+      H.undoToast().icon("close").click();
+
+      TableSection.getFieldDescriptionInput("New Product ID")
+        .clear()
+        .type("New description")
+        .blur();
+      cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Field description updated");
 
       H.openOrdersTable({ limit: 5 });
-      cy.findAllByTestId("header-cell").should(
-        "contain",
-        "Remapped Product ID",
-      );
+      cy.findAllByTestId("header-cell")
+        .eq(2)
+        .should("contain.text", "New Product ID")
+        .realHover();
+      H.popover().should("contain.text", "New description");
     });
 
     // https://linear.app/metabase/issue/SEM-423/data-loading-error-handling
