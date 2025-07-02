@@ -426,7 +426,8 @@ export class AceEditorInner extends Component<AceEditorProps> {
     if (!this._editor) {
       return null;
     }
-    // this._editor.session.setNewLineMode("windows");
+    // Split on all possoble line endings, since sometimes ace gets confused about the
+    // new line mode and this causes errors.
     const lines = this._editor.getValue().split(/\r\n|\n|\r/);
     return lines[row] ?? null;
   };
