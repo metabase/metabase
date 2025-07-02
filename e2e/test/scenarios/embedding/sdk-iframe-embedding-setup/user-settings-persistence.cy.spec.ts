@@ -208,5 +208,11 @@ const waitAndReload = () => {
     cy.wait(1000);
 
     cy.reload();
+
+    cy.get("#iframe-embed-container").should(
+      "have.attr",
+      "data-iframe-loaded",
+      "true",
+    );
   });
 };
