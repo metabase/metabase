@@ -382,14 +382,12 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           H.getDashboardCard(0).findByText("Select…").click();
           H.popover().within(() => {
-            QSHelpers.getPopoverList().scrollTo("bottom");
-            QSHelpers.getPopoverItem("Category", 2).click();
+            QSHelpers.getPopoverItem("Category", 2).scrollIntoView().click();
           });
 
           H.getDashboardCard(1).findByText("Select…").click();
           H.popover().within(() => {
-            QSHelpers.getPopoverList().scrollTo("bottom");
-            QSHelpers.getPopoverItem("Category", 2).click();
+            QSHelpers.getPopoverItem("Category", 2).scrollIntoView().click();
           });
 
           H.saveDashboard({ waitMs: 250 });

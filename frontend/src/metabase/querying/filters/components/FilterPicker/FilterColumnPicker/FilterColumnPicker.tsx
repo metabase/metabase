@@ -142,10 +142,7 @@ export function FilterColumnPicker({
           withColumnItemIcon ? renderItemIcon(query, item) : null
         }
         // disable scrollbars inside the list
-        style={{
-          overflow: "visible",
-          width: WIDTH,
-        }}
+        width={WIDTH}
         maxHeight={Infinity}
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors

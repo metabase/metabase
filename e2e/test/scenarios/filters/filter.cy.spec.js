@@ -1068,7 +1068,6 @@ describe("scenarios > question > filter", () => {
 
     H.popover()
       .findByRole("tree")
-      .parent()
       .then((el) => {
         cy.wrap(el[0].scrollTop).should("be.greaterThan", 0);
       });
