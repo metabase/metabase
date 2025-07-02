@@ -20,6 +20,7 @@ describe("scenarios > admin > datamodel", () => {
     cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
       "updateField",
     );
+    cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
     cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
@@ -298,6 +299,213 @@ describe("scenarios > admin > datamodel", () => {
       cy.findByText("No description yet").should("be.visible");
     });
 
+    it("should allow sorting fields as in the database", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: PRODUCTS_ID,
+      });
+
+      H.DataModel.TableSection.getSortButton().click();
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("database")
+        .should("be.checked");
+
+      H.openProductsTable();
+      assertTableHeader([
+        "ID",
+        "Ean",
+        "Title",
+        "Category",
+        "Vendor",
+        "Price",
+        "Rating",
+        "Created At",
+      ]);
+    });
+
+    it("should allow sorting fields alphabetically", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: PRODUCTS_ID,
+      });
+
+      H.DataModel.TableSection.getSortButton().click();
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByLabelText("Alphabetical order")
+        .click();
+      cy.wait("@updateTable");
+
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("alphabetical")
+        .should("be.checked");
+
+      H.openProductsTable();
+      assertTableHeader([
+        "Category",
+        "Created At",
+        "Ean",
+        "ID",
+        "Price",
+        "Rating",
+        "Title",
+        "Vendor",
+      ]);
+    });
+
+    it("should allow sorting fields smartly", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: PRODUCTS_ID,
+      });
+
+      H.DataModel.TableSection.getSortButton().click();
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByLabelText("Auto order")
+        .click();
+      cy.wait("@updateTable");
+
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("smart")
+        .should("be.checked");
+
+      H.openProductsTable();
+      assertTableHeader([
+        "ID",
+        "Created At",
+        "Category",
+        "Ean",
+        "Price",
+        "Rating",
+        "Title",
+        "Vendor",
+      ]);
+    });
+
+    it("should allow sorting fields in the custom order", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: PRODUCTS_ID,
+      });
+
+      H.DataModel.TableSection.getSortButton().click();
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("database")
+        .should("be.checked");
+
+      H.moveDnDKitElement(H.DataModel.TableSection.getSortableField("ID"), {
+        vertical: 50,
+      });
+      cy.wait("@updateFieldOrder");
+
+      cy.log("should not show loading state after an update (metabase#56482)");
+      cy.findByTestId("loading-indicator", { timeout: 0 }).should("not.exist");
+
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("custom")
+        .should("be.checked");
+
+      H.openProductsTable();
+      assertTableHeader([
+        "Ean",
+        "ID",
+        "Title",
+        "Category",
+        "Vendor",
+        "Price",
+        "Rating",
+        "Created At",
+      ]);
+    });
+
+    it("should allow switching to predefined order after drag & drop (metabase#56482)", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: PRODUCTS_ID,
+      });
+
+      H.DataModel.TableSection.getSortButton().click();
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("database")
+        .should("be.checked");
+
+      H.moveDnDKitElement(H.DataModel.TableSection.getSortableField("ID"), {
+        vertical: 50,
+      });
+      cy.wait("@updateFieldOrder");
+
+      cy.log("should not show loading state after an update (metabase#56482)");
+      cy.findByTestId("loading-indicator", { timeout: 0 }).should("not.exist");
+
+      H.DataModel.TableSection.getSortableFields().should(($items) => {
+        expect($items[0].textContent).to.equal("Ean");
+        expect($items[1].textContent).to.equal("ID");
+      });
+
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("custom")
+        .should("be.checked");
+
+      cy.log(
+        "should allow switching to predefined order afterwards (metabase#56482)",
+      );
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByLabelText("Database order")
+        .click();
+      cy.wait("@updateTable");
+
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("database")
+        .should("be.checked");
+      H.DataModel.TableSection.getSortableFields().should(($items) => {
+        expect($items[0].textContent).to.equal("ID");
+        expect($items[1].textContent).to.equal("Ean");
+      });
+
+      cy.log("should allow drag & drop afterwards (metabase#56482)"); // extra sanity check
+      H.moveDnDKitElement(H.DataModel.TableSection.getSortableField("ID"), {
+        vertical: 50,
+      });
+      cy.wait("@updateFieldOrder");
+
+      cy.log("should not show loading state after an update (metabase#56482)");
+      cy.findByTestId("loading-indicator", { timeout: 0 }).should("not.exist");
+
+      H.DataModel.TableSection.getSortableFields().should(($items) => {
+        expect($items[0].textContent).to.equal("Ean");
+        expect($items[1].textContent).to.equal("ID");
+      });
+    });
+
+    // TODO: https://linear.app/metabase/issue/SEM-299
+    it.skip("should allow hiding and restoring all tables in a schema", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("4 Queryable Tables").should("be.visible");
+      cy.findByLabelText("Hide all").click();
+      cy.wait("@updateTables");
+
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("8 Hidden Tables").should("be.visible");
+      cy.findByLabelText("Unhide all").click();
+      cy.wait("@updateTables");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("8 Queryable Tables").should("be.visible");
+    });
+
     // https://linear.app/metabase/issue/SEM-423/data-loading-error-handling
     it.skip("should show 404 if database does not exist (metabase#14652)", () => {
       H.DataModel.visit({ databaseId: 54321 });
@@ -471,7 +679,7 @@ describe("scenarios > admin > datamodel", () => {
 
     describe("Metadata", () => {
       describe("Semantic type", () => {
-        it("should let you change the type to 'No semantic type'", () => {
+        it("should allow to change the type to 'No semantic type'", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -485,7 +693,7 @@ describe("scenarios > admin > datamodel", () => {
             .click();
           H.popover().findByText("No semantic type").click();
 
-          waitAndAssertOnResponse("updateField");
+          cy.wait("@updateField");
 
           cy.reload();
           cy.wait("@metadata");
@@ -496,24 +704,34 @@ describe("scenarios > admin > datamodel", () => {
           );
         });
 
-        it("should let you change the type to 'Foreign Key' and choose the target field", () => {
+        it("should allow to change the type to 'Foreign Key' and choose the target field", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
             fieldId: ORDERS.QUANTITY,
           });
-          cy.wait("@metadata");
 
           H.DataModel.FieldSection.getSemanticTypeInput()
             .should("have.value", "Quantity")
             .click();
           H.popover().findByText("Foreign Key").click();
-          waitAndAssertOnResponse("updateField");
+          cy.wait("@updateField");
+          H.undoToast().should(
+            "contain.text",
+            "Semantic type for Quantity updated",
+          );
+          H.undoToast().icon("close").click();
 
-          H.DataModel.FieldSection.getSemanticTypeFkTarget().click();
+          H.DataModel.FieldSection.getSemanticTypeFkTarget()
+            .should("have.value", "")
+            .click();
           H.popover().findByText("Products → ID").click();
-          waitAndAssertOnResponse("updateField");
+          cy.wait("@updateField");
+          H.undoToast().should(
+            "contain.text",
+            "Semantic type for Quantity updated",
+          );
 
           cy.reload();
           cy.wait(["@metadata", "@metadata"]);
@@ -521,6 +739,69 @@ describe("scenarios > admin > datamodel", () => {
           H.DataModel.FieldSection.getSemanticTypeFkTarget()
             .should("be.visible")
             .and("have.value", "Products → ID");
+        });
+
+        it("should allow to change the foreign key target", () => {
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.USER_ID,
+          });
+
+          H.DataModel.FieldSection.getSemanticTypeFkTarget()
+            .should("have.value", "People → ID")
+            .click();
+          H.popover().findByText("Products → ID").click();
+          cy.wait("@updateField");
+          H.undoToast().should(
+            "contain.text",
+            "Semantic type for User ID updated",
+          );
+          H.DataModel.FieldSection.getSemanticTypeFkTarget().should(
+            "have.value",
+            "Products → ID",
+          );
+
+          H.openTable({
+            database: SAMPLE_DB_ID,
+            table: ORDERS_ID,
+            mode: "notebook",
+          });
+          cy.icon("join_left_outer").click();
+          H.entityPickerModal().within(() => {
+            H.entityPickerModalTab("Tables").click();
+            cy.findByText("Products").click();
+          });
+          cy.findByLabelText("Left column").should("contain.text", "User ID");
+        });
+
+        it("should allow to change the type to 'Currency' and choose the currency", () => {
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.TAX,
+          });
+
+          H.DataModel.FieldSection.getSemanticTypeInput()
+            .should("have.value", "No semantic type")
+            .click();
+          H.popover().findByText("Currency").click();
+          cy.wait("@updateField");
+          H.undoToast().should("contain.text", "Semantic type for Tax updated");
+
+          H.DataModel.FieldSection.getSemanticTypeCurrencyInput()
+            .scrollIntoView()
+            .should("be.visible")
+            .and("have.value", "US Dollar")
+            .click();
+          H.popover().findByText("Canadian Dollar").click();
+          cy.wait("@updateField");
+
+          H.openOrdersTable();
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          cy.findByText("Tax (CA$)").should("be.visible");
         });
 
         it("should correctly filter out options in Foreign Key picker (metabase#56839)", () => {
@@ -609,18 +890,23 @@ describe("scenarios > admin > datamodel", () => {
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
             tableId: ORDERS_ID,
-            fieldId: ORDERS.CREATED_AT,
+            fieldId: ORDERS.TAX,
           });
 
-          H.DataModel.FieldSection.getVisibilityInput().click();
+          H.DataModel.FieldSection.getVisibilityInput()
+            .should("have.value", "Everywhere")
+            .click();
           H.popover().findByText("Do not include").click();
           cy.wait("@updateField");
+          H.undoToast().should("contain.text", "Visibility for Tax updated");
+          H.DataModel.FieldSection.getVisibilityInput().should(
+            "have.value",
+            "Do not include",
+          );
 
-          cy.reload();
-          H.DataModel.FieldSection.getVisibilityInput()
-            .scrollIntoView()
-            .should("be.visible")
-            .and("have.value", "Do not include");
+          H.openOrdersTable();
+          cy.findAllByTestId("header-cell").should("contain.text", "Total");
+          cy.findAllByTestId("header-cell").should("not.contain.text", "Tax");
         });
       });
 
@@ -1016,15 +1302,18 @@ describe("scenarios > admin > datamodel", () => {
   });
 });
 
-function waitAndAssertOnResponse(alias: string) {
-  cy.wait("@" + alias).then((request) => {
-    expect(request.response?.body.errors).to.not.exist;
-  });
-}
-
 function turnTableVisibilityOff(tableId: TableId) {
   cy.request("PUT", "/api/table", {
     ids: [tableId],
     visibility_type: "hidden",
   });
 }
+
+const assertTableHeader = (columns: string[]) => {
+  cy.findAllByTestId("header-cell").should("have.length", columns.length);
+
+  columns.forEach((column, index) => {
+    // eslint-disable-next-line no-unsafe-element-filtering
+    cy.findAllByTestId("header-cell").eq(index).should("have.text", column);
+  });
+};
