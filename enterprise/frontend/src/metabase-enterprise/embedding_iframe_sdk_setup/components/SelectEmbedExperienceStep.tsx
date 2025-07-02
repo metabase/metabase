@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -33,10 +34,13 @@ export const SelectEmbedExperienceStep = () => {
 
     // Use the most recent item for the selected type.
     // If the activity log is completely empty, use the fallback.
-    const defaultResourceId =
-      experience === "chart"
-        ? (recentQuestions[0]?.id ?? EMBED_FALLBACK_QUESTION_ID)
-        : (recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID);
+    const defaultResourceId = match(experience)
+      .with("chart", () => recentQuestions[0]?.id ?? EMBED_FALLBACK_QUESTION_ID)
+      .with(
+        "dashboard",
+        () => recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
+      )
+      .with("exploration", () => 0); // resource id does not apply
 
     setSettings({
       // these settings do not change when the embed type changes
