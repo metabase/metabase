@@ -8,6 +8,7 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
+const { TablePicker, TableSection, FieldSection } = H.DataModel;
 const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS, REVIEWS_ID, PRODUCTS_ID } =
   SAMPLE_DATABASE;
 
@@ -47,58 +48,52 @@ describe("scenarios > admin > datamodel", () => {
           `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}`,
         );
         verifyTableSectionEmptyState();
-        H.DataModel.TablePicker.getDatabases().should("have.length", 1);
-        H.DataModel.TablePicker.getDatabase("Sample Database").should(
-          "be.visible",
-        );
-        H.DataModel.TablePicker.getSchemas().should("have.length", 0);
-        H.DataModel.TablePicker.getTables().should("have.length", 8);
-        H.DataModel.TableSection.get().should("not.exist");
-        H.DataModel.TablePicker.getTable("Orders").should("be.visible").click();
+        TablePicker.getDatabases().should("have.length", 1);
+        TablePicker.getDatabase("Sample Database").should("be.visible");
+        TablePicker.getSchemas().should("have.length", 0);
+        TablePicker.getTables().should("have.length", 8);
+        TableSection.get().should("not.exist");
+        TablePicker.getTable("Orders").should("be.visible").click();
 
         cy.location("pathname").should(
           "eq",
           `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
         );
-        H.DataModel.TableSection.get().should("be.visible");
+        TableSection.get().should("be.visible");
         verifyFieldSectionEmptyState();
 
-        H.DataModel.TablePicker.getTable("Products")
-          .should("be.visible")
-          .click();
+        TablePicker.getTable("Products").should("be.visible").click();
         cy.location("pathname").should(
           "eq",
           `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PRODUCTS_ID}`,
         );
-        H.DataModel.TableSection.get().should("be.visible");
+        TableSection.get().should("be.visible");
         verifyFieldSectionEmptyState();
       });
 
       it("should allow to search for tables", () => {
         H.DataModel.visit();
 
-        H.DataModel.TablePicker.getSearchInput().type("or");
-        H.DataModel.TablePicker.getDatabases().should("have.length", 1);
-        H.DataModel.TablePicker.getSchemas().should("have.length", 1);
-        H.DataModel.TablePicker.getTables().should("have.length", 2);
-        H.DataModel.TablePicker.getTable("Orders").should("be.visible").click();
+        TablePicker.getSearchInput().type("or");
+        TablePicker.getDatabases().should("have.length", 1);
+        TablePicker.getSchemas().should("have.length", 1);
+        TablePicker.getTables().should("have.length", 2);
+        TablePicker.getTable("Orders").should("be.visible").click();
         cy.location("pathname").should(
           "eq",
           `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
         );
-        H.DataModel.TableSection.getNameInput().should("have.value", "Orders");
+        TableSection.getNameInput().should("have.value", "Orders");
 
         cy.log("no results");
-        H.DataModel.TablePicker.getSearchInput().clear().type("xyz");
-        H.DataModel.TablePicker.get()
-          .findByText("No results.")
-          .should("be.visible");
+        TablePicker.getSearchInput().clear().type("xyz");
+        TablePicker.get().findByText("No results.").should("be.visible");
 
         cy.log("go back to browsing");
-        H.DataModel.TablePicker.getSearchInput().clear();
-        H.DataModel.TablePicker.getDatabases().should("have.length", 1);
-        H.DataModel.TablePicker.getSchemas().should("have.length", 0);
-        H.DataModel.TablePicker.getTables().should("have.length", 8);
+        TablePicker.getSearchInput().clear();
+        TablePicker.getDatabases().should("have.length", 1);
+        TablePicker.getSchemas().should("have.length", 0);
+        TablePicker.getTables().should("have.length", 8);
       });
     });
 
@@ -116,114 +111,107 @@ describe("scenarios > admin > datamodel", () => {
           H.DataModel.visit();
 
           cy.location("pathname").should("eq", "/admin/datamodel/database");
-          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
-          H.DataModel.TablePicker.getSchemas().should("have.length", 0);
-          H.DataModel.TablePicker.getTables().should("have.length", 0);
-          H.DataModel.TablePicker.getDatabase("Sample Database").should(
-            "be.visible",
-          );
+          TablePicker.getDatabases().should("have.length", 2);
+          TablePicker.getSchemas().should("have.length", 0);
+          TablePicker.getTables().should("have.length", 0);
+          TablePicker.getDatabase("Sample Database").should("be.visible");
 
           cy.log("open database");
-          H.DataModel.TablePicker.getDatabase("Writable Postgres12")
+          TablePicker.getDatabase("Writable Postgres12")
             .should("be.visible")
             .click();
           cy.location("pathname").should(
             "eq",
             `/admin/datamodel/database/${WRITABLE_DB_ID}`,
           );
-          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
-          H.DataModel.TablePicker.getSchemas().should("have.length", 2);
-          H.DataModel.TablePicker.getTables().should("have.length", 0);
-          H.DataModel.TablePicker.getSchema("Wild").should("be.visible");
-          H.DataModel.TablePicker.getSchema("Domestic").should("be.visible");
+          TablePicker.getDatabases().should("have.length", 2);
+          TablePicker.getSchemas().should("have.length", 2);
+          TablePicker.getTables().should("have.length", 0);
+          TablePicker.getSchema("Wild").should("be.visible");
+          TablePicker.getSchema("Domestic").should("be.visible");
 
           cy.log("open schema");
-          H.DataModel.TablePicker.getSchema("Domestic").click();
+          TablePicker.getSchema("Domestic").click();
           cy.location("pathname").should(
             "eq",
             `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic`,
           );
-          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
-          H.DataModel.TablePicker.getSchemas().should("have.length", 2);
-          H.DataModel.TablePicker.getTables().should("have.length", 1);
-          H.DataModel.TablePicker.getTable("Animals").should("be.visible");
+          TablePicker.getDatabases().should("have.length", 2);
+          TablePicker.getSchemas().should("have.length", 2);
+          TablePicker.getTables().should("have.length", 1);
+          TablePicker.getTable("Animals").should("be.visible");
 
           cy.log("open table");
-          H.DataModel.TablePicker.getTable("Animals").click();
+          TablePicker.getTable("Animals").click();
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
               `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
-          H.DataModel.TableSection.getNameInput().should(
-            "have.value",
-            "Animals",
-          );
+          TableSection.getNameInput().should("have.value", "Animals");
 
           cy.log("open another schema");
-          H.DataModel.TablePicker.getSchema("Wild").click();
+          TablePicker.getSchema("Wild").click();
           cy.location("pathname").should(
             "eq",
             `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild`,
           );
-          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
-          H.DataModel.TablePicker.getSchemas().should("have.length", 2);
-          H.DataModel.TablePicker.getTables().should("have.length", 3);
-          H.DataModel.TablePicker.getTable("Birds").should("be.visible");
+          TablePicker.getDatabases().should("have.length", 2);
+          TablePicker.getSchemas().should("have.length", 2);
+          TablePicker.getTables().should("have.length", 3);
+          TablePicker.getTable("Birds").should("be.visible");
 
           cy.log("open another table");
-          H.DataModel.TablePicker.getTable("Birds").click();
+          TablePicker.getTable("Birds").click();
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
               `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
-          H.DataModel.TableSection.getNameInput().should("have.value", "Birds");
+          TableSection.getNameInput().should("have.value", "Birds");
 
           cy.log("close schema");
-          H.DataModel.TablePicker.getSchema("Wild").click();
-          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
-          H.DataModel.TablePicker.getSchemas().should("have.length", 2);
-          H.DataModel.TablePicker.getTables().should("have.length", 1);
-          H.DataModel.TablePicker.getTable("Birds").should("not.exist");
+          TablePicker.getSchema("Wild").click();
+          TablePicker.getDatabases().should("have.length", 2);
+          TablePicker.getSchemas().should("have.length", 2);
+          TablePicker.getTables().should("have.length", 1);
+          TablePicker.getTable("Birds").should("not.exist");
 
           cy.log("close database");
-          H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
-          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
-          H.DataModel.TablePicker.getSchemas().should("have.length", 0);
-          H.DataModel.TablePicker.getTables().should("have.length", 0);
+          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getDatabases().should("have.length", 2);
+          TablePicker.getSchemas().should("have.length", 0);
+          TablePicker.getTables().should("have.length", 0);
         });
 
         it("should allow to search for tables", () => {
           H.DataModel.visit();
 
-          H.DataModel.TablePicker.getSearchInput().type("rd");
-          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
-          H.DataModel.TablePicker.getSchemas().should("have.length", 2);
-          H.DataModel.TablePicker.getTables().should("have.length", 2);
-          H.DataModel.TablePicker.getTable("Orders").should("be.visible");
-          H.DataModel.TablePicker.getTable("Birds").should("be.visible");
+          TablePicker.getSearchInput().type("rd");
+          TablePicker.getDatabases().should("have.length", 2);
+          TablePicker.getSchemas().should("have.length", 2);
+          TablePicker.getTables().should("have.length", 2);
+          TablePicker.getTable("Orders").should("be.visible");
+          TablePicker.getTable("Birds").should("be.visible");
 
-          H.DataModel.TablePicker.getSearchInput().clear().type("rds");
-          H.DataModel.TablePicker.getDatabases().should("have.length", 1);
-          H.DataModel.TablePicker.getSchemas().should("have.length", 1);
-          H.DataModel.TablePicker.getTables().should("have.length", 1);
-          H.DataModel.TablePicker.getTable("Birds")
-            .should("be.visible")
-            .click();
+          TablePicker.getSearchInput().clear().type("rds");
+          TablePicker.getDatabases().should("have.length", 1);
+          TablePicker.getSchemas().should("have.length", 1);
+          TablePicker.getTables().should("have.length", 1);
+          TablePicker.getTable("Birds").should("be.visible").click();
 
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
               `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild/table/`,
             );
           });
-          H.DataModel.TableSection.getNameInput().should("have.value", "Birds");
+          TableSection.getNameInput().should("have.value", "Birds");
 
           cy.log("go back to browsing");
-          H.DataModel.TablePicker.getSearchInput().clear();
-          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
-          H.DataModel.TablePicker.getSchemas().should("have.length", 2);
-          H.DataModel.TablePicker.getTables().should("have.length", 2);
+          TablePicker.getSearchInput().clear();
+          TablePicker.getDatabases().should("have.length", 2);
+          TablePicker.getSchemas().should("have.length", 2);
+          TablePicker.getTables().should("have.length", 2);
         });
       },
     );
@@ -237,53 +225,44 @@ describe("scenarios > admin > datamodel", () => {
         tableId: ORDERS_ID,
       });
 
-      H.DataModel.TablePicker.getTables().should("have.length", 8);
+      TablePicker.getTables().should("have.length", 8);
 
-      H.DataModel.TableSection.clickField("ID");
-      H.DataModel.FieldSection.getDataType()
+      TableSection.clickField("ID");
+      FieldSection.getDataType()
         .should("be.visible")
         .and("have.text", "BIGINT");
-      H.DataModel.FieldSection.getSemanticTypeInput().should(
-        "have.value",
-        "Entity Key",
-      );
+      FieldSection.getSemanticTypeInput().should("have.value", "Entity Key");
 
-      H.DataModel.TableSection.clickField("User ID");
-      H.DataModel.FieldSection.getDataType()
+      TableSection.clickField("User ID");
+      FieldSection.getDataType()
         .should("be.visible")
         .and("have.text", "INTEGER");
-      H.DataModel.FieldSection.getSemanticTypeInput().should(
-        "have.value",
-        "Foreign Key",
-      );
-      H.DataModel.FieldSection.getSemanticTypeFkTarget().should(
+      FieldSection.getSemanticTypeInput().should("have.value", "Foreign Key");
+      FieldSection.getSemanticTypeFkTarget().should(
         "have.value",
         "People → ID",
       );
 
-      H.DataModel.TableSection.clickField("Tax");
-      H.DataModel.FieldSection.getDataType()
+      TableSection.clickField("Tax");
+      FieldSection.getDataType()
         .should("be.visible")
         .and("have.text", "DOUBLE PRECISION");
-      H.DataModel.FieldSection.getSemanticTypeInput().should(
+      FieldSection.getSemanticTypeInput().should(
         "have.value",
         "No semantic type",
       );
 
-      H.DataModel.TableSection.clickField("Discount");
-      H.DataModel.FieldSection.getDataType()
+      TableSection.clickField("Discount");
+      FieldSection.getDataType()
         .should("be.visible")
         .and("have.text", "DOUBLE PRECISION");
-      H.DataModel.FieldSection.getSemanticTypeInput().should(
-        "have.value",
-        "Discount",
-      );
+      FieldSection.getSemanticTypeInput().should("have.value", "Discount");
 
-      H.DataModel.TableSection.clickField("Created At");
-      H.DataModel.FieldSection.getDataType()
+      TableSection.clickField("Created At");
+      FieldSection.getDataType()
         .should("be.visible")
         .and("have.text", "TIMESTAMP");
-      H.DataModel.FieldSection.getSemanticTypeInput().should(
+      FieldSection.getSemanticTypeInput().should(
         "have.value",
         "Creation timestamp",
       );
@@ -299,17 +278,17 @@ describe("scenarios > admin > datamodel", () => {
       verifyFieldSectionEmptyState();
 
       cy.log("name");
-      H.DataModel.TableSection.getNameInput()
+      TableSection.getNameInput()
         .should("have.value", "Orders")
         .clear()
         .type("New orders")
         .blur();
       H.undoToast().should("contain.text", "Table name updated");
       H.undoToast().icon("close").click();
-      H.DataModel.TablePicker.getTable("New orders").should("be.visible");
+      TablePicker.getTable("New orders").should("be.visible");
 
       cy.log("description");
-      H.DataModel.TableSection.getDescriptionInput()
+      TableSection.getDescriptionInput()
         .should(
           "have.value",
           "Confirmed Sample Company orders for a product, from a user.",
@@ -320,11 +299,8 @@ describe("scenarios > admin > datamodel", () => {
       H.undoToast().should("contain.text", "Table description updated");
 
       cy.reload();
-      H.DataModel.TableSection.getNameInput().should(
-        "have.value",
-        "New orders",
-      );
-      H.DataModel.TableSection.getDescriptionInput().should(
+      TableSection.getNameInput().should("have.value", "New orders");
+      TableSection.getDescriptionInput().should(
         "have.value",
         "New description",
       );
@@ -337,7 +313,7 @@ describe("scenarios > admin > datamodel", () => {
         tableId: ORDERS_ID,
       });
 
-      H.DataModel.TableSection.getFieldNameInput("Product ID")
+      TableSection.getFieldNameInput("Product ID")
         .clear()
         .type("Remapped Product ID")
         .realPress("Tab");
@@ -373,7 +349,7 @@ describe("scenarios > admin > datamodel", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
-      H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
+      TablePicker.getTable("Orders").button("Hide table").click();
       cy.wait("@tableUpdate");
 
       // Visit the main page, we shouldn't be able to see the table
@@ -472,7 +448,7 @@ describe("scenarios > admin > datamodel", () => {
         });
 
         // update the name
-        H.DataModel.FieldSection.getNameInput()
+        FieldSection.getNameInput()
           .should("have.value", "Created At")
           .clear()
           .type("new display_name")
@@ -480,7 +456,7 @@ describe("scenarios > admin > datamodel", () => {
         cy.wait("@updateField");
 
         // update the description
-        H.DataModel.FieldSection.getDescriptionInput()
+        FieldSection.getDescriptionInput()
           .should("have.value", "The date and time an order was submitted.")
           .clear()
           .type("new description")
@@ -489,11 +465,8 @@ describe("scenarios > admin > datamodel", () => {
 
         // reload and verify they have been updated
         cy.reload();
-        H.DataModel.FieldSection.getNameInput().should(
-          "have.value",
-          "new display_name",
-        );
-        H.DataModel.FieldSection.getDescriptionInput().should(
+        FieldSection.getNameInput().should("have.value", "new display_name");
+        FieldSection.getDescriptionInput().should(
           "have.value",
           "new description",
         );
@@ -507,7 +480,7 @@ describe("scenarios > admin > datamodel", () => {
           fieldId: ORDERS.PRODUCT_ID,
         });
 
-        H.DataModel.FieldSection.getNameInput()
+        FieldSection.getNameInput()
           .clear()
           .type("Remapped Product ID")
           .realPress("Tab");
@@ -532,7 +505,7 @@ describe("scenarios > admin > datamodel", () => {
           });
           cy.wait(["@metadata", "@metadata"]);
 
-          H.DataModel.FieldSection.getSemanticTypeInput()
+          FieldSection.getSemanticTypeInput()
             .should("have.value", "Foreign Key")
             .click();
           H.popover().findByText("No semantic type").click();
@@ -542,7 +515,7 @@ describe("scenarios > admin > datamodel", () => {
           cy.reload();
           cy.wait("@metadata");
 
-          H.DataModel.FieldSection.getSemanticTypeInput().should(
+          FieldSection.getSemanticTypeInput().should(
             "have.value",
             "No semantic type",
           );
@@ -557,20 +530,20 @@ describe("scenarios > admin > datamodel", () => {
           });
           cy.wait("@metadata");
 
-          H.DataModel.FieldSection.getSemanticTypeInput()
+          FieldSection.getSemanticTypeInput()
             .should("have.value", "Quantity")
             .click();
           H.popover().findByText("Foreign Key").click();
           waitAndAssertOnResponse("updateField");
 
-          H.DataModel.FieldSection.getSemanticTypeFkTarget().click();
+          FieldSection.getSemanticTypeFkTarget().click();
           H.popover().findByText("Products → ID").click();
           waitAndAssertOnResponse("updateField");
 
           cy.reload();
           cy.wait(["@metadata", "@metadata"]);
 
-          H.DataModel.FieldSection.getSemanticTypeFkTarget()
+          FieldSection.getSemanticTypeFkTarget()
             .should("be.visible")
             .and("have.value", "Products → ID");
         });
@@ -584,7 +557,7 @@ describe("scenarios > admin > datamodel", () => {
           });
           cy.wait(["@metadata", "@metadata"]);
 
-          H.DataModel.FieldSection.getSemanticTypeFkTarget().focus().clear();
+          FieldSection.getSemanticTypeFkTarget().focus().clear();
           H.popover()
             .should("contain.text", "Orders → ID")
             .and("contain.text", "People → ID")
@@ -592,7 +565,7 @@ describe("scenarios > admin > datamodel", () => {
             .and("contain.text", "Reviews → ID");
 
           cy.log("should case-insensitive match field display name");
-          H.DataModel.FieldSection.getSemanticTypeFkTarget().focus().type("id");
+          FieldSection.getSemanticTypeFkTarget().focus().type("id");
           H.popover()
             .should("contain.text", "Orders → ID")
             .and("contain.text", "People → ID")
@@ -600,10 +573,7 @@ describe("scenarios > admin > datamodel", () => {
             .and("contain.text", "Reviews → ID");
 
           cy.log("should case-insensitive match field description");
-          H.DataModel.FieldSection.getSemanticTypeFkTarget()
-            .focus()
-            .clear()
-            .type("EXT");
+          FieldSection.getSemanticTypeFkTarget().focus().clear().type("EXT");
           H.popover()
             .should("not.contain.text", "Orders → ID")
             .and("not.contain.text", "People → ID")
@@ -620,7 +590,7 @@ describe("scenarios > admin > datamodel", () => {
           });
           cy.wait(["@metadata", "@metadata"]);
 
-          H.DataModel.FieldSection.getSemanticTypeInput().click();
+          FieldSection.getSemanticTypeInput().click();
           H.popover()
             .should("contain.text", "Foreign Key")
             .and("not.contain.text", "Number");
@@ -631,9 +601,9 @@ describe("scenarios > admin > datamodel", () => {
 
           cy.viewport(1280, viewportHeight);
           H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
-          H.DataModel.TablePicker.getTable("Reviews").scrollIntoView().click();
-          H.DataModel.TableSection.clickField("ID");
-          H.DataModel.FieldSection.getSemanticTypeInput().click();
+          TablePicker.getTable("Reviews").scrollIntoView().click();
+          TableSection.clickField("ID");
+          FieldSection.getSemanticTypeInput().click();
 
           H.popover().scrollTo("top");
           H.popover()
@@ -664,12 +634,12 @@ describe("scenarios > admin > datamodel", () => {
             fieldId: ORDERS.CREATED_AT,
           });
 
-          H.DataModel.FieldSection.getVisibilityInput().click();
+          FieldSection.getVisibilityInput().click();
           H.popover().findByText("Do not include").click();
           cy.wait("@updateField");
 
           cy.reload();
-          H.DataModel.FieldSection.getVisibilityInput()
+          FieldSection.getVisibilityInput()
             .scrollIntoView()
             .should("be.visible")
             .and("have.value", "Do not include");
@@ -685,12 +655,12 @@ describe("scenarios > admin > datamodel", () => {
             fieldId: ORDERS.QUANTITY,
           });
 
-          H.DataModel.FieldSection.getFilteringInput().click();
+          FieldSection.getFilteringInput().click();
           H.popover().findByText("Search box").click();
           cy.wait("@updateField");
 
           cy.reload();
-          H.DataModel.FieldSection.getFilteringInput()
+          FieldSection.getFilteringInput()
             .scrollIntoView()
             .should("be.visible")
             .and("have.value", "Search box");
@@ -706,17 +676,17 @@ describe("scenarios > admin > datamodel", () => {
             fieldId: ORDERS.PRODUCT_ID,
           });
 
-          H.DataModel.FieldSection.getDisplayValuesInput().click();
+          FieldSection.getDisplayValuesInput().click();
           H.popover().findByText("Use foreign key").click();
           H.popover().findByText("Title").click();
           cy.wait("@fieldDimensionUpdate");
 
           cy.reload();
-          H.DataModel.FieldSection.getDisplayValuesInput()
+          FieldSection.getDisplayValuesInput()
             .scrollIntoView()
             .should("be.visible")
             .and("have.value", "Use foreign key");
-          H.DataModel.FieldSection.getDisplayValuesFkTargetInput()
+          FieldSection.getDisplayValuesFkTargetInput()
             .should("be.visible")
             .and("have.value", "Title");
         });
@@ -745,9 +715,7 @@ describe("scenarios > admin > datamodel", () => {
               );
 
               cy.log("Change `null` to custom mapping");
-              H.DataModel.FieldSection.getDisplayValuesInput()
-                .scrollIntoView()
-                .click();
+              FieldSection.getDisplayValuesInput().scrollIntoView().click();
               H.popover().findByText("Custom mapping").click();
 
               H.modal()
@@ -777,11 +745,11 @@ describe("scenarios > admin > datamodel", () => {
           H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
 
           // edit "Product ID" column in "Orders" table
-          H.DataModel.TablePicker.getTable("Orders").click();
-          H.DataModel.TableSection.clickField("Product ID");
+          TablePicker.getTable("Orders").click();
+          TableSection.clickField("Product ID");
 
           // remap its original value to use foreign key
-          H.DataModel.FieldSection.getDisplayValuesInput().click();
+          FieldSection.getDisplayValuesInput().click();
           H.popover().findByText("Use foreign key").click();
           H.popover().findByText("Title").click();
 
@@ -811,11 +779,11 @@ describe("scenarios > admin > datamodel", () => {
 
           H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
           // edit "Rating" values in "Reviews" table
-          H.DataModel.TablePicker.getTable("Reviews").click();
-          H.DataModel.TableSection.clickField("Rating");
+          TablePicker.getTable("Reviews").click();
+          TableSection.clickField("Rating");
 
           // apply custom remapping for "Rating" values 1-5
-          H.DataModel.FieldSection.getDisplayValuesInput().click();
+          FieldSection.getDisplayValuesInput().click();
           H.popover().findByText("Custom mapping").click();
           H.modal().within(() => {
             cy.findByText(
@@ -848,11 +816,11 @@ describe("scenarios > admin > datamodel", () => {
             fieldId: REVIEWS.RATING,
           });
 
-          H.DataModel.FieldSection.getFilteringInput().click();
+          FieldSection.getFilteringInput().click();
           H.popover().findByText("Search box").click();
           cy.wait("@updateField");
 
-          H.DataModel.FieldSection.getDisplayValuesInput().click();
+          FieldSection.getDisplayValuesInput().click();
           H.popover()
             .findByRole("option", { name: /Custom mapping/ })
             .should("have.attr", "data-combobox-disabled", "true");
@@ -867,10 +835,10 @@ describe("scenarios > admin > datamodel", () => {
               'You can only use custom mapping for numerical fields with filtering set to "A list of all values"',
             );
 
-          H.DataModel.FieldSection.getFilteringInput().click();
+          FieldSection.getFilteringInput().click();
           H.popover().findByText("A list of all values").click();
 
-          H.DataModel.FieldSection.getDisplayValuesInput().click();
+          FieldSection.getDisplayValuesInput().click();
           H.popover()
             .findByRole("option", { name: /Custom mapping/ })
             .should("not.have.attr", "data-combobox-disabled");
@@ -884,9 +852,9 @@ describe("scenarios > admin > datamodel", () => {
             fieldId: ORDERS.USER_ID,
           });
 
-          H.DataModel.FieldSection.getDisplayValuesInput().click();
+          FieldSection.getDisplayValuesInput().click();
           H.popover().findByText("Use foreign key").click();
-          H.DataModel.FieldSection.getDisplayValuesFkTargetInput().click();
+          FieldSection.getDisplayValuesFkTargetInput().click();
 
           H.popover().within(() => {
             cy.findByText("Birth Date").scrollIntoView().should("be.visible");
@@ -922,7 +890,7 @@ describe("scenarios > admin > datamodel", () => {
         it("should let you enable/disable 'Unfold JSON' for JSON columns", () => {
           // Go to field settings
           H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
-          H.DataModel.TablePicker.getTable("Many Data Types").click();
+          TablePicker.getTable("Many Data Types").click();
 
           // Check json is unfolded initially
           cy.findByLabelText("Json → A").should("be.visible");
@@ -948,7 +916,7 @@ describe("scenarios > admin > datamodel", () => {
 
           // Check json field is not unfolded
           H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
-          H.DataModel.TablePicker.getTable("Many Data Types").click();
+          TablePicker.getTable("Many Data Types").click();
           cy.findByLabelText("Json → A").should("not.exist");
         });
       });
@@ -963,7 +931,7 @@ describe("scenarios > admin > datamodel", () => {
           fieldId: ORDERS.QUANTITY,
         });
 
-        H.DataModel.FieldSection.getStyleInput().click();
+        FieldSection.getStyleInput().click();
         H.popover().findByText("Percent").click();
         cy.wait("@updateField");
 
@@ -1026,10 +994,7 @@ describe("scenarios > admin > datamodel", () => {
         });
         cy.wait("@metadata");
 
-        H.DataModel.FieldSection.getPrefixInput()
-          .scrollIntoView()
-          .type("about ")
-          .blur();
+        FieldSection.getPrefixInput().scrollIntoView().type("about ").blur();
         cy.wait("@updateField");
 
         H.visitQuestionAdhoc({
@@ -1056,11 +1021,11 @@ describe("scenarios > admin > datamodel", () => {
         });
         cy.wait("@metadata");
 
-        H.DataModel.FieldSection.getPrefixInput().focus().blur();
+        FieldSection.getPrefixInput().focus().blur();
         cy.get("@updateFieldSpy").should("not.have.been.called");
         H.undoToast().should("not.exist");
 
-        H.DataModel.FieldSection.getSuffixInput().focus().blur();
+        FieldSection.getSuffixInput().focus().blur();
         cy.get("@updateFieldSpy").should("not.have.been.called");
         H.undoToast().should("not.exist");
       });
