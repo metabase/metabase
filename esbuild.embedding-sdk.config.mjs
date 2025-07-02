@@ -107,7 +107,7 @@ async function esbuildRun(format) {
         generateScopedName: generateScopedCssClassName,
       }),
       babel({
-        filter: /\.styled\.[jt]s?x/,
+        filter: /\.[jt]s?x/,
         config: {
           sourceMaps: ENABLE_SOURCE_MAPS,
           presets: [["@babel/preset-env", { bugfixes: true, modules: false }]],
