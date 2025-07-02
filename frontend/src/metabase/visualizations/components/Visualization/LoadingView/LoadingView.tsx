@@ -16,7 +16,7 @@ export interface LoadingViewProps {
   expectedDuration?: number;
 }
 
-export function SlowQueryView({ expectedDuration, isSlow }: LoadingViewProps) {
+function SlowQueryView({ expectedDuration, isSlow }: LoadingViewProps) {
   return (
     <SlowQueryMessageContainer>
       <ShortMessage>{t`Still Waiting…`}</ShortMessage>

@@ -19,6 +19,8 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
+  Box,
+  Button,
   Flex,
   HoverCard,
   Icon,
@@ -84,31 +86,29 @@ const DashCardLoadingView = ({
       className={cx(CS.px2, CS.pb2, CS.fullHeight)}
     >
       <ChartSkeleton display={display} />
-      <HoverCard width={300} offset={-8} position="bottom-start">
-        <HoverCard.Target>
-          <div className={cx(CS.absolute, CS.left, CS.bottom, CS.p2)}>
-            <Icon
-              name="hourglass"
-              size={18}
-              className={cx(CS.hourglass, CS.flex)}
-            />
-          </div>
-        </HoverCard.Target>
-        <HoverCard.Dropdown ml={-12}>
-          <div className={cx(CS.p2, CS.textCentered)}>
-            <Text fw="bold">{t`Waiting for your data`}</Text>
-            <Text lh="1.5">
-              {isSlow === "usually-slow"
-                ? jt`This usually takes an average of ${(
-                    <span className={CS.textNoWrap}>
-                      {duration(expectedDuration ?? 0)}
-                    </span>
-                  )}, but is currently taking longer.`
-                : t`This usually loads immediately, but is currently taking longer.`}
-            </Text>
-          </div>
-        </HoverCard.Dropdown>
-      </HoverCard>
+      <Box className={CS.absolute} left={12} bottom={12}>
+        <HoverCard width={288} offset={4} position="bottom-start">
+          <HoverCard.Target>
+            <Button w={24} h={24} p={0} classNames={{ label: cx(CS.flex) }}>
+              <Icon name="hourglass" size={12} d="flex" />
+            </Button>
+          </HoverCard.Target>
+          <HoverCard.Dropdown ml={-8}>
+            <div className={cx(CS.p2, CS.textCentered)}>
+              <Text fw="bold">{t`Waiting for your data`}</Text>
+              <Text lh="1.5">
+                {isSlow === "usually-slow"
+                  ? jt`This usually takes an average of ${(
+                      <span className={CS.textNoWrap}>
+                        {duration(expectedDuration ?? 0)}
+                      </span>
+                    )}, but is currently taking longer.`
+                  : t`This usually loads immediately, but is currently taking longer.`}
+              </Text>
+            </div>
+          </HoverCard.Dropdown>
+        </HoverCard>
+      </Box>
     </div>
   );
 };

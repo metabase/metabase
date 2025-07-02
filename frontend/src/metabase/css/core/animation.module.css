@@ -73,22 +73,6 @@
   }
 }
 
-@keyframes hourglass {
-  67% {
-    transform: rotate(0);
-  }
-
-  100% {
-    transform: rotate(180deg);
-  }
-}
-
-.hourglass {
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-
-  animation: 1.5s var(--ease-out-expo) 0s infinite hourglass;
-}
-
 .popInFromBottom {
   animation: 0.15s ease-out 0s 1 pop-in-from-bottom;
   transform-origin: center center;
