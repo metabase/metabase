@@ -76,7 +76,11 @@ export function QueryColumnPicker({
       const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
       const items = Lib.getColumnsFromColumnGroup(group).map((column) => ({
-        ...Lib.displayInfo(query, stageIndex, column),
+        ...Lib.displayInfo(
+          query,
+          stageIndex,
+          getColumnWithoutBucketing(column, hasTemporalBucketing, hasBinning),
+        ),
         column,
       }));
 
@@ -87,7 +91,14 @@ export function QueryColumnPicker({
       };
     });
     return [...columnSections, ...(extraSections ?? [])];
-  }, [query, stageIndex, columnGroups, extraSections]);
+  }, [
+    query,
+    stageIndex,
+    columnGroups,
+    extraSections,
+    hasTemporalBucketing,
+    hasBinning,
+  ]);
 
   const handleSelect = useCallback(
     (column: Lib.ColumnMetadata) => {
@@ -225,6 +236,22 @@ export function QueryColumnPicker({
       />
     </DelayGroup>
   );
+}
+
+// if there is a separate picker for temporal bucketing or binning,
+// we do not want to include it in the column name
+function getColumnWithoutBucketing(
+  column: Lib.ColumnMetadata,
+  hasTemporalBucketing: boolean,
+  hasBinning: boolean,
+) {
+  if (hasTemporalBucketing && Lib.temporalBucket(column) != null) {
+    return Lib.withTemporalBucket(column, null);
+  }
+  if (hasBinning && Lib.binning(column) != null) {
+    return Lib.withBinning(column, null);
+  }
+  return column;
 }
 
 function renderItemName(item: ColumnListItem) {

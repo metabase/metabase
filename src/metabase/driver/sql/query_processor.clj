@@ -783,7 +783,10 @@
         coercion-strategy (case (or mode :iso)
                             ;; String
                             :iso              :Coercion/ISO8601->DateTime
-                            :simple           :Coercion/YYYYMMDDHHMMSSString->DateTime
+                            :simple           :Coercion/YYYYMMDDHHMMSSString->Temporal
+                            ;; Binary
+                            :isobytes         :Coercion/ISO8601Bytes->Temporal
+                            :simplebytes      :Coercion/YYYYMMDDHHMMSSBytes->Temporal
                             ;; Number
                             :unixmilliseconds :Coercion/UNIXMilliSeconds->DateTime
                             :unixseconds      :Coercion/UNIXSeconds->DateTime
@@ -797,6 +800,9 @@
 
       (isa? coercion-strategy :Coercion/String->Temporal)
       (cast-temporal-string driver coercion-strategy honeysql-form)
+
+      (isa? coercion-strategy :Coercion/Bytes->Temporal)
+      (cast-temporal-byte driver coercion-strategy honeysql-form)
 
       :else
       (throw (ex-info "Don't know how to convert the value to datetime."
