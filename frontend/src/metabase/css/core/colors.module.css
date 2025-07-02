@@ -19,6 +19,7 @@
  * colors in this file.
 */
 
+:host,
 :root {
   /* Semantic colors */
   --mb-color-brand: var(--mb-base-color-blue-40);

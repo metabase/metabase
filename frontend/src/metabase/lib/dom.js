@@ -56,8 +56,10 @@ export const getScrollBarSize = _.memoize(() => {
   innerElem.style.width = "30px";
   innerElem.style.height = "60px";
   scrollableElem.appendChild(innerElem);
+  // eslint-disable-next-line no-direct-document-references
   document.body.appendChild(scrollableElem); // Elements only have width if they're in the layout
   const diff = scrollableElem.offsetWidth - scrollableElem.clientWidth;
+  // eslint-disable-next-line no-direct-document-references
   document.body.removeChild(scrollableElem);
   return diff;
 });
@@ -339,6 +341,7 @@ export function openInBlankWindow(url) {
 function clickLink(url, blank = false) {
   const a = document.createElement("a");
   a.style.display = "none";
+  // eslint-disable-next-line no-direct-document-references
   document.body.appendChild(a);
   try {
     a.href = url;
@@ -516,28 +519,24 @@ export function isReducedMotionPreferred() {
   return mediaQuery && mediaQuery.matches;
 }
 
-/**
- * @returns {HTMLElement | undefined}
- */
-export function getMainElement() {
-  const [main] = document.getElementsByTagName("main");
-  return main;
-}
-
 export function isSmallScreen() {
   const mediaQuery = window.matchMedia("(max-width: 40em)");
   return mediaQuery && mediaQuery.matches;
 }
 
 /**
- * @param {MouseEvent<Element, MouseEvent>} event
+ * @param {object}   options
+ * @param {HTMLElement} options.rootElement
+ * @param {MouseEvent<Element, MouseEvent>} options.event
+ * @returns {HTMLElement}
  */
-export const getEventTarget = (event) => {
-  let target = document.getElementById("popover-event-target");
+export const getEventTarget = ({ rootElement, event }) => {
+  let target = rootElement.querySelector("#popover-event-target");
+
   if (!target) {
     target = document.createElement("div");
     target.id = "popover-event-target";
-    document.body.appendChild(target);
+    rootElement.appendChild(target);
   }
   target.style.left = event.clientX - 3 + "px";
   target.style.top = event.clientY - 3 + "px";
@@ -566,6 +565,7 @@ export function openSaveDialog(fileName, fileContent) {
   const link = document.createElement("a");
   link.href = url;
   link.setAttribute("download", fileName);
+  // eslint-disable-next-line no-direct-document-references
   document.body.appendChild(link);
   link.click();
 
