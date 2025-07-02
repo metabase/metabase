@@ -8,7 +8,7 @@ export const EMBEDDING_SDK_CONFIG = {
    * Whether we are in the Embedding SDK or its derivatives
    * such as sdk-based iframe embedding.
    **/
-  isSdk: false,
+  isEmbeddingSdk: false,
 };
 
 export const EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG = {
@@ -18,3 +18,9 @@ export const EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG = {
   /** Whether we should use the existing user session (i.e. admin user's cookie) */
   useExistingUserSession: false,
 };
+
+/**
+ * Whether we are in the Embedding SDK or its derivatives
+ * such as sdk-based iframe embedding.
+ **/
+export const isEmbeddingSdk = () => EMBEDDING_SDK_CONFIG.isEmbeddingSdk;

@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isWithinIframe } from "metabase/lib/dom";
 import type { InteractiveEmbeddingOptions, State } from "metabase-types/store";
 
@@ -17,5 +17,5 @@ export const getEmbedOptions = (
 
 export const getIsEmbedding = createSelector(
   [getIsEmbeddingIframe],
-  (isEmbeddingIframe) => isEmbeddingIframe || EMBEDDING_SDK_CONFIG.isSdk,
+  (isEmbeddingIframe) => isEmbeddingIframe || isEmbeddingSdk(),
 );

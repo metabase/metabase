@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { addLocale, useLocale } from "ttag";
 
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
 import MetabaseSettings from "metabase/lib/settings";
@@ -195,7 +195,7 @@ if (window.MetabaseUserLocalization) {
  * @param {object} translationsObject A translated object with the same structure as the one produced in `loadLocalization` function.
  */
 export function setUserLocale(translationsObject) {
-  if (!EMBEDDING_SDK_CONFIG.isSdk) {
+  if (!isEmbeddingSdk()) {
     window.MetabaseUserLocalization = translationsObject;
   }
 }

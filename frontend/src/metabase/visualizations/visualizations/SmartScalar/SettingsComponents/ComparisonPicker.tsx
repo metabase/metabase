@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import CS from "metabase/css/core/index.css";
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Menu, Stack, Text, rem } from "metabase/ui";
 import type {
   DatasetColumn,
@@ -152,7 +152,7 @@ export function ComparisonPicker({
       position="bottom-start"
       shadow="sm"
       closeOnItemClick={false}
-      {...(EMBEDDING_SDK_CONFIG.isSdk && {
+      {...(isEmbeddingSdk() && {
         withinPortal: false,
         floatingStrategy: "fixed",
       })}

@@ -12,7 +12,7 @@ import { getMetabaseInstanceUrl } from "embedding-sdk/store/selectors";
 import Link from "metabase/common/components/Link";
 import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { formatValue } from "metabase/lib/formatting";
 import { connect, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
@@ -110,7 +110,6 @@ function shouldUseCompactFormatting(groups, formatMetric) {
 }
 
 const mapStateToProps = (state) => ({
-  isSdk: EMBEDDING_SDK_CONFIG.isSdk,
   sdkMetabaseInstanceUrl: getMetabaseInstanceUrl(state),
 });
 
@@ -123,7 +122,7 @@ export function getMapUrl(details, props) {
     ? details.url
     : "api/geojson/" + props.settings["map.region"];
 
-  if (!props?.isSdk || !props?.sdkMetabaseInstanceUrl) {
+  if (!isEmbeddingSdk() || !props?.sdkMetabaseInstanceUrl) {
     return mapUrl;
   }
 

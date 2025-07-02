@@ -9,7 +9,7 @@ import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
 import { type ReactNode, useMemo } from "react";
 
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isJest } from "metabase/env";
 
 import { getThemeOverrides } from "../../../theme";
@@ -77,9 +77,7 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
       getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
       classNamesPrefix="mb-mantine"
       // This slows down unit tests like crazy
-      cssVariablesSelector={
-        EMBEDDING_SDK_CONFIG.isSdk ? ".mb-wrapper" : undefined
-      }
+      cssVariablesSelector={isEmbeddingSdk() ? ".mb-wrapper" : undefined}
       withCssVariables={!isJest}
       {...props.mantineProviderProps}
     >

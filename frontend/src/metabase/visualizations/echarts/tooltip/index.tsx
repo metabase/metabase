@@ -4,8 +4,8 @@ import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import {
-  EMBEDDING_SDK_CONFIG,
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
+  isEmbeddingSdk,
 } from "metabase/embedding-sdk/config";
 import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
@@ -73,7 +73,7 @@ export const getTooltipBaseOption = (
     className: TooltipStyles.ChartTooltipRoot,
     appendTo: () => {
       const echartsTooltipContainerSelector = ".echarts-tooltip-container";
-      const containerSelector = !EMBEDDING_SDK_CONFIG.isSdk
+      const containerSelector = !isEmbeddingSdk()
         ? echartsTooltipContainerSelector
         : `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID} ${echartsTooltipContainerSelector}`;
 
@@ -94,7 +94,7 @@ export const getTooltipBaseOption = (
           "calc(var(--mb-overlay-z-index) + 1)",
         );
 
-        if (!EMBEDDING_SDK_CONFIG.isSdk) {
+        if (!isEmbeddingSdk()) {
           document.body.append(container);
         } else {
           document

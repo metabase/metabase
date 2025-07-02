@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
 export function useGlobalTheme(theme: DisplayTheme | undefined) {
   useEffect(() => {
     // We don't want to modify user application DOM when using the SDK.
-    if (EMBEDDING_SDK_CONFIG.isSdk || theme == null) {
+    if (isEmbeddingSdk() || theme == null) {
       return;
     }
 

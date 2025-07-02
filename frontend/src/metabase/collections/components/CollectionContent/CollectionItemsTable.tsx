@@ -24,7 +24,7 @@ import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/util
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import Search from "metabase/entities/search";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -142,8 +142,7 @@ export const CollectionItemsTable = ({
     [setPage],
   );
 
-  const showAllItems =
-    EMBEDDING_SDK_CONFIG.isSdk || isRootTrashCollection(collection);
+  const showAllItems = isEmbeddingSdk() || isRootTrashCollection(collection);
 
   return (
     <CollectionItemsTableContent

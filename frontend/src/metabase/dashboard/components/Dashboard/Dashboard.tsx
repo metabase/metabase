@@ -7,7 +7,7 @@ import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
@@ -57,8 +57,6 @@ function Dashboard({ className }: { className?: string }) {
     sidebar,
     closeSidebar,
   } = useDashboardContext();
-
-  const isEmbeddingSdk = EMBEDDING_SDK_CONFIG.isSdk;
 
   const canWrite = Boolean(dashboard?.can_write);
   const canRestore = Boolean(dashboard?.can_restore);
@@ -141,7 +139,7 @@ function Dashboard({ className }: { className?: string }) {
           S.DashboardHeaderContainer,
           EmbedFrameS.EmbedFrameHeader,
           {
-            [S.isEmbeddingSdk]: isEmbeddingSdk,
+            [S.isEmbeddingSdk]: isEmbeddingSdk(),
             [S.isFullscreen]: isFullscreen,
             [S.isNightMode]: shouldRenderAsNightMode,
           },

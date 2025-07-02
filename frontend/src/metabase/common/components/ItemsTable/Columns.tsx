@@ -8,7 +8,7 @@ import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import EntityItem from "metabase/common/components/EntityItem";
 import Markdown from "metabase/common/components/Markdown";
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { IconProps } from "metabase/ui";
@@ -47,9 +47,7 @@ const ItemLinkComponent = ({
   item: CollectionItem;
   onClick?: (item: CollectionItem) => void;
 }>) => {
-  const isEmbeddingSdk = EMBEDDING_SDK_CONFIG.isSdk;
-
-  if (isEmbeddingSdk) {
+  if (isEmbeddingSdk()) {
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
   return (

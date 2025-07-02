@@ -15,7 +15,7 @@ import {
   getIsDirty,
   getIsEditing,
 } from "metabase/dashboard/selectors";
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
 import { getSetting } from "metabase/selectors/settings";
@@ -130,7 +130,7 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
         )}
         editingButtons={editingButtons}
         onLastEditInfoClick={
-          EMBEDDING_SDK_CONFIG.isSdk
+          isEmbeddingSdk()
             ? undefined
             : () => {
                 dispatch(setSidebar({ name: SIDEBAR_NAME.info }));

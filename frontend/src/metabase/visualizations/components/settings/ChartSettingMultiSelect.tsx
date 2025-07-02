@@ -1,4 +1,4 @@
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { MultiSelect } from "metabase/ui";
 
 type Value = string[] | undefined;
@@ -46,7 +46,7 @@ export const ChartSettingMultiSelect = ({
       comboboxProps={{
         // For the SDK the ChartSettingMultiSelect is rendered inside a parent popover,
         // so as a nested popover it should not be rendered within a portal
-        withinPortal: !EMBEDDING_SDK_CONFIG.isSdk,
+        withinPortal: !isEmbeddingSdk(),
         floatingStrategy: "fixed",
       }}
       aria-label={placeholder}

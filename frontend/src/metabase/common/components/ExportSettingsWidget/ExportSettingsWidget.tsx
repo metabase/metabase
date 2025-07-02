@@ -3,7 +3,7 @@ import { c, t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import type { ExportFormat } from "metabase/common/types/export";
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Checkbox, SegmentedControl, Stack } from "metabase/ui";
@@ -26,9 +26,8 @@ const useFormattingLabel = ({
   isFormattingEnabled: boolean;
 }) => {
   const applicationName = useSelector(getApplicationName);
-  const isEmbeddingSdk = EMBEDDING_SDK_CONFIG.isSdk;
 
-  return match({ isFormattingEnabled, isEmbeddingSdk })
+  return match({ isFormattingEnabled, isEmbeddingSdk: isEmbeddingSdk() })
     .with(
       { isEmbeddingSdk: true, isFormattingEnabled: true },
       () =>
