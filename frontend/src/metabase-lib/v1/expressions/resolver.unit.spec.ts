@@ -1,8 +1,11 @@
+import * as Lib from "metabase-lib";
+
 import { resolver as makeResolver } from "./resolver";
 import {
   expressions,
   fields,
   findDimensions,
+  findField,
   metrics,
   query,
   queryWithAggregation,
@@ -531,6 +534,83 @@ describe("resolver", () => {
     it("should allow resolving field with exact case matches first", () => {
       expect(resolve("number", "BAR")).toEqual(expressions.BAR_UPPER);
       expect(resolve("number", "bar")).toEqual(expressions.BAR_LOWER);
+    });
+  });
+
+  describe("query with aggregation in first stage > later stages", () => {
+    const query = Lib.appendStage(queryWithAggregation);
+    const aggregations = {
+      BAR_AGGREGATION: findField(query, "Bar Aggregation"),
+    };
+
+    const resolve = makeResolver({
+      query,
+      stageIndex,
+      expressionMode: "expression",
+    });
+
+    describe("type = boolean", () => {
+      const boolean = (name: string) => resolve("boolean", name);
+
+      it("should not resolve non-boolean aggregations", () => {
+        expect(() => boolean("Bar Aggregation")).toThrow(
+          "Unknown Segment or boolean column: Bar Aggregation",
+        );
+      });
+    });
+
+    describe("type = string", () => {
+      const string = (name: string) => resolve("string", name);
+
+      it("should resolve aggregations", () => {
+        expect(string("Bar Aggregation")).toEqual(aggregations.BAR_AGGREGATION);
+      });
+    });
+
+    describe("type = number", () => {
+      const number = (name: string) => resolve("number", name);
+
+      it("should resolve aggregations", () => {
+        expect(number("Bar Aggregation")).toEqual(aggregations.BAR_AGGREGATION);
+      });
+    });
+
+    describe("type = datetime", () => {
+      const datetime = (name: string) => resolve("datetime", name);
+
+      it("should resolve aggregations", () => {
+        expect(datetime("Bar Aggregation")).toEqual(
+          aggregations.BAR_AGGREGATION,
+        );
+      });
+    });
+
+    describe("type = any", () => {
+      const any = (name: string) => resolve("any", name);
+
+      it("should resolve aggregations", () => {
+        expect(any("Bar Aggregation")).toEqual(aggregations.BAR_AGGREGATION);
+      });
+    });
+
+    describe("type = expression", () => {
+      const expression = (name: string) => resolve("expression", name);
+
+      it("should resolve aggregations", () => {
+        expect(expression("Bar Aggregation")).toEqual(
+          aggregations.BAR_AGGREGATION,
+        );
+      });
+    });
+
+    describe("type = aggregation", () => {
+      const aggregation = (name: string) => resolve("aggregation", name);
+
+      it("should not resolve aggregation as it is now just a field", () => {
+        expect(() => aggregation("Bar Aggregation")).toThrow(
+          "No aggregation found in: Bar Aggregation. Use functions like Sum() or custom Metrics",
+        );
+      });
     });
   });
 });

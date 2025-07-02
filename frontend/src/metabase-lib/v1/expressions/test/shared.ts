@@ -147,7 +147,7 @@ export const queryWithAggregation = createQueryWithClauses({
 
 export const stageIndex = -1;
 
-function findField(query: Lib.Query, name: string) {
+export function findField(query: Lib.Query, name: string) {
   const columns = Lib.expressionableColumns(query, stageIndex);
   for (const column of columns) {
     const info = Lib.displayInfo(query, stageIndex, column);
