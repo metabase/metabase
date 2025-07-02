@@ -26,6 +26,7 @@ import {
 } from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -442,6 +443,15 @@ export function DashCardVisualization({
     dashcardId: dashcard.id,
   });
 
+  const renderLoadingView = () => (
+    <div
+      data-testid="loading-indicator"
+      className={cx(CS.px2, CS.pb2, CS.fullHeight)}
+    >
+      <ChartSkeleton display={question?.display()} />
+    </div>
+  );
+
   return (
     <Visualization
       className={cx(CS.flexFull, {
@@ -482,6 +492,7 @@ export function DashCardVisualization({
       onTogglePreviewing={onTogglePreviewing}
       onChangeCardAndRun={onChangeCardAndRun}
       onChangeLocation={onChangeLocation}
+      renderLoadingView={renderLoadingView}
       token={token}
       uuid={uuid}
       titleMenuItems={titleMenuItems}
