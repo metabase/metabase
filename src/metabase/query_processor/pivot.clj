@@ -417,7 +417,7 @@
                                (lib.metadata.jvm/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
         index-in-breakouts (into {}
-                                 (comp (filter (comp #{:source/breakouts :source/aggregations} :lib/source))
+                                 (comp (filter (some-fn :lib/breakout? #(= (:lib/source %) :source/aggregations)))
                                        (map-indexed (fn [i column] [(:name column) i])))
                                  (lib/returned-columns query))]
     (-> (or (:column_settings viz-settings)
@@ -613,8 +613,7 @@
         canonical-query         (add-pivot-group-breakout remapped-query 0) ; a query that returns ALL the result columns.
         canonical-cols          (lib/returned-columns canonical-query)
         num-canonical-cols      (count canonical-cols)
-        num-canonical-breakouts (count (filter #(= (:lib/source %) :source/breakouts)
-                                               canonical-cols))]
+        num-canonical-breakouts (count (filter :lib/breakout? canonical-cols))]
     (fn column-mapping-fn* [subquery]
       (let [breakout-combination (:qp.pivot/breakout-combination subquery)
             full-breakout-combination (splice-in-remap breakout-combination remap)]
