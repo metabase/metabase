@@ -183,7 +183,7 @@ export class Scalar extends Component {
     const clicked = {
       value,
       column,
-      data: rows[0].map((value, index) => ({ value, col: cols[index] })),
+      data: rows[0]?.map((value, index) => ({ value, col: cols[index] })),
       settings,
     };
     const isClickable = onVisualizationClick != null;
