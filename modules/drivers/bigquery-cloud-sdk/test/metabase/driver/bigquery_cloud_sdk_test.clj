@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
@@ -1233,3 +1234,13 @@
           (is (= "bigquery.example.com"
                  (.getHost (.getOptions client)))
               "BigQuery client should be configured with alternate host"))))))
+
+(deftest user-agent-is-set-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "User agent is set for bigquery requests"
+      (let [client (#'bigquery/database-details->client (:details (mt/db)))
+            mb-version (:tag config/mb-version-info)
+            run-mode   (name config/run-mode)
+            user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)]
+        (is (= user-agent
+               (-> client .getOptions .getUserAgent)))))))

@@ -27,10 +27,26 @@ import { SortButtonContainer } from "./MetadataTableColumnList.styled";
 const ORDER_SECTIONS = [
   {
     items: [
-      { name: t`Database`, value: "database" },
-      { name: t`Alphabetical`, value: "alphabetical" },
-      { name: t`Custom`, value: "custom" },
-      { name: t`Smart`, value: "smart" },
+      {
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        name: t`Database`,
+        value: "database",
+      },
+      {
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        name: t`Alphabetical`,
+        value: "alphabetical",
+      },
+      {
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        name: t`Custom`,
+        value: "custom",
+      },
+      {
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+        name: t`Smart`,
+        value: "smart",
+      },
     ],
   },
 ];

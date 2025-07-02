@@ -368,13 +368,17 @@
   ([graph]
    (doseq [[group-id group-changes] graph]
      (doseq [[db-id db-changes] group-changes
-             [perm-type new-perms] db-changes]
-       (case perm-type
-         :view-data      (update-db-level-view-data-permissions! group-id db-id new-perms)
-         :create-queries (update-db-level-create-queries-permissions! group-id db-id new-perms)
-         :download       (update-db-level-download-permissions! group-id db-id new-perms)
-         :data-model     (update-db-level-metadata-permissions! group-id db-id new-perms)
-         :details        (update-details-perms! group-id db-id new-perms)))))
+             ;; instead of iterating the provided cb-changes object we need to go in a specific order
+             ;; so backend consistency rules like setting create-queries and download to no when view-data
+             ;; is blocked can happen in the correct order despite what may come in the API request
+             perm-type [:details :data-model :download :create-queries :view-data]]
+       (when-let [new-perms (perm-type db-changes)]
+         (case perm-type
+           :view-data      (update-db-level-view-data-permissions! group-id db-id new-perms)
+           :create-queries (update-db-level-create-queries-permissions! group-id db-id new-perms)
+           :download       (update-db-level-download-permissions! group-id db-id new-perms)
+           :data-model     (update-db-level-metadata-permissions! group-id db-id new-perms)
+           :details        (update-details-perms! group-id db-id new-perms))))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]

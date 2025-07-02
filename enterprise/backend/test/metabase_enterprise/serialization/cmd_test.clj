@@ -1,11 +1,12 @@
 (ns metabase-enterprise.serialization.cmd-test
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
-   [metabase-enterprise.serialization.v2.load :as v2.load]
+   [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.cmd :as cmd]
@@ -198,8 +199,8 @@
                              (filter #(= "serialization" (get % "event")))
                              first))))
 
-              (cmd/import dump-dir)
               (testing "Snowplow import event was sent"
+                (cmd/import dump-dir)
                 (is (=? {"event"         "serialization"
                          "direction"     "import"
                          "duration_ms"   pos?
@@ -232,14 +233,13 @@
                                (filter #(= "serialization" (get % "event")))
                                first)))))
 
-              (let [load-one! @#'v2.load/load-one!]
-                (with-redefs [v2.load/load-one! (fn [ctx path & [modfn]]
-                                                  (load-one! ctx path
-                                                             (or modfn
-                                                                 (fn [ingested]
-                                                                   (cond-> ingested
-                                                                     (= (:entity_id ingested) (:entity_id card))
-                                                                     (assoc :collection_id "DoesNotExist"))))))]
+              (let [ingest-file @#'v2.ingest/ingest-file]
+                ;; overriding ingest-file is weird, but ingest-one is a protocol function and with-redefs won't
+                ;; override that reliably
+                (with-redefs [v2.ingest/ingest-file (fn [file]
+                                                      (cond-> (ingest-file file)
+                                                        (str/includes? (.getName file) (:entity_id card))
+                                                        (assoc :collection_id "DoesNotExist")))]
                   (is (thrown? Exception
                                (cmd/import dump-dir)))
                   (testing "Snowplow import event about error was sent"

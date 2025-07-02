@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
-import { msgid, ngettext } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
@@ -66,7 +66,7 @@ export const ResponsiveParametersList = ({
       >
         {isSmallScreen && (
           <Flex p="0.75rem 1rem" align="center" justify="space-between">
-            <h3>Filters</h3>
+            <h3>{t`Filters`}</h3>
             <Button
               onlyIcon
               borderless

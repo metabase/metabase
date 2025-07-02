@@ -141,9 +141,9 @@ export function ModelUploadModal({
         </Radio.Group>
         {uploadMode !== UploadMode.create && (
           <Select
-            aria-label="Select a model"
+            aria-label={t`Select a model`}
             icon={<Icon name="model" />}
-            placeholder="Select a model"
+            placeholder={t`Select a model`}
             value={tableId ? String(tableId) : ""}
             data={
               uploadableModels.map((model) => ({
@@ -157,7 +157,7 @@ export function ModelUploadModal({
       </Stack>
 
       <Flex justify="flex-end" gap="sm">
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button onClick={handleUpload} variant="filled" disabled={!isFormValid}>
           {buttonText}
         </Button>

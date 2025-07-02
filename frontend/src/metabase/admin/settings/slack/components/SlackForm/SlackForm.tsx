@@ -88,8 +88,11 @@ const SlackForm = ({
   );
 };
 
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const SLACK_CHANNEL_PROMPT = t`Finally, open Slack, create a public channel and enter its name below.`;
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const SLACK_CHANNEL_DESCRIPTION = t`This channel shouldn't really be used by anyone — we'll upload charts and tables here before sending out dashboard subscriptions (it's a Slack requirement).`;
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const SLACK_BUG_REPORT_DESCRIPTION = t`This channel will receive bug reports submitted by users.`;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

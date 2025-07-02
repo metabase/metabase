@@ -7,6 +7,7 @@ import {
   copyLocalEmbeddingSdkPackage,
   copyLocalMetabaseJar,
 } from "../sample-apps-shared/helpers/prepare-app";
+import { setupAppCleanup } from "../sample-apps-shared/helpers/setup-app-cleanup";
 import { startContainers } from "../sample-apps-shared/helpers/start-containers";
 import type {
   EmbeddingSdkVersion,
@@ -47,6 +48,8 @@ export async function startSampleAppContainers(
       appName,
       branch,
     });
+
+    setupAppCleanup({ rootPath, env, dockerDownCommand });
 
     copyExampleEnvFile({ rootPath, dockerEnvExamplePath, dockerEnvPath });
 

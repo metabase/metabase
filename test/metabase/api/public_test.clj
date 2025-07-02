@@ -13,7 +13,6 @@
    [metabase.api.public :as api.public]
    [metabase.config :as config]
    [metabase.http-client :as client]
-   [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.permissions :as perms]
@@ -986,11 +985,6 @@
 ;;; |                                        New FieldValues search endpoints                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- mbql-card-referencing-nothing []
-  {:dataset_query {:database (mt/id)
-                   :type     :query
-                   :query    {:source-table (mt/id :venues)}}})
-
 (defn mbql-card-referencing [table-kw field-kw]
   {:dataset_query
    {:database (mt/id)
@@ -998,142 +992,25 @@
     :query    {:source-table (mt/id table-kw)
                :filter       [:= [:field (mt/id table-kw field-kw) nil] "Krua Siri"]}}})
 
-(defn- mbql-card-referencing-venue-name []
-  (mbql-card-referencing :venues :name))
+(defn do-with-sharing-enabled-and-temp-dashcard-referencing! [table-kw field-kw f]
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (mt/with-temp [:model/Dashboard     dashboard (shared-obj)
+                   :model/Card          card      (mbql-card-referencing table-kw field-kw)
+                   :model/DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
+                                                   :card_id            (u/the-id card)
+                                                   :parameter_mappings [{:card_id (u/the-id card)
+                                                                         :target  [:dimension
+                                                                                   [:field
+                                                                                    (mt/id table-kw field-kw) nil]]}]}]
+      (f dashboard card dashcard))))
 
-(defn- sql-card-referencing-venue-name []
-  {:dataset_query
-   {:database (mt/id)
-    :type     :native
-    :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
-               :template-tags {:x {:name         :x
-                                   :display-name "X"
-                                   :type         :dimension
-                                   :dimension    [:field (mt/id :venues :name) nil]}}}}})
-
-;;; ------------------------------------------- card->referenced-field-ids -------------------------------------------
-
-(deftest card-referencing-nothing
-  (mt/with-temp [:model/Card card (mbql-card-referencing-nothing)]
-    (is (= #{}
-           (#'api.public/card->referenced-field-ids card)))))
-
-(deftest it-should-pick-up-on-fields-referenced-in-the-mbql-query-itself
-  (mt/with-temp [:model/Card card (mbql-card-referencing-venue-name)]
-    (is (= #{(mt/id :venues :name)}
-           (#'api.public/card->referenced-field-ids card)))))
-
-(deftest ---as-well-as-template-tag--implict--params-for-sql-queries
-  (mt/with-temp [:model/Card card (sql-card-referencing-venue-name)]
-    (is (= #{(mt/id :venues :name)}
-           (#'api.public/card->referenced-field-ids card)))))
-
-;;; --------------------------------------- check-field-is-referenced-by-card ----------------------------------------
-
-(deftest check-that-the-check-succeeds-when-field-is-referenced
-  (mt/with-temp [:model/Card card (mbql-card-referencing-venue-name)]
-    (#'api.public/check-field-is-referenced-by-card (mt/id :venues :name) (u/the-id card))))
-
-(deftest check-that-exception-is-thrown-if-the-field-isn-t-referenced
-  (is (thrown?
-       Exception
-       (mt/with-temp [:model/Card card (mbql-card-referencing-venue-name)]
-         (#'api.public/check-field-is-referenced-by-card (mt/id :venues :category_id) (u/the-id card))))))
-
-;;; ----------------------------------------- check-search-field-is-allowed ------------------------------------------
-
-;; search field is allowed IF:
-;; A) search-field is the same field as the other one
-(deftest search-field-allowed-if-same-field-as-other-one
-  (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :id))
-  (is (thrown? Exception
-               (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :category_id)))))
-
-;; B) there's a Dimension that lists search field as the human_readable_field for the other field
-(deftest search-field-allowed-with-dimension
-  (is (mt/with-temp [:model/Dimension _ {:field_id (mt/id :venues :id), :human_readable_field_id (mt/id :venues :category_id)}]
-        (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :category_id)))))
-
-;; C) search-field is a Name Field belonging to the same table as the other field, which is a PK
-(deftest search-field-allowed-with-name-field
-  (is (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :name))))
-
-;; not allowed if search field isn't a NAME
-(deftest search-field-not-allowed-if-search-field-isnt-a-name
-  (is (thrown? Exception
-               (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name) {:semantic_type "type/Latitude"}
-                 (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :name))))))
-
-(deftest not-allowed-if-search-field-belongs-to-a-different-table
-  (is (thrown? Exception
-               (mt/with-temp-vals-in-db :model/Field (mt/id :categories :name) {:semantic_type "type/Name"}
-                 (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :categories :name))))))
-
-;;; ------------------------------------- check-field-is-referenced-by-dashboard -------------------------------------
-
-(defn- dashcard-with-param-mapping-to-venue-id [dashboard card]
-  {:dashboard_id       (u/the-id dashboard)
-   :card_id            (u/the-id card)
-   :parameter_mappings [{:card_id (u/the-id card)
-                         :target  [:dimension [:field (mt/id :venues :id) nil]]}]})
-
-(deftest field-is--referenced--by-dashboard-if-it-s-one-of-the-dashboard-s-params---
-  (is (mt/with-temp [:model/Dashboard     dashboard {}
-                     :model/Card          card {}
-                     :model/DashboardCard _ (dashcard-with-param-mapping-to-venue-id dashboard card)]
-        (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :id) (u/the-id dashboard)))))
-
-(deftest field-not-found-on-dashcard
-  (is (thrown? Exception
-               (mt/with-temp [:model/Dashboard     dashboard {}
-                              :model/Card          card {}
-                              :model/DashboardCard _ (dashcard-with-param-mapping-to-venue-id dashboard card)]
-                 (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :name) (u/the-id dashboard))))))
-
-;; ...*or* if it's a so-called "implicit" param (a Field Filter Template Tag (FFTT) in a SQL Card)
-(deftest implicit-param
-  (is (mt/with-temp [:model/Dashboard     dashboard {}
-                     :model/Card          card (sql-card-referencing-venue-name)
-                     :model/DashboardCard _ {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]
-        (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :name) (u/the-id dashboard))))
-
-  (is (thrown? Exception
-               (mt/with-temp [:model/Dashboard     dashboard {}
-                              :model/Card          card (sql-card-referencing-venue-name)
-                              :model/DashboardCard _ {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]
-                 (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :id) (u/the-id dashboard))))))
-
-;;; ------------------------------------------- card-and-field-id->values --------------------------------------------
-
-(deftest we-should-be-able-to-get-values-for-a-field-referenced-by-a-card
-  (mt/with-temp [:model/Card card (mbql-card-referencing :venues :name)]
-    (is (= {:values          [["20th Century Cafe"]
-                              ["25°"]
-                              ["33 Taps"]
-                              ["800 Degrees Neapolitan Pizzeria"]
-                              ["BCD Tofu House"]]
-            :field_id        (mt/id :venues :name)
-            :has_more_values false}
-           (mt/derecordize (-> (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))
-                               (update :values (partial take 5))))))))
-
-(deftest sql-param-field-references-should-work-just-as-well-as-mbql-field-referenced
-  (mt/with-temp [:model/Card card (sql-card-referencing-venue-name)]
-    (is (= {:values          [["20th Century Cafe"]
-                              ["25°"]
-                              ["33 Taps"]
-                              ["800 Degrees Neapolitan Pizzeria"]
-                              ["BCD Tofu House"]]
-            :field_id        (mt/id :venues :name)
-            :has_more_values false}
-           (mt/derecordize (-> (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))
-                               (update :values (partial take 5))))))))
-
-(deftest but-if-the-field-is-not-referenced-we-should-get-an-exception
-  (mt/with-temp [:model/Card card (mbql-card-referencing :venues :price)]
-    (is (thrown?
-         Exception
-         (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))))))
+(defmacro with-sharing-enabled-and-temp-dashcard-referencing!
+  {:style/indent 3}
+  [table-kw field-kw [dashboard-binding card-binding dashcard-binding] & body]
+  `(do-with-sharing-enabled-and-temp-dashcard-referencing!
+    ~table-kw ~field-kw
+    (fn [~(or dashboard-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
+      ~@body)))
 
 ;;; ------------------------------------------- GET /api/public/action/:uuid -------------------------------------------
 
@@ -1177,246 +1054,6 @@
                 (is (= "An error occurred."
                        (client/client :get 400 (str "public/action/" (:public_uuid action-opts)))))))))))))
 
-;;; ------------------------------- GET /api/public/card/:uuid/field/:field/values nil --------------------------------
-
-(defn- field-values-url [card-or-dashboard field-or-id]
-  (str "public/"
-       (condp mi/instance-of? card-or-dashboard
-         :model/Card      "card"
-         :model/Dashboard "dashboard")
-       "/" (or (:public_uuid card-or-dashboard)
-               (throw (Exception. (str "Missing public UUID: " card-or-dashboard))))
-       "/field/" (u/the-id field-or-id)
-       "/values"))
-
-(defn- do-with-sharing-enabled-and-temp-card-referencing! [table-kw field-kw f]
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-temp [:model/Card card (merge (shared-obj) (mbql-card-referencing table-kw field-kw))]
-      (f card))))
-
-(defmacro ^:private with-sharing-enabled-and-temp-card-referencing!
-  {:style/indent 3}
-  [table-kw field-kw [card-binding] & body]
-  `(do-with-sharing-enabled-and-temp-card-referencing!
-    ~table-kw ~field-kw
-    (fn [~card-binding]
-      ~@body)))
-
-(deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
-  (is (= {:values          [["20th Century Cafe"]
-                            ["25°"]
-                            ["33 Taps"]
-                            ["800 Degrees Neapolitan Pizzeria"]
-                            ["BCD Tofu House"]]
-          :field_id        (mt/id :venues :name)
-          :has_more_values false}
-         (with-sharing-enabled-and-temp-card-referencing! :venues :name [card]
-           (-> (client/client :get 200 (field-values-url card (mt/id :venues :name)))
-               (update :values (partial take 5)))))))
-
-(deftest but-for-fields-that-are-not-referenced-we-should-get-an-exception
-  (is (= "Not found."
-         (with-sharing-enabled-and-temp-card-referencing! :venues :name [card]
-           (client/client :get 404 (field-values-url card (mt/id :venues :price)))))))
-
-(deftest field-value-endpoint-should-fail-if-public-sharing-is-disabled
-  (is (= "An error occurred."
-         (with-sharing-enabled-and-temp-card-referencing! :venues :name [card]
-           (mt/with-temporary-setting-values [enable-public-sharing false]
-             (client/client :get 400 (field-values-url card (mt/id :venues :name))))))))
-
-;;; ----------------------------- GET /api/public/dashboard/:uuid/field/:field/values nil -----------------------------
-
-(defn do-with-sharing-enabled-and-temp-dashcard-referencing! [table-kw field-kw f]
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-temp [:model/Dashboard     dashboard (shared-obj)
-                   :model/Card          card      (mbql-card-referencing table-kw field-kw)
-                   :model/DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
-                                                   :card_id            (u/the-id card)
-                                                   :parameter_mappings [{:card_id (u/the-id card)
-                                                                         :target  [:dimension
-                                                                                   [:field
-                                                                                    (mt/id table-kw field-kw) nil]]}]}]
-      (f dashboard card dashcard))))
-
-(defmacro with-sharing-enabled-and-temp-dashcard-referencing!
-  {:style/indent 3}
-  [table-kw field-kw [dashboard-binding card-binding dashcard-binding] & body]
-  `(do-with-sharing-enabled-and-temp-dashcard-referencing!
-    ~table-kw ~field-kw
-    (fn [~(or dashboard-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
-      ~@body)))
-
-(deftest should-be-able-to-use-it-when-everything-is-g2g
-  (with-sharing-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
-    (is (= {:values          [["20th Century Cafe"]
-                              ["25°"]
-                              ["33 Taps"]
-                              ["800 Degrees Neapolitan Pizzeria"]
-                              ["BCD Tofu House"]]
-            :field_id        (mt/id :venues :name)
-            :has_more_values false}
-           (-> (client/client :get 200 (field-values-url dashboard (mt/id :venues :name)))
-               (update :values (partial take 5)))))))
-
-(deftest shound-not-be-able-to-use-the-endpoint-with-a-field-not-referenced-by-the-dashboard
-  (with-sharing-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
-    (is (= "Not found."
-           (client/client :get 404 (field-values-url dashboard (mt/id :venues :price)))))))
-
-(deftest endpoint-should-fail-if-public-sharing-is-disabled
-  (with-sharing-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
-    (mt/with-temporary-setting-values [enable-public-sharing false]
-      (is (= "An error occurred."
-             (client/client :get 400 (field-values-url dashboard (mt/id :venues :name))))))))
-
-;;; ----------------------------------------------- search-card-fields -----------------------------------------------
-
-(deftest search-card-fields
-  (with-sharing-enabled-and-temp-card-referencing! :venues :id [card]
-    (is (= [[93 "33 Taps"]]
-           (api.public/search-card-fields (u/the-id card) (mt/id :venues :id) (mt/id :venues :name) "33 T" 10)))))
-
-(deftest shouldn-t-work-if-the-search-field-isn-t-allowed-to-be-used-in-combination-with-the-other-field
-  (with-sharing-enabled-and-temp-card-referencing! :venues :id [card]
-    (is (thrown?
-         Exception
-         (api.public/search-card-fields (u/the-id card) (mt/id :venues :id) (mt/id :venues :price) "33 T" 10)))))
-
-(deftest shouldn-t-work-if-the-field-isn-t-referenced-by-card
-  (with-sharing-enabled-and-temp-card-referencing! :venues :name [card]
-    (is (thrown?
-         Exception
-         (api.public/search-card-fields (u/the-id card) (mt/id :venues :id) (mt/id :venues :id) "33 T" 10)))))
-
-;;; ----------------------- GET /api/public/card/:uuid/field/:field/search/:search-field-id nil -----------------------
-
-(defn- field-search-url [card-or-dashboard field-or-id search-field-or-id]
-  (str "public/"
-       (condp mi/instance-of? card-or-dashboard
-         :model/Card      "card"
-         :model/Dashboard "dashboard")
-       "/" (:public_uuid card-or-dashboard)
-       "/field/" (u/the-id field-or-id)
-       "/search/" (u/the-id search-field-or-id)))
-
-(deftest field-search-with-venue
-  (is (= [[93 "33 Taps"]]
-         (with-sharing-enabled-and-temp-card-referencing! :venues :id [card]
-           (client/client :get 200 (field-search-url card (mt/id :venues :id) (mt/id :venues :name))
-                          :value "33 T")))))
-
-(deftest if-search-field-isn-t-allowed-to-be-used-with-the-other-field-endpoint-should-return-exception
-  (is (= "An error occurred."
-         (with-sharing-enabled-and-temp-card-referencing! :venues :id [card]
-           (client/client :get 400 (field-search-url card (mt/id :venues :id) (mt/id :venues :price))
-                          :value "33 T")))))
-
-(deftest search-endpoint-should-fail-if-public-sharing-is-disabled
-  (is (= "An error occurred."
-         (with-sharing-enabled-and-temp-card-referencing! :venues :id [card]
-           (mt/with-temporary-setting-values [enable-public-sharing false]
-             (client/client :get 400 (field-search-url card (mt/id :venues :id) (mt/id :venues :name))
-                            :value "33 T"))))))
-
-;;; -------------------- GET /api/public/dashboard/:uuid/field/:field/search/:search-field-id nil ---------------------
-
-(deftest dashboard
-  (with-sharing-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-    (is (= [[93 "33 Taps"]]
-           (client/client :get (field-search-url dashboard (mt/id :venues :id) (mt/id :venues :name))
-                          :value "33 T")))))
-
-(deftest dashboard-if-search-field-isn-t-allowed-to-be-used-with-the-other-field-endpoint-should-return-exception
-  (with-sharing-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-    (is (= "An error occurred."
-           (client/client :get 400 (field-search-url dashboard (mt/id :venues :id) (mt/id :venues :price))
-                          :value "33 T")))))
-
-(deftest dashboard-endpoint-should-fail-if-public-sharing-is-disabled
-  (with-sharing-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-    (mt/with-temporary-setting-values [enable-public-sharing false]
-      (is (= "An error occurred."
-             (client/client :get 400 (field-search-url dashboard (mt/id :venues :name) (mt/id :venues :name))
-                            :value "33 T"))))))
-
-;;; --------------------------------------------- field-remapped-values ----------------------------------------------
-
-;; `field-remapped-values` should return remappings in the expected format when the combination of Fields is allowed.
-;; It should parse the value string (it comes back from the API as a string since it is a query param)
-
-(deftest should-parse-string
-  (is (= [10 "Fred 62"]
-         (#'api.public/field-remapped-values (mt/id :venues :id) (mt/id :venues :name) "10"))))
-
-(deftest if-the-field-isn-t-allowed
-  (is (thrown?
-       Exception
-       (#'api.public/field-remapped-values (mt/id :venues :id) (mt/id :venues :price) "10"))))
-
-;;; ----------------------- GET /api/public/card/:uuid/field/:field/remapping/:remapped-id nil ------------------------
-
-(defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
-  (str "public/"
-       (condp mi/instance-of? card-or-dashboard
-         :model/Card      "card"
-         :model/Dashboard "dashboard")
-       "/" (:public_uuid card-or-dashboard)
-       "/field/" (u/the-id field-or-id)
-       "/remapping/" (u/the-id remapped-field-or-id)))
-
-(deftest we-should-be-able-to-use-the-api-endpoint-and-get-the-same-results-we-get-by-calling-the-function-above-directly
-  (with-sharing-enabled-and-temp-card-referencing! :venues :id [card]
-    (is (= [10 "Fred 62"]
-           (client/client :get 200 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
-                          :value "10")))))
-
-(deftest shouldn-t-work-if-card-doesn-t-reference-the-field-in-question
-  (with-sharing-enabled-and-temp-card-referencing! :venues :price [card]
-    (is (= "Not found."
-           (client/client :get 404 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
-                          :value "10")))))
-
-(deftest ---or-if-the-remapping-field-isn-t-allowed-to-be-used-with-the-other-field
-  (with-sharing-enabled-and-temp-card-referencing! :venues :id [card]
-    (is (= "An error occurred."
-           (client/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :price))
-                          :value "10")))))
-
-(deftest ---or-if-public-sharing-is-disabled
-  (with-sharing-enabled-and-temp-card-referencing! :venues :id [card]
-    (mt/with-temporary-setting-values [enable-public-sharing false]
-      (is (= "An error occurred."
-             (client/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
-                            :value "10"))))))
-
-;;; --------------------- GET /api/public/dashboard/:uuid/field/:field/remapping/:remapped-id nil ---------------------
-
-(deftest api-endpoint-should-return-same-results-as-function
-  (with-sharing-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-    (is (= [10 "Fred 62"]
-           (client/client :get 200 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
-                          :value "10")))))
-
-(deftest field-remapping-shouldn-t-work-if-card-doesn-t-reference-the-field-in-question
-  (with-sharing-enabled-and-temp-dashcard-referencing! :venues :price [dashboard]
-    (is (= "Not found."
-           (client/client :get 404 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
-                          :value "10")))))
-
-(deftest remapping-or-if-the-remapping-field-isn-t-allowed-to-be-used-with-the-other-field
-  (with-sharing-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-    (is (= "An error occurred."
-           (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :price))
-                          :value "10")))))
-
-(deftest remapping-or-if-public-sharing-is-disabled
-  (with-sharing-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-    (mt/with-temporary-setting-values [enable-public-sharing false]
-      (is (= "An error occurred."
-             (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
-                            :value "10"))))))
-
 ;;; --------------------------------------------- Param values endpoints ---------------------------------------------
 
 (defn- param-values-url
@@ -1450,10 +1087,15 @@
                      (client/client :get 200 (param-values-url :dashboard uuid (:card param-keys))))))
 
             (testing "parameter with source is chain filter"
-              (is (= {:values          [[2] [3] [4] [5] [6]]
+              (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"] [5 "BBQ"] [6 "Bakery"]]
                       :has_more_values false}
                      (->> (client/client :get 200 (param-values-url :dashboard uuid (:category-id param-keys)))
-                          (chain-filter-test/take-n-values 5))))))
+                          (chain-filter-test/take-n-values 5))))
+              (testing "with constraints"
+                (is (= {:values          [[44 "Korean"]]
+                        :has_more_values false}
+                       (client/client :get 200 (param-values-url :dashboard uuid (:category-id param-keys))
+                                      (keyword (:id param-keys)) "7"))))))
 
           (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:query"
             (testing "parameter with source is a static list"
@@ -1573,7 +1215,7 @@
                 (is (= 1
                        (t2/update! :model/Dashboard (u/the-id dashboard) {:public_uuid uuid})))
                 (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
-                  (is (= {:values          [[2] [3] [4] [5] [6]]
+                  (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"] [5 "BBQ"] [6 "Bakery"]]
                           :has_more_values false}
                          (->> (mt/user-http-request :rasta :get 200 (param-values-url :dashboard uuid (:category-id param-keys)))
                               (chain-filter-test/take-n-values 5)))))
@@ -1606,6 +1248,129 @@
                   (is (= {:values          [["Fred 62"] ["Red Medicine"]]
                           :has_more_values false}
                          (client/client :get 200 (param-values-url :card uuid (:card param-keys) "red")))))))))))))
+
+;;; -------------------------------------- Param remapping endpoints ---------------------------------------
+
+(deftest dashboard-param-value-remapping-test
+  (let [id-param-id   "id-param-id"
+        list-param-id "static-labeled-list"
+        uuid (str (random-uuid))]
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid uuid
+                                                        :parameters [{:name      "ID"
+                                                                      :id        id-param-id
+                                                                      :type      :id}
+                                                                     {:name                 "Static Category label"
+                                                                      :id                   list-param-id
+                                                                      :type                 "category"
+                                                                      :values_source_type   "static-list"
+                                                                      :values_source_config {:values [["A frican" "Af"]
+                                                                                                      ["American" "Am"]
+                                                                                                      ["A   sian" "As"]]}}]}
+                   :model/Card {orders-card-id :id} {:dataset_query (mt/mbql-query orders)}
+                   :model/Card {people-card-id :id} {:dataset_query (mt/mbql-query people)}
+                   :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                           :card_id            orders-card-id
+                                           :parameter_mappings [{:parameter_id id-param-id
+                                                                 :card_id      orders-card-id
+                                                                 :target       [:dimension [:field
+                                                                                            (mt/id :orders :user_id)
+                                                                                            {:base-type :type/Integer}]
+                                                                                {:stage-number 0}]}]}
+                   :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                           :card_id            people-card-id
+                                           :parameter_mappings [{:parameter_id id-param-id
+                                                                 :card_id      people-card-id
+                                                                 :target       [:dimension [:field
+                                                                                            (mt/id :people :id)
+                                                                                            {:base-type :type/Integer}]
+                                                                                {:stage-number 0}]}]}]
+      (let [url #(str "public/dashboard/" uuid "/params/" %1 "/remapping?value=" %2)]
+        (is (= [1 "Hudson Borer"]
+               (client/client :get 200 (url id-param-id 1))))
+        (is (= [(str Integer/MAX_VALUE)]
+               (client/client :get 200 (url id-param-id Integer/MAX_VALUE))))
+        (is (= ["A   sian" "As"]
+               (client/client :get 200 (url list-param-id "A   sian"))))))))
+
+(deftest card-param-value-remapping-test
+  (let [param-static-list          "_STATIC_CATEGORY_"
+        param-static-list-label    "_STATIC_CATEGORY_LABEL_"
+        param-card                 "_CARD_"
+        param-field-values         "name_param_id"
+        param-labeled-field-values "id"]
+    (mt/with-temp
+      [:model/Card source-card {:database_id   (mt/id)
+                                :table_id      (mt/id :venues)
+                                :dataset_query (mt/mbql-query venues {:limit 5})}
+       :model/Card field-filter-card {:public_uuid (str (random-uuid))
+                                      :dataset_query
+                                      {:database (mt/id)
+                                       :type     :native
+                                       :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
+                                                  :template-tags {"NAME" {:id           param-field-values
+                                                                          :name         "NAME"
+                                                                          :display_name "Name"
+                                                                          :type         :dimension
+                                                                          :dimension    [:field (mt/id :venues :name) nil]
+                                                                          :required     true}}}}
+                                      :name       "native card with field filter"
+                                      :parameters [{:id     param-field-values
+                                                    :type   :string/=
+                                                    :target [:dimension [:template-tag "NAME"]]
+                                                    :name   "Name"
+                                                    :slug   "NAME"}]}
+       :model/Card name-mapped-card  {:public_uuid (str (random-uuid))
+                                      :dataset_query
+                                      {:database (mt/id)
+                                       :type     :native
+                                       :native   {:query         "SELECT COUNT(*) FROM PEOPLE WHERE {{ID}}"
+                                                  :template-tags {"id" {:id           param-labeled-field-values
+                                                                        :name         "ID"
+                                                                        :display_name "Id"
+                                                                        :type         :dimension
+                                                                        :dimension    [:field (mt/id :people :id) nil]
+                                                                        :required     true}}}}
+                                      :name       "native card with named field filter"
+                                      :parameters [{:id     param-labeled-field-values
+                                                    :type   :number/>=
+                                                    :target [:dimension [:template-tag "id"]]
+                                                    :name   "Id"
+                                                    :slug   "id"}]}
+       :model/Card card        {:public_uuid (str (random-uuid))
+                                :database_id   (mt/id)
+                                :dataset_query (mt/mbql-query venues)
+                                :parameters    [{:name                 "Static Category"
+                                                 :slug                 "static_category"
+                                                 :id                   param-static-list
+                                                 :type                 "category"
+                                                 :values_source_type   "static-list"
+                                                 :values_source_config {:values ["African" "American" "Asian"]}}
+                                                {:name                 "Static Category label"
+                                                 :slug                 "static_category_label"
+                                                 :id                   param-static-list-label
+                                                 :type                 "category"
+                                                 :values_source_type   "static-list"
+                                                 :values_source_config {:values [["Af rican" "Af"] ["American" "Am"] ["Asian" "As"]]}}
+                                                {:name                 "Card as source"
+                                                 :slug                 "card"
+                                                 :id                   param-card
+                                                 :type                 "category"
+                                                 :values_source_type   "card"
+                                                 :values_source_config {:card_id     (:id source-card)
+                                                                        :value_field (mt/$ids $venues.name)}}]
+                                :table_id      (mt/id :venues)}]
+      (let [request #(client/client :get 200
+                                    (format "public/card/%s/params/%s/remapping?value=%s" (:public_uuid %1) %2 %3))]
+        (are [card value-source value] (= [value] (request card value-source value))
+          field-filter-card param-field-values      "20th Century Cafe"
+          field-filter-card param-field-values      "Not a value in the DB"
+          card              param-card              "33 Taps"
+          card              param-card              "Not provided by the card"
+          card              param-static-list       "African"
+          card              param-static-list       "Whatever"
+          card              param-static-list-label "European")
+        (is (= ["Af rican" "Af"] (request card param-static-list-label "Af rican")))
+        (is (= [42 "Reyes Strosin"] (request name-mapped-card param-labeled-field-values "42")))))))
 
 ;;; --------------------------------------------- Pivot tables ---------------------------------------------
 

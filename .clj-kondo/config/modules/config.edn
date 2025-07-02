@@ -223,7 +223,7 @@
    :uses #{api config events models permissions plugins premium-features util enterprise/enhancements}}
 
   internal-stats
-  {:api #{metabase.internal-stats}
+  {:api #{metabase.internal-stats.core}
    :uses #{db models}}
 
   legacy-mbql
@@ -383,6 +383,10 @@
            metabase.permissions.util}
    :uses #{api audit config db integrations models plugins premium-features request server util}}
 
+  pivot
+  {:api #{metabase.pivot.core}
+   :uses #{util models}}
+
   plugins
   {:api  #{metabase.plugins metabase.plugins.classloader}
    :uses #{config driver util}}
@@ -463,6 +467,7 @@
            lib
            models
            permissions
+           pivot
            premium-features
            public-settings
            request
@@ -491,7 +496,7 @@
           metabase.search.ingestion
           metabase.search.init
           metabase.search.spec}
-   :uses #{analytics api audit config db driver models permissions premium-features public-settings request task util}}
+   :uses #{analytics api audit config db driver models permissions premium-features public-settings request startup task util}}
 
   segments
   {:api  #{metabase.segments.api}
@@ -526,6 +531,11 @@
            request
            session
            util}}
+
+  startup
+  {:api  #{metabase.startup.core}
+   :uses #{util}}
+
   sync
   {:api #{metabase.sync.api
           metabase.sync.core
@@ -579,7 +589,7 @@
 
   util
   {:api :any
-   :uses #{config driver legacy-mbql lib models plugins premium-features public-settings}}
+   :uses #{config db driver legacy-mbql lib models plugins premium-features public-settings}}
 
   xrays
   {:api  #{metabase.xrays.api metabase.xrays.core}

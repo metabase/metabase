@@ -8,7 +8,7 @@ const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
 const GRADIENT_ALPHA = 0.75;
 
-// for simplicity wheb typing assume all values are numbers, since you can only pick numeric columns
+// for simplicity when typing assume all values are numbers, since you can only pick numeric columns
 
 export function makeCellBackgroundGetter(
   rows,

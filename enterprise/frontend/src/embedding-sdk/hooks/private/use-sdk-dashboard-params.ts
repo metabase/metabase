@@ -2,6 +2,7 @@ import type { Query } from "history";
 import type { CSSProperties } from "react";
 import { pick } from "underscore";
 
+import type { SdkDashboardId } from "embedding-sdk/types/dashboard";
 import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
 import {
   useDashboardFullscreen,
@@ -11,10 +12,9 @@ import {
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { isNotNull } from "metabase/lib/types";
-import type { DashboardId } from "metabase-types/api";
 
 export type SdkDashboardDisplayProps = {
-  dashboardId: DashboardId;
+  dashboardId: SdkDashboardId;
   initialParameters?: Query;
   withTitle?: boolean;
   withCardTitle?: boolean;
@@ -33,7 +33,7 @@ export const useSdkDashboardParams = ({
   hiddenParameters,
   initialParameters = {},
 }: SdkDashboardDisplayProps) => {
-  const { id: dashboardId, isLoading } = useValidatedEntityId({
+  const { id: dashboardId, isLoading = false } = useValidatedEntityId({
     type: "dashboard",
     id: initialDashboardId,
   });

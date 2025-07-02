@@ -47,7 +47,7 @@
   (testing "sync without nested fields"
     (is (= #{{:name "id", :base-type :type/Text, :database-type "string", :database-position 0}
              {:name "ts", :base-type :type/Text, :database-type "string", :database-position 1}}
-           (#'athena/describe-table-fields-without-nested-fields :athena flat-schema-columns)))))
+           (#'athena/describe-table-fields-without-nested-fields :athena "test" "test" flat-schema-columns)))))
 
 (deftest ^:parallel describe-table-fields-with-nested-fields-test
   (driver/with-driver :athena

@@ -9,6 +9,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -29,7 +30,7 @@
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (java.security KeyStore)
-   (java.sql Connection DatabaseMetaData ResultSet Types)
+   (java.sql Connection DatabaseMetaData ResultSet SQLException Types)
    (java.time Instant OffsetDateTime ZonedDateTime LocalDateTime)
    (oracle.jdbc OracleConnection OracleTypes)
    (oracle.sql TIMESTAMPTZ)))
@@ -672,3 +673,6 @@
 (defmethod driver.sql/->prepared-substitution [:oracle Boolean]
   [driver bool]
   (driver.sql/->prepared-substitution driver (if bool 1 0)))
+
+(defmethod sql-jdbc/impl-query-canceled? :oracle [_ ^SQLException e]
+  (= (.getErrorCode e) 1013))

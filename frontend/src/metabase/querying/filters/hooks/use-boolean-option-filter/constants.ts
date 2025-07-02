@@ -4,23 +4,31 @@ import type { OperatorOption, OptionType } from "./types";
 
 export const OPERATOR_OPTIONS: Record<OptionType, OperatorOption> = {
   true: {
-    name: t`True`,
+    get name() {
+      return t`True`;
+    },
     operator: "=",
     type: "true",
   },
   false: {
-    name: t`False`,
+    get name() {
+      return t`False`;
+    },
     operator: "=",
     type: "false",
   },
   "is-null": {
-    name: t`Empty`,
+    get name() {
+      return t`Empty`;
+    },
     operator: "is-null",
     type: "is-null",
     isAdvanced: true,
   },
   "not-null": {
-    name: t`Not empty`,
+    get name() {
+      return t`Not empty`;
+    },
     operator: "not-null",
     type: "not-null",
     isAdvanced: true,

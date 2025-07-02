@@ -18,8 +18,10 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -33,10 +35,11 @@
 
 (defenterprise cache-strategy
   "Returns cache strategy for a card. In EE, this checks the hierarchy for the card, dashboard, or
-   database (in that order). In OSS returns root configuration."
+  database (in that order). In OSS returns root configuration, taking card's :cache_invalidated_at
+  into consideration."
   metabase-enterprise.cache.strategies
-  [_card _dashboard-id]
-  (cache-config/card-strategy (cache-config/root-strategy) nil))
+  [card _dashboard-id]
+  (cache-config/card-strategy (cache-config/root-strategy) card))
 
 (defn- enrich-strategy [strategy query]
   (case (:type strategy)
@@ -298,4 +301,6 @@
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]
-      (runner query info))))
+      (qp.store/with-metadata-provider (:database_id card)
+        (qp.results-metadata/store-previous-result-metadata! card)
+        (runner query info)))))

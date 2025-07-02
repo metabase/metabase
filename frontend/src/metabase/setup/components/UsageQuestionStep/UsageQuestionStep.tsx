@@ -13,10 +13,18 @@ import { InactiveStep } from "../InactiveStep";
 import type { NumberedStepProps } from "../types";
 
 const COMPLETED_STEP_TITLE: Record<UsageReason, string> = {
-  "self-service-analytics": t`I’ll do self-service analytics for my own company`,
-  embedding: t`I’ll embed analytics into my application`,
-  both: t`I’ll do a bit of both self-service and embedding`,
-  "not-sure": t`I’m not sure yet`,
+  get "self-service-analytics"() {
+    return t`I’ll do self-service analytics for my own company`;
+  },
+  get embedding() {
+    return t`I’ll embed analytics into my application`;
+  },
+  get both() {
+    return t`I’ll do a bit of both self-service and embedding`;
+  },
+  get "not-sure"() {
+    return t`I’m not sure yet`;
+  },
 };
 
 export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {

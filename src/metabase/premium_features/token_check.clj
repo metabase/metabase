@@ -11,7 +11,7 @@
    [diehard.core :as dh]
    [environ.core :refer [env]]
    [metabase.config :as config]
-   [metabase.internal-stats :as internal-stats]
+   [metabase.internal-stats.core :as internal-stats]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.util :as u]
@@ -95,7 +95,7 @@
 
 (defenterprise embedding-settings
   "Boolean values that report on the state of different embedding configurations."
-  metabase-enterprise.embedding-data
+  metabase-enterprise.internal-stats.core
   [_embedded-dashboard-count _embedded-question-count]
   {:enabled-embedding-static      false
    :enabled-embedding-interactive false

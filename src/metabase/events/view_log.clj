@@ -8,6 +8,7 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.cluster-lock :as cluster-lock]
    [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -34,13 +35,18 @@
                              {}
                              items)]
       (doseq [[model ids] model->ids]
-        (let [cnt->ids (group-by-frequency ids)]
-          (t2/query {:update (t2/table-name model)
-                     :set    {:view_count [:+ :view_count (into [:case]
-                                                                (mapcat (fn [[cnt ids]]
-                                                                          [[:in :id ids] cnt])
-                                                                        cnt->ids))]}
-                     :where  [:in :id (apply concat (vals cnt->ids))]}))))
+        (let [cnt->ids (group-by-frequency ids)
+              lock-name (if (= model :model/Card)
+                          cluster-lock/card-statistics-lock ;; need to use a shared lock for all updates to the card table
+                          (keyword "metabase.events.view_log"
+                                   (str (name (t2/table-name model)) "-view-count")))]
+          (cluster-lock/with-cluster-lock lock-name
+            (t2/query {:update (t2/table-name model)
+                       :set    {:view_count [:+ :view_count (into [:case]
+                                                                  (mapcat (fn [[cnt ids]]
+                                                                            [[:in :id ids] cnt])
+                                                                          cnt->ids))]}
+                       :where  [:in :id (apply concat (vals cnt->ids))]})))))
     (catch Exception e
       (log/error e "Failed to increment view counts"))))
 

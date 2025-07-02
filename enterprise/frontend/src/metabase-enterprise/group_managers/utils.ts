@@ -8,7 +8,9 @@ import type { AdminPath, AdminPathKey } from "metabase-types/store";
 import type { UserWithGroupManagerPermission } from "./types/user";
 
 const REVOKE_MANAGING_CONFIRMATION = {
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   title: t`Are you sure?`,
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   message: t`You will not be able to manage users of this group anymore.`,
 };
 

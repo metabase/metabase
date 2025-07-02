@@ -1,6 +1,6 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
-import { renderToString } from "react-dom/server";
 
+import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import { getTooltipModel } from "metabase/visualizations/visualizations/PieChart/use-chart-events";
 
@@ -41,7 +41,7 @@ export const getTooltipOption = (
       // the type provided by ECharts.
       const sliceKeyPath = getSliceKeyPath(params);
 
-      return renderToString(
+      return reactNodeToHtmlString(
         <ChartItemTooltip
           formatters={formatters}
           chartModel={chartModel}

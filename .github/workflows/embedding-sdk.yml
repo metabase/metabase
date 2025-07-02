@@ -29,11 +29,14 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
-  embedding-sdk-docs-snippets-type-check:
-    needs: [ files-changed ]
-    if: needs.files-changed.outputs.documentation == 'true'
+  build:
+    needs: [files-changed]
+    if: |
+      !cancelled() &&
+      (needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
+      needs.files-changed.outputs.documentation == 'true')
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
@@ -42,44 +45,80 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
-      - name: Compile CLJS
-        run: yarn build-pure:cljs
-        shell: bash
       - name: Build Embedding SDK package
         run: yarn build-embedding-sdk
+      - name: Prepare Embedding SDK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: resources/embedding-sdk
+
+  embedding-sdk-cli-snippets-type-check:
+    needs: [files-changed, build]
+    if: |
+      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
+      needs.build.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Retrieve Embedding SDK dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ github.workspace }}/resources/embedding-sdk
       - name: Run frontend embedding SDK snippets type check
         run: yarn run embedding-sdk:docs-snippets:type-check
 
-  embedding-sdk-cli-snippets-type-check:
-    needs: [ files-changed ]
-    if: needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true'
+  embedding-sdk-docs-snippets-type-check:
+    needs: [files-changed, build]
+    if: |
+      needs.files-changed.outputs.documentation == 'true' &&
+      needs.build.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
+      - name: Retrieve Embedding SDK dist artifact
+        uses: actions/download-artifact@v4
         with:
-          m2-cache-key: "cljs"
-      - name: Compile CLJS
-        run: yarn build-pure:cljs
-        shell: bash
-      - name: Build Embedding SDK package
-        run: yarn build-embedding-sdk
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ github.workspace }}/resources/embedding-sdk
       - name: Run frontend embedding SDK snippets type check
         run: yarn run embedding-sdk:cli-snippets:type-check
 
   sdk-e2e-tests:
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
+    needs: [build]
     secrets: inherit
+    with:
+      cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+
+  e2e-component-tests-embedding-sdk-cross-version:
+    # run on: every push on release branches, and every pr that targets a release branch
+    if: ${{ startsWith(github.ref, 'refs/heads/release-x.') || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.')) }}
+    uses: ./.github/workflows/e2e-component-tests-embedding-sdk-cross-version.yml
+    secrets: inherit
+
+  cross-version-for-breaking-changes:
+    # run on: every pr that targets a release branch
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.') }}
+    uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
+    secrets: inherit
+    with:
+      fe-ref: ${{ github.base_ref }}
+      be-ref: ${{ github.head_ref }}
 
   embedding-sdk-tests-result:
     needs:
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-cli-snippets-type-check
       - sdk-e2e-tests
+      - e2e-component-tests-embedding-sdk-cross-version
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5

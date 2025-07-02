@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { msgid, ngettext, t } from "ttag";

@@ -6,7 +6,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 
 export const settings = {
-  uiName: "iframe",
+  getUiName: () => "iframe",
   canSavePng: false,
   identifier: "iframe",
   iconName: "link",
@@ -21,7 +21,9 @@ export const settings = {
   settings: {
     "card.title": {
       dashboard: false,
-      default: t`Iframe card`,
+      get default() {
+        return t`Iframe card`;
+      },
     },
     "card.description": {
       dashboard: false,

@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { createSelector } from "@reduxjs/toolkit";
 import { jt, t } from "ttag";
 import _ from "underscore";

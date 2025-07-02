@@ -39,7 +39,7 @@ const getUniqueFunnelRows = (rows: FunnelRow[]) => {
 };
 
 Object.assign(Funnel, {
-  uiName: t`Funnel`,
+  getUiName: () => t`Funnel`,
   identifier: "funnel",
   iconName: "funnel",
   noHeader: true,
@@ -109,7 +109,9 @@ Object.assign(Funnel, {
   settings: {
     ...columnSettings({ hidden: true }),
     ...dimensionSetting("funnel.dimension", {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       section: t`Data`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       title: t`Column with steps`,
       dashboard: false,
       useRawSeries: true,
@@ -122,6 +124,7 @@ Object.assign(Funnel, {
       readDependencies: ["funnel.rows"],
     },
     "funnel.rows": {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       section: t`Data`,
       widget: ChartSettingOrderedSimple,
       getValue: (
@@ -178,19 +181,29 @@ Object.assign(Funnel, {
       dataTestId: "funnel-row-sort",
     },
     ...metricSetting("funnel.metric", {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       section: t`Data`,
+
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       title: t`Measure`,
+
       dashboard: false,
       useRawSeries: true,
       showColumnSetting: true,
     }),
     "funnel.type": {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       title: t`Funnel type`,
+
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       section: t`Display`,
+
       widget: "select",
       props: {
         options: [
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
           { name: t`Funnel`, value: "funnel" },
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
           { name: t`Bar chart`, value: "bar" },
         ],
       },

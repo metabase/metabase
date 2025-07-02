@@ -28,6 +28,7 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
 import { Box, Button, Modal } from "metabase/ui";
+const { H } = cy;
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -377,6 +378,60 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
           cy.findByText("Product ID").should("not.exist");
           cy.findByText("Max of Quantity").should("not.exist");
         });
+      });
+    });
+  });
+
+  it("should select sensible display for new questions (EMB-308)", () => {
+    mountSdkContent(<InteractiveQuestion questionId="new" />);
+    cy.log("Select data");
+    H.popover().findByText("Raw Data").click();
+    H.popover().findByText("Orders").click();
+
+    cy.log("Select summarization");
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().findByRole("option", { name: "Count of rows" }).click();
+
+    cy.log("Select grouping");
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByRole("heading", { name: "Created At" }).click();
+
+    cy.log("Set limit");
+    const LIMIT = 2;
+    cy.button("Row limit").click();
+    cy.findByPlaceholderText("Enter a limit")
+      .type(LIMIT.toString())
+      .realPress("Tab");
+
+    cy.log("Visualize");
+    H.visualize();
+    H.cartesianChartCircle().should("have.length", LIMIT);
+  });
+
+  it("should not show any sdk error when showing a question in strict mode", () => {
+    cy.get<string>("@questionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+        strictMode: true,
+      });
+
+      getSdkRoot().within(() => {
+        H.assertElementNeverExists({
+          shouldNotExistSelector: "[data-testid='sdk-error-container']",
+          successSelector:
+            "[data-testid='interactive-question-result-toolbar']",
+          rejectionMessage:
+            "sdk errors should not show up when rendering an interactive question in strict mode",
+          pollInterval: 20,
+          timeout: 15000,
+        });
+
+        cy.log("should show the question's visualization");
+        cy.findByText("Product ID").should("be.visible");
+        cy.findByText("Max of Quantity").should("be.visible");
       });
     });
   });

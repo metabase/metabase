@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import dayjs from "dayjs";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";

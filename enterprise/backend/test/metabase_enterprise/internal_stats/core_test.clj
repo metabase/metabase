@@ -1,26 +1,29 @@
-(ns metabase-enterprise.internal-stats-test
+(ns metabase-enterprise.internal-stats.core-test
   (:require
    [clojure.test :refer [deftest testing is]]
-   [metabase-enterprise.internal-stats :as sut]
+   [metabase-enterprise.internal-stats.core :as sut]
    [metabase.test :as mt]))
 
 (deftest enabled-embedding-static-test
-  (testing "true when enable embedding sdk is true and dashboard count is greater than 0"
-    (mt/with-temporary-setting-values [enable-embedding-sdk true]
+  (testing "true when enable embedding static is true and dashboard count is greater than 0"
+    (mt/with-temporary-setting-values [enable-embedding-static true]
       (is (:enabled-embedding-static (sut/embedding-settings 1 0)))))
-  (testing "true when enable embedding sdk is true and question count is greater than 0"
-    (mt/with-temporary-setting-values [enable-embedding-sdk true]
+  (testing "true when enable embedding static is true and question count is greater than 0"
+    (mt/with-temporary-setting-values [enable-embedding-static true]
       (is (:enabled-embedding-static (sut/embedding-settings 0 1)))))
-  (testing "false when enable embedding sdk is true and no cards are dashboards are enabled"
+  (testing "false when enable embedding static is true and no cards are dashboards are enabled"
     (is (not (:enabled-embedding-static (sut/embedding-settings 0 0)))))
-  (testing "false when enable embedding sdk is false"
-    (mt/with-temporary-setting-values [enable-embedding-sdk false]
+  (testing "false when enable embedding static is false"
+    (mt/with-temporary-setting-values [enable-embedding-static false]
       (is (not (:enabled-embedding-static (sut/embedding-settings 1 1)))))))
 
 (def ^:private idp-cert (slurp "test_resources/sso/auth0-public-idp.cert"))
 
 (deftest enabled-embedding-interactive-test
-  (mt/with-premium-features #{:sso-saml :sso-jwt :embedding}
+  (mt/with-temporary-setting-values [saml-enabled        false
+                                     google-auth-enabled false
+                                     jwt-enabled         false
+                                     ldap-enabled        false]
     (testing "with saml-enabled"
       (mt/with-temporary-setting-values [saml-enabled                       true
                                          saml-identity-provider-uri         "https://idp.example.com"
@@ -61,19 +64,18 @@
             (is (:enabled-embedding-interactive (sut/embedding-settings 0 0)))))))))
 
 (deftest enabled-embedding-sdk
-  (mt/with-premium-features #{:sso-jwt}
-    (testing "with sdk enabled and jwt enabled"
-      (mt/with-temporary-setting-values [enable-embedding-sdk true
-                                         jwt-shared-secret    "asdfasdf"
-                                         jwt-enabled          true]
-        (is (:enabled-embedding-sdk (sut/embedding-settings 0 0)))))
+  (testing "with sdk enabled and jwt enabled"
+    (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                       jwt-shared-secret    "asdfasdf"
+                                       jwt-enabled          true]
+      (is (:enabled-embedding-sdk (sut/embedding-settings 0 0)))))
 
-    (testing "with sdk disabled and jwt enabled"
-      (mt/with-temporary-setting-values [enable-embedding-sdk false
-                                         jwt-enabled          true]
-        (is (not (:enabled-embedding-sdk (sut/embedding-settings 0 0))))))
+  (testing "with sdk disabled and jwt enabled"
+    (mt/with-temporary-setting-values [enable-embedding-sdk false
+                                       jwt-enabled          true]
+      (is (not (:enabled-embedding-sdk (sut/embedding-settings 0 0))))))
 
-    (testing "with sdk enabled and jwt disabled"
-      (mt/with-temporary-setting-values [enable-embedding-sdk true
-                                         jwt-enabled          false]
-        (is (not (:enabled-embedding-sdk (sut/embedding-settings 0 0))))))))
+  (testing "with sdk enabled and jwt disabled"
+    (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                       jwt-enabled          false]
+      (is (not (:enabled-embedding-sdk (sut/embedding-settings 0 0)))))))

@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useState } from "react";

@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { Database } from "metabase-types/api";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
 const { ORDERS_ID, REVIEWS } = SAMPLE_DATABASE;
@@ -277,4 +278,52 @@ describe("issue 52806", () => {
     H.modal().button("Discard changes").click();
     cy.location().should((location) => expect(location.search).to.eq(""));
   });
+});
+
+describe("issue 55951", () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    cy.intercept("GET", "/api/database", (request) => {
+      request.continue((response) => {
+        response.body.data = mockResponseData(response.body.data);
+      });
+    }).as("getDatabases");
+  });
+
+  it("should not show loading state in database picker when databases are being reloaded (metabase#55951)", () => {
+    cy.visit("/");
+    cy.wait("@getDatabases");
+
+    cy.intercept("GET", "/api/database*", (request) => {
+      request.continue((response) => {
+        response.body.data = mockResponseData(response.body.data);
+
+        // Setting this to be arbitrarly long so that H.repeatAssertion is guaranteed to detect the issue
+        return new Promise((resolve) => setTimeout(resolve, 2000));
+      });
+    });
+
+    H.newButton("SQL query").click();
+    H.popover()
+      .should("be.visible")
+      .within(() => {
+        cy.findByText("QA Postgres12").should("be.visible");
+        cy.findByText("Sample Database").should("be.visible");
+
+        H.repeatAssertion(() => {
+          cy.findByTestId("loading-indicator", { timeout: 250 }).should(
+            "not.exist",
+          );
+        });
+      });
+  });
+
+  function mockResponseData(databases: Database[]) {
+    return databases.map((database) => ({
+      ...database,
+      initial_sync_status: "incomplete" as const,
+    }));
+  }
 });

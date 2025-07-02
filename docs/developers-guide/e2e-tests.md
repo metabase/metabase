@@ -153,10 +153,17 @@ export MB_SNOWPLOW_URL=http://localhost:9090
 
 We have a few helpers for dealing with tests involving snowplow
 
-1. You can use `describeWithSnowplow` (or `describeWithSnowplowEE` for EE edition) method to define tests that only run when a Snowplow instance is running
-2. Use `resetSnowplow()` test helper before each test to clear the queue of processed events.
-3. Use `expectGoodSnowPlowEvent({ ...payload})` to assert on the content of a snowplow event. Use `expectGoodSnowplowEvents(count)` to assert that events have been sent and processed correctly. Prefer the more precise assertion on the actual payload to a mere count of events.
-4. Use `expectNoBadSnowplowEvents()` after each test to assert that no invalid events have been sent.
+1. You can use `describeWithSnowplow` (or `describeWithSnowplowEE` for EE edition) method to define tests that only
+   run when a Snowplow instance is running
+1. Use `resetSnowplow()` test helper before each test to clear the queue of processed events.
+1. Use `expectSnowplowEvent({ ...payload }, count=n)` to assert that exactly `count` snowplow events match (partially)
+   the payload provided (count defaults to 1)
+1. Use `expectUnstructuredSnowplowEvent` to assert that exactly `count` snowplow events are unstructured events that
+   partial-match the payload provided. This is simply a convenience function for comparing
+   `event.unstruct_event.data.data` rather than the entire `event`. Most of our events are unstructured events, so this is handy.
+1. Use `assertNoUnstructuredSnowplowEvent({ ...eventData })` is the inverse of `expectUnstructuredSnowplowEvent`, and asserts that
+   *no* unstructured events match the payload.
+1. Use `expectNoBadSnowplowEvents()` after each test to assert that no invalid events have been sent.
 
 ### Running tests that require SMTP server
 

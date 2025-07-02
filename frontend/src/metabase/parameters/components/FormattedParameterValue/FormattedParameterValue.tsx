@@ -12,11 +12,18 @@ import {
   isStringParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { ParameterValue, RowValue } from "metabase-types/api";
+import type {
+  CardId,
+  DashboardId,
+  ParameterValue,
+  RowValue,
+} from "metabase-types/api";
 
 export type FormattedParameterValueProps = {
   parameter: UiParameter;
   value: string | number | number[];
+  cardId?: CardId;
+  dashboardId?: DashboardId;
   placeholder?: string;
   isPopoverOpen?: boolean;
 };
@@ -24,6 +31,8 @@ export type FormattedParameterValueProps = {
 function FormattedParameterValue({
   parameter,
   value,
+  cardId,
+  dashboardId,
   placeholder,
   isPopoverOpen = false,
 }: FormattedParameterValueProps) {
@@ -49,6 +58,9 @@ function FormattedParameterValue({
         <ParameterFieldWidgetValue
           fields={getFields(parameter)}
           value={value}
+          parameter={parameter}
+          cardId={cardId}
+          dashboardId={dashboardId}
           displayValue={label}
         />
       );

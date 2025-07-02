@@ -46,7 +46,7 @@ const EntityIdTitle = (props?: TitleProps) => {
                       to={docsLink}
                       style={{ color: "var(--mb-color-brand)" }}
                     >
-                      Learn more
+                      {t`Learn more`}
                     </Link>
                   </>
                 )}

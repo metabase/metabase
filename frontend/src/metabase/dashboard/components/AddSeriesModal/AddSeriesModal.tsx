@@ -135,7 +135,7 @@ export class AddSeriesModal extends Component<Props, State> {
               CS.textBold,
             )}
           >
-            Edit data
+            {t`Edit data`}
           </div>
           <div className={cx(CS.flexFull, CS.ml2, CS.mr1, CS.relative)}>
             <Visualization

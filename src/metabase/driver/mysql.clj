@@ -16,6 +16,7 @@
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -36,7 +37,7 @@
    [metabase.util.log :as log])
   (:import
    (java.io File)
-   (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
+   (java.sql DatabaseMetaData ResultSet ResultSetMetaData SQLException Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)))
 
@@ -928,17 +929,14 @@
                     [table-name privileges])))
           table-names)))
 
-;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
-;; name, but coerces boolean fields since mysql returns them as 0/1 integers
-(defmethod driver/describe-fields :mysql
-  [driver database & args]
-  (eduction
-   (map (fn [col]
-          (-> col
-              (update :pk? pos?)
-              (update :database-required pos?)
-              (update :database-is-auto-increment pos?))))
-   (apply (get-method driver/describe-fields :sql-jdbc) driver database args)))
+;; Coerces boolean fields since mysql returns them as 0/1 integers
+(defmethod sql-jdbc.sync/describe-fields-pre-process-xf :mysql
+  [_driver _db & _args]
+  (map (fn [col]
+         (-> col
+             (update :pk? pos?)
+             (update :database-required pos?)
+             (update :database-is-auto-increment pos?)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :mysql
   [driver & {:keys [table-names details]}]
@@ -963,7 +961,8 @@
                 [:raw "c.table_name not in ('innodb_table_stats', 'innodb_index_stats')"]
                 (when-let [db-name ((some-fn :db :dbname) details)]
                   [:= :c.table_schema db-name])
-                (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]}
+                (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]
+               :order-by [:c.table_name :c.ordinal_position]}
               :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :mysql
@@ -981,3 +980,20 @@
                        (when (seq table-names) [:in :a.table_name table-names])]
                :order-by [:a.table_name]}
               :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
+  ;; MariaDB and MySQL report different error codes for the timeout caused by using .setQueryTimeout. This happens because they
+  ;; use different mechanisms for causing this timeout. MySQL timesout and terminates the connection externally. MariaDB uses the
+  ;; max_statement_time configuration that can be passed to a SQL statement to set its.
+  ;;
+  ;; Docs for MariaDB:
+  ;; https://mariadb.com/kb/en/e1317/
+  ;; https://mariadb.com/kb/en/e1969/
+  ;; https://mariadb.com/kb/en/e3024/
+  ;;
+  ;; Docs for MySQL:
+  ;; https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
+  ;;
+  ;; MySQL can return 1317 and 3024, but 1969 is not an error code in the mysql reference. All of these codes make sense for MariaDB
+  ;; to return. Hibernate expects 3024, but in testing 1969 was observered.
+  (contains? #{1317 1969 3024} (.getErrorCode e)))

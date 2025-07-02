@@ -18,6 +18,7 @@
    [metabase.db :as mdb]
    [metabase.plugins.classloader :as classloader]
    [metabase.task.bootstrap]
+   [metabase.task.prometheus :as task.prometheus]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -91,6 +92,19 @@
                        (ex-message (.getCause e)))
             (qs/delete-job scheduler job-key)))))))
 
+(defn- reset-errored-triggers!
+  "Quartz does not play well with rolling updates. For example, if a new instance adds and schedules a new job, an older
+  instance may pick this up, but be unable to construct the job. It will then put the trigger into the `ERROR` state,
+  from which it will never recover.
+
+  Actually fixing this odd and undesirable behavior would be the ideal solution, but as a stopgap, let's just
+  automatically reset all `ERROR`ed triggers to `WAITING` on startup."
+  [^Scheduler scheduler]
+  (doseq [^TriggerKey tk (.getTriggerKeys scheduler nil)]
+    ;; From dox: "Only affects triggers that are in ERROR state - if identified trigger is not
+    ;; in that state then the result is a no-op."
+    (.resetTriggerFromErrorState scheduler tk)))
+
 (defn init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
@@ -102,7 +116,14 @@
       (when (compare-and-set! *quartz-scheduler* nil new-scheduler)
         (qs/standby new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
+        ;; Register Prometheus listeners
+        (let [listener-manager (.getListenerManager new-scheduler)]
+          (.addJobListener listener-manager
+                           (task.prometheus/create-job-execution-listener))
+          (.addTriggerListener listener-manager
+                               (task.prometheus/create-trigger-listener new-scheduler)))
         (delete-jobs-with-no-class!)
+        (reset-errored-triggers! new-scheduler)
         (init-tasks!)))))
 
 ;;; this is a function mostly to facilitate testing.

@@ -8,6 +8,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
@@ -31,7 +32,7 @@ import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 import { DefaultViewTitle } from "./DefaultViewTitle";
 import InteractiveQuestionS from "./InteractiveQuestionDefaultView.module.css";
 
-export interface InteractiveQuestionDefaultViewProps {
+export interface InteractiveQuestionDefaultViewProps extends FlexibleSizeProps {
   title?: SdkQuestionTitleProps;
   withResetButton?: boolean;
   withChartTypeSelector?: boolean;
@@ -45,19 +46,15 @@ export const InteractiveQuestionDefaultView = ({
   title,
   withResetButton,
   withChartTypeSelector,
-}: InteractiveQuestionDefaultViewProps & FlexibleSizeProps): ReactElement => {
+}: InteractiveQuestionDefaultViewProps): ReactElement => {
   const {
     originalId,
     question,
     queryResults,
     isQuestionLoading,
     originalQuestion,
-    onCreate,
-    onSave,
     isSaveEnabled,
-    targetCollection,
     withDownloads,
-    isCardIdError,
   } = useInteractiveQuestionContext();
 
   const isCreatingQuestionFromScratch =
@@ -77,10 +74,7 @@ export const InteractiveQuestionDefaultView = ({
     return <SdkLoader />;
   }
 
-  if (
-    !question ||
-    (isCardIdError && originalId !== "new" && originalId !== null)
-  ) {
+  if (!question) {
     if (originalId) {
       return <QuestionNotFoundError id={originalId} />;
     } else {
@@ -176,21 +170,48 @@ export const InteractiveQuestionDefaultView = ({
         </Box>
       </Box>
       {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
-      {isSaveEnabled && isSaveModalOpen && question && (
-        <SaveQuestionModal
-          question={question}
-          originalQuestion={originalQuestion ?? null}
-          opened
-          closeOnSuccess
-          onClose={closeSaveModal}
-          onCreate={onCreate}
-          onSave={async (question) => {
-            await onSave(question);
-            closeSaveModal();
-          }}
-          targetCollection={targetCollection}
-        />
-      )}
+      <DefaultViewSaveModal isOpen={isSaveModalOpen} close={closeSaveModal} />
     </FlexibleSizeComponent>
+  );
+};
+
+const DefaultViewSaveModal = ({
+  isOpen,
+  close,
+}: {
+  isOpen: boolean;
+  close: () => void;
+}) => {
+  const {
+    question,
+    originalQuestion,
+    onCreate,
+    onSave,
+    isSaveEnabled,
+    targetCollection,
+  } = useInteractiveQuestionContext();
+
+  const { id, isLoading } = useTranslatedCollectionId({
+    id: targetCollection,
+  });
+
+  if (!isSaveEnabled || !isOpen || !question || isLoading) {
+    return null;
+  }
+
+  return (
+    <SaveQuestionModal
+      question={question}
+      originalQuestion={originalQuestion ?? null}
+      opened
+      closeOnSuccess
+      onClose={close}
+      onCreate={onCreate}
+      onSave={async (question) => {
+        await onSave(question);
+        close();
+      }}
+      targetCollection={id}
+    />
   );
 };

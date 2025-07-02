@@ -13,7 +13,7 @@ export const SdkError = ({ message }: SdkErrorComponentProps) => {
   const ErrorMessageComponent = CustomError || DefaultErrorMessage;
 
   return (
-    <Center h="100%" w="100%" mx="auto">
+    <Center h="100%" w="100%" mx="auto" data-testid="sdk-error-container">
       <ErrorMessageComponent message={message} />
     </Center>
   );

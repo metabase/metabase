@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
@@ -29,10 +30,12 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang PersistentList)
+   (com.google.api.gax.rpc FixedHeaderProvider)
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
                               BigQuery$TableOption BigQueryException BigQueryOptions Dataset
                               Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema
                               Table TableDefinition$Type TableId TableResult)
+   (com.google.common.collect ImmutableMap)
    (java.util Iterator)))
 
 (set! *warn-on-reflection* true)
@@ -55,8 +58,14 @@
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
   (let [creds   (bigquery.common/database-details->service-account-credential details)
+        mb-version (:tag config/mb-version-info)
+        run-mode   (name config/run-mode)
+        user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
+        header-provider (FixedHeaderProvider/create
+                         (ImmutableMap/of "user-agent" user-agent))
         bq-bldr (doto (BigQueryOptions/newBuilder)
-                  (.setCredentials (.createScoped creds bigquery-scopes)))]
+                  (.setCredentials (.createScoped creds bigquery-scopes))
+                  (.setHeaderProvider header-provider))]
     (when-let [host (not-empty (:host details))]
       (.setHost bq-bldr host))
     (.. bq-bldr build getService)))

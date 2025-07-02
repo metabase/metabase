@@ -10,8 +10,9 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.search.core :as search]
+   [metabase.search.spec :as search.spec]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -118,6 +119,18 @@
    (current-user-can-write-table? instance))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Table pk))))
+
+;;; ------------------------------------------------ SQL Permissions ------------------------------------------------
+
+(mu/defmethod mi/visible-filter-clause :model/Table
+  [_                  :- :keyword
+   column-or-exp      :- :any
+   user-info          :- perms/UserInfo
+   permission-mapping :- perms/PermissionMapping]
+  [:in column-or-exp
+   (perms/visible-table-filter-select :id user-info permission-mapping)])
+
+;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
 (defmethod serdes/hash-fields :model/Table
   [_table]
@@ -295,7 +308,7 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(search/define-spec "table"
+(search.spec/define-spec "table"
   {:model        :model/Table
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause

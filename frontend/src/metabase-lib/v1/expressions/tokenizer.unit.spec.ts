@@ -52,4 +52,11 @@ describe("tokenizer", () => {
       { type: TOKEN.Identifier, start: 3, end: 10 }, // [Price]
     ]);
   });
+
+  it("allows escaping brackets in identifiers", () => {
+    const { tokens, errors } = tokenize("[email (hello) \\[hi\\]]");
+
+    expect(tokens).toEqual([{ type: TOKEN.Identifier, start: 0, end: 22 }]);
+    expect(errors).toEqual([]);
+  });
 });

@@ -15,6 +15,7 @@ export * from "./e2e-downloads-helpers";
 export * from "./e2e-dragndrop-helpers";
 export * from "./e2e-email-helpers";
 export * from "./e2e-embedding-helpers";
+export * from "./e2e-element-visibility-helpers";
 export * from "./e2e-enterprise-helpers";
 export * from "./e2e-filter-helpers";
 export * from "./e2e-ldap-helpers";

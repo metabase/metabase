@@ -302,3 +302,12 @@ export function getTimezoneOrOffset(
     offsetMinutes,
   };
 }
+
+export function normalizeDate(dayjsDate: Dayjs) {
+  return dayjs
+    .utc()
+    .year(dayjsDate.year())
+    .month(dayjsDate.month())
+    .date(dayjsDate.date())
+    .startOf("day");
+}

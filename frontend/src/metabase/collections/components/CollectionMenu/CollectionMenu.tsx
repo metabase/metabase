@@ -105,6 +105,7 @@ export const CollectionMenu = ({
         component={ForwardRefLink}
         to={`${url}/move-questions-dashboard`}
         rightSection={
+          // eslint-disable-next-line i18next/no-literal-string -- old enough branch that's it's not worth translating it
           !hasSeenMoveToDashboard && <Badge variant="light">New</Badge>
         }
         onClick={() => !hasSeenMoveToDashboard && ackHasMoveToDashboard()}

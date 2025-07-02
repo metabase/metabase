@@ -243,7 +243,7 @@
 
 (defn- batch-update!
   "Create the given search index entries in bulk"
-  [documents]
+  [context documents]
   ;; Protect against tests that nuke the appdb
   (when config/is-test?
     (when-let [table (active-table)]
@@ -256,24 +256,38 @@
         (swap! *indexes* assoc :pending nil))))
 
   (let [entries          (map document->entry documents)
-        ;; Optimization idea: if the updates are coming from the re-indexing worker, skip updating the active table.
-        ;;                    this should give a close to 2x speed-up as insertion is the bottleneck, and most of the
-        ;;                    updates will be no-ops in any case.
-        active-updated?  (safe-batch-upsert! (active-table) entries)
+        ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
+        active-updated?  (when-not (= context :search/reindexing) (safe-batch-upsert! (active-table) entries))
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
-        (log/trace "indexed documents" <>)))))
+        (log/trace "indexed documents for " <>)))))
 
-(defmethod search.engine/consume! :search.engine/appdb [_engine document-reducible]
+(defn index-docs!
+  "Indexes the documents. The context should be :search/updating or :search/reindexing.
+   Context should be :search/updating or :search/reindexing to help control how to manage the updates"
+  [context document-reducible]
   (transduce (comp (partition-all insert-batch-size)
-                   (map batch-update!))
+                   (map (partial batch-update! context)))
              (partial merge-with +)
              document-reducible))
+
+(defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
+  (index-docs! :search/updating document-reducible))
 
 (defmethod search.engine/delete! :search.engine/appdb [_engine search-model ids]
   (doseq [table-name [(active-table) (pending-table)] :when table-name]
     (t2/delete! table-name :model search-model :model_id [:in ids])))
+
+(defn when-index-created
+  "Return creation time of the active index, or nil if there is none."
+  []
+  (t2/select-one-fn :created_at
+                    :model/SearchIndexMetadata
+                    :engine :appdb
+                    :version *index-version-id*
+                    :status :active
+                    {:order-by [[:created_at :desc]]}))
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."

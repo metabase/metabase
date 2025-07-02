@@ -58,6 +58,8 @@ Another common case where direct connections are impossible is when connecting t
 
 If you have problems connecting, verify the SSH host port and password by connecting manually using ssh or PuTTY on older windows systems.
 
+NOTE: the SSH server needs to have "AllowTcpForwarding" configuration set to "yes" for the tunneling to work.
+
 ## Disadvantages of indirect connections
 
 While using an SSH tunnel makes it possible to use a data warehouse that is otherwise inaccessible, it's almost always preferable to use a direct connection when possible.

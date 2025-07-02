@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 import type { TestConfig } from "yup";
 import * as Yup from "yup";
@@ -166,9 +166,12 @@ export const SettingsLdapFormView = ({
               <FormTextInput {...fields["ldap-port"]} />
               <FormRadioGroup {...fields["ldap-security"]}>
                 <Group mt={"xs"}>
-                  <Radio value="none" label="None" />
-                  <Radio value="ssl" label="SSL" />
-                  <Radio value="starttls" label="StartTLS" />
+                  <Radio value="none" label={t`None`} />
+                  <Radio
+                    value="ssl"
+                    label={c("short for 'Secure Sockets Layer'").t`SSL`}
+                  />
+                  <Radio value="starttls" label={t`StartTLS`} />
                 </Group>
               </FormRadioGroup>
               <FormTextInput {...fields["ldap-bind-dn"]} />

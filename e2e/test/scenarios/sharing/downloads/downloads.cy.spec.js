@@ -66,7 +66,7 @@ describe("scenarios > question > download", () => {
           expect(sheet["A2"].v).to.eq(18760);
         });
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "ad-hoc-question",
           accessed_via: "internal",
@@ -468,7 +468,7 @@ H.describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
       H.visitDashboard(dashboard.id);
       H.openSharingMenu("Export as PDF");
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "dashboard_pdf_exported",
         dashboard_id: dashboard.id,
         dashboard_accessed_via: "internal",
@@ -490,7 +490,7 @@ H.describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
 
     H.exportFromDashcard(".png");
 
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "download_results_clicked",
       resource_type: "dashcard",
       accessed_via: "internal",

@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { PLUGIN_API } from "metabase/plugins";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
@@ -314,9 +315,7 @@ export const MetabaseApi = {
   }),
   field_get: GET("/api/field/:fieldId"),
   // field_summary:               GET("/api/field/:fieldId/summary"),
-  field_values: GET("/api/field/:fieldId/values"),
   field_values_update: POST("/api/field/:fieldId/values"),
-  field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
   dataset_pivot: POST("/api/dataset/pivot"),
@@ -457,85 +456,54 @@ export const I18NApi = {
 };
 
 export function setPublicQuestionEndpoints(uuid) {
-  setCardEndpoints("/api/public/card/:uuid", { uuid });
+  setCardEndpoints(`/api/public/card/${encodeURIComponent(uuid)}`);
 }
 
 export function setPublicDashboardEndpoints(uuid) {
-  setDashboardEndpoints("/api/public/dashboard/:uuid", { uuid });
+  setDashboardEndpoints(`/api/public/dashboard/${encodeURIComponent(uuid)}`);
 }
 
 export function setEmbedQuestionEndpoints(token) {
-  if (!IS_EMBED_PREVIEW) {
-    setCardEndpoints("/api/embed/card/:token", { token });
-  }
+  setCardEndpoints(`${embedBase}/card/${encodeURIComponent(token)}`);
 }
 
 export function setEmbedDashboardEndpoints(token) {
-  if (!IS_EMBED_PREVIEW) {
-    setDashboardEndpoints("/api/embed/dashboard/:token", { token });
-  } else {
-    setDashboardParameterValuesEndpoint(embedBase);
-  }
+  setDashboardEndpoints(`${embedBase}/dashboard/${encodeURIComponent(token)}`);
 }
 
-function GET_with(url, params, omitKeys) {
-  return (data, options) =>
-    GET(url)({ ...params, ..._.omit(data, omitKeys) }, options);
+function GET_with(url, omitKeys) {
+  return (data, options) => GET(url)({ ..._.omit(data, omitKeys) }, options);
 }
 
-function setCardEndpoints(prefix, params) {
-  CardApi.parameterValues = GET_with(
-    `${prefix}/params/:paramId/values`,
-    params,
-    ["cardId"],
-  );
+function setCardEndpoints(prefix) {
+  // RTK query
+  PLUGIN_API.getRemappedCardParameterValueUrl = (_dashboardId, parameterId) =>
+    `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
+
+  // legacy API
+  CardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
+    "cardId",
+  ]);
   CardApi.parameterSearch = GET_with(
     `${prefix}/params/:paramId/search/:query`,
-    params,
     ["cardId"],
   );
-  MetabaseApi.field_values = GET_with(
-    `${prefix}/field/:fieldId/values`,
-    params,
-  );
-  MetabaseApi.field_search = GET_with(
-    `${prefix}/field/:fieldId/search/:searchFieldId`,
-    params,
-  );
-  MetabaseApi.field_remapping = GET_with(
-    `${prefix}/field/:fieldId/remapping/:remappedFieldId`,
-    params,
-  );
 }
 
-function setDashboardEndpoints(prefix, params) {
-  DashboardApi.parameterValues = GET_with(
-    `${prefix}/params/:paramId/values`,
-    params,
-    ["dashId"],
-  );
+function setDashboardEndpoints(prefix) {
+  // RTK query
+  PLUGIN_API.getRemappedDashboardParameterValueUrl = (
+    _dashboardId,
+    parameterId,
+  ) => `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
+
+  // legacy API
+  DashboardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
+    "dashId",
+  ]);
   DashboardApi.parameterSearch = GET_with(
     `${prefix}/params/:paramId/search/:query`,
-    params,
     ["dashId"],
-  );
-  MetabaseApi.field_values = GET_with(
-    `${prefix}/field/:fieldId/values`,
-    params,
-  );
-  MetabaseApi.field_search = GET_with(
-    `${prefix}/dashboard/:dashId/field/:fieldId/search/:searchFieldId`,
-    params,
-  );
-  MetabaseApi.field_remapping = GET_with(
-    `${prefix}/field/:fieldId/remapping/:remappedFieldId`,
-    params,
-  );
-}
-
-function setDashboardParameterValuesEndpoint(prefix) {
-  DashboardApi.parameterValues = GET(
-    `${prefix}/dashboard/:dashId/params/:paramId/values`,
   );
 }
 

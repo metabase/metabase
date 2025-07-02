@@ -93,3 +93,22 @@ export const IsomorphicVisualizationStory = ({
     </Box>
   );
 };
+
+/**
+ * Shows how a visualization is rendered in the SDK,
+ * using the SDK's theme provider.
+ */
+export const SdkVisualizationStory = ({
+  rawSeries,
+  theme,
+}: IsomorphicVisualizationStoryProps & { theme?: MetabaseTheme }) => {
+  return (
+    <Box w={1000} h={600} bg={theme?.colors?.background}>
+      <VisualizationWrapper>
+        <SdkThemeProvider theme={theme}>
+          <Visualization rawSeries={rawSeries} width={500} />
+        </SdkThemeProvider>
+      </VisualizationWrapper>
+    </Box>
+  );
+};

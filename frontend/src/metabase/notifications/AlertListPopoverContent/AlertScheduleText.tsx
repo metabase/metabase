@@ -79,6 +79,7 @@ export const AlertScheduleText = ({
 
   if (verbose) {
     return (
+      // eslint-disable-next-line i18next/no-literal-string -- old enough branch that's it's not worth translating it
       <span>
         Checking <b>{scheduleText}</b>
       </span>

@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { updateSetting } from "e2e/support/helpers";
 
 const { IS_ENTERPRISE } = Cypress.env();
@@ -24,34 +22,38 @@ export const blockSnowplow = () => {
   blockSnowplowRequest("*/tp2");
 };
 
+export const assertNoUnstructuredSnowplowEvent = (eventData) => {
+  return expectUnstructuredSnowplowEvent(eventData, 0);
+};
+
+export const expectSnowplowEvent = (match, count = 1) => {
+  retrySnowplowRequest("micro/good", ({ body }) => {
+    const lastFoundEventCount = body.filter((e) =>
+      isDeepMatch(e, match),
+    ).length;
+    return lastFoundEventCount === count;
+  }).should("be.ok");
+};
+
 /**
  * Check for the existence of specific snowplow events.
  *
- * @param {Object|Function} eventData - object of key / value pairs you expect to see in the event or a function that will be passed in the real event for you to do your own comparison with
+ * @param {Object|function} eventData - object of key / value pairs you expect to see in the event or a function that will be passed in the real event for you to do your own comparison with
  * @param {number} count - number of matching events you expect to find. defaults to 1
  */
-export const expectGoodSnowplowEvent = (eventData, count = 1) => {
-  let lastReceivedEvent = null;
-  let lastFoundEventCount = 0;
-  retrySnowplowRequest(
-    "micro/good",
-    ({ body }) => {
-      lastReceivedEvent = body?.[0].event?.unstruct_event?.data?.data;
-      lastFoundEventCount = body.filter((snowplowEvent) =>
-        isDeepMatch(
-          snowplowEvent?.event?.unstruct_event?.data?.data,
-          eventData,
-        ),
-      ).length;
-      return lastFoundEventCount === count;
+export const expectUnstructuredSnowplowEvent = (eventData, count = 1) => {
+  expectSnowplowEvent(
+    {
+      event: {
+        unstruct_event: {
+          data: {
+            data: eventData,
+          },
+        },
+      },
     },
-    () =>
-      `Expected ${count} good Snowplow events to match: ${
-        _.isFunction(eventData)
-          ? eventData.toString()
-          : JSON.stringify(eventData, null, 2)
-      }\n\nLast event found was ${JSON.stringify(lastReceivedEvent, null, 2)}\n\nLast matching event count was ${lastFoundEventCount}`,
-  ).should("be.ok");
+    count,
+  );
 };
 
 export function isDeepMatch(objectOrValue, partialObjectOrValue) {
@@ -101,12 +103,6 @@ function isArrayDeepMatch(array, partialArray) {
   return true;
 }
 
-export const expectGoodSnowplowEvents = (count) => {
-  retrySnowplowRequest("micro/good", ({ body }) => body.length >= count)
-    .its("body")
-    .should("have.length", count);
-};
-
 export const expectNoBadSnowplowEvents = () => {
   sendSnowplowRequest("micro/bad").its("body").should("deep.equal", []);
 };
@@ -138,7 +134,7 @@ const retrySnowplowRequest = (
     } else {
       const message =
         typeof messageOrMessageFn === "function"
-          ? messageOrMessageFn()
+          ? messageOrMessageFn(response)
           : messageOrMessageFn;
       throw new Error("Snowplow retry timeout " + message);
     }

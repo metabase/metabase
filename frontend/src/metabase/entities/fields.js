@@ -29,7 +29,6 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { MetabaseApi } from "metabase/services";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
 
@@ -115,9 +114,11 @@ const Fields = createEntity({
       ),
       withNormalize(FieldSchema),
     )((field) => async (dispatch) => {
-      const { field_id, ...data } = await MetabaseApi.field_values({
-        fieldId: field.id,
-      });
+      const { field_id, ...data } = await entityCompatibleQuery(
+        field.id,
+        dispatch,
+        fieldApi.endpoints.getFieldValues,
+      );
       const table_id = field.table_id;
 
       // table_id is required for uniqueFieldId as it's a way to know if field is virtual

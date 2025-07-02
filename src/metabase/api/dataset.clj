@@ -12,6 +12,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.visualization-settings :as mb.viz]
@@ -72,14 +73,13 @@
                                   :card-id     source-card-id}
                            (= (:type source-card) :model)
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
-      (binding [qp.perms/*card-id* source-card-id]
-        (qp.streaming/streaming-response [rff export-format]
-          (if was-pivot
-            (qp.pivot/run-pivot-query (-> query
-                                          (assoc :constraints (qp.constraints/default-query-constraints))
-                                          (update :info merge info))
-                                      rff)
-            (qp/process-query (update query :info merge info) rff)))))))
+      (qp.streaming/streaming-response [rff export-format]
+        (if was-pivot
+          (qp.pivot/run-pivot-query (-> query
+                                        (assoc :constraints (qp.constraints/default-query-constraints))
+                                        (update :info merge info))
+                                    rff)
+          (qp/process-query (update query :info merge info) rff))))))
 
 (api.macros/defendpoint :post "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
@@ -254,3 +254,27 @@
                               [:parameter ms/Parameter]
                               [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
   (parameter-values parameter field-ids query))
+
+(defn param-remapped-value
+  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `card`."
+  [[field-id :as field-ids] param value]
+  (or (custom-values/parameter-remapped-value
+       param
+       value
+       #(-> (if (= (count field-ids) 1)
+              (chain-filter/chain-filter field-id [{:field-id field-id, :op :=, :value value}] :limit 1)
+              (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
+                (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
+            :values
+            first))
+      [value]))
+
+(api.macros/defendpoint :post "/parameter/remapping"
+  "Return the remapped parameter values for cards or dashboards that are being edited."
+  [_route-params
+   _query-params
+   {:keys [parameter value field_ids]} :- [:map
+                                           [:parameter ms/Parameter]
+                                           [:value :any]
+                                           [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
+  (param-remapped-value field_ids parameter value))

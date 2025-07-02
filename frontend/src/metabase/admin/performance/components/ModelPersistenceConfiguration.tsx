@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import type { ChangeEventHandler } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { c, msgid, ngettext, t } from "ttag";

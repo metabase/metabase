@@ -30,7 +30,7 @@ const MAP_COMPONENTS_BY_TYPE = {
 };
 
 export default class PinMap extends Component {
-  static uiName = t`Pin Map`;
+  static getUiName = () => t`Pin Map`;
   static identifier = "pin_map";
   static iconName = "pinmap";
 

@@ -7,6 +7,7 @@
   "
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.ident :as lib.ident]
    [metabase.models.interface :as mi]
@@ -157,3 +158,49 @@
     (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
                     {:status-code 400
                      :parameter parameter}))))
+
+(defn pk-of-fk-pk-field-ids
+  "Check if the collection `field-ids` contains the IDs of FK fields pointing to the same PK and
+  optionally the ID of that PK field and nothing else.
+  Return the PK field ID if `field-ids` is such a group."
+  [field-ids]
+  (when (and (seq field-ids) (every? pos-int? field-ids))
+    (let [field-id-set (set field-ids)
+          fields (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-id-set])]
+      ;; when every field could be found and all are keys
+      (when (and (= (count field-id-set) (count fields))
+                 (every? (fn [{:keys [semantic_type fk_target_field_id]}]
+                           (or (isa? semantic_type :type/PK)
+                               (and (isa? semantic_type :type/FK)
+                                    fk_target_field_id)))
+                         fields))
+        ;; pk->fks maps PK field IDs to FK field IDs pointing to them,
+        ;; plus nil to the field IDs in `field-ids` that are not FKs
+        (let [pk->fks (-> fields
+                          (->> (group-by :fk_target_field_id))
+                          (update-vals #(into #{} (map :id) %)))]
+          (case (count pk->fks)
+            ;; there is a single group so it's either one PK mapped to its FKs, or nil mapped to non-FKs
+            1 (-> pk->fks first key)
+            ;; two groups can be a match if one group is nil mapped to a singleton set with a PK,
+            ;; and the other group is the PK mapped to all the other field IDs in the input
+            2 (when-let [pk (first (pk->fks nil))]
+                (when (= (into #{pk} (pk->fks pk)) field-id-set)
+                  pk))
+            ;; more than two groups are always ambiguous, so no match
+            nil))))))
+
+(defn parameter-remapped-value
+  "Fetch the remapped value for the given `value` of parameter `param` with default values provided by
+  the function `default-case-thunk`.
+
+  `default-case-thunk` is a 0-arity function that returns values list when :values_source_type = nil."
+  [param value default-case-thunk]
+  (case (:values_source_type param)
+    "static-list" (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))
+                                (get-in param [:values_source_config :values]))
+    "card"        nil
+    nil           (default-case-thunk)
+    (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type param))
+                    {:status-code 400
+                     :parameter param}))))

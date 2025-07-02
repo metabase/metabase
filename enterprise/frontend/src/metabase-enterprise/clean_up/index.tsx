@@ -56,6 +56,7 @@ if (hasPremiumFeature("collection_cleanup")) {
           icon={<Icon name="archive" />}
           component={ForwardRefLink}
           to={`${Urls.collection(collection)}/cleanup`}
+          // eslint-disable-next-line i18next/no-literal-string -- old enough branch that's it's not worth translating it
           rightSection={hasStaleItems && <Badge>Recommended</Badge>}
         >{t`Clear out unused items`}</Menu.Item>,
       ],

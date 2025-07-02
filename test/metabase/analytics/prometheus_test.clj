@@ -69,7 +69,9 @@
     "process_max_fds"
     "process_open_fds"
     "process_start_time_seconds"
-    "jetty_request_time_seconds_total"})
+    "jetty_request_time_seconds_total"
+    "quartz_tasks_executed"
+    "quartz_tasks_states"})
 
 (defn- metric-tags
   "Returns a set of tags of prometheus metrics. Ie logs are

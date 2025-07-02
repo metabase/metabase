@@ -371,10 +371,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
 (defn do-with-connection-spec-for-testing-connection
   "Impl for [[with-connection-spec-for-testing-connection]]."
   [driver details f]
-  (let [details (driver/incorporate-ssh-tunnel-details
-                  ;; If the tunnel is disabled this returned unchanged
-                 driver
-                 (update details :port #(or % (default-ssh-tunnel-target-port driver))))]
+  (let [details (update details :port #(or % (default-ssh-tunnel-target-port driver)))]
     (ssh/with-ssh-tunnel [details-with-tunnel details]
       (let [details-with-auth (driver.u/fetch-and-incorporate-auth-provider-details
                                driver

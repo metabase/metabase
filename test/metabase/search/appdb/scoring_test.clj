@@ -196,9 +196,10 @@
                 _               (t2/insert! :model/Card (concat (repeatedly 20 #(card-with-view 0))
                                                                 (for [i (range 1 81)]
                                                                   (card-with-view i))))
-                _               (search.ingestion/consume!
+                _               (search.ingestion/update!
                                  (#'search.ingestion/query->documents
-                                  (#'search.ingestion/spec-index-reducible "card" [:= :this.name search-term])))
+                                  (#'search.ingestion/spec-index-reducible "card" [:= :this.name search-term]))
+                                 [])
                 first-result-id (-> (search-results* search-term) first second)]
             (is (some? first-result-id))
            ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,

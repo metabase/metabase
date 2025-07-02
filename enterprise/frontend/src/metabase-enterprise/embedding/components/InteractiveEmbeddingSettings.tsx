@@ -21,6 +21,7 @@ import {
 
 const INTERACTIVE_EMBEDDING_ORIGINS_SETTING = {
   key: "embedding-app-origins-interactive",
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   display_name: t`Authorized origins`,
   description: <EmbeddingAppOriginDescription />,
   placeholder: "https://*.example.com",
@@ -28,6 +29,7 @@ const INTERACTIVE_EMBEDDING_ORIGINS_SETTING = {
 
 const SAME_SITE_SETTING = {
   key: "session-cookie-samesite",
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   display_name: t`SameSite cookie setting`,
   description: <EmbeddingAppSameSiteCookieDescription />,
   widget: SameSiteSelectWidget,

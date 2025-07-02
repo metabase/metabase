@@ -298,8 +298,20 @@ export function tokenize(expression: string): {
   };
 
   const isInsideBracketIdentifier = () => {
+    let escape = false;
+
     for (let i = index + 1; i < length; ++i) {
       const character = source[i];
+
+      if (character === "\\") {
+        escape = true;
+        continue;
+      }
+
+      if (escape) {
+        escape = false;
+        continue;
+      }
 
       if (character === "]") {
         return true;

@@ -217,7 +217,7 @@ H.describeWithSnowplow(
 
       H.popover().findAllByRole("button").contains("Hour of day").click();
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "column_extract_via_shortcut",
         custom_expressions_used: ["get-hour"],
         database_id: SAMPLE_DB_ID,
@@ -359,7 +359,7 @@ H.describeWithSnowplow(
 
       H.expressionEditorWidget().button("Done").click();
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "column_combine_via_shortcut",
         custom_expressions_used: ["concat"],
         database_id: SAMPLE_DB_ID,

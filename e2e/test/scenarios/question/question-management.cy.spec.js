@@ -426,8 +426,6 @@ describe(
 );
 
 H.describeWithSnowplow("send snowplow question events", () => {
-  const NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION = 2;
-
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -442,15 +440,10 @@ H.describeWithSnowplow("send snowplow question events", () => {
   it("should send event when clicking `Turn into a model`", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.openQuestionActions();
-    H.expectGoodSnowplowEvents(
-      NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION,
-    );
     H.popover().within(() => {
       cy.findByText("Turn into a model").click();
     });
-    H.expectGoodSnowplowEvents(
-      NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION + 1,
-    );
+    H.expectUnstructuredSnowplowEvent({ event: "turn_into_model_clicked" });
   });
 });
 

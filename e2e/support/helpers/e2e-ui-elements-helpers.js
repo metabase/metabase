@@ -295,6 +295,10 @@ export const dashboardParametersContainer = () => {
   return cy.findByTestId("dashboard-parameters-widget-container");
 };
 
+export const editingDashboardParametersContainer = () => {
+  return cy.findByTestId("edit-dashboard-parameters-widget-container");
+};
+
 export const undoToast = () => {
   return cy.findByTestId("toast-undo");
 };

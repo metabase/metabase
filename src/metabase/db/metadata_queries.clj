@@ -4,6 +4,7 @@
   TODO -- these have nothing to do with the application database. This namespace should be renamed something like
   `metabase.driver.util.metadata-queries`."
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -78,24 +79,45 @@
        :middleware {:disable-remaps? true}}
       rff))))
 
+(def HumanReadableRemappingMap
+  "Schema for the map of actual value -> human-readable value. Cannot be empty."
+  [:map-of {:min 1} :any [:maybe :string]])
+
+(mu/defn human-readable-remapping-map :- [:maybe HumanReadableRemappingMap]
+  "Get the human readable (internally mapped) values of the field specified by `field-id`."
+  [field-id :- ms/PositiveInt]
+  (let [{orig :values, remapped :human_readable_values}
+        (t2/select-one [:model/FieldValues :values :human_readable_values]
+                       {:where [:and
+                                [:= :type "full"]
+                                [:= :field_id field-id]
+                                [:not= :human_readable_values nil]
+                                [:not= :human_readable_values "{}"]]})]
+    (some->> (seq remapped) (zipmap orig))))
+
 (defn search-values-query
-  "Generate the MBQL query used to power FieldValues search in [[metabase.api.field/search-values]]. The actual query generated
-  differs slightly based on whether the two Fields are the same Field.
+  "Generate the MBQL query used to power FieldValues search in [[metabase.api.field/search-values]]. The actual query
+  generated differs slightly based on whether the two Fields are the same Field.
 
   Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
   [field search-field value limit]
-  (-> (table-query (:table_id field)
-                   {:filter   (when (some? value)
-                                [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
-                   ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
-                   ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
-                   ;; identifiers/aliases
-                    :breakout (if (= (u/the-id field) (u/the-id search-field))
-                                [[:field (u/the-id field) nil]]
-                                [[:field (u/the-id field) nil]
-                                 [:field (u/the-id search-field) nil]])
-                    :limit    limit})
-      :data :rows))
+  (if-let [value->human-readable-value (human-readable-remapping-map (u/the-id field))]
+    (let [query (some-> value u/lower-case-en)]
+      (cond->> value->human-readable-value
+        value (filter #(str/includes? (-> % val u/lower-case-en) query))
+        true  (sort-by key)))
+    (-> (table-query (:table_id field)
+                     {:filter   (when (some? value)
+                                  [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
+                      ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
+                      ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
+                      ;; identifiers/aliases
+                      :breakout (if (= (u/the-id field) (u/the-id search-field))
+                                  [[:field (u/the-id field) nil]]
+                                  [[:field (u/the-id field) nil]
+                                   [:field (u/the-id search-field) nil]])
+                      :limit    limit})
+        :data :rows)))
 
 (defn field-distinct-count
   "Return the distinct count of `field`."

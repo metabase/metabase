@@ -2,17 +2,23 @@ import { t } from "ttag";
 
 export const CARD_INFO = {
   question: {
-    title: t`Saved Questions`,
+    get title() {
+      return t`Saved Questions`;
+    },
     model: "card",
     icon: "table2",
   },
   model: {
-    title: t`Models`,
+    get title() {
+      return t`Models`;
+    },
     model: "dataset",
     icon: "model",
   },
   metric: {
-    title: t`Metrics`,
+    get title() {
+      return t`Metrics`;
+    },
     model: "metric",
     icon: "metric",
   },

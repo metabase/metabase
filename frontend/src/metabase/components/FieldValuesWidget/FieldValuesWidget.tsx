@@ -15,7 +15,6 @@ import ValueComponent from "metabase/components/Value";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { parseNumberValue } from "metabase/lib/number";
-import { defer } from "metabase/lib/promise";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import {
@@ -27,7 +26,9 @@ import { addRemappings } from "metabase/redux/metadata";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
+  CardId,
   Dashboard,
+  DashboardId,
   FieldValue,
   Parameter,
   RowValue,
@@ -42,8 +43,6 @@ import {
   canUseCardEndpoints,
   canUseDashboardEndpoints,
   canUseParameterEndpoints,
-  dedupeValues,
-  getNonVirtualFields,
   getTokenFieldPlaceholder,
   getValue,
   getValuesMode,
@@ -51,7 +50,6 @@ import {
   isExtensionOfPreviousSearch,
   isNumeric,
   isSearchable,
-  searchFieldValues,
   shouldList,
   showRemapping,
 } from "./utils";
@@ -202,15 +200,6 @@ export const FieldValuesWidgetInner = forwardRef<
           await dispatchFetchParameterValues(query);
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
-      } else {
-        newOptions = await fetchFieldValues(query);
-
-        newValuesMode = getValuesMode({
-          parameter,
-          fields,
-          disableSearch,
-          disablePKRemappingForSearch,
-        });
       }
     } finally {
       updateRemappings(newOptions);
@@ -218,50 +207,6 @@ export const FieldValuesWidgetInner = forwardRef<
       setOptions(newOptions);
       setLoadingState("LOADED");
       setValuesMode(newValuesMode);
-    }
-  };
-
-  const fetchFieldValues = async (query?: string): Promise<FieldValue[]> => {
-    if (query == null) {
-      const nonVirtualFields = getNonVirtualFields(fields);
-
-      const results = await Promise.all(
-        nonVirtualFields.map((field) =>
-          dispatch(Fields.objectActions.fetchFieldValues(field)),
-        ),
-      );
-
-      // extract the field values from the API response(s)
-      // the entity loader has inconsistent return structure, so we have to handle both
-      const fieldValues: FieldValue[][] = nonVirtualFields.map(
-        (field, index) =>
-          results[index]?.payload?.values ??
-          Fields.selectors.getFieldValues(results[index]?.payload, {
-            entityId: field.getUniqueId(),
-          }),
-      );
-
-      return dedupeValues(fieldValues);
-    } else {
-      const cancelDeferred = defer();
-      const cancelled: Promise<unknown> = cancelDeferred.promise;
-      _cancel.current = () => {
-        _cancel.current = null;
-        cancelDeferred.resolve();
-      };
-
-      const options = await searchFieldValues(
-        {
-          value: query,
-          fields,
-          disablePKRemappingForSearch,
-          maxResults,
-        },
-        cancelled,
-      );
-
-      _cancel.current = null;
-      return options;
     }
   };
 
@@ -369,6 +314,9 @@ export const FieldValuesWidgetInner = forwardRef<
     valueRenderer = (value: string | number) => {
       const option = options.find((option) => getValue(option) === value);
       return renderValue({
+        parameter,
+        cardId: question?.id(),
+        dashboardId: dashboard?.id,
         fields,
         formatOptions,
         value,
@@ -382,6 +330,9 @@ export const FieldValuesWidgetInner = forwardRef<
   if (!optionRenderer) {
     optionRenderer = (option: FieldValue) =>
       renderValue({
+        parameter,
+        cardId: question?.id(),
+        dashboardId: dashboard?.id,
         fields,
         formatOptions,
         value: option[0],
@@ -443,7 +394,7 @@ export const FieldValuesWidgetInner = forwardRef<
   });
 
   const parseFreeformValue = (value: string | number) => {
-    return isNumeric(fields[0], parameter)
+    return isNumeric(parameter, fields)
       ? parseNumberValue(value)
       : parseStringValue(value);
   };
@@ -630,6 +581,9 @@ function renderOptions({
 }
 
 function renderValue({
+  parameter,
+  cardId,
+  dashboardId,
   fields,
   formatOptions,
   value,
@@ -637,6 +591,9 @@ function renderValue({
   compact,
   displayValue,
 }: {
+  parameter?: Parameter;
+  cardId?: CardId;
+  dashboardId?: DashboardId;
   fields: Field[];
   formatOptions: Record<string, any>;
   value: RowValue;
@@ -646,6 +603,9 @@ function renderValue({
 }) {
   return (
     <ValueComponent
+      parameter={parameter}
+      cardId={cardId}
+      dashboardId={dashboardId}
       value={value}
       column={fields[0]}
       maximumFractionDigits={20}

@@ -330,15 +330,6 @@
   [driver [_ arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
 
-;; keyword function converts database-type variable to a symbol, so we use symbols above to map the types
-(defn- database-type->base-type-or-warn
-  "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
-  [driver database-type]
-  (or (sql-jdbc.sync/database-type->base-type driver (keyword database-type))
-      (do (log/warnf "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
-                     database-type)
-          :type/*)))
-
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
    Such as prepare statement"
@@ -384,7 +375,7 @@
               (map athena.schema-parser/parse-schema))
         (run-query database (format "DESCRIBE `%s`.`%s`;" schema table-name))))
 
-(defn- describe-table-fields-without-nested-fields [driver columns]
+(defn- describe-table-fields-without-nested-fields [driver schema table-name columns]
   (set
    (for [[idx {database-type :type_name
                column-name   :column_name
@@ -392,7 +383,9 @@
      (merge
       {:name              column-name
        :database-type     database-type
-       :base-type         (database-type->base-type-or-warn driver database-type)
+       :base-type         (sql-jdbc.sync/database-type->base-type-or-warn driver
+                                                                          [schema table-name column-name]
+                                                                          database-type)
        :database-position idx}
       (when (not (str/blank? remarks))
         {:field-comment remarks})))))
@@ -425,7 +418,7 @@
                 ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
               (empty? columns))
         (describe-table-fields-with-nested-fields database schema table-name)
-        (describe-table-fields-without-nested-fields driver columns)))
+        (describe-table-fields-without-nested-fields driver schema table-name columns)))
     (catch Throwable e
       (log/errorf e "Error retreiving fields for DB %s.%s" schema table-name)
       (throw e))))

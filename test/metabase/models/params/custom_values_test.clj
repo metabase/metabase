@@ -285,3 +285,78 @@
                  (custom-values/values-from-card
                   (t2/select-one :model/Card :id card-id)
                   (mt/$ids $products.category)))))))))
+
+(deftest pk-of-fk-pk-field-ids-test
+  (testing "single group"
+    (testing "with PK"
+      (is (= (mt/id :products :id)
+             (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
+                                                   (mt/id :products :id)])))
+      (is (= (mt/id :products :id)
+             (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
+                                                   (mt/id :reviews :product_id)
+                                                   (mt/id :products :id)]))))
+    (testing "without PK"
+      (is (= (mt/id :products :id)
+             (custom-values/pk-of-fk-pk-field-ids #{(mt/id :orders :product_id)})))
+      (is (= (mt/id :products :id)
+             (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
+                                                   (mt/id :reviews :product_id)]))))
+    (testing "duplicates are OK "
+      (is (= (mt/id :products :id)
+             (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
+                                                   (mt/id :orders :product_id)
+                                                   (mt/id :reviews :product_id)
+                                                   (mt/id :reviews :product_id)])))
+      (is (= (mt/id :products :id)
+             (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
+                                                   (mt/id :orders :product_id)
+                                                   (mt/id :orders :product_id)
+                                                   (mt/id :reviews :product_id)])))
+      (is (= (mt/id :products :id)
+             (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
+                                                   (mt/id :orders :product_id)
+                                                   (mt/id :orders :product_id)])))))
+  (testing "two groups"
+    (testing "both with PKs"
+      (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
+                                                      (mt/id :reviews :product_id)
+                                                      (mt/id :products :id)
+                                                      (mt/id :orders :user_id)
+                                                      (mt/id :people :id)]))))
+    (testing "one with PK"
+      (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
+                                                      (mt/id :reviews :product_id)
+                                                      (mt/id :orders :user_id)
+                                                      (mt/id :people :id)]))))
+    (testing "none with PK"
+      (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
+                                                      (mt/id :reviews :product_id)
+                                                      (mt/id :orders :user_id)])))))
+  (testing "single group with PK plus other field"
+    (is (nil? (custom-values/pk-of-fk-pk-field-ids #{(mt/id :orders :product_id)
+                                                     (mt/id :reviews :product_id)
+                                                     (mt/id :products :id)
+                                                     (mt/id :people :name)})))
+    (is (nil? (custom-values/pk-of-fk-pk-field-ids #{(mt/id :orders :product_id)
+                                                     (mt/id :reviews :product_id)
+                                                     (mt/id :products :id)
+                                                     Integer/MAX_VALUE})))
+    (is (nil? (custom-values/pk-of-fk-pk-field-ids #{(mt/id :orders :product_id)
+                                                     (mt/id :reviews :product_id)
+                                                     (mt/id :products :id)
+                                                     -1}))))
+  (testing "single group without PK plus other field"
+    (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
+                                                    (mt/id :reviews :product_id)
+                                                    (mt/id :people :name)])))
+    (is (nil? (custom-values/pk-of-fk-pk-field-ids #{(mt/id :orders :product_id)
+                                                     (mt/id :reviews :product_id)
+                                                     Integer/MAX_VALUE})))
+    (is (nil? (custom-values/pk-of-fk-pk-field-ids #{(mt/id :orders :product_id)
+                                                     (mt/id :reviews :product_id)
+                                                     -1}))))
+  (testing "just a PK"
+    (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :products :id)]))))
+  (testing "just a non-key"
+    (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :people :name)])))))

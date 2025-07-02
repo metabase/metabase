@@ -53,6 +53,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.core :as xrays]
+   [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -98,22 +99,23 @@
     {:name       "hydrate-dashboard-details"
      :attributes {:dashboard/id dashboard-id}}
     (binding [params/*field-id-context* (atom params/empty-field-id-context)]
-      (t2/hydrate dashboard [:dashcards
-                             ;; disabled :can_run_adhoc_query for performance reasons in 50 release
-                             [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
-                             [:series :can_write #_:can_run_adhoc_query]
-                             :dashcard/action
-                             :dashcard/linkcard-info]
-                  :can_restore
-                  :can_delete
-                  :last_used_param_values
-                  :tabs
-                  :collection_authority_level
-                  :can_write
-                  :param_fields
-                  :param_values
-                  [:moderation_reviews :moderator_details]
-                  [:collection :is_personal :effective_location]))))
+      (cond->>  [[:dashcards
+                    ;; disabled :can_run_adhoc_query for performance reasons in 50 release
+                  [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
+                  [:series :can_write #_:can_run_adhoc_query]
+                  :dashcard/action
+                  :dashcard/linkcard-info]
+                 :can_restore
+                 :can_delete
+                 :tabs
+                 :collection_authority_level
+                 :can_write
+                 :param_fields
+                 :param_values
+                 [:moderation_reviews :moderator_details]
+                 [:collection :is_personal :effective_location]]
+        (dashboard/dashboards-save-last-used-parameters) (cons :last_used_param_values)
+        true (apply t2/hydrate dashboard)))))
 
 (api.macros/defendpoint :post "/"
   "Create a new Dashboard."
@@ -1216,7 +1218,8 @@
     param-key                   :- ms/NonBlankString
     constraint-param-key->value :- [:map-of string? any?]
     query                       :- [:maybe ms/NonBlankString]]
-   (let [dashboard   (t2/hydrate dashboard :resolved-params)
+   (let [dashboard   (cond-> dashboard
+                       (nil? (:resolved-params dashboard)) (t2/hydrate :resolved-params))
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (get-in dashboard [:resolved-params param-key])
          field-ids   (into #{} (map :field-id (param->fields param)))]
@@ -1297,6 +1300,46 @@
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
       (param-values dashboard param-key constraint-param-key->value query))))
+
+(defn dashboard-param-remapped-value
+  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `dashboard`."
+  ([dashboard param-key value]
+   (dashboard-param-remapped-value dashboard param-key value nil))
+  ([dashboard param-key value constraint-param-key->value]
+   (when (contains? constraint-param-key->value param-key)
+     (throw (ex-info (tru "Getting the remapped value for a constrained parameter is not supported")
+                     {:status-code 400
+                      :parameter param-key})))
+   (or (let [dashboard (-> dashboard
+                           (t2/hydrate :resolved-params)
+                           ;; whatever the param's type, we want an equality constraint
+                           (m/update-existing-in [:resolved-params param-key] assoc :type :id))
+             param     (get-in dashboard [:resolved-params param-key])]
+         (custom-values/parameter-remapped-value
+          param
+          value
+          #(let [field-ids (into #{} (map :field-id (param->fields param)))]
+             (-> (if (= (count field-ids) 1)
+                   (chain-filter/chain-filter (first field-ids) (chain-filter-constraints dashboard (assoc constraint-param-key->value param-key value))
+                                              :relax-fk-requirement? true :limit 1)
+                   (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
+                     (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
+                 :values
+                 first))))
+       [value])))
+
+(api.macros/defendpoint :get "/:id/params/:param-key/remapping"
+  "Fetch the remapped value for a given value of the parameter with ID `:param-key`.
+
+    ;; fetch the remapped value for Dashboard 1 parameter 'abc' for value 100
+    GET /api/dashboard/1/params/abc/remapping?value=100"
+  [{:keys [id param-key]} :- [:map
+                              [:id ms/PositiveInt]
+                              [:param-key :string]]
+   {:keys [value]}        :- [:map [:value :string]]]
+  (let [dashboard (api/read-check :model/Dashboard id)]
+    (binding [qp.perms/*param-values-query* true]
+      (dashboard-param-remapped-value dashboard param-key (codec/url-decode value)))))
 
 (api.macros/defendpoint :get "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in

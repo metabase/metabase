@@ -88,8 +88,18 @@ const TAB = {
 };
 
 const TAB_OPTIONS = [
-  { name: t`Settings`, value: TAB.SETTINGS },
-  { name: t`Formatting`, value: TAB.FORMATTING },
+  {
+    get name() {
+      return t`Settings`;
+    },
+    value: TAB.SETTINGS,
+  },
+  {
+    get name() {
+      return t`Formatting`;
+    },
+    value: TAB.FORMATTING,
+  },
 ];
 
 function DatasetFieldMetadataSidebar({

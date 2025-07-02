@@ -31,11 +31,19 @@ import {
   ScheduleDescriptionContainer,
 } from "./SchedulePicker.styled";
 
-const optionNameTranslations = {
-  hourly: t`Hourly`,
-  daily: t`Daily`,
-  weekly: t`Weekly`,
-  monthly: t`Monthly`,
+const optionNameTranslations: Partial<Record<ScheduleType, string>> = {
+  get hourly() {
+    return t`Hourly`;
+  },
+  get daily() {
+    return t`Daily`;
+  },
+  get weekly() {
+    return t`Weekly`;
+  },
+  get monthly() {
+    return t`Monthly`;
+  },
 };
 
 export type ScheduleProperty = keyof ScheduleSettings;

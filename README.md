@@ -2,7 +2,7 @@
 
 [Metabase](https://www.metabase.com) is the easy, open-source way for everyone in your company to ask questions and learn from data.
 
-![Metabase Product Screenshot](docs/images/metabase-product-screenshot.svg)
+![Metabase Product Screenshot](docs/images/metabase-product-screenshot.png)
 
 [![Latest Release](https://img.shields.io/github/release/metabase/metabase.svg?label=latest%20release)](https://github.com/metabase/metabase/releases)
 [![codecov](https://codecov.io/gh/metabase/metabase/branch/master/graph/badge.svg)](https://codecov.io/gh/metabase/metabase)

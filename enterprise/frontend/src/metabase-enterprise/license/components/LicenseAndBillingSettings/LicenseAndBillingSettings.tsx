@@ -35,11 +35,14 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
     return (
       <>
         {jt`Your license isn’t valid anymore. If you have a new license, please
-        enter it below, otherwise please contact ${(
-          <ExternalLink key="email" href="mailto:support@metabase.com">
-            support@metabase.com
-          </ExternalLink>
-        )}`}
+        enter it below, otherwise please contact ${
+          (
+            // eslint-disable-next-line i18next/no-literal-string
+            <ExternalLink key="email" href="mailto:support@metabase.com">
+              support@metabase.com
+            </ExternalLink>
+          )
+        }`}
       </>
     );
   }

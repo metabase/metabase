@@ -151,10 +151,15 @@ export const FIELD_FILTER_OPERATORS = {
       numberArgument,
     ],
     placeholders: [
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       t`Select longitude field`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       t`Enter upper latitude`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       t`Enter left longitude`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       t`Enter lower latitude`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       t`Enter right longitude`,
     ],
     formatOptions: [
@@ -195,90 +200,411 @@ export const FIELD_FILTER_OPERATORS = {
 };
 
 const DEFAULT_FILTER_OPERATORS = [
-  { name: "=", verboseName: t`Is` },
-  { name: "!=", verboseName: t`Is not` },
-  { name: "is-null", verboseName: t`Is empty` },
-  { name: "not-null", verboseName: t`Not empty` },
+  {
+    name: "=",
+    get verboseName() {
+      return t`Is`;
+    },
+  },
+  {
+    name: "!=",
+    get verboseName() {
+      return t`Is not`;
+    },
+  },
+  {
+    name: "is-null",
+    get verboseName() {
+      return t`Is empty`;
+    },
+  },
+  {
+    name: "not-null",
+    get verboseName() {
+      return t`Not empty`;
+    },
+  },
 ];
 
 const KEY_FILTER_OPERATORS = [
-  { name: "=", verboseName: t`Is` },
-  { name: "!=", verboseName: t`Is not` },
-  { name: ">", verboseName: t`Greater than` },
-  { name: "<", verboseName: t`Less than` },
-  { name: "between", verboseName: t`Between` },
-  { name: ">=", verboseName: t`Greater than or equal to` },
-  { name: "<=", verboseName: t`Less than or equal to` },
-  { name: "is-null", verboseName: t`Is empty` },
-  { name: "not-null", verboseName: t`Not empty` },
+  {
+    name: "=",
+    get verboseName() {
+      return t`Is`;
+    },
+  },
+  {
+    name: "!=",
+    get verboseName() {
+      return t`Is not`;
+    },
+  },
+  {
+    name: ">",
+    get verboseName() {
+      return t`Greater than`;
+    },
+  },
+  {
+    name: "<",
+    get verboseName() {
+      return t`Less than`;
+    },
+  },
+  {
+    name: "between",
+    get verboseName() {
+      return t`Between`;
+    },
+  },
+  {
+    name: ">=",
+    get verboseName() {
+      return t`Greater than or equal to`;
+    },
+  },
+  {
+    name: "<=",
+    get verboseName() {
+      return t`Less than or equal to`;
+    },
+  },
+  {
+    name: "is-null",
+    get verboseName() {
+      return t`Is empty`;
+    },
+  },
+  {
+    name: "not-null",
+    get verboseName() {
+      return t`Not empty`;
+    },
+  },
 ];
 
 // ordered list of operators and metadata per type
 export const FILTER_OPERATORS_BY_TYPE_ORDERED = {
   [NUMBER]: [
-    { name: "=", verboseName: t`Equal to` },
-    { name: "!=", verboseName: t`Not equal to` },
-    { name: ">", verboseName: t`Greater than` },
-    { name: "<", verboseName: t`Less than` },
-    { name: "between", verboseName: t`Between` },
-    { name: ">=", verboseName: t`Greater than or equal to` },
-    { name: "<=", verboseName: t`Less than or equal to` },
-    { name: "is-null", verboseName: t`Is empty` },
-    { name: "not-null", verboseName: t`Not empty` },
+    {
+      name: "=",
+      get verboseName() {
+        return t`Equal to`;
+      },
+    },
+    {
+      name: "!=",
+      get verboseName() {
+        return t`Not equal to`;
+      },
+    },
+    {
+      name: ">",
+      get verboseName() {
+        return t`Greater than`;
+      },
+    },
+    {
+      name: "<",
+      get verboseName() {
+        return t`Less than`;
+      },
+    },
+    {
+      name: "between",
+      get verboseName() {
+        return t`Between`;
+      },
+    },
+    {
+      name: ">=",
+      get verboseName() {
+        return t`Greater than or equal to`;
+      },
+    },
+    {
+      name: "<=",
+      get verboseName() {
+        return t`Less than or equal to`;
+      },
+    },
+    {
+      name: "is-null",
+      get verboseName() {
+        return t`Is empty`;
+      },
+    },
+    {
+      name: "not-null",
+      get verboseName() {
+        return t`Not empty`;
+      },
+    },
   ],
   [STRING]: [
-    { name: "=", verboseName: t`Is` },
-    { name: "!=", verboseName: t`Is not` },
-    { name: "contains", verboseName: t`Contains` },
-    { name: "does-not-contain", verboseName: t`Does not contain` },
-    { name: "is-null", verboseName: t`Is null` },
-    { name: "not-null", verboseName: t`Not null` },
-    { name: "is-empty", verboseName: t`Is empty` },
-    { name: "not-empty", verboseName: t`Not empty` },
-    { name: "starts-with", verboseName: t`Starts with` },
-    { name: "ends-with", verboseName: t`Ends with` },
+    {
+      name: "=",
+      get verboseName() {
+        return t`Is`;
+      },
+    },
+    {
+      name: "!=",
+      get verboseName() {
+        return t`Is not`;
+      },
+    },
+    {
+      name: "contains",
+      get verboseName() {
+        return t`Contains`;
+      },
+    },
+    {
+      name: "does-not-contain",
+      get verboseName() {
+        return t`Does not contain`;
+      },
+    },
+    {
+      name: "is-null",
+      get verboseName() {
+        return t`Is null`;
+      },
+    },
+    {
+      name: "not-null",
+      get verboseName() {
+        return t`Not null`;
+      },
+    },
+    {
+      name: "is-empty",
+      get verboseName() {
+        return t`Is empty`;
+      },
+    },
+    {
+      name: "not-empty",
+      get verboseName() {
+        return t`Not empty`;
+      },
+    },
+    {
+      name: "starts-with",
+      get verboseName() {
+        return t`Starts with`;
+      },
+    },
+    {
+      name: "ends-with",
+      get verboseName() {
+        return t`Ends with`;
+      },
+    },
   ],
   [STRING_LIKE]: [
-    { name: "=", verboseName: t`Is` },
-    { name: "!=", verboseName: t`Is not` },
-    { name: "is-null", verboseName: t`Is null` },
-    { name: "not-null", verboseName: t`Not null` },
-    { name: "is-empty", verboseName: t`Is empty` },
-    { name: "not-empty", verboseName: t`Not empty` },
+    {
+      name: "=",
+      get verboseName() {
+        return t`Is`;
+      },
+    },
+    {
+      name: "!=",
+      get verboseName() {
+        return t`Is not`;
+      },
+    },
+    {
+      name: "is-null",
+      get verboseName() {
+        return t`Is null`;
+      },
+    },
+    {
+      name: "not-null",
+      get verboseName() {
+        return t`Not null`;
+      },
+    },
+    {
+      name: "is-empty",
+      get verboseName() {
+        return t`Is empty`;
+      },
+    },
+    {
+      name: "not-empty",
+      get verboseName() {
+        return t`Not empty`;
+      },
+    },
   ],
   [TEMPORAL]: [
-    { name: "!=", verboseName: t`Excludes` },
-    { name: "=", verboseName: t`Is` },
-    { name: "<", verboseName: t`Before` },
-    { name: ">", verboseName: t`After` },
-    { name: "between", verboseName: t`Between` },
-    { name: "is-null", verboseName: t`Is empty` },
-    { name: "not-null", verboseName: t`Is not empty` },
+    {
+      name: "!=",
+      get verboseName() {
+        return t`Excludes`;
+      },
+    },
+    {
+      name: "=",
+      get verboseName() {
+        return t`Is`;
+      },
+    },
+    {
+      name: "<",
+      get verboseName() {
+        return t`Before`;
+      },
+    },
+    {
+      name: ">",
+      get verboseName() {
+        return t`After`;
+      },
+    },
+    {
+      name: "between",
+      get verboseName() {
+        return t`Between`;
+      },
+    },
+    {
+      name: "is-null",
+      get verboseName() {
+        return t`Is empty`;
+      },
+    },
+    {
+      name: "not-null",
+      get verboseName() {
+        return t`Is not empty`;
+      },
+    },
   ],
   [LOCATION]: [
-    { name: "=", verboseName: t`Is` },
-    { name: "!=", verboseName: t`Is not` },
-    { name: "is-null", verboseName: t`Is empty` },
-    { name: "not-null", verboseName: t`Not empty` },
-    { name: "contains", verboseName: t`Contains` },
-    { name: "does-not-contain", verboseName: t`Does not contain` },
-    { name: "starts-with", verboseName: t`Starts with` },
-    { name: "ends-with", verboseName: t`Ends with` },
+    {
+      name: "=",
+      get verboseName() {
+        return t`Is`;
+      },
+    },
+    {
+      name: "!=",
+      get verboseName() {
+        return t`Is not`;
+      },
+    },
+    {
+      name: "is-null",
+      get verboseName() {
+        return t`Is empty`;
+      },
+    },
+    {
+      name: "not-null",
+      get verboseName() {
+        return t`Not empty`;
+      },
+    },
+    {
+      name: "contains",
+      get verboseName() {
+        return t`Contains`;
+      },
+    },
+    {
+      name: "does-not-contain",
+      get verboseName() {
+        return t`Does not contain`;
+      },
+    },
+    {
+      name: "starts-with",
+      get verboseName() {
+        return t`Starts with`;
+      },
+    },
+    {
+      name: "ends-with",
+      get verboseName() {
+        return t`Ends with`;
+      },
+    },
   ],
   [COORDINATE]: [
-    { name: "=", verboseName: t`Is` },
-    { name: "!=", verboseName: t`Is not` },
-    { name: "inside", verboseName: t`Inside` },
-    { name: ">", verboseName: t`Greater than` },
-    { name: "<", verboseName: t`Less than` },
-    { name: "between", verboseName: t`Between` },
-    { name: ">=", verboseName: t`Greater than or equal to` },
-    { name: "<=", verboseName: t`Less than or equal to` },
+    {
+      name: "=",
+      get verboseName() {
+        return t`Is`;
+      },
+    },
+    {
+      name: "!=",
+      get verboseName() {
+        return t`Is not`;
+      },
+    },
+    {
+      name: "inside",
+      get verboseName() {
+        return t`Inside`;
+      },
+    },
+    {
+      name: ">",
+      get verboseName() {
+        return t`Greater than`;
+      },
+    },
+    {
+      name: "<",
+      get verboseName() {
+        return t`Less than`;
+      },
+    },
+    {
+      name: "between",
+      get verboseName() {
+        return t`Between`;
+      },
+    },
+    {
+      name: ">=",
+      get verboseName() {
+        return t`Greater than or equal to`;
+      },
+    },
+    {
+      name: "<=",
+      get verboseName() {
+        return t`Less than or equal to`;
+      },
+    },
   ],
   [BOOLEAN]: [
-    { name: "=", verboseName: t`Is`, multi: false },
-    { name: "is-null", verboseName: t`Is empty` },
-    { name: "not-null", verboseName: t`Not empty` },
+    {
+      name: "=",
+      get verboseName() {
+        return t`Is`;
+      },
+      multi: false,
+    },
+    {
+      name: "is-null",
+      get verboseName() {
+        return t`Is empty`;
+      },
+    },
+    {
+      name: "not-null",
+      get verboseName() {
+        return t`Not empty`;
+      },
+    },
   ],
   [FOREIGN_KEY]: KEY_FILTER_OPERATORS,
   [PRIMARY_KEY]: KEY_FILTER_OPERATORS,
@@ -315,7 +641,9 @@ export const AGGREGATION_OPERATORS = [
   {
     // DEPRECATED: "rows" is equivalent to no aggregations
     short: "rows",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Raw data`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Just a table with the rows in the answer, no additional operations.`,
     validFieldsFilters: [],
     requiresField: false,
@@ -323,8 +651,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "count",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Count of rows`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Count`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Total number of rows in the answer.`,
     validFieldsFilters: [],
     requiresField: false,
@@ -332,8 +663,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "sum",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Sum of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Sum`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Sum of all the values of a column.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
@@ -341,8 +675,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "avg",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Average of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Average`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Average of all the values of a column`,
     validFieldsFilters: [summableFields],
     requiresField: true,
@@ -350,8 +687,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "median",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Median of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Median`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Median of all the values of a column`,
     validFieldsFilters: [summableFields],
     requiresField: true,
@@ -359,8 +699,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "distinct",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Number of distinct values of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Distinct values`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Number of unique values of a column among all the rows in the answer.`,
     validFieldsFilters: [allFields],
     requiresField: true,
@@ -368,8 +711,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "cum-sum",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Cumulative sum of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Cumulative sum`, // NOTE: actually "Sum" as of 2019-10-01
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Additive sum of all the values of a column.\ne.x. total revenue over time.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
@@ -377,8 +723,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "cum-count",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Cumulative count of rows`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Cumulative count`, // NOTE: actually "Count" as of 2019-10-01
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Additive count of the number of rows.\ne.x. total number of sales over time.`,
     validFieldsFilters: [],
     requiresField: false,
@@ -386,8 +735,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "stddev",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Standard deviation of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Standard deviation`, // NOTE: actually "SD" as of 2019-10-01
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Number which expresses how much the values of a column vary among all rows in the answer.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
@@ -395,8 +747,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "min",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Minimum of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Min`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Minimum value of a column`,
     validFieldsFilters: [scopeFields],
     requiresField: true,
@@ -404,8 +759,11 @@ export const AGGREGATION_OPERATORS = [
   },
   {
     short: "max",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     name: t`Maximum of ...`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     columnName: t`Max`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     description: t`Maximum value of a column`,
     validFieldsFilters: [scopeFields],
     requiresField: true,

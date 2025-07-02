@@ -235,7 +235,7 @@ describe("scenarios > collections > clean up", () => {
           moveToTrash();
           assertNoPagination();
 
-          H.expectGoodSnowplowEvent(
+          H.expectUnstructuredSnowplowEvent(
             (event) =>
               isMatching(
                 {
@@ -254,7 +254,7 @@ describe("scenarios > collections > clean up", () => {
           // Because cutoff_date will be relative to the current date, we simply check
           // that it exists and is a string. Snowplow will assert that it is in the correct
           // format
-          H.expectGoodSnowplowEvent(
+          H.expectUnstructuredSnowplowEvent(
             (event) =>
               event &&
               event.event === "stale_items_archived" &&
@@ -303,7 +303,7 @@ describe("scenarios > collections > clean up", () => {
           closeCleanUpModal();
 
           // Ensure that stale items in Our Analytics are maked with a null collection id
-          H.expectGoodSnowplowEvent(
+          H.expectUnstructuredSnowplowEvent(
             (event) =>
               event &&
               event.event === "stale_items_archived" &&

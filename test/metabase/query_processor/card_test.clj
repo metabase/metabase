@@ -8,6 +8,8 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]))
@@ -219,3 +221,12 @@
                 (is (mi/can-read? child-card))
                 (is (= [[1] [2]]
                        (mt/rows (process-query-for-card child-card))))))))))))
+
+(deftest updates-metadata-provider
+  (testing "should set the previous results metadata to the store"
+    (mt/with-temp [:model/Card card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
+                                     :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
+      (mt/with-metadata-provider (mt/id)
+        (run-query-for-card (u/the-id card))
+        (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
+               (qp.store/miscellaneous-value [::qp.results-metadata/card-stored-metadata])))))))

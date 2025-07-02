@@ -180,7 +180,9 @@
 
 (sql/register-fn! ::literal #'format-literal)
 
-(defn literal
+(def Literal "A `literal` tagged string or keyword" [:tuple [:= ::literal] :string])
+
+(mu/defn literal :- Literal
   "Wrap keyword or string `s` in single quotes and a HoneySQL `raw` form.
 
   We'll try to escape single quotes in the literal, unless they're already escaped (either as `''` or as `\\`, but

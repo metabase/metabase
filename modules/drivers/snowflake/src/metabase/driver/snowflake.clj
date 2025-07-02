@@ -5,7 +5,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -56,7 +55,7 @@
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :identifiers-with-spaces                true
-                              :describe-fields                        true
+                              :describe-fields                        false
                               :now                                    true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
@@ -84,6 +83,8 @@
 
 (defn- handle-conn-uri [details user account private-key-file]
   (let [existing-conn-uri (or (:connection-uri details)
+                              (when-let [sub (:subname details)]
+                                (format "jdbc:snowflake:%s" sub))
                               (format "jdbc:snowflake://%s.snowflakecomputing.com" account))
         opts-str (sql-jdbc.common/additional-opts->string :url
                                                           {:user (codec/url-encode user)
@@ -91,8 +92,8 @@
         new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
     (-> details
         (assoc :connection-uri new-conn-uri)
-        ;; The Snowflake driver uses the :account property, but we need to drop the region from it first
-        (assoc :account (first (str/split account #"\."))))))
+        ;; The Snowflake driver uses the :account property, but we need to drop the region from it first (#30376 comment)
+        (m/assoc-some :account (some-> account (str/split #"\.") first)))))
 
 (defn- resolve-private-key
   "Convert the private-key secret properties into a private_key_file property in `details`.
@@ -191,12 +192,6 @@
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
     (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
                 :subprotocol                                "snowflake"
-                ;; see https://github.com/metabase/metabase/issues/22133
-                :subname                                    (let [base-url (if (and use-hostname (string? host) (not (str/blank? host)))
-                                                                             (cond-> host
-                                                                               (not= (last host) \/) (str "/"))
-                                                                             (str account ".snowflakecomputing.com/"))]
-                                                              (str "//" base-url))
                 :client_metadata_request_use_connection_ctx true
                 :ssl                                        true
                 ;; keep open connections open indefinitely instead of closing them. See #9674 and
@@ -210,6 +205,15 @@
                 ;; [[metabase.public-settings/start-of-week]] Setting.
                 :week_start                                 (start-of-week-setting->snowflake-offset)}
                (-> details
+                   ;; see https://github.com/metabase/metabase/issues/22133
+                   (update :subname (fn [subname]
+                                      (if subname
+                                        subname
+                                        (let [base-url (if (and use-hostname (string? host) (not (str/blank? host)))
+                                                         (cond-> host
+                                                           (not= (last host) \/) (str "/"))
+                                                         (str account ".snowflakecomputing.com/"))]
+                                          (str "//" base-url)))))
                    ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead
                    ;; of `db`. If we run across `dbname`, correct our behavior
                    (set/rename-keys {:dbname :db})
@@ -723,13 +727,25 @@
   [_]
   #{"INFORMATION_SCHEMA"})
 
+(defn- adjust-host-and-port
+  [{:keys [account host port] :as db-details}]
+  (cond-> db-details
+    (not host) (assoc :host (str account ".snowflakecomputing.com"))
+    (not port) (assoc :port 443)))
+
+(defmethod driver/incorporate-ssh-tunnel-details :snowflake
+  [_driver db-details]
+  (let [details (adjust-host-and-port db-details)]
+    (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))
+
 (defmethod driver/can-connect? :snowflake
   [driver {:keys [db], :as details}]
-  (and ((get-method driver/can-connect? :sql-jdbc) driver details)
-       (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
-         ;; jdbc/query is used to see if we throw, we want to ignore the results
-         (jdbc/query spec (format "SHOW OBJECTS IN DATABASE \"%s\";" db))
-         true)))
+  (let [details (adjust-host-and-port details)]
+    (and ((get-method driver/can-connect? :sql-jdbc) driver details)
+         (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
+           ;; jdbc/query is used to see if we throw, we want to ignore the results
+           (jdbc/query spec (format "SHOW OBJECTS IN DATABASE \"%s\";" db))
+           true))))
 
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
@@ -796,59 +812,5 @@
   [_ database]
   (-> database :details :role))
 
-(defmethod driver/incorporate-ssh-tunnel-details :snowflake
-  [_driver {:keys [account host port] :as db-details}]
-  (let [details (cond-> db-details
-                  (not host) (assoc :host (str account ".snowflakecomputing.com"))
-                  (not port) (assoc :port 443))]
-    (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))
-
-(defmethod driver/describe-fields :snowflake
-  [driver database & args]
-  (let [pks (sql-jdbc.execute/do-with-connection-with-options
-             driver database nil
-             (fn [^java.sql.Connection conn]
-               (with-open [stmt (.prepareStatement conn (format "show primary keys in database \"%s\";" (get-in database [:details :db])))
-                           rset (.executeQuery stmt)]
-                 (into #{} (map (juxt :schema_name :table_name :column_name)) (resultset-seq rset)))))]
-    (eduction
-     (map (fn [col]
-            (let [lookup ((juxt :table-schema :table-name :name) col)
-                  pk? (contains? pks lookup)]
-              (assoc col :pk? pk?))))
-     (apply (get-method driver/describe-fields :sql-jdbc) driver database args))))
-
-(defmethod sql-jdbc.sync/describe-fields-sql :snowflake
-  [driver & {:keys [schema-names table-names details]}]
-  (sql/format {:select [[:c.COLUMN_NAME :name]
-                        [[:- :c.ORDINAL_POSITION [:inline 1]] :database-position]
-                        [:c.TABLE_SCHEMA :table-schema]
-                        [:c.TABLE_NAME :table-name]
-                        [[:case-expr [:upper :c.DATA_TYPE]
-                          [:inline "TIMESTAMP_TZ"] [:inline "TIMESTAMPTZ"]
-
-                          [:inline "TIMESTAMP_LTZ"] [:inline "TIMESTAMPLTZ"]
-
-                          [:inline "TIMESTAMP_NTZ"] [:inline "TIMESTAMPNTZ"]
-
-                          ;; These are synonymous, but we want consistency with getColumnMetadata
-                          [:inline "FLOAT"] [:inline "DOUBLE"]
-
-                          [:inline "TEXT"] [:inline "VARCHAR"]
-
-                          :else [:upper :c.DATA_TYPE]]
-                         :database-type]
-                        [[:!= :c.IDENTITY_GENERATION nil] :database-is-auto-increment]
-                        [[:and
-                          [:or [:= :COLUMN_DEFAULT nil] [:= [:lower :COLUMN_DEFAULT] [:inline "null"]]]
-                          [:= :IS_NULLABLE [:inline "NO"]]
-                          [:not [:!= :c.IDENTITY_GENERATION nil]]]
-                         :database-required]
-                        [[:nullif :c.COMMENT [:inline ""]] :field-comment]]
-               :from [[[:raw (format "\"%s\".\"%s\".\"%s\"" (:db details) "INFORMATION_SCHEMA" "COLUMNS")] :c]]
-               :where
-               [:and [:not [:in :c.TABLE_SCHEMA [[:inline "INFORMATION_SCHEMA"]]]]
-                (when (seq schema-names) [:in [:lower :c.TABLE_SCHEMA] (map u/lower-case-en schema-names)])
-                (when (seq table-names) [:in [:lower :c.TABLE_NAME] (map u/lower-case-en table-names)])]
-               :order-by [:c.TABLE_SCHEMA :c.TABLE_NAME :c.ORDINAL_POSITION]}
-              :dialect (sql.qp/quote-style driver)))
+(defmethod sql-jdbc/impl-query-canceled? :snowflake [_ e]
+  (= (sql-jdbc/get-sql-state e) "57014"))

@@ -80,7 +80,7 @@
                   query)))
 
 (defn remove-permissions-key
-  "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
+  "Pre-processing middleware. Removes the `::query-perms/perms` key from the query. This is where we store important permissions
   information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
   but we definitely don't want users passing it in themselves. So remove it if it's present."
   [query]
@@ -96,6 +96,16 @@
    (fn [_query _path-type _path stage-or-join]
      (dissoc stage-or-join :qp/stage-is-from-source-card))))
 
+(defn remove-gtapped-table-keys
+  "Pre-processing middleware. Removes any instances of the `::query-perms/gtapped-table` key which is added by the
+  row-level-restriction middleware when sandboxes are resolved in a query. Since we rely on this for permission enforcement,
+  we want to disallow users from passing it in themselves (like the functions above)."
+  [query]
+  (lib.walk/walk
+   query
+   (fn [_query _path-type _path stage-or-join]
+     (dissoc stage-or-join ::query-perms/gtapped-table))))
+
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [{database-id :database, {gtap-perms :gtaps} ::perms :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
@@ -105,15 +115,16 @@
     (when (= audit/audit-db-id database-id)
       (check-audit-db-permissions outer-query))
     (check-query-does-not-access-inactive-tables outer-query)
-    (let [card-id         (or *card-id* (:qp/source-card-id outer-query))
-          required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
+    (let [required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
           source-card-ids (set/difference (:card-ids required-perms) (:card-ids gtap-perms))]
       ;; On EE, check block permissions up front for all queries. If block perms are in place, reject all native queries
       ;; (unless overriden by `gtap-perms`) and any queries that touch blocked tables/DBs
       (check-block-permissions outer-query)
       (cond
-        card-id
-        (query-perms/check-card-read-perms database-id card-id)
+        ;; if card-id is bound this means that this is not an ad hoc query and we can just
+        ;; check that the user has permission to read this card
+        *card-id*
+        (query-perms/check-card-read-perms database-id *card-id*)
 
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms
@@ -124,13 +135,15 @@
         ;; Ad-hoc query (not a saved question)
         :else
         (do
-          (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
-
+          ;; Check that we permissions for any source cards first, then check that we have requisite data permissions
           ;; Recursively check permissions for any source Cards
           (doseq [card-id source-card-ids]
             (let [{query :dataset-query} (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)]
               (binding [*card-id* card-id]
                 (check-query-permissions* query))))
+
+          ;; Check that we have the data permissions to run this card
+          (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
 
           ;; Recursively check permissions for any Cards referenced by this query via template tags
           (doseq [{query :dataset-query} (lib/template-tags-referenced-cards

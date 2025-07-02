@@ -36,7 +36,7 @@ function ChartSettingsSidebarInner({
 
   const sidebarContentProps = showSidebarTitle
     ? {
-        title: t`${visualizations.get(question.display())?.uiName} options`,
+        title: t`${visualizations.get(question.display())?.getUiName()} options`,
         onBack: () => dispatch(onOpenChartType()),
       }
     : {};

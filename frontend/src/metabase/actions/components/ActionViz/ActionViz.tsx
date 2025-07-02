@@ -13,7 +13,7 @@ const isForm = (object: any, computedSettings: VisualizationSettings) =>
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(Action, {
-  uiName: t`Action`,
+  getUiName: () => t`Action`,
   identifier: "action",
   iconName: "play",
 
@@ -38,13 +38,17 @@ export default Object.assign(Action, {
       dashboard: false,
     },
     actionDisplayType: {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       section: t`Display`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Action Form Display`,
       widget: "radio",
       hidden: true,
       props: {
         options: [
+          /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
           { name: t`Form`, value: "form" },
+          /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
           { name: t`Button`, value: "button" },
         ],
       },
@@ -63,10 +67,15 @@ export default Object.assign(Action, {
       getHidden: isForm,
       props: {
         options: [
+          /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
           { name: t`Primary`, value: "primary" },
+          /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
           { name: t`Outline`, value: "default" },
+          /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
           { name: t`Danger`, value: "danger" },
+          /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
           { name: t`Success`, value: "success" },
+          /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
           { name: t`Borderless`, value: "borderless" },
         ],
       },

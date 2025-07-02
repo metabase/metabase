@@ -1310,3 +1310,36 @@ describe("issue 53682", () => {
     });
   });
 });
+
+describe("issue 55128", () => {
+  const name = "email (hello) [hi]";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    const questionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+        expressions: {
+          [name]: ["concat", "foo", "bar"],
+        },
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.openNotebook();
+  });
+
+  it("should be possible to use (0 and [] in custom expressions references (metabase#55128)", () => {
+    H.getNotebookStep("expression").icon("add").click();
+    H.enterCustomColumnDetails({
+      formula: 'concat("", [email (hello) \\[hi\\]])',
+      name: "Ok",
+    });
+    H.popover().within(() => {
+      cy.findByText("Missing a closing bracket").should("not.exist");
+      cy.button("Done").click();
+    });
+  });
+});

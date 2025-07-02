@@ -661,6 +661,55 @@ describe("scenarios > admin > databases > sample database", () => {
     });
   });
 
+  it("allows to save the default schedule (metabase#57198)", () => {
+    const ACTION_BUTTON_DELAY = 5000;
+    const SAFETY_MARGIN = 2000;
+
+    visitDatabase(SAMPLE_DB_ID);
+    cy.get("main").findByText("Show advanced options").click();
+    cy.findByLabelText("Choose when syncs and scans happen").click();
+    cy.button("Save changes").click();
+    cy.button("Success").should("be.visible");
+    cy.button("Success", {
+      timeout: ACTION_BUTTON_DELAY + SAFETY_MARGIN,
+    }).should("not.exist");
+    cy.wait("@databaseUpdate").then(({ request: { body }, response }) => {
+      expect(body.is_full_sync).to.equal(false);
+      expect(body.is_on_demand).to.equal(false);
+      // frontend sends wrong value but backend automatically corrects it for us:
+      expect(response.body.schedules.cache_field_values).to.equal(null);
+    });
+
+    cy.findByLabelText("Regularly, on a schedule").click();
+    cy.button("Save changes").click();
+    cy.button("Success").should("be.visible");
+    cy.button("Success", {
+      timeout: ACTION_BUTTON_DELAY + SAFETY_MARGIN,
+    }).should("not.exist");
+    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
+      expect(body.is_full_sync).to.equal(true);
+      expect(body.is_on_demand).to.equal(false);
+      expect(body.schedules.cache_field_values).to.deep.eq({
+        schedule_day: "mon",
+        schedule_frame: null,
+        schedule_hour: 0,
+        schedule_type: "daily",
+      });
+    });
+
+    cy.findByLabelText("Only when adding a new filter widget").click();
+    cy.button("Save changes").click();
+    cy.button("Success").should("be.visible");
+    cy.button("Success", {
+      timeout: ACTION_BUTTON_DELAY + SAFETY_MARGIN,
+    }).should("not.exist");
+    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
+      expect(body.is_full_sync).to.equal(false);
+      expect(body.is_on_demand).to.equal(true);
+      expect(body.schedules.cache_field_values).to.equal(null);
+    });
+  });
+
   it("database actions sidebar", () => {
     cy.intercept("POST", `/api/database/${SAMPLE_DB_ID}/sync_schema`).as(
       "sync_schema",
@@ -874,7 +923,7 @@ H.describeWithSnowplow("add database card", () => {
 
     cy.get("@addDatabaseCard").findByText("Add a database").click();
     cy.location("pathname").should("eq", "/admin/databases/create");
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "database_add_clicked",
       triggered_from: "db-list",
     });

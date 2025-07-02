@@ -23,6 +23,7 @@ export const setupSaml = () => {
       "saml-enabled": true,
       "saml-identity-provider-uri": "https://example.test",
       "saml-identity-provider-certificate": certificate,
+      "saml-identity-provider-issuer": "https://example.test/issuer",
     });
   });
 };

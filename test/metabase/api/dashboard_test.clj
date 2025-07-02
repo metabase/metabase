@@ -375,7 +375,8 @@
 
 (deftest last-used-parameter-value-test
   (mt/test-helpers-set-global-values!
-    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+    (mt/with-temporary-setting-values [synchronous-batch-updates true
+                                       dashboards-save-last-used-parameters true]
       (mt/dataset test-data
         (mt/with-column-remappings [orders.user_id people.name]
           (mt/as-admin
@@ -428,6 +429,54 @@
                                                  {:parameters [{:id "a" :value nil :default ["default value"]}]})))
                 (is (= {:a nil}
                        (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))))))))))))
+
+(deftest last-used-parameter-value-disabled-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [synchronous-batch-updates true
+                                       dashboards-save-last-used-parameters false]
+      (mt/dataset test-data
+        (mt/with-column-remappings [orders.user_id people.name]
+          (mt/as-admin
+            (mt/with-temp
+              [:model/Dashboard {dashboard-a-id :id} {:name       "Test Dashboard"
+                                                      :creator_id (mt/user->id :crowberto)
+                                                      :parameters [{:name    "Name", :slug "name", :id "a" :type :string/contains
+                                                                    :default ["default_value"]}]}
+               :model/Dashboard {dashboard-b-id :id} {:name       "Test Dashboard"
+                                                      :creator_id (mt/user->id :crowberto)
+                                                      :parameters [{:name "Name", :slug "name", :id "a" :type :string/contains}]}
+               :model/Card {card-id :id} {:database_id   (mt/id)
+                                          :query_type    :native
+                                          :name          "test question"
+                                          :creator_id    (mt/user->id :crowberto)
+                                          :dataset_query {:type     :native
+                                                          :native   {:query "SELECT COUNT(*) FROM people WHERE {{name}}"
+                                                                     :template-tags
+                                                                     {"name" {:name         "Name"
+                                                                              :display-name "name"
+                                                                              :id           "_name_"
+                                                                              :type         :dimension
+                                                                              :dimension    [:field (mt/id :people :name) nil]
+                                                                              :widget-type  :string/contains}}}
+                                                          :database (mt/id)}}
+               :model/DashboardCard {dashcard-a-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
+                                                         :card_id            card-id
+                                                         :dashboard_id       dashboard-a-id}
+               :model/DashboardCard {dashcard-b-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
+                                                         :card_id            card-id
+                                                         :dashboard_id       dashboard-b-id}]
+              (testing "User's set parameter is not saved when saving is disabled"
+                ;; api request mimicking a user setting a parameter value
+                (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
+                                                 {:parameters [{:id "a" :value ["initial value"]}]})))
+                (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-b-id dashcard-b-id card-id)
+                                                 {:parameters [{:id "a" :value ["initial value"]}]})))
+                (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
+                                                 {:parameters [{:id "a" :value ["new value"]}]})))
+                (is (= {:dashboard-a nil
+                        :dashboard-b nil}
+                       {:dashboard-a (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))
+                        :dashboard-b (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-b-id)))}))))))))))
 
 (deftest fetch-dashboard-test
   (testing "GET /api/dashboard/:id"
@@ -4258,6 +4307,45 @@
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403
                                            (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))))))))
+
+(deftest param-value-remapping-test
+  (let [id-param-id   "id-param-id"
+        list-param-id "static-labeled-list"]
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:parameters [{:name      "ID"
+                                                                      :id        id-param-id
+                                                                      :type      :id}
+                                                                     {:name                 "Static Category label"
+                                                                      :id                   list-param-id
+                                                                      :type                 "category"
+                                                                      :values_source_type   "static-list"
+                                                                      :values_source_config {:values [["A frican" "Af"]
+                                                                                                      ["American" "Am"]
+                                                                                                      ["A   sian" "As"]]}}]}
+                   :model/Card {orders-card-id :id} {:dataset_query (mt/mbql-query orders)}
+                   :model/Card {people-card-id :id} {:dataset_query (mt/mbql-query people)}
+                   :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                           :card_id            orders-card-id
+                                           :parameter_mappings [{:parameter_id id-param-id
+                                                                 :card_id      orders-card-id
+                                                                 :target       [:dimension [:field
+                                                                                            (mt/id :orders :user_id)
+                                                                                            {:base-type :type/Integer}]
+                                                                                {:stage-number 0}]}]}
+                   :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                           :card_id            people-card-id
+                                           :parameter_mappings [{:parameter_id id-param-id
+                                                                 :card_id      people-card-id
+                                                                 :target       [:dimension [:field
+                                                                                            (mt/id :people :id)
+                                                                                            {:base-type :type/Integer}]
+                                                                                {:stage-number 0}]}]}]
+      (let [url #(str "dashboard/" dashboard-id "/params/" %1 "/remapping?value=" %2)]
+        (is (= [1 "Hudson Borer"]
+               (mt/user-http-request :crowberto :get 200 (url id-param-id 1))))
+        (is (= [(str Integer/MAX_VALUE)]
+               (mt/user-http-request :crowberto :get 200 (url id-param-id Integer/MAX_VALUE))))
+        (is (= ["A   sian" "As"]
+               (mt/user-http-request :crowberto :get 200 (url list-param-id "A   sian"))))))))
 
 (deftest broken-subscription-data-logic-test
   (testing "Ensure underlying logic of fixing broken pulses works (#30100)"

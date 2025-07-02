@@ -21,6 +21,7 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.cache-config :as cache-config]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
@@ -1117,6 +1118,9 @@
                                          :moderator_id        (:id actor)
                                          :status              nil
                                          :text                (tru "Unverified due to edit")}))
+    ;; Invalidate the cache for card
+    (cache-config/invalidate! {:questions [(:id card-before-update)]
+                               :with-overrides? true})
     ;; ok, now save the Card
     (t2/update! :model/Card (:id card-before-update)
                 ;; `collection_id` and `description` can be `nil` (in order to unset them).

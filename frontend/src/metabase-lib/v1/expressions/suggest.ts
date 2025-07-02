@@ -47,12 +47,15 @@ const suggestionText = (func: MBQLClauseFunctionConfig) => {
 
 export const GROUPS = {
   popularExpressions: {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     displayName: t`Common functions`,
   },
   popularAggregations: {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     displayName: t`Common aggregations`,
   },
   shortcuts: {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     displayName: t`Shortcuts`,
   },
 } as const;

@@ -58,6 +58,10 @@
         honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
     (sql.qp/format-honeysql driver honeysql)))
 
+(def ^:dynamic *select-probe-query-timeout-seconds*
+  "time to wait on the select probe query"
+  15)
+
 (defn- execute-select-probe-query
   "Execute the simple SELECT query defined above. The main goal here is to check whether we're able to execute a SELECT
   query against the Table in question -- we don't care about the results themselves -- so the query and the logic
@@ -70,7 +74,7 @@
     ;; truthy wheter or not it returns a ResultSet, but we can ignore that since we have enough info to proceed at
     ;; this point.
     (doto stmt
-      (.setQueryTimeout 15)
+      (.setQueryTimeout *select-probe-query-timeout-seconds*)
       (.execute))))
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc
@@ -91,26 +95,20 @@
                         (str (pr-str table-schema) \.))
                       (pr-str table-name)))
       true
-      (catch java.sql.SQLTimeoutException _
-        (log/infof "%s: Assuming SELECT privileges: caught timeout exception"
-                   (str (when table-schema
-                          (str (pr-str table-schema) \.))
-                        (pr-str table-name)))
-        (try (when-not (.getAutoCommit conn)
-               (.rollback conn))
-             (catch Throwable _))
-        true)
       (catch Throwable e
-        (log/infof e "%s: Assuming no SELECT privileges: caught exception"
-                   (str (when table-schema
-                          (str (pr-str table-schema) \.))
-                        (pr-str table-name)))
-        ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
-        ;; affecting anything higher
-        (try (when-not (.getAutoCommit conn)
-               (.rollback conn))
-             (catch Throwable _))
-        false))))
+        (let [allow? (driver/query-canceled? driver e)]
+          (log/info (if allow?
+                      "%s: Assuming SELECT privileges: caught timeout exception"
+                      "%s: Assuming no SELECT privileges: caught exception")
+                    (str (when table-schema
+                           (str (pr-str table-schema) \.))
+                         (pr-str table-name)))
+          ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
+          ;; affecting anything higher
+          (try (when-not (.getAutoCommit conn)
+                 (.rollback conn))
+               (catch Throwable _))
+          allow?)))))
 
 (defn- jdbc-get-tables
   [driver ^DatabaseMetaData metadata catalog schema-pattern tablename-pattern types]

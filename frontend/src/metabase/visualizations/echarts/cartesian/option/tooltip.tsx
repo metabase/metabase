@@ -1,6 +1,6 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
-import { renderToString } from "react-dom/server";
 
+import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getTooltipModel } from "metabase/visualizations/visualizations/CartesianChart/events";
@@ -70,7 +70,7 @@ export const getTooltipOption = (
         return "";
       }
 
-      return renderToString(
+      return reactNodeToHtmlString(
         <ChartItemTooltip
           settings={settings}
           chartModel={chartModel}

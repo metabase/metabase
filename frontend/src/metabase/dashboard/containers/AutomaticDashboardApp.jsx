@@ -223,19 +223,27 @@ const TransientTitle = ({ dashboard }) =>
 
 const RELATED_CONTENT = {
   compare: {
-    title: t`Compare`,
+    get title() {
+      return t`Compare`;
+    },
     icon: "compare",
   },
   "zoom-in": {
-    title: t`Zoom in`,
+    get title() {
+      return t`Zoom in`;
+    },
     icon: "zoom_in",
   },
   "zoom-out": {
-    title: t`Zoom out`,
+    get title() {
+      return t`Zoom out`;
+    },
     icon: "zoom_out",
   },
   related: {
-    title: t`Related`,
+    get title() {
+      return t`Related`;
+    },
     icon: "connections",
   },
 };

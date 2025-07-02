@@ -54,8 +54,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Adds up all the values of the column.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column or number to sum.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column or number to sum.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Subtotal`),
       },
     ],
@@ -66,8 +71,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`The rolling sum of a column across a breakout.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column or number to sum.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column or number to sum.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Subtotal`),
       },
     ],
@@ -78,8 +88,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`The number of distinct values in this column.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column whose distinct values to count.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column whose distinct values to count.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Last Name`),
       },
     ],
@@ -90,8 +105,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Calculates the standard deviation of the column.`,
     args: [
       {
-        name: t`column`,
-        description: t`The numeric column to get standard deviation of.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The numeric column to get standard deviation of.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Population`),
       },
     ],
@@ -103,13 +123,22 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns the value of an aggregation expression in a different row`,
     args: [
       {
-        name: t`expression`,
-        description: t`The value to get from a different row.`,
+        get name() {
+          return t`expression`;
+        },
+        get description() {
+          return t`The value to get from a different row.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: `Sum(${formatIdentifier(t`Total`)})`,
       },
       {
-        name: t`rowOffset`,
-        description: t`Row number relative to the current row, for example -1 for the previous row or 1 for the next row.`,
+        get name() {
+          return t`rowOffset`;
+        },
+        get description() {
+          return t`Row number relative to the current row, for example -1 for the previous row or 1 for the next row.`;
+        },
         example: "-1",
       },
     ],
@@ -120,8 +149,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the average of the values in the column.`,
     args: [
       {
-        name: t`column`,
-        description: t`The numeric column whose values to average.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The numeric column whose values to average.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Quantity`),
       },
     ],
@@ -132,8 +166,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the median of all the values of a column.`,
     args: [
       {
-        name: t`column`,
-        description: t`The numeric column whose values to average.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The numeric column whose values to average.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Quantity`),
       },
     ],
@@ -144,8 +183,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the smallest value found in the column`,
     args: [
       {
-        name: t`column`,
-        description: t`The numeric column whose minimum you want to find.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The numeric column whose minimum you want to find.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Salary`),
       },
     ],
@@ -156,8 +200,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the largest value found in the column.`,
     args: [
       {
-        name: t`column`,
-        description: t`The numeric column whose maximum you want to find.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The numeric column whose maximum you want to find.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Age`),
       },
     ],
@@ -169,9 +218,15 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns the percent of rows in the data that match the condition, as a decimal.`,
     args: [
       {
-        name: t`condition`,
-        description: t`Something that should evaluate to true or false.`,
+        get name() {
+          return t`condition`;
+        },
+        get description() {
+          return t`Something that should evaluate to true or false.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: `${formatIdentifier(t`Source`)} = ${formatStringLiteral(
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           t`Google`,
         )}`,
       },
@@ -183,8 +238,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Only counts rows where the condition is true.`,
     args: [
       {
-        name: t`condition`,
-        description: t`Something that should evaluate to true or false.`,
+        get name() {
+          return t`condition`;
+        },
+        get description() {
+          return t`Something that should evaluate to true or false.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: `${formatIdentifier(t`Subtotal`)} > 100`,
       },
     ],
@@ -196,14 +256,25 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Sums up the specified column only for rows where the condition is true.`,
     args: [
       {
-        name: t`column`,
-        description: t`The numeric column to sum.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The numeric column to sum.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Subtotal`),
       },
       {
-        name: t`condition`,
-        description: t`Something that should evaluate to true or false.`,
+        get name() {
+          return t`condition`;
+        },
+        get description() {
+          return t`Something that should evaluate to true or false.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: `${formatIdentifier(t`Order Status`)} = ${formatStringLiteral(
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           t`Valid`,
         )}`,
       },
@@ -215,8 +286,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the numeric variance for a given column.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column or number to get the variance of.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column or number to get the variance of.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Temperature`),
       },
     ],
@@ -227,8 +303,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the median value of the specified column.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column or number to get the median of.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column or number to get the median of.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Age`),
       },
     ],
@@ -240,13 +321,22 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns the value of the column at the percentile value.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column or number to get the percentile of.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column or number to get the percentile of.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Score`),
       },
       {
-        name: t`percentile-value`,
-        description: t`The value of the percentile.`,
+        get name() {
+          return t`percentile-value`;
+        },
+        get description() {
+          return t`The value of the percentile.`;
+        },
         example: "0.9",
       },
     ],
@@ -257,8 +347,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the string of text in all lower case.`,
     args: [
       {
-        name: t`text`,
-        description: t`The column with values to convert to lower case.`,
+        get name() {
+          return t`text`;
+        },
+        get description() {
+          return t`The column with values to convert to lower case.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Status`),
       },
     ],
@@ -269,8 +364,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the text in all upper case.`,
     args: [
       {
-        name: t`text`,
-        description: t`The column with values to convert to upper case.`,
+        get name() {
+          return t`text`;
+        },
+        get description() {
+          return t`The column with values to convert to upper case.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Status`),
       },
     ],
@@ -281,18 +381,31 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns a portion of the supplied text.`,
     args: [
       {
-        name: t`text`,
-        description: t`The column or text to return a portion of.`,
+        get name() {
+          return t`text`;
+        },
+        get description() {
+          return t`The column or text to return a portion of.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Title`),
       },
       {
-        name: t`position`,
-        description: t`The position to start copying characters. Index starts at position 1.`,
+        get name() {
+          return t`position`;
+        },
+        get description() {
+          return t`The position to start copying characters. Index starts at position 1.`;
+        },
         example: "1",
       },
       {
-        name: t`length`,
-        description: t`The number of characters to return.`,
+        get name() {
+          return t`length`;
+        },
+        get description() {
+          return t`The number of characters to return.`;
+        },
         example: "10",
       },
     ],
@@ -305,13 +418,22 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Extracts matching substrings according to a regular expression.`,
     args: [
       {
-        name: t`text`,
-        description: t`The column or text to search through.`,
+        get name() {
+          return t`text`;
+        },
+        get description() {
+          return t`The column or text to search through.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Address`),
       },
       {
-        name: t`regular_expression`,
-        description: t`The regular expression to match.`,
+        get name() {
+          return t`regular_expression`;
+        },
+        get description() {
+          return t`The regular expression to match.`;
+        },
         example: formatStringLiteral("[0-9]+"),
       },
     ],
@@ -323,18 +445,30 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Combine two or more strings of text together.`,
     args: [
       {
-        name: t`value1`,
-        description: t`The column or text to begin with.`,
+        get name() {
+          return t`value1`;
+        },
+        get description() {
+          return t`The column or text to begin with.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Last Name`),
       },
       {
-        name: t`value2`,
-        description: t`This will be added to the end of value1.`,
+        get name() {
+          return t`value2`;
+        },
+        get description() {
+          return t`This will be added to the end of value1.`;
+        },
         example: formatStringLiteral(", "),
       },
       {
         name: "…",
-        description: t`This will be added to the end of value2, and so on.`,
+        get description() {
+          return t`This will be added to the end of value2, and so on.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`First Name`),
       },
     ],
@@ -346,18 +480,33 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Replaces a part of the input text with new text.`,
     args: [
       {
-        name: t`text`,
-        description: t`The column or text to search through.`,
+        get name() {
+          return t`text`;
+        },
+        get description() {
+          return t`The column or text to search through.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Title`),
       },
       {
-        name: t`find`,
-        description: t`The text to find.`,
+        get name() {
+          return t`find`;
+        },
+        get description() {
+          return t`The text to find.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatStringLiteral(t`Enormous`),
       },
       {
-        name: t`replace`,
-        description: t`The text to use as the replacement.`,
+        get name() {
+          return t`replace`;
+        },
+        get description() {
+          return t`The text to use as the replacement.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatStringLiteral(t`Gigantic`),
       },
     ],
@@ -368,8 +517,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the number of characters in text.`,
     args: [
       {
-        name: t`text`,
-        description: t`The column or text you want to get the length of.`,
+        get name() {
+          return t`text`;
+        },
+        get description() {
+          return t`The column or text you want to get the length of.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Comment`),
       },
     ],
@@ -381,8 +535,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Removes leading and trailing whitespace from a string of text.`,
     args: [
       {
-        name: t`text`,
-        description: t`The column or text you want to trim.`,
+        get name() {
+          return t`text`;
+        },
+        get description() {
+          return t`The column or text you want to trim.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Comment`),
       },
     ],
@@ -393,8 +552,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Removes trailing whitespace from a string of text.`,
     args: [
       {
-        name: t`text`,
-        description: t`The column or text you want to trim.`,
+        get name() {
+          return t`text`;
+        },
+        get description() {
+          return t`The column or text you want to trim.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Comment`),
       },
     ],
@@ -405,8 +569,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Removes leading whitespace from a string of text.`,
     args: [
       {
-        name: t`text`,
-        description: t`The column or text you want to trim.`,
+        get name() {
+          return t`text`;
+        },
+        get description() {
+          return t`The column or text you want to trim.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Comment`),
       },
     ],
@@ -418,8 +587,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Extracts the host (domain name and TLD, eg. "metabase.com" from "status.metabase.com") from a URL or email`,
     args: [
       {
-        name: t`urlOrEmail`,
-        description: t`The URL or Email column to extract the host from.`,
+        get name() {
+          return t`urlOrEmail`;
+        },
+        get description() {
+          return t`The URL or Email column to extract the host from.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Email`),
       },
     ],
@@ -431,8 +605,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Extracts the domain name (eg. "metabase") from a URL or email`,
     args: [
       {
-        name: t`urlOrEmail`,
-        description: t`The URL or Email column to extract domain names from.`,
+        get name() {
+          return t`urlOrEmail`;
+        },
+        get description() {
+          return t`The URL or Email column to extract domain names from.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Email`),
       },
     ],
@@ -444,8 +623,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Extracts the first subdomain (eg. "status" from "status.metabase.com", "" from "bbc.co.uk") from a URL. Ignores "www".`,
     args: [
       {
-        name: t`url`,
-        description: t`The URL column to extract the subdomain from.`,
+        get name() {
+          return t`url`;
+        },
+        get description() {
+          return t`The URL column to extract the subdomain from.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`ProfileImage`),
       },
     ],
@@ -457,8 +641,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns the localized short name ("Apr") for the given month number (4)`,
     args: [
       {
-        name: t`monthNumber`,
-        description: t`Column or expression giving the number of a month in the year, 1 to 12.`,
+        get name() {
+          return t`monthNumber`;
+        },
+        get description() {
+          return t`Column or expression giving the number of a month in the year, 1 to 12.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Birthday Month`),
       },
     ],
@@ -469,8 +658,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns a string like "Q1", given the quarter number`,
     args: [
       {
-        name: t`quarterNumber`,
-        description: t`Column or expression giving the number of a quarter of the year, 1 to 4.`,
+        get name() {
+          return t`quarterNumber`;
+        },
+        get description() {
+          return t`Column or expression giving the number of a quarter of the year, 1 to 4.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Fiscal Quarter`),
       },
     ],
@@ -482,8 +676,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns the localized name of a day of the week, given the day's number.`,
     args: [
       {
-        name: t`dayNumber`,
-        description: t`Column or expression giving the number of a day of the week, 1 to 7. Which day is 1 is defined in your localization setting; default Sunday.`,
+        get name() {
+          return t`dayNumber`;
+        },
+        get description() {
+          return t`Column or expression giving the number of a day of the week, 1 to 7. Which day is 1 is defined in your localization setting; default Sunday.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Weekday`),
       },
     ],
@@ -495,8 +694,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns the absolute (positive) value of the specified column.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column or number to return absolute (positive) value of.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column or number to return absolute (positive) value of.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Debt`),
       },
     ],
@@ -507,8 +711,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Rounds a decimal number down.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column or number to round down.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column or number to round down.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Price`),
       },
     ],
@@ -519,8 +728,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Rounds a decimal number up.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column or number to round up.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column or number to round up.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Price`),
       },
     ],
@@ -532,8 +746,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Rounds a decimal number either up or down to the nearest integer value.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column or number to round to nearest integer.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column or number to round to nearest integer.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Temperature`),
       },
     ],
@@ -544,8 +763,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the square root.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column or number to return square root value of.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column or number to return square root value of.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Hypotenuse`),
       },
     ],
@@ -556,13 +780,22 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Raises a number to the power of the exponent value.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column or number raised to the exponent.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column or number raised to the exponent.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Length`),
       },
       {
-        name: t`exponent`,
-        description: t`The value of the exponent.`,
+        get name() {
+          return t`exponent`;
+        },
+        get description() {
+          return t`The value of the exponent.`;
+        },
         example: "2",
       },
     ],
@@ -573,8 +806,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the base 10 log of the number.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column or number to return the natural logarithm value of.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column or number to return the natural logarithm value of.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Value`),
       },
     ],
@@ -586,18 +824,32 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Get the difference between two datetime values (datetime2 minus datetime1) using the specified unit of time.`,
     args: [
       {
-        name: t`datetime1`,
-        description: t`The column or expression with your datetime value.`,
+        get name() {
+          return t`datetime1`;
+        },
+        get description() {
+          return t`The column or expression with your datetime value.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
       {
-        name: t`datetime2`,
-        description: t`The column or expression with your datetime value.`,
+        get name() {
+          return t`datetime2`;
+        },
+        get description() {
+          return t`The column or expression with your datetime value.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Shipped At`),
       },
       {
-        name: t`unit`,
-        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, or ${"second"}.`,
+        get name() {
+          return t`unit`;
+        },
+        get description() {
+          return t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, or ${"second"}.`;
+        },
         example: formatStringLiteral("month"),
       },
     ],
@@ -610,8 +862,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns Euler's number, e, raised to the power of the supplied number.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column or number to return the exponential value of.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column or number to return the exponential value of.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Interest Months`),
       },
     ],
@@ -623,23 +880,38 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns true if string1 contains string2 within it (or string3, etc. if specified).`,
     args: [
       {
-        name: t`string1`,
-        description: t`The column or text to check.`,
+        get name() {
+          return t`string1`;
+        },
+        get description() {
+          return t`The column or text to check.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Title`),
       },
       {
-        name: t`string2`,
-        description: t`The string of text to look for.`,
+        get name() {
+          return t`string2`;
+        },
+        get description() {
+          return t`The string of text to look for.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatStringLiteral(t`Small`),
       },
       {
         name: "…",
-        description: t`You can add more values to look for.`,
+        get description() {
+          return t`You can add more values to look for.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatStringLiteral(t`Medium`),
       },
       {
         name: "case-insensitive",
-        description: t`Optional. To perform a case-insensitive match.`,
+        get description() {
+          return t`Optional. To perform a case-insensitive match.`;
+        },
         example: formatStringLiteral("case-insensitive"),
       },
     ],
@@ -651,23 +923,38 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns true if string1 does not contain string2 within it (and string3, etc. if specified).`,
     args: [
       {
-        name: t`string1`,
-        description: t`The column or text to check.`,
+        get name() {
+          return t`string1`;
+        },
+        get description() {
+          return t`The column or text to check.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Title`),
       },
       {
-        name: t`string2`,
-        description: t`The string of text to look for.`,
+        get name() {
+          return t`string2`;
+        },
+        get description() {
+          return t`The string of text to look for.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatStringLiteral(t`Small`),
       },
       {
         name: "…",
-        description: t`You can add more values to look for.`,
+        get description() {
+          return t`You can add more values to look for.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatStringLiteral(t`Medium`),
       },
       {
         name: "case-insensitive",
-        description: t`Optional. To perform a case-insensitive match.`,
+        get description() {
+          return t`Optional. To perform a case-insensitive match.`;
+        },
         example: formatStringLiteral("case-insensitive"),
       },
     ],
@@ -679,23 +966,38 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns true if the beginning of the string1 matches the string2 (or string3, etc. if specified).`,
     args: [
       {
-        name: t`string1`,
-        description: t`The column or text to check.`,
+        get name() {
+          return t`string1`;
+        },
+        get description() {
+          return t`The column or text to check.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Title`),
       },
       {
-        name: t`string2`,
-        description: t`The string of text to look for.`,
+        get name() {
+          return t`string2`;
+        },
+        get description() {
+          return t`The string of text to look for.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatStringLiteral(t`Small`),
       },
       {
         name: "…",
-        description: t`You can add more values to look for.`,
+        get description() {
+          return t`You can add more values to look for.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatStringLiteral(t`Medium`),
       },
       {
         name: "case-insensitive",
-        description: t`Optional. To perform a case-insensitive match.`,
+        get description() {
+          return t`Optional. To perform a case-insensitive match.`;
+        },
         example: formatStringLiteral("case-insensitive"),
       },
     ],
@@ -707,23 +1009,38 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns true if the end of the string1 matches the string2 (or string3, etc. if specified).`,
     args: [
       {
-        name: t`string1`,
-        description: t`The column or text to check.`,
+        get name() {
+          return t`string1`;
+        },
+        get description() {
+          return t`The column or text to check.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Title`),
       },
       {
-        name: t`string2`,
-        description: t`The string of text to look for.`,
+        get name() {
+          return t`string2`;
+        },
+        get description() {
+          return t`The string of text to look for.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatStringLiteral(t`Small`),
       },
       {
         name: "…",
-        description: t`You can add more values to look for.`,
+        get description() {
+          return t`You can add more values to look for.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatStringLiteral(t`Medium`),
       },
       {
         name: "case-insensitive",
-        description: t`Optional. To perform a case-insensitive match.`,
+        get description() {
+          return t`Optional. To perform a case-insensitive match.`;
+        },
         example: formatStringLiteral("case-insensitive"),
       },
     ],
@@ -735,18 +1052,31 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Checks a date or number column's values to see if they're within the specified range.`,
     args: [
       {
-        name: t`column`,
-        description: t`The date or numeric column that should be within the start and end values.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The date or numeric column that should be within the start and end values.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
       {
-        name: t`start`,
-        description: t`The beginning of the range.`,
+        get name() {
+          return t`start`;
+        },
+        get description() {
+          return t`The beginning of the range.`;
+        },
         example: formatStringLiteral("2019-01-01"),
       },
       {
-        name: t`end`,
-        description: t`The end of the range.`,
+        get name() {
+          return t`end`;
+        },
+        get description() {
+          return t`The end of the range.`;
+        },
         example: formatStringLiteral("2022-12-31"),
       },
     ],
@@ -757,13 +1087,21 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Gets a time interval of specified length`,
     args: [
       {
-        name: t`number`,
-        description: t`Period of interval, where negative values are back in time.`,
+        get name() {
+          return t`number`;
+        },
+        get description() {
+          return t`Period of interval, where negative values are back in time.`;
+        },
         example: "7",
       },
       {
-        name: t`text`,
-        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+        get name() {
+          return t`text`;
+        },
+        get description() {
+          return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
+        },
         example: formatStringLiteral("day"),
       },
     ],
@@ -775,18 +1113,31 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Checks a date column's values to see if they're within the relative range.`,
     args: [
       {
-        name: t`column`,
-        description: t`The date column to return interval of.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The date column to return interval of.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
       {
-        name: t`number`,
-        description: t`Period of interval, where negative values are back in time.`,
+        get name() {
+          return t`number`;
+        },
+        get description() {
+          return t`Period of interval, where negative values are back in time.`;
+        },
         example: "-1",
       },
       {
-        name: t`text`,
-        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+        get name() {
+          return t`text`;
+        },
+        get description() {
+          return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
+        },
         example: formatStringLiteral("month"),
       },
     ],
@@ -798,28 +1149,49 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns true if a column's value falls within an interval, starting from an initial, offsetting interval.`,
     args: [
       {
-        name: t`column`,
-        description: t`The date column to check.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The date column to check.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
       {
-        name: t`value`,
-        description: t`Period of the interval, where negative numbers go back in time.`,
+        get name() {
+          return t`value`;
+        },
+        get description() {
+          return t`Period of the interval, where negative numbers go back in time.`;
+        },
         example: "-20",
       },
       {
-        name: t`unit`,
-        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+        get name() {
+          return t`unit`;
+        },
+        get description() {
+          return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
+        },
         example: formatStringLiteral("month"),
       },
       {
-        name: t`offsetValue`,
-        description: t`The initial interval period to start from, where negative values are back in time.`,
+        get name() {
+          return t`offsetValue`;
+        },
+        get description() {
+          return t`The initial interval period to start from, where negative values are back in time.`;
+        },
         example: "-10",
       },
       {
-        name: t`offsetUnit`,
-        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+        get name() {
+          return t`offsetUnit`;
+        },
+        get description() {
+          return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
+        },
         example: formatStringLiteral("year"),
       },
     ],
@@ -830,13 +1202,21 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Gets a timestamp relative to the current time`,
     args: [
       {
-        name: t`number`,
-        description: t`Period of interval, where negative values are back in time.`,
+        get name() {
+          return t`number`;
+        },
+        get description() {
+          return t`Period of interval, where negative values are back in time.`;
+        },
         example: "-30",
       },
       {
-        name: t`text`,
-        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+        get name() {
+          return t`text`;
+        },
+        get description() {
+          return t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`;
+        },
         example: formatStringLiteral("day"),
       },
     ],
@@ -847,8 +1227,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Checks if a column is null`,
     args: [
       {
-        name: t`column`,
-        description: t`The column to check.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column to check.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Discount`),
       },
     ],
@@ -860,8 +1245,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Checks if a column is not null`,
     args: [
       {
-        name: t`column`,
-        description: t`The column to check.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column to check.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Discount`),
       },
     ],
@@ -872,8 +1262,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Checks if a column is empty`,
     args: [
       {
-        name: t`column`,
-        description: t`The column to check.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column to check.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Name`),
       },
     ],
@@ -885,8 +1280,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Checks if a column is not empty`,
     args: [
       {
-        name: t`column`,
-        description: t`The column to check.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column to check.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Name`),
       },
     ],
@@ -898,18 +1298,31 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Looks at the values in each argument in order and returns the first non-null value for each row.`,
     args: [
       {
-        name: t`value1`,
-        description: t`The column or value to return.`,
+        get name() {
+          return t`value1`;
+        },
+        get description() {
+          return t`The column or value to return.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Comments`),
       },
       {
-        name: t`value2`,
-        description: t`If value1 is empty, value2 gets returned if its not empty.`,
+        get name() {
+          return t`value2`;
+        },
+        get description() {
+          return t`If value1 is empty, value2 gets returned if its not empty.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Notes`),
       },
       {
         name: "…",
-        description: t`If value1 is empty, and value2 is empty, the next non-empty one will be returned.`,
+        get description() {
+          return t`If value1 is empty, and value2 is empty, the next non-empty one will be returned.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatStringLiteral(t`No comments`),
       },
     ],
@@ -922,20 +1335,35 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Alias for if(). Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
     args: [
       {
-        name: t`condition`,
-        description: t`Something that should evaluate to true or false.`,
+        get name() {
+          return t`condition`;
+        },
+        get description() {
+          return t`Something that should evaluate to true or false.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: `${formatIdentifier(t`Weight`)} > 200`,
       },
       {
-        name: t`output`,
-        description: t`The value that will be returned if the preceding condition is true.`,
+        get name() {
+          return t`output`;
+        },
+        get description() {
+          return t`The value that will be returned if the preceding condition is true.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatStringLiteral(t`Large`),
       },
       {
         name: "…",
-        description: t`You can add more conditions to test.`,
+        get description() {
+          return t`You can add more conditions to test.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: `${formatIdentifier(t`Weight`)} > 150, ${formatStringLiteral(
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           t`Medium`,
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         )}, ${formatStringLiteral(t`Small`)}`,
       },
     ],
@@ -948,20 +1376,35 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Alias for case(). Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
     args: [
       {
-        name: t`condition`,
-        description: t`Something that should evaluate to true or false.`,
+        get name() {
+          return t`condition`;
+        },
+        get description() {
+          return t`Something that should evaluate to true or false.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: `${formatIdentifier(t`Weight`)} > 200`,
       },
       {
-        name: t`output`,
-        description: t`The value that will be returned if the preceding condition is true.`,
+        get name() {
+          return t`output`;
+        },
+        get description() {
+          return t`The value that will be returned if the preceding condition is true.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatStringLiteral(t`Large`),
       },
       {
         name: "…",
-        description: t`You can add more conditions to test.`,
+        get description() {
+          return t`You can add more conditions to test.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: `${formatIdentifier(t`Weight`)} > 150, ${formatStringLiteral(
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           t`Medium`,
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         )}, ${formatStringLiteral(t`Small`)}`,
       },
     ],
@@ -973,18 +1416,29 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns true if value1 equals value2 (or value3, etc. if specified).`,
     args: [
       {
-        name: t`value1`,
-        description: t`The column or value to check.`,
+        get name() {
+          return t`value1`;
+        },
+        get description() {
+          return t`The column or value to check.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Category`),
       },
       {
-        name: t`value2`,
-        description: t`The column or value to look for.`,
+        get name() {
+          return t`value2`;
+        },
+        get description() {
+          return t`The column or value to look for.`;
+        },
         example: formatStringLiteral("Widget"),
       },
       {
         name: "…",
-        description: t`You can add more values to look for.`,
+        get description() {
+          return t`You can add more values to look for.`;
+        },
         example: formatStringLiteral("Gadget"),
       },
     ],
@@ -996,18 +1450,29 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Returns true if value1 doesn't equal value2 (and value3, etc. if specified).`,
     args: [
       {
-        name: t`value1`,
-        description: t`The column or value to check.`,
+        get name() {
+          return t`value1`;
+        },
+        get description() {
+          return t`The column or value to check.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Category`),
       },
       {
-        name: t`value2`,
-        description: t`The column or value to look for.`,
+        get name() {
+          return t`value2`;
+        },
+        get description() {
+          return t`The column or value to look for.`;
+        },
         example: formatStringLiteral("Widget"),
       },
       {
         name: "…",
-        description: t`You can add more values to look for.`,
+        get description() {
+          return t`You can add more values to look for.`;
+        },
         example: formatStringLiteral("Gadget"),
       },
     ],
@@ -1019,8 +1484,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer with the number of the year.`,
     args: [
       {
-        name: t`column`,
-        description: t`The datetime column.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The datetime column.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
     ],
@@ -1032,8 +1502,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer (1-4) with the number of the quarter in the year.`,
     args: [
       {
-        name: t`column`,
-        description: t`The datetime column.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The datetime column.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
     ],
@@ -1045,8 +1520,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer (1-12) with the number of the month in the year.`,
     args: [
       {
-        name: t`column`,
-        description: t`The datetime column.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The datetime column.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
     ],
@@ -1057,19 +1537,28 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Extracts the week of the year as an integer.`,
     args: [
       {
-        name: t`column`,
-        description: t`The name of the column with your date or datetime value.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The name of the column with your date or datetime value.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
       {
-        name: t`mode`,
+        get name() {
+          return t`mode`;
+        },
         // TODO: This is the only place that's not easy to replace the application name.
-        // eslint-disable-next-line no-literal-metabase-strings -- Hard to replace the application name because it's not a React component
-        description: t`Optional. The default is "ISO".
-- ISO: Week 1 starts on the Monday before the first Thursday of January.
-- US: Week 1 starts on Jan 1. All other weeks start on Sunday.
-- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
-`,
+        get description() {
+          // eslint-disable-next-line no-literal-metabase-strings -- Hard to replace the application name because it's not a React component
+          return t`Optional. The default is "ISO".
+  - ISO: Week 1 starts on the Monday before the first Thursday of January.
+  - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
+  - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
+  `;
+        },
         example: formatStringLiteral("iso"),
       },
     ],
@@ -1081,8 +1570,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer (1-31) with the number of the day of the month.`,
     args: [
       {
-        name: t`column`,
-        description: t`The datetime column.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The datetime column.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
     ],
@@ -1094,8 +1588,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer (1-7) with the number of the day of the week. Which day is 1 is defined in your localization settings.`,
     args: [
       {
-        name: t`column`,
-        description: t`The datetime column.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The datetime column.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
     ],
@@ -1107,8 +1606,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer (0-23) with the number of the hour. No AM/PM.`,
     args: [
       {
-        name: t`column`,
-        description: t`The datetime column.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The datetime column.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
     ],
@@ -1120,8 +1624,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer (0-59) with the number of the minute in the hour.`,
     args: [
       {
-        name: t`column`,
-        description: t`The datetime column.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The datetime column.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
     ],
@@ -1133,8 +1642,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Takes a datetime and returns an integer (0-59) with the number of the seconds in the minute.`,
     args: [
       {
-        name: t`column`,
-        description: t`The datetime column.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The datetime column.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
     ],
@@ -1145,18 +1659,31 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Adds some units of time to a date or timestamp value.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column with your date or timestamp values.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column with your date or timestamp values.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
       {
-        name: t`amount`,
-        description: t`The number of units to be added.`,
+        get name() {
+          return t`amount`;
+        },
+        get description() {
+          return t`The number of units to be added.`;
+        },
         example: "1",
       },
       {
-        name: t`unit`,
-        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`,
+        get name() {
+          return t`unit`;
+        },
+        get description() {
+          return t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`;
+        },
         example: formatStringLiteral("month"),
       },
     ],
@@ -1169,18 +1696,31 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Subtracts some units of time to a date or timestamp value.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column with your date or timestamp values.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column with your date or timestamp values.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
       {
-        name: t`amount`,
-        description: t`The number of units to be subtracted.`,
+        get name() {
+          return t`amount`;
+        },
+        get description() {
+          return t`The number of units to be subtracted.`;
+        },
         example: "1",
       },
       {
-        name: t`unit`,
-        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`,
+        get name() {
+          return t`unit`;
+        },
+        get description() {
+          return t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`;
+        },
         example: formatStringLiteral("month"),
       },
     ],
@@ -1198,18 +1738,31 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
 We support tz database time zone names.`,
     args: [
       {
-        name: t`column`,
-        description: t`The column with your date or timestamp values.`,
+        get name() {
+          return t`column`;
+        },
+        get description() {
+          return t`The column with your date or timestamp values.`;
+        },
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         example: formatIdentifier(t`Created At`),
       },
       {
-        name: t`target`,
-        description: t`The timezone you want to assign to your column.`,
+        get name() {
+          return t`target`;
+        },
+        get description() {
+          return t`The timezone you want to assign to your column.`;
+        },
         example: formatStringLiteral("Asia/Ho_Chi_Minh"),
       },
       {
-        name: t`source`,
-        description: t`The current time zone. Only required for timestamps with no time zone.`,
+        get name() {
+          return t`source`;
+        },
+        get description() {
+          return t`The current time zone. Only required for timestamps with no time zone.`;
+        },
         example: formatStringLiteral("UTC"),
       },
     ],

@@ -1,3 +1,68 @@
+## [0.53.18](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.17...embedding-sdk-0.53.18) (2025-05-26)
+
+
+### Bug Fixes
+
+* **sdk:** fix tooltip crash by migrating away from renderToString ([#58394](https://github.com/metabase/metabase/issues/58394)) ([#58412](https://github.com/metabase/metabase/issues/58412)) ([f1d9962](https://github.com/metabase/metabase/commit/f1d996246fb1261566884c5a0137f9d49f721b08))
+* **sdk:** questions shows an error while loading on strict mode ([#58220](https://github.com/metabase/metabase/issues/58220)) ([6592640](https://github.com/metabase/metabase/commit/65926405896b5cfb3d4c445cb4906576eeddbc46)), closes [#58183](https://github.com/metabase/metabase/issues/58183)
+
+
+
+## [0.53.17](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.16...embedding-sdk-0.53.17) (2025-05-16)
+
+
+### Bug Fixes
+
+* **sdk:** Move @cypress/react as dev dependency for SDK ([#57984](https://github.com/metabase/metabase/issues/57984)) ([084f267](https://github.com/metabase/metabase/commit/084f26777c4fd06a9eea8043b1470bf84d6d44f0))
+
+
+
+## [0.53.16](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.15...embedding-sdk-0.53.16) (2025-05-13)
+
+
+### Bug Fixes
+
+* **sdk:** custom GeoJSON maps does not load due to wrong domain ([#57539](https://github.com/metabase/metabase/issues/57539)) ([#57646](https://github.com/metabase/metabase/issues/57646)) ([b8a2222](https://github.com/metabase/metabase/commit/b8a2222bc949459145d3a9a344c8ceda42d47aa5))
+* **sdk:** manual fixes for module level ttag calls causing broken translations ([#57590](https://github.com/metabase/metabase/issues/57590)) ([12e950f](https://github.com/metabase/metabase/commit/12e950f89c2016f652e305d752f5a9262a97aa6d))
+* **sdk:** updating collection's entity id crashes InteractiveQuestion and CollectionBrowser ([#57643](https://github.com/metabase/metabase/issues/57643)) ([9e12302](https://github.com/metabase/metabase/commit/9e12302d7bdcd09ecdae99dfe9ab73d928d6915b)), closes [#57529](https://github.com/metabase/metabase/issues/57529)
+
+
+### Features
+
+* **sdk:** Automatically set a sensible display to interactive question ([#56714](https://github.com/metabase/metabase/issues/56714)) ([77c6216](https://github.com/metabase/metabase/commit/77c621620d30e203f6f62796a3a232b500d4343d))
+
+
+
+## [0.53.15](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.14...embedding-sdk-0.53.15) (2025-04-25)
+
+
+### Bug Fixes
+
+* **sdk:** clicking on "and X more" in chart legend throws error ([#57175](https://github.com/metabase/metabase/issues/57175)) ([#57252](https://github.com/metabase/metabase/issues/57252)) ([ffcad91](https://github.com/metabase/metabase/commit/ffcad911c2fe50d9d2ad12ecc953b7d2f5f53f49))
+* **sdk:** use background color in sankey chart text outline ([#57135](https://github.com/metabase/metabase/issues/57135)) ([#57169](https://github.com/metabase/metabase/issues/57169)) ([4b5c7a9](https://github.com/metabase/metabase/commit/4b5c7a9cad7fb81f035b3deefde5d595398d3137))
+
+
+
+## [0.53.14](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.13...embedding-sdk-0.53.14) (2025-04-24)
+
+
+### Bug Fixes
+
+* **sdk:** Ensure that questions don't flicker when fetching entity IDs ([#57130](https://github.com/metabase/metabase/issues/57130)) ([4ed2c08](https://github.com/metabase/metabase/commit/4ed2c0861c874150fe09c45aab96ecd5edeac8ae)), closes [#57073](https://github.com/metabase/metabase/issues/57073)
+* **sdk:** fix dataset endpoint being called on every re-render ([#56234](https://github.com/metabase/metabase/issues/56234)) ([0137be5](https://github.com/metabase/metabase/commit/0137be5ea0fe3632921d6690a715489dee96b471)), closes [#56100](https://github.com/metabase/metabase/issues/56100)
+* **sdk:** use instance locale if no locale is passed ([#56683](https://github.com/metabase/metabase/issues/56683)) ([#56874](https://github.com/metabase/metabase/issues/56874)) ([77bce68](https://github.com/metabase/metabase/commit/77bce68f250a20b7fd85ecee1a1f24a891402f52))
+
+
+
+## [0.53.13](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.12...embedding-sdk-0.53.13) (2025-04-04)
+
+
+### Bug Fixes
+
+* **sdk:** Add `questionProps` to dashboard components ([#56215](https://github.com/metabase/metabase/issues/56215)) ([2f4098e](https://github.com/metabase/metabase/commit/2f4098e60728fe38291c9ea893c410ae61151bd1)), closes [#55993](https://github.com/metabase/metabase/issues/55993)
+
+
+
 ## [0.53.12](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.11...embedding-sdk-0.53.12) (2025-03-20)
 
 

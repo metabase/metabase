@@ -25,7 +25,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
       cy.visit("/admin/settings/setup");
 
       cy.findByTestId("upsell-card").findByText(/Migrate to Metabase Cloud/);
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "upsell_viewed",
         promoted_feature: "hosting",
       });
@@ -33,7 +33,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
         .findAllByRole("link", { name: "Learn more" })
         .click();
       // link opens in new tab
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "upsell_clicked",
         promoted_feature: "hosting",
       });
