@@ -260,11 +260,6 @@ export function findColumnSlotForCartesianChart(
         settings["graph.dimensions"]?.filter(Boolean) ??
         [];
 
-      // No breakout when there are more than one metric
-      if (ownDimensions.length > 0 && metrics.length > 1) {
-        return undefined;
-      }
-
       if (ownDimensions.length === 0) {
         return "graph.dimensions";
       } else {
@@ -277,6 +272,13 @@ export function findColumnSlotForCartesianChart(
         });
         if (isCompatibleWithUsedColumns) {
           return "graph.dimensions";
+        }
+
+        // No breakout when there are more than one metric
+        if (ownDimensions.length > 0 && metrics.length > 1) {
+          if (!isDate(column)) {
+            return undefined;
+          }
         }
 
         // Handles potential new dimensions that are not yet used in a chart

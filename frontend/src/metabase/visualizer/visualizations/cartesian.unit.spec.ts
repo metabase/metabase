@@ -62,6 +62,12 @@ describe("cartesian", () => {
       display_name: "Other Metric",
     });
 
+    const andAnotherMetricColumn = createMockNumericColumn({
+      id: 7,
+      name: "COLUMN_7",
+      display_name: "And Another Metric",
+    });
+
     it("should return 'graph.metrics' for a metric column", () => {
       const state = { display: "bar" as const, columns: [], settings: {} };
       expect(
@@ -400,14 +406,14 @@ describe("cartesian", () => {
         ).toBeUndefined();
       });
 
-      it("should return undefined for a category dimension when there are several metrics selected", () => {
+      it("should return undefined for a new category dimension when there are several metrics selected", () => {
         const settings = {
           "graph.metrics": [metricColumn.name, otherMetricColumn.name],
           "graph.dimensions": [timeDimensionColumn.name],
         };
         const state = {
           display: "bar" as const,
-          columns: [metricColumn, otherMetricColumn],
+          columns: [metricColumn, otherMetricColumn, timeDimensionColumn],
           settings,
         };
         const baseDataset = createMockDataset({
@@ -430,6 +436,36 @@ describe("cartesian", () => {
             sameCategoryDimensionColumn,
           ),
         ).toBeUndefined();
+      });
+
+      it("should return 'graph.dimensions' for a compatible date dimension when there are several metrics selected", () => {
+        const settings = {
+          "graph.metrics": [metricColumn.name, otherMetricColumn.name],
+          "graph.dimensions": [timeDimensionColumn.name],
+        };
+        const state = {
+          display: "bar" as const,
+          columns: [metricColumn, otherMetricColumn],
+          settings,
+        };
+        const baseDataset = createMockDataset({
+          data: {
+            cols: [metricColumn, otherMetricColumn, timeDimensionColumn],
+          },
+        });
+        const newDataset = createMockDataset({
+          data: { cols: [andAnotherMetricColumn, timeDimensionColumn] },
+        });
+
+        expect(
+          findColumnSlotForCartesianChart(
+            state,
+            settings,
+            { "card:1": baseDataset, "card:2": newDataset },
+            newDataset.data.cols,
+            timeDimensionColumn,
+          ),
+        ).toBe("graph.dimensions");
       });
     });
   });
