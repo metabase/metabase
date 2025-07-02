@@ -1,4 +1,8 @@
 .root {
+  --sc-background-color: var(
+    --mantine-color-accent-gray-light-filled
+  ) !important;
+
   /**
    * We're using :after to apply a border here, to prevent increasing element's height.
    */
