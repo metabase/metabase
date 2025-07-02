@@ -577,28 +577,40 @@
 ;; existing view that are not equal. if uniqueness can't be guaranteed by
 ;; hashing, we may need to store view definitions (we'll most likely need
 ;; that anyway) and compare
-(defn- generate-view-name [_query]
-  ;; TODO: something better than millis
-  (str "mb_view_" (System/currentTimeMillis)))
+(defn- generate-view-name
+  ([]
+   (generate-view-name (System/currentTimeMillis)))
+  ([x]
+   (str "mb_view_" x)))
 
 ;; TODO: we likely don't want CREATE OR REPLACE, and always generate a new name
 
 (defn- generate-view-definition [name query]
   (format "CREATE OR REPLACE VIEW \"%s\" AS\n\t(%s)" name query))
 
+(defn- insert-transform
+  [{card-id :id original-dataset-query :dataset_query :as _card}]
+  (t2/insert-returning-instance! :model/Transform {:card_id card-id
+                                                   :original_dataset_query original-dataset-query}))
+
+;; TODO: We should avoid creating view from query that is view based already. Instead create view from modification
+;;       of its definition that resides in report_card_transform or :model/Transform.
 (defn create-view-for-card
   "create view for card"
-  [driver db {:keys [dataset_query]}]
-  (let [{:keys [query]} (qp.compile/compile dataset_query)
-        view-name (generate-view-name query)
-        view-definition (generate-view-definition view-name query)]
-    (log/fatalf "Transform view:\n\n%s\n"
-                view-definition)
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver db {:write? true}
-     (fn [^Connection conn]
-       (jdbc/execute! {:connection conn} view-definition)
-       view-name))))
+  [driver db {:keys [dataset_query] :as card}]
+  (t2/with-transaction [_conn]
+    (let [{transform-id :id :as _transform} (insert-transform card)
+          {:keys [query]} (qp.compile/compile dataset_query)
+          view-name (generate-view-name transform-id)
+          view-definition (generate-view-definition view-name query)]
+      (log/fatalf "Transform view:\n\n%s\n"
+                  view-definition)
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver db {:write? true}
+       (fn [^Connection conn]
+         #_(throw (Exception. "verif transact Transform model"))
+         (jdbc/execute! {:connection conn} view-definition)
+         view-name)))))
 
 (defn- transform-updates [{:keys [database_id] :as card}]
   (assert (empty? (:parameters card)))
