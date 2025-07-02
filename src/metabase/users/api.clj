@@ -386,6 +386,53 @@
       add-custom-homepage-info
       add-can-write-any-collection))
 
+(mr/def ::simple-attributes
+  [:map-of :string :string])
+
+(mr/def ::system-attributes
+  [:map-of [:re #"@.*"] :string])
+
+(mr/def ::combined-attributes
+  (let [common [[:source [:enum :user :tenant :system]]
+                [:frozen boolean?]
+                [:value :string]]]
+    (vec `(:map-of :string
+                   [:map
+                    ~@common
+                    [:original {:optional true}
+                     [:map
+                      ~@common]]]))))
+
+(mu/defn- combine :- ::combined-attributes
+  "Combines user, tenant, and system attributes. User can override "
+  [user :- ::simple-attributes
+   tenant :- ::simple-attributes
+   system :- ::system-attributes]
+  (letfn [(value-map [s f vs] (into {}
+                                    (for [[k v] vs]
+                                      [k {:source s :frozen f :value v}])))
+          (shadow [original new] (if original (assoc new :original original) new))
+          (error [original new] (if original
+                                  (throw (ex-info "Cannot clober"
+                                                  {:bad-attribute original
+                                                   :attribute new}))
+                                  new))]
+    (merge-with error
+                (merge-with shadow
+                            (value-map :tenant false tenant)
+                            (value-map :user false user))
+                (value-map :system true system))))
+
+(defn attribute-structure
+  [user]
+  (let [tenant (when-let [tenant-id (:tenant_id user)]
+                 (t2/select-one :model/Tenant :id tenant-id))
+        combined-attributes (combine (:login_attributes user)
+                                     (:attributes tenant)
+                                     (when tenant
+                                       {"@tenant.slug" (:slug tenant)}))]
+    (assoc user :structured_attributes combined-attributes)))
+
 (api.macros/defendpoint :get "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
   [{:keys [id]} :- [:map
@@ -395,7 +442,9 @@
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
   (-> (api/check-404 (fetch-user :id id))
-      (t2/hydrate :user_group_memberships)))
+      (t2/hydrate :user_group_memberships)
+      (attribute-structure)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
