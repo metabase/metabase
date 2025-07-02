@@ -24,13 +24,13 @@ export const SelectEmbedResourceMissingRecents = ({
       "dashboard",
       () =>
         c("{0} is a link button to search for dashboards")
-          .jt`You can ${(<Anchor size="sm" onClick={openPicker} inline>{t`search for dashboards`}</Anchor>)} to embed.`,
+          .jt`You can ${(<Anchor size="sm" onClick={openPicker} key="picker-link" inline>{t`search for dashboards`}</Anchor>)} to embed.`,
     )
     .with(
       "chart",
       () =>
         c("{0} is a link button to search for charts")
-          .jt`You can ${(<Anchor size="sm" onClick={openPicker} inline>{t`search for charts`}</Anchor>)} to embed.`,
+          .jt`You can ${(<Anchor size="sm" onClick={openPicker} key="picker-link" inline>{t`search for charts`}</Anchor>)} to embed.`,
     )
     .otherwise(() => null);
 
