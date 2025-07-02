@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useListRecentsQuery } from "metabase/api";
 import type { RecentItem } from "metabase-types/api";
@@ -38,21 +38,26 @@ export const useRecentItems = () => {
     );
   }, [apiRecentItems, localRecentQuestions]);
 
-  const addRecentItem = (
-    type: "dashboard" | "question",
-    recentItemToAdd: SdkIframeEmbedSetupRecentItem,
-  ) => {
-    const setRecentItems =
-      type === "dashboard" ? setLocalRecentDashboards : setLocalRecentQuestions;
+  const addRecentItem = useCallback(
+    (
+      type: "dashboard" | "question",
+      recentItemToAdd: SdkIframeEmbedSetupRecentItem,
+    ) => {
+      const setRecentItems =
+        type === "dashboard"
+          ? setLocalRecentDashboards
+          : setLocalRecentQuestions;
 
-    // Bump the added item to the top of the list.
-    setRecentItems((prev) =>
-      [
-        recentItemToAdd,
-        ...prev.filter((recentItem) => recentItem.id !== recentItemToAdd.id),
-      ].slice(0, EMBED_RESOURCE_LIST_MAX_RECENTS),
-    );
-  };
+      // Bump the added item to the top of the list.
+      setRecentItems((prev) =>
+        [
+          recentItemToAdd,
+          ...prev.filter((recentItem) => recentItem.id !== recentItemToAdd.id),
+        ].slice(0, EMBED_RESOURCE_LIST_MAX_RECENTS),
+      );
+    },
+    [],
+  );
 
   return {
     recentDashboards,
