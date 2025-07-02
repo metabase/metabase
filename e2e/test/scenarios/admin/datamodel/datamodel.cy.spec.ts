@@ -230,7 +230,7 @@ describe("scenarios > admin > datamodel", () => {
   });
 
   describe("Table section", () => {
-    it("should see all tables in sample database and fields in orders table", () => {
+    it("should show all tables in sample database and fields in orders table", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -289,18 +289,44 @@ describe("scenarios > admin > datamodel", () => {
       );
     });
 
-    it("should be able to see empty state and name + description of the table", () => {
-      H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
+    it("should allow to change name and description of the table", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
 
       verifyFieldSectionEmptyState();
 
-      H.DataModel.TablePicker.getTable("Orders").click();
-      verifyFieldSectionEmptyState();
+      cy.log("name");
+      H.DataModel.TableSection.getNameInput()
+        .should("have.value", "Orders")
+        .clear()
+        .type("New orders")
+        .blur();
+      H.undoToast().should("contain.text", "Table name updated");
+      H.undoToast().icon("close").click();
+      H.DataModel.TablePicker.getTable("New orders").should("be.visible");
 
-      H.DataModel.TableSection.getNameInput().should("have.value", "Orders");
+      cy.log("description");
+      H.DataModel.TableSection.getDescriptionInput()
+        .should(
+          "have.value",
+          "Confirmed Sample Company orders for a product, from a user.",
+        )
+        .clear()
+        .type("New description")
+        .blur();
+      H.undoToast().should("contain.text", "Table description updated");
+
+      cy.reload();
+      H.DataModel.TableSection.getNameInput().should(
+        "have.value",
+        "New orders",
+      );
       H.DataModel.TableSection.getDescriptionInput().should(
         "have.value",
-        "Confirmed Sample Company orders for a product, from a user.",
+        "New description",
       );
     });
 
