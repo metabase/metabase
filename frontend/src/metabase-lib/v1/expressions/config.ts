@@ -331,7 +331,16 @@ const CONVERSION = defineClauses(
           return;
         }
 
-        const validModes = ["iso", "simple", "isobytes", "simplebytes"];
+        const validModes = [
+          "iso",
+          "simple",
+          "isobytes",
+          "simplebytes",
+          "unixseconds",
+          "unixmilliseconds",
+          "unixmicroseconds",
+          "unixnanoseconds",
+        ];
         const normalizedMode = mode.toLowerCase();
 
         // mode is valid after normalization
@@ -345,13 +354,13 @@ const CONVERSION = defineClauses(
         {
           name: t`value`,
           type: "expression",
-          description: t`The string or bytes to convert to a datetime.`,
+          description: t`The string, bytes, or number to convert to a datetime.`,
           example: "2025-03-20 12:45:04",
         },
         {
           name: t`mode`,
           type: "string",
-          description: t`The mode indicating the format. One of: "simple", "iso", "simpleBytes", "simpleIso". Default is "iso".`,
+          description: t`The mode indicating the format. One of: "simple", "iso", "simpleBytes", "isoBytes", "unixSeconds", "unixMilliseconds", "unixMicroseconds", "unixNanoseconds". Default is "iso".`,
           optional: true,
         },
       ],
