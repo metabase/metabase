@@ -342,7 +342,7 @@ const CONVERSION = defineClauses(
         {
           name: t`mode`,
           type: "string",
-          description: t`The mode indicating the format. One of: "simple", "iso", "simplebytes", "simpleiso". Default is "iso".`,
+          description: t`The mode indicating the format. One of: "simple", "iso", "simpleBytes", "simpleIso". Default is "iso".`,
           optional: true,
         },
       ],
