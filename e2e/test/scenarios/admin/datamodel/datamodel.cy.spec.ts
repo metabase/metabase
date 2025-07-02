@@ -26,17 +26,14 @@ describe("scenarios > admin > datamodel", () => {
   });
 
   describe("Table section", () => {
-    it("should see 8 tables in sample database", () => {
-      H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
-      H.DataModel.TablePicker.getTables().should("have.length", 8);
-    });
-
-    it("should see multiple fields", () => {
+    it("should see all tables in sample database and fields in orders table", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
+
+      H.DataModel.TablePicker.getTables().should("have.length", 8);
 
       H.DataModel.TableSection.clickField("ID");
       H.DataModel.FieldSection.getDataType()
@@ -95,7 +92,6 @@ describe("scenarios > admin > datamodel", () => {
         .findByText("Start by selecting data to model")
         .should("be.visible");
 
-      // Orders
       H.DataModel.TablePicker.getTable("Orders").click();
       cy.get("main")
         .findByText("Edit the table and fields")
