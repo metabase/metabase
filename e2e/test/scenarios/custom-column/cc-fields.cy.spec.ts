@@ -73,4 +73,83 @@ describe("scenarios > custom column > field resolution", () => {
       H.CustomExpressionEditor.clear();
     });
   });
+
+  it("should be possible to resolve aggregations from the question", () => {
+    const QUESTION: StructuredQuestionDetails = {
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          [
+            "aggregation-options",
+            ["sum", ["field", ORDERS.TOTAL, null]],
+            {
+              name: "Custom Sum",
+              "display-name": "Custom Sum",
+            },
+          ],
+        ],
+      },
+    };
+
+    H.createQuestion(QUESTION, { visitQuestion: true });
+    H.openNotebook();
+
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+
+    H.CustomExpressionEditor.type("[Custom");
+    H.CustomExpressionEditor.completion("Custom Sum")
+      .should("be.visible")
+      .click();
+    H.CustomExpressionEditor.value().should("eq", "[Custom Sum]");
+    H.CustomExpressionEditor.type("+ 1");
+    H.CustomExpressionEditor.format();
+
+    H.CustomExpressionEditor.nameInput().type("Derived");
+    H.popover().button("Done").click();
+
+    H.visualize();
+    H.assertTableData({
+      columns: ["Custom Sum", "Derived"],
+    });
+  });
+
+  it("should be possible to resolve aggregations from the question", () => {
+    const QUESTION: StructuredQuestionDetails = {
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          [
+            "aggregation-options",
+            ["sum", ["field", ORDERS.TOTAL, null]],
+            {
+              name: "Custom Sum",
+              "display-name": "Custom Sum",
+            },
+          ],
+        ],
+      },
+    };
+
+    H.createQuestion(QUESTION, { visitQuestion: true });
+    H.openNotebook();
+
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+
+    H.CustomExpressionEditor.type("[Custom");
+    H.CustomExpressionEditor.completion("Custom Sum")
+      .should("be.visible")
+      .click();
+    H.CustomExpressionEditor.value().should("eq", "[Custom Sum]");
+    H.CustomExpressionEditor.format();
+
+    H.CustomExpressionEditor.nameInput().type("Derived");
+    H.popover().button("Done").click();
+
+    H.visualize();
+    H.assertTableData({
+      columns: ["Custom Sum", "Derived"],
+    });
+  });
 });
