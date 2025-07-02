@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.cast-test
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -961,8 +960,7 @@
 ;; TODO: Make a real feature for byte->temporal coercion strategies
 
 (deftest ^:parallel datetime-binary-cast
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :expressions/datetime)
-                                     (mt/normal-drivers-with-feature ::adt/yyyymmddhhss-binary-timestamps))
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime ::adt/yyyymmddhhss-binary-timestamps)
     (doseq [{:keys [dataset mode expected]}
             [{:dataset yyyymmddhhss-binary-simple-cast
               :mode :simplebytes
