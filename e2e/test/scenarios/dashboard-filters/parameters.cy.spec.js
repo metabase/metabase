@@ -1365,6 +1365,56 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
+    it("should correctly undo dashcard removal (VIZ-1236)", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            createMockHeadingDashboardCard({
+              inline_parameters: [categoryParameter.id],
+              size_x: 24,
+              size_y: 1,
+            }),
+            {
+              id: dashcard.id,
+              row: 1,
+              size_x: 12,
+              size_y: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+        H.visitDashboard(dashcard.dashboard_id);
+        H.editDashboard();
+      });
+
+      H.removeDashboardCard(0);
+      H.getDashboardCard().findByText("test question").should("exist");
+
+      H.undo();
+
+      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(1)
+        .findByTestId("parameter-mapper-container")
+        .findByText(/Category/)
+        .should("exist");
+    });
+
     it("should work correctly in public dashboards", () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
