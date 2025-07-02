@@ -725,15 +725,8 @@
   string [:or StringExpressionArg DateTimeExpressionArg])
 
 (def ^:private LiteralDatetimeModeString
-  [:enum {:error/message "datetime mode string"}
-   :iso
-   :simple
-   :isobytes
-   :simplebytes
-   :unixmilliseconds
-   :unixseconds
-   :unixmicroseconds
-   :unixnanoseconds])
+  (into [:enum {:error/message "datetime mode string"}]
+        lib.schema.expression.temporal/datetime-modes))
 
 (defclause ^{:requires-features #{:expressions :expressions/datetime}} datetime
   value  :any ;;StringExpressionArg ;; normally a string, number, or bytes

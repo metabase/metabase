@@ -326,11 +326,20 @@ const CONVERSION = defineClauses(
       description: () => t`Converts a datetime string or bytes to a datetime.`,
       hasOptions: true,
       validator(_value, mode) {
-        const validModes = ["iso", "simple", "isobytes", "simplebytes"];
-
-        if (mode !== undefined && !validModes.includes(mode)) {
-          return t`Invalid mode: ${mode}`;
+        // missing mode is fine
+        if (mode === undefined) {
+          return;
         }
+
+        const validModes = ["iso", "simple", "isobytes", "simplebytes"];
+        const normalizedMode = mode.toLowerCase().replace("-", "");
+
+        // mode is valid after normalization
+        if (validModes.includes(normalizedMode)) {
+          return;
+        }
+
+        return t`Invalid mode: ${mode}`;
       },
       args: () => [
         {

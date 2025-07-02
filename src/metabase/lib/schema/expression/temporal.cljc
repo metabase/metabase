@@ -1,12 +1,14 @@
 (ns metabase.lib.schema.expression.temporal
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.time.impl-common :as u.time.impl-common])
   #?@
@@ -60,20 +62,41 @@
             [:ref ::expression/string]      ;; parse string as date
             [:ref ::expression/temporal]]]) ;; truncate datetime to date
 
+(def datetime-modes
+  "Modes supported by datetime() custom expression function."
+  #{:iso
+    :simple
+    :iso-bytes
+    :simple-bytes
+    :unix-seconds
+    :unix-milliseconds
+    :unix-microseconds
+    :unix-nanoseconds})
+
+(defn- datetime-mode->string [s]
+  (-> s
+      name
+      u/lower-case-en
+      (str/replace #"-" "")))
+
+(def ^:private datetime-mode-map
+  (into {} (for [k datetime-modes]
+             [(datetime-mode->string k) k])))
+
+(defn normalize-datetime-mode
+  "Convert a keyword or string to an internal datetime-mode keyword, or nil if it's not correct.
+
+   Is lenient on case and hyphens."
+  [s]
+  (get datetime-mode-map (datetime-mode->string s)))
+
 (mbql-clause/define-catn-mbql-clause :datetime :- :type/DateTime
   [:value [:schema :any]] ;; need to support bytes type
   [:mode [:?
           [:schema
-           [:enum {:error/message "datetime mode string"
-                   :decode/normalize common/normalize-keyword-lower}
-            :iso
-            :simple
-            :isobytes
-            :simplebytes
-            :unixmilliseconds
-            :unixseconds
-            :unixmicroseconds
-            :unixnanoseconds]]]])
+           (into [:enum {:error/message "datetime mode string"
+                         :decode/normalize normalize-datetime-mode}]
+                 datetime-modes)]]])
 
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit
