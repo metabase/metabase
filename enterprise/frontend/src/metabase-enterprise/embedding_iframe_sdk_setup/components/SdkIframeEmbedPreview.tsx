@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useSearchParam } from "react-use";
 
 import { useSetting } from "metabase/common/hooks";
 import { Box } from "metabase/ui";
@@ -20,6 +21,7 @@ export const SdkIframeEmbedPreview = () => {
   const instanceUrl = useSetting("site-url");
 
   const embedJsRef = useRef<MetabaseEmbed | null>(null);
+  const localeOverride = useSearchParam("locale");
 
   useEffect(() => {
     const script = document.createElement("script");
@@ -36,6 +38,8 @@ export const SdkIframeEmbedPreview = () => {
         target: "#iframe-embed-container",
         iframeClassName: S.EmbedPreviewIframe,
         useExistingUserSession: true,
+
+        ...(localeOverride ? { locale: localeOverride } : {}),
       });
     };
 
@@ -43,7 +47,7 @@ export const SdkIframeEmbedPreview = () => {
       embedJsRef.current?.destroy();
       script.remove();
     };
-  }, [instanceUrl]);
+  }, [instanceUrl, localeOverride]);
 
   useEffect(() => {
     if (embedJsRef.current) {
