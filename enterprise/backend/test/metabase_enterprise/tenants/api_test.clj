@@ -13,23 +13,23 @@
 (deftest can-create-tenants
   (testing "I can create a tenant with a unique name"
     (mt/with-model-cleanup [:model/Tenant]
-      (mt/user-http-request :crowberto :post 200 "ee/tenants/"
+      (mt/user-http-request :crowberto :post 200 "ee/tenant/"
                             {:name "My Tenant"
                              :slug "my-tenant"})
       (is (t2/exists? :model/Tenant :name "My Tenant"))))
   (testing "Duplicate names results in an error"
     (mt/with-model-cleanup [:model/Tenant]
-      (mt/user-http-request :crowberto :post 200 "ee/tenants/"
+      (mt/user-http-request :crowberto :post 200 "ee/tenant/"
                             {:name "My Tenant" :slug "my-tenant"})
       (is (t2/exists? :model/Tenant :name "My Tenant"))
       (is (= "This tenant name or slug is already taken."
-             (mt/user-http-request :crowberto :post 400 "ee/tenants/"
+             (mt/user-http-request :crowberto :post 400 "ee/tenant/"
                                    {:name "My Tenant" :slug "foo"})))
       (is (= "This tenant name or slug is already taken."
-             (mt/user-http-request :crowberto :post 400 "ee/tenants/"
+             (mt/user-http-request :crowberto :post 400 "ee/tenant/"
                                    {:name "Foo" :slug "my-tenant"})))))
   (testing "invalid slug results in an error"
-    (mt/user-http-request :crowberto :post 400 "ee/tenants/"
+    (mt/user-http-request :crowberto :post 400 "ee/tenant/"
                           {:name "My Tenant"
                            :slug "FOOBAR"})))
 
@@ -41,7 +41,7 @@
             :is_active true
             :slug "sluggy"
             :member_count 1}
-           (mt/user-http-request :crowberto :get 200 (str "ee/tenants/" id1))))))
+           (mt/user-http-request :crowberto :get 200 (str "ee/tenant/" id1))))))
 
 (deftest can-update-tenant-name
   (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Name" :slug "sluggy"}
@@ -51,9 +51,9 @@
             :slug "sluggy"
             :is_active true
             :member_count 0}
-           (mt/user-http-request :crowberto :put 200 (str "ee/tenants/" id) {:name "New Name"})))
+           (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:name "New Name"})))
     (is (= "This name is already taken."
-           (mt/user-http-request :crowberto :put 400 (str "ee/tenants/" id) {:name "Other Name"})))))
+           (mt/user-http-request :crowberto :put 400 (str "ee/tenant/" id) {:name "Other Name"})))))
 
 (deftest can-mark-tenant-as-active-or-inactive
   (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Name" :slug "sluggy"}]
@@ -62,7 +62,7 @@
             :slug "sluggy"
             :is_active false
             :member_count 0}
-           (mt/user-http-request :crowberto :put 200 (str "ee/tenants/" id) {:is_active false})))))
+           (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:is_active false})))))
 
 (deftest can-list-tenants
   (testing "I can list tenants"
@@ -71,11 +71,11 @@
                    :model/Tenant {id2 :id} {:name "Name 2" :slug "slug-2"}]
       (is (=? {:data [{:id id1 :member_count 1}
                       {:id id2 :member_count 0}]}
-              (mt/user-http-request :crowberto :get 200 "ee/tenants/")))
+              (mt/user-http-request :crowberto :get 200 "ee/tenant/")))
       (is (=? {:data [{:id id1 :name "Name 1" :slug "slug-1"}]}
-              (mt/user-http-request :crowberto :get 200 "ee/tenants/?limit=1")))
+              (mt/user-http-request :crowberto :get 200 "ee/tenant/?limit=1")))
       (is (=? {:data [{:id id2}]}
-              (mt/user-http-request :crowberto :get 200 "ee/tenants/?offset=1"))))))
+              (mt/user-http-request :crowberto :get 200 "ee/tenant/?offset=1"))))))
 
 (deftest can-list-deactivated-tenants
   (testing "I can list deactivated tenants only"
@@ -85,14 +85,14 @@
                    :model/User {} {:tenant_id id2}]
       (is (=? {:data [{:id id1 :member_count 1}
                       {:id id2 :member_count 1}]}
-              (mt/user-http-request :crowberto :get 200 "ee/tenants/")))
+              (mt/user-http-request :crowberto :get 200 "ee/tenant/")))
       (is (=? {:data [{:id id1 :member_count 1}
                       {:id id2 :member_count 1}]}
-              (mt/user-http-request :crowberto :get 200 "ee/tenants/?status=all")))
+              (mt/user-http-request :crowberto :get 200 "ee/tenant/?status=all")))
       (is (=? {:data [{:id id1 :member_count 1}]}
-              (mt/user-http-request :crowberto :get 200 "ee/tenants/?status=active")))
+              (mt/user-http-request :crowberto :get 200 "ee/tenant/?status=active")))
       (is (=? {:data [{:id id2 :member_count 1}]}
-              (mt/user-http-request :crowberto :get 200 "ee/tenants/?status=deactivated"))))))
+              (mt/user-http-request :crowberto :get 200 "ee/tenant/?status=deactivated"))))))
 
 (deftest tenant-users-can-only-list-tenant-recipients
   (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}

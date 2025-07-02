@@ -12,7 +12,7 @@ export const tenantsApi = EnterpriseApi.injectEndpoints({
     createTenant: builder.mutation<void, CreateTenantInput>({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/tenants",
+        url: "/api/ee/tenant",
         body,
       }),
       invalidatesTags: (_, error) => invalidateTags(error, [listTag("tenant")]),
@@ -20,7 +20,7 @@ export const tenantsApi = EnterpriseApi.injectEndpoints({
     getTenant: builder.query<Tenant, Tenant["id"]>({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/tenants/${id}`,
+        url: `/api/ee/tenant/${id}`,
       }),
       providesTags: (_, __, id) => [idTag("tenant", id)],
     }),
@@ -30,7 +30,7 @@ export const tenantsApi = EnterpriseApi.injectEndpoints({
     >({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/tenants",
+        url: "/api/ee/tenant",
         params,
       }),
       providesTags: [listTag("tenant")],
@@ -38,7 +38,7 @@ export const tenantsApi = EnterpriseApi.injectEndpoints({
     updateTenant: builder.mutation<void, UpdateTenantInput>({
       query: ({ id, ...body }) => ({
         method: "PUT",
-        url: `/api/ee/tenants/${id}`,
+        url: `/api/ee/tenant/${id}`,
         body,
       }),
       invalidatesTags: (_, error, { id }) =>

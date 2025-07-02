@@ -64,5 +64,5 @@
   (present-tenant (t2/select-one :model/Tenant :id id)))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/tenants` routes"
+  "`/api/ee/tenant` routes"
   (api.macros/ns-handler *ns* api/+check-superuser +auth))

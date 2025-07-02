@@ -90,7 +90,7 @@
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
-   "/tenants"                    (premium-handler metabase-enterprise.tenants.api/routes :tenants)
+   "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 

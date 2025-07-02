@@ -269,7 +269,7 @@ describe("Tenants - management", () => {
       "use-tenants": true,
     });
 
-    TENANTS.forEach((tenant) => cy.request("POST", "/api/ee/tenants", tenant));
+    TENANTS.forEach((tenant) => cy.request("POST", "/api/ee/tenant", tenant));
 
     cy.visit("admin/tenants/people");
 
@@ -373,7 +373,7 @@ describe("tenant users", () => {
       "use-tenants": true,
     });
 
-    TENANTS.forEach((tenant) => cy.request("POST", "/api/ee/tenants", tenant));
+    TENANTS.forEach((tenant) => cy.request("POST", "/api/ee/tenant", tenant));
 
     USERS.forEach((user) =>
       cy
