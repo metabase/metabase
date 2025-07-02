@@ -17,5 +17,5 @@ export function filterEmptySettings<T extends Record<string, any>>(
 
       return value !== undefined && value !== null && value !== "";
     }),
-  );
+  ) as T;
 }
