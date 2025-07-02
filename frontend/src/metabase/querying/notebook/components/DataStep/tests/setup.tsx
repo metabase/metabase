@@ -48,13 +48,6 @@ export const setup = ({
     setupSearchEndpoints([]);
   }
 
-  // Mock EMBEDDING_SDK_CONFIG
-  if (isEmbeddingSdk) {
-    jest.mock("metabase/embedding-sdk/config", () => ({
-      EMBEDDING_SDK_CONFIG: { isSdk: true },
-    }));
-  }
-
   renderWithProviders(
     <NotebookProvider>
       <DataStep
