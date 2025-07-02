@@ -905,7 +905,7 @@ Syntax: `relativeDateTime(number, text)`
 
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
-`relativeDateTime` can only be used as part of a conditional expression.
+Note that `relativeDateTime()` will truncate the result to the unit specified as its argument.
 
 Example: `[Orders → Created At] < relativeDateTime(-30, "day")` will filter for orders created over 30 days ago from current date.
 
@@ -1010,7 +1010,7 @@ Related: [Sum](#sum) and [SumIf](#sumif).
 
 ### Offset
 
-> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, MongoDB, and Druid.
+> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, ClickHouse, MongoDB, and Druid.
 
 For more info, check out our page on [Offset](./expressions/offset.md).
 

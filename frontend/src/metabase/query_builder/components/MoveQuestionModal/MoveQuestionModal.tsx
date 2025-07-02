@@ -8,8 +8,8 @@ import { QuestionMoveConfirmModal } from "metabase/collections/components/Collec
 import type { MoveDestination } from "metabase/collections/types";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
-import { MoveModal } from "metabase/containers/MoveModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { MoveModal } from "metabase/common/components/MoveModal";
 import Dashboards from "metabase/entities/dashboards";
 import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
 import { getResponseErrorMessage } from "metabase/lib/errors";

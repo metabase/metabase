@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils";
 import { Box, Flex, Icon, Menu, Text } from "metabase/ui";
-
-import { getErrorMessage } from "./utils";
 
 export function GdriveErrorMenuItem({
   error,
@@ -24,7 +23,11 @@ export function GdriveErrorMenuItem({
           <Box>
             <Text fw="bold">{t`Couldn't sync Google Sheets`}</Text>
             <Text size="sm" c="text-medium" maw="16rem">
-              {getErrorMessage(error)}
+              {getErrorMessage(
+                error,
+                // eslint-disable-next-line no-literal-metabase-strings -- admin only ui
+                t`Please check that the folder is shared with the Metabase Service Account.`,
+              )}
             </Text>
           </Box>
         </Flex>

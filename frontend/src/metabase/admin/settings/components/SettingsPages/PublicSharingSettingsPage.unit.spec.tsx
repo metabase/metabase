@@ -11,7 +11,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -77,9 +77,9 @@ describe("PublicSharingSettingsPage", () => {
     expect(screen.getByText("Enable Public Sharing")).toBeInTheDocument();
 
     [
-      "Shared Dashboards",
-      "Shared Questions",
-      "Shared Action Forms",
+      "Shared dashboards",
+      "Shared questions",
+      "Shared action forms",
       "Test Action",
       "Test Dashboard",
       "Test Question",
@@ -92,9 +92,9 @@ describe("PublicSharingSettingsPage", () => {
     await act(() => setup(true));
     [
       "Enable Public Sharing",
-      "Shared Dashboards",
-      "Shared Questions",
-      "Shared Action Forms",
+      "Shared dashboards",
+      "Shared questions",
+      "Shared action forms",
       "Test Action",
       "Test Dashboard",
       "Test Question",

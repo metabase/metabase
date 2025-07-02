@@ -1,8 +1,6 @@
 const path = require("path");
 const config = require("./webpack.config.js");
 
-const SHARED_SRC = path.join(__dirname, "frontend", "src", "metabase-shared");
-
 module.exports = {
   mode: "production",
   entry: {
@@ -19,9 +17,3 @@ module.exports = {
     minimize: true,
   },
 };
-
-module.exports.resolve.alias["d3"] = path.join(
-  SHARED_SRC,
-  "dependencies",
-  "d3.js",
-);

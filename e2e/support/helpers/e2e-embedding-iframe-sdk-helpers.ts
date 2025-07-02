@@ -1,8 +1,13 @@
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
 import { createApiKey } from "./api";
-import { setTokenFeatures } from "./e2e-enterprise-helpers";
+import { enableJwtAuth } from "./e2e-jwt-helpers";
 import { restore } from "./e2e-setup-helpers";
+import { activateToken } from "./e2e-token-helpers";
+import {
+  enableSamlAuth,
+  mockAuthProviderAndJwtSignIn,
+} from "./embedding-sdk-testing";
 
 const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
 
@@ -19,6 +24,7 @@ export interface BaseEmbedTestPageOptions {
   template?: "exploration";
   theme?: MetabaseTheme;
   locale?: string;
+  preferredAuthMethod?: "jwt" | "saml";
 
   // Options for the test page
   origin?: string;
@@ -27,6 +33,8 @@ export interface BaseEmbedTestPageOptions {
     beforeEmbed?: string;
     afterEmbed?: string;
   };
+
+  onVisitPage?(): void;
 }
 
 /**
@@ -34,35 +42,33 @@ export interface BaseEmbedTestPageOptions {
  */
 export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
   origin = "",
+  onVisitPage,
   ...options
 }: T) {
-  return cy.get("@apiKey").then((apiKey) => {
-    const testPageSource = getSdkIframeEmbedHtml({
-      target: "#metabase-embed-container",
-      apiKey,
-      instanceUrl: "http://localhost:4000",
-      origin,
-      ...options,
-    });
-
-    const testPageUrl = `${origin}/sdk-iframe-test-page`;
-
-    cy.intercept("GET", testPageUrl, {
-      body: testPageSource,
-      headers: { "content-type": "text/html" },
-    }).as("dynamicPage");
-
-    cy.visit(testPageUrl);
-    cy.title().should("include", "Metabase Embed Test");
-
-    return cy
-      .get("iframe")
-      .should("be.visible")
-      .its("0.contentDocument")
-      .should("exist")
-      .its("body")
-      .should("not.be.empty");
+  const testPageSource = getSdkIframeEmbedHtml({
+    target: "#metabase-embed-container",
+    instanceUrl: "http://localhost:4000",
+    origin,
+    ...options,
   });
+
+  const testPageUrl = `${origin}/sdk-iframe-test-page`;
+
+  cy.intercept("GET", testPageUrl, {
+    body: testPageSource,
+    headers: { "content-type": "text/html" },
+  }).as("dynamicPage");
+
+  cy.visit(testPageUrl, { onLoad: onVisitPage });
+  cy.title().should("include", "Metabase Embed Test");
+
+  return cy
+    .get("iframe")
+    .should("be.visible")
+    .its("0.contentDocument")
+    .should("exist")
+    .its("body")
+    .should("not.be.empty");
 }
 
 /**
@@ -115,25 +121,29 @@ function getSdkIframeEmbedHtml({
   `;
 }
 
+/**
+ * Prepares the testing environment for sdk iframe embedding tests.
+ *
+ * @param {boolean} withTokenFeatures - Whether to enable token features.
+ * @param {EnabledAuthMethods[]} enabledAuthMethods - The authentication methods to enable.
+ */
 export function prepareSdkIframeEmbedTest({
   withTokenFeatures = true,
+  enabledAuthMethods = ["jwt"],
+  signOut = false,
 }: {
   withTokenFeatures?: boolean;
+  enabledAuthMethods?: EnabledAuthMethods[];
+  signOut?: boolean;
 } = {}) {
-  const ADMIN_GROUP_ID = 2;
-
   restore();
   cy.signInAsAdmin();
 
   if (withTokenFeatures) {
-    setTokenFeatures("all");
+    activateToken("bleeding-edge");
   } else {
-    setTokenFeatures("none");
+    activateToken("starter");
   }
-
-  createApiKey("test iframe sdk embedding", ADMIN_GROUP_ID).then(({ body }) => {
-    cy.wrap(body.unmasked_key).as("apiKey");
-  });
 
   cy.request("PUT", "/api/setting/enable-embedding-interactive", {
     value: true,
@@ -142,4 +152,35 @@ export function prepareSdkIframeEmbedTest({
   cy.intercept("POST", "/api/card/*/query").as("getCardQuery");
   cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
   cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+
+  setupMockAuthProviders(enabledAuthMethods);
+
+  if (signOut) {
+    cy.signOut();
+  }
+}
+
+type EnabledAuthMethods = "jwt" | "saml" | "api-key";
+
+function setupMockAuthProviders(enabledAuthMethods: EnabledAuthMethods[]) {
+  if (enabledAuthMethods.includes("jwt")) {
+    enableJwtAuth();
+    mockAuthProviderAndJwtSignIn();
+  }
+
+  // Doesn't actually allow us to login via SAML, but this tricks
+  // Metabase into thinking that SAML is enabled and configured.
+  if (enabledAuthMethods.includes("saml")) {
+    enableSamlAuth();
+  }
+
+  if (enabledAuthMethods.includes("api-key")) {
+    const ADMIN_GROUP_ID = 2;
+
+    createApiKey("test iframe sdk embedding", ADMIN_GROUP_ID).then(
+      ({ body }) => {
+        cy.wrap(body.unmasked_key).as("apiKey");
+      },
+    );
+  }
 }

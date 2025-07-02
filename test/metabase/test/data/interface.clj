@@ -7,7 +7,11 @@
   TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that.
   Tech debt issue: #39363"
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
+   [clojure.test :as t]
    [clojure.tools.reader.edn :as edn]
    [environ.core :as env]
    [mb.hawk.hooks]
@@ -111,6 +115,14 @@
 (defmethod get-dataset-definition DatabaseDefinition
   [this]
   this)
+
+(defn- hash-dataset*
+  [^DatabaseDefinition db-def]
+  (codecs/bytes->hex (buddy-hash/sha1 (str (into (sorted-map) (get-dataset-definition db-def))))))
+
+(def hash-dataset
+  "Provides a consistent hash for the DatabaseDefinition"
+  (memoize/ttl hash-dataset*))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Registering Test Extensions                                           |
@@ -455,6 +467,17 @@
   [_driver _dbdef]
   false)
 
+(defmulti track-dataset
+  "Track the creation or the usage of the database.
+   This is useful for cloud databases with shared state to ensure that stale datasets can be deleted and dataset loading is not done more than necessary. Pairs well with [[dataset-already-loaded?]]"
+  {:arglists '([driver dbdef]) :added "0.56.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod track-dataset ::test-extensions
+  [_driver _dbdef]
+  nil)
+
 (defmulti create-db!
   "Create a new database from `database-definition`, including adding tables, fields, and foreign key constraints,
   and load the appropriate data. (This refers to creating the actual *DBMS* database itself, *not* a Metabase
@@ -553,6 +576,18 @@
   `field-name`."
   {:arglists '([driver table-name field-name]
                [driver table-name field-name sample-value])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti arbitrary-select-query
+  "Generate a native query that selects some arbitrary sql from the top 2 rows from a Table with `table-name`"
+  {:arglists `([driver table-name to-insert])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti field-reference
+  "Generate a sql fragment that references a particular field"
+  {:arglists `([driver field-id])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -1066,3 +1101,15 @@
   (defmethod driver/database-supports? [driver :test/column-impersonation]
     [_driver _feature _database]
     false))
+
+(defn tracking-access-note
+  "Generic tracking access note"
+  []
+  (if (:ci env/env)
+    (format "CI: %s %s %s"
+            (str t/*testing-vars*)
+            (get env/env :github-actor)
+            (get env/env :github-head-ref))
+    (format "DEV: %s %s"
+            (str t/*testing-vars*)
+            (:user env/env))))

@@ -1,10 +1,12 @@
+import { t } from "ttag";
+
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellPerformanceTools } from "metabase/admin/upsells";
-import { Center } from "metabase/ui";
 
 export const ToolsUpsell = () => {
   return (
-    <Center inline w="100%">
+    <SettingsPageWrapper title={t`Erroring questions`}>
       <UpsellPerformanceTools source="settings-tools" />
-    </Center>
+    </SettingsPageWrapper>
   );
 };

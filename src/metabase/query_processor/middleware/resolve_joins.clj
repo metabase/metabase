@@ -5,19 +5,17 @@
   (:require
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (def ^:private Joins
   "Schema for a non-empty sequence of Joins. Unlike [[mbql.s/Joins]], this does not enforce the constraint that all join
-  aliases be unique; that is handled by the [[metabase.query-processor.middleware.escape-join-aliases]] middleware."
+  aliases be unique."
   [:sequential {:min 1} mbql.s/Join])
 
 (def ^:private UnresolvedMBQLQuery
@@ -138,21 +136,29 @@
   [{breakouts :breakout, aggregations :aggregation}]
   (every? empty? [aggregations breakouts]))
 
-(defn- append-join-fields [fields join-fields]
-  (into []
-        (comp cat
-              (m/distinct-by (fn [clause]
-                               (-> clause
-                                   ;; remove namespaced options and other things that are definitely irrelevant
-                                   add/normalize-clause
-                                   ;; we shouldn't consider different type info to mean two Fields are different even if
-                                   ;; everything else is the same. So give everything `:base-type` of `:type/*` (it will
-                                   ;; complain if we remove `:base-type` entirely from fields with a string name)
-                                   (mbql.u/update-field-options (fn [opts]
-                                                                  (-> opts
-                                                                      (assoc :base-type :type/*)
-                                                                      (dissoc :effective-type))))))))
-        [fields join-fields]))
+(defn- append-join-fields
+  "This (supposedly) matches the behavior of [[metabase.lib.stage/add-cols-from-join]]. When we migrate this namespace
+  to Lib we can maybe use that."
+  [fields join-fields]
+  ;; we shouldn't consider different type info to mean two Fields are different even if everything else is the same. So
+  ;; give everything `:base-type` of `:type/*` (it will complain if we remove `:base-type` entirely from fields with a
+  ;; string name)
+  (letfn [(opts-signature [opts]
+            (not-empty
+             (merge
+              (u/select-non-nil-keys opts [:join-alias :binning])
+              ;; for purposes of deduplicating stuff, temporal unit = default is the same as not specifying temporal
+              ;; unit at all. Should that be part of normalization? Maybe, but there is some logic around adding default
+              ;; temporal bucketing that we don't do if `:default` is explicitly specified.
+              (when-let [temporal-unit (:temporal-unit opts)]
+                (when-not (= temporal-unit :default)
+                  {:temporal-unit temporal-unit})))))
+          (ref-signature [[tag id-or-name opts, :as _ref]]
+            [tag id-or-name (opts-signature opts)])]
+    (into []
+          (comp cat
+                (m/distinct-by ref-signature))
+          [fields join-fields])))
 
 (defn append-join-fields-to-fields
   "Add the fields from join `:fields`, if any, to the parent-level `:fields`."

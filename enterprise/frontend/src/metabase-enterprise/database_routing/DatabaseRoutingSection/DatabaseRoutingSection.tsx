@@ -12,6 +12,7 @@ import {
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
 import { skipToken, useListUserAttributesQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -44,7 +45,9 @@ export const DatabaseRoutingSection = ({
 
   const isAdmin = useSelector(getUserIsAdmin);
   const userAttribute = database.router_user_attribute ?? undefined;
-  const shouldHideSection = database.is_attached_dwh || database.is_sample;
+  const dbSupportsRouting = database.features?.includes("database-routing");
+  const shouldHideSection =
+    database.is_attached_dwh || database.is_sample || !dbSupportsRouting;
 
   const [tempEnabled, setTempEnabled] = useState(false);
   const enabled = tempEnabled || hasDbRoutingEnabled(database);
@@ -114,7 +117,7 @@ export const DatabaseRoutingSection = ({
           </Label>
           {error ? (
             <Error role="alert" color="error">
-              {String(error)}
+              {getErrorMessage(error)}
             </Error>
           ) : null}
         </Stack>

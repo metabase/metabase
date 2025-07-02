@@ -14,12 +14,17 @@ import {
   useRef,
   useState,
 } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ErrorMessage } from "metabase/components/ErrorMessage";
-import ExplicitSize from "metabase/components/ExplicitSize";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ErrorMessage } from "metabase/common/components/ErrorMessage";
+import ExplicitSize from "metabase/common/components/ExplicitSize";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import {
+  memoize,
+  useMemoizedCallback,
+} from "metabase/common/hooks/use-memoized-callback";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
 import {
@@ -31,15 +36,14 @@ import {
 import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
 import type {
   BodyCellVariant,
+  CellFormatter,
   ColumnOptions,
   DataGridTheme,
+  PlainCellFormatter,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
-import {
-  memoize,
-  useMemoizedCallback,
-} from "metabase/hooks/use-memoized-callback";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
@@ -163,11 +167,16 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const getInfoPopoversDisabledRef = useLatest(() => {
+    return clicked !== null || !hasMetadataPopovers || isDashboard;
+  });
   const tableTheme = theme?.other?.table;
   const dispatch = useDispatch();
   const isClientSideSortingEnabled = isDashboard;
   const isDashcardViewTable = isDashboard && !isSettings;
   const [sorting, setSorting] = useState<SortingState>([]);
+
+  const tc = useTranslateContent();
 
   const { rows, cols } = data;
 
@@ -234,18 +243,43 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const columnSettings = settings.column?.(col);
       const columnIndex = cols.findIndex((c) => c.name === col.name);
 
-      return memoize((value, rowIndex) => {
-        const clicked = getCellClickedObject(columnIndex, rowIndex);
-        return formatValue(value, {
-          ...columnSettings,
-          type: "cell",
-          jsx: true,
-          rich: true,
-          clicked,
-        });
-      });
+      const rich: CellFormatter<RowValue> = memoize(
+        (untranslatedValue, rowIndex) => {
+          const clicked = getCellClickedObject(columnIndex, rowIndex);
+
+          const value = tc(untranslatedValue);
+
+          return formatValue(value, {
+            ...columnSettings,
+            type: "cell",
+            jsx: true,
+            rich: true,
+            clicked,
+          });
+        },
+      );
+
+      const plain: PlainCellFormatter<RowValue> = memoize(
+        (untranslatedValue, rowIndex) => {
+          const clicked = getCellClickedObject(columnIndex, rowIndex);
+          const value = tc(untranslatedValue);
+
+          return String(
+            formatValue(value, {
+              ...columnSettings,
+              type: "cell",
+              clicked,
+            }),
+          );
+        },
+      );
+
+      return {
+        rich,
+        plain,
+      };
     });
-  }, [cols, settings, getCellClickedObject]);
+  }, [cols, settings, getCellClickedObject, tc]);
 
   const handleBodyCellClick = useCallback(
     (
@@ -265,9 +299,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         : data.cols.findIndex((col) => col.name === columnId);
 
       const formatter = columnFormatters[columnIndex];
-      const formattedValue = formatter(
+      const formattedValue = formatter.rich(
         data.rows[rowIndex][columnIndex],
         rowIndex,
+        columnId,
       );
       const clicked = getCellClickedObject(columnIndex, rowIndex);
 
@@ -463,9 +498,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         sortDirection = getColumnSortDirection(columnIndex);
       }
 
+      const translatedColumnName = tc(columnName);
+
       const options: ColumnOptions<RowValues, RowValue> = {
         id,
-        name: columnName,
+        name: translatedColumnName,
         accessorFn: (row: RowValues) => row[columnIndex],
         cellVariant,
         getCellClassName: (value) =>
@@ -485,11 +522,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               className={cx({
                 [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
               })}
-              infoPopoversDisabled={!hasMetadataPopovers || isDashboard}
+              getInfoPopoversDisabled={getInfoPopoversDisabledRef.current}
               timezone={data.results_timezone}
               question={question}
               column={col}
-              name={columnName}
+              name={translatedColumnName}
               align={align}
               sort={sortDirection}
               variant={headerVariant}
@@ -505,7 +542,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         sortDirection,
         enableResizing: true,
         getBackgroundColor,
-        formatter,
+        formatter: formatter.rich,
+        clipboardFormatter: formatter.plain,
       };
 
       if (isMinibar) {
@@ -524,7 +562,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               align={align}
               backgroundColor={backgroundColor}
               value={value}
-              formatter={formatter}
+              formatter={formatter.rich}
               extent={columnExtent}
               columnSettings={columnSettings}
             />
@@ -536,7 +574,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     });
   }, [
     theme,
-    hasMetadataPopovers,
     data,
     question,
     mode,
@@ -550,6 +587,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     settings,
     tableTheme,
     isDashboard,
+    tc,
+    getInfoPopoversDisabledRef,
   ]);
 
   const handleColumnResize = useCallback(
@@ -679,6 +718,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnReorder: handleColumnReordering,
     pageSize,
     minGridWidth,
+    enableSelection: true,
   });
   const { virtualGrid } = tableProps;
 
@@ -727,7 +767,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
           <ErrorMessage
             type="noRows"
             title={t`No results!`}
-            message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}
+            message={t`This may be the answer you're looking for. If not, try removing or changing your filters to make them less specific.`}
             action={undefined}
           />
         </Flex>

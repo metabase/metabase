@@ -1,4 +1,4 @@
-import type { CodeLanguage } from "metabase/components/CodeEditor";
+import type { CodeLanguage } from "metabase/common/components/CodeEditor";
 import type { Card, Dashboard } from "metabase-types/api";
 
 export type DisplayTheme = "light" | "night" | "transparent";
@@ -21,8 +21,8 @@ export type EmbedResourceParameter = {
 };
 
 export type EmbedResourceDownloadOptions = {
-  pdf: boolean;
-  results: boolean;
+  pdf?: boolean;
+  results?: boolean;
 };
 
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";

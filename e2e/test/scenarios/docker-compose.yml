@@ -30,7 +30,7 @@ services:
     command: serve --create-session 00000000-0000-0000-0000-000000000000
 
   maildev:
-    image: maildev/maildev:latest
+    image: maildev/maildev:2.2.1
     ports:
       - "1080:1080"
       - "1025:1025"

@@ -1,38 +1,51 @@
 (ns metabase.query-processor.middleware.fix-bad-references
   (:require
    [clojure.walk :as walk]
+   [medley.core :as m]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
-(defn- find-source-table [{:keys [source-table source-query]}]
+(mu/defn- find-source-table :- [:maybe ::lib.schema.id/table]
+  [{:keys [source-table source-query], :as _join}]
   (or source-table
       (when source-query
         (recur source-query))))
 
-(defn- find-join-against-table [{:keys [joins source-query]} table-id]
-  (or (when source-query
-        (find-join-against-table source-query table-id))
-      (some (fn [join]
-              (when (= (find-source-table join) table-id)
-                join))
-            joins)))
+(mu/defn- find-join-against-table :- [:maybe ::mbql.s/Join]
+  [{:keys [joins source-query], :as _inner-query}
+   table-id :- ::lib.schema.id/table]
+  (or (m/find-first (fn [join]
+                      (= (find-source-table join) table-id))
+                    joins)
+      (when source-query
+        (find-join-against-table source-query table-id))))
 
-(defn- table [table-id]
+(mu/defn- table :- [:maybe ::lib.schema.metadata/table]
+  [table-id :- [:maybe ::lib.schema.id/table]]
   (when table-id
     (lib.metadata/table (qp.store/metadata-provider) table-id)))
 
-(def ^:dynamic *bad-field-reference-fn*
+;;; TODO (Cam 6/23/25) this is only bound in one place,
+;;; by [[metabase.query-processor.persistence-test/persisted-models-complex-queries-test]], maybe we can get rid of it.
+(def ^:dynamic ^:private *bad-field-reference-fn*
   "A function to be called on each bad field found by this middleware. Not used except for in tests."
   (constantly nil))
 
-(defn- fix-bad-references*
+(mu/defn- fix-bad-references*
   ([inner-query]
    (fix-bad-references* inner-query inner-query (find-source-table inner-query)))
 
-  ([inner-query form source-table & sources]
+  ([inner-query
+    form
+    source-table :- [:maybe ::lib.schema.id/table]
+    & sources]
    (lib.util.match/replace form
      ;; don't replace anything inside source metadata.
      (_ :guard (constantly ((set &parents) :source-metadata)))
@@ -54,22 +67,34 @@
                                           (not (some (partial = table-id)
                                                      (cons source-table sources)))))))
       (opts :guard (complement :join-alias))]
-     (let [{:keys [table-id], :as field} (lib.metadata/field (qp.store/metadata-provider) id)
-           {join-alias :alias}           (find-join-against-table inner-query table-id)]
-       (log/warn (u/colorize :yellow (str
-                                      (format
-                                       "Bad :field clause %s for field %s at %s: clause should have a :join-alias."
-                                       (pr-str &match)
-                                       (pr-str (format "%s.%s" (:name (table table-id)) (:name field)))
-                                       (pr-str &parents))
-                                      " "
-                                      (if join-alias
-                                        (format "Guessing join %s" (pr-str join-alias))
-                                        "Unable to infer an appropriate join. Query may not work as expected."))))
-       (*bad-field-reference-fn* &match)
-       (if join-alias
-         [:field id (assoc opts :join-alias join-alias)]
-         &match)))))
+     (let [{:keys [table-id], :as field} (lib.metadata/field (qp.store/metadata-provider) id)]
+       (if source-table
+         ;; this query is pure-MBQL and this column SHOULD have a join alias
+         (let [{join-alias :alias} (find-join-against-table inner-query table-id)]
+           (log/warn (u/colorize :yellow (str
+                                          (format
+                                           "Bad :field clause %s for field %s at %s: clause should have a :join-alias."
+                                           (pr-str &match)
+                                           (pr-str (format "%s.%s" (:name (table table-id)) (:name field)))
+                                           (pr-str &parents))
+                                          " "
+                                          (if join-alias
+                                            (format "Guessing join %s" (pr-str join-alias))
+                                            "Unable to infer an appropriate join. Query may not work as expected."))))
+           (*bad-field-reference-fn* &match)
+           (if join-alias
+             [:field id (assoc opts :join-alias join-alias)]
+             &match))
+         ;; this query has a native source query and we're incorrectly using a Field ID ref with a NATIVE source query.
+         (do
+           (log/warn (u/colorize :yellow (format "Bad :field clause %s for field %s at %s: field comes from a native source query, but we used a Field ID ref"
+                                                 (pr-str &match)
+                                                 (pr-str (format "%s.%s" (:name (table table-id)) (:name field)))
+                                                 (pr-str &parents))))
+           (*bad-field-reference-fn* &match)
+           ;; TODO (Cam 6/23/25) -- should we fix the ref here and use `:lib/desired-column-alias` from the native query
+           ;; results metadata?
+           &match))))))
 
 (defn fix-bad-references
   "Walk `query` and look for `:field` ID clauses without `:join-alias` information that reference Fields belonging to

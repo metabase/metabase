@@ -253,6 +253,24 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
   });
 
+  it("should preserve default colors (VIZ-1211)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.openQuestionsSidebar();
+
+    H.sidebar().within(() => {
+      cy.findByRole("menuitem", {
+        name: ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
+      }).click();
+    });
+
+    H.showDashcardVisualizerModal(1);
+
+    H.modal().within(() => {
+      H.chartPathWithFillColor("#509EE3").should("have.length", 4);
+    });
+  });
+
   it("should handle implicit viz settings (VIZ-947)", () => {
     function assertDataSourceColumnSelected(
       columnName: string,
@@ -277,7 +295,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       assertDataSourceColumnSelected("Average of Quantity", false);
       assertDataSourceColumnSelected("Created At: Year");
       assertDataSourceColumnSelected("Product → Category", false);
-      H.chartPathWithFillColor("#88BF4D").should("have.length", 5);
+      H.chartPathWithFillColor("#509EE3").should("have.length", 5);
       H.verticalWell().findAllByTestId("well-item").should("have.length", 1);
       H.horizontalWell().findAllByTestId("well-item").should("have.length", 1);
 

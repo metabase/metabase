@@ -57,7 +57,7 @@ export function useDashboardUrlQuery(
      * This causes the iframe to reload when changing the preview hash from appearance
      * settings because now the base URL (including the query string) is different.
      */
-    if (IS_EMBED_PREVIEW) {
+    if (IS_EMBED_PREVIEW || !dashboardId) {
       return;
     }
 
@@ -122,7 +122,7 @@ export function useDashboardUrlQuery(
   }, [router, location, selectedTab, dispatch]);
 }
 
-const QUERY_PARAMS_ALLOW_LIST = ["objectId", "locale"];
+const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
 
 function parseTabId(location: Location) {
   const slug = location.query?.tab;

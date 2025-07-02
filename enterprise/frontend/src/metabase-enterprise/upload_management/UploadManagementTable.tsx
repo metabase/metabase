@@ -2,14 +2,15 @@ import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { ClientSortableTable } from "metabase/common/components/Table";
-import { useToast } from "metabase/common/hooks";
 import {
   BulkActionBar,
   BulkActionButton,
-} from "metabase/components/BulkActionBar";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import Link from "metabase/core/components/Link";
+} from "metabase/common/components/BulkActionBar";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import Link from "metabase/common/components/Link";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { ClientSortableTable } from "metabase/common/components/Table";
+import { useToast } from "metabase/common/hooks";
 import * as Urls from "metabase/lib/urls";
 import { Box, Button, Checkbox, Flex, Icon, Text } from "metabase/ui";
 import {
@@ -94,7 +95,7 @@ export function UploadManagementTable() {
   }
 
   return (
-    <Box p="md" pb="xl">
+    <Box>
       <DeleteConfirmModal
         opened={showDeleteConfirmModal}
         tables={selectedItems}
@@ -140,9 +141,9 @@ export function UploadManagementTable() {
           </BulkActionButton>
         </BulkActionBar>
       )}
-      <SettingHeader id="upload-tables-list" title={t`Manage Uploads`} />
-      <Text fw="bold" color="text-medium">
-        {t`Uploaded Tables`}
+      <SettingHeader id="upload-tables-list" title={t`Manage uploads`} />
+      <Text fw="bold" c="text-medium">
+        {t`Uploaded tables`}
       </Text>
       <ClientSortableTable
         data-testid="upload-tables-table"
@@ -180,7 +181,7 @@ const UploadTableRow = ({
           }
         />
       </td>
-      <td>
+      <td style={{ maxWidth: 300 }}>
         <Link
           to={
             Urls.modelToUrl({
@@ -192,7 +193,7 @@ const UploadTableRow = ({
           }
           variant="brand"
         >
-          {item.name}
+          <Ellipsified>{item.name}</Ellipsified>
         </Link>
       </td>
       <td>{createdAtString}</td>

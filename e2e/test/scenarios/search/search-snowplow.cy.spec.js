@@ -458,7 +458,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
 
     describe("verified filter", () => {
       beforeEach(() => {
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
       });
 
       it("should send a snowplow event when a search filter is used in the URL", () => {

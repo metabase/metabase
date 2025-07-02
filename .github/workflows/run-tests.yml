@@ -71,6 +71,13 @@ jobs:
     with:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
 
+  app-db-tests:
+    needs: files-changed
+    uses: ./.github/workflows/app-db.yml
+    secrets: inherit
+    with:
+      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
+
   driver-tests:
     needs: files-changed
     uses: ./.github/workflows/drivers.yml

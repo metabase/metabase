@@ -504,6 +504,55 @@
                      :fallback        pulse.test-util/card-name}]}
                   (pulse.test-util/thunk->boolean pulse-results)))))}})))
 
+(deftest dashboard-with-header-filters-test
+  (tests!
+   {:pulse     {:skip_if_empty false}
+    :dashboard pulse.test-util/test-dashboard}
+   "Dashboard subscription that includes a header card with inline_parameters"
+   {:card (pulse.test-util/checkins-query-card {})
+
+    :fixture
+    (fn [{dashboard-id :dashboard-id} thunk]
+      (mt/with-temp [:model/DashboardCard _ {:dashboard_id dashboard-id
+                                             :row 0
+                                             :col 0
+                                             :visualization_settings {:virtual_card {:display "heading"}
+                                                                      :text "## Dashboard Header"}
+                                             :inline_parameters ["63e719d0"]}]
+        (mt/with-temporary-setting-values [site-name "Metabase Test"]
+          (thunk))))
+
+    :assert
+    {:email
+     (fn [_ [email]]
+       (testing "Header card with inline parameters includes parameter values below header"
+         (is (= (rasta-dashsub-message {:message [{"(?s)## Dashboard Header.*State.*CA, NY, and NJ" true}
+                                                  pulse.test-util/png-attachment]})
+                (mt/summarize-multipart-single-email email #"(?s)## Dashboard Header.*State.*CA, NY, and NJ")))))
+
+     :slack
+     (fn [{:keys [card-id dashboard-id]} [pulse-results]]
+       (testing "Header card with inline parameters includes parameter values below header"
+         (is (= {:channel-id "#general"
+                 :attachments
+                 [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
+                            {:type "section",
+                             :fields [{:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
+                            {:type "section",
+                             :fields (append-subscription-branding-content [{:type "mrkdwn",
+                                                                             :text (str "<https://testmb.com/dashboard/"
+                                                                                        dashboard-id
+                                                                                        "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>")}])}]}
+                  {:title           pulse.test-util/card-name
+                   :rendered-info   {:attachments false, :content true, :render/text true},
+                   :title_link      (str "https://testmb.com/question/" card-id)
+                   :attachment-name "image.png"
+                   :fallback        pulse.test-util/card-name}
+                  {:blocks [{:type "section" :text {:type "mrkdwn" :text "*## Dashboard Header*"}}
+                            {:type "section",
+                             :fields [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}]}]}]}
+                (pulse.test-util/thunk->boolean pulse-results)))))}}))
+
 (deftest dashboard-with-link-card-test
   (tests!
    {:pulse     {:skip_if_empty false}
@@ -516,6 +565,7 @@
       (mt/with-temporary-setting-values [site-name "Metabase Test"]
         (with-link-card-fixture-for-dashboard (t2/select-one :model/Dashboard :id dashboard-id) [_]
           (thunk))))
+
     :assert
     {:email
      (fn [_ [email]]

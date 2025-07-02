@@ -6,8 +6,8 @@ import {
   useDiscardTableFieldValuesMutation,
   useRescanTableFieldValuesMutation,
 } from "metabase/api";
-import ActionButton from "metabase/components/ActionButton";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
+import ActionButton from "metabase/common/components/ActionButton";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";

@@ -4,9 +4,10 @@ import { c, t } from "ttag";
 
 import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken, useGetUserQuery } from "metabase/api";
-import { CopyButton } from "metabase/components/CopyButton";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Markdown from "metabase/core/components/Markdown";
+import { getErrorMessage } from "metabase/api/utils";
+import { CopyButton } from "metabase/common/components/CopyButton";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Markdown from "metabase/common/components/Markdown";
 import { useDispatch } from "metabase/lib/redux";
 import { getUserName } from "metabase/lib/user";
 import {
@@ -30,7 +31,7 @@ import {
 import Styles from "./Gdrive.module.css";
 import { getStrings } from "./GdriveConnectionModal.strings";
 import { trackSheetImportClick } from "./analytics";
-import { getErrorMessage, getStatus, useShowGdrive } from "./utils";
+import { getStatus, useShowGdrive } from "./utils";
 
 export function GdriveConnectionModal({
   isModalOpen,
@@ -246,7 +247,13 @@ function GoogleSheetsDisconnectModal({
         }
       })
       .catch((response: unknown) => {
-        setErrorMessage(getErrorMessage(response));
+        setErrorMessage(
+          getErrorMessage(
+            response,
+            // eslint-disable-next-line no-literal-metabase-strings -- admin only ui
+            t`Please check that the folder is shared with the Metabase Service Account.`,
+          ),
+        );
       });
   };
 

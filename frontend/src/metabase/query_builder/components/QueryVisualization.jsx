@@ -5,12 +5,11 @@ import { useTimeout } from "react-use";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { isMac } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
-import { getIsNativeQueryFixApplied } from "metabase/query_builder/selectors";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { Box, Flex, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -38,7 +37,6 @@ export default function QueryVisualization(props) {
 
   const canRun = Lib.canRun(question.query(), question.type());
   const [warnings, setWarnings] = useState([]);
-  const isNativeQueryFixApplied = useSelector(getIsNativeQueryFixApplied);
 
   return (
     <div
@@ -77,11 +75,7 @@ export default function QueryVisualization(props) {
         )}
         data-testid="query-visualization-root"
       >
-        {isNativeQueryFixApplied ? (
-          <VisualizationEmptyState className={CS.spread}>
-            {t`Fixes applied. Run your query to view results.`}
-          </VisualizationEmptyState>
-        ) : result?.error ? (
+        {result?.error ? (
           <VisualizationError
             className={CS.spread}
             error={result.error}

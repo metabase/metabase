@@ -1,6 +1,7 @@
 (ns metabase.lib.normalize
   (:require
    [malli.core :as mc]
+   [malli.error :as me]
    [malli.transform :as mtx]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
@@ -43,7 +44,9 @@
   "If normalization errors somewhere, just log the error and return the partially-normalized result. Easier to debug
   this way."
   [error]
-  (log/warnf "Error normalizing pMBQL:\n%s" (u/pprint-to-str error))
+  (log/warnf "Error normalizing pMBQL: %s\n%s"
+             (pr-str (me/humanize (:explain error)))
+             (u/pprint-to-str (dissoc error :explain)))
   (:value error))
 
 (def ^:private ^:dynamic *error-fn*
@@ -55,7 +58,7 @@
              (fn []
                (let [respond identity
                      raise   #'*error-fn*] ; capture var rather than the bound value at the time this is eval'ed
-                 (mc/coercer schema (mtx/transformer {:name :normalize}) respond raise)))))
+                 (mc/coercer schema (mtx/transformer mtx/default-value-transformer {:name :normalize}) respond raise)))))
 
 (defn normalize
   "Ensure some part of an MBQL query `x`, e.g. a clause or map, is in the right shape after coming in from JavaScript or

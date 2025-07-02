@@ -2,7 +2,7 @@ import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { alpha, color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
-import { getRelativeTime } from "metabase/lib/time";
+import { getRelativeTime } from "metabase/lib/time-dayjs";
 import { FixedSizeIcon, Flex, Icon, Text as UIText } from "metabase/ui";
 import {
   getIconForReview,

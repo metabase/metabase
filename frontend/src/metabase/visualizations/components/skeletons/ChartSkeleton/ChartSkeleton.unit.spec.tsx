@@ -64,7 +64,7 @@ const setup = ({
 
 describe("ChartSkeleton", () => {
   beforeAll(() => {
-    jest.unmock("metabase/components/Popover");
+    jest.unmock("metabase/common/components/Popover");
   });
 
   displayTestData.forEach(({ name, display }) => {

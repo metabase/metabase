@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 
 import { ReduxProvider } from "__support__/storybook";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { Box } from "metabase/ui";
 
 import { _UpsellBanner } from "./UpsellBanner";

@@ -15,7 +15,7 @@
   functions for more details on the differences."
   {:added "0.37.1"
    :arglists '([driver
-                database
+                ^java.sql.Connection connection
                 ^String schema-inclusion-filters
                 ^String schema-exclusion-filters])}
   driver/dispatch-on-initialized-driver
@@ -36,7 +36,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti filtered-syncable-schemas
-  "Return a set of string names of schemas that should be synced for the given database. Schemas for
+  "Return a reducible sequence of string names of schemas that should be synced for the given database. Schemas for
   which the current DB user has no `SELECT` permissions should be filtered out. The default implementation will fetch
   a sequence of all schema names from the JDBC database metadata and filter out any schemas in `excluded-schemas`, along
   with any that shouldn't be included based on the given inclusion and exclusion patterns (see the
@@ -44,7 +44,8 @@
   {:changelog-test/ignore true
    :added "0.43.0"
    :arglists '([driver
-                database
+                ^java.sql.Connection connection
+                ^java.sql.DatabaseMetaData metadata
                 ^String schema-inclusion-patterns
                 ^String schema-exclusion-patterns])}
   driver/dispatch-on-initialized-driver

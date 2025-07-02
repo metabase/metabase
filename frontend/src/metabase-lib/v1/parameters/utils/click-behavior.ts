@@ -5,7 +5,7 @@ import {
   formatDateToRangeForParameter,
 } from "metabase/lib/formatting/date";
 import type { ValueAndColumnForColumnNameDate } from "metabase/lib/formatting/link";
-import { parseTimestamp } from "metabase/lib/time";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { checkNotNull } from "metabase/lib/types";
 import type { ClickObjectDimension as DimensionType } from "metabase-lib";
 import * as Lib from "metabase-lib";
@@ -236,6 +236,7 @@ function getTargetsForVariables(legacyNativeQuery: NativeQuery): Target[] {
           card: undefined,
           dimension: undefined,
           snippet: undefined,
+          "temporal-unit": undefined,
           text: TYPE.Text,
           number: TYPE.Number,
           date: TYPE.Temporal,

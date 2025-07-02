@@ -86,7 +86,7 @@
                 :lib/source-column-alias "sum"
                 :effective-type :type/Integer
                 :lib/desired-column-alias "Orders__sum"
-                :display-name "Sum of Quantity"
+                :display-name "Orders → Sum of Quantity" #_"Sum of Quantity"
                 :source-alias "Orders"}]
               (lib.metadata.calculation/returned-columns mlv2-query))))))
 
@@ -142,6 +142,9 @@
                 :semantic-type     :type/Name}]
               (map #(lib/display-info mlv2-query %)
                    (lib.metadata.calculation/returned-columns mlv2-query))))
+      (is (= ["Name"
+              "c → Name"]
+             (map :display-name (lib.metadata.calculation/returned-columns agg-query))))
       (is (=? [{:display-name      "Name"
                 :long-display-name "Name"
                 :effective-type    :type/Text

@@ -8,10 +8,13 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
+  createMockDashboard,
+  createMockDashboardCard,
   createMockDataset,
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
@@ -100,26 +103,42 @@ interface SetupOpts {
 }
 
 const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
+  const mockDashboard = createMockDashboard();
+
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
       questions: [card],
+      dashboards: [mockDashboard],
     }),
   });
 
   const metadata = getMetadata(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
+  const dashcard = createMockDashboardCard({
+    ...card,
+    dashboard_id: card.dashboard_id ?? undefined,
+  });
 
   setupCardQueryDownloadEndpoint(card, "json");
 
   setupLastDownloadFormatEndpoints();
-
   const { history } = renderWithProviders(
     <>
       <Route
         path="dashboard/:slug"
         component={() => (
-          <DashCardMenu question={question} result={result} downloadsEnabled />
+          <MockDashboardContext
+            dashboardId={mockDashboard.id}
+            dashboard={mockDashboard}
+            navigateToNewCardFromDashboard={null}
+          >
+            <DashCardMenu
+              question={question}
+              result={result}
+              dashcard={dashcard}
+            />
+          </MockDashboardContext>
         )}
       />
       <Route path="question/:slug" component={() => <div />} />

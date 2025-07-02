@@ -85,7 +85,9 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     cy.wait("@dataset");
 
     H.queryBuilderFiltersPanel().children().should("have.length", 1);
-    H.queryBuilderFiltersPanel().findByText("Created At is Sep 1–30, 2022");
+    H.queryBuilderFiltersPanel().findByText(
+      "Created At: Month is Sep 1–30, 2022",
+    );
     H.assertQueryBuilderRowCount(9);
     H.tableInteractiveHeader().findByText("Price"); // ensure we're on the Products table
 
@@ -104,7 +106,9 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     cy.wait("@dataset");
 
     H.queryBuilderFiltersPanel().children().should("have.length", 1);
-    H.queryBuilderFiltersPanel().findByText("Created At is Sep 1–30, 2022");
+    H.queryBuilderFiltersPanel().findByText(
+      "Created At: Month is Sep 1–30, 2022",
+    );
     H.assertQueryBuilderRowCount(5);
     H.echartsContainer().within(() => {
       cy.findByText("Affiliate").should("exist");
@@ -224,7 +228,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     });
 
     H.queryBuilderFiltersPanel()
-      .findByText(/Created At is May 1/)
+      .findByText(/Created At: Month is May 1/)
       .should("exist");
     H.assertQueryBuilderRowCount(9);
     H.queryBuilderMain().within(() => {

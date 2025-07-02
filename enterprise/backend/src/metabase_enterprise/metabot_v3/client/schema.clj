@@ -29,7 +29,7 @@
    [:name :string]
    [:description [:maybe :string]]])
 
-(mr/def ::ai-proxy.response
+(mr/def ::ai-service.response
   "Schema of the AI agent response."
   [:map
    [:messages ::messages]

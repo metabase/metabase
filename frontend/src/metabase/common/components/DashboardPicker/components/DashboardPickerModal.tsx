@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useToggle } from "metabase/hooks/use-toggle";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 

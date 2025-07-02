@@ -1,13 +1,12 @@
-import type { MomentInput } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 
-import { parseTimestamp } from "metabase/lib/time";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 
 export const isWithinWeeks = (
-  timestamp: MomentInput,
+  timestamp: string,
   weekCount: number,
 ): boolean => {
   const date = parseTimestamp(timestamp);
-  const weeksAgo = moment().subtract(weekCount, "week");
+  const weeksAgo = dayjs().subtract(weekCount, "week");
   return date.isAfter(weeksAgo);
 };

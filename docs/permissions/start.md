@@ -1,5 +1,7 @@
 ---
 title: Permissions overview
+redirect_from:
+  - /docs/latest/permissions
 ---
 
 # Permissions overview
@@ -33,3 +35,7 @@ Organize snippets into folders that require permissions to view.
 ## [Notification permissions](./notifications.md)
 
 Notes on how permissions interact with dashboard subscriptions and alerts.
+
+## [Configuring permissions for embedding](./embedding.md)
+
+The permissions tooling available for different embedding setups.

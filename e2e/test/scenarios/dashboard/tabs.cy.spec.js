@@ -67,7 +67,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.findByRole("heading", {
       name: "Create a new question or browse your collections for an existing one.",
     }).should("exist");
-    H.dashboardCards().should("not.exist");
+    H.dashboardGrid().should("not.exist");
 
     // Add card to second tab
     H.openQuestionsSidebar();

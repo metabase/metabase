@@ -1099,7 +1099,7 @@ function checkResetAllFiltersWorksAcrossTabs({
   addDateFilter(PARAMETER_A.name, "01/01/2024");
   filter(PARAMETER_A.name).should("have.text", "January 1, 2024");
   if (!autoApplyFilters) {
-    cy.button("Apply").click();
+    H.applyFilterButton().click();
   }
   checkResetAllFiltersShown();
   H.getDashboardCard(0).findByText("116.01").should("be.visible");
@@ -1112,7 +1112,7 @@ function checkResetAllFiltersWorksAcrossTabs({
 
   addDateFilter(PARAMETER_B.name, "01/01/2023");
   if (!autoApplyFilters) {
-    cy.button("Apply").click();
+    H.applyFilterButton().click();
   }
   checkResetAllFiltersShown();
   filter(PARAMETER_B.name).should("have.text", "January 1, 2023");
@@ -1144,7 +1144,7 @@ function checkResetAllFiltersToDefaultWorksAcrossTabs({
   updateDateFilter(PARAMETER_A.name, "01/01/2024");
   filter(PARAMETER_A.name).should("have.text", "January 1, 2024");
   if (!autoApplyFilters) {
-    cy.button("Apply").click();
+    H.applyFilterButton().click();
   }
   checkResetAllFiltersShown();
   H.getDashboardCard(0).findByText("116.01").should("be.visible");
@@ -1157,7 +1157,7 @@ function checkResetAllFiltersToDefaultWorksAcrossTabs({
 
   updateDateFilter(PARAMETER_B.name, "01/01/2023");
   if (!autoApplyFilters) {
-    cy.button("Apply").click();
+    H.applyFilterButton().click();
   }
   checkResetAllFiltersShown();
   filter(PARAMETER_B.name).should("have.text", "January 1, 2023");

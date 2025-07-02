@@ -5,8 +5,8 @@ import { useState } from "react";
 import wrenchImage from "assets/img/sdk-banner-wrench.svg";
 import { DEFAULT_FONT } from "embedding-sdk/config";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
-import LogoIcon from "metabase/components/LogoIcon";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import LogoIcon from "metabase/common/components/LogoIcon";
 import { originalColors } from "metabase/lib/colors";
 import { Button, Card, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 

@@ -6,8 +6,6 @@ import type {
   ExportFormat,
   TableExportFormat,
 } from "metabase/common/types/export";
-import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
-import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
   ActionIcon,
@@ -17,7 +15,6 @@ import {
   Popover,
   Tooltip,
 } from "metabase/ui";
-import { canSavePng } from "metabase/visualizations";
 import type { Dataset } from "metabase-types/api";
 
 import { QuestionDownloadWidget } from "../QuestionDownloadWidget";
@@ -42,9 +39,6 @@ export type FormatPreference = {
 
 export type BaseQuestionDownloadPopoverProps = QuestionDownloadPopoverProps & {
   formatPreference?: FormatPreference;
-  setFormatPreference?: (
-    preference: FormatPreference,
-  ) => Promise<{ data?: unknown; error?: unknown }>;
 };
 
 const BaseQuestionDownloadPopover = ({
@@ -59,7 +53,6 @@ const BaseQuestionDownloadPopover = ({
   variant,
   floating,
   formatPreference,
-  setFormatPreference,
 }: BaseQuestionDownloadPopoverProps) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
@@ -94,7 +87,6 @@ const BaseQuestionDownloadPopover = ({
           question={question}
           result={result}
           formatPreference={formatPreference}
-          setFormatPreference={setFormatPreference}
           onDownload={(opts) => {
             setIsPopoverOpen(false);
             handleDownload(opts);
@@ -108,28 +100,7 @@ const BaseQuestionDownloadPopover = ({
 export const QuestionDownloadPopover = (
   props: QuestionDownloadPopoverProps,
 ) => {
-  const canDownloadPng = canSavePng(props.question.display());
-  const formats = canDownloadPng
-    ? [...exportFormats, exportFormatPng]
-    : exportFormats;
-
-  const { value: formatPreference, setValue: setFormatPreference } =
-    useUserKeyValue({
-      namespace: "last_download_format",
-      key: "download_format_preference",
-      defaultValue: {
-        last_download_format: formats[0],
-        last_table_download_format: exportFormats[0],
-      },
-    });
-
-  return (
-    <BaseQuestionDownloadPopover
-      {...props}
-      formatPreference={formatPreference}
-      setFormatPreference={setFormatPreference}
-    />
-  );
+  return <BaseQuestionDownloadPopover {...props} />;
 };
 
 export const PublicOrEmbeddedQuestionDownloadPopover = (

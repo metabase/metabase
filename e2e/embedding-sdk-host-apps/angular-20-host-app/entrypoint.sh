@@ -3,12 +3,14 @@ set -e
 
 rm -rf dist
 
-yarn install --frozen-lockfile
-# To fail for audit warnings and prevent triggering warnings on the Github
-yarn audit --level low
+HOST_APP_DIR="$(pwd)"
+
+npm ci --install-links
+
+npm i ../../../resources/embedding-sdk --install-links --no-save --no-package-lock
 
 if [ "$WATCH" = "true" ]; then
-  yarn watch --port $CLIENT_PORT
+  npm run watch -- --port $CLIENT_PORT
 else
-  yarn preview --port $CLIENT_PORT
+  npm run preview -- --port $CLIENT_PORT
 fi

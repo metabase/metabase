@@ -55,7 +55,6 @@ export const BaseCell = memo(function BaseCell({
 
   return (
     <div
-      aria-selected={isSelected}
       className={cx(
         styles.root,
         {

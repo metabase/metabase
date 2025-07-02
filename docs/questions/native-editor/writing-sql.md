@@ -2,6 +2,7 @@
 title: SQL editor
 redirect-from:
   - /docs/latest/users-guide/writing-sql
+  - /docs/latest/questions/native-editor
 ---
 
 # SQL editor
@@ -54,9 +55,24 @@ This is due to limitations of JDBC that interprets a single question mark `?` as
 
 You can format your SQL queries by clicking on the "document" icon in the editor sidebar.
 
-| Before format                                                         | After format                                                        |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| ![a SQL query before formatting](../images/before-sql-formatting.png) | ![a SQL query after formatting](../images/after-sql-formatting.png) |
+**Before format**:
+
+```sql
+select sum(subtotal),
+  created_at from orders group by created_at;
+```
+
+**After format**:
+
+```sql
+SELECT
+  sum(subtotal),
+  created_at
+FROM
+  orders
+GROUP BY
+  created_at;
+```
 
 The formatter works only for SQL queries, and isn’t available for SQLite and SQL Server.
 

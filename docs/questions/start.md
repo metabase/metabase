@@ -1,5 +1,7 @@
 ---
 title: Questions overview
+redirect_from:
+  - /docs/latest/questions
 ---
 
 # Questions overview

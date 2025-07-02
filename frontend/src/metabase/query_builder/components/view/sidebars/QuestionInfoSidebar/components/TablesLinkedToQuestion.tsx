@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
 import { Flex, Icon, Stack, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 

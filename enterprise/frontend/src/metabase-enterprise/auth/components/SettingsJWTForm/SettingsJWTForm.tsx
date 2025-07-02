@@ -1,17 +1,19 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
 } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import CS from "metabase/css/core/index.css";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
   FormErrorMessage,
@@ -21,7 +23,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Box, Flex, Stack } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 export type JWTFormValues = Pick<
@@ -64,104 +66,105 @@ export const SettingsJWTForm = () => {
   }
 
   return (
-    <Box maw="40rem" mx="md">
-      <FormProvider
-        initialValues={getFormValues(settingValues ?? {})}
-        onSubmit={handleSubmit}
-        enableReinitialize
-      >
-        {({ dirty }) => (
-          <Form>
-            <Breadcrumbs
-              className={CS.mb3}
-              crumbs={[
-                [t`Authentication`, "/admin/settings/authentication"],
-                [t`JWT`],
-              ]}
-            />
-            <Box mb="xl">
-              <AdminSettingInput
-                name="jwt-user-provisioning-enabled?"
-                title={t`User provisioning`}
-                inputType="boolean"
-                hidden={!jwtEnabled}
-              />
-            </Box>
-            <FormSection title={"Server Settings"}>
-              <Stack gap="lg">
-                <FormTextInput
-                  name="jwt-identity-provider-uri"
-                  label={t`JWT Identity Provider URI`}
-                  placeholder="https://jwt.yourdomain.org"
-                  autoFocus
-                  {...getExtraFormFieldProps(
-                    settingDetails?.["jwt-identity-provider-uri"],
-                  )}
+    <SettingsPageWrapper title={t`JWT`}>
+      {jwtEnabled && (
+        <SettingsSection>
+          <AdminSettingInput
+            name="jwt-user-provisioning-enabled?"
+            title={t`User provisioning`}
+            inputType="boolean"
+          />
+        </SettingsSection>
+      )}
+      <SettingsSection>
+        <FormProvider
+          initialValues={getFormValues(settingValues ?? {})}
+          onSubmit={handleSubmit}
+          enableReinitialize
+        >
+          {({ dirty }) => (
+            <Form>
+              <FormSection title={"Server Settings"}>
+                <Stack gap="lg">
+                  <FormTextInput
+                    name="jwt-identity-provider-uri"
+                    label={t`JWT Identity Provider URI`}
+                    required
+                    placeholder="https://jwt.yourdomain.org"
+                    autoFocus
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["jwt-identity-provider-uri"],
+                    )}
+                  />
+                  <FormSecretKey
+                    name="jwt-shared-secret"
+                    label={t`String used by the JWT signing key`}
+                    required
+                    confirmation={{
+                      header: t`Regenerate JWT signing key?`,
+                      dialog: t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`,
+                    }}
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["jwt-shared-secret"],
+                    )}
+                  />
+                </Stack>
+              </FormSection>
+              <FormSection
+                title={"User attribute configuration (optional)"}
+                collapsible
+              >
+                <Stack gap="md">
+                  <FormTextInput
+                    name="jwt-attribute-email"
+                    label={t`Email attribute`}
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["jwt-attribute-email"],
+                    )}
+                  />
+                  <FormTextInput
+                    name="jwt-attribute-firstname"
+                    label={t`First name attribute`}
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["jwt-attribute-firstname"],
+                    )}
+                  />
+                  <FormTextInput
+                    name="jwt-attribute-lastname"
+                    label={t`Last name attribute`}
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["jwt-attribute-lastname"],
+                    )}
+                  />
+                </Stack>
+              </FormSection>
+              <FormSection
+                title={"Group Schema"}
+                data-testid="jwt-group-schema"
+              >
+                <GroupMappingsWidget
+                  isFormik
+                  setting={{ key: "jwt-group-sync" }}
+                  onChange={handleSubmit}
+                  settingValues={settingValues}
+                  mappingSetting="jwt-group-mappings"
+                  groupHeading={t`Group Name`}
+                  groupPlaceholder={t`Group Name`}
                 />
-                <FormSecretKey
-                  name="jwt-shared-secret"
-                  label={t`String used by the JWT signing key`}
-                  confirmation={{
-                    header: t`Regenerate JWT signing key?`,
-                    dialog: t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`,
-                  }}
-                  {...getExtraFormFieldProps(
-                    settingDetails?.["jwt-shared-secret"],
-                  )}
-                />
-              </Stack>
-            </FormSection>
-            <FormSection
-              title={"User attribute configuration (optional)"}
-              collapsible
-            >
-              <Stack gap="md">
-                <FormTextInput
-                  name="jwt-attribute-email"
-                  label={t`Email attribute`}
-                  {...getExtraFormFieldProps(
-                    settingDetails?.["jwt-attribute-email"],
-                  )}
-                />
-                <FormTextInput
-                  name="jwt-attribute-firstname"
-                  label={t`First name attribute`}
-                  {...getExtraFormFieldProps(
-                    settingDetails?.["jwt-attribute-firstname"],
-                  )}
-                />
-                <FormTextInput
-                  name="jwt-attribute-lastname"
-                  label={t`Last name attribute`}
-                  {...getExtraFormFieldProps(
-                    settingDetails?.["jwt-attribute-lastname"],
-                  )}
-                />
-              </Stack>
-            </FormSection>
-            <FormSection title={"Group Schema"} data-testid="jwt-group-schema">
-              <GroupMappingsWidget
-                isFormik
-                setting={{ key: "jwt-group-sync" }}
-                onChange={handleSubmit}
-                settingValues={settingValues}
-                mappingSetting="jwt-group-mappings"
-                groupHeading={t`Group Name`}
-                groupPlaceholder={t`Group Name`}
-              />
-            </FormSection>
-            <Flex direction={"column"} align={"start"} gap={"1rem"}>
+              </FormSection>
               <FormErrorMessage />
-              <FormSubmitButton
-                disabled={!dirty}
-                label={jwtEnabled ? t`Save changes` : t`Save and enable`}
-                variant="filled"
-              />
-            </Flex>
-          </Form>
-        )}
-      </FormProvider>
-    </Box>
+              <Flex justify="end">
+                <FormSubmitButton
+                  disabled={!dirty}
+                  label={jwtEnabled ? t`Save changes` : t`Save and enable`}
+                  variant="filled"
+                />
+              </Flex>
+            </Form>
+          )}
+        </FormProvider>
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 };
 

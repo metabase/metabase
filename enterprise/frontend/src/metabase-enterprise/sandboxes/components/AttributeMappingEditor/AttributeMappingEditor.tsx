@@ -1,9 +1,9 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { MappingEditor } from "metabase/core/components/MappingEditor";
-import type { SelectChangeEvent } from "metabase/core/components/Select";
-import Select, { Option } from "metabase/core/components/Select";
+import { MappingEditor } from "metabase/common/components/MappingEditor";
+import type { SelectChangeEvent } from "metabase/common/components/Select";
+import Select, { Option } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import { Icon, Tooltip } from "metabase/ui";
 import type { GroupTableAccessPolicyDraft } from "metabase-enterprise/sandboxes/types";

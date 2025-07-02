@@ -273,7 +273,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
           ],
           breakout: [
             ["field", PRODUCTS.RATING, { "source-field": ORDERS.PRODUCT_ID }],
-            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.CATEGORY }],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           ],
         },
         type: "query",

@@ -3,8 +3,8 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { LoadingAndErrorWrapper as BaseLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import FormSubmitButton from "metabase/common/components/FormSubmitButton";
+import { LoadingAndErrorWrapper as BaseLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const LoadingAndErrorWrapper = styled(BaseLoadingAndErrorWrapper)`

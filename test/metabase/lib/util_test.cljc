@@ -288,6 +288,34 @@
               (unique-name :y "A")
               (unique-name :y "A")])))))
 
+(deftest ^:parallel unique-name-generator-zero-arity-test
+  (let [f (lib.util/unique-name-generator)]
+    (is (= ["A" "B" "A" "A_2" "A_2"]
+           [(f :x "A")
+            (f :x "B")
+            (f :x "A")
+            (f :y "A")
+            (f :y "A")]))
+    (let [f' (f)]
+      (is (= ["A" "B" "A" "A_2" "A_2"]
+             [(f' :x "A")
+              (f' :x "B")
+              (f' :x "A")
+              (f' :y "A")
+              (f' :y "A")]))
+      (let [f'' (f')]
+        (is (= ["A" "B" "A" "A_2" "A_2"]
+               [(f'' :x "A")
+                (f'' :x "B")
+                (f'' :x "A")
+                (f'' :y "A")
+                (f'' :y "A")]))))))
+
+(deftest ^:parallel non-truncating-unique-name-generator-test
+  (let [f (lib.util/non-truncating-unique-name-generator)]
+    (is (= "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+           (f "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count")))))
+
 (deftest ^:parallel strip-id-test
   (are [exp in] (= exp (lib.util/strip-id in))
     "foo"            "foo"

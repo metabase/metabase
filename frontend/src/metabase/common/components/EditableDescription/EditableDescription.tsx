@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import EditableText, {
   type EditableTextProps,
-} from "metabase/core/components/EditableText";
+} from "metabase/common/components/EditableText";
 import { Box, type BoxProps } from "metabase/ui";
 
 export interface EditableDescriptionProps

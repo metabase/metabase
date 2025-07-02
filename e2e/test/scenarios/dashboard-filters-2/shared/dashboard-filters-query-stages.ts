@@ -662,23 +662,23 @@ export function setup2ndStageBreakoutFilter() {
   H.getDashboardCard(0).findByText("Select…").click();
   H.popover().within(() => {
     getPopoverList().scrollTo("bottom");
-    getPopoverItem("Category", 2).click();
+    getPopoverItem("Product → Category", 1).click();
   });
 
   H.getDashboardCard(1).findByText("Select…").click();
   H.popover().within(() => {
     getPopoverList().scrollTo("bottom");
-    getPopoverItem("Category", 2).click();
+    getPopoverItem("Product → Category", 1).click();
   });
 
   H.getDashboardCard(2).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverItem("Products Via Product ID Category").click();
+    getPopoverItem("Product → Category").click();
   });
 
   H.getDashboardCard(3).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverItem("Products Via Product ID Category").click();
+    getPopoverItem("Product → Category").click();
   });
 
   H.saveDashboard({ waitMs: 250 });
@@ -790,16 +790,18 @@ export function verifyPopoverMappingOptions(sections: MappingSection[]) {
 
       for (const [sectionName, columnNames] of sections) {
         if (sectionName) {
-          const item = cy.wrap($items[index]);
-          item.scrollIntoView(); // the list is virtualized, we need to keep scrolling to see all the items
-          item.should("have.text", sectionName);
+          // the list is virtualized, we need to keep scrolling to see all the items
+          cy.wrap($items[index])
+            .scrollIntoView()
+            .should("have.text", sectionName);
           ++index;
         }
 
         for (const columnName of columnNames) {
-          const item = cy.wrap($items[index]);
-          item.scrollIntoView();
-          item.findByLabelText(columnName).should("be.visible");
+          cy.wrap($items[index])
+            .scrollIntoView()
+            .findByLabelText(columnName)
+            .should("be.visible");
           ++index;
         }
       }

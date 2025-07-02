@@ -1,6 +1,6 @@
 import { jt, t } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 
 export const EmbeddingAppOriginDescription = () => {
   return jt`Enter the origins for the websites or web apps where you want to allow embedding, separated by a space. Here are the ${(

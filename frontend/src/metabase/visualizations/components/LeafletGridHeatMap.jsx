@@ -5,25 +5,14 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
 import { isMetric, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
-import { computeNumericDataInverval } from "../lib/numeric";
+import { computeNumericDataInterval } from "../lib/numeric";
 
 import LeafletMap from "./LeafletMap";
 
 const isValidCoordinatesColumn = (column) =>
   column.binning_info || (column.source === "native" && isNumeric(column));
-
-const computeValueRange = (value, values) => [
-  value,
-  value + computeNumericDataInverval(values),
-];
-
-const getValueRange = (value, column, values) => {
-  const binningBasedResult = rangeForValue(value, column);
-  return binningBasedResult || computeValueRange(value, values);
-};
 
 export default class LeafletGridHeatMap extends LeafletMap {
   static isSensible({ cols }) {
@@ -68,7 +57,15 @@ export default class LeafletGridHeatMap extends LeafletMap {
       const totalSquares = Math.max(points.length, gridSquares.length);
 
       const latitudeValues = points.map((row) => row[latitudeIndex]);
-      const longitureValues = points.map((row) => row[longitudeIndex]);
+      const longitudeValues = points.map((row) => row[longitudeIndex]);
+
+      const latitudeBinning =
+        latitudeColumn?.binning_info?.bin_width ??
+        computeNumericDataInterval(latitudeValues);
+
+      const longitudeBinning =
+        longitudeColumn?.binning_info?.bin_width ??
+        computeNumericDataInterval(longitudeValues);
 
       for (let i = 0; i < totalSquares; i++) {
         if (i >= points.length) {
@@ -81,21 +78,16 @@ export default class LeafletGridHeatMap extends LeafletMap {
         }
 
         if (i < points.length) {
-          const [latitude, longiture, metric] = points[i];
+          const [latitude, longitude, metric] = points[i];
 
           gridSquares[i].setStyle({ color: colorScale(metric) });
 
-          const [latMin, latMax] = getValueRange(
-            latitude,
-            latitudeColumn,
-            latitudeValues,
-          );
+          const latMin = latitude;
+          const latMax = latitude + latitudeBinning;
 
-          const [lonMin, lonMax] = getValueRange(
-            longiture,
-            longitudeColumn,
-            longitureValues,
-          );
+          const lonMin = longitude;
+          const lonMax = longitude + longitudeBinning;
+
           gridSquares[i].setBounds([
             [latMin, lonMin],
             [latMax, lonMax],

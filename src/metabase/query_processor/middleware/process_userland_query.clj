@@ -123,7 +123,7 @@
     database-id                    :database
     query-type                     :type
     parameters                     :parameters
-    mirror-database-id             :mirror-database/id
+    destination-database-id        :destination-database/id
     :as                            query}]
   {:pre [(bytes? query-hash)]}
   (let [json-query (if original-query
@@ -132,7 +132,7 @@
                          (assoc :was-pivot true))
                      (cond-> (dissoc query :info)
                        (empty? (:parameters query)) (dissoc :parameters)))]
-    {:database_id       (or mirror-database-id database-id)
+    {:database_id       (or destination-database-id database-id)
      :executor_id       executed-by
      :action_id         action-id
      :card_id           card-id

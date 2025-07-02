@@ -3,7 +3,7 @@ const BRANCH_NAME = "main"; // Affects the `local` testing only. On CI is passed
 const BASE_ENV = {
   WATCH:
     process.env.SAMPLE_APP_ENVIRONMENT === "development" ? "true" : "false",
-  PREMIUM_EMBEDDING_TOKEN: process.env.CYPRESS_ALL_FEATURES_TOKEN ?? "",
+  PREMIUM_EMBEDDING_TOKEN: process.env.CYPRESS_MB_ALL_FEATURES_TOKEN ?? "",
   MB_PORT: 4300,
   CLIENT_PORT: 4400,
   AUTH_PROVIDER_PORT: 4500,
@@ -16,6 +16,7 @@ const BASE_SETUP_CONFIG = {
   "docker-env-path": ".env.docker",
   defaultBranch: BRANCH_NAME,
   env: BASE_ENV,
+  healthcheckPorts: [BASE_ENV.MB_PORT, BASE_ENV.CLIENT_PORT],
 };
 
 export const SAMPLE_APP_SETUP_CONFIGS = {
@@ -27,12 +28,15 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
     ...BASE_SETUP_CONFIG,
     appName: "metabase-nextjs-sdk-embedding-sample",
     env: {
-      WATCH: BASE_ENV.WATCH,
-      PREMIUM_EMBEDDING_TOKEN: BASE_ENV.PREMIUM_EMBEDDING_TOKEN,
-      MB_PORT: BASE_ENV.MB_PORT,
+      ...BASE_ENV,
       CLIENT_PORT_APP_ROUTER: BASE_ENV.CLIENT_PORT,
       CLIENT_PORT_PAGES_ROUTER: BASE_ENV.CLIENT_PORT + 1,
     },
+    healthcheckPorts: [
+      BASE_ENV.MB_PORT,
+      BASE_ENV.CLIENT_PORT,
+      BASE_ENV.CLIENT_PORT + 1,
+    ],
   },
   "shoppy-e2e": {
     ...BASE_SETUP_CONFIG,

@@ -2,13 +2,13 @@
   "Method implementations for a stage of a query."
   (:require
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.expression :as lib.expression]
-   [metabase.lib.field :as lib.field]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
@@ -17,6 +17,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
@@ -146,22 +147,13 @@
                                                            (dissoc options :unique-name-fn))
            :let [source-alias (or ((some-fn :lib/desired-column-alias :lib/source-column-alias) col)
                                   (lib.metadata.calculation/column-name query stage-number col))]]
-       (-> (merge
-            col
-            {:lib/source               :source/previous-stage
-             :lib/source-column-alias  source-alias
-             :lib/desired-column-alias (unique-name-fn source-alias)})
-           ;; do not retain `:temporal-unit`; it's not like we're doing a extract(month from <x>) twice, in both
-           ;; stages of a query. It's a little hacky that we're manipulating `::lib.field` keys directly here since
-           ;; they're presumably supposed to be private-ish, but I don't have a more elegant way of solving this sort
-           ;; of problem at this point in time.
-           ;;
-           ;; also don't retain `:lib/expression-name`, the fact that this column came from an expression in the
-           ;; previous stage should be totally irrelevant and we don't want it confusing our code that decides whether
-           ;; to generate `:expression` or `:field` refs.
-           (dissoc ::lib.field/temporal-unit :lib/expression-name))))))
+       (merge
+        col
+        {:lib/source               :source/previous-stage
+         :lib/source-column-alias  source-alias
+         :lib/desired-column-alias (unique-name-fn source-alias)})))))
 
-(mu/defn- saved-question-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+(mu/defn- saved-question-visible-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"
   [query          :- ::lib.schema/query
    stage-number   :- :int
@@ -233,13 +225,12 @@
    {:keys [unique-name-fn], :as options} :- lib.metadata.calculation/VisibleColumnsOptions]
   {:pre [(fn? unique-name-fn)]}
   (let [{:keys [source-table source-card], :as this-stage} (lib.util/query-stage query stage-number)
-        card (some->> source-card (lib.metadata/card query))
+        card          (some->> source-card (lib.metadata/card query))
         metric-based? (= (:type card) :metric)]
     (into []
           (if metric-based?
             identity
-            (map #(dissoc % ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id
-                          :fk-field-name :fk-join-alias)))
+            (map lib.field.util/update-keys-for-col-from-previous-stage))
           (or
            ;; 1a. columns returned by previous stage
            (previous-stage-metadata query stage-number options)
@@ -253,15 +244,14 @@
              (metric-metadata query stage-number card options))
            ;; 1c. Metadata associated with a saved Question
            (when source-card
-             (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
+             (saved-question-visible-columns query stage-number source-card (assoc options :include-implicitly-joinable? false)))
            ;; 1d: `:lib/stage-metadata` for the (presumably native) query
-           (for [col (:columns (:lib/stage-metadata this-stage))]
+           (for [col  (get-in this-stage [:lib/stage-metadata :columns])
+                 :let [source-column-alias ((some-fn :lib/source-column-alias :name) col)]]
              (assoc col
-                    :lib/source :source/native
-                    :lib/source-column-alias  (:name col)
-                    ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
-                    ;; that gets added later gets deduplicated from these.
-                    :lib/desired-column-alias (unique-name-fn (:name col))))))))
+                    :lib/source               :source/native
+                    :lib/source-column-alias  source-column-alias
+                    :lib/desired-column-alias (unique-name-fn source-column-alias)))))))
 
 (mu/defn- existing-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
   [query        :- ::lib.schema/query
@@ -293,15 +283,54 @@
             (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
          vec)))
 
-(defn- column-signature [column-metadata]
-  (dissoc column-metadata
-          :source-alias :ident :lib/source :lib/source-uuid
-          :lib/desired-column-alias :lib/hack-original-name))
+(defn- add-cols-from-join-duplicate?
+  "Whether two columns are considered to be the same for purposes of [[add-cols-from-join]]."
+  [col-1 col-2]
+  ;; columns that don't have the same binning or temporal bucketing are never the same.
+  (and
+   ;; same binning
+   (= (lib.binning/binning col-1)
+      (lib.binning/binning col-2))
+   ;; same bucketing
+   (letfn [(bucket [col]
+             (when-let [bucket (lib.temporal-bucket/raw-temporal-bucket col)]
+               (when-not (= bucket :default)
+                 bucket)))]
+     (= (bucket col-1)
+        (bucket col-2)))
+   ;; compare by IDs if we have ID info for both.
+   (if (every? :id [col-1 col-2])
+     ;; same IDs
+     (= (:id col-1) (:id col-2))
+     ;; same names
+     (some (fn [f]
+             (= (f col-2)
+                (f col-1)))
+           [:lib/desired-column-alias :lib/source-column-alias :lib/deduplicated-name]))))
+
+(defn- add-cols-from-join
+  "The columns from `:fields` may contain columns from `:joins` -- so if the joins specify their own `:fields` we need
+  to make sure not to include them twice! We de-duplicate them here.
+
+  This matches the logic in [[metabase.query-processor.middleware.resolve-joins/append-join-fields]] -- important to
+  have the exact same behavior in both places."
+  [query stage-number options field-cols join]
+  (let [join-cols      (lib.join/join-fields-to-add-to-parent-stage query stage-number join options)
+        join-alias     (lib.join.util/current-join-alias join)
+        existing-cols  (filter #(= (lib.join.util/current-join-alias %) join-alias)
+                               field-cols)
+        duplicate-col? (fn [join-col]
+                         (some (fn [existing-col]
+                                 (add-cols-from-join-duplicate? join-col existing-col))
+                               existing-cols))]
+    (into (vec field-cols)
+          (remove duplicate-col?)
+          join-cols)))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
 ;;; those and the joined columns. Otherwise return the defaults based on the source Table or previous stage + joins.
-(defmethod lib.metadata.calculation/returned-columns-method ::stage
+(mu/defmethod lib.metadata.calculation/returned-columns-method ::stage :- [:sequential ::lib.schema.metadata/column]
   [query stage-number _stage {:keys [include-remaps? unique-name-fn], :as options}]
   (or
    (existing-stage-metadata query stage-number unique-name-fn)
@@ -309,43 +338,42 @@
          summary-cols (summary-columns query stage-number options)
          field-cols   (fields-columns query stage-number options)]
      ;; ... then calculate metadata for this stage
-     (cond
-       summary-cols
-       (into summary-cols field-cols)
+     (-> (cond
+           summary-cols
+           (into summary-cols field-cols)
 
-       field-cols
-       (let [_          (doall field-cols)           ; force generation of unique names before join columns
-             join-cols  (lib.join/all-joins-expected-columns query stage-number options)
-             ;; The field-cols may contain would-be joined cols already! We de-duplicate them, but take the :ident
-             ;; from the last of the duplicates.
-             ;; TODO: This almost certainly doesn't work properly with double-joins, and should be powered by
-             ;; "original ident" where possible. Or field-cols should return the correct joins; then taking that
-             ;; copy doesn't hurt anything.
-             signed    (mapv (juxt column-signature identity) (concat field-cols join-cols))
-             idents    (into {} (keep (fn [[sig col]]
-                                        (when-let [ident (:ident col)]
-                                          [sig ident])))
-                             signed)]
-         (mapv (fn [[sig column]]
-                 (let [ident (get idents sig)]
-                   (assoc column :ident ident)))
-               (m/distinct-by first signed)))
+           field-cols
+           (reduce
+            (fn [field-cols join]
+              (add-cols-from-join query stage-number options field-cols join))
+            ;; force generation of unique names before join columns
+            (doall field-cols)
+            (lib.join/joins query stage-number))
 
-       :else
-       ;; there is no `:fields` or summary columns (aggregtions or breakouts) which means we return all the visible
-       ;; columns from the source or previous stage plus all the expressions. We return only the `:fields` from any
-       ;; joins
-       (let [;; we don't want to include all visible joined columns, so calculate that separately
-             source-cols (previous-stage-or-source-visible-columns
-                          query stage-number
-                          {:include-implicitly-joinable? false
-                           :include-remaps?              (boolean include-remaps?)
-                           :unique-name-fn               unique-name-fn})]
-         (concat
-          source-cols
-          (expressions-metadata query stage-number unique-name-fn {:include-late-exprs? true})
-          (lib.metadata.calculation/remapped-columns query stage-number source-cols options)
-          (lib.join/all-joins-expected-columns query stage-number options)))))))
+           :else
+           ;; there is no `:fields` or summary columns (aggregtions or breakouts) which means we return all the visible
+           ;; columns from the source or previous stage plus all the expressions. We return only the `:fields` from any
+           ;; joins
+           (let [;; we don't want to include all visible joined columns, so calculate that separately
+                 source-cols (previous-stage-or-source-visible-columns
+                              query stage-number
+                              {:include-implicitly-joinable? false
+                               :include-remaps?              (boolean include-remaps?)
+                               :unique-name-fn               unique-name-fn})]
+             (concat
+              source-cols
+              (expressions-metadata query stage-number unique-name-fn {:include-late-exprs? true})
+              (lib.metadata.calculation/remapped-columns query stage-number source-cols options)
+              (lib.join/all-joins-fields-to-add-to-parent-stage query stage-number options))))
+         lib.field.util/add-deduplicated-names
+         ;; we need to update `:name` to be the deduplicated name here, otherwise viz settings will break (see longer
+         ;; explanation in [[metabase.lib.stage-test/returned-columns-deduplicate-names-test]]). Only do this if this
+         ;; is the last stage of the query, just like the QP does! Otherwise we might accidentally break something
+         ;; else that incorrectly relies on the notoriously unreliable `:name` key.
+         (as-> cols (cond->> cols
+                      (lib.util/last-stage? query stage-number)
+                      (map (fn [col]
+                             (assoc col :name (:lib/deduplicated-name col))))))))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/native
   [_query _stage-number _stage _style]

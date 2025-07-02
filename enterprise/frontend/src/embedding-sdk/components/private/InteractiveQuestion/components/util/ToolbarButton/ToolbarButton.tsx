@@ -1,6 +1,6 @@
 import { type ReactNode, type Ref, forwardRef } from "react";
 
-import type { IconName } from "embedding-sdk/types/ui";
+import type { IconName } from "metabase/embedding-sdk/types/icon";
 import { Button, type ButtonProps, Icon } from "metabase/ui";
 
 export const ToolbarButton = forwardRef(_ToolbarButton);

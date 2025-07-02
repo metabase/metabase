@@ -7,7 +7,6 @@ export const XrayIcon = () => {
     <Icon
       name="bolt"
       size={24}
-      mr="md"
       style={{
         // we don't have access to this color in css
         // TODO: replace this color with one from palette

@@ -10,6 +10,7 @@ entities:
     model: Metabot
   - id: _Jc9eftJesJVUU9gFKAXV
     model: MetabotEntity
+  prompts: []
 entity_id: zXxMBaxni6nRGRhD7vmPc
 name: Test Metabot
 updated_at: '2025-05-28T17:49:20.813848Z'

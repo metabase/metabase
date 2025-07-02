@@ -156,7 +156,11 @@ export const useChartEvents = (
           }
 
           if (event.seriesId === GOAL_LINE_SERIES_ID) {
-            const eventData = getGoalLineHoverData(settings, event);
+            const eventData = getGoalLineHoverData(
+              settings,
+              event,
+              chartModel.leftAxisModel?.formatGoal,
+            );
 
             onHoverChange?.(eventData);
             return;

@@ -504,7 +504,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should allow changing the table name with data model permissions only", () => {

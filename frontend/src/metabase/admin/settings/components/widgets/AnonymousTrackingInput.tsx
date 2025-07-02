@@ -31,7 +31,7 @@ export function AnonymousTrackingInput() {
     <Stack>
       <SettingHeader
         id="anon-tracking-enabled"
-        title={t`Anonymous Tracking`}
+        title={t`Anonymous tracking`}
         description={description}
       />
       <BasicAdminSettingInput

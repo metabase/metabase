@@ -1,20 +1,15 @@
 (ns metabase-enterprise.ai-sql-fixer.api
   "`/api/ee/ai-sql-fixer/` routes"
   (:require
-   [clojure.set :as set]
    [metabase-enterprise.metabot-v3.core :as metabot-v3]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver.util :as driver.u]
-   [metabase.query-analysis.core :as query-analyzer]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize])
+   [toucan2.core :as t2])
   (:import
-   (java.io StringWriter Writer)
-   (org.apache.commons.text.similarity LevenshteinDistance)))
+   (java.io StringWriter Writer)))
 
 (set! *warn-on-reflection* true)
 
@@ -22,50 +17,6 @@
 (def ^:private max-schema-sample-tables
   "If the number of tables in the database doesn't exceed this number, we send them all to the agent."
   10)
-
-(def ^:private max-schema-candidate-tables
-  "The maximum number of tables we process to find the ones that might be relevant for the SQL query to fix."
-  10000)
-
-(def ^:private max-distance
-  "The maximal edit distance at which we consider two table (or schema) names similar."
-  4)
-
-(def ^:private ^LevenshteinDistance matcher (LevenshteinDistance. (int max-distance)))
-
-(defn- similar?
-  [left right]
-  (nat-int? (.apply matcher (u/lower-case-en left) (u/lower-case-en right))))
-
-(defn- matching-tables?
-  [{tschema :schema, tname :name} {uschema :schema, uname :name} {:keys [match-schema?]}]
-  (and (similar? uname tname)
-       (or (not match-schema?)
-           (nil? uschema)
-           (nil? tschema)
-           (similar? uschema tschema))))
-
-(defn- find-matching-tables
-  [database-id unrecognized-tables used-ids]
-  (into []
-        (keep (fn [table]
-                (when (some #(matching-tables? table % {:match-schema? false}) unrecognized-tables)
-                  (t2.realize/realize table))))
-        (t2/reducible-select [:model/Table :id :name :schema]
-                             :db_id database-id
-                             :active true
-                             :visibility_type nil
-                             (cond-> {:limit max-schema-candidate-tables}
-                               (seq used-ids) (assoc :where [:not-in :id used-ids])))))
-
-(defn- used-tables
-  [{:keys [database] :as query}]
-  (let [queried-tables (->> (query-analyzer/tables-for-native query :all-drivers-trusted? true)
-                            :tables
-                            (map #(set/rename-keys % {:table :name, :table-id :id})))
-        {recognized-tables true, unrecognized-tables false} (group-by t2/instance? queried-tables)]
-    (concat recognized-tables
-            (find-matching-tables database unrecognized-tables (map :id recognized-tables)))))
 
 (defn- format-escaped
   [^String identifier ^Writer writer]
@@ -119,7 +70,7 @@
                            :visibility_type nil
                            {:limit (inc all-tables-limit)})
          tables (if (> (count tables) all-tables-limit)
-                  (used-tables query)
+                  (metabot-v3/used-tables query)
                   tables)
          tables (t2/hydrate tables :fields)]
      (format-schema-ddl tables))))

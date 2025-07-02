@@ -7,7 +7,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
@@ -78,7 +77,7 @@
     (let [query      (lib.tu/venues-query)
           field-id   (inc (apply max (map :id (lib/visible-columns query))))]
       (mu/disable-enforcement
-        (is (=? {:name              (str field-id)
+        (is (=? {:name              "Unknown Field"
                  :display-name      "Unknown Field"
                  :long-display-name "join → Unknown Field"}
                 (lib/display-info query [:field {:join-alias "join"} field-id])))))))
@@ -128,7 +127,7 @@
                  :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
                  :database     (meta/id)
                  :stages       [{:lib/type :mbql.stage/mbql
-                                 :source-card (:id ((lib.tu/mock-cards) :orders))}]}
+                                 :source-card (:id (:orders (lib.tu/mock-cards)))}]}
           own-fields (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) (meta/id :orders))]
                        (-> field
                            (assoc :lib/source :source/card)))
@@ -438,6 +437,7 @@
       (is (not= (:ident reporter-email)
                 (:ident assignee-email))))))
 
+;; NOTE: If you remove this test, also remove the comment that mentions it in visible-columns-fk-to-self-test, below.
 ;; TODO: Implicit self-joins are not allowed! Perhaps they should be, but right now we don't suggest duplicate joins
 ;; since they don't work very well. I'm leaving this test case in place for now.
 #_(deftest ^:parallel implicit-self-join-test
@@ -506,27 +506,17 @@
                     (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
                                                    [(lib/= (meta/field-metadata :venues :id)
                                                            (meta/field-metadata :orders :id))])
-                                  (lib/with-join-fields [(meta/field-metadata :orders :subtotal)]))))
-          join-ident (:ident (first (lib/joins query)))]
-      (is (=? [{:name  "ID"
-                :ident (meta/ident :venues :id)}
-               {:name  "CATEGORY_ID"
-                :ident (meta/ident :venues :category-id)}
-               {:name  "price10"
-                :ident (lib.options/ident (first (lib/expressions query)))}
-               {:name  "SUBTOTAL"
-                :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :orders :subtotal) join-ident)}]
+                                  (lib/with-join-fields [(meta/field-metadata :orders :subtotal)]))))]
+      (is (=? [{:name  "ID"}
+               {:name  "CATEGORY_ID"}
+               {:name  "price10"}
+               {:name  "SUBTOTAL"}]
               (lib/returned-columns query)))
-      (is (=? [{:name  "ID"
-                :ident (meta/ident :venues :id)}
-               {:name  "CATEGORY_ID"
-                :ident (meta/ident :venues :category-id)}
-               {:name  "price10"
-                :ident (lib.options/ident (first (lib/expressions query)))}
-               {:name  "NAME"
-                :ident (lib.metadata.ident/remap-ident (meta/ident :categories :name) (meta/ident :venues :category-id))}
-               {:name  "SUBTOTAL"
-                :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :orders :subtotal) join-ident)}]
+      (is (=? [{:name  "ID"}
+               {:name  "CATEGORY_ID"}
+               {:name  "price10"}
+               {:name  "NAME"}
+               {:name  "SUBTOTAL"}]
               (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))))))
 
 (deftest ^:parallel remapped-columns-test-2-remapping-in-joins
@@ -546,26 +536,13 @@
                          (lib/with-fields [(meta/field-metadata :orders :id)
                                            (meta/field-metadata :orders :product-id)
                                            (meta/field-metadata :orders :subtotal)]))
-          exp-main   [{:name  "ID"
-                       :ident (meta/ident :orders :id)}
-                      {:name  "PRODUCT_ID"
-                       :ident (meta/ident :orders :product-id)}
-                      {:name  "SUBTOTAL"
-                       :ident (meta/ident :orders :subtotal)}]
-          exp-join1  [{:name  "PRICE"
-                       :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :venues :price)
-                                                                          (:ident join1))}
-                      {:name  "CATEGORY_ID"
-                       :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :venues :category-id)
-                                                                          (:ident join1))}
-                      {:name  "NAME"
-                       :ident (lib.metadata.ident/remap-ident
-                               (meta/ident :categories :name)
-                               (lib.metadata.ident/explicitly-joined-ident
-                                (meta/ident :venues :category-id) (:ident join1)))}]
-          exp-join2  [{:name  "CATEGORY"
-                       :ident (lib.metadata.ident/explicitly-joined-ident
-                               (meta/ident :products :category) (:ident join2))}]
+          exp-main   [{:name  "ID"}
+                      {:name  "PRODUCT_ID"}
+                      {:name  "SUBTOTAL"}]
+          exp-join1  [{:name  "PRICE"}
+                      {:name  "CATEGORY_ID"}
+                      {:name  "NAME"}]
+          exp-join2  [{:name  "CATEGORY"}]
           cols       (fn [query]
                        (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))]
       (is (=? (concat exp-main exp-join1 exp-join2)
@@ -579,41 +556,344 @@
                   (lib/join join1)
                   cols))))))
 
-(deftest ^:parallel implicit-join-columns
-  (let [inner (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                  (lib/join (meta/table-metadata :people)))
-        mp    (lib.tu/metadata-provider-with-card-from-query 1 inner)
-        query (lib/query mp (lib.metadata/card mp 1))]
-    (is (=? [["ID" :source/card]
-             ["SUBTOTAL" :source/card]
-             ["TOTAL" :source/card]
-             ["TAX" :source/card]
-             ["DISCOUNT" :source/card]
-             ["QUANTITY" :source/card]
-             ["CREATED_AT" :source/card]
-             ["PRODUCT_ID" :source/card]
-             ["USER_ID" :source/card]
-             ["ID" :source/card]
-             ["STATE" :source/card]
-             ["CITY" :source/card]
-             ["ADDRESS" :source/card]
-             ["NAME" :source/card]
-             ["SOURCE" :source/card]
-             ["ZIP" :source/card]
-             ["LATITUDE" :source/card]
-             ["PASSWORD" :source/card]
-             ["BIRTH_DATE" :source/card]
-             ["LONGITUDE" :source/card]
-             ["EMAIL" :source/card]
-             ["CREATED_AT" :source/card]
-             ["ID" :source/implicitly-joinable]
-             ["EAN" :source/implicitly-joinable]
-             ["TITLE" :source/implicitly-joinable]
-             ["CATEGORY" :source/implicitly-joinable]
-             ["VENDOR" :source/implicitly-joinable]
-             ["PRICE" :source/implicitly-joinable]
-             ["RATING" :source/implicitly-joinable]
-             ["CREATED_AT" :source/implicitly-joinable]]
-            (-> query
-                (lib/visible-columns)
-                (->> (map (juxt :name :lib/source))))))))
+(deftest ^:parallel remapped-visible-columns-test
+  (let [product-id  (meta/id :orders :product-id)
+        mp          (-> meta/metadata-provider
+                        (lib.tu/remap-metadata-provider product-id (meta/id :products :title)))
+        base        (lib/query mp (meta/table-metadata :orders))
+        ;; join1 explicitly joins the target of the remapping
+        join1       (-> (lib/join-clause (meta/table-metadata :products)
+                                         [(lib/= (meta/field-metadata :orders :product-id)
+                                                 (meta/field-metadata :products :id))])
+                        (lib/with-join-fields [(meta/field-metadata :products :title)]))
+        ;; join2 explicitly joins the target of the remapping and one more field from the same table (products)
+        join2       (-> (lib/join-clause (meta/table-metadata :products)
+                                         [(lib/= (meta/field-metadata :orders :product-id)
+                                                 (meta/field-metadata :products :id))])
+                        (lib/with-join-fields [(meta/field-metadata :products :title)
+                                               (meta/field-metadata :products :ean)]))
+        join1-query (lib/join base join1)
+        join2-query (lib/join base join2)
+        card1-id    11001100
+        card2-id    11001101
+        card-mp     (-> mp
+                        (lib.tu/metadata-provider-with-card-from-query card1-id join1-query)
+                        (lib.tu/metadata-provider-with-card-from-query card2-id join2-query))
+        card1-query (lib/query card-mp (lib.metadata/card card-mp card1-id))
+        card2-query (lib/query card-mp (lib.metadata/card card-mp card2-id))
+        cols        (fn cols
+                      ([query]
+                       (cols query {:include-remaps? true}))
+                      ([query opts]
+                       (lib/visible-columns query -1 (lib.util/query-stage query -1) opts)))
+        orders-id   (meta/id :orders)
+        products-id (meta/id :products)
+        people-id   (meta/id :people)
+        user-id     (meta/id :orders :user-id)
+        table-fields
+        [{:name "ID",         :lib/source :source/table-defaults, :table-id orders-id}
+         {:name "USER_ID",    :lib/source :source/table-defaults, :table-id orders-id, :fk-target-field-id (meta/id :people :id)}
+         {:name "PRODUCT_ID", :lib/source :source/table-defaults, :table-id orders-id, :fk-target-field-id (meta/id :products :id)}
+         {:name "SUBTOTAL",   :lib/source :source/table-defaults, :table-id orders-id}
+         {:name "TAX",        :lib/source :source/table-defaults, :table-id orders-id}
+         {:name "TOTAL",      :lib/source :source/table-defaults, :table-id orders-id}
+         {:name "DISCOUNT",   :lib/source :source/table-defaults, :table-id orders-id}
+         {:name "CREATED_AT", :lib/source :source/table-defaults, :table-id orders-id}
+         {:name "QUANTITY",   :lib/source :source/table-defaults, :table-id orders-id}
+         {:name "TITLE",      :lib/source :source/table-defaults, :table-id products-id}]
+        ;; the order of the fields is like this because the MP created by metadata-provider-with-card-from-query
+        ;; sorts the fields in the result metadata by :id
+        card2-fields
+        [{:name "TITLE",      :lib/source :source/card, :table-id products-id}
+         {:name "EAN",        :lib/source :source/card, :table-id products-id}
+         {:name "ID",         :lib/source :source/card, :table-id orders-id}
+         {:name "SUBTOTAL",   :lib/source :source/card, :table-id orders-id}
+         {:name "TOTAL",      :lib/source :source/card, :table-id orders-id}
+         {:name "TAX",        :lib/source :source/card, :table-id orders-id}
+         {:name "DISCOUNT",   :lib/source :source/card, :table-id orders-id}
+         {:name "QUANTITY",   :lib/source :source/card, :table-id orders-id}
+         {:name "CREATED_AT", :lib/source :source/card, :table-id orders-id}
+         {:name "PRODUCT_ID", :lib/source :source/card, :table-id orders-id, :fk-target-field-id (meta/id :products :id)}
+         {:name "USER_ID",    :lib/source :source/card, :table-id orders-id, :fk-target-field-id (meta/id :people :id)}]
+        ;; card1 has the same fields as card2, except EAN, which is not added by the join
+        card1-fields
+        (into [] (remove (comp #{"EAN"} :name)) card2-fields)
+        people-fields
+        [{:name "ID",         :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "ADDRESS",    :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "EMAIL",      :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "PASSWORD",   :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "NAME",       :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "CITY",       :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "LONGITUDE",  :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "STATE",      :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "SOURCE",     :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "BIRTH_DATE", :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "ZIP",        :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "LATITUDE",   :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "CREATED_AT", :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}]
+        ;; the fields of the product table can come from the explicit join...
+        products-join-fields
+        [{:name "ID",         :lib/source :source/joins, :table-id products-id}
+         {:name "EAN",        :lib/source :source/joins, :table-id products-id}
+         {:name "TITLE",      :lib/source :source/joins, :table-id products-id}
+         {:name "CATEGORY",   :lib/source :source/joins, :table-id products-id}
+         {:name "VENDOR",     :lib/source :source/joins, :table-id products-id}
+         {:name "PRICE",      :lib/source :source/joins, :table-id products-id}
+         {:name "RATING",     :lib/source :source/joins, :table-id products-id}
+         {:name "CREATED_AT", :lib/source :source/joins, :table-id products-id}]
+        ;; or they can come from an implicit join
+        products-implicit-join-fields
+        (mapv #(assoc %, :lib/source :source/implicitly-joinable, :fk-field-id product-id)
+              products-join-fields)]
+    (testing "base case: no joins"
+      (is (=? (concat table-fields
+                      people-fields
+                      products-implicit-join-fields)
+              (cols base))))
+    (testing "joins don't exclude implicitly joinable fields for _visible_ columns"
+      (let [expected-columns (concat table-fields
+                                     products-join-fields
+                                     people-fields)]
+        (is (=? expected-columns
+                (cols join1-query)))
+        (is (=? expected-columns
+                (cols join2-query)))))
+    (testing (str "joins in cards (previous stages)\n"
+                  "These tests demonstrate an unwanted difference in behavior.\n"
+                  "If they break such that both cases produce the same result, that's an improvement"
+                  " unless that single result cannot be considered correct")
+      (testing "implicit fields are NOT excluded, if all the joined fields are remapping targets"
+        (is (=? (concat card1-fields
+                        products-implicit-join-fields
+                        people-fields)
+                (cols card1-query))))
+      (testing "implicit fields are excluded, if NOT all the joined fields are remapping targets"
+        (is (=? (concat card2-fields
+                        people-fields)
+                (cols card2-query)))))))
+
+(defn- check-visible-columns
+  "Check that calling [[lib/visible-columns]] on `query` produces the `expected-cols`.
+
+  `expected-cols` should be a list of tuples of [:lib/desired-column-alias :lib/source] for the expected columns."
+  [query expected-cols]
+  (is (= expected-cols
+         (->> query
+              lib/visible-columns
+              (map (juxt :lib/desired-column-alias :lib/source))))))
+
+(deftest ^:parallel visible-columns-orders+people-card-test
+  (testing "single-card orders+people join (#34743)"
+    (let [inner (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/join (meta/table-metadata :people)))
+          mp    (lib.tu/metadata-provider-with-card-from-query 1 inner)
+          query (lib/query mp (lib.metadata/card mp 1))]
+      (check-visible-columns
+       query
+       [["ID" :source/card]
+        ["SUBTOTAL" :source/card]
+        ["TOTAL" :source/card]
+        ["TAX" :source/card]
+        ["DISCOUNT" :source/card]
+        ["QUANTITY" :source/card]
+        ["CREATED_AT" :source/card]
+        ["PRODUCT_ID" :source/card]
+        ["USER_ID" :source/card]
+        ["People - User__ID" :source/card]
+        ["People - User__STATE" :source/card]
+        ["People - User__CITY" :source/card]
+        ["People - User__ADDRESS" :source/card]
+        ["People - User__NAME" :source/card]
+        ["People - User__SOURCE" :source/card]
+        ["People - User__ZIP" :source/card]
+        ["People - User__LATITUDE" :source/card]
+        ["People - User__PASSWORD" :source/card]
+        ["People - User__BIRTH_DATE" :source/card]
+        ["People - User__LONGITUDE" :source/card]
+        ["People - User__EMAIL" :source/card]
+        ["People - User__CREATED_AT" :source/card]
+        ["PRODUCTS__via__PRODUCT_ID__ID" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__EAN" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__TITLE" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__CATEGORY" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__VENDOR" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__PRICE" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__RATING" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__CREATED_AT" :source/implicitly-joinable]]))))
+
+(deftest ^:parallel visible-columns-checkins+users+venues-card-test
+  (testing "multi-card checkins+users+venues join"
+    ;; The idea is that these are all joins between cards and nested queries.
+    (let [mp1 (lib.tu/metadata-provider-with-mock-cards)
+          checkins-card (:checkins (lib.tu/mock-cards))
+          users-card (:users (lib.tu/mock-cards))
+          venues-card (:venues (lib.tu/mock-cards))
+          checkins-card-query (lib/query mp1 checkins-card)
+          users-card-query (lib/query mp1 users-card)
+          venues-card-query (lib/query mp1 venues-card)
+          checkins+users-card-query (-> checkins-card-query
+                                        (lib/join (lib/join-clause
+                                                   users-card
+                                                   [(lib/=
+                                                     (lib.tu/field-literal-ref checkins-card-query "USER_ID")
+                                                     (lib/with-join-alias
+                                                      (lib.tu/field-literal-ref users-card-query "ID")
+                                                      "Users"))])))
+          next-card-id (->> (lib.tu/mock-cards)
+                            vals
+                            (map :id)
+                            (reduce max 0)
+                            inc)
+          mp2 (lib.tu/metadata-provider-with-card-from-query mp1 next-card-id checkins+users-card-query)
+          checkins+users-card2-query (lib/query mp2 (lib.metadata/card mp2 next-card-id))
+          checkins+users+venues-card-query (-> checkins+users-card2-query
+                                               (lib/join (lib/join-clause
+                                                          venues-card
+                                                          [(lib/=
+                                                            (lib.tu/field-literal-ref
+                                                             checkins+users-card2-query
+                                                             "VENUE_ID")
+                                                            (lib/with-join-alias
+                                                             (lib.tu/field-literal-ref venues-card-query "ID")
+                                                             "Venues"))])))]
+      (check-visible-columns
+       checkins+users+venues-card-query
+       [["ID" :source/card]
+        ["DATE" :source/card]
+        ["USER_ID" :source/card]
+        ["VENUE_ID" :source/card]
+        ["Mock users card - User__ID" :source/card]
+        ["Mock users card - User__NAME" :source/card]
+        ["Mock users card - User__LAST_LOGIN" :source/card]
+        ["Mock users card - User__PASSWORD" :source/card]
+        ["Mock venues card - Venue__ID" :source/joins]
+        ["Mock venues card - Venue__NAME" :source/joins]
+        ["Mock venues card - Venue__CATEGORY_ID" :source/joins]
+        ["Mock venues card - Venue__LATITUDE" :source/joins]
+        ["Mock venues card - Venue__LONGITUDE" :source/joins]
+        ["Mock venues card - Venue__PRICE" :source/joins]
+        ["CATEGORIES__via__CATEGORY_ID__via__Mock venues card_3ff5ce7b" :source/implicitly-joinable]
+        ["CATEGORIES__via__CATEGORY_ID__via__Mock venues card_29b31c85" :source/implicitly-joinable]]))))
+
+(deftest ^:parallel visible-columns-products+reviews-model-test
+  (testing "model products+reviews join"
+    (check-visible-columns
+     (lib/query (lib.tu/metadata-provider-with-mock-cards)
+                ((lib.tu/mock-cards) :model/products-and-reviews))
+     [["ID" :source/card]
+      ["EAN" :source/card]
+      ["TITLE" :source/card]
+      ["CATEGORY" :source/card]
+      ["VENDOR" :source/card]
+      ["PRICE" :source/card]
+      ["RATING" :source/card]
+      ["CREATED_AT" :source/card]
+      ["Reviews__ID" :source/card]
+      ["Reviews__PRODUCT_ID" :source/card]
+      ["Reviews__REVIEWER" :source/card]
+      ["Reviews__RATING" :source/card]
+      ["Reviews__BODY" :source/card]
+      ["Reviews__CREATED_AT" :source/card]])))
+
+(deftest ^:parallel visible-columns-implicit-join-via-explicit-join-test
+  (testing "query with implicitly-joinable columns via an explicit join"
+    (check-visible-columns
+     (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+         (lib/join (lib/join-clause
+                    (meta/table-metadata :venues)
+                    [(lib/=
+                      (meta/field-metadata :checkins :venue-id)
+                      (lib/with-join-alias (meta/field-metadata :venues :id) "Venues"))])))
+     [["ID" :source/table-defaults]
+      ["DATE" :source/table-defaults]
+      ["USER_ID" :source/table-defaults]
+      ["VENUE_ID" :source/table-defaults]
+      ["Venues__ID" :source/joins]
+      ["Venues__NAME" :source/joins]
+      ["Venues__CATEGORY_ID" :source/joins]
+      ["Venues__LATITUDE" :source/joins]
+      ["Venues__LONGITUDE" :source/joins]
+      ["Venues__PRICE" :source/joins]
+      ["USERS__via__USER_ID__ID" :source/implicitly-joinable]
+      ["USERS__via__USER_ID__NAME" :source/implicitly-joinable]
+      ["USERS__via__USER_ID__LAST_LOGIN" :source/implicitly-joinable]
+      ["CATEGORIES__via__CATEGORY_ID__via__Venues__ID" :source/implicitly-joinable]
+      ["CATEGORIES__via__CATEGORY_ID__via__Venues__NAME" :source/implicitly-joinable]])))
+
+(deftest ^:parallel visible-columns-no-join-test
+  (testing "query with no join"
+    (check-visible-columns
+     (lib.tu/venues-query)
+     [["ID" :source/table-defaults]
+      ["NAME" :source/table-defaults]
+      ["CATEGORY_ID" :source/table-defaults]
+      ["LATITUDE" :source/table-defaults]
+      ["LONGITUDE" :source/table-defaults]
+      ["PRICE" :source/table-defaults]
+      ["CATEGORIES__via__CATEGORY_ID__ID" :source/implicitly-joinable]
+      ["CATEGORIES__via__CATEGORY_ID__NAME" :source/implicitly-joinable]])))
+
+(deftest ^:parallel visible-columns-explicit-join-test
+  (testing "query with an explicit join"
+    ;; Note that CATEGORIES.ID and NAME are no longer implicitly joinable, being "shadowed" by the explicit join.
+    (check-visible-columns
+     (lib.tu/query-with-join)
+     [["ID" :source/table-defaults]
+      ["NAME" :source/table-defaults]
+      ["CATEGORY_ID" :source/table-defaults]
+      ["LATITUDE" :source/table-defaults]
+      ["LONGITUDE" :source/table-defaults]
+      ["PRICE" :source/table-defaults]
+      ["Cat__ID" :source/joins]
+      ["Cat__NAME" :source/joins]])))
+
+(deftest ^:parallel visible-columns-mutliple-fks-test
+  (testing "query with multiple FKs to different tables"
+    (check-visible-columns
+     (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+     [["ID" :source/table-defaults]
+      ["DATE" :source/table-defaults]
+      ["USER_ID" :source/table-defaults]
+      ["VENUE_ID" :source/table-defaults]
+      ["USERS__via__USER_ID__ID" :source/implicitly-joinable]
+      ["USERS__via__USER_ID__NAME" :source/implicitly-joinable]
+      ["USERS__via__USER_ID__LAST_LOGIN" :source/implicitly-joinable]
+      ["VENUES__via__VENUE_ID__ID" :source/implicitly-joinable]
+      ["VENUES__via__VENUE_ID__NAME" :source/implicitly-joinable]
+      ["VENUES__via__VENUE_ID__CATEGORY_ID" :source/implicitly-joinable]
+      ["VENUES__via__VENUE_ID__LATITUDE" :source/implicitly-joinable]
+      ["VENUES__via__VENUE_ID__LONGITUDE" :source/implicitly-joinable]
+      ["VENUES__via__VENUE_ID__PRICE" :source/implicitly-joinable]])))
+
+(deftest ^:parallel visible-columns-mutliple-fks-same-table-test
+  (testing "query with multiple FKs to same table"
+    (check-visible-columns
+     (lib/query meta/metadata-provider (meta/table-metadata :gh/issues))
+     [["ID" :source/table-defaults]
+      ["ASSIGNEE_ID" :source/table-defaults]
+      ["REPORTER_ID" :source/table-defaults]
+      ["IS_OPEN" :source/table-defaults]
+      ["REPORTED_AT" :source/table-defaults]
+      ["CLOSED_AT" :source/table-defaults]
+      ["GH_USERS__via__ASSIGNEE_ID__ID" :source/implicitly-joinable]
+      ["GH_USERS__via__ASSIGNEE_ID__BIRTHDAY" :source/implicitly-joinable]
+      ["GH_USERS__via__ASSIGNEE_ID__EMAIL" :source/implicitly-joinable]
+      ["GH_USERS__via__REPORTER_ID__ID" :source/implicitly-joinable]
+      ["GH_USERS__via__REPORTER_ID__BIRTHDAY" :source/implicitly-joinable]
+      ["GH_USERS__via__REPORTER_ID__EMAIL" :source/implicitly-joinable]])))
+
+(deftest ^:parallel visible-columns-fk-to-self-test
+  (testing "query with FK to self"
+    ;; Implicit self-joins currently not supported. If you are implementing support for implicit self-joins, see also
+    ;; the commented-out implicit-self-join-test, above.
+    (check-visible-columns
+     (lib/query meta/metadata-provider (meta/table-metadata :gh/comments))
+     [["ID" :source/table-defaults]
+      ["AUTHOR_ID" :source/table-defaults]
+      ["POSTED_AT" :source/table-defaults]
+      ["BODY_MARKDOWN" :source/table-defaults]
+      ["REPLY_TO" :source/table-defaults]
+      ["GH_USERS__via__AUTHOR_ID__ID" :source/implicitly-joinable]
+      ["GH_USERS__via__AUTHOR_ID__BIRTHDAY" :source/implicitly-joinable]
+      ["GH_USERS__via__AUTHOR_ID__EMAIL" :source/implicitly-joinable]])))

@@ -860,7 +860,7 @@ describe("scenarios > search", () => {
 
     describe("verified filter", () => {
       beforeEach(() => {
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
         H.createModerationReview({
           status: "verified",
           moderated_item_type: "card",

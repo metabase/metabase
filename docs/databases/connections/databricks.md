@@ -33,6 +33,7 @@ There are two ways to authenticate with Databricks. You can use a personal acces
 The Databricks driver supports both options. Use the toggle to select the authentication method you want to use.
 
 #### Personal access token authentication
+
 See [Personal Access Token (PAT)](https://docs.databricks.com/en/dev-tools/auth/pat.html).
 
 #### Authenticate access with a service principal using OAuth (OAuth M2M)
@@ -99,10 +100,6 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 ## Model features
 
 There aren't (yet) any model features available for Databricks.
-
-## Database routing
-
-See [Database routing](../../permissions/database-routing.md).
 
 ## Danger zone
 

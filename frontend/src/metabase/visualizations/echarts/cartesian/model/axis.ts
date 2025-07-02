@@ -37,14 +37,14 @@ import type {
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
-  computeTimeseriesDataInverval,
+  computeTimeseriesDataInterval,
   getTimeSeriesIntervalDuration,
   getTimezoneOrOffset,
   minTimeseriesUnit,
   normalizeDate,
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
-import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
+import { computeNumericDataInterval } from "metabase/visualizations/lib/numeric";
 import type {
   ColumnSettings,
   ComputedVisualizationSettings,
@@ -422,6 +422,7 @@ const getYAxisFormatter = (
         formatValue(value, {
           column,
           number_style: "percent",
+          scale: formattingOptions?.scale,
         }),
       );
   }
@@ -547,6 +548,14 @@ export function getYAxisModel(
     stackType,
     formattingOptions,
   );
+  const formatGoal = getYAxisFormatter(column, settings, stackType, {
+    ...formattingOptions,
+    compact: false,
+    scale:
+      stackType === "normalized"
+        ? 1 / 100 // Users enter "50" for "50%" but visualizations use decimals (e.g. 0.5 = 50%) so we need to convert "50" -> 0.5 for percentage-based goals to be displayed correctly
+        : formattingOptions?.scale,
+  });
 
   return {
     seriesKeys,
@@ -554,6 +563,7 @@ export function getYAxisModel(
     column,
     label,
     formatter,
+    formatGoal,
     isNormalized: stackType === "normalized",
     splitNumber:
       settings["graph.y_axis.split_number"] > 0
@@ -752,7 +762,7 @@ function getNumericXAxisModel(
 
   const xValues = dataset.map((datum) => datum[X_AXIS_DATA_KEY]);
   const interval =
-    column.binning_info?.bin_width ?? computeNumericDataInverval(xValues);
+    column.binning_info?.bin_width ?? computeNumericDataInterval(xValues);
 
   const formatter = (value: RowValue) =>
     String(
@@ -845,7 +855,7 @@ export function getXAxisModel(
 
   const histogramInterval = isHistogram
     ? (column.binning_info?.bin_width ??
-      computeNumericDataInverval(
+      computeNumericDataInterval(
         dataset.map((datum) => datum[X_AXIS_DATA_KEY]),
       ))
     : undefined;
@@ -923,7 +933,7 @@ function getTimeSeriesXAxisInfo(
     rawSeries,
     showWarning,
   );
-  const interval = computeTimeseriesDataInverval(xValues, unit) ?? DAY_INTERVAL;
+  const interval = computeTimeseriesDataInterval(xValues, unit) ?? DAY_INTERVAL;
 
   const range = getXAxisDateRangeFromSortedXAxisValues(xValues);
 

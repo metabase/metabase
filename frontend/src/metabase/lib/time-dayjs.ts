@@ -1,5 +1,6 @@
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
+import { t } from "ttag";
 
 import type { DatetimeUnit } from "metabase-types/api/query";
 
@@ -83,4 +84,21 @@ export function parseTimestamp(
     result = dayjs.utc(value);
   }
   return isLocal ? result.local() : result;
+}
+
+export function getRelativeTime(timestamp: string) {
+  return dayjs(timestamp).fromNow();
+}
+
+export function formatFrame(frame: "first" | "last" | "mid") {
+  switch (frame) {
+    case "first":
+      return t`first`;
+    case "last":
+      return t`last`;
+    case "mid":
+      return t`15th (Midpoint)`;
+    default:
+      return frame;
+  }
 }

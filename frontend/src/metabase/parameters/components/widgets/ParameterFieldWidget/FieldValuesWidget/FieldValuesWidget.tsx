@@ -17,10 +17,12 @@ import {
   useGetRemappedDashboardParameterValueQuery,
   useGetRemappedParameterValueQuery,
 } from "metabase/api";
-import ExplicitSize from "metabase/components/ExplicitSize";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import TokenField, { parseStringValue } from "metabase/components/TokenField";
-import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
+import ExplicitSize from "metabase/common/components/ExplicitSize";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import TokenField, {
+  parseStringValue,
+} from "metabase/common/components/TokenField";
+import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { parseNumber } from "metabase/lib/number";
@@ -40,7 +42,7 @@ import {
   MultiAutocompleteValue,
 } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type Field from "metabase-lib/v1/metadata/Field";
+import Field from "metabase-lib/v1/metadata/Field";
 import { getSourceType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -54,7 +56,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import ValueComponent from "../Value";
+import { Value as ValueComponent } from "../Value";
 
 import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 import { ListField } from "./ListField";
@@ -74,7 +76,6 @@ import {
   isNumeric,
   isSearchable,
   shouldList,
-  showRemapping,
 } from "./utils";
 
 const MAX_SEARCH_RESULTS = 100;
@@ -273,9 +274,8 @@ export const FieldValuesWidgetInner = forwardRef<
 
   // ? this may rely on field mutations
   const updateRemappings = (options: FieldValue[]) => {
-    if (showRemapping(fields)) {
-      const [field] = fields;
-      dispatch(addRemappings(field.id, options));
+    if (Field.remappedField(fields) != null) {
+      fields.forEach((field) => dispatch(addRemappings(field.id, options)));
     }
   };
 
@@ -698,7 +698,7 @@ function renderValue({
       cardId={cardId}
       dashboardId={dashboardId}
       maximumFractionDigits={20}
-      remap={displayValue || showRemapping(fields)}
+      remap={displayValue || Field.remappedField(fields) != null}
       displayValue={displayValue}
       {...formatOptions}
       autoLoad={autoLoad}
@@ -722,9 +722,8 @@ function RemappedValue({
   dashboardId,
   cardId,
 }: RemappedValueProps) {
-  const field = fields[0];
   const isRemapped =
-    (showRemapping(fields) && field?.remappedField() != null) ||
+    Field.remappedField(fields) != null ||
     getSourceType(parameter) === "static-list";
 
   const { data: dashboardData } = useGetRemappedDashboardParameterValueQuery(
@@ -782,8 +781,7 @@ type RemappedOptionProps = {
 };
 
 function RemappedOption({ option, fields }: RemappedOptionProps) {
-  const field = fields[0];
-  const isRemapped = showRemapping(fields) && field?.remappedField() != null;
+  const isRemapped = Field.remappedField(fields) != null;
   if (!isRemapped) {
     return option.label;
   }

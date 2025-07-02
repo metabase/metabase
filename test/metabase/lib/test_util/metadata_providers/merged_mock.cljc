@@ -32,7 +32,7 @@
   (for [field field-skeletons]
     (u/assoc-default field :ident (u/generate-nano-id))))
 
-(mu/defn- merged-metadata-map :- lib.tu.metadata-providers.mock/MockMetadata
+(mu/defn- merged-metadata-map :- ::lib.tu.metadata-providers.mock/mock-metadata
   [parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
    properties               :- MergeableProperties]
   (into {}

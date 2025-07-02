@@ -4,6 +4,6 @@ import { defineMetabaseAuthConfig } from "@metabase/embedding-sdk-react";
 // Pass this configuration to MetabaseProvider.
 const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "http://localhost:3000",
-  authMethod: "saml",
+  preferredAuthMethod: "saml",
 });
 // [<endsnippet example>]

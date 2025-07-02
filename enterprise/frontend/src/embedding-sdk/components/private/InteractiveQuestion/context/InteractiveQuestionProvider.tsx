@@ -40,6 +40,7 @@ export const InteractiveQuestionProvider = ({
   children,
   onBeforeSave,
   onSave,
+  onRun,
   isSaveEnabled = true,
   entityTypes,
   targetCollection,
@@ -121,7 +122,7 @@ export const InteractiveQuestionProvider = ({
 
   const questionContext: InteractiveQuestionContextType = {
     originalId: questionId,
-    isQuestionLoading: isQuestionLoading,
+    isQuestionLoading,
     isQueryRunning,
     resetQuestion: loadAndQueryQuestion,
     onReset: loadAndQueryQuestion,
@@ -141,6 +142,7 @@ export const InteractiveQuestionProvider = ({
     targetCollection,
     withDownloads,
     variant,
+    onRun,
   };
 
   useEffect(() => {

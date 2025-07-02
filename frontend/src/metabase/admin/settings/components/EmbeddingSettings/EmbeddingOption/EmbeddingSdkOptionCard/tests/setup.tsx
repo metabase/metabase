@@ -56,7 +56,6 @@ export async function setup({
     admin: createMockAdminState({
       settings: {
         settings: settingDefinitions,
-        warnings: {},
       },
     }),
   });

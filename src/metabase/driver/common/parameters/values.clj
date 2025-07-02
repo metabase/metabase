@@ -8,10 +8,12 @@
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -88,7 +90,7 @@
   compatibility."
   [tag :- mbql.s/TemplateTag]
   (let [target-type (case (:type tag)
-                      :dimension :dimension
+                      :dimension     :dimension
                       :variable)]
     #{[target-type [:template-tag (:name tag)]]
       [target-type [:template-tag {:id (:id tag)}]]}))
@@ -246,6 +248,36 @@
     (params/map->ReferencedQuerySnippet
      {:snippet-id (:id snippet)
       :content    (:content snippet)})))
+
+(defmethod parse-tag :temporal-unit
+  [{:keys [required] tag-name :name :as tag} params]
+  (let [matching-param       (when-let [matching-params (not-empty (tag-params tag params))]
+                               (when (> (count matching-params) 1)
+                                 (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
+                                                 {:type
+                                                  qp.error-type/invalid-parameter
+                                                  :template-tag        tag
+                                                  :matching-parameters params})))
+                               (first matching-params))
+        param-value          (:value matching-param)
+        nil-value?           (and matching-param
+                                  (nil? param-value))
+        valid-temporal-units (into #{}
+                                   (map name)
+                                   (lib/available-temporal-units))]
+    (when-not (or (nil? param-value) (valid-temporal-units param-value))
+      (throw (ex-info (tru "Error: invalid value specified for temporal-unit parameter.")
+                      {:value param-value
+                       :expected valid-temporal-units})))
+    (params/map->TemporalUnit
+     {:name tag-name
+      :value (or (:value matching-param)
+                 (when (and nil-value? (not required))
+                   params/no-value)
+                 (:default tag)
+                 (if required
+                   (throw (missing-required-param-exception (:display-name tag)))
+                   params/no-value))})))
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 

@@ -1,4 +1,20 @@
+import {
+  connectToInstanceAuthSso,
+  jwtDefaultRefreshTokenFunction,
+  openSamlLoginPopup,
+  validateSessionToken,
+} from "embedding/auth-common";
+import { INVALID_AUTH_METHOD, MetabaseError } from "embedding-sdk/errors";
+
+import {
+  ALLOWED_EMBED_SETTING_KEYS,
+  type AllowedEmbedSettingKey,
+  DISABLE_UPDATE_FOR_KEYS,
+} from "./constants";
 import type {
+  SdkIframeEmbedEvent,
+  SdkIframeEmbedEventHandler,
+  SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
   SdkIframeEmbedTagSettings,
@@ -6,26 +22,17 @@ import type {
 
 const EMBEDDING_ROUTE = "embed/sdk/v1";
 
-type EmbedSettingKey = keyof SdkIframeEmbedSettings;
-
-const ALLOWED_EMBED_SETTING_KEYS = [
-  "apiKey",
-  "instanceUrl",
-  "dashboardId",
-  "questionId",
-  "template",
-  "theme",
-  "locale",
-] as const satisfies EmbedSettingKey[];
-
-type AllowedEmbedSettingKey = (typeof ALLOWED_EMBED_SETTING_KEYS)[number];
-
 class MetabaseEmbed {
-  static readonly VERSION = "1.0.0";
+  static readonly VERSION = "1.1.0";
 
   private _settings: SdkIframeEmbedTagSettings;
   private _isEmbedReady: boolean = false;
   private iframe: HTMLIFrameElement | null = null;
+
+  private _eventHandlers: Map<
+    SdkIframeEmbedEvent["type"],
+    Set<SdkIframeEmbedEventHandler>
+  > = new Map();
 
   constructor(settings: SdkIframeEmbedTagSettings) {
     this._settings = settings;
@@ -38,13 +45,15 @@ class MetabaseEmbed {
    * Merge these settings with the current settings.
    */
   public updateSettings(settings: Partial<SdkIframeEmbedSettings>) {
-    // The value of instanceUrl must be the same as the initial value used to create an embed.
+    // The value of these fields must be the same as the initial value used to create an embed.
     // This allows users to pass a complete settings object that includes all their settings.
-    if (
-      settings.instanceUrl &&
-      settings.instanceUrl !== this._settings.instanceUrl
-    ) {
-      raiseError("instanceUrl cannot be updated after the embed is created");
+    for (const field of DISABLE_UPDATE_FOR_KEYS) {
+      if (
+        settings[field] !== undefined &&
+        settings[field] !== this._settings[field]
+      ) {
+        raiseError(`${field} cannot be updated after the embed is created`);
+      }
     }
 
     if (!this._isEmbedReady) {
@@ -56,11 +65,53 @@ class MetabaseEmbed {
   }
 
   public destroy() {
+    window.removeEventListener("message", this._handleMessage);
+    this._isEmbedReady = false;
+    this._eventHandlers.clear();
+
     if (this.iframe) {
-      window.removeEventListener("message", this._handleMessage);
       this.iframe.remove();
-      this._isEmbedReady = false;
       this.iframe = null;
+    }
+  }
+
+  public addEventListener(
+    eventType: SdkIframeEmbedEvent["type"],
+    handler: SdkIframeEmbedEventHandler,
+  ) {
+    if (!this._eventHandlers.has(eventType)) {
+      this._eventHandlers.set(eventType, new Set());
+    }
+
+    // For the ready event, invoke the handler immediately if the embed is already ready.
+    if (eventType === "ready" && this._isEmbedReady) {
+      handler();
+      return;
+    }
+
+    this._eventHandlers.get(eventType)!.add(handler);
+  }
+
+  public removeEventListener(
+    eventType: SdkIframeEmbedEvent["type"],
+    handler: SdkIframeEmbedEventHandler,
+  ) {
+    const handlers = this._eventHandlers.get(eventType);
+
+    if (handlers) {
+      handlers.delete(handler);
+
+      if (handlers.size === 0) {
+        this._eventHandlers.delete(eventType);
+      }
+    }
+  }
+
+  private _emitEvent(event: SdkIframeEmbedEvent) {
+    const handlers = this._eventHandlers.get(event.type);
+
+    if (handlers) {
+      handlers.forEach((handler) => handler());
     }
   }
 
@@ -117,8 +168,8 @@ class MetabaseEmbed {
   }
 
   private _validateEmbedSettings(settings: SdkIframeEmbedTagSettings) {
-    if (!settings.apiKey || !settings.instanceUrl) {
-      raiseError("API key and instance URL must be provided");
+    if (!settings.instanceUrl) {
+      raiseError("instanceUrl must be provided");
     }
 
     if (!settings.dashboardId && !settings.questionId && !settings.template) {
@@ -152,12 +203,29 @@ class MetabaseEmbed {
       );
     }
 
+    // Ensure auth methods are mutually exclusive
+    const authMethods = [
+      settings.apiKey,
+      settings.useExistingUserSession,
+      settings.preferredAuthMethod,
+    ].filter(
+      (method) => method !== undefined && method !== null && method !== false,
+    );
+
+    if (authMethods.length > 1) {
+      raiseError(
+        "apiKey, useExistingUserSession, and preferredAuthMethod are mutually exclusive, only one can be specified.",
+      );
+    }
+
     if (!settings.target) {
       raiseError("target must be provided");
     }
   }
 
-  private _handleMessage = (event: MessageEvent<SdkIframeEmbedTagMessage>) => {
+  private _handleMessage = async (
+    event: MessageEvent<SdkIframeEmbedTagMessage>,
+  ) => {
     if (!event.data) {
       return;
     }
@@ -169,27 +237,96 @@ class MetabaseEmbed {
 
       this._isEmbedReady = true;
       this._setEmbedSettings(this._settings);
+      this._emitEvent({ type: "ready" });
+    }
+
+    if (event.data.type === "metabase.embed.requestSessionToken") {
+      await this._authenticate();
     }
   };
 
-  private _sendMessage(type: string, data: unknown) {
+  private _sendMessage<Message extends SdkIframeEmbedMessage>(
+    type: Message["type"],
+    data: Message["data"],
+  ) {
     if (this.iframe?.contentWindow) {
       this.iframe.contentWindow.postMessage({ type, data }, "*");
     }
   }
-}
 
-class MetabaseEmbedError extends Error {
-  constructor(message: string) {
-    super(message);
+  private async _authenticate() {
+    // If we are using an API key, we don't need to authenticate via SSO.
+    if (this._settings.apiKey) {
+      return;
+    }
 
-    // eslint-disable-next-line no-literal-metabase-strings -- used in error messages
-    this.name = "MetabaseEmbedError";
+    try {
+      const { method, sessionToken } = await this._getMetabaseSessionToken();
+      validateSessionToken(sessionToken);
+
+      if (sessionToken) {
+        this._sendMessage("metabase.embed.submitSessionToken", {
+          authMethod: method,
+          sessionToken,
+        });
+      }
+    } catch (error) {
+      // if the error is an authentication error, show it to the iframe too
+      if (error instanceof MetabaseError) {
+        this._sendMessage("metabase.embed.reportAuthenticationError", {
+          error,
+        });
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * @returns {{ method: "saml" | "jwt", sessionToken: {jwt: string} }}
+   */
+  private async _getMetabaseSessionToken() {
+    const { instanceUrl, preferredAuthMethod } = this._settings;
+
+    const urlResponseJson = await connectToInstanceAuthSso(instanceUrl, {
+      headers: this._getAuthRequestHeader(),
+      preferredAuthMethod,
+    });
+
+    const { method, url: responseUrl, hash } = urlResponseJson || {};
+
+    if (method === "saml") {
+      const sessionToken = await openSamlLoginPopup(responseUrl);
+
+      return { method, sessionToken };
+    }
+
+    if (method === "jwt") {
+      const sessionToken = await jwtDefaultRefreshTokenFunction(
+        responseUrl,
+        instanceUrl,
+        this._getAuthRequestHeader(hash),
+      );
+
+      return { method, sessionToken };
+    }
+
+    throw INVALID_AUTH_METHOD({ method });
+  }
+
+  private _getAuthRequestHeader(hash?: string) {
+    return {
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      "X-Metabase-Client": "embedding-sdk-react",
+
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
+    };
   }
 }
 
 const raiseError = (message: string) => {
-  throw new MetabaseEmbedError(message);
+  throw new MetabaseError("EMBED_ERROR", message);
 };
 
 const warn = (...messages: unknown[]) =>

@@ -1,9 +1,9 @@
 import { type Route, type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 
+import { useConfirmRouteLeaveModal } from "metabase/common/hooks/use-confirm-route-leave-modal";
 import { updateDashboardAndCards } from "metabase/dashboard/actions/save";
 import { getIsDirty, getIsEditing } from "metabase/dashboard/selectors";
-import { useConfirmRouteLeaveModal } from "metabase/hooks/use-confirm-route-leave-modal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";

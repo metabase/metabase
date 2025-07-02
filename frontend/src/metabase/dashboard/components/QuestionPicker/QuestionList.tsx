@@ -7,16 +7,16 @@ import {
   useListCollectionItemsQuery,
   useSearchQuery,
 } from "metabase/api";
-import EmptyState from "metabase/components/EmptyState";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { PaginationControls } from "metabase/components/PaginationControls";
-import SelectList from "metabase/components/SelectList";
-import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
+import EmptyState from "metabase/common/components/EmptyState";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
+import SelectList from "metabase/common/components/SelectList";
+import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import { addCardWithVisualization } from "metabase/dashboard/actions";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import Search from "metabase/entities/search";
 import { isEmbeddingSdk } from "metabase/env";
-import { usePagination } from "metabase/hooks/use-pagination";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -167,7 +167,7 @@ export function QuestionList({
                   setVisualizerModalCardId(Number(item.id));
                 }}
               >
-                <Icon name="add_data" />
+                <Icon name="lineandbar" />
               </ActionIcon>
             </Tooltip>
           </Flex>

@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
-      e2e_all: ${{ steps.changes.outputs.e2e_all }}
+      e2e_embedding_sdk: ${{ steps.changes.outputs.e2e_embedding_sdk }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -62,7 +62,7 @@ jobs:
     needs: [files-changed, get-build-requirements]
     if: |
       !cancelled() &&
-      needs.files-changed.outputs.e2e_all == 'true'
+      needs.files-changed.outputs.e2e_embedding_sdk == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     env:
@@ -109,8 +109,10 @@ jobs:
       DISPLAY: ""
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
-      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.MB_STARTER_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.MB_PRO_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.MB_PRO_SELF_HOSTED_TOKEN }}
       CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
       CYPRESS_IS_EMBEDDING_SDK: true
       COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
@@ -119,12 +121,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Prepare Docker containers
-        uses: ./.github/actions/e2e-prepare-containers
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4

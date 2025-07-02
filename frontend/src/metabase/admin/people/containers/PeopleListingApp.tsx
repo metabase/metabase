@@ -1,8 +1,12 @@
 import { t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery } from "metabase/api";
-import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -79,24 +83,31 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
     isAdmin && status === USER_STATUS.active ? t`Invite someone` : "";
 
   return (
-    <LoadingAndErrorWrapper error={error} loading={isLoading || !currentUser}>
-      <AdminPaneLayout
-        headingContent={headingContent}
-        buttonText={buttonText}
-        buttonLink={Urls.newUser()}
-      >
-        {currentUser && (
-          <PeopleList
-            groups={groups}
-            isAdmin={isAdmin}
-            currentUser={currentUser}
-            query={query}
-            onNextPage={handleNextPage}
-            onPreviousPage={handlePreviousPage}
-          />
-        )}
-        {children}
-      </AdminPaneLayout>
-    </LoadingAndErrorWrapper>
+    <SettingsPageWrapper title={t`People`}>
+      <SettingsSection>
+        <LoadingAndErrorWrapper
+          error={error}
+          loading={isLoading || !currentUser}
+        >
+          <AdminPaneLayout
+            headingContent={headingContent}
+            buttonText={buttonText}
+            buttonLink={Urls.newUser()}
+          >
+            {currentUser && (
+              <PeopleList
+                groups={groups}
+                isAdmin={isAdmin}
+                currentUser={currentUser}
+                query={query}
+                onNextPage={handleNextPage}
+                onPreviousPage={handlePreviousPage}
+              />
+            )}
+            {children}
+          </AdminPaneLayout>
+        </LoadingAndErrorWrapper>
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 }

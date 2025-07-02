@@ -600,7 +600,7 @@
                   (m/find-first #(= (:id %) (meta/id :categories :name))
                                 (lib/breakoutable-columns query)))))))))
 
-(defn- legacy-query-with-broken-breakout []
+(defn legacy-query-with-broken-breakout []
   (-> (lib.tu.mocks-31368/query-with-legacy-source-card true)
       ;; this is a bad field reference, it does not contain a `:join-alias`. For some reason the FE is generating
       ;; these in drill thrus (in MLv1). We need to figure out how to make stuff work anyway even tho this is
@@ -615,7 +615,7 @@
   (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
     (let [query (legacy-query-with-broken-breakout)]
       (is (=? [{:name              "CATEGORY"
-                :display-name      "Category"
+                :display-name      "Products → Category" ; display-name is always LONG when it comes from a previous stage.
                 :long-display-name "Products → Category"
                 :effective-type    :type/Text}]
               (map (partial lib/display-info query)
@@ -762,3 +762,44 @@
       (is (=? {:unit :month}
               (->> (lib/breakout-column query breakout)
                    (lib/temporal-bucket)))))))
+
+(deftest ^:parallel breakoutable-columns-do-not-suggest-remaps-test
+  (testing "Do not return column remaps in breakoutable-columns"
+    (let [mp    (lib.tu/remap-metadata-provider
+                 meta/metadata-provider
+                 (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query mp (meta/table-metadata :orders))]
+      (is (= [["Orders"   "ID"]
+              ["Orders"   "User ID"]
+              ["Orders"   "Product ID"]
+              ["Orders"   "Subtotal"]
+              ["Orders"   "Tax"]
+              ["Orders"   "Total"]
+              ["Orders"   "Discount"]
+              ["Orders"   "Created At"]
+              ["Orders"   "Quantity"]
+              ["People"   "User → ID"]
+              ["People"   "User → Address"]
+              ["People"   "User → Email"]
+              ["People"   "User → Password"]
+              ["People"   "User → Name"]
+              ["People"   "User → City"]
+              ["People"   "User → Longitude"]
+              ["People"   "User → State"]
+              ["People"   "User → Source"]
+              ["People"   "User → Birth Date"]
+              ["People"   "User → Zip"]
+              ["People"   "User → Latitude"]
+              ["People"   "User → Created At"]
+              ["Products" "Product → ID"]
+              ["Products" "Product → Ean"]
+              ["Products" "Product → Title"]
+              ["Products" "Product → Category"]
+              ["Products" "Product → Vendor"]
+              ["Products" "Product → Price"]
+              ["Products" "Product → Rating"]
+              ["Products" "Product → Created At"]]
+             (map (comp
+                   (juxt #(get-in % [:table :long-display-name]) :long-display-name)
+                   #(lib/display-info query %))
+                  (lib/breakoutable-columns query)))))))

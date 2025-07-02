@@ -1,18 +1,25 @@
 import { Button, MantineProvider } from "@mantine/core";
 import {
   CreateDashboardModal,
+  InteractiveDashboard,
   InteractiveQuestion,
   MetabaseProvider,
   StaticQuestion,
   defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
 
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { modal, updateSetting } from "e2e/support/helpers";
+import * as H from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { DEFAULT_SDK_AUTH_PROVIDER_CONFIG } from "e2e/support/helpers/embedding-sdk-component-testing";
+import {
+  DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+  mountSdkContent,
+} from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding-sdk > styles", () => {
   beforeEach(() => {
@@ -66,7 +73,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
     it("should use the brand color from the app settings as fallback if they're present", () => {
       cy.signInAsAdmin();
-      updateSetting(
+      H.updateSetting(
         // @ts-expect-error -- that function doesn't understand enterprise settings _yet_
         "application-colors",
         {
@@ -89,7 +96,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
     it("but should prioritize the theme colors over the app settings", () => {
       cy.signInAsAdmin();
-      updateSetting(
+      H.updateSetting(
         // @ts-expect-error -- that function doesn't understand enterprise settings _yet_
         "application-colors",
         {
@@ -225,7 +232,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
     it("should fallback to the font from the instance if no fontFamily is set on the theme", () => {
       cy.signInAsAdmin();
-      updateSetting("application-font", "Roboto Mono");
+      H.updateSetting("application-font", "Roboto Mono");
       cy.signOut();
 
       cy.intercept("GET", "/api/user/current").as("getUser");
@@ -263,7 +270,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         Cypress.config().baseUrl +
         "/app/fonts/Open_Sans/OpenSans-Regular.woff2";
       // setting `application-font-files` will make getFont return "Custom"
-      updateSetting("application-font-files", [
+      H.updateSetting("application-font-files", [
         {
           src: fontUrl,
           fontWeight: 400,
@@ -317,7 +324,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         </MetabaseProvider>,
       );
 
-      modal()
+      H.modal()
         .findByText("New dashboard")
         .should("exist")
         .and("have.css", "font-family", "Lato");
@@ -352,6 +359,118 @@ describe("scenarios > embedding-sdk > styles", () => {
         .and("have.css", "font-family", "Lato");
 
       // TODO: good place for a visual regression test
+    });
+
+    describe("tooltips/overlays styles", () => {
+      beforeEach(() => {
+        signInAsAdminAndEnableEmbeddingSdk();
+
+        H.createQuestion({
+          name: "Tooltip test",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ],
+          },
+          display: "bar",
+        })
+          .then(({ body: { id: ordersQuestionId } }) =>
+            H.createDashboard({
+              dashcards: [
+                {
+                  id: 1,
+                  size_x: 10,
+                  size_y: 20,
+                  row: 0,
+                  col: 0,
+                  card_id: ordersQuestionId,
+                },
+              ],
+            }),
+          )
+          .then((dashboard) => {
+            cy.wrap(dashboard.body.id).as("dashboardId");
+          });
+
+        cy.signOut();
+
+        cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+        cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+          "dashcardQuery",
+        );
+      });
+
+      it("should render Mantine tooltip with our styles", () => {
+        cy.get("@dashboardId").then((dashboardId) => {
+          mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          });
+        });
+
+        getSdkRoot().findByText("Tooltip test").click();
+        getSdkRoot().findByLabelText("Back to Test Dashboard").realHover();
+
+        H.tooltip()
+          .findByText("Back to Test Dashboard")
+          .should("have.css", "font-family", "Impact");
+      });
+
+      it("should render echarts tooltip with our styles", () => {
+        cy.get("@dashboardId").then((dashboardId) => {
+          mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          });
+        });
+
+        H.getDashboardCard(0).within(() => {
+          H.chartPathWithFillColor("#509EE3").eq(0).realHover();
+        });
+
+        cy.findAllByTestId("echarts-tooltip")
+          .eq(0)
+          .should("exist")
+          .get(".echarts-tooltip-container")
+          .should("have.css", "font-family", "Impact");
+      });
+
+      it("should render DragOverlay of SortableList with our styles", () => {
+        mountSdkContent(
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+          {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          },
+        );
+
+        H.openVizSettingsSidebar();
+
+        H.moveDnDKitListElement("draggable-item-", {
+          startIndex: 0,
+          dropIndex: 1,
+          onBeforeDragEnd: () => {
+            cy.get(".drag-overlay").within(() => {
+              cy.findByTestId("draggable-item-ID").should(
+                "have.css",
+                "font-family",
+                "Impact",
+              );
+            });
+          },
+        });
+      });
     });
   });
 

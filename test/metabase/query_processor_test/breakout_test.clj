@@ -225,8 +225,11 @@
                        :breakout    [[:field %latitude {:binning {:strategy :default}}]]})
                     qp.test-util/cols
                     first
-                    (dissoc :base_type :effective_type)))))
+                    (dissoc :base_type :effective_type))))))))
 
+(deftest ^:parallel binning-info-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning)
+    (testing "Validate binning info is returned with the binning-strategy"
       (testing "binning-strategy = num-bins: 5"
         (is (=? (assoc (dissoc (qp.test-util/breakout-col :venues :latitude) :base_type :effective_type)
                        :binning_info {:min_value 7.5, :max_value 45.0, :num_bins 5, :bin_width 7.5, :binning_strategy :num-bins}

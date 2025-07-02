@@ -1,9 +1,11 @@
+# dependencies
+node_modules
+
 # Compiled output
 /dist
 
-# Node
-/node_modules
-yarn-error.log
-
 # Miscellaneous
 .angular
+
+# debug
+npm-debug.log*

@@ -11,3 +11,13 @@ export function clearBrowserCache() {
     }),
   );
 }
+
+export function grantClipboardPermissions() {
+  Cypress.automation("remote:debugger:protocol", {
+    command: "Browser.grantPermissions",
+    params: {
+      permissions: ["clipboardReadWrite", "clipboardSanitizedWrite"],
+      origin: window.location.origin,
+    },
+  });
+}

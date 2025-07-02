@@ -4,9 +4,9 @@ import styled from "@emotion/styled";
 import {
   TableColumn,
   hideResponsively,
-} from "metabase/components/ItemsTable/BaseItemsTable.styled";
-import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
-import Link from "metabase/core/components/Link";
+} from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
+import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
+import Link from "metabase/common/components/Link";
 import { breakpoints } from "metabase/ui/theme";
 
 export const TableRow = styled.tr<{ skeleton?: boolean }>`
@@ -27,7 +27,6 @@ export const Cell = styled.td<ResponsiveProps>`
     padding: 0.25em 0.5rem 0.25em 0.5rem;
   }
 
-  &:focus-within,
   &:focus {
     outline: 2px solid var(--mb-color-focus);
 

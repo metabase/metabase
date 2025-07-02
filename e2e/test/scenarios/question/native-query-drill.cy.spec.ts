@@ -434,7 +434,7 @@ describe("scenarios > question > native query drill", () => {
         applyBrushFilter({ left: 100, right: 300 }),
       );
       cy.wait("@dataset");
-      H.assertQueryBuilderRowCount(5);
+      H.assertQueryBuilderRowCount(6);
     });
   });
 });

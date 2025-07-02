@@ -1281,55 +1281,55 @@ describe("issue 53556 - nested question based on native model with remapped valu
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["January 2024", "140", "18"],
-        ["February 2024", "140", "17"],
+        ["January 2024", "140  –  160", "18"],
+        ["February 2024", "140  –  160", "17"],
       ],
     });
 
     cy.log("Sort by Total in ascending order");
-    H.tableHeaderClick("Total");
+    H.tableHeaderClick("Total: 8 bins");
     H.popover()
       .findAllByTestId("click-actions-sort-control-sort.ascending")
       .click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["December 2023", "-60", "1"],
-        ["September 2022", "0", "2"],
+        ["December 2023", "-60  –  -40", "1"],
+        ["September 2022", "0  –  20", "2"],
       ],
     });
 
     cy.log("Sort by Created At in descending order");
-    H.tableHeaderClick("Created At");
+    H.tableHeaderClick("Created At: Month");
     H.popover()
       .findAllByTestId("click-actions-sort-control-sort.descending")
       .click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["April 2026", "20", "27"],
-        ["April 2026", "40", "57"],
+        ["April 2026", "20  –  40", "27"],
+        ["April 2026", "40  –  60", "57"],
       ],
     });
 
     cy.log("Sort by Created At in ascending order");
-    H.tableHeaderClick("Created At");
+    H.tableHeaderClick("Created At: Month");
     H.popover()
       .findAllByTestId("click-actions-sort-control-sort.ascending")
       .click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["April 2022", "40", "1"],
-        ["May 2022", "20", "1"],
+        ["April 2022", "40  –  60", "1"],
+        ["May 2022", "20  –  40", "1"],
       ],
     });
   });

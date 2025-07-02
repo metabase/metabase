@@ -184,13 +184,18 @@ export const getVisualizerRawSeries = createSelector(
     const dataSourceNameMap = Object.fromEntries(
       dataSources.map((dataSource) => [dataSource.id, dataSource.name]),
     );
-    return isMultiseriesCartesianChart
+    const series = isMultiseriesCartesianChart
       ? splitVisualizerSeries(
           flatSeries,
           columnValuesMapping,
           dataSourceNameMap,
         )
       : flatSeries;
+
+    return series.map((s) => ({
+      ...s,
+      columnValuesMapping,
+    }));
   },
 );
 

@@ -384,12 +384,12 @@
                                                                  qp.preprocess/query->expected-cols
                                                                  (map :name))
                     cid2 (str cid "_2")
-                    col-data-fn   (juxt            :id       :name     :source_alias)
-                    top-card-cols [[(mt/id :people :id)      cid       nil]
-                                   [(mt/id :orders :user_id) cuser-id  "ord1"]
-                                   [nil                      ccount    "ord1"]
-                                   [(mt/id :orders :user_id) cuser-id2 "ord2"]
-                                   [nil                      ccount2   "ord2"]]]
+                    col-data-fn   (juxt            :id       :name)
+                    top-card-cols [[(mt/id :people :id)      cid]
+                                   [(mt/id :orders :user_id) cuser-id]
+                                   [nil                      ccount]
+                                   [(mt/id :orders :user_id) cuser-id2]
+                                   [nil                      ccount2]]]
                 (testing "sanity"
                   (is (= top-card-cols
                          (->> top-card-query
@@ -401,7 +401,7 @@
                   (testing "suggested join condition references the FK by name"
                     (let [query (lib/query metadata-provider (lib.metadata/table metadata-provider (mt/id :people)))
                           card-meta (lib.metadata/card metadata-provider 3)]
-                      (is (=? [[:= {} [:field {} (mt/id :people :id)] [:field {} cuser-id]]]
+                      (is (=? [[:= {} [:field {} (mt/id :people :id)] [:field {} "ord1__USER_ID"]]]
                               (lib/suggested-join-conditions query card-meta))))))
 
                 (testing "the query runs and returns correct data"
@@ -673,8 +673,12 @@
                       ["Doohickey" "Facebook" 816 "Doohickey" 3]]
                      (mt/formatted-rows
                       [str str int str int]
-                      (qp/process-query query)))))))
+                      (qp/process-query query)))))))))))
 
+(deftest ^:parallel join-source-queries-with-joins-test-2
+  (testing "Should be able to join against source queries that themselves contain joins (#12928)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset test-data
         (testing "and custom expressions (#13649) (#18086)"
           (let [query (mt/mbql-query orders
                         {:source-query {:source-table $$orders
@@ -846,7 +850,7 @@
                   ;; names here.
                   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
                   (when (#{:postgres :h2} driver/*driver*)
-                    (is (= ["Category" "Count" "Q2 → Category" "Q2 → Sum" "Q3 → Category" "Q3 → Avg"]
+                    (is (= ["Category" "Count" "Q2 → Category" "Q2 → Sum of Price" "Q3 → Category" "Q3 → Average of Rating"]
                            (map :display_name (get-in results [:data :results_metadata :columns])))))
                   (is (= [["Doohickey" 42 "Doohickey" 2185.89 "Doohickey" 3.73]
                           ["Gadget"    53 "Gadget"    3019.2  "Gadget"    3.43]

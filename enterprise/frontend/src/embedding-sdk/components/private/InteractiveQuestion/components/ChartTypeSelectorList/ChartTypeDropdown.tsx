@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { IconName } from "embedding-sdk/types/ui";
+import type { IconName } from "metabase/embedding-sdk/types/icon";
 import { isNotNull } from "metabase/lib/types";
 import { Icon, Menu, type MenuProps } from "metabase/ui";
 import visualizations from "metabase/visualizations";

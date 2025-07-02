@@ -402,7 +402,7 @@ export const buildMetricAxis = (
         ? {
             lineStyle: {
               type: 5,
-              color: renderingContext.getColor("border"),
+              ...renderingContext.theme.cartesian.splitLine.lineStyle,
             },
           }
         : undefined,

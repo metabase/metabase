@@ -4,29 +4,30 @@
 const fs = require("fs");
 const path = require("path");
 
-const IGNORED_PACKAGES = [
-  "react",
-  "react-dom",
+const IGNORED_REACT_PACKAGES = ["react", "react-dom"];
+const IGNORED_TYPES_DEPENDENCIES = [
   "@types/react",
   "@types/react-dom",
   "@types/react-router",
   "@types/redux-auth-wrapper",
-  "@visx/axis",
-  "@visx/clip-path",
-  "@visx/grid",
-  "@visx/group",
-  "@visx/shape",
-  "@visx/text",
-  "formik",
-  "react-beautiful-dnd",
 ];
+const IGNORED_NOT_USED_BY_SDK_PACKAGES = [
+  // Not used in the SDK, and triggers code-scanning errors
+  "react-ansi-style",
+];
+const IGNORED_DEPENDENCIES = [
+  ...IGNORED_REACT_PACKAGES,
+  ...IGNORED_TYPES_DEPENDENCIES,
+  ...IGNORED_NOT_USED_BY_SDK_PACKAGES,
+];
+
 const SDK_DIST_DIR = path.resolve("./resources/embedding-sdk");
 
 function filterOuDependencies(object) {
   const result = {};
 
   Object.entries(object).forEach(([packageName, version]) => {
-    if (!IGNORED_PACKAGES.includes(packageName)) {
+    if (!IGNORED_DEPENDENCIES.includes(packageName)) {
       result[packageName] = version;
     }
   });

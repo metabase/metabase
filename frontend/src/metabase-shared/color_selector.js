@@ -19,13 +19,13 @@ global.makeCellBackgroundGetter = function (
 ) {
   const rows = rowsJavaList;
   const cols = JSON.parse(colsJSON);
-  const settings = JSON.parse(settingsJSON);
+  const settings = settingsJSON ? JSON.parse(settingsJSON) : {};
   try {
     return makeCellBackgroundGetter(
       rows,
       cols,
-      settings["table.column_formatting"] ?? [],
-      settings["table.pivot"],
+      settings?.["table.column_formatting"] ?? [],
+      settings?.["table.pivot"],
     );
   } catch (e) {
     print("ERROR", e);
