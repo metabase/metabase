@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
-import CS from "metabase/css/core/index.css";
 import {
   canDownloadResults,
   canEditQuestion,
@@ -162,7 +161,6 @@ export const DashCardMenu = ({
           size="xs"
           className={cx({
             [SAVING_DOM_IMAGE_HIDDEN_CLASS]: true,
-            [cx(CS.hoverChild, CS.hoverChildSmooth)]: !isOpen,
           })}
           onClick={toggle}
           data-testid="dashcard-menu"
