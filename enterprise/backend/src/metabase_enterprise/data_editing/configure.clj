@@ -41,11 +41,10 @@
                    api/check-404)]
     {:title      (:name action)
      :parameters (for [param (:parameters action)]
-                   {:id          (case (:type action)
-                                   :query (:slug param)
-                                   :implicit (:id param))
+                   {:id          (:id param)
                     :displayName (or (:displayName param)
                                      (:display-name param)
+                                     (:name param)
                                      (humanization/name->human-readable-name (:slug param)))
                     :sourceType  "ask-user"})}))
 
