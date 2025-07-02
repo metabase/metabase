@@ -33,7 +33,7 @@ import {
 } from "metabase-enterprise/google_drive";
 
 import { trackSheetConnectionClick } from "./analytics";
-import { getStatus, useShowGdrive } from "./utils";
+import { getStatus, useDeleteGdriveFolderLink, useShowGdrive } from "./utils";
 
 const PanelWrapper = ({
   title = t`Connect Google Sheets`,
@@ -74,11 +74,29 @@ const PanelWrapper = ({
   );
 };
 
-export const GdriveAddDataPanel = () => {
+export const GdriveAddDataPanel = ({
+  onAddDataModalClose,
+}: {
+  onAddDataModalClose: () => void;
+}) => {
+  const [
+    areConnectionDetailsShown,
+    { open: showConnectionDetails, close: closeConnectionDetails },
+  ] = useDisclosure(false);
+
   const [
     isConnectionModalOpen,
     { open: openConnectionModal, close: closeConnectionModal },
   ] = useDisclosure(false);
+
+  const { errorMessage, isDeletingFolderLink, onDelete } =
+    useDeleteGdriveFolderLink({
+      onSuccess: () => {
+        // As soon as we disconnect, we want to show a new connection modal again
+        closeConnectionDetails();
+        openConnectionModal();
+      },
+    });
 
   const isAdmin = useSelector(getUserIsAdmin);
   const hasStorage = useHasTokenFeature("attached_dwh");
@@ -121,30 +139,52 @@ export const GdriveAddDataPanel = () => {
     );
   }
 
+  if (areConnectionDetailsShown) {
+    return (
+      <PanelWrapper
+        title={t`To add a new Google Drive folder, the existing one needs to be disconnected first`}
+        // eslint-disable-next-line no-literal-metabase-strings -- admin only string
+        subtitle={t`Only one folder can be synced with Metabase at a time. Your tables and Google Sheets will remain in place.`}
+      >
+        <Button
+          variant="filled"
+          color="danger"
+          loading={isDeletingFolderLink}
+          onClick={onDelete}
+          w={INNER_WIDTH}
+        >
+          {t`Disconnect`}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={closeConnectionDetails}
+          disabled={isDeletingFolderLink}
+          w={INNER_WIDTH}
+        >
+          {t`Keep connected`}
+        </Button>
+      </PanelWrapper>
+    );
+  }
+
   // Finally, all conditions have been met, and all screens below this line depend only
   // on the status of the attempted connection
   const status = getStatus({ status: folder?.status, error });
 
   if (status === "active") {
     return (
-      <>
-        <PanelWrapper
-          title={t`Import Google Sheets`}
-          isModalOpen={isConnectionModalOpen}
-          onModalClose={closeConnectionModal}
+      <PanelWrapper title={t`Import Google Sheets`}>
+        <DriveConnectionDisplay />
+        <Button
+          variant="subtle"
+          onClick={() => {
+            trackSheetConnectionClick({ from: "add-data-modal" });
+            showConnectionDetails();
+          }}
         >
-          <DriveConnectionDisplay />
-          <Button
-            variant="subtle"
-            onClick={() => {
-              trackSheetConnectionClick({ from: "add-data-modal" });
-              openConnectionModal();
-            }}
-          >
-            {t`Add new`}
-          </Button>
-        </PanelWrapper>
-      </>
+          {t`Add new`}
+        </Button>
+      </PanelWrapper>
     );
   }
 
@@ -180,7 +220,10 @@ export const GdriveAddDataPanel = () => {
         w={INNER_WIDTH}
         onClick={() => {
           trackSheetConnectionClick({ from: "add-data-modal" });
-          openConnectionModal();
+
+          status === "not-connected"
+            ? openConnectionModal()
+            : showConnectionDetails();
         }}
       >
         {buttonText}
