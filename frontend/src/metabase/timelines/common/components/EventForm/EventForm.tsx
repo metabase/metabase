@@ -14,6 +14,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { getTimelineIcons, getTimelineName } from "metabase/lib/timelines";
 import {
   Button,
@@ -107,8 +108,8 @@ const EventForm = ({
                     label={t`Time`}
                     flex={1}
                     onChange={(time) => {
-                      const timePart = dayjs(time);
-                      const date = dayjs(values.timestamp)
+                      const timePart = dayjs.tz(time);
+                      const date = parseTimestamp(values.timestamp)
                         .set("hour", timePart.hour())
                         .set("minute", timePart.minute());
                       setFieldValue("timestamp", date.toISOString());
