@@ -39,12 +39,21 @@ export function createParameter(
   opts: NewParameterOpts,
   parameters: Parameter[] = [],
 ) {
-  let name = opts.name;
-
+  let baseName = opts.name;
   let nameIndex = 0;
+
+  // Extract base name and existing index if present
+  const indexMatch = baseName.match(/^(.+)\s+(\d+)$/);
+  if (indexMatch) {
+    baseName = indexMatch[1];
+    nameIndex = parseInt(indexMatch[2], 10);
+  }
+
+  let name = nameIndex === 0 ? baseName : `${baseName} ${nameIndex}`;
+
   while (parameters.some((p) => p.name === name)) {
     nameIndex++;
-    name = `${name} ${nameIndex}`;
+    name = `${baseName} ${nameIndex}`;
   }
 
   const parameter: Parameter = {
