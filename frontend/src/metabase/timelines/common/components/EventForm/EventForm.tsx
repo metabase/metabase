@@ -1,17 +1,29 @@
+import dayjs from "dayjs";
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import Button from "metabase/common/components/Button/Button";
-import FormDateInput from "metabase/common/components/FormDateInput";
-import FormErrorMessage from "metabase/common/components/FormErrorMessage";
-import FormInput from "metabase/common/components/FormInput";
-import FormSelect from "metabase/common/components/FormSelect";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
-import FormTextArea from "metabase/common/components/FormTextArea";
-import { Form, FormProvider } from "metabase/forms";
+import {
+  Form,
+  FormDateInput,
+  FormErrorMessage,
+  FormProvider,
+  FormSelect,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { getTimelineIcons, getTimelineName } from "metabase/lib/timelines";
+import {
+  Button,
+  Flex,
+  Group,
+  Icon,
+  type IconName,
+  Stack,
+  TimeInput,
+} from "metabase/ui";
 import type {
   FormattingSettings,
   Timeline,
@@ -19,8 +31,6 @@ import type {
 } from "metabase-types/api";
 
 import FormArchiveButton from "../FormArchiveButton";
-
-import { EventFormFooter } from "./EventForm.styled";
 
 const EVENT_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required).max(255, Errors.maxLength),
@@ -61,7 +71,10 @@ const EventForm = ({
   }, []);
 
   const timelineOptions = useMemo(() => {
-    return timelines.map((t) => ({ name: getTimelineName(t), value: t.id }));
+    return timelines.map((t) => ({
+      label: getTimelineName(t),
+      value: String(t.id),
+    }));
   }, [timelines]);
 
   return (
@@ -72,51 +85,89 @@ const EventForm = ({
     >
       {({ dirty, values, setFieldValue }) => (
         <Form disabled={!dirty}>
-          <FormInput
-            name="name"
-            title={t`Event name`}
-            placeholder={t`Product launch`}
-            autoFocus
-          />
-          <FormDateInput
-            name="timestamp"
-            title={t`Date`}
-            hasTime={values.time_matters}
-            dateFormat={dateSettings?.date_style}
-            timeFormat={dateSettings?.time_style}
-            onHasTimeChange={(value) => setFieldValue("time_matters", value)}
-          />
-          <FormTextArea
-            name="description"
-            title={t`Description`}
-            infoLabel={t`Markdown supported`}
-            infoTooltip={t`Add links and formatting via markdown`}
-            nullable
-          />
-          <FormSelect name="icon" title={t`Icon`} options={iconOptions} />
-          {timelines.length > 1 && (
+          <Stack>
+            <FormTextInput
+              name="name"
+              label={t`Event name`}
+              placeholder={t`Product launch`}
+              autoFocus
+            />
+            <Flex align="end" gap="md">
+              <FormDateInput
+                name="timestamp"
+                title={t`Date`}
+                flex={1}
+                valueFormat={dateSettings?.date_style}
+              />
+              {values.time_matters ? (
+                <Flex gap="xs" align="end">
+                  <TimeInput
+                    value={dayjs.tz(values.timestamp).toDate()}
+                    name="date"
+                    label={t`Time`}
+                    flex={1}
+                    onChange={(time) => {
+                      const timePart = dayjs(time);
+                      const date = dayjs(values.timestamp)
+                        .set("hour", timePart.hour())
+                        .set("minute", timePart.minute());
+                      setFieldValue("timestamp", date.toISOString());
+                    }}
+                  />
+                  <Button
+                    onClick={() => setFieldValue("time_matters", false)}
+                    aria-label={t`Remove time`}
+                    variant="subtle"
+                    leftSection={<Icon name="close" />}
+                  />
+                </Flex>
+              ) : (
+                <Button
+                  onClick={() => setFieldValue("time_matters", true)}
+                >{t`Add time`}</Button>
+              )}
+            </Flex>
+            <FormTextarea
+              name="description"
+              label={t`Description`}
+              description={t`You can add links and formatting via markdown`}
+              nullable
+            />
             <FormSelect
-              name="timeline_id"
-              title={t`Timeline`}
-              options={timelineOptions}
+              name="icon"
+              label={t`Icon`}
+              data={iconOptions}
+              leftSection={values.icon ? <Icon name={values.icon} /> : null}
+              renderOption={({ option }) => (
+                <Group p="sm">
+                  {option.value && <Icon name={option.value as IconName} />}
+                  <span>{option.label}</span>
+                </Group>
+              )}
             />
-          )}
-          <EventFormFooter>
-            <FormErrorMessage inline />
-            {!isNew && (
-              <FormArchiveButton onClick={onArchive}>
-                {t`Archive event`}
-              </FormArchiveButton>
+            {timelines.length > 1 && (
+              <FormSelect
+                name="timeline_id"
+                title={t`Timeline`}
+                data={timelineOptions}
+              />
             )}
-            <Button type="button" onClick={onCancel}>
-              {t`Cancel`}
-            </Button>
-            <FormSubmitButton
-              title={isNew ? t`Create` : t`Update`}
-              disabled={!dirty}
-              primary
-            />
-          </EventFormFooter>
+            <Flex gap="md" justify="end">
+              <FormErrorMessage inline />
+              {!isNew && (
+                <FormArchiveButton onClick={onArchive}>
+                  {t`Archive event`}
+                </FormArchiveButton>
+              )}
+              <Button type="button" onClick={onCancel}>
+                {t`Cancel`}
+              </Button>
+              <FormSubmitButton
+                disabled={!dirty}
+                label={isNew ? t`Create` : t`Update`}
+              />
+            </Flex>
+          </Stack>
         </Form>
       )}
     </FormProvider>
