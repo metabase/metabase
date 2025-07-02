@@ -58,24 +58,22 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
   return t`Your license is active until ${validUntil}! Hope you’re enjoying it.`;
 };
 
-const iframeOrigin = "https://store-metabase-ezinvrvoa-metaboat.vercel.app/";
+const iframeOrigin = "https://store-metabase-9g2rav758-metaboat.vercel.app/";
 const iframePath = "/test-for-iframe?param1=09ucsdcsd0ce0&param2=cdoicw0";
 
 function handleMessageToken(
   event: MessageEvent,
   onLicenseToken: (token: string) => void,
+  onMessage: (message: string) => void,
 ) {
-  if (event.origin !== iframeOrigin) {
-    return;
-  }
-
   if (event.data.source !== "store/some-checkout") {
     return;
   }
 
-  const { licenseToken } = event.data.payload;
+  const { licenseToken, message } = event.data.payload;
 
   onLicenseToken(licenseToken);
+  onMessage(message);
 }
 
 export const LicenseAndBillingSettings = () => {
@@ -84,6 +82,7 @@ export const LicenseAndBillingSettings = () => {
   const settingDetails = allSettings?.["premium-embedding-token"];
   const token = settingDetails?.value;
   const [licenseToken, setLicenseToken] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [sendToast] = useToast();
@@ -94,10 +93,16 @@ export const LicenseAndBillingSettings = () => {
 
   useEffect(() => {
     function onMessage(event: MessageEvent) {
-      handleMessageToken(event, (token) => {
-        setLicenseToken(token);
-        setIsModalOpen(false);
-      });
+      handleMessageToken(
+        event,
+        (token) => {
+          setLicenseToken(token);
+          setIsModalOpen(false);
+        },
+        (message: string) => {
+          setMessage(message);
+        },
+      );
     }
 
     window.addEventListener("message", onMessage);
@@ -106,6 +111,16 @@ export const LicenseAndBillingSettings = () => {
       window.removeEventListener("message", onMessage);
     };
   }, []);
+
+  function openStore() {
+    const returnUrl = encodeURIComponent(
+      document.referrer || window.location.href,
+    );
+    window.open(
+      `${iframeOrigin}${iframePath}?returnUrl=${returnUrl}`,
+      "_blank",
+    );
+  }
 
   const {
     loading: licenseLoading,
@@ -151,6 +166,12 @@ export const LicenseAndBillingSettings = () => {
         <Button onClick={() => setIsModalOpen(true)}>{t`Open Modal`}</Button>
         <Text>{`The license token is: ${licenseToken}`}</Text>
       </Box>
+      <Flex gap="xl">
+        <Box>
+          <Button onClick={openStore}>{t`Open Store`}</Button>
+        </Box>
+        <Text>{`The message is: ${message}`}</Text>
+      </Flex>
       <SettingsSection>
         <Stack
           data-testid="license-and-billing-content"
