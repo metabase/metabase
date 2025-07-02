@@ -34,6 +34,7 @@ import {
 
 import { trackSheetConnectionClick } from "./analytics";
 import { getStatus, useDeleteGdriveFolderLink, useShowGdrive } from "./utils";
+import { getDisconnectModalStrings } from "./GdriveConnectionModal.strings";
 
 const PanelWrapper = ({
   title = t`Connect Google Sheets`,
@@ -140,11 +141,14 @@ export const GdriveAddDataPanel = ({
   }
 
   if (areConnectionDetailsShown) {
+    const { title, bodyCopy, connectButtonText, disconnectButtonText } =
+      getDisconnectModalStrings({ reconnect: true });
+
     return (
       <PanelWrapper
-        title={t`To add a new Google Drive folder, the existing one needs to be disconnected first`}
+        title={title}
         // eslint-disable-next-line no-literal-metabase-strings -- admin only string
-        subtitle={t`Only one folder can be synced with Metabase at a time. Your tables and Google Sheets will remain in place.`}
+        subtitle={bodyCopy}
       >
         <Button
           variant="filled"
@@ -153,7 +157,7 @@ export const GdriveAddDataPanel = ({
           onClick={onDelete}
           w={INNER_WIDTH}
         >
-          {t`Disconnect`}
+          {disconnectButtonText}
         </Button>
         <Button
           variant="outline"
@@ -161,7 +165,7 @@ export const GdriveAddDataPanel = ({
           disabled={isDeletingFolderLink}
           w={INNER_WIDTH}
         >
-          {t`Keep connected`}
+          {connectButtonText}
         </Button>
       </PanelWrapper>
     );

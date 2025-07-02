@@ -27,7 +27,10 @@ import {
 } from "metabase-enterprise/api";
 
 import Styles from "./Gdrive.module.css";
-import { getStrings } from "./GdriveConnectionModal.strings";
+import {
+  getDisconnectModalStrings,
+  getStrings,
+} from "./GdriveConnectionModal.strings";
 import { trackSheetImportClick } from "./analytics";
 import { getStatus, useDeleteGdriveFolderLink, useShowGdrive } from "./utils";
 
@@ -230,18 +233,15 @@ function GoogleSheetsDisconnectModal({
       },
     });
 
+  const { title, bodyCopy, connectButtonText, disconnectButtonText } =
+    getDisconnectModalStrings({ reconnect });
+
   return (
-    <ModalWrapper
-      onClose={onClose}
-      title={t`To add a new Google Drive folder, the existing one needs to be disconnected first`}
-    >
+    <ModalWrapper onClose={onClose} title={title}>
       <Stack gap="md">
         <DriveConnectionDisplay />
         <Text c="text-medium" pb="md">
-          {reconnect
-            ? // eslint-disable-next-line no-literal-metabase-strings -- admin only string
-              t`Only one folder can be synced with Metabase at a time. Your tables and Google Sheets will remain in place.`
-            : t`Your existing tables and Google Sheets will remain in place but they will no longer be updated automatically.`}
+          {bodyCopy}
         </Text>
         <Flex w="100%" gap="sm" justify="space-between">
           <Text c="error" ta="start">
@@ -253,7 +253,7 @@ function GoogleSheetsDisconnectModal({
               onClick={onClose}
               disabled={isDeletingFolderLink}
             >
-              {t`Keep connected`}
+              {connectButtonText}
             </Button>
             <Button
               variant="filled"
@@ -261,7 +261,7 @@ function GoogleSheetsDisconnectModal({
               loading={isDeletingFolderLink}
               onClick={onDelete}
             >
-              {t`Disconnect`}
+              {disconnectButtonText}
             </Button>
           </Flex>
         </Flex>
