@@ -14,26 +14,6 @@ export const SelectEmbedResourceMissingRecents = ({
 }) => {
   const embedIcon = experience === "dashboard" ? "dashboard" : "bar";
 
-  const description = match(experience)
-    .with("dashboard", () => t`You haven't visited any dashboards recently.`)
-    .with("chart", () => t`You haven't visited any charts recently.`)
-    .otherwise(() => null);
-
-  const searchLink = match(experience)
-    .with(
-      "dashboard",
-      () =>
-        c("{0} is a link button to search for dashboards")
-          .jt`You can ${(<Anchor size="sm" onClick={openPicker} key="picker-link" inline>{t`search for dashboards`}</Anchor>)} to embed.`,
-    )
-    .with(
-      "chart",
-      () =>
-        c("{0} is a link button to search for charts")
-          .jt`You can ${(<Anchor size="sm" onClick={openPicker} key="picker-link" inline>{t`search for charts`}</Anchor>)} to embed.`,
-    )
-    .otherwise(() => null);
-
   return (
     <Stack
       align="center"
@@ -49,11 +29,11 @@ export const SelectEmbedResourceMissingRecents = ({
         </Text>
 
         <Text size="sm" c="text-medium" ta="center">
-          {description}
+          {getEmptyStateDescription(experience)}
         </Text>
 
         <Text size="sm" c="text-medium" ta="center">
-          {searchLink}
+          {getSearchLink(experience, openPicker)}
         </Text>
       </Stack>
     </Stack>
@@ -64,4 +44,29 @@ const getEmptyStateTitle = (experience: string) =>
   match(experience)
     .with("dashboard", () => t`No recent dashboards`)
     .with("chart", () => t`No recent charts`)
+    .otherwise(() => null);
+
+const getEmptyStateDescription = (experience: SdkIframeEmbedSetupExperience) =>
+  match(experience)
+    .with("dashboard", () => t`You haven't visited any dashboards recently.`)
+    .with("chart", () => t`You haven't visited any charts recently.`)
+    .otherwise(() => null);
+
+const getSearchLink = (
+  experience: SdkIframeEmbedSetupExperience,
+  openPicker: () => void,
+) =>
+  match(experience)
+    .with(
+      "dashboard",
+      () =>
+        c("{0} is a link button to search for dashboards")
+          .jt`You can ${(<Anchor size="sm" onClick={openPicker} key="picker-link" inline>{t`search for dashboards`}</Anchor>)} to embed.`,
+    )
+    .with(
+      "chart",
+      () =>
+        c("{0} is a link button to search for charts")
+          .jt`You can ${(<Anchor size="sm" onClick={openPicker} key="picker-link" inline>{t`search for charts`}</Anchor>)} to embed.`,
+    )
     .otherwise(() => null);
