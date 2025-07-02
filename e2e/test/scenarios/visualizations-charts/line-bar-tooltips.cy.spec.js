@@ -430,7 +430,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.findDashCardAction(H.getDashboardCard(0), "Edit visualization").click();
+      H.showDashcardVisualizerModal(0, {
+        buttonText: "Visualize another way",
+      });
       H.modal().within(() => {
         cy.button("Settings").click();
         updateColumnTitle(originalSeriesName, updatedOriginalSeriesName);
