@@ -282,7 +282,7 @@
   "_PARTITIONDATE")
 
 (defn- get-nested-columns-for-tables
-  "Returns nested columns for a specific set of table"
+  "Returns nested columns for a specific set of tables"
   [driver database project-id dataset-id table-names]
   (let [results (try (query-honeysql
                       driver
@@ -392,6 +392,19 @@
   [driver database & {:keys [schema-names table-names]}]
   (let [project-id (get-project-id (:details database))
         dataset-ids (or schema-names (list-datasets (:details database)))]
+
+    ;; The contract of [[driver/describe-fields]] requires results ordered by:
+    ;; `table-schema`, `table-name`, `database-position`
+    ;;
+    ;; To build an efficient eduction without realizing all results in memory for sorting,
+    ;; we must ensure ordering at each level of composition of the partitioned eduction:
+    ;; 1. Sort `dataset-ids` at the outer level
+    ;; 2. For `table-names` within each dataset:
+    ;;    - If provided via `:table-names` arg, eagerly sort them here
+    ;;    - If retrieved via [[list-table-names]], they're already sorted by the `:order-by` in the query
+    ;; 3. The inner query in [[[describe-dataset-fields-reducible]] preserves ordering of the batch
+    ;;    by `table-name`, and ordering of `database-position` with a final eager `sort-by` over the fully
+    ;;    realized collection
 
     (eduction
      (mapcat (fn [dataset-id]
