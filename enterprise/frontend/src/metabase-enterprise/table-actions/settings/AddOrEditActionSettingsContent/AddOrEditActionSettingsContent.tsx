@@ -15,7 +15,6 @@ import type { BasicTableViewColumn } from "metabase/visualizations/types/table-a
 import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   ActionScope,
-  DataGridWritebackAction,
   DatabaseId,
   RowActionFieldSettings,
   TableActionDisplaySettings,
@@ -31,7 +30,7 @@ interface Props {
   onClose: () => void;
   onSubmit: (actionParams: {
     id?: string;
-    action: DataGridWritebackAction;
+    action: ActionItem;
     name: string | undefined;
     parameterMappings: RowActionFieldSettings[];
   }) => void;
@@ -92,7 +91,7 @@ export function AddOrEditActionSettingsContent({
   const handleSubmit = useCallback(
     (actionParams: {
       id?: string;
-      action: DataGridWritebackAction;
+      action: ActionItem;
       name: string | undefined;
       parameterMappings: RowActionFieldSettings[];
     }) => {
@@ -158,7 +157,7 @@ export function AddOrEditActionSettingsContent({
     return (
       <Modal.Content>
         <ActionParameterMappingForm
-          action={action}
+          action={selectedPickerAction}
           actionSettings={selectedActionSettings}
           actionScope={actionScope}
           tableColumns={tableColumns}
@@ -182,7 +181,7 @@ export function AddOrEditActionSettingsContent({
       </Modal.Header>
       <Modal.Body p="0">
         <ActionParameterMappingForm
-          action={action}
+          action={selectedPickerAction}
           actionSettings={selectedActionSettings}
           actionScope={actionScope}
           tableColumns={tableColumns}

@@ -1,15 +1,14 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { ActionItem } from "metabase/common/components/DataPicker";
 import { Button, Modal, Stack, Text } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type {
   ActionScope,
   DatabaseId,
   RowActionFieldSettings,
-  TableAction,
   TableActionDisplaySettings,
-  WritebackAction,
 } from "metabase-types/api";
 
 import { AddOrEditActionSettingsContent } from "../AddOrEditActionSettingsContent";
@@ -46,7 +45,7 @@ export const ConfigureTableActions = ({
       name,
       parameterMappings,
     }: {
-      action: WritebackAction | TableAction;
+      action: ActionItem;
       name: string | undefined;
       parameterMappings: RowActionFieldSettings[];
     }) => {
@@ -77,7 +76,7 @@ export const ConfigureTableActions = ({
       parameterMappings,
     }: {
       id?: string;
-      action: WritebackAction | TableAction;
+      action: ActionItem;
       name: string | undefined;
       parameterMappings: RowActionFieldSettings[];
     }) => {

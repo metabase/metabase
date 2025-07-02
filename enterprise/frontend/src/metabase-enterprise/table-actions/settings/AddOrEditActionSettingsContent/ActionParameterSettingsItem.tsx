@@ -5,10 +5,7 @@ import { FormRadioGroup, FormSelect, FormTextInput } from "metabase/forms";
 import { Box, Group, Radio, Text } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type { ConfigFormParameter } from "metabase-enterprise/data_editing/tables/types";
-import type {
-  DataGridWritebackAction,
-  RowActionFieldSourceType,
-} from "metabase-types/api";
+import type { RowActionFieldSourceType } from "metabase-types/api";
 
 import S from "./AddOrEditActionSettingsContent.module.css";
 import { TableColumnsSelect } from "./TableColumnsSelect";
@@ -40,7 +37,6 @@ const SOURCE_TYPE_OPTIONS: {
 
 export type ActionParameterSettingsItemProps = {
   index: number;
-  action: DataGridWritebackAction;
   actionParameter: ConfigFormParameter;
   tableColumns: BasicTableViewColumn[];
 };

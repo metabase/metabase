@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { ActionItem } from "metabase/common/components/DataPicker";
 import EditableText from "metabase/common/components/EditableText";
 import EmptyState from "metabase/common/components/EmptyState";
 import { Form, FormProvider } from "metabase/forms";
 import { Box, Button, Center, Loader, Stack, Title } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import { useGetFormConfigurationMutation } from "metabase-enterprise/api";
-import type { ConfigFormSourceType } from "metabase-enterprise/data_editing/tables/types";
 import type {
   ActionScope,
-  DataGridWritebackAction,
   RowActionFieldSettings,
   TableActionDisplaySettings,
 } from "metabase-types/api";
@@ -21,13 +20,13 @@ import type { ActionParametersFormValues } from "./types";
 import { cleanEmptyVisibility, isValidMapping } from "./utils";
 
 interface ActionParameterMappingProps {
-  action: DataGridWritebackAction;
+  action: ActionItem;
   actionSettings: TableActionDisplaySettings | null | undefined;
   actionScope: ActionScope;
   tableColumns: BasicTableViewColumn[];
   onSubmit: (actionParams: {
     id?: string;
-    action: DataGridWritebackAction;
+    action: ActionItem;
     name: string | undefined;
     parameterMappings: RowActionFieldSettings[];
   }) => void;
@@ -54,11 +53,7 @@ export const ActionParameterMappingForm = ({
       : {
           "action-id": action.id,
           name: action.name,
-          parameters:
-            action.parameters?.map((it) => ({
-              id: it.id,
-              sourceType: "ask-user" as ConfigFormSourceType,
-            })) ?? [],
+          parameters: [],
         };
 
     fetchFormConfiguration({
@@ -161,7 +156,6 @@ export const ActionParameterMappingForm = ({
                       <ActionParameterSettingsItem
                         key={actionParameter.id}
                         index={index}
-                        action={action}
                         actionParameter={actionParameter}
                         tableColumns={tableColumns}
                       />
