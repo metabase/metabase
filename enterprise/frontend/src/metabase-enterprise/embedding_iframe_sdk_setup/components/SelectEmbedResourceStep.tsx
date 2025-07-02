@@ -28,6 +28,11 @@ export const SelectEmbedResourceStep = () => {
   const [isPickerOpen, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
 
+  // Only dashboard and charts allow selecting resources.
+  if (experience !== "dashboard" && experience !== "chart") {
+    return null;
+  }
+
   const isDashboard = experience === "dashboard";
   const recentItems = isDashboard ? recentDashboards : recentQuestions;
   const embedIcon = isDashboard ? "dashboard" : "bar";
