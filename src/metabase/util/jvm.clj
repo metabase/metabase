@@ -2,9 +2,7 @@
   "JVM-specific utilities and helpers.
   You don't want to import this namespace directly - these functions are re-exported by [[metabase.util]]."
   (:require
-   [clojure.java.classpath :as classpath]
    [clojure.string :as str]
-   [clojure.tools.namespace.find :as ns.find]
    [metabase.util.format :as u.format]
    [metabase.util.log :as log])
   (:import
@@ -264,21 +262,6 @@
   {:style/indent 0}
   [& body]
   `(do-with-us-locale (fn [] ~@body)))
-
-;; This is made `^:const` so it will get calculated when the uberjar is compiled. `find-namespaces` won't work if
-;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.
-(defonce ^:const ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended
-  for use by various routines that load related namespaces, such as task and events
-  initialization.
-
-  DEPRECATED: Using this is an anti-pattern, it messes up our ability to analyze the code and find dependencies between
-  namespaces or to topographically sort them correctly during compilation. See
-  https://metaboat.slack.com/archives/CKZEMT1MJ/p1734635053499399 or ask Cam for more info."}
-  ^:deprecated metabase-namespace-symbols
-  (vec (sort (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
-                   :when   (and (str/starts-with? ns-symb "metabase")
-                                (not (str/includes? ns-symb "test")))]
-               ns-symb))))
 
 (defn deref-with-timeout
   "Call `deref` on a something derefable (e.g. a future or promise), and throw an exception if it takes more than

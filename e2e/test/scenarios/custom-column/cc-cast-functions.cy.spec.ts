@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+
 const { H } = cy;
 
 type CastTestCase = {
@@ -157,6 +159,36 @@ const DATETIME_TEST_CASES: CastTestCase[] = [
     filterValue: "March 11, 2025|12:03",
     expectedRowCount: 1,
   },
+  {
+    name: "StringExpressionWithIsoMode",
+    expression:
+      'datetime(concat("2025-03-", case([ID] = 1, "10", "12"), " 12:03"), "iso")',
+    filterOperator: "Before",
+    filterValue: "March 11, 2025|12:03",
+    expectedRowCount: 1,
+  },
+  {
+    name: "StringWithIsoMode",
+    expression: 'datetime("2025-03-20 12:03", "iso")',
+    filterOperator: "On",
+    filterValue: "March 20, 2025|12:03",
+    expectedRowCount: 200,
+  },
+  {
+    name: "StringWithSimpleMode",
+    expression: 'datetime("20250320120300", "simple")',
+    filterOperator: "On",
+    filterValue: "March 20, 2025|12:03",
+    expectedRowCount: 200,
+  },
+  {
+    name: "StringExpressionWithSimpleMode",
+    expression:
+      'datetime(concat("202503", case([ID] = 1, "10", "12"), "120300"), "simple")',
+    filterOperator: "Before",
+    filterValue: "March 11, 2025|12:03",
+    expectedRowCount: 1,
+  },
 ];
 
 const FLOAT_TEST_CASES: CastTestCase[] = [
@@ -207,6 +239,64 @@ describe(
   },
 );
 
+describe("exercise binary datetime() cast function", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  const tests = [
+    {
+      query: "SELECT CAST('2024-05-21 10:10:03' AS bytea) AS date_time",
+      expression: 'datetime([date_time], "isobytes")',
+    },
+    {
+      query: "SELECT CAST('20240521101003' AS bytea) AS date_time",
+      expression: 'datetime([date_time], "simplebytes")',
+    },
+  ];
+
+  tests.forEach((test) => {
+    it(`should correctly convert temporal bytes: ${test.expression}`, () => {
+      H.createNativeQuestion(
+        {
+          native: {
+            query: test.query,
+          },
+        },
+        { wrapId: true },
+      ).then((id) => {
+        H.visitQuestionAdhoc(
+          {
+            dataset_query: {
+              type: "query",
+              database: SAMPLE_DB_ID,
+              query: {
+                "source-table": `card__${id}`,
+              },
+            },
+          },
+          { mode: "notebook" },
+        );
+      });
+
+      addCustomColumn({
+        name: "parsed_date",
+        expression: test.expression,
+      });
+
+      H.visualize();
+
+      cy.findAllByTestId("header-cell")
+        .eq(1)
+        .should("have.text", "parsed_date");
+      cy.findAllByTestId("cell-data")
+        .eq(3)
+        .should("have.text", "May 21, 2024, 10:10 AM");
+    });
+  });
+});
+
 function startNewQuestion() {
   H.startNewQuestion();
   H.entityPickerModal().within(() => {
@@ -222,7 +312,13 @@ function removeTableFields() {
   cy.realPress("Escape");
 }
 
-function addCustomColumn({ name, expression }: CastTestCase) {
+function addCustomColumn({
+  name,
+  expression,
+}: {
+  name: string;
+  expression: string;
+}) {
   H.getNotebookStep("data").button("Custom column").click();
   H.enterCustomColumnDetails({ formula: expression, name });
   H.popover().button("Done").click();

@@ -174,7 +174,10 @@ function Dashboard({ className }: { className?: string }) {
           data-testid="dashboard-parameters-and-cards"
         >
           <DashboardParameterPanel />
-          <FullWidthContainer data-element-id="dashboard-cards-container">
+          <FullWidthContainer
+            className={S.CardsContainer}
+            data-element-id="dashboard-cards-container"
+          >
             <Grid />
           </FullWidthContainer>
         </Box>

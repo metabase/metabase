@@ -1,4 +1,5 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
+import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
@@ -40,7 +41,7 @@ export interface MetabotState {
 }
 
 export const getMetabotInitialState = (): MetabotState => ({
-  useStreaming: false,
+  useStreaming: true,
   isProcessing: false,
   conversationId: uuid(),
   messages: [],
@@ -87,6 +88,23 @@ export const metabot = createSlice({
       action: PayloadAction<MetabotErrorMessage>,
     ) => {
       state.errorMessages.push(action.payload);
+    },
+    addAgentTextDelta: (state, action: PayloadAction<string>) => {
+      const hasToolCalls = state.toolCalls.length > 0;
+      const lastMessage = _.last(state.messages);
+      const canAppend = !hasToolCalls && lastMessage?.role === "agent";
+
+      if (canAppend) {
+        lastMessage!.message = lastMessage!.message + action.payload;
+      } else {
+        state.messages.push({
+          id: createMessageId(),
+          role: "agent",
+          message: action.payload,
+        });
+      }
+
+      state.toolCalls = hasToolCalls ? [] : state.toolCalls;
     },
     setStateContext: (state, action: PayloadAction<MetabotStateContext>) => {
       state.state = action.payload;
@@ -156,10 +174,7 @@ export const metabot = createSlice({
         state.errorMessages = [];
       })
       .addCase(sendStreamedAgentRequest.fulfilled, (state, action) => {
-        state.history = [
-          ...state.history,
-          ...(action.payload?.history?.slice() ?? []),
-        ];
+        state.history = action.payload?.history?.slice() ?? [];
         state.state = { ...(action.payload?.state ?? {}) };
         state.toolCalls = [];
         state.isProcessing = false;

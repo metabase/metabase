@@ -8,6 +8,7 @@ import {
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,
@@ -167,6 +168,10 @@ export const getDashboard = createSelector(
 );
 
 export const getDashcards = (state: State) => state.dashboard.dashcards;
+
+export const getDashcardList = createSelector([getDashcards], (dashcards) =>
+  Object.values(dashcards),
+);
 
 export const getDashCardById = (state: State, dashcardId: DashCardId) => {
   const dashcards = getDashcards(state);
@@ -447,9 +452,9 @@ export const getDashCardInlineValuePopulatedParameters = createSelector(
     if (!dashcard || !hasInlineParameters(dashcard)) {
       return [];
     }
-    const inlineParameters = dashcard.inline_parameters.map((parameterId) =>
-      parameters.find((p) => p.id === parameterId),
-    );
+    const inlineParameters = dashcard.inline_parameters
+      .map((parameterId) => parameters.find((p) => p.id === parameterId))
+      .filter(isNotNull);
     return _getValuePopulatedParameters({
       parameters: inlineParameters,
       values: parameterValues,

@@ -233,7 +233,6 @@ function ParametersList(props: ParametersListProps) {
 
   const parametersListCommonProps = {
     ...rest,
-    widgetsVariant: "subtle" as const,
     isSortable: false,
   };
 
