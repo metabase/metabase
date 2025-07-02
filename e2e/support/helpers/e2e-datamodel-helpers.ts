@@ -8,10 +8,14 @@ import type {
 export const DataModel = {
   visit,
   TablePicker: {
+    get: getTablePicker,
     getDatabase: getTablePickerDatabase,
+    getDatabases: getTablePickerDatabases,
+    getSchemas: getTablePickerSchemas,
     getSchema: getTablePickerSchema,
-    getTable: getTablePickerTable,
     getTables: getTablePickerTables,
+    getTable: getTablePickerTable,
+    getSearchInput: getTablePickerSearchInput,
   },
   TableSection: {
     get: getTableSection,
@@ -128,11 +132,19 @@ function visit({
 
 /** table picker helpers */
 
+function getTablePicker() {
+  return cy.findByTestId("table-picker");
+}
+
 function getTablePickerDatabase(name: string) {
   return cy
     .findAllByTestId("tree-item")
     .filter('[data-type="database"]')
     .filter(`:contains("${name}")`);
+}
+
+function getTablePickerDatabases() {
+  return cy.findAllByTestId("tree-item").filter('[data-type="database"]');
 }
 
 function getTablePickerSchema(name: string) {
@@ -142,11 +154,19 @@ function getTablePickerSchema(name: string) {
     .filter(`:contains("${name}")`);
 }
 
+function getTablePickerSchemas() {
+  return cy.findAllByTestId("tree-item").filter('[data-type="schema"]');
+}
+
 function getTablePickerTable(name: string) {
   return cy
     .findAllByTestId("tree-item")
     .filter('[data-type="table"]')
     .filter(`:contains("${name}")`);
+}
+
+function getTablePickerSearchInput() {
+  return cy.findByPlaceholderText("Search tables");
 }
 
 function getTablePickerTables() {

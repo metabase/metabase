@@ -25,6 +25,210 @@ describe("scenarios > admin > datamodel", () => {
     cy.intercept("PUT", "/api/table/*").as("tableUpdate");
   });
 
+  describe("Table picker", () => {
+    describe("no databases", () => {
+      beforeEach(() => {
+        cy.request("DELETE", `/api/database/${SAMPLE_DB_ID}`);
+      });
+
+      // TODO: https://linear.app/metabase/issue/SEM-459/empty-state-when-there-are-no-databases
+      it.skip("should allow to navigate databases, schemas, and tables", () => {
+        H.DataModel.visit();
+      });
+    });
+
+    describe("1 database, 1 schema", () => {
+      it("should allow to navigate databases, schemas, and tables", () => {
+        H.DataModel.visit();
+
+        cy.log("should auto-open the only schema in the only database");
+        cy.location("pathname").should(
+          "eq",
+          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}`,
+        );
+        verifyTableSectionEmptyState();
+        H.DataModel.TablePicker.getDatabases().should("have.length", 1);
+        H.DataModel.TablePicker.getDatabase("Sample Database").should(
+          "be.visible",
+        );
+        H.DataModel.TablePicker.getSchemas().should("have.length", 0);
+        H.DataModel.TablePicker.getTables().should("have.length", 8);
+        H.DataModel.TableSection.get().should("not.exist");
+        H.DataModel.TablePicker.getTable("Orders").should("be.visible").click();
+
+        cy.location("pathname").should(
+          "eq",
+          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+        );
+        H.DataModel.TableSection.get().should("be.visible");
+        verifyFieldSectionEmptyState();
+
+        H.DataModel.TablePicker.getTable("Products")
+          .should("be.visible")
+          .click();
+        cy.location("pathname").should(
+          "eq",
+          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PRODUCTS_ID}`,
+        );
+        H.DataModel.TableSection.get().should("be.visible");
+        verifyFieldSectionEmptyState();
+      });
+
+      it("should allow to search for tables", () => {
+        H.DataModel.visit();
+
+        H.DataModel.TablePicker.getSearchInput().type("or");
+        H.DataModel.TablePicker.getDatabases().should("have.length", 1);
+        H.DataModel.TablePicker.getSchemas().should("have.length", 1);
+        H.DataModel.TablePicker.getTables().should("have.length", 2);
+        H.DataModel.TablePicker.getTable("Orders").should("be.visible").click();
+        cy.location("pathname").should(
+          "eq",
+          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+        );
+        H.DataModel.TableSection.getNameInput().should("have.value", "Orders");
+
+        cy.log("no results");
+        H.DataModel.TablePicker.getSearchInput().clear().type("xyz");
+        H.DataModel.TablePicker.get()
+          .findByText("No results.")
+          .should("be.visible");
+
+        cy.log("go back to browsing");
+        H.DataModel.TablePicker.getSearchInput().clear();
+        H.DataModel.TablePicker.getDatabases().should("have.length", 1);
+        H.DataModel.TablePicker.getSchemas().should("have.length", 0);
+        H.DataModel.TablePicker.getTables().should("have.length", 8);
+      });
+    });
+
+    describe(
+      "mutliple databases, with single and multiple schemas",
+      { tags: "@external" },
+      () => {
+        beforeEach(() => {
+          H.restore("postgres-writable");
+          H.resetTestTable({ type: "postgres", table: "multi_schema" });
+          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+        });
+
+        it("should allow to navigate databases, schemas, and tables", () => {
+          H.DataModel.visit();
+
+          cy.location("pathname").should("eq", "/admin/datamodel/database");
+          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
+          H.DataModel.TablePicker.getSchemas().should("have.length", 0);
+          H.DataModel.TablePicker.getTables().should("have.length", 0);
+          H.DataModel.TablePicker.getDatabase("Sample Database").should(
+            "be.visible",
+          );
+
+          cy.log("open database");
+          H.DataModel.TablePicker.getDatabase("Writable Postgres12")
+            .should("be.visible")
+            .click();
+          cy.location("pathname").should(
+            "eq",
+            `/admin/datamodel/database/${WRITABLE_DB_ID}`,
+          );
+          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
+          H.DataModel.TablePicker.getSchemas().should("have.length", 2);
+          H.DataModel.TablePicker.getTables().should("have.length", 0);
+          H.DataModel.TablePicker.getSchema("Wild").should("be.visible");
+          H.DataModel.TablePicker.getSchema("Domestic").should("be.visible");
+
+          cy.log("open schema");
+          H.DataModel.TablePicker.getSchema("Domestic").click();
+          cy.location("pathname").should(
+            "eq",
+            `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic`,
+          );
+          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
+          H.DataModel.TablePicker.getSchemas().should("have.length", 2);
+          H.DataModel.TablePicker.getTables().should("have.length", 1);
+          H.DataModel.TablePicker.getTable("Animals").should("be.visible");
+
+          cy.log("open table");
+          H.DataModel.TablePicker.getTable("Animals").click();
+          cy.location("pathname").should((pathname) => {
+            return pathname.startsWith(
+              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+            );
+          });
+          H.DataModel.TableSection.getNameInput().should(
+            "have.value",
+            "Animals",
+          );
+
+          cy.log("open another schema");
+          H.DataModel.TablePicker.getSchema("Wild").click();
+          cy.location("pathname").should(
+            "eq",
+            `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild`,
+          );
+          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
+          H.DataModel.TablePicker.getSchemas().should("have.length", 2);
+          H.DataModel.TablePicker.getTables().should("have.length", 3);
+          H.DataModel.TablePicker.getTable("Birds").should("be.visible");
+
+          cy.log("open another table");
+          H.DataModel.TablePicker.getTable("Birds").click();
+          cy.location("pathname").should((pathname) => {
+            return pathname.startsWith(
+              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+            );
+          });
+          H.DataModel.TableSection.getNameInput().should("have.value", "Birds");
+
+          cy.log("close schema");
+          H.DataModel.TablePicker.getSchema("Wild").click();
+          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
+          H.DataModel.TablePicker.getSchemas().should("have.length", 2);
+          H.DataModel.TablePicker.getTables().should("have.length", 1);
+          H.DataModel.TablePicker.getTable("Birds").should("not.exist");
+
+          cy.log("close database");
+          H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
+          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
+          H.DataModel.TablePicker.getSchemas().should("have.length", 0);
+          H.DataModel.TablePicker.getTables().should("have.length", 0);
+        });
+
+        it("should allow to search for tables", () => {
+          H.DataModel.visit();
+
+          H.DataModel.TablePicker.getSearchInput().type("rd");
+          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
+          H.DataModel.TablePicker.getSchemas().should("have.length", 2);
+          H.DataModel.TablePicker.getTables().should("have.length", 2);
+          H.DataModel.TablePicker.getTable("Orders").should("be.visible");
+          H.DataModel.TablePicker.getTable("Birds").should("be.visible");
+
+          H.DataModel.TablePicker.getSearchInput().clear().type("rds");
+          H.DataModel.TablePicker.getDatabases().should("have.length", 1);
+          H.DataModel.TablePicker.getSchemas().should("have.length", 1);
+          H.DataModel.TablePicker.getTables().should("have.length", 1);
+          H.DataModel.TablePicker.getTable("Birds")
+            .should("be.visible")
+            .click();
+
+          cy.location("pathname").should((pathname) => {
+            return pathname.startsWith(
+              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild/table/`,
+            );
+          });
+          H.DataModel.TableSection.getNameInput().should("have.value", "Birds");
+
+          cy.log("go back to browsing");
+          H.DataModel.TablePicker.getSearchInput().clear();
+          H.DataModel.TablePicker.getDatabases().should("have.length", 2);
+          H.DataModel.TablePicker.getSchemas().should("have.length", 2);
+          H.DataModel.TablePicker.getTables().should("have.length", 2);
+        });
+      },
+    );
+  });
+
   describe("Table section", () => {
     it("should see all tables in sample database and fields in orders table", () => {
       H.DataModel.visit({
@@ -88,14 +292,10 @@ describe("scenarios > admin > datamodel", () => {
     it("should be able to see empty state and name + description of the table", () => {
       H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
 
-      cy.get("main")
-        .findByText("Start by selecting data to model")
-        .should("be.visible");
+      verifyFieldSectionEmptyState();
 
       H.DataModel.TablePicker.getTable("Orders").click();
-      cy.get("main")
-        .findByText("Edit the table and fields")
-        .should("be.visible");
+      verifyFieldSectionEmptyState();
 
       H.DataModel.TableSection.getNameInput().should("have.value", "Orders");
       H.DataModel.TableSection.getDescriptionInput().should(
@@ -853,4 +1053,22 @@ function turnTableVisibilityOff(tableId: TableId) {
     ids: [tableId],
     visibility_type: "hidden",
   });
+}
+
+function verifyTableSectionEmptyState() {
+  cy.get("main")
+    .findByText("Start by selecting data to model")
+    .should("be.visible");
+  cy.get("main")
+    .findByText("Browse your databases to find the table you’d like to edit.")
+    .should("be.visible");
+}
+
+function verifyFieldSectionEmptyState() {
+  cy.get("main").findByText("Edit the table and fields").should("be.visible");
+  cy.get("main")
+    .findByText(
+      "Select a field to edit it. Then change the display name, semantic type or filtering behavior.",
+    )
+    .should("be.visible");
 }
