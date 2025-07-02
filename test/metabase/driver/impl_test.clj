@@ -7,7 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.test.util.async :as tu.async]
-   [metabase.util.jvm :as u.jvm])
+   [metabase.test.util.namespace :as test.namespace])
   (:import
    (com.vladsch.flexmark.ast Heading)
    (com.vladsch.flexmark.parser Parser)
@@ -80,7 +80,7 @@
 (defn- collect-metadatas
   "List metadata for all defmultis of driver namespaces."
   []
-  (let [nss (filter #(str/starts-with? % "metabase.driver") #_{:clj-kondo/ignore [:deprecated-var]} u.jvm/metabase-namespace-symbols)]
+  (let [nss (filter #(str/starts-with? % "metabase.driver") #_{:clj-kondo/ignore [:deprecated-var]} test.namespace/metabase-namespace-symbols)]
     (apply require nss)
     (->> (map ns-publics nss)
          (mapcat vals)

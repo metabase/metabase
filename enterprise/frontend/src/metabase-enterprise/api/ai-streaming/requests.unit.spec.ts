@@ -8,8 +8,7 @@ const ENDPOINT = "/some-streamed-endpoint";
 describe("ai requests", () => {
   describe("aiStreamingQuery", () => {
     it("should return full result of a successful request", async () => {
-      mockStreamedEndpoint({
-        url: ENDPOINT,
+      mockStreamedEndpoint(ENDPOINT, {
         textChunks: whoIsYourFavoriteResponse,
       });
       const result = await aiStreamingQuery({ url: ENDPOINT, body: {} });
@@ -17,8 +16,7 @@ describe("ai requests", () => {
     });
 
     it("should call callbacks for relevant chunk types", async () => {
-      mockStreamedEndpoint({
-        url: ENDPOINT,
+      mockStreamedEndpoint(ENDPOINT, {
         textChunks: [
           `0:"Testing"`,
           `2:{"type":"state","version":1,"value":{}}`,
@@ -43,8 +41,7 @@ describe("ai requests", () => {
       expect(successCbs.onToolResultPart).toHaveBeenCalled();
       expect(successCbs.onError).not.toHaveBeenCalled();
 
-      mockStreamedEndpoint({
-        url: ENDPOINT,
+      mockStreamedEndpoint(ENDPOINT, {
         textChunks: [
           `3:{}`, // error after finish to trigger all callbacks
         ],
@@ -67,8 +64,7 @@ describe("ai requests", () => {
     });
 
     it("throw error if no response", async () => {
-      mockStreamedEndpoint({
-        url: ENDPOINT,
+      mockStreamedEndpoint(ENDPOINT, {
         textChunks: undefined,
       });
       await expect(
@@ -91,8 +87,7 @@ describe("ai requests", () => {
 
     describe("in-flight request tracking", () => {
       it("should register/unregister with inflight requests on a successful request", async () => {
-        mockStreamedEndpoint({
-          url: ENDPOINT,
+        mockStreamedEndpoint(ENDPOINT, {
           textChunks: whoIsYourFavoriteResponse,
         });
         expect(getInflightRequestsForUrl(ENDPOINT).length).toBe(0);
