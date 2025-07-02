@@ -5,6 +5,13 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]))
 
+(defn- expand-aggregation-ref
+  [aggregation-ref aggregation]
+  (let [name-opts  (-> aggregation-ref lib.options/options (select-keys [:name :display-name]))]
+    (-> aggregation
+        (lib.options/update-options merge name-opts)
+        lib.util/fresh-uuids)))
+
 (defn- unroll-form
   [form aggregations expanded expanding]
   (cond
@@ -13,11 +20,11 @@
           expansion (get expanded ref)
           definition (get aggregations ref)]
       (cond
-        expansion       [(lib.util/fresh-uuids expansion) expanded]
+        expansion       [(expand-aggregation-ref form expansion) expanded]
         (expanding ref) (throw (ex-info "cyclic aggregation definition" {:aggregations aggregations
                                                                          :cycle-nodes expanding}))
         definition      (let [[expansion expanded] (unroll-form definition aggregations expanded (conj expanding ref))]
-                          [(lib.util/fresh-uuids expansion) (assoc expanded ref expansion)])
+                          [(expand-aggregation-ref form expansion) (assoc expanded ref expansion)])
         :else           (throw (ex-info "dangling aggregation reference" {:aggregations aggregations
                                                                           :reference ref}))))
 

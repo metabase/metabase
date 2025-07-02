@@ -84,3 +84,18 @@
           (is (= {:columns ["sum" "2*total"]
                   :rows [[1510617.7 3021235.4]]}
                  (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))))))
+
+(deftest ^:parallel expand-aggregations-perserve-name-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        find-col (fn [query col-name]
+                   (->> (lib/aggregable-columns query nil)
+                        (m/find-first (comp #{col-name} :display-name))))
+        query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                (lib/aggregate $ (lib/with-expression-name
+                                   (lib/sum (lib.metadata/field mp (mt/id :orders :total)))
+                                   "Custom Sum"))
+                (lib/aggregate $ (lib/with-expression-name (lib/ref (find-col $ "Custom Sum")) "Derived")))]
+    (testing "names are preserved"
+      (is (= {:columns ["Custom Sum" "Derived"]
+              :rows [[1510617.7 1510617.7]]}
+             (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))))
