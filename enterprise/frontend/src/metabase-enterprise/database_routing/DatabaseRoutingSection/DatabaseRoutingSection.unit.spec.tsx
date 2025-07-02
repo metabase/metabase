@@ -1,5 +1,3 @@
-import userEvent from "@testing-library/user-event";
-
 import {
   setupDatabasesEndpoints,
   setupUserAttributesEndpoint,
@@ -52,15 +50,8 @@ describe("DatabaseRoutingSection", () => {
     expect(screen.queryByText("Database routing")).not.toBeInTheDocument();
   });
 
-  it("should disable db routing if database routing is not supported by the db engine", async () => {
+  it("should hide section if database routing is not supported by the db engine", async () => {
     setup({ engine: "clickhouse", features: [] });
-    expect(screen.getByLabelText("Enable database routing")).toBeDisabled();
-    const openSection = screen.getByLabelText("chevrondown icon");
-    await userEvent.click(openSection);
-    expect(
-      screen.getByText(
-        "Database routing is not supported for this database type.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.queryByText("Database routing")).not.toBeInTheDocument();
   });
 });

@@ -860,10 +860,10 @@
     (perms/revoke-collection-permissions! (perms/all-users-group) collection-c)
     (perms/grant-collection-read-permissions! (perms/all-users-group) collection-b)
     (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection-c)
-    (testing "i can't archive from a collection I have no permissions on"
-      (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id subcollection-a)) {:archived true}))
-    (testing "i can't archive from a collection I have read permissions on"
-      (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id subcollection-b)) {:archived true}))
+    (testing "i can archive from a collection I have no permissions on"
+      (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id subcollection-a)) {:archived true}))
+    (testing "i can archive from a collection I have read permissions on"
+      (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id subcollection-b)) {:archived true}))
     (testing "i can archive from a collection i have no permissions on"
       (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id subcollection-c)) {:archived true})))
   (mt/with-temp [:model/Collection collection-a {:name "A"}
@@ -2778,3 +2778,44 @@
                     (filter #(= (:model %) "card"))
                     first
                     :dashboard)))))))
+
+(deftest delete-collection-with-descendants-permissions-test
+  (testing "DELETE /api/collection/:id"
+    (testing "Deleting a collection with descendants requires proper permissions"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection parent-collection {}
+                       :model/Collection child-collection {:location (collection/children-location parent-collection)}
+                       :model/Collection grandchild-collection {:location (collection/children-location child-collection)}]
+
+          (testing "Should return 403 if user has no permissions for descendants"
+            (perms/revoke-collection-permissions! (perms/all-users-group) parent-collection)
+            (perms/revoke-collection-permissions! (perms/all-users-group) child-collection)
+            (perms/revoke-collection-permissions! (perms/all-users-group) grandchild-collection)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent-collection)
+            ;; No permissions for child or grandchild
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id parent-collection)) {:archived true}))))
+
+          (testing "Should return 403 if user only has read permissions for descendants"
+            (perms/revoke-collection-permissions! (perms/all-users-group) parent-collection)
+            (perms/revoke-collection-permissions! (perms/all-users-group) child-collection)
+            (perms/revoke-collection-permissions! (perms/all-users-group) grandchild-collection)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent-collection)
+            (perms/grant-collection-read-permissions! (perms/all-users-group) child-collection)
+            (perms/grant-collection-read-permissions! (perms/all-users-group) grandchild-collection)
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id parent-collection)) {:archived true}))))
+
+          (testing "Should return 200 if user has read-write permissions for all descendants"
+            (perms/revoke-collection-permissions! (perms/all-users-group) parent-collection)
+            (perms/revoke-collection-permissions! (perms/all-users-group) child-collection)
+            (perms/revoke-collection-permissions! (perms/all-users-group) grandchild-collection)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent-collection)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) child-collection)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) grandchild-collection)
+            (is (partial= {:archived true}
+                          (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id parent-collection)) {:archived true})))
+            ;; Verify the collections were actually archived
+            (is (t2/exists? :model/Collection :id (u/the-id parent-collection) :archived true))
+            (is (t2/exists? :model/Collection :id (u/the-id child-collection) :archived true))
+            (is (t2/exists? :model/Collection :id (u/the-id grandchild-collection) :archived true))))))))

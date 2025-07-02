@@ -32,7 +32,7 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/common/components/Link";
-import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
+import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
@@ -618,6 +618,9 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
 };
 
 const defaultMetabotContextValue: MetabotContext = {
+  prompt: "",
+  setPrompt: () => {},
+  promptInputRef: undefined,
   getChatContext: () => ({}) as any,
   registerChatContextProvider: () => () => {},
 };
@@ -681,6 +684,7 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
 };
 
 export const PLUGIN_METABOT = {
+  isEnabled: () => false,
   Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),

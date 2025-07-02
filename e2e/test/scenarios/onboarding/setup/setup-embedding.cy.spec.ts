@@ -3,7 +3,6 @@ import {
   describeWithSnowplowEE,
   expectUnstructuredSnowplowEvent,
   main,
-  setTokenFeatures,
 } from "e2e/support/helpers";
 
 const { H } = cy;
@@ -38,17 +37,15 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
       .should("be.visible")
       .click();
 
-    cy.findAllByRole("main")
-      .eq(1)
-      .within(() => {
-        cy.findByRole("heading", { name: "Welcome to Metabase" }).should(
-          "be.visible",
-        );
-        cy.findByText(
-          "Looks like everything is working. Now let’s get to know you, connect to your data, and start finding you some answers!",
-        ).should("be.visible");
-        cy.button("Let's get started").should("be.visible");
-      });
+    cy.findByTestId("welcome-page").within(() => {
+      cy.findByRole("heading", { name: "Welcome to Metabase" }).should(
+        "be.visible",
+      );
+      cy.findByText(
+        "Looks like everything is working. Now let’s get to know you, connect to your data, and start finding you some answers!",
+      ).should("be.visible");
+      cy.button("Let's get started").should("be.visible");
+    });
 
     cy.location("pathname").should("eq", "/setup");
   });
@@ -140,7 +137,7 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
       "Now we have a user we simulate being on cloud by setting a Metatabase Token",
     );
     cy.wait("@setup");
-    setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.log("2: Data connection step");
     sidebar().within(() => {

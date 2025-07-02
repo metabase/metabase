@@ -296,7 +296,8 @@
 (defmethod temporal-type :case
   [[_case & rezt]]
   ;; Following logic for picking a type is taken from
-  ;; the [[metabase.query-processor.middleware.annotate/infer-expression-type]].
+  ;; the [[metabase.query-processor.middleware.annotate/infer-expression-type]] (now replaced by
+  ;; lib [[metabase.lib.metadata.calculation/type-of-method]]).
   (loop [[cond-or-else expr & rezt*] rezt]
     (when (and expr (not= :else cond-or-else))
       (if-some [t (temporal-type expr)]
