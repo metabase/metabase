@@ -541,7 +541,6 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                     {() => (
                       <Grid
                         aria-label={PIVOT_TABLE_BODY_LABEL}
-                        containerRole="rowgroup"
                         width={viewPortWidth - leftHeaderWidth}
                         height={bodyHeight}
                         rowCount={rowCount}
