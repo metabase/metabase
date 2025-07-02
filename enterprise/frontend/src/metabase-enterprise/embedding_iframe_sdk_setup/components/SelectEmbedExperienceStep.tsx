@@ -40,7 +40,8 @@ export const SelectEmbedExperienceStep = () => {
         "dashboard",
         () => recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
       )
-      .with("exploration", () => 0); // resource id does not apply
+      .with("exploration", () => 0) // resource id does not apply
+      .exhaustive();
 
     setSettings({
       // these settings do not change when the embed type changes
