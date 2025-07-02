@@ -420,19 +420,23 @@ describe("scenarios > question > saved", () => {
 
   it("should always be possible to view the full title text of the saved question", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
-    const savedQuestionTitle = cy.findByTestId("saved-question-header-title");
-    savedQuestionTitle.clear();
-    savedQuestionTitle.type(
-      "Space, the final frontier. These are the voyages of the Starship Enterprise.",
-    );
-    savedQuestionTitle.blur();
+    cy.findByTestId("saved-question-header-title")
+      .as("savedQuestionTitle")
+      .should("be.visible")
+      .clear()
+      .type(
+        "Space, the final frontier. These are the voyages of the Starship Enterprise.",
+      )
+      .blur();
 
-    savedQuestionTitle.should("be.visible").should(($el) => {
-      // clientHeight: height of the textarea
-      // scrollHeight: height of the text content, including content not visible on the screen
-      const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
-      expect(heightDifference).to.eq(0);
-    });
+    cy.get("@savedQuestionTitle")
+      .should("be.visible")
+      .should(($el) => {
+        // clientHeight: height of the textarea
+        // scrollHeight: height of the text content, including content not visible on the screen
+        const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
+        expect(heightDifference).to.eq(0);
+      });
   });
 
   it("should not show '- Modified' suffix after we click 'Save' on a new model (metabase#42773)", () => {
@@ -584,7 +588,7 @@ describe("scenarios > question > saved", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
 
       cy.intercept("/api/session/properties", (req) => {
         req.continue((res) => {
@@ -748,9 +752,8 @@ describe(
         `${H.WEBHOOK_TEST_HOST}/api/session/${H.WEBHOOK_TEST_SESSION_ID}/requests`,
       ).then(({ body }) => {
         expect(body).to.have.length(1);
-        const payload = cy.wrap(atob(body[0].content_base64));
 
-        payload
+        cy.wrap(atob(body[0].content_base64))
           .should("have.string", "alert_creator_name")
           .and("have.string", "Bobby Tables");
       });

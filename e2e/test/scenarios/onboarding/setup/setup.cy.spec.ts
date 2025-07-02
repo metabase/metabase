@@ -353,6 +353,8 @@ describe("scenarios > setup", () => {
       cy.button("Connect database").click();
     });
 
+    cy.findByRole("status").should("contain", `Connected to ${dbName}`);
+
     skipLicenseStepOnEE();
 
     // usage data
@@ -485,7 +487,7 @@ describe("scenarios > setup (EE)", () => {
 
       cy.findByText("Activate your commercial license").should("exist");
 
-      typeToken(Cypress.env("NO_FEATURES_TOKEN"));
+      typeToken(Cypress.env("MB_STARTER_CLOUD_TOKEN"));
 
       cy.button("Activate").click();
 
@@ -576,7 +578,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
           step: "license_token",
         });
 
-        cy.button("Skip").click();
+        cy.button("I'll activate later").click();
         H.expectUnstructuredSnowplowEvent({
           event: "license_token_step_submitted",
           valid_token_present: false,
@@ -683,7 +685,7 @@ const fillUserAndContinue = ({
 const skipLicenseStepOnEE = () => {
   if (IS_ENTERPRISE) {
     cy.findByText("Activate your commercial license").should("exist");
-    cy.button("Skip").click();
+    cy.button("I'll activate later").click();
   }
 };
 

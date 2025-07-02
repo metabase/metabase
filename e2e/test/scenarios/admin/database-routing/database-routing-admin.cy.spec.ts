@@ -32,7 +32,7 @@ describe("admin > database > database routing", () => {
 
   describe("EE", () => {
     beforeEach(() => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should be able to configure db routing and manage destination databases", () => {
@@ -540,9 +540,7 @@ function assertDbRoutingDisabled() {
 
 function setupModelPersistence() {
   interceptPerformanceRoutes();
-  cy.visit("/admin");
-  cy.findByRole("link", { name: "Performance" }).click();
-  cy.findByRole("tab", { name: "Model persistence" }).click();
-  cy.findByRole("switch", { name: "Disabled" }).click({ force: true });
+  cy.visit("/admin/performance/models");
+  cy.findByTestId("admin-layout-content").findByText("Disabled").click();
   cy.wait("@enablePersistence");
 }

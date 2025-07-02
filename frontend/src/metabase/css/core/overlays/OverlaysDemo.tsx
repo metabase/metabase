@@ -7,13 +7,14 @@ import {
 } from "react";
 import _ from "underscore";
 
+import { BulkActionBarPortal } from "metabase/common/components/BulkActionBar/BulkActionBar";
 import { EntityPickerModal } from "metabase/common/components/EntityPicker";
+import LegacyModal from "metabase/common/components/Modal";
+import ModalContent from "metabase/common/components/ModalContent";
+import LegacySelect, { Option } from "metabase/common/components/Select";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
-import LegacyModal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
-import Toaster from "metabase/components/Toaster";
-import { UndoListOverlay } from "metabase/containers/UndoListing";
-import LegacySelect, { Option } from "metabase/core/components/Select";
+import Toaster from "metabase/common/components/Toaster";
+import { UndoListOverlay } from "metabase/common/components/UndoListing";
 import { PaletteCard } from "metabase/palette/components/Palette";
 import {
   Box,
@@ -36,8 +37,6 @@ import {
   Title,
 } from "metabase/ui";
 import { createMockUndo } from "metabase-types/api/mocks";
-
-import { BulkActionBarPortal } from "../../../components/BulkActionBar/BulkActionBar";
 
 const LauncherGroup = ({
   title,

@@ -59,9 +59,7 @@ export const MetabotChatEmbedding = ({
 
     metabotRequestPromise
       .then((result) => {
-        const redirectUrl = (
-          result.payload as any
-        )?.payload?.data?.reactions?.find(
+        const redirectUrl = (result.payload as any)?.data?.reactions?.find(
           (reaction: { type: string; url: string }) =>
             reaction.type === "metabot.reaction/redirect",
         )?.url;

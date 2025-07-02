@@ -404,6 +404,7 @@
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :expression-aggregations         true
+                              :expression-literals             true
                               :inner-join                      true
                               :left-join                       true
                               :nested-fields                   true
@@ -419,7 +420,8 @@
                               :expressions/text                true
                               :expressions/datetime            true
                               ;; Index sync is turned off across the application as it is not used ATM.
-                              :index-info                      false}]
+                              :index-info                      false
+                              :database-routing                true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)

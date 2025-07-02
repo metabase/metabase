@@ -41,7 +41,8 @@
                               :identifiers-with-spaces   false
                               :uuid-type                 false
                               :nested-field-columns      false
-                              :test/jvm-timezone-setting false}]
+                              :test/jvm-timezone-setting false
+                              :database-routing          false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -499,9 +500,9 @@
                   [(:name param) (:value param)]
 
                   (when-let [field-id (driver-api/match-one param
-                                                            [:field (field-id :guard integer?) _]
-                                                            (when (contains? (set &parents) :dimension)
-                                                              field-id))]
+                                        [:field (field-id :guard integer?) _]
+                                        (when (contains? (set &parents) :dimension)
+                                          field-id))]
                     [(:name (driver-api/field (driver-api/metadata-provider) field-id))
                      (:value param)]))))
         user-parameters))

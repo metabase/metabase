@@ -350,6 +350,14 @@
    :api  #{metabase.connection-pool}
    :uses #{}}
 
+  content-translation
+  {:team "Admin Webapp"
+   :api  #{metabase.content-translation.api
+           metabase.content-translation.models}
+   :uses #{api
+           premium-features
+           util}}
+
   content-verification
   {:team "Admin Webapp"
    :api  #{metabase.content-verification.core
@@ -368,6 +376,7 @@
    :api  #{metabase.dashboards.api
            metabase.dashboards.autoplace
            metabase.dashboards.constants
+           metabase.dashboards.init
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab}
@@ -394,6 +403,7 @@
            request
            revisions
            search
+           settings
            util
            warehouse-schema
            xrays}}
@@ -475,6 +485,7 @@
   {:team "Embedding"
    :api  #{metabase.embedding.api
            metabase.embedding.init
+           metabase.embedding.jwt
            metabase.embedding.settings
            metabase.embedding.validation}
    :uses #{analytics
@@ -562,15 +573,16 @@
           metabase.lib.core
           metabase.lib.equality
           metabase.lib.field
+          metabase.lib.field.resolution
           metabase.lib.filter
           metabase.lib.ident
           metabase.lib.init
           metabase.lib.join.util
           metabase.lib.metadata
           metabase.lib.metadata.cached-provider
-          metabase.lib.metadata.calculation
           metabase.lib.metadata.invocation-tracker
           metabase.lib.metadata.protocols
+          metabase.lib.metadata.result-metadata
           metabase.lib.normalize
           metabase.lib.options
           metabase.lib.query
@@ -583,6 +595,7 @@
           metabase.lib.schema.expression.window
           metabase.lib.schema.id
           metabase.lib.schema.info
+          metabase.lib.schema.join
           metabase.lib.schema.literal
           metabase.lib.schema.metadata
           metabase.lib.schema.parameter
@@ -744,17 +757,7 @@
   {:team "Admin Webapp"
    :api  #{metabase.permissions.api
            metabase.permissions.core
-           metabase.permissions.init
-           ;; TODO -- move these into the API namespace.
-           metabase.permissions.models.application-permissions-revision
-           metabase.permissions.models.collection-permission-graph-revision
-           metabase.permissions.models.collection.graph
-           metabase.permissions.models.data-permissions
-           metabase.permissions.models.permissions
-           metabase.permissions.models.permissions-group
-           metabase.permissions.path
-           metabase.permissions.util
-           metabase.permissions.validation}
+           metabase.permissions.init}
    :uses #{api
            app-db
            audit-app
@@ -1344,6 +1347,7 @@
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
            metabase.warehouse-schema.models.field
+           metabase.warehouse-schema.models.field-user-settings
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
            metabase.warehouse-schema.table}
@@ -1471,8 +1475,7 @@
            driver
            query-processor
            util
-           enterprise/metabot-v3
-           }}
+           enterprise/metabot-v3}}
 
   enterprise/ai-sql-generation
   {:team  "Metabot"
@@ -1541,6 +1544,17 @@
            task
            util}}
 
+  enterprise/content-translation
+  {:team "Admin Webapp"
+   :api  #{metabase-enterprise.content-translation.dictionary
+           metabase-enterprise.content-translation.routes}
+   :uses #{api
+           content-translation
+           embedding
+           premium-features
+           util
+           enterprise/api}}
+
   enterprise/content-verification
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.content-verification.api.routes}
@@ -1572,6 +1586,7 @@
    :uses #{api
            config
            database-routing
+           driver
            events
            lib
            models
@@ -1642,6 +1657,7 @@
            app-db
            collections
            config
+           driver
            legacy-mbql
            lib
            lib-be
@@ -1651,11 +1667,22 @@
            pulse
            query-processor
            request
+           server
            settings
            system
            users
            util
            warehouse-schema}}
+
+  enterprise/permission-debug
+  {:team "Admin Webapp"
+   :api #{metabase-enterprise.permission-debug.api}
+   :uses #{api
+           lib
+           models
+           permissions
+           query-processor
+           util}}
 
   enterprise/premium-features
   {:team "Admin Webapp"

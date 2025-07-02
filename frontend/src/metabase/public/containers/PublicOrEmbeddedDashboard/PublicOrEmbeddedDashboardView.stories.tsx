@@ -1,7 +1,9 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
-import type { StoryFn } from "@storybook/react";
+import type { StoryContext, StoryFn } from "@storybook/react";
+import { HttpResponse, http } from "msw";
 import { useEffect, useMemo } from "react";
+import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
@@ -20,12 +22,13 @@ import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import ObjectDetail from "metabase/visualizations/visualizations/ObjectDetail";
 import Table from "metabase/visualizations/visualizations/Table/Table";
 import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
-import type { DashboardCard } from "metabase-types/api";
+import type { Dashboard, DashboardCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDatabase,
   createMockDataset,
   createMockDatasetData,
   createMockParameter,
@@ -53,10 +56,55 @@ export default {
   ],
   parameters: {
     layout: "fullscreen",
+    msw: {
+      handlers: [
+        http.get("*/api/database", () =>
+          HttpResponse.json(createMockDatabase()),
+        ),
+      ],
+    },
   },
 };
 
-function ReduxDecorator(Story: StoryFn) {
+function ReduxDecorator(Story: StoryFn, context: StoryContext) {
+  const dashboard = (context.args.dashboard as Dashboard) ?? createDashboard();
+  const initialState = createMockState({
+    currentUser: null,
+    settings: createMockSettingsState({
+      "hide-embed-branding?": false,
+    }),
+    dashboard: createMockDashboardState({
+      dashboardId: dashboard.id,
+      dashboards: {
+        [dashboard.id]: {
+          ...dashboard,
+          dashcards: dashboard.dashcards.map((dashcard) => dashcard.id),
+        },
+      },
+      dashcards: _.indexBy(dashboard.dashcards, "id"),
+      dashcardData: {
+        [DASHCARD_BAR_ID]: {
+          [CARD_BAR_ID]: createMockDataset({
+            data: createMockDatasetData({
+              cols: [
+                createMockColumn(StringColumn({ name: "Dimension" })),
+                createMockColumn(NumberColumn({ name: "Count" })),
+              ],
+              rows: [
+                ["foo", 1],
+                ["bar", 2],
+              ],
+            }),
+          }),
+        },
+        [DASHCARD_TABLE_ID]: {
+          // Couldn't really figure out the type here.
+          [CARD_TABLE_ID]: createMockDataset(TABLE_RAW_SERIES[0] as any),
+        },
+      },
+    }),
+  });
+  const store = getStore(publicReducers, initialState, [Api.middleware]);
   return (
     <MetabaseReduxProvider store={store}>
       <Story />
@@ -81,36 +129,6 @@ const CARD_BAR_ID = getNextId();
 const CARD_TABLE_ID = getNextId();
 const TAB_ID = getNextId();
 const PARAMETER_ID = "param-hex";
-const initialState = createMockState({
-  currentUser: null,
-  settings: createMockSettingsState({
-    "hide-embed-branding?": false,
-  }),
-  dashboard: createMockDashboardState({
-    dashcardData: {
-      [DASHCARD_BAR_ID]: {
-        [CARD_BAR_ID]: createMockDataset({
-          data: createMockDatasetData({
-            cols: [
-              createMockColumn(StringColumn({ name: "Dimension" })),
-              createMockColumn(NumberColumn({ name: "Count" })),
-            ],
-            rows: [
-              ["foo", 1],
-              ["bar", 2],
-            ],
-          }),
-        }),
-      },
-      [DASHCARD_TABLE_ID]: {
-        // Couldn't really figure out the type here.
-        [CARD_TABLE_ID]: createMockDataset(TABLE_RAW_SERIES[0] as any),
-      },
-    },
-  }),
-});
-
-const store = getStore(publicReducers, initialState, [Api.middleware]);
 
 interface CreateDashboardOpts {
   hasScroll?: boolean;
@@ -121,6 +139,7 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
     id: DASHBOARD_ID,
     name: "My dashboard",
     width: "full",
+    parameters: [createMockParameter({ id: PARAMETER_ID })],
     dashcards: dashcards ?? [
       createMockDashboardCard({
         id: DASHCARD_BAR_ID,
@@ -132,7 +151,10 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
           {
             card_id: CARD_BAR_ID,
             parameter_id: PARAMETER_ID,
-            target: ["variable", ["template-tag", "abc"]],
+            target: [
+              "dimension",
+              ["field", "Dimension", { "base-type": "type/Text" }],
+            ],
           },
         ],
       }),
@@ -152,8 +174,13 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<MockDashboardContextProps> = (args) => (
-  <MockDashboardContext {...args}>
+const Template: StoryFn<MockDashboardContextProps> = (
+  args: MockDashboardContextProps,
+) => (
+  <MockDashboardContext
+    {...args}
+    dashboardId={args.dashboardId ?? args.dashboard?.id}
+  >
     <PublicOrEmbeddedDashboardView />
   </MockDashboardContext>
 );
@@ -165,17 +192,20 @@ const defaultArgs: Partial<MockDashboardContextProps> = {
   background: true,
   slowCards: {},
   selectedTabId: TAB_ID,
-  parameters: [
-    createMockParameter({
-      id: PARAMETER_ID,
-    }),
-  ],
   withFooter: true,
 };
 
 export const LightThemeDefault = {
   render: Template,
   args: defaultArgs,
+};
+
+export const LightThemeNoResults = {
+  render: Template,
+  args: {
+    ...defaultArgs,
+    dashboard: createDashboard({ dashcards: [] }),
+  },
 };
 
 export const LightThemeScroll = {

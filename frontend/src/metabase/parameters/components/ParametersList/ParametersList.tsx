@@ -5,12 +5,12 @@ import { useCallback, useMemo } from "react";
 import type {
   DragEndEvent,
   RenderItemProps,
-} from "metabase/core/components/Sortable";
-import { SortableList } from "metabase/core/components/Sortable";
+} from "metabase/common/components/Sortable";
+import { SortableList } from "metabase/common/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import type { ParametersListProps } from "metabase/parameters/components/ParametersList/types";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import { Icon } from "metabase/ui";
+import { Flex, Icon } from "metabase/ui";
 import type { Parameter, ParameterId } from "metabase-types/api";
 
 import { ParameterWidget } from "../ParameterWidget";
@@ -26,6 +26,7 @@ export const ParametersList = ({
   dashboard,
   editingParameter,
 
+  isSortable = true,
   isFullscreen,
   hideParameters,
   isEditing,
@@ -37,6 +38,8 @@ export const ParametersList = ({
   setParameterIndex,
   setEditingParameter,
   enableParameterRequiredBehavior,
+  widgetsVariant = "default",
+  widgetsWithinPortal,
 }: ParametersListProps) => {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
@@ -62,6 +65,9 @@ export const ParametersList = ({
   }: RenderItemProps<Parameter>) => (
     <ParameterWidget
       key={`sortable-${id}`}
+      variant={widgetsVariant}
+      fullWidth={vertical}
+      withinPortal={widgetsWithinPortal}
       className={cx({ [CS.mb2]: vertical })}
       isEditing={isEditing}
       isFullscreen={isFullscreen}
@@ -79,7 +85,7 @@ export const ParametersList = ({
       enableParameterRequiredBehavior={enableParameterRequiredBehavior}
       commitImmediately={commitImmediately}
       dragHandle={
-        isEditing && setParameterIndex ? (
+        isSortable && isEditing && setParameterIndex ? (
           <div
             className={cx(
               CS.flex,
@@ -92,27 +98,38 @@ export const ParametersList = ({
           </div>
         ) : null
       }
-      isSortable
+      isSortable={isSortable}
     />
   );
 
   return visibleValuePopulatedParameters.length > 0 ? (
-    <div
-      className={cx(
-        className,
-        CS.flex,
-        CS.alignEnd,
-        CS.flexWrap,
-        vertical ? CS.flexColumn : CS.flexRow,
-      )}
+    <Flex
+      display="flex"
+      direction={vertical ? "column" : "row"}
+      align="end"
+      wrap="wrap"
+      gap="sm"
+      className={className}
     >
-      <SortableList
-        items={visibleValuePopulatedParameters}
-        getId={getId}
-        renderItem={renderItem}
-        onSortEnd={handleSortEnd}
-        sensors={[pointerSensor]}
-      />
-    </div>
+      {isSortable ? (
+        <SortableList
+          items={visibleValuePopulatedParameters}
+          getId={getId}
+          renderItem={renderItem}
+          onSortEnd={handleSortEnd}
+          sensors={[pointerSensor]}
+        />
+      ) : (
+        <>
+          {visibleValuePopulatedParameters.map((parameter, index) =>
+            renderItem({
+              item: parameter,
+              id: getId(parameter),
+              index,
+            }),
+          )}
+        </>
+      )}
+    </Flex>
   ) : null;
 };

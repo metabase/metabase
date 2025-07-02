@@ -5,7 +5,7 @@ import Mustache from "mustache";
 import type * as React from "react";
 import ReactMarkdown from "react-markdown";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/env";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";

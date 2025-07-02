@@ -43,6 +43,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]
+   [metabase.util.random :as u.random]
    [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -70,11 +71,14 @@
                         (thunk))))
 
 (deftest sanity-check-test
-  (mt/test-driver :snowflake
-    (is (= [100]
-           (mt/first-row
-            (mt/run-mbql-query venues
-              {:aggregation [[:count]]}))))))
+  (mt/test-driver
+    :snowflake
+    (mt/dataset
+      attempted-murders
+      (is (= [20]
+             (mt/first-row
+              (mt/run-mbql-query attempts
+                {:aggregation [[:count]]})))))))
 
 (deftest ^:parallel describe-fields-test
   (mt/test-driver
@@ -174,13 +178,12 @@
         false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))))
 
-(deftest ^:parallel ddl-statements-test
+(deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
-    (binding [test.data.snowflake/*database-prefix-fn* (constantly "v4_")]
+    (with-redefs [test.data.snowflake/qualified-db-name (constantly "v4_test-data")]
       (testing "Create DB DDL statements"
         (is (= "DROP DATABASE IF EXISTS \"v4_test-data\"; CREATE DATABASE \"v4_test-data\";"
                (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
-
       (testing "Create Table DDL statements"
         (is (= (map
                 #(str/replace % #"\s+" " ")
@@ -315,7 +318,7 @@
 (deftest describe-database-default-schema-test
   (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"
     (mt/test-driver :snowflake
-      (let [details     (assoc (mt/dbdef->connection-details :snowflake :db {:database-name "Default-Schema-Test"})
+      (let [details     (assoc (mt/dbdef->connection-details :snowflake :db (tx/map->DatabaseDefinition {:database-name (str "Default-Schema-Test-" (u.random/random-name))}))
                                ;; simulate a DB default schema or session schema by including it in the connection
                                ;; details... see
                                ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706219065462619?thread_ts=1706156558.940489&cid=C04DN5VRQM6
@@ -347,7 +350,7 @@
 (deftest describe-database-views-test
   (mt/test-driver :snowflake
     (testing "describe-database views"
-      (let [details (mt/dbdef->connection-details :snowflake :db {:database-name "views_test"})
+      (let [details (mt/dbdef->connection-details :snowflake :db (tx/map->DatabaseDefinition {:database-name (str "views_test_" (u.random/random-name))}))
             db-name (:db details)
             spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
         ;; create the snowflake DB
@@ -785,8 +788,10 @@
       (let [query {:database   (mt/id)
                    :type       :native
                    :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
-                                                    (format "FROM \"%stest-data\".\"PUBLIC\".\"users\" "
-                                                            (test.data.snowflake/*database-prefix-fn*))
+                                                    (format "FROM \"%s\".\"PUBLIC\".\"users\" "
+                                                            (test.data.snowflake/qualified-db-name
+                                                             (tx/get-dataset-definition
+                                                              (data.impl/resolve-dataset-definition *ns* 'test-data))))
                                                     "WHERE date_trunc('day', CAST(\"last_login\" AS timestamp))"
                                                     "    = date_trunc('day', CAST({{filter_date}} AS timestamp))")
                                 :template-tags {:filter_date {:name         "filter_date"

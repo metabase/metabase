@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactElement } from "react";
+import { useEffect } from "react";
 import { t } from "ttag";
 
 import {
@@ -11,8 +12,8 @@ import {
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
+import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import {
   Box,
   Button,
@@ -70,14 +71,27 @@ export const InteractiveQuestionDefaultView = ({
     withDownloads,
   } = useInteractiveQuestionContext();
 
-  const isCreatingQuestionFromScratch =
-    originalId === "new" && !question?.isSaved();
+  const isNewQuestion = originalId === "new";
+  const isQuestionSaved = question?.isSaved();
 
-  const [isEditorOpen, { close: closeEditor, toggle: toggleEditor }] =
-    useDisclosure(isCreatingQuestionFromScratch);
+  const [
+    isEditorOpen,
+    { close: closeEditor, toggle: toggleEditor, open: openEditor },
+  ] = useDisclosure(isNewQuestion && !isQuestionSaved);
 
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
+
+  useEffect(() => {
+    if (isNewQuestion && !isQuestionSaved) {
+      // When switching to new question, open the notebook editor
+      openEditor();
+    } else if (!isNewQuestion) {
+      // When no longer in a notebook editor, switch back to visualization.
+      // When a question is saved, also switch back to visualization.
+      closeEditor();
+    }
+  }, [isNewQuestion, isQuestionSaved, openEditor, closeEditor]);
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
@@ -90,7 +104,7 @@ export const InteractiveQuestionDefaultView = ({
     return <SdkLoader />;
   }
 
-  if (!question) {
+  if (!isEditorOpen && !question) {
     if (originalId) {
       return <QuestionNotFoundError id={originalId} />;
     } else {

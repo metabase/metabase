@@ -5,6 +5,7 @@
   "Schema model types"
   ["Database"
    "Field"
+   "FieldUserSettings"
    "Segment"
    "Table"
    "Channel"])
@@ -52,6 +53,7 @@
    "CollectionBookmark"
    "CollectionPermissionGraphRevision"
    "ConnectionImpersonation"
+   "ContentTranslation"
    "DatabaseRouter"
    "DashboardBookmark"
    "DataPermissions"
