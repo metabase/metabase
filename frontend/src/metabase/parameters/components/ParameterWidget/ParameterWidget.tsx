@@ -94,7 +94,6 @@ export const ParameterWidget = ({
           onClick={() =>
             setEditingParameter?.(isEditingParameter ? null : parameter.id)
           }
-          data-testid="editing-parameter-widget"
         >
           <div className={CS.mr1} onClick={(e) => e.stopPropagation()}>
             {dragHandle}

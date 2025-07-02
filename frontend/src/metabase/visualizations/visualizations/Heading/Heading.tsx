@@ -345,7 +345,7 @@ const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
         {/* Invisible expanded parameter list for measurements */}
         <DashboardParameterList
           {...parametersListCommonProps}
-          className={cx(CS.absolute, CS.hidden, CS.pointerEventsNone)}
+          className={cx(CS.absolute, CS.hidden)}
           ref={ref}
         />
         {renderContent()}

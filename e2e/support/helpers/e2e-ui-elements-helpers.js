@@ -166,15 +166,7 @@ export function notificationList() {
  * @todo Extract into a separate helper file.
  */
 export function filterWidget() {
-  // Inline filters (filters in dashboard cards) render an invisible
-  // list of filters for measuring dimensions, so we filter it out for convinience
-  return cy.findAllByTestId("parameter-widget").filter(":visible");
-}
-
-export function editingFilterWidget() {
-  // Inline filters (filters in dashboard cards) render an invisible
-  // list of filters for measuring dimensions, so we filter it out for convinience
-  return cy.findAllByTestId("editing-parameter-widget").filter(":visible");
+  return cy.findAllByTestId("parameter-widget");
 }
 
 export function clearFilterWidget(index = 0) {
