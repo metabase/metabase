@@ -104,6 +104,10 @@ export const cleanEmptyVisibility = (
       return copy;
     }
 
+    if ((parameter.visibility as string) === "") {
+      delete parameter.visibility;
+    }
+
     return parameter;
   });
 };

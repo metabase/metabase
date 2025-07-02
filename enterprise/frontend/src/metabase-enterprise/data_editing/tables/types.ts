@@ -124,23 +124,26 @@ export type DescribeActionFormResponse = {
   parameters: ActionFormParameter[];
 };
 
+export type ConfigFormSourceType = "ask-user" | "row-data" | "constant";
+
+export type ConfigFormActionExpression = {
+  "action-id": number;
+  name: string;
+  parameters: { id: string; sourceType: ConfigFormSourceType }[];
+};
+
 export type ConfigFormRequest = {
-  action_id:
-    | string
-    | {
-        "action-id": number;
-        name: string;
-        parameters?: any;
-      };
+  action_id: string | ConfigFormActionExpression;
   scope: ActionScope;
 };
 
 export type ConfigFormParameter = {
   id: string;
-  sourceType?: "ask-user" | "row-data" | "constant";
+  sourceType?: ConfigFormSourceType;
   sourceValueTarget?: string;
   visibility?: "readonly" | "hidden";
   value?: RowValue;
+  displayName: string;
 };
 
 export type ConfigFormResponse = {

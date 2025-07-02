@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { uuid } from "metabase/lib/uuid";
 import { Button, Modal, Stack, Text } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type {
@@ -52,7 +51,7 @@ export const ConfigureTableActions = ({
       parameterMappings: RowActionFieldSettings[];
     }) => {
       const newItem: TableActionDisplaySettings = {
-        id: uuid(),
+        id: "",
         name: name || action.name,
         actionId: action.id,
         actionType: "data-grid/custom-action",
@@ -83,7 +82,7 @@ export const ConfigureTableActions = ({
       parameterMappings: RowActionFieldSettings[];
     }) => {
       const newItem: TableActionDisplaySettings = {
-        id: id || uuid(),
+        id: id || "",
         name: name || action.name,
         actionId: action.id,
         actionType: "data-grid/custom-action",

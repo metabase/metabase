@@ -1,10 +1,6 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
-import {
-  isParameterHidden,
-  isParameterRequired,
-} from "metabase/actions/components/ActionViz/utils";
 import { FormRadioGroup, FormSelect, FormTextInput } from "metabase/forms";
 import { Box, Group, Radio, Text } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
@@ -12,14 +8,11 @@ import type { ConfigFormParameter } from "metabase-enterprise/data_editing/table
 import type {
   DataGridWritebackAction,
   RowActionFieldSourceType,
-  WritebackAction,
-  WritebackParameter,
 } from "metabase-types/api";
 
 import S from "./AddOrEditActionSettingsContent.module.css";
 import { TableColumnsSelect } from "./TableColumnsSelect";
 import type { ActionParametersFormValues } from "./types";
-import { getFieldFlagsCaption } from "./utils";
 
 const SOURCE_TYPE_OPTIONS: {
   label: string;
@@ -54,22 +47,13 @@ export type ActionParameterSettingsItemProps = {
 
 export const ActionParameterSettingsItem = ({
   index,
-  action,
   actionParameter,
   tableColumns,
 }: ActionParameterSettingsItemProps) => {
   const { setFieldValue, values } =
     useFormikContext<ActionParametersFormValues>();
 
-  const isRequired = isParameterRequired(
-    action as WritebackAction,
-    actionParameter as WritebackParameter,
-  );
-  const isHidden = isParameterHidden(
-    action as WritebackAction,
-    actionParameter as WritebackParameter,
-  );
-  const name = actionParameter.id;
+  const name = actionParameter.displayName ?? actionParameter.id;
 
   return (
     <Box
@@ -77,9 +61,7 @@ export const ActionParameterSettingsItem = ({
       className={S.ParameterWidget}
       data-testid={`parameter-form-section-${actionParameter.id}`}
     >
-      <Text>
-        {`${name}: ${getFieldFlagsCaption({ isRequired, isHidden })}`}
-      </Text>
+      <Text>{name}</Text>
       <FormSelect
         name={`parameters.${index}.sourceType`}
         data={SOURCE_TYPE_OPTIONS}

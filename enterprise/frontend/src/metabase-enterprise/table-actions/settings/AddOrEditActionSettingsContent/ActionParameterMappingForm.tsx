@@ -7,6 +7,7 @@ import { Form, FormProvider } from "metabase/forms";
 import { Box, Button, Center, Loader, Stack, Title } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import { useGetFormConfigurationMutation } from "metabase-enterprise/api";
+import type { ConfigFormSourceType } from "metabase-enterprise/data_editing/tables/types";
 import type {
   ActionScope,
   DataGridWritebackAction,
@@ -47,18 +48,21 @@ export const ActionParameterMappingForm = ({
     useGetFormConfigurationMutation();
 
   useEffect(() => {
+    // Pass ActionExpression as ID if actionSettings.id is not provided
+    const actionId = actionSettings?.id
+      ? actionSettings.id
+      : {
+          "action-id": action.id,
+          name: action.name,
+          parameters:
+            action.parameters?.map((it) => ({
+              id: it.id,
+              sourceType: "ask-user" as ConfigFormSourceType,
+            })) ?? [],
+        };
+
     fetchFormConfiguration({
-      action_id: actionSettings
-        ? actionSettings.id
-        : {
-            "action-id": action.id,
-            name: action.name,
-            parameters:
-              action.parameters?.map((it) => ({
-                id: it.id,
-                sourceType: "ask-user",
-              })) ?? [],
-          },
+      action_id: actionId,
       scope: actionScope,
     });
   }, [fetchFormConfiguration, actionSettings, action, actionScope]);
@@ -71,21 +75,27 @@ export const ActionParameterMappingForm = ({
     }
 
     return {
-      parameters: formConfiguration.parameters.map(({ id }) => {
-        if (actionSettings) {
-          const mapping = actionSettings.parameterMappings?.find(
-            ({ parameterId }) => id === parameterId,
-          );
-          if (mapping) {
-            return mapping;
-          }
-        }
+      parameters: formConfiguration.parameters.map(
+        ({ id, sourceType, sourceValueTarget, visibility, value }) => {
+          if (actionSettings) {
+            const mapping = actionSettings.parameterMappings?.find(
+              ({ parameterId }) => id === parameterId,
+            );
 
-        return {
-          parameterId: id,
-          sourceType: "ask-user",
-        } as RowActionFieldSettings;
-      }),
+            if (mapping) {
+              return mapping;
+            }
+          }
+
+          return {
+            parameterId: id,
+            sourceType,
+            visibility,
+            sourceValueTarget,
+            value,
+          } as RowActionFieldSettings;
+        },
+      ),
     };
   }, [actionSettings, formConfiguration]);
 
