@@ -127,7 +127,11 @@ export const ActionParameterMappingForm = ({
         enableReinitialize
       >
         {({ values }) => (
-          <Form className={S.ParametersForm}>
+          <Form
+            className={S.ParametersForm}
+            role="form"
+            data-testid="table-action-parameters-mapping-form"
+          >
             <Box p="lg">
               <EditableText
                 className={S.EditableTitle}
@@ -146,29 +150,22 @@ export const ActionParameterMappingForm = ({
               </Box>
             )}
             <Box className={S.ParametersListContainer}>
-              <Form
-                role="form"
-                data-testid="table-action-parameters-mapping-form"
-              >
-                <Stack gap="lg" mt="md">
-                  {formConfiguration.parameters.map(
-                    (actionParameter, index) => (
-                      <ActionParameterSettingsItem
-                        key={actionParameter.id}
-                        index={index}
-                        actionParameter={actionParameter}
-                        tableColumns={tableColumns}
-                      />
-                    ),
-                  )}
+              <Stack gap="lg" mt="md">
+                {formConfiguration.parameters.map((actionParameter, index) => (
+                  <ActionParameterSettingsItem
+                    key={actionParameter.id}
+                    index={index}
+                    actionParameter={actionParameter}
+                    tableColumns={tableColumns}
+                  />
+                ))}
 
-                  {formConfiguration.parameters.length === 0 && (
-                    <EmptyState
-                      message={t`This action has no parameters to map`}
-                    />
-                  )}
-                </Stack>
-              </Form>
+                {formConfiguration.parameters.length === 0 && (
+                  <EmptyState
+                    message={t`This action has no parameters to map`}
+                  />
+                )}
+              </Stack>
             </Box>
             <Box className={S.ParametersModalFooter}>
               <Button
