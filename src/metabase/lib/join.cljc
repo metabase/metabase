@@ -815,7 +815,8 @@
                                       (joins query stage-number))]
      (->> (lib.metadata.calculation/visible-columns query stage-number
                                                     (lib.util/query-stage query stage-number)
-                                                    {:include-implicitly-joinable? false})
+                                                    {:include-expressions?         false
+                                                     :include-implicitly-joinable? false})
           (remove (fn [col]
                     (when-let [col-join-alias (lib.join.util/current-join-alias col)]
                       (contains? join-aliases-to-ignore col-join-alias))))
