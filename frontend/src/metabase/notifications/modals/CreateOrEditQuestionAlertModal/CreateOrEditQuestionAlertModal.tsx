@@ -18,7 +18,7 @@ import {
 } from "metabase/lib/notifications";
 import {
   getHasConfiguredAnyChannel,
-  getHasConfiguredEmailChannel,
+  getHasConfiguredEmailOrSlackChannel,
 } from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
@@ -136,7 +136,8 @@ export const CreateOrEditQuestionAlertModal = ({
     useSendUnsavedNotificationMutation();
 
   const hasConfiguredAnyChannel = getHasConfiguredAnyChannel(channelSpec);
-  const hasConfiguredEmailChannel = getHasConfiguredEmailChannel(channelSpec);
+  const hasConfiguredEmailOrSlackChannel =
+    getHasConfiguredEmailOrSlackChannel(channelSpec);
 
   const triggerOptions = useMemo(
     () =>
@@ -239,7 +240,7 @@ export const CreateOrEditQuestionAlertModal = ({
 
   const channelRequirementsMet = userCanAccessSettings
     ? hasConfiguredAnyChannel
-    : hasConfiguredEmailChannel;
+    : hasConfiguredEmailOrSlackChannel; // webhooks are available only for users with "Settings access" permission - WRK-63
 
   const handleScheduleChange = useCallback(
     (updatedSubscription: NotificationCronSubscription) => {
