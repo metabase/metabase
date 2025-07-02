@@ -4,7 +4,7 @@
 }
 
 .link {
-  line-height: 1.8rem;
+  line-height: 1.5rem;
   cursor: pointer;
 
   /* Increases specificity to override default link styles */
