@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
@@ -38,7 +37,11 @@ export const DoneStep = () => {
           description={t`Evolve these starter dashboards or create new analysis.`}
         />
       </Stack>
-      <Button component={Link} to="/" variant="filled">
+      {/* This needs to be a client side navigation for a couple of reasons:
+      - when we'll have the token step, we'll need to refresh the page to load the updated plugins
+      - in /setup/embedding we're skipping rendering the DatabaseStatus component, but as soon as the user lands on /
+      that will get rendered and shown, because we'll need the browser navigation anyway, this is a "cheap" solution to that as weel */}
+      <Button component="a" href="/" variant="filled">
         {t`Take me to Metabase`}
       </Button>
     </Box>
