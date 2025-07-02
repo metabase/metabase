@@ -115,7 +115,14 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
         wrap="nowrap"
         onClick={handleClick}
       >
-        <Group align="center" flex="0 0 auto" gap={0} maw="100%" wrap="nowrap">
+        <Group
+          align="center"
+          flex="0 0 auto"
+          gap={0}
+          maw="100%"
+          w="100%"
+          wrap="nowrap"
+        >
           <Icon className={S.icon} flex="0 0 auto" mr="sm" name={icon} />
 
           {parent && (
@@ -143,7 +150,6 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
             initialValue={field.display_name}
             maxLength={254}
             mb={rem(-4)}
-            miw={0}
             ml={rem(-2)}
             mt={rem(-3)}
             placeholder={t`Give this field a name`}
