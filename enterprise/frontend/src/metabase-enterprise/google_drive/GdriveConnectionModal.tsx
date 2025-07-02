@@ -4,7 +4,6 @@ import { c, t } from "ttag";
 
 import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken, useGetUserQuery } from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Markdown from "metabase/common/components/Markdown";
@@ -22,7 +21,6 @@ import {
   TextInput,
 } from "metabase/ui";
 import {
-  useDeleteGsheetsFolderLinkMutation,
   useGetGsheetsFolderQuery,
   useGetServiceAccountQuery,
   useSaveGsheetsFolderLinkMutation,
@@ -31,7 +29,7 @@ import {
 import Styles from "./Gdrive.module.css";
 import { getStrings } from "./GdriveConnectionModal.strings";
 import { trackSheetImportClick } from "./analytics";
-import { getStatus, useShowGdrive } from "./utils";
+import { getStatus, useDeleteGdriveFolderLink, useShowGdrive } from "./utils";
 
 export function GdriveConnectionModal({
   isModalOpen,
@@ -223,30 +221,14 @@ function GoogleSheetsDisconnectModal({
   onClose: () => void;
   reconnect: boolean;
 }) {
-  const [errorMessage, setErrorMessage] = useState("");
-
-  const [deleteFolderLink, { isLoading: isDeletingFolderLink }] =
-    useDeleteGsheetsFolderLinkMutation();
-
-  const onDelete = async () => {
-    setErrorMessage("");
-    await deleteFolderLink()
-      .unwrap()
-      .then(() => {
+  const { errorMessage, isDeletingFolderLink, onDelete } =
+    useDeleteGdriveFolderLink({
+      onSuccess: () => {
         if (!reconnect) {
           onClose();
         }
-      })
-      .catch((response: unknown) => {
-        setErrorMessage(
-          getErrorMessage(
-            response,
-            // eslint-disable-next-line no-literal-metabase-strings -- admin only ui
-            t`Please check that the folder is shared with the Metabase Service Account.`,
-          ),
-        );
-      });
-  };
+      },
+    });
 
   return (
     <ModalWrapper
