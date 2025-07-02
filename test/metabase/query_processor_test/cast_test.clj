@@ -989,13 +989,13 @@
                    "2025-07-02 18:33:35"}]
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
       (doseq [{:keys [multiple mode]}
-              [{:multiple 1e0
+              [{:multiple (long 1e0)
                 :mode :unixseconds}
-               {:multiple 1e3
+               {:multiple (long 1e3)
                 :mode :unixmilliseconds}
-               {:multiple 1e6
+               {:multiple (long 1e6)
                 :mode :unixmicroseconds}
-               {:multiple 1e9
+               {:multiple (long 1e9)
                 :mode :unixnanoseconds}]]
         (testing (str "Parsing number"  " as datetime with " mode ".")
           (let [mp (mt/metadata-provider)
