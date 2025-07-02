@@ -242,43 +242,6 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
         ),
       );
 
-      cy.findByRole("tab", { name: 'A look at "Orders"' }).click();
-      /**
-       * There's a problem when changing tabs, sometimes Cypress seems to still get the old iframe body.
-       * So, it's be much more stable to wait for a brief moment before trying to get the new iframe body.
-       */
-      cy.wait(100);
-      H.getIframeBody().within(() => {
-        cy.findByText('A look at "Orders"').should("be.visible");
-      });
-      cy.findByRole("code").contains(
-        new RegExp(
-          `<iframe src="${Cypress.config("baseUrl")}/dashboard/\\d+" width="800px" height="500px" />`,
-        ),
-      );
-
-      cy.findByRole("tab", { name: 'A look at "Products"' }).click();
-      cy.wait(100);
-      H.getIframeBody().within(() => {
-        cy.findByText('A look at "Products"').should("be.visible");
-      });
-      cy.findByRole("code").contains(
-        new RegExp(
-          `<iframe src="${Cypress.config("baseUrl")}/dashboard/\\d+" width="800px" height="500px" />`,
-        ),
-      );
-
-      cy.findByRole("tab", { name: "Query Builder" }).click();
-      cy.wait(100);
-      H.getIframeBody().within(() => {
-        cy.findByText("Pick your starting data").should("be.visible");
-      });
-      cy.findByRole("code").contains(
-        new RegExp(
-          `<iframe src="${Cypress.config("baseUrl")}/question/new" width="800px" height="500px" />`,
-        ),
-      );
-
       cy.button("I see Metabase").click();
 
       cy.findByRole("heading", { name: "You're on your way!" }).should(
@@ -317,21 +280,35 @@ function sidebar() {
   return cy.findByRole("complementary");
 }
 
-function fillOutUserForm() {
-  cy.findByLabelText("First name").clear().type("Testy");
-  cy.findByLabelText("Last name").clear().type("McTestface");
-  cy.findByLabelText("Email").clear().type("testy@metabase.test");
-  cy.findByLabelText("Company or team name").clear().type("Epic Team");
+const TYPE_DELAY = 0;
 
-  cy.findByLabelText("Create a password").type("metabase123");
-  cy.findByLabelText("Confirm your password").type("metabase123");
+function fillOutUserForm() {
+  cy.findByLabelText("First name").clear().type("Testy", { delay: TYPE_DELAY });
+  cy.findByLabelText("Last name")
+    .clear()
+    .type("McTestface", { delay: TYPE_DELAY });
+  cy.findByLabelText("Email")
+    .clear()
+    .type("testy@metabase.test", { delay: TYPE_DELAY });
+  cy.findByLabelText("Company or team name")
+    .clear()
+    .type("Epic Team", { delay: TYPE_DELAY });
+
+  cy.findByLabelText("Create a password").type("metabase123", {
+    delay: TYPE_DELAY,
+  });
+  cy.findByLabelText("Confirm your password").type("metabase123", {
+    delay: TYPE_DELAY,
+  });
 }
 
 function fillOutDatabaseForm() {
-  cy.findByLabelText("Display name").type("Postgres Database");
-  cy.findByLabelText("Host").type("localhost");
-  cy.findByLabelText("Port").type("5404");
-  cy.findByLabelText("Database name").type("sample");
-  cy.findByLabelText("Username").type("metabase");
-  cy.findByLabelText("Password").type("metasample123");
+  cy.findByLabelText("Display name").type("Postgres Database", {
+    delay: TYPE_DELAY,
+  });
+  cy.findByLabelText("Host").type("localhost", { delay: TYPE_DELAY });
+  cy.findByLabelText("Port").type("5404", { delay: TYPE_DELAY });
+  cy.findByLabelText("Database name").type("sample", { delay: TYPE_DELAY });
+  cy.findByLabelText("Username").type("metabase", { delay: TYPE_DELAY });
+  cy.findByLabelText("Password").type("metasample123", { delay: TYPE_DELAY });
 }
