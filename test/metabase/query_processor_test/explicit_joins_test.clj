@@ -1350,8 +1350,8 @@
 (defn- check-venues+categories-with-value-wrapped-args
   [[op & args] expected-rows]
   (check-venues+categories-on-condition
-   (into [op] (comp (map lib.expression/value)
-                    (map lib.convert/->legacy-MBQL))
+   (into [op] (map (comp lib.convert/->legacy-MBQL
+                         lib.expression/value))
          args)
    expected-rows))
 
