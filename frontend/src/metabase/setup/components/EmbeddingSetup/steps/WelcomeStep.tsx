@@ -3,9 +3,11 @@ import { t } from "ttag";
 
 import { Box, Button, Space, Text, Title } from "metabase/ui";
 
+import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 import type { StepProps } from "../steps/embeddingSetupSteps";
 
 export const WelcomeStep = ({ nextStep }: StepProps) => {
+  const { trackEmbeddingSetupClick } = useEmbeddingSetup();
   return (
     <Box p="xl" style={{ borderRadius: 16 }} bg="white">
       <Title order={2} mb="lg">
@@ -31,8 +33,13 @@ export const WelcomeStep = ({ nextStep }: StepProps) => {
 
       <Space h="lg" />
 
-      <Text>
-        <Link to="/" style={{ color: "#888" }}>{t`Set up manually`}</Link>
+      <Text color="text-secondary">
+        <Link
+          to="/"
+          onClick={async () => {
+            trackEmbeddingSetupClick("setup-up-manually");
+          }}
+        >{t`Set up manually`}</Link>
       </Text>
     </Box>
   );
