@@ -169,6 +169,25 @@ export function isDashcardInlineParameter(
   return !!findDashCardForInlineParameter(parameterId, dashcards);
 }
 
+export function getInlineParameterTabMap(dashboard: Dashboard) {
+  const { dashcards = [] } = dashboard;
+  const parameters = dashboard.parameters ?? [];
+
+  const result: Record<ParameterId, SelectedTabId> = {};
+
+  parameters.forEach((parameter) => {
+    const parentDashcard = findDashCardForInlineParameter(
+      parameter.id,
+      dashcards,
+    );
+    if (parentDashcard) {
+      result[parameter.id] = parentDashcard.dashboard_tab_id ?? null;
+    }
+  });
+
+  return result;
+}
+
 export function isNativeDashCard(dashcard: QuestionDashboardCard) {
   // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
   return dashcard.card.dataset_query?.type === "native";
