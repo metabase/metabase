@@ -62,7 +62,7 @@
        {:lib/uuid (str (random-uuid))}
        [] 1])))
 
-(deftest ^:parallel case-schema-type-compatibility-test
+(deftest ^:parallel case-schema-type-compatibility-valid-test
   (are [a b] (true?
               (mr/validate :mbql.clause/case
                            [:case
@@ -101,8 +101,9 @@
     ; but until we have a better way to handle this, we just allow it and document
     ; here as a test.
     (value-expr :type/Date "2023-03-08")
-    (value-expr :type/Time "15:00:55"))
+    (value-expr :type/Time "15:00:55")))
 
+(deftest ^:parallel case-schema-type-compatibility-invalid-test
   (are [a b] (false?
               (mr/validate :mbql.clause/case
                            [:case
@@ -225,7 +226,7 @@
        "A"
        (value-expr :type/DateTimeWithTZ "2023-03-08T15:03:55Z")])))
 
-(deftest ^:parallel coalesce-schema-type-compatibility-test
+(deftest ^:parallel coalesce-schema-type-compatibility-valid-test
   (are [a b] (true?
               (mr/validate :mbql.clause/coalesce
                            [:coalesce
@@ -263,8 +264,9 @@
     ; but until we have a better way to handle this, we just allow it and document
     ; here as a test.
     (value-expr :type/Date "2023-03-08")
-    (value-expr :type/Time "15:00:55"))
+    (value-expr :type/Time "15:00:55")))
 
+(deftest ^:parallel coalesce-schema-type-compatibility-invalid-test
   (are [a b] (false?
               (mr/validate :mbql.clause/coalesce
                            [:coalesce
