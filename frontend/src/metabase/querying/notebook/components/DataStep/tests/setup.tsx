@@ -9,10 +9,6 @@ import { createMockModelResult } from "metabase/browse/models/test-utils";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import {
-  createMockEmbedState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { createMockNotebookStep } from "../../../test-utils";
 import type { NotebookStep } from "../../../types";
@@ -52,9 +48,12 @@ export const setup = ({
     setupSearchEndpoints([]);
   }
 
-  const storeInitialState = createMockState({
-    embed: createMockEmbedState({ isEmbeddingSdk }),
-  });
+  // Mock EMBEDDING_SDK_CONFIG
+  if (isEmbeddingSdk) {
+    jest.mock("metabase/embedding-sdk/config", () => ({
+      EMBEDDING_SDK_CONFIG: { isSdk: true },
+    }));
+  }
 
   renderWithProviders(
     <NotebookProvider>
@@ -69,7 +68,6 @@ export const setup = ({
         updateQuery={updateQuery}
       />
     </NotebookProvider>,
-    { storeInitialState },
   );
 
   const getNextQuery = (): Lib.Query => {
