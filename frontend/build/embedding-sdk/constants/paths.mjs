@@ -14,6 +14,11 @@ export const ENTERPRISE_SRC_PATH = path.resolve(
   "enterprise/frontend/src/metabase-enterprise",
 );
 
+export const EMBEDDING_SRC_PATH = path.resolve(
+  ROOT_PATH,
+  "enterprise/frontend/src/embedding",
+);
+
 export const LIB_SRC_PATH = path.resolve(
   ROOT_PATH,
   "frontend/src/metabase-lib",

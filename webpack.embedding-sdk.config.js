@@ -11,6 +11,12 @@ const mainConfig = require("./webpack.config");
 const { resolve } = require("path");
 const fs = require("fs");
 const path = require("path");
+const {
+  getCssLoader,
+} = require("./frontend/build/embedding-sdk/webpack-shared/get-css-loader");
+const {
+  getAssetLoaders,
+} = require("./frontend/build/embedding-sdk/webpack-shared/get-asset-loaders");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
@@ -41,17 +47,6 @@ const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
 };
 
-const CSS_CONFIG = {
-  modules: {
-    auto: (filename) =>
-      !filename.includes("node_modules") && !filename.includes("vendor.css"),
-    localIdentName: isDevMode
-      ? "[name]__[local]___[hash:base64:5]"
-      : "[hash:base64:5]",
-  },
-  importLoaders: 1,
-};
-
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
 module.exports = (env) => {
@@ -78,46 +73,15 @@ module.exports = (env) => {
           exclude: /node_modules|cljs/,
           use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
         },
-        {
-          test: /\.(svg|png)$/,
-          type: "asset/inline",
-          resourceQuery: { not: [/component|source/] },
-        },
-        {
-          test: /\.css$/,
-          use: [
-            {
-              loader: "style-loader",
-            },
-            { loader: "css-loader", options: CSS_CONFIG },
-            { loader: "postcss-loader" },
-          ],
-        },
+
+        ...getAssetLoaders(),
+        getCssLoader({ isDevMode }),
 
         {
           test: /\.js$/,
           exclude: /node_modules/,
           enforce: "pre",
           use: ["source-map-loader"],
-        },
-
-        {
-          test: /\.svg/,
-          type: "asset/source",
-          resourceQuery: /source/, // *.svg?source
-        },
-        {
-          test: /\.svg$/i,
-          issuer: /\.[jt]sx?$/,
-          resourceQuery: /component/, // *.svg?component
-          use: [
-            {
-              loader: "@svgr/webpack",
-              options: {
-                ref: true,
-              },
-            },
-          ],
         },
       ],
     },

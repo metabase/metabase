@@ -6,6 +6,7 @@ import {
   CLJS_SRC_PATH,
   CLJS_SRC_PATH_DEV,
   E2E_PATH,
+  EMBEDDING_SRC_PATH,
   ENTERPRISE_SRC_PATH,
   FONTS_PATH,
   LIB_SRC_PATH,
@@ -35,5 +36,6 @@ export const ALIAS = {
     "/lib/sdk-specific-imports.ts",
   ),
   "ee-overrides": path.join(ENTERPRISE_SRC_PATH, "overrides"),
+  embedding: EMBEDDING_SRC_PATH,
   "embedding-sdk": SDK_SRC_PATH,
 };
