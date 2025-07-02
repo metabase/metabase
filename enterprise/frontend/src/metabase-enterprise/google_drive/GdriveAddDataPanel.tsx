@@ -54,10 +54,10 @@ const PanelWrapper = ({
 
   return (
     <>
-      <Stack gap="md" align="center" justify="center" pt="3rem">
+      <Stack gap="md" align="center" justify="center" pt="2.5rem">
         <Center component="img" src={illustration} w="3rem" />
         <Box component="header" ta="center" maw={CONTENT_MAX_WIDTH}>
-          <Title order={2} size="h4" mb="xs">
+          <Title order={2} size="h4" mb="sm">
             {title}
           </Title>
           <Text c="text-medium">{subtitle}</Text>
