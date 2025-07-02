@@ -434,7 +434,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           });
 
           H.editDashboard();
-          H.openClickBehaviorSidebar().within(() => {
+          H.clickBehaviorSidebar().within(() => {
             cy.findByText("Update a dashboard filter").click();
             cy.findAllByTestId("click-target-column").first().click();
           });
