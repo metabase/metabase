@@ -22,7 +22,7 @@ export function UpsellDevInstances({ source }: { source: SOURCE }) {
       buttonText={t`Set up`}
       buttonLink={getStoreUrl("account/new-dev-instance")}
       source={source}
-      dismissable
+      dismissible
     >
       <Text size="sm">
         {t`Test out code in staging in a separate Metabase instance before deploying to production.`}

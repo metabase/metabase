@@ -1,13 +1,13 @@
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
 
 export type DismissibleProps = {
-  dismissable: boolean;
+  dismissible: boolean;
   onDismiss: () => void;
 };
 
-type UpsellWrapperDismissableProps = {
+type UpsellWrapperDismissibleProps = {
   campaign: string;
-  dismissable?: boolean;
+  dismissible?: boolean;
 };
 
 /**
@@ -16,13 +16,13 @@ type UpsellWrapperDismissableProps = {
  *
  * @param Component - The component to wrap.
  */
-export function UpsellWrapperDismissable<Props>(
-  Component: React.ComponentType<Props & UpsellWrapperDismissableProps>,
-): React.ComponentType<Props & UpsellWrapperDismissableProps> {
+export function UpsellWrapperDismissible<Props>(
+  Component: React.ComponentType<Props & UpsellWrapperDismissibleProps>,
+): React.ComponentType<Props & UpsellWrapperDismissibleProps> {
   const MaybeWrappedComponent = (
-    props: Props & UpsellWrapperDismissableProps,
+    props: Props & UpsellWrapperDismissibleProps,
   ) => {
-    if (!props.dismissable) {
+    if (!props.dismissible) {
       return <Component {...props} />;
     }
 

@@ -10,12 +10,12 @@ import { createMockUser } from "metabase-types/api/mocks";
 import { UpsellBanner } from "./UpsellBanner";
 
 function setup({
-  dismissable = false,
+  dismissible = false,
   userHasSeen = false,
   campaign = "test-campaign",
   title = "Test title",
 }: {
-  dismissable?: boolean;
+  dismissible?: boolean;
   userHasSeen?: boolean;
   campaign?: string;
   title?: string;
@@ -33,7 +33,7 @@ function setup({
       buttonText="Test button text"
       source="test-source"
       internalLink="test-internal-link"
-      dismissable={dismissable}
+      dismissible={dismissible}
     >
       Banner content
     </UpsellBanner>,
@@ -45,8 +45,8 @@ function setup({
   );
 }
 
-describe("UpsellsBanner > Upsell Wrapper Dismissable", () => {
-  it("should show a component when dismissable is false", async () => {
+describe("UpsellsBanner > Upsell Wrapper Dismissible", () => {
+  it("should show a component when dismissible is false", async () => {
     setup();
 
     await waitFor(() => {
@@ -54,9 +54,9 @@ describe("UpsellsBanner > Upsell Wrapper Dismissable", () => {
     });
   });
 
-  it("should show a component with dismiss button when dismissable is true", async () => {
+  it("should show a component with dismiss button when dismissible is true", async () => {
     const campaignName = "custom-campaign";
-    setup({ dismissable: true, campaign: campaignName });
+    setup({ dismissible: true, campaign: campaignName });
 
     await waitFor(() => {
       expect(
@@ -83,18 +83,18 @@ describe("UpsellsBanner > Upsell Wrapper Dismissable", () => {
     setup({
       userHasSeen: true,
       campaign: "custom-campaign-1",
-      dismissable: true,
+      dismissible: true,
       title: "Test title 1",
     });
     setup({
       userHasSeen: false,
       campaign: "custom-campaign-2",
-      dismissable: true,
+      dismissible: true,
       title: "Test title 2",
     });
 
     await waitFor(() => {
-      expect(screen.queryByText("Test title 2")).not.toBeInTheDocument();
+      expect(screen.getByText("Test title 2")).toBeInTheDocument();
     });
 
     expect(screen.queryByText("Test title 1")).not.toBeInTheDocument();

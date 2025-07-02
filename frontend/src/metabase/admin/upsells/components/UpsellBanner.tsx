@@ -17,8 +17,8 @@ import { UPGRADE_URL } from "../constants";
 
 import {
   type DismissibleProps,
-  UpsellWrapperDismissable,
-} from "./UpsellBannerDismissable";
+  UpsellWrapperDismissible,
+} from "./UpsellBannerDismissible";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
 import S from "./Upsells.module.css";
@@ -68,12 +68,17 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
     trackUpsellViewed({ source, campaign });
   });
 
+  const { dismissible, onDismiss, ...domProps } =
+    "dismissible" in props
+      ? props
+      : { dismissible: false, onDismiss: () => {} };
+
   return (
     <Box
       className={S.UpsellBannerComponent}
       data-testid="upsell-banner"
       bg="bg-white"
-      {...props}
+      {...domProps}
     >
       <Flex align="center" gap="md" wrap="nowrap">
         <UpsellGem />
@@ -106,14 +111,14 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
           </Link>
         )}
 
-        {"dismissible" in props && "onDismiss" in props && (
+        {dismissible && (
           <UnstyledButton
             role="button"
             component={Icon}
             size="1rem"
             name="close"
             aria-label={t`Dismiss banner`}
-            onClick={props.onDismiss}
+            onClick={onDismiss}
           />
         )}
       </Flex>
@@ -121,6 +126,6 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   );
 };
 
-export const UpsellBanner = UpsellWrapperDismissable(
+export const UpsellBanner = UpsellWrapperDismissible(
   UpsellWrapper(_UpsellBanner),
 );

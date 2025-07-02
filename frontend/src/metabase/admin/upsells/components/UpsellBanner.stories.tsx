@@ -79,17 +79,16 @@ export const Secondary = {
   render: SecondaryTemplate,
 };
 
-export const Dismissable = {
+export const Dismissible = {
   render: (args: UpsellBannerProps) => (
     <ReduxProvider>
       <Box>
-        <_UpsellBanner {...args} dismissable />
+        <_UpsellBanner {...args} dismissible />
       </Box>
     </ReduxProvider>
   ),
   args: {
     ...args,
-    dismissable: true,
     onDismiss: action("dismiss"),
   },
 };
