@@ -70,6 +70,9 @@ function DashboardAppInner({
   );
 }
 
+export const DASHBOARD_APP_ACTIONS = ({ isEditing }: { isEditing: boolean }) =>
+  isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS;
+
 export const DashboardApp = ({
   location,
   params,
@@ -148,9 +151,7 @@ export const DashboardApp = ({
           dispatch(setEditingDashboard(dashboard));
           dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
         }}
-        dashboardActions={({ isEditing }) =>
-          isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS
-        }
+        dashboardActions={DASHBOARD_APP_ACTIONS}
       >
         <DashboardAppInner location={location} route={route}>
           {children}
