@@ -70,14 +70,16 @@
                                   ;;      staging and beta users.
                                   ;;      for now it doesn't tell you the type or the possible values, BUT maybe we want the wrapping
                                   ;;      component to know that (it just doesn't get saved)
-                                  :parameters [{:id "a", :displayName "A", :sourceType "ask-user"}
-                                               {:id "b", :displayName "B", :sourceType "ask-user"}
-                                               {:id "c", :displayName "C", :sourceType "ask-user"}
-                                               {:id "d", :displayName "D", :sourceType "ask-user"}
-                                               {:id "e", :displayName "E", :sourceType "ask-user"}]}}
-                        (req {:scope     {:model-id (:id model)
-                                          :table-id (:id table)}
-                              :action_id {:action-id (:id action)}})))))))))))
+                                  :parameters [{:id "random-a", :displayName "A", :sourceType "ask-user"}
+                                               {:id "random-b", :displayName "B", :sourceType "ask-user"}
+                                               {:id "random-c", :displayName "C", :sourceType "ask-user"}
+                                               {:id "random-d", :displayName "D", :sourceType "ask-user"}
+                                               {:id "random-e", :displayName "E", :sourceType "ask-user"}]}}
+                        (select-keys
+                         (req {:scope     {:model-id (:id model)
+                                           :table-id (:id table)}
+                               :action_id {:action-id (:id action)}})
+                         [:status :body])))))))))))
 
 ;; For example, when picking a model action to add as a row action, we call this for the initial config form.
 (deftest configure-saved-implicit-action-test
@@ -295,13 +297,13 @@
            :model/Action        action   {:type           :query
                                           :name           "update"
                                           :model_id       (:id model)
-                                          :parameters     [{:id "a"
+                                          :parameters     [{:id "pid:id"
                                                             :name "Id"
                                                             :slug "id"}
-                                                           {:id "b"
+                                                           {:id "pid:name"
                                                             :name "Name"
                                                             :slug "name"}
-                                                           {:id "c"
+                                                           {:id "pid:status"
                                                             :name "Status"
                                                             :slug "status"}]}
            :model/ImplicitAction _       {:action_id      (:id action)
@@ -318,9 +320,11 @@
                                              {:id                "dashcard:unknown:configured"
                                               :actionId          (:id action)
                                               :actionType        "data-grid/custom-action"
-                                              :parameterMappings [{:parameterId "id", :sourceType "ask-user"}
+                                              :parameterMappings [{:parameterId "pid:id"
+                                                                   :displayName "Identifier"
+                                                                   :sourceType "ask-user"}
                                                                   ;; missing name
-                                                                  {:parameterId       "status",
+                                                                  {:parameterId       "pid:status"
                                                                    :displayName       "How u?"
                                                                    :sourceType        "row-data"
                                                                    :sourceValueTarget "text"}]
@@ -331,21 +335,25 @@
                                 {:rows [{:text "a very important string"}]})
 
           (testing "configure for unsaved action will contains all action params"
-            (is (=? {:parameters [{:id "id",     :displayName "ID",     :sourceType "ask-user"}
-                                  {:id "name",   :displayName "Name",   :sourceType "ask-user"}
-                                  {:id "status", :displayName "Status", :sourceType "ask-user"}]}
+            (is (= {:parameters [{:id "pid:id",     :displayName "Id",     :sourceType "ask-user"}
+                                 {:id "pid:name",   :displayName "Name",   :sourceType "ask-user"}
+                                 {:id "pid:status", :displayName "Status", :sourceType "ask-user"}]}
+                   (select-keys
                     (mt/user-http-request :crowberto :post 200
                                           "action/v2/config-form" {:action_id "dashcard:unknown:default"
-                                                                   :scope     {:dashcard-id (:id dashcard)}}))))
+                                                                   :scope     {:dashcard-id (:id dashcard)}})
+                    [:parameters]))))
 
           (testing "saved configurations includes any new parameter if exists"
-            (is (=? {:parameters [{:id "id",     :displayName "ID",     :sourceType "ask-user"}
-                                  {:id "status", :displayName "How u?", :sourceType "row-data", :sourceValueTarget "text"}
-                                  ;; name is added even though it's not originally in the saved parameterMappings
-                                  {:id "name",   :displayName "Name",   :sourceType "ask-user"}]}
+            (is (= {:parameters [{:id "pid:id",     :displayName "Identifier", :sourceType "ask-user"}
+                                 {:id "pid:status", :displayName "How u?",     :sourceType "row-data", :sourceValueTarget "text"}
+                                 ;; name is added even though it's not originally in the saved parameterMappings
+                                 {:id "pid:name",   :displayName "Name",       :sourceType "ask-user"}]}
+                   (select-keys
                     (mt/user-http-request :crowberto :post 200
                                           "action/v2/config-form" {:action_id "dashcard:unknown:configured"
-                                                                   :scope     {:dashcard-id (:id dashcard)}})))))))))
+                                                                   :scope     {:dashcard-id (:id dashcard)}})
+                    [:parameters])))))))))
 
 ;; This covers a more exotic case where we're coming back to edit the config for an action before it has been saved.
 ;; This should cover both the cases where it has never been saved, or where it's simply been edited at least once since
