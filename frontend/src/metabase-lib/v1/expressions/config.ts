@@ -332,7 +332,7 @@ const CONVERSION = defineClauses(
         }
 
         const validModes = ["iso", "simple", "isobytes", "simplebytes"];
-        const normalizedMode = mode.toLowerCase().replace("-", "");
+        const normalizedMode = mode.toLowerCase();
 
         // mode is valid after normalization
         if (validModes.includes(normalizedMode)) {
