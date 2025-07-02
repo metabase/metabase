@@ -66,9 +66,7 @@ export const SelectEmbedResourceStep = () => {
   const handlePickerModalResourceSelect = (
     item: SdkIframeEmbedSetupRecentItem,
   ) => {
-    // Resource picker modal returns numeric ids.
-    const resourceId =
-      typeof item.id === "string" ? parseInt(item.id, 10) : item.id;
+    const resourceId = item.id;
 
     closePicker();
     updateEmbedSettings(experience, resourceId);
@@ -174,20 +172,18 @@ export const SelectEmbedResourceStep = () => {
             {getEmbedTitle(experience)}
           </Text>
 
-          {experience !== "exploration" && (
-            <ActionIcon
-              variant="outline"
-              size="lg"
-              title={
-                experience === "dashboard"
-                  ? t`Browse dashboards`
-                  : t`Browse questions`
-              }
-              onClick={openPicker}
-            >
-              <Icon name="search" size={16} />
-            </ActionIcon>
-          )}
+          <ActionIcon
+            variant="outline"
+            size="lg"
+            title={
+              experience === "dashboard"
+                ? t`Browse dashboards`
+                : t`Browse questions`
+            }
+            onClick={openPicker}
+          >
+            <Icon name="search" size={16} />
+          </ActionIcon>
         </Group>
 
         {renderSelectResourceList()}
