@@ -114,7 +114,7 @@ describe("scenarios > custom column > field resolution", () => {
     });
   });
 
-  it("should be possible to resolve aggregations from the question", () => {
+  it("should be possible to resolve aggregations from the question direclty", () => {
     const QUESTION: StructuredQuestionDetails = {
       query: {
         "source-table": ORDERS_ID,
