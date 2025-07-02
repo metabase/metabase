@@ -739,7 +739,7 @@ function(bin) {
                           :format     "%Y%m%d%H%M%S"
                           :onError    rvalue}}
 
-      :simplebytes
+      :simple-bytes
       {"$dateFromString" {:dateString {"$function"
                                        {:body base64-decoder
                                         :args [rvalue]
@@ -747,23 +747,23 @@ function(bin) {
                           :format     "%Y%m%d%H%M%S"
                           :onError    rvalue}}
 
-      :isobytes
+      :iso-bytes
       {"$dateFromString" {:dateString {"$function"
                                        {:body base64-decoder
                                         :args [rvalue]
                                         :lang "js"}}
                           :onError    rvalue}}
 
-      :unixnanoseconds
+      :unix-nanoseconds
       {:$dateFromParts {:millisecond {$divide [rvalue 1000000]}, :year 1970, :timezone "UTC"}}
 
-      :unixmicroseconds
+      :unix-microseconds
       {:$dateFromParts {:millisecond {$divide [rvalue 1000]}, :year 1970, :timezone "UTC"}}
 
-      :unixmilliseconds
+      :unix-milliseconds
       {:$dateFromParts {:millisecond rvalue, :year 1970, :timezone "UTC"}}
 
-      :unixseconds
+      :unix-seconds
       {:$dateFromParts {:second rvalue, :year 1970, :timezone "UTC"}}
 
 ;; else

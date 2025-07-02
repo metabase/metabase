@@ -961,10 +961,10 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime ::adt/yyyymmddhhss-binary-timestamps)
     (doseq [{:keys [dataset mode expected]}
             [{:dataset yyyymmddhhss-binary-simple-cast
-              :mode :simplebytes
+              :mode :simple-bytes
               :expected binary-dates-expected-rows-simple}
              {:dataset iso-binary-cast
-              :mode :isobytes
+              :mode :iso-bytes
               :expected binary-dates-expected-rows-iso}]]
       (mt/dataset dataset
         (testing (str "Parsing bytes from " (:database-name dataset) " as datetime with " (or mode "no mode") ".")
@@ -990,13 +990,13 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
       (doseq [{:keys [multiple mode]}
               [{:multiple (long 1e0)
-                :mode :unixseconds}
+                :mode :unix-seconds}
                {:multiple (long 1e3)
-                :mode :unixmilliseconds}
+                :mode :unix-milliseconds}
                {:multiple (long 1e6)
-                :mode :unixmicroseconds}
+                :mode :unix-microseconds}
                {:multiple (long 1e9)
-                :mode :unixnanoseconds}]]
+                :mode :unix-nanoseconds}]]
         (testing (str "Parsing number"  " as datetime with " mode ".")
           (let [mp (mt/metadata-provider)
                 query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
