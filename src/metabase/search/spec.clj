@@ -282,17 +282,20 @@
 
 (defmulti spec*
   "Impl for [[spec]]."
-  {:arglists '([search-model])}
-  identity)
+  {:arglists '([search-model] [search-model db-type])}
+  (fn [search-model & _] search-model))
 
 (defn spec
-  "Register a metabase model as a search-model.
+  "Register a Metabase model as a search-model.
   Once we're trying up the fulltext search project, we can inline a detailed explanation.
-  For now, see its schema, and the existing definitions that use it."
-  [search-model]
-  ;; make sure the model namespace is loaded.
-  (t2/resolve-model (search-model->toucan-model search-model))
-  (spec* search-model))
+  For now, see its schema, and the existing definitions that use it.
+  Optionally pass in `app-db` for context-sensitive spec generation."
+  ([search-model]
+   (spec search-model (app-db/db-type)))
+  ([search-model db-type]
+   ;; Ensure the model namespace is loaded.
+   (t2/resolve-model (search-model->toucan-model search-model))
+   (spec* search-model db-type)))
 
 (defn specifications
   "A mapping from each search-model to its specification."
@@ -314,15 +317,19 @@
     (assert (contains? (:joins spec) table) (str "Reference to table without a join: " table))))
 
 (defmacro define-spec
-  "Define a spec for a search model."
-  [search-model spec]
-  `(let [spec# (-> ~spec
-                   (assoc :name ~search-model)
-                   (update :visibility #(or % :all))
-                   (update :attrs #(merge ~default-attrs %)))]
-     (validate-spec! spec#)
-     (derive (:model spec#) :hook/search-index)
-     (defmethod spec* ~search-model [~'_] spec#)))
+  "Define a spec for a search model. Supports optional app-db type -dependent spec generation,
+  via an anaphoric binding to %app-db."
+  [search-model spec-form]
+  `(defmethod spec* ~search-model
+     [~'_ ~'app-db]
+     (let [~'%app-db ~'app-db
+           spec# (-> ~spec-form
+                     (assoc :name ~search-model)
+                     (update :visibility #(or % :all))
+                     (update :attrs #(merge ~default-attrs %)))]
+       (validate-spec! spec#)
+       (derive (:model spec#) :hook/search-index)
+       spec#)))
 
 ;; TODO we should memoize this for production (based on spec values)
 (defn model-hooks
