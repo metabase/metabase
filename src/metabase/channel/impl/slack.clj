@@ -48,6 +48,18 @@
    (format "*%s*\n%s" (:name parameter) (shared.params/value-string parameter (system/site-locale)))
    attachment-text-length-limit))
 
+(defn- maybe-append-params-block
+  "Appends an inline parameters block to a collection of blocks if parameters exist."
+  [blocks inline-parameters]
+  (if (seq inline-parameters)
+    (conj blocks {:type "section"
+                  :fields (mapv
+                           (fn [parameter]
+                             {:type "mrkdwn"
+                              :text (parameter-markdown parameter)})
+                           inline-parameters)})
+    blocks))
+
 (defn- text->markdown-block
   ([text]
    (text->markdown-block text nil))
@@ -56,16 +68,11 @@
    (let [mrkdwn (markdown/process-markdown text :slack)]
      (when (not (str/blank? mrkdwn))
        {:blocks
-        (cond-> [{:type "section"
-                  :text {:type "mrkdwn"
-                         :text (truncate mrkdwn block-text-length-limit)}}]
-          (seq inline-parameters)
-          (conj {:type "section"
-                 :fields (mapv
-                          (fn [parameter]
-                            {:type "mrkdwn"
-                             :text (parameter-markdown parameter)})
-                          inline-parameters)}))}))))
+        (maybe-append-params-block
+         [{:type "section"
+           :text {:type "mrkdwn"
+                  :text (truncate mrkdwn block-text-length-limit)}}]
+         inline-parameters)}))))
 
 (defn- part->attachment-data
   [part]
@@ -74,15 +81,19 @@
       :card
       (let [{:keys [card dashcard result]}         part
             {card-id :id card-name :name :as card} card]
-        {:title           (or (-> dashcard :visualization_settings :card.title)
-                              card-name)
-         :rendered-info   (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
-         :title_link      (urls/card-url card-id)
-         :attachment-name "image.png"
-         :fallback        card-name})
+        {:title             (or (-> dashcard :visualization_settings :card.title)
+                                card-name)
+         :inline-parameters (-> dashcard :visualization_settings :inline_parameters)
+         :rendered-info     (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
+         :title_link        (urls/card-url card-id)
+         :attachment-name   "image.png"
+         :fallback          card-name})
 
       :text
       (text->markdown-block (:text part) (:inline_parameters part))
+
+      :heading
+      (text->markdown-block (format "## %s" (:text part)) (:inline_parameters part))
 
       :tab-title
       (text->markdown-block (format "# %s" (:text part))))))
@@ -104,29 +115,33 @@
 (defn- create-and-upload-slack-attachment!
   "Create an attachment in Slack for a given Card by rendering its content into an image and uploading it.
   Attachments containing `:blocks` lists containing text cards are returned unmodified."
-  [{:keys [title title_link attachment-name rendered-info blocks] :as attachment-data}]
+  [{:keys [title title_link attachment-name rendered-info blocks inline-parameters] :as attachment-data}]
   (cond
     blocks attachment-data
 
     (:render/text rendered-info)
-    {:blocks [{:type "section"
-               :text {:type     "mrkdwn"
-                      :text     (mkdwn-link-text title_link title)
-                      :verbatim true}}
-              {:type "section"
-               :text {:type "plain_text"
-                      :text (:render/text rendered-info)}}]}
+    {:blocks
+     (-> [{:type "section"
+           :text {:type     "mrkdwn"
+                  :text     (mkdwn-link-text title_link title)
+                  :verbatim true}}]
+         (maybe-append-params-block inline-parameters)
+         (conj {:type "section"
+                :text {:type "plain_text"
+                       :text (:render/text rendered-info)}}))}
 
     :else
     (let [image-bytes   (channel.render/png-from-render-info rendered-info slack-width)
           {file-id :id} (slack/upload-file! image-bytes attachment-name)]
-      {:blocks [{:type "section"
-                 :text {:type     "mrkdwn"
-                        :text     (mkdwn-link-text title_link title)
-                        :verbatim true}}
-                {:type       "image"
-                 :slack_file {:id file-id}
-                 :alt_text   title}]})))
+      {:blocks
+       (-> [{:type "section"
+             :text {:type     "mrkdwn"
+                    :text     (mkdwn-link-text title_link title)
+                    :verbatim true}}]
+           (maybe-append-params-block inline-parameters)
+           (conj {:type       "image"
+                  :slack_file {:id file-id}
+                  :alt_text   title}))})))
 
 (def ^:private SlackMessage
   [:map {:closed true}
