@@ -152,4 +152,41 @@ describe("scenarios > custom column > field resolution", () => {
       columns: ["Custom Sum", "Derived"],
     });
   });
+
+  it("should be possible to resolve aggregations from the previous stage", () => {
+    const QUESTION: StructuredQuestionDetails = {
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          [
+            "aggregation-options",
+            ["sum", ["field", ORDERS.TOTAL, null]],
+            {
+              name: "Custom Sum",
+              "display-name": "Custom Sum",
+            },
+          ],
+        ],
+      },
+    };
+
+    H.createQuestion(QUESTION, { visitQuestion: true });
+    H.openNotebook();
+
+    cy.findAllByLabelText("Custom column").eq(1).click();
+    H.CustomExpressionEditor.type("[Custom S");
+    H.CustomExpressionEditor.completion("Custom Sum")
+      .should("be.visible")
+      .click();
+    H.CustomExpressionEditor.value().should("eq", "[Custom Sum]");
+    H.CustomExpressionEditor.format();
+
+    H.CustomExpressionEditor.nameInput().type("Derived");
+    H.popover().button("Done").click();
+
+    H.visualize();
+    H.assertTableData({
+      columns: ["Custom Sum", "Derived"],
+    });
+  });
 });
