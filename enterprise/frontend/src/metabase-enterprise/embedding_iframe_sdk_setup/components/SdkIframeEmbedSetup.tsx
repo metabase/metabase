@@ -28,7 +28,7 @@ const SdkIframeEmbedSetupContent = () => {
   return (
     <Box className={S.Container}>
       <SidebarResizer>
-        <Box className={S.Sidebar}>
+        <Box className={S.Sidebar} component="aside">
           <Box className={S.SidebarContent}>
             <StepContent />
           </Box>
