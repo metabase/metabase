@@ -983,10 +983,27 @@
             (is (= (expected driver/*driver*)
                    rows))))))))
 
+(defmulti datetime-number-cast-expected
+  "Expected datetime string for [[datetime-number-cast]] test."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod datetime-number-cast-expected :default
+  [_]
+  "2025-07-02T18:33:35Z")
+
+(defmethod datetime-number-cast-expected :sqlite
+  [_]
+  "2025-07-02 18:33:35")
+
+;; sqlserver's sql.qp/unix-timestamp->honeysql rounds to minutes
+(defmethod datetime-number-cast-expected :sqlserver
+  [_]
+  "2025-07-02T18:33:00Z")
+
 (deftest ^:parallel datetime-number-cast
-  (let [seconds-timestamp 1751481215
-        datetime #{"2025-07-02T18:33:35Z"
-                   "2025-07-02 18:33:35"}]
+  (let [seconds-timestamp 1751481215]
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
       (doseq [{:keys [multiple mode]}
               [{:multiple (long 1e0)
@@ -1008,5 +1025,5 @@
                           (lib/limit 1))
                 result (-> query qp/process-query)
                 rows (mt/rows result)]
-            (is (contains? datetime
-                           (-> rows first (get 2))))))))))
+            (is (= (datetime-number-cast-expected driver/*driver*)
+                   (-> rows first (get 2))))))))))
