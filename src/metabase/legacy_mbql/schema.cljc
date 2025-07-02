@@ -15,6 +15,7 @@
    [metabase.lib.schema.expression.window :as lib.schema.expression.window]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.util.i18n :as i18n]
@@ -299,7 +300,7 @@
 
   `:join-alias` is used to refer to a FieldOrExpression from a different Table/nested query that you are EXPLICITLY
   JOINING against."}
-     [:maybe ::lib.schema.common/non-blank-string]]
+     [:maybe ::lib.schema.join/alias]]
 
     [:binning
      {:optional true
@@ -332,7 +333,7 @@
    {:doc/title [:span [:code ":field"] " clause"]}
    (helpers/clause
     :field
-    "id-or-name" [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]
+    "id-or-name" [:or ::lib.schema.id/field :string]
     "options"    [:maybe [:ref ::FieldOptions]])
    [:ref
     {:description "Fields using names rather than integer IDs are required to specify `:base-type`."}
@@ -1468,7 +1469,7 @@
   in the options.
 
   Driver implementations: This is guaranteed to be present after pre-processing."}
-     ::lib.schema.common/non-blank-string]
+     ::lib.schema.join/alias]
 
     [:ident
      {:optional true

@@ -475,7 +475,7 @@
 
 (def ^:dynamic *propagate-binning-and-bucketing*
   "Enable propagation of ref's `:temporal-unit` into `:inherited-temporal-unit` of a column or setting of
-  the `:was-binned` option.
+  the `:lib/original-binning` option.
 
   Temporal unit should be conveyed into `:inherited-temporal-unit` only when _column is created from ref_ that contains
   that has temporal unit set and column's metadata is generated _under `returned-columns` call_.
@@ -483,11 +483,11 @@
   Point is, that `:inherited-temporal-unit` should be added only to column metadata that's generated for use on next
   stages.
 
-  `:was-binned` is used similarly as `:inherited-temporal-unit`. It helps to identify fields that were binned on
-  previous stages. Thanks to that, it is possible to avoid presetting binning for previously binned fields when
-  breakout column popover is opened in query builder.
+  `:lib/original-binning` is used similarly as `:inherited-temporal-unit`. It helps to identify fields that were
+  binned on previous stages. Thanks to that, it is possible to avoid presetting binning for previously binned fields
+  when breakout column popover is opened in query builder.
 
-  The value is used in [[metabase.lib.field/resolve-field-metadata]]."
+  The value is used in [[metabase.lib.field.resolution/resolve-field-ref]]."
   false)
 
 (mu/defn returned-columns :- [:maybe ColumnsWithUniqueAliases]
@@ -511,11 +511,7 @@
     options        :- [:maybe ReturnedColumnsOptions]]
    (let [options (merge (default-returned-columns-options) options)]
      (binding [*propagate-binning-and-bucketing* true]
-       (u/prog1 (returned-columns-method query stage-number x options)
-         (lib.metadata.ident/assert-idents-present! <> {:query        query
-                                                        :stage-number stage-number
-                                                        :target       x
-                                                        :options      options}))))))
+       (returned-columns-method query stage-number x options)))))
 
 (def VisibleColumnsOptions
   "Schema for options passed to [[visible-columns]] and [[visible-columns-method]]."
@@ -605,21 +601,27 @@
                                                       :target       x
                                                       :options      options})))))
 
-(defn remapped-columns
+(mu/defn remapped-columns
   "Given a seq of columns, return metadata for any remapped columns, if the `:include-remaps?` option is set."
-  [query stage-number source-cols {:keys [include-remaps? unique-name-fn] :as _options}]
+  [query :- map?
+   stage-number
+   source-cols
+   {:keys [include-remaps? unique-name-fn] :as _options} :- [:map
+                                                             [:unique-name-fn ::unique-name-fn]]]
   (when (and include-remaps?
-             (= (lib.util/canonical-stage-index query stage-number) 0))
-    (for [column source-cols
-          :let [remapped (lib.metadata/remapped-field query column)]
-          :when remapped]
-      (assoc remapped
-             :lib/source               (:lib/source column) ;; TODO: What's the right source for a remap?
-             :lib/source-column-alias  (column-name query stage-number remapped)
-             :lib/hack-original-name   (or ((some-fn :lib/hack-original-name :name) column)
-                                           (:name remapped))
-             :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query remapped))
-             :ident                    (lib.metadata.ident/remap-ident (:ident remapped) (:ident column))))))
+             (lib.util/first-stage? query stage-number))
+    (let [existing-ids (into #{} (keep :id) source-cols)]
+      (for [column source-cols
+            :let   [remapped (lib.metadata/remapped-field query column)]
+            :when  (and remapped
+                        (not (existing-ids (:id remapped))))]
+        (assoc remapped
+               :lib/source               (:lib/source column) ;; TODO: What's the right source for a remap?
+               :lib/source-column-alias  (column-name query stage-number remapped)
+               :lib/hack-original-name   (or ((some-fn :lib/hack-original-name :name) column)
+                                             (:name remapped))
+               :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query remapped))
+               :ident                    (lib.metadata.ident/remap-ident (:ident remapped) (:ident column)))))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
@@ -639,7 +641,10 @@
 
   Does not include columns that would be implicitly joinable via multiple hops."
   [query stage-number column-metadatas unique-name-fn]
-  (let [existing-table-ids (into #{} (map :table-id) column-metadatas)
+  (let [remap-target-ids (into #{} (keep (comp :field-id :lib/external-remap)) column-metadatas)
+        existing-table-ids (into #{} (comp (remove (comp remap-target-ids :id))
+                                           (map :table-id))
+                                 column-metadatas)
         fk-fields (into [] (filter (every-pred :fk-target-field-id (comp number? :id))) column-metadatas)
         id->target-fields (m/index-by :id (lib.metadata/bulk-metadata
                                            query :metadata/column (into #{} (map :fk-target-field-id) fk-fields)))

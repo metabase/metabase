@@ -166,7 +166,7 @@ export function notificationList() {
  * @todo Extract into a separate helper file.
  */
 export function filterWidget() {
-  return cy.get("fieldset");
+  return cy.findAllByTestId("parameter-widget");
 }
 
 export function clearFilterWidget(index = 0) {
@@ -264,9 +264,9 @@ export const moveColumnDown = (column, distance) => {
 
 export const moveDnDKitElement = (
   element,
-  { horizontal = 0, vertical = 0, onBeforeDragEnd } = {},
+  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
 ) => {
-  const chainable = element
+  element
     .trigger("pointerdown", 0, 0, {
       force: true,
       isPrimary: true,
@@ -290,13 +290,37 @@ export const moveDnDKitElement = (
 
   onBeforeDragEnd?.();
 
-  chainable
-    .trigger("pointerup", horizontal, vertical, {
-      force: true,
-      isPrimary: true,
-      button: 0,
+  cy.document().trigger("pointerup").wait(200);
+};
+
+export const moveDnDKitListElement = (
+  dataTestId,
+  { startIndex, dropIndex, onBeforeDragEnd = () => {} } = {},
+) => {
+  const selector = new RegExp(dataTestId);
+
+  const getCenter = ($el) => {
+    const { x, y, width, height } = $el.getBoundingClientRect();
+
+    return { clientX: x + width / 2, clientY: y + height / 2 };
+  };
+
+  cy.findAllByTestId(selector)
+    .then(($all) => {
+      const dragEl = $all.get(startIndex);
+      const dropEl = $all.get(dropIndex);
+      const dragPoint = getCenter(dragEl);
+      const dropPoint = getCenter(dropEl);
+
+      return { dragPoint, dropPoint, dragEl };
     })
-    .wait(200);
+    .then(({ dragPoint, dropPoint, dragEl }) => {
+      moveDnDKitElement(cy.wrap(dragEl), {
+        vertical: dropPoint.clientY - dragPoint.clientY,
+        horizontal: dropPoint.clientX - dragPoint.clientX,
+        onBeforeDragEnd,
+      });
+    });
 };
 
 export const moveDnDKitElementByAlias = (

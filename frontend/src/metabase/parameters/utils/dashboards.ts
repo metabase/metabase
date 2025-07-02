@@ -24,7 +24,6 @@ import type {
   DashboardCard,
   DashboardParameterMapping,
   Parameter,
-  ParameterMappingOptions,
   ParameterTarget,
   QuestionDashboardCard,
 } from "metabase-types/api";
@@ -34,23 +33,35 @@ type ExtendedMapping = DashboardParameterMapping & {
   card: Card;
 };
 
+export type NewParameterOpts = Pick<Parameter, "name" | "type" | "sectionId">;
+
 export function createParameter(
-  option: ParameterMappingOptions,
+  opts: NewParameterOpts,
   parameters: Parameter[] = [],
-): Parameter {
-  let name = option.combinedName || option.name;
+) {
+  let baseName = opts.name;
   let nameIndex = 0;
-  // get a unique name
-  while (_.any(parameters, (p) => p.name === name)) {
-    name = (option.combinedName || option.name) + " " + ++nameIndex;
+
+  // Extract base name and existing index if present
+  const indexMatch = baseName.match(/^(.+)\s+(\d+)$/);
+  if (indexMatch) {
+    baseName = indexMatch[1];
+    nameIndex = parseInt(indexMatch[2], 10);
+  }
+
+  let name = nameIndex === 0 ? baseName : `${baseName} ${nameIndex}`;
+
+  while (parameters.some((p) => p.name === name)) {
+    nameIndex++;
+    name = `${baseName} ${nameIndex}`;
   }
 
   const parameter: Parameter = {
     name: "",
     slug: "",
     id: generateParameterId(),
-    type: option.type,
-    sectionId: option.sectionId,
+    type: opts.type,
+    sectionId: opts.sectionId,
   };
 
   return setParameterName(parameter, name);
