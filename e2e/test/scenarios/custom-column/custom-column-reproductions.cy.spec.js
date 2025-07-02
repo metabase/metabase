@@ -1145,12 +1145,12 @@ describe("issue 49882", () => {
       blur: false,
     });
 
-    H.CustomExpressionEditor.completion("Product → Rating").should(
+    H.CustomExpressionEditor.completion("Product → Vendor").should(
       "be.visible",
     );
     H.CustomExpressionEditor.acceptCompletion("tab");
 
-    H.CustomExpressionEditor.value().should("equal", "[Product → Rating]");
+    H.CustomExpressionEditor.value().should("equal", "[Product → Vendor]");
   });
 });
 
