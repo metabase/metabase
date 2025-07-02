@@ -257,7 +257,7 @@ describe("exercise binary datetime() cast function", () => {
   ];
 
   tests.forEach((test) => {
-    it("should correctly convert iso bytes", () => {
+    it(`should correctly convert temporal bytes: ${test.expression}`, () => {
       H.createNativeQuestion(
         {
           native: {
