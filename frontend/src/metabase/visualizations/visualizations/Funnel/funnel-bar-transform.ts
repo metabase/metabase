@@ -1,4 +1,4 @@
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting/value";
 import { isNotNull } from "metabase/lib/types";
 import type { TransformSeries } from "metabase/visualizations/components/TransformedVisualization";
 import type { RowValue } from "metabase-types/api";

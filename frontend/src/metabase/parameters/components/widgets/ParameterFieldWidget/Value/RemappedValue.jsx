@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import CS from "metabase/css/core/index.css";
 import AutoLoadRemapped from "metabase/hoc/Remapped";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting/value";
 
 const defaultRenderNormal = ({ value }) => <span>{value}</span>;
 

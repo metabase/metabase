@@ -1,4 +1,4 @@
-import { FK_SYMBOL } from "metabase/lib/formatting";
+export const FK_SYMBOL = "→";
 
 import { quoteString } from "./string";
 

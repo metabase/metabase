@@ -1,4 +1,4 @@
-import { humanize, titleize } from "metabase/lib/formatting";
+import { humanize, titleize } from "metabase/lib/formatting/strings";
 import { isNullOrUndefined } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";

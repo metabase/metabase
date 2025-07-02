@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { stripId } from "metabase/lib/formatting";
+import { stripId } from "metabase/lib/formatting/strings";
 import type { ComboboxItem } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";

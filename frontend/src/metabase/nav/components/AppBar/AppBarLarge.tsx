@@ -51,6 +51,7 @@ const AppBarLarge = ({
   onLogout,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
+  const SearchButton = PLUGIN_METABOT.getSearchButton();
 
   return (
     <AppBarRoot hasSidebarOpen={isNavBarVisible || isMetabotVisible}>
@@ -77,11 +78,7 @@ const AppBarLarge = ({
       {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
         <AppBarRightContainer>
           {isSearchVisible &&
-            (isEmbeddingIframe ? (
-              <SearchBar />
-            ) : (
-              <PLUGIN_METABOT.SearchButton />
-            ))}
+            (isEmbeddingIframe ? <SearchBar /> : <SearchButton />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {isProfileLinkVisible && (
             <AppBarProfileLinkContainer aria-label={t`Settings menu`}>

@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { color } from "metabase/lib/colors";
-import { humanize, titleize } from "metabase/lib/formatting";
+import { humanize, titleize } from "metabase/lib/formatting/strings";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { PLUGIN_MODERATION } from "metabase/plugins";

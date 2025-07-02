@@ -6,7 +6,7 @@ import _ from "underscore";
 import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import Database from "metabase/entities/databases";
-import { formatNumber } from "metabase/lib/formatting";
+import { formatNumber } from "metabase/lib/formatting/numbers";
 import { connect } from "metabase/lib/redux";
 import { setLimit } from "metabase/query_builder/actions";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";

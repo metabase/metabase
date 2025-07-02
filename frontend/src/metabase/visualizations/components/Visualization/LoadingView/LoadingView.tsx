@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
-import { duration } from "metabase/lib/formatting";
+import { duration } from "metabase/lib/formatting/time";
 
 import {
   Duration,

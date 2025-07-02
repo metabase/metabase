@@ -1,3 +1,4 @@
+import { screen } from "@testing-library/react";
 import { indexBy } from "underscore";
 
 import {
@@ -15,14 +16,12 @@ import {
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
-import { screen } from "__support__/ui";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { useDashboardFullscreen } from "metabase/dashboard/hooks/use-dashboard-fullscreen";
-import { Box } from "metabase/ui";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -198,9 +197,9 @@ export const setupSdkDashboard = async ({
   });
 
   renderWithSDKProviders(
-    <Box h="500px">
+    <div style={{ height: "500px" }}>
       <Component dashboardId={dashboardId} {...props} />
-    </Box>,
+    </div>,
     {
       sdkProviderProps: {
         ...providerProps,

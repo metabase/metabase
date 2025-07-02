@@ -8,7 +8,7 @@ import {
   LoadingAndErrorWrapper as DefaultLoadingAndErrorWrapper,
   type LoadingAndErrorWrapperProps,
 } from "metabase/common/components/LoadingAndErrorWrapper";
-import { capitalize } from "metabase/lib/formatting";
+import { capitalize } from "metabase/lib/formatting/strings";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   setRequestError,

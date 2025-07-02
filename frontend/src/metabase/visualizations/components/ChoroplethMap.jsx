@@ -12,7 +12,7 @@ import { getMetabaseInstanceUrl } from "embedding-sdk/store/selectors";
 import Link from "metabase/common/components/Link";
 import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting/value";
 import { connect, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";

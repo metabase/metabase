@@ -1,8 +1,8 @@
 import { isValidElement } from "react";
 
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import { formatValue } from "metabase/lib/formatting/value";
 import type { DashboardId, Parameter } from "metabase-types/api";
 
 import RemappedValue from "./RemappedValue";

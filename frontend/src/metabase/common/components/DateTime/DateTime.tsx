@@ -2,7 +2,7 @@
 import type { Moment } from "moment-timezone";
 import { forwardRef } from "react";
 
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import MetabaseSettings from "metabase/lib/settings";
 import type { DatetimeUnit } from "metabase-types/api";
 

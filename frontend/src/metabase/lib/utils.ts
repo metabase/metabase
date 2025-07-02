@@ -1,8 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
-
 export function isEmpty(str: string | null) {
   if (str != null) {
     str = String(str);
@@ -159,5 +157,3 @@ export function versionIsLatest({
   const result = compareVersions(currentVersion, latestVersion);
   return result != null && result >= 0;
 }
-
-export const isEEBuild = () => PLUGIN_IS_EE_BUILD.isEEBuild();

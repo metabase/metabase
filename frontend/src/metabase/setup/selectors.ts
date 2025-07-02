@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { isEEBuild } from "metabase/lib/utils";
+import { isEEBuild } from "metabase/lib/ee-utils";
 import { getSetting } from "metabase/selectors/settings";
 import type {
   DatabaseData,

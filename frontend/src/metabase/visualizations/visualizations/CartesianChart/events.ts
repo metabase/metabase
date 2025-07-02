@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatChangeWithSign } from "metabase/lib/formatting";
+import { formatChangeWithSign } from "metabase/lib/formatting/numbers";
 import { getObjectKeys } from "metabase/lib/objects";
 import {
   getDaylightSavingsChangeTolerance,

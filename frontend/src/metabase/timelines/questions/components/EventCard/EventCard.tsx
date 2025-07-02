@@ -5,7 +5,7 @@ import { t } from "ttag";
 import Checkbox from "metabase/common/components/CheckBox/CheckBox";
 import EntityMenu from "metabase/common/components/EntityMenu";
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import Settings from "metabase/lib/settings";
 import { parseTimestamp } from "metabase/lib/time";
 import type { IconName } from "metabase/ui";

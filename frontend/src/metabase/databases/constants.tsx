@@ -1,7 +1,5 @@
 import { t } from "ttag";
 
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
-
 import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
 import DatabaseAuthProviderSectionField from "./components/DatabaseAuthProviderSectionField";
 import DatabaseCacheScheduleField from "./components/DatabaseCacheScheduleField";
@@ -13,15 +11,6 @@ import DatabaseSshDescription from "./components/DatabaseSshDescription";
 import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
 import DatabaseSyncScheduleField from "./components/DatabaseSyncScheduleField";
 import type { EngineFieldOverride } from "./types";
-
-export const SAVED_QUESTIONS_DATABASE = {
-  id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  get name() {
-    return t`Saved Questions`;
-  },
-  is_saved_questions: true,
-  features: ["basic-aggregations"],
-};
 
 export const ELEVATED_ENGINES = [
   "mysql",
