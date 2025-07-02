@@ -547,7 +547,7 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:bigquery-cloud-sdk :nanoseconds]
   [driver _ expr]
-  (sql.qp/unix-timestamp->honeysql driver :microseconds (h2x// expr 1000)))
+  (sql.qp/unix-timestamp->honeysql driver :microseconds [:div expr 1000]))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
