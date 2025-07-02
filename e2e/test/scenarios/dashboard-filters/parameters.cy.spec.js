@@ -2,10 +2,12 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  createMockDashboardCard,
   createMockHeadingDashboardCard,
   createMockParameter,
 } from "metabase-types/api/mocks";
@@ -1483,6 +1485,79 @@ describe("scenarios > dashboard > parameters", () => {
 
       // Verify filter doesn't show up in the dashboard header
       H.dashboardParametersContainer().should("not.exist");
+    });
+
+    [
+      { movedCardType: "heading", dashcardIndex: 0 },
+      { movedCardType: "question", dashcardIndex: 1 },
+    ].forEach(({ movedCardType, dashcardIndex }) => {
+      it(`should correctly unwire inline parameters when moving a ${movedCardType} card to another tab`, () => {
+        cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+
+        const TAB_1 = { id: 1, name: "Tab 1" };
+        const TAB_2 = { id: 2, name: "Tab 2" };
+
+        H.createDashboardWithTabs({
+          parameters: [categoryParameter, countParameter],
+          tabs: [TAB_1, TAB_2],
+          dashcards: [
+            createMockHeadingDashboardCard({
+              id: -1,
+              dashboard_tab_id: TAB_1.id,
+              inline_parameters: [countParameter.id],
+              size_x: 24,
+              size_y: 1,
+            }),
+            createMockDashboardCard({
+              id: -2,
+              card_id: ORDERS_BY_YEAR_QUESTION_ID,
+              dashboard_tab_id: TAB_1.id,
+              parameter_mappings: [
+                {
+                  parameter_id: countParameter.id,
+                  card_id: ORDERS_BY_YEAR_QUESTION_ID,
+                  target: [
+                    "dimension",
+                    ["field", "count", { "base-type": "type/Integer" }],
+                    { "stage-number": 1 },
+                  ],
+                },
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: ORDERS_BY_YEAR_QUESTION_ID,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+              row: 1,
+              size_x: 12,
+              size_y: 6,
+            }),
+          ],
+        }).then((dashboard) => {
+          H.visitDashboard(dashboard.id);
+          H.editDashboard();
+        });
+
+        H.moveDashCardToTab({ dashcardIndex, tabName: TAB_2.name });
+        H.saveDashboard();
+
+        cy.wait("@updateDashboard").then((xhr) => {
+          const { body: dashboard } = xhr.request;
+          const questionDashcard = dashboard.dashcards.find(
+            (dc) => !!dc.card_id,
+          );
+
+          // Ensure inline parameter is unwired, but not the header one
+          expect(questionDashcard.parameter_mappings).to.have.length(1);
+          expect(questionDashcard.parameter_mappings[0].parameter_id).to.eq(
+            categoryParameter.id,
+          );
+        });
+      });
     });
 
     describe("embedded dashboards", () => {
