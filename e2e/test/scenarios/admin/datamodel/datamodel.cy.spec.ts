@@ -21,9 +21,9 @@ describe("scenarios > admin > datamodel", () => {
     cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
       "updateField",
     );
-    cy.intercept("POST", "/api/field/*/values").as("fieldValuesUpdate");
-    cy.intercept("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
-    cy.intercept("PUT", "/api/table/*").as("tableUpdate");
+    cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
+    cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
+    cy.intercept("PUT", "/api/table/*").as("updateTable");
   });
 
   describe("Table picker", () => {
@@ -283,7 +283,7 @@ describe("scenarios > admin > datamodel", () => {
         .clear()
         .type("New orders")
         .blur();
-      cy.wait("@updateField");
+      cy.wait("@updateTable");
       H.undoToast().should("contain.text", "Table name updated");
       H.undoToast().icon("close").click();
       TablePicker.getTable("New orders").should("be.visible");
@@ -297,7 +297,7 @@ describe("scenarios > admin > datamodel", () => {
         .clear()
         .type("New description")
         .blur();
-      cy.wait("@updateField");
+      cy.wait("@updateTable");
       H.undoToast().should("contain.text", "Table description updated");
 
       cy.reload();
@@ -362,7 +362,7 @@ describe("scenarios > admin > datamodel", () => {
         tableId: ORDERS_ID,
       });
       TablePicker.getTable("Orders").button("Hide table").click();
-      cy.wait("@tableUpdate");
+      cy.wait("@updateTable");
 
       // Visit the main page, we shouldn't be able to see the table
       cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
@@ -691,7 +691,7 @@ describe("scenarios > admin > datamodel", () => {
           FieldSection.getDisplayValuesInput().click();
           H.popover().findByText("Use foreign key").click();
           H.popover().findByText("Title").click();
-          cy.wait("@fieldDimensionUpdate");
+          cy.wait("@updateFieldDimension");
 
           cy.reload();
           FieldSection.getDisplayValuesInput()
@@ -739,7 +739,7 @@ describe("scenarios > admin > datamodel", () => {
                     .type(remappedNullValue);
                   cy.button("Save").click();
                 });
-              cy.wait("@fieldValuesUpdate");
+              cy.wait("@updateFieldValues");
 
               cy.log("Make sure custom mapping appears in QB");
               H.openTable({
@@ -808,7 +808,7 @@ describe("scenarios > admin > datamodel", () => {
 
             cy.button("Save").click();
           });
-          cy.wait("@fieldValuesUpdate");
+          cy.wait("@updateFieldValues");
 
           cy.log("Numeric ratings should be remapped to custom strings");
           H.openReviewsTable();
@@ -875,7 +875,7 @@ describe("scenarios > admin > datamodel", () => {
               .should("be.visible")
               .click();
           });
-          cy.wait("@fieldDimensionUpdate");
+          cy.wait("@updateFieldDimension");
 
           H.visitQuestion(ORDERS_QUESTION_ID);
           cy.findAllByTestId("cell-data")
