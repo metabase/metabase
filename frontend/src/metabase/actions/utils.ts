@@ -10,12 +10,15 @@ import type {
   ActionFormSettings,
   BaseDashboardCard,
   Card,
+  DataGridWritebackAction,
   FieldSettings,
   FieldSettingsMap,
   FieldType,
   InputComponentType,
   InputSettingType,
   Parameter,
+  TableAction,
+  TableActionParameter,
   VirtualCard,
   WritebackAction,
   WritebackActionBase,
@@ -102,7 +105,11 @@ export const inputTypeHasOptions = (inputType: InputSettingType) =>
   ["select", "radio"].includes(inputType);
 
 export const sortActionParams =
-  (formSettings: ActionFormSettings) => (a: Parameter, b: Parameter) => {
+  (formSettings: ActionFormSettings) =>
+  (
+    a: Parameter | TableActionParameter,
+    b: Parameter | TableActionParameter,
+  ) => {
     const fields = formSettings.fields || {};
 
     const aOrder = fields[a.id]?.order ?? 0;
@@ -163,7 +170,7 @@ export function isActionDashCard(
 export const isActionCard = (card?: Card | VirtualCard) =>
   card?.display === "action";
 
-export const getFormTitle = (action: WritebackAction): string => {
+export const getFormTitle = (action: DataGridWritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;
 };
 
@@ -196,6 +203,9 @@ export function getActionExecutionMessage(
 ) {
   if (action.type === "implicit") {
     return getImplicitActionExecutionMessage(action);
+  }
+  if ("table-id" in result) {
+    return t`Success!`;
   }
   if (hasDataFromExplicitAction(result)) {
     return t`Success! The action returned: ${JSON.stringify(result)}`;
@@ -233,6 +243,7 @@ const getFormField = (
     // in this case we rely on required settings of parameter
     optional: fieldSettings.required === false || parameter.required === false,
     field: fieldSettings.field,
+    disabled: fieldSettings.readonly,
   };
 
   if (inputTypeHasOptions(fieldSettings.inputType)) {
@@ -343,3 +354,15 @@ export const isImplicitDeleteAction = (action: WritebackAction): boolean =>
 
 export const isImplicitUpdateAction = (action: WritebackAction): boolean =>
   action.type === "implicit" && action.kind === "row/update";
+
+export const isModelAction = (
+  action: DataGridWritebackAction | undefined | null,
+): action is WritebackAction => {
+  return action != null && "model_id" in action;
+};
+
+export const isTableAction = (
+  action: DataGridWritebackAction | undefined | null,
+): action is TableAction => {
+  return action != null && "table_id" in action;
+};

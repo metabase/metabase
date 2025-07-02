@@ -30,9 +30,20 @@
   The message format is channel-specific, one requirement is that it should be the same format that
   the [[send!]] multimethod expects."
   {:added    "0.51.0"
-   :arglists '([channel-type notification-payload template recipients])}
-  (fn [channel-type notification-payload _template _recipients]
-    [channel-type (:payload_type notification-payload)]))
+   :arglists '([channel-type payload-type notification-payload template recipients])}
+  (fn [channel-type payload-type _notification-payload _template _recipients]
+    [channel-type payload-type]))
+
+(defmulti template-context
+  "Transform a `notification-payload` to a context that will be used to render template."
+  {:added "0.55.0"
+   :arglists '([channel-type notification-type notification-payload])}
+  (fn [channel-type notification-type _notification-payload]
+    [channel-type notification-type]))
+
+(defmethod template-context :default
+  [_notification-type _channel-type notification-payload]
+  notification-payload)
 
 (defmulti send!
   "Send a message to a channel."

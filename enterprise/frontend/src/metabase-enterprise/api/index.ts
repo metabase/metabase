@@ -9,5 +9,6 @@ export * from "./gdrive";
 export * from "./db-routing";
 export * from "./saml";
 export * from "./scim";
+export * from "./table-data-edit";
 export * from "./tags";
 export * from "./upload-management";

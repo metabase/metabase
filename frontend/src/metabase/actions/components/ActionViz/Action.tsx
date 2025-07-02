@@ -60,8 +60,10 @@ const ActionComponent = ({
   parameterValues,
   isEditingDashcard,
 }: ActionProps) => {
+  const action = dashcard.action as WritebackAction; // TODO: handle TableAction properly
+
   const { data: card } = useGetCardQuery(
-    dashcard.action?.model_id ? { id: dashcard.action.model_id } : skipToken,
+    action?.model_id ? { id: action.model_id } : skipToken,
   );
   const metadata = useSelector(getMetadata);
   const model = useMemo(
@@ -79,26 +81,20 @@ const ActionComponent = ({
   );
 
   const missingParameters = useMemo(() => {
-    if (!dashcard.action) {
+    if (!action) {
       return [];
     }
-    return getNotProvidedActionParameters(
-      dashcard.action,
-      dashcardParamValues ?? [],
-    );
-  }, [dashcard, dashcardParamValues]);
+    return getNotProvidedActionParameters(action, dashcardParamValues ?? []);
+  }, [action, dashcardParamValues]);
 
   const mappedParameters = useMemo(() => {
-    if (!dashcard.action) {
+    if (!action) {
       return [];
     }
-    return getMappedActionParameters(
-      dashcard.action,
-      dashcardParamValues ?? [],
-    );
-  }, [dashcard, dashcardParamValues]);
+    return getMappedActionParameters(action, dashcardParamValues ?? []);
+  }, [action, dashcardParamValues]);
 
-  const shouldConfirm = shouldShowConfirmation(dashcard?.action);
+  const shouldConfirm = shouldShowConfirmation(action);
 
   const shouldDisplayButton = !!(
     actionDisplayType !== "form" ||

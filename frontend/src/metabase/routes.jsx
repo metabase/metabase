@@ -39,6 +39,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
+  PLUGIN_DATA_EDITING,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
 } from "metabase/plugins";
@@ -299,6 +300,18 @@ export const getRoutes = (store) => {
               path="databases/:dbId/schema/:schemaName"
               component={BrowseTables}
             />
+            {PLUGIN_DATA_EDITING.isEnabled() && (
+              <>
+                <Route
+                  path="databases/:dbId/tables/:tableId"
+                  component={PLUGIN_DATA_EDITING.VIEW_PAGE_COMPONENT}
+                />
+                <Route
+                  path="databases/:dbId/tables/:tableId/edit(/:objectId)"
+                  component={PLUGIN_DATA_EDITING.EDIT_PAGE_COMPONENT}
+                />
+              </>
+            )}
 
             {/* These two Redirects support legacy paths in v48 and earlier */}
             <Redirect from=":dbId-:slug" to="databases/:dbId-:slug" />

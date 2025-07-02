@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-
 import cx from "classnames";
 import { forwardRef } from "react";
 import { match } from "ts-pattern";
@@ -183,6 +182,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
     .with({ isShowingQuestionInfoSidebar: true }, () => 0)
     .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
     .otherwise(() => SIDEBAR_SIZES.NORMAL);
+
   return (
     <div className={CS.fullHeight} ref={ref}>
       <Flex

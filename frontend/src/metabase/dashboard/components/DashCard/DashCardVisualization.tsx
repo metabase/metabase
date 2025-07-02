@@ -290,6 +290,7 @@ export function DashCardVisualization({
           </Flex>
         );
       }
+
       return (
         <ClickBehaviorSidebarOverlay
           dashcard={dashcard}
@@ -383,6 +384,7 @@ export function DashCardVisualization({
       isPublicOrEmbedded,
       isEditing,
       downloadsEnabled,
+      card: dashcard.card,
     });
 
     if (!shouldShowDashCardMenu) {
@@ -431,6 +433,7 @@ export function DashCardVisualization({
     downloadsEnabled,
     dashcard.id,
     dashboard.id,
+    dashcard.card,
     token,
     uuid,
     onEditVisualization,

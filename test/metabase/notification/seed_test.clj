@@ -31,7 +31,7 @@
                (notification.seed/seed-notification!))))
       (let [before (get-notifications-data)]
         (testing "skip all since none of the notifications were changed"
-          (is (= {:skip 3}
+          (is (= {:skip 4}
                  (notification.seed/seed-notification!))))
         (testing "it equals to the data before "
           (is (= before (get-notifications-data))))))))
@@ -42,8 +42,7 @@
         test-notification {:internal_id   internal-id
                            :active        true
                            :payload_type  :notification/system-event
-                           :subscriptions [{:type       :notification-subscription/system-event
-                                            :event_name :event/user-invited}]
+                           :payload       {:event_name :event/user-invited}
                            :handlers      [{:active       true
                                             :channel_type :channel/metabase-test
                                             :channel_id   nil

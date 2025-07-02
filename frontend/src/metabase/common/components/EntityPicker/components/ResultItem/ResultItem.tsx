@@ -110,6 +110,16 @@ function getParentInfo(item: SearchItem) {
     return null;
   }
 
+  if (item.model === "action" && item.model_name) {
+    const icon = getIcon({ model: "dataset" }).name;
+    const collectionName = getName(item.collection) || t`Our Analytics`;
+
+    return {
+      icon,
+      name: `${collectionName} / ${item.model_name}`,
+    };
+  }
+
   return {
     icon: getIcon({ model: "collection", ...item.collection }).name,
     name: getName(item.collection) || t`Our Analytics`,

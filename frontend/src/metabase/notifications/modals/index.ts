@@ -1,2 +1,2 @@
-export { CreateOrEditQuestionAlertModal } from "./CreateOrEditQuestionAlertModal";
-export { QuestionAlertListModal } from "./QuestionAlertListModal";
+export { CreateOrEditQuestionAlertModal } from "./AlertsModals/CreateOrEditQuestionAlertModal";
+export { QuestionAlertListModal } from "./AlertsModals/QuestionAlertListModal";

@@ -1,6 +1,7 @@
 import { html } from "@codemirror/lang-html";
 import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { python } from "@codemirror/lang-python";
 import { StreamLanguage } from "@codemirror/language";
 import { clojure } from "@codemirror/legacy-modes/mode/clojure";
@@ -22,7 +23,9 @@ import { type RefObject, useEffect } from "react";
 import S from "./CodeEditor.module.css";
 import type { CodeLanguage } from "./types";
 
-export function getLanguageExtension(language: CodeLanguage): Extension {
+export function getLanguageExtension(
+  language: CodeLanguage,
+): Extension | undefined {
   switch (language) {
     case "clojure":
       return StreamLanguage.define(clojure);
@@ -30,10 +33,12 @@ export function getLanguageExtension(language: CodeLanguage): Extension {
       return html();
     case "json":
       return json();
+    case "markdown":
+      return markdown({ base: markdownLanguage });
     case "python":
       return python();
     case "mustache":
-      return handlebars;
+      return [handlebars, html()];
     case "pug":
       return StreamLanguage.define(pug);
     case "ruby":

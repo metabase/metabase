@@ -218,6 +218,10 @@
   "Should we allow admins to clean up tables created from uploads?"
   :upload-management)
 
+(define-premium-feature table-data-editing?
+  "Should we allow users to edit the data within tables?"
+  :table-data-editing)
+
 (define-premium-feature has-attached-dwh?
   "Does the Metabase Cloud instance have an internal data warehouse attached?"
   :attached-dwh)
@@ -295,6 +299,7 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :table_data_editing             (table-data-editing?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)})
 
