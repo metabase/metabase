@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "new-iframe-embedding-setup-flow",
-    "hash": "4bcc3310d5d769c5de6ba78629dba54839d3e6df"
+    "hash": "777f9c8d906ca2667b30ebf9ade542a62012a742"
   },
   "upstream": {
     "branch": "emb-508-select-dashboards-and-questions-for-new-iframe-embedding"
