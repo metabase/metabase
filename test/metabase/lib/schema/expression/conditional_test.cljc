@@ -34,33 +34,23 @@
 
 (deftest ^:parallel case-schema-test
   (testing "schema validation for :case expressions"
-    (are [expr] (true?
-                 (mr/validate :mbql.clause/case expr))
-      [:case
-       {:lib/uuid (str (random-uuid))}
-       [[true 1]] 1]
+    (are [args] (true?
+                 (mr/validate :mbql.clause/case
+                              (into [:case {:lib/uuid (str (random-uuid))}] args)))
+      [[[true 1]] 1]
 
-      [:case
-       {:lib/uuid (str (random-uuid))}
-       [[true false]] false]
+      [[[true false]] false]
 
-      [:case
-       {:lib/uuid (str (random-uuid))}
-       [[true true]] true]
+      [[[true true]] true]
 
-      [:case
-       {:lib/uuid (str (random-uuid))}
-       [[true true]] true])
+      [[[true true]] true])
 
-    (are [expr] (false?
-                 (mr/validate :mbql.clause/case expr))
-      [:case
-       {:lib/uuid (str (random-uuid))}
-       1]
+    (are [args] (false?
+                 (mr/validate :mbql.clause/case
+                              (into [:case {:lib/uuid (str (random-uuid))}] args)))
+      [1]
 
-      [:case
-       {:lib/uuid (str (random-uuid))}
-       [] 1])))
+      [[] 1])))
 
 (deftest ^:parallel case-schema-type-compatibility-valid-test
   (are [a b] (true?
@@ -173,57 +163,37 @@
 
 (deftest ^:parallel coalesce-schema-test
   (testing "schema validation for :coalesce expressions"
-    (are [expr] (true?
-                 (mr/validate :mbql.clause/coalesce expr))
-      [:coalesce
-       {:lib/uuid (str (random-uuid))}
-       1 2]
+    (are [args] (true?
+                 (mr/validate :mbql.clause/coalesce
+                              (into [:coalesce {:lib/uuid (str (random-uuid))}] args)))
+      [1 2]
 
-      [:coalesce
-       {:lib/uuid (str (random-uuid))}
-       1 2 3]
+      [1 2 3]
 
-      [:coalesce
-       {:lib/uuid (str (random-uuid))}
-       1
-       [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} 1]]
+      [1 [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} 1]]
 
       ; TODO: this case should fail due to Time and Date not being compatible,
       ; but until we have a better way to handle this, we just allow it and document
       ; here as a test.
-      [:coalesce
-       {:lib/uuid (str (random-uuid))}
-       (value-expr :type/Date "2023-03-08")
+      [(value-expr :type/Date "2023-03-08")
        (value-expr :type/Time "15:03:55")])
 
-    (are [expr] (false?
+    (are [args] (false?
+                 (mr/validate :mbql.clause/coalesce
+                              (into [:coalesce {:lib/uuid (str (random-uuid))}] args)))
+      [1]
 
-                 (mr/validate :mbql.clause/coalesce expr))
-      [:coalesce
-       {:lib/uuid (str (random-uuid))}
-       1]
+      [1 "A"]
 
-      [:coalesce
-       {:lib/uuid (str (random-uuid))}
-       1 "A"]
+      ["A"]
 
-      [:coalesce
-       {:lib/uuid (str (random-uuid))}
-       "A"]
-
-      [:coalesce
-       {:lib/uuid (str (random-uuid))}
-       "A"
+      ["A"
        (value-expr :type/Date "2023-03-08")]
 
-      [:coalesce
-       {:lib/uuid (str (random-uuid))}
-       "A"
+      ["A"
        (value-expr :type/DateTime "2023-03-08T15:03:55")]
 
-      [:coalesce
-       {:lib/uuid (str (random-uuid))}
-       "A"
+      ["A"
        (value-expr :type/DateTimeWithTZ "2023-03-08T15:03:55Z")])))
 
 (deftest ^:parallel coalesce-schema-type-compatibility-valid-test
