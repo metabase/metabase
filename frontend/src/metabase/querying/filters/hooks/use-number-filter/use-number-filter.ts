@@ -17,6 +17,8 @@ interface UseNumberFilterProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.Filterable;
+  minInclusive: boolean;
+  maxInclusive: boolean;
 }
 
 export function useNumberFilter({
@@ -24,6 +26,8 @@ export function useNumberFilter({
   stageIndex,
   column,
   filter,
+  minInclusive,
+  maxInclusive,
 }: UseNumberFilterProps) {
   const filterParts = useMemo(
     () => (filter ? Lib.numberFilterParts(query, stageIndex, filter) : null),
@@ -35,11 +39,12 @@ export function useNumberFilter({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(() =>
-    filterParts
-      ? filterParts.operator
-      : getDefaultOperator(query, column, availableOptions),
-  );
+  const [operator, setOperator] = useState(() => {
+    if (filterParts) {
+      return filterParts.operator;
+    }
+    return getDefaultOperator(query, column, availableOptions);
+  });
 
   const [values, setValues] = useState(() =>
     getDefaultValues(operator, filterParts ? filterParts.values : []),
@@ -59,7 +64,7 @@ export function useNumberFilter({
     getFilterClause: (
       operator: Lib.NumberFilterOperator,
       values: NumberOrEmptyValue[],
-    ) => getFilterClause(operator, column, values),
+    ) => getFilterClause(operator, column, values, minInclusive, maxInclusive),
     setOperator,
     setValues,
   };

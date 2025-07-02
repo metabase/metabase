@@ -87,8 +87,17 @@ export function getFilterClause(
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberOrEmptyValue[],
+  minInclusive?: boolean,
+  maxInclusive?: boolean,
 ) {
-  const filterParts = getFilterParts(operator, column, secondColumn, values);
+  const filterParts = getFilterParts(
+    operator,
+    column,
+    secondColumn,
+    values,
+    minInclusive,
+    maxInclusive,
+  );
   return filterParts != null
     ? Lib.coordinateFilterClause(filterParts)
     : undefined;
@@ -99,10 +108,18 @@ function getFilterParts(
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberOrEmptyValue[],
+  minInclusive?: boolean,
+  maxInclusive?: boolean,
 ): Lib.CoordinateFilterParts | undefined {
   switch (operator) {
     case "between":
-      return getBetweenFilterParts(operator, column, values);
+      return getBetweenFilterParts(
+        operator,
+        column,
+        values,
+        minInclusive,
+        maxInclusive,
+      );
     case "inside":
       return getInsideFilterParts(operator, column, secondColumn, values);
     default:
@@ -135,6 +152,8 @@ function getBetweenFilterParts(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
+  minInclusive?: boolean,
+  maxInclusive?: boolean,
 ): Lib.CoordinateFilterParts | undefined {
   const [startValue, endValue] = values;
   if (isNotNull(startValue) && isNotNull(endValue)) {
@@ -146,23 +165,35 @@ function getBetweenFilterParts(
       column,
       longitudeColumn: null,
       values: [minValue, maxValue],
+      options: {
+        minInclusive,
+        maxInclusive,
+      },
     };
-  } else if (isNotNull(startValue)) {
+  }
+
+  if (isNotNull(startValue)) {
     return {
-      operator: ">=",
+      operator: "between",
       column,
       longitudeColumn: null,
       values: [startValue],
+      options: {
+        minInclusive,
+      },
     };
-  } else if (isNotNull(endValue)) {
+  }
+
+  if (isNotNull(endValue)) {
     return {
-      operator: "<=",
+      operator: "between",
       column,
       longitudeColumn: null,
       values: [endValue],
+      options: {
+        maxInclusive,
+      },
     };
-  } else {
-    return undefined;
   }
 }
 

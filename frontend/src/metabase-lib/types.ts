@@ -390,6 +390,12 @@ export type NumberFilterParts = {
   operator: NumberFilterOperator;
   column: ColumnMetadata;
   values: NumberFilterValue[];
+  options?: NumberFilterOptions;
+};
+
+export type NumberFilterOptions = {
+  minInclusive?: boolean;
+  maxInclusive?: boolean;
 };
 
 export type RangeFilterParts = {
@@ -405,6 +411,12 @@ export type CoordinateFilterParts = {
   column: ColumnMetadata;
   longitudeColumn: ColumnMetadata | null;
   values: NumberFilterValue[];
+  options?: CoordinateFilterOptions;
+};
+
+export type CoordinateFilterOptions = {
+  minInclusive?: boolean;
+  maxInclusive?: boolean;
 };
 
 export type BooleanFilterParts = {

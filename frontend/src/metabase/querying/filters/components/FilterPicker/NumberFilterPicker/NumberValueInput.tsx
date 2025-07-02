@@ -19,10 +19,10 @@ interface NumberValueInputProps {
   valueCount: number;
   hasMultipleValues?: boolean;
   onChange: (values: NumberOrEmptyValue[]) => void;
-  leftInclusive?: boolean;
-  rightInclusive?: boolean;
-  onLeftInclusiveChange: (value: boolean) => void;
-  onRightInclusiveChange: (value: boolean) => void;
+  minInclusive?: boolean;
+  maxInclusive?: boolean;
+  onMinInclusiveChange: (value: boolean) => void;
+  onMaxInclusiveChange: (value: boolean) => void;
 }
 
 function NumberValueInput({
@@ -33,10 +33,10 @@ function NumberValueInput({
   valueCount,
   hasMultipleValues,
   onChange,
-  leftInclusive = true,
-  rightInclusive = true,
-  onLeftInclusiveChange,
-  onRightInclusiveChange,
+  minInclusive = true,
+  maxInclusive = true,
+  onMinInclusiveChange,
+  onMaxInclusiveChange,
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
@@ -81,10 +81,10 @@ function NumberValueInput({
           leftSection={
             <ToggleButton
               aria-label="toggle greater inclusiveness"
-              onChange={() => onLeftInclusiveChange(!leftInclusive)}
+              onChange={() => onMinInclusiveChange(!minInclusive)}
             >
               <Icon
-                name={leftInclusive ? "greater_than_or_equal" : "greater_than"}
+                name={minInclusive ? "greater_than_or_equal" : "greater_than"}
               />
             </ToggleButton>
           }
@@ -100,11 +100,9 @@ function NumberValueInput({
           leftSection={
             <ToggleButton
               aria-label="toggle less inclusiveness"
-              onChange={() => onRightInclusiveChange(!rightInclusive)}
+              onChange={() => onMaxInclusiveChange(!maxInclusive)}
             >
-              <Icon
-                name={rightInclusive ? "less_than_or_equal" : "less_than"}
-              />
+              <Icon name={maxInclusive ? "less_than_or_equal" : "less_than"} />
             </ToggleButton>
           }
           classNames={{

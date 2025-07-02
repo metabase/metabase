@@ -67,8 +67,16 @@ export function getFilterClause(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
+  minInclusive: boolean,
+  maxInclusive: boolean,
 ) {
-  const filterParts = getFilterParts(operator, column, values);
+  const filterParts = getFilterParts(
+    operator,
+    column,
+    values,
+    minInclusive,
+    maxInclusive,
+  );
   return filterParts != null ? Lib.numberFilterClause(filterParts) : undefined;
 }
 
@@ -76,10 +84,18 @@ function getFilterParts(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
+  minInclusive?: boolean,
+  maxInclusive?: boolean,
 ): Lib.NumberFilterParts | undefined {
   switch (operator) {
     case "between":
-      return getBetweenFilterParts(operator, column, values);
+      return getBetweenFilterParts(
+        operator,
+        column,
+        values,
+        minInclusive,
+        maxInclusive,
+      );
     default:
       return getSimpleFilterParts(operator, column, values);
   }
@@ -109,6 +125,8 @@ function getBetweenFilterParts(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
+  minInclusive?: boolean,
+  maxInclusive?: boolean,
 ): Lib.NumberFilterParts | undefined {
   const [startValue, endValue] = values;
   if (isNotNull(startValue) && isNotNull(endValue)) {
@@ -119,18 +137,28 @@ function getBetweenFilterParts(
       operator,
       column,
       values: [minValue, maxValue],
+      options: {
+        minInclusive,
+        maxInclusive,
+      },
     };
   } else if (isNotNull(startValue)) {
     return {
-      operator: ">=",
+      operator: "between",
       column,
       values: [startValue],
+      options: {
+        minInclusive,
+      },
     };
   } else if (isNotNull(endValue)) {
     return {
-      operator: "<=",
+      operator: "between",
       column,
       values: [endValue],
+      options: {
+        maxInclusive,
+      },
     };
   }
 }

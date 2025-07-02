@@ -88,8 +88,9 @@ export function numberFilterClause({
   operator,
   column,
   values,
+  options,
 }: NumberFilterParts): ExpressionClause {
-  return ML.number_filter_clause(operator, column, values);
+  return ML.number_filter_clause(operator, column, values, options);
 }
 
 export function numberFilterParts(
@@ -129,8 +130,15 @@ export function coordinateFilterClause({
   column,
   longitudeColumn,
   values,
+  options,
 }: CoordinateFilterParts): ExpressionClause {
-  return ML.coordinate_filter_clause(operator, column, longitudeColumn, values);
+  return ML.coordinate_filter_clause(
+    operator,
+    column,
+    longitudeColumn,
+    values,
+    options,
+  );
 }
 
 export function coordinateFilterParts(

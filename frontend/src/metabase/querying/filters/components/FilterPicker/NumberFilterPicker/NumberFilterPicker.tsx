@@ -27,6 +27,9 @@ export function NumberFilterPicker({
     [query, stageIndex, column],
   );
 
+  const [minInclusive, setMinInclusive] = useState(true);
+  const [maxInclusive, setMaxInclusive] = useState(true);
+
   const {
     operator,
     availableOptions,
@@ -43,17 +46,16 @@ export function NumberFilterPicker({
     stageIndex,
     column,
     filter,
+    minInclusive,
+    maxInclusive,
   });
-
-  const [leftInclusive, setLeftInclusive] = useState(true);
-  const [rightInclusive, setRightInclusive] = useState(true);
 
   const handleOperatorChange = (newOperator: Lib.NumberFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
     if (newOperator === "between") {
-      setLeftInclusive(true);
-      setRightInclusive(true);
+      setMinInclusive(true);
+      setMaxInclusive(true);
     }
   };
 
@@ -99,10 +101,10 @@ export function NumberFilterPicker({
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
           onChange={setValues}
-          leftInclusive={leftInclusive}
-          rightInclusive={rightInclusive}
-          onLeftInclusiveChange={setLeftInclusive}
-          onRightInclusiveChange={setRightInclusive}
+          minInclusive={minInclusive}
+          maxInclusive={maxInclusive}
+          onMinInclusiveChange={setMinInclusive}
+          onMaxInclusiveChange={setMaxInclusive}
         />
         <FilterPickerFooter
           isNew={isNew}
