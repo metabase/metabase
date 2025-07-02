@@ -7,10 +7,10 @@ import type { RowValue, RowValues } from "metabase-types/api";
 
 export const ROW_SELECT_COLUMN_ID = "__MB_ROW_SELECT";
 
-export function useTableColumnRowSelect() {
-  return useMemo<ColumnOptions<RowValues, RowValue>>(
-    () => getRowSelectColumn(),
-    [],
+export function useTableColumnRowSelect(hasRowSelection: boolean) {
+  return useMemo<ColumnOptions<RowValues, RowValue> | undefined>(
+    () => (hasRowSelection ? getRowSelectColumn() : undefined),
+    [hasRowSelection],
   );
 }
 
