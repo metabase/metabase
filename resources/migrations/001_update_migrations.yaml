@@ -12071,7 +12071,7 @@ databaseChangeLog:
 
 
   - changeSet:
-      id: v55.2025-06-22T10:00:00
+      id: v55.2025-07-02T10:00:00
       author: ranquild
       comment: |
         Update `has_field_values` on FK fields to match PKs. Before this change, the FE always used the corresponding
@@ -12084,14 +12084,21 @@ databaseChangeLog:
               UPDATE metabase_field AS fk
               SET has_field_values = pk.has_field_values
               FROM metabase_field AS pk
-              WHERE pk.id = fk.fk_target_field_id AND pk.has_field_values IS NOT NULL AND fk.semantic_type = 'type/FK';
+              WHERE
+                pk.id = fk.fk_target_field_id AND
+                pk.has_field_values IS NOT NULL AND
+                pk.has_field_values <> fk.has_field_values AND
+                fk.semantic_type = 'type/FK';
         - sql:
             dbms: mysql,mariadb
             sql: >-
               UPDATE metabase_field AS fk
               JOIN metabase_field AS pk ON pk.id = fk.fk_target_field_id
               SET fk.has_field_values = pk.has_field_values
-              WHERE pk.has_field_values IS NOT NULL AND fk.semantic_type = 'type/FK';
+              WHERE
+                pk.has_field_values IS NOT NULL AND
+                pk.has_field_values <> fk.has_field_values AND
+                fk.semantic_type = 'type/FK';
         - sql:
             dbms: h2
             sql: >-
