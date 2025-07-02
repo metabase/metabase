@@ -3,7 +3,7 @@ import {
   setupSettingEndpoint,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { SettingKey, UpdateChannel } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -69,11 +69,22 @@ const setup = async (props: {
 describe("UpdatesNavItem", () => {
   it("should not show badge if there are no updates available", async () => {
     await setup({ versionTag: "v1.53.8", updateChannel: "latest" });
-    expect(screen.queryByTestId("updates-nav-badge")).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      const indicatorDot = document.querySelector(
+        '[class*="Indicator-indicator"]',
+      );
+      expect(indicatorDot).not.toBeInTheDocument();
+    });
   });
 
   it("should show badge updates are available", async () => {
     await setup({ versionTag: "v1.53.8", updateChannel: "beta" });
-    expect(await screen.findByTestId("updates-nav-badge")).toBeInTheDocument();
+    await waitFor(() => {
+      const indicatorDot = document.querySelector(
+        '[class*="Indicator-indicator"]',
+      );
+      expect(indicatorDot).toBeInTheDocument();
+    });
   });
 });
