@@ -16,7 +16,7 @@ import type { Parameter } from "metabase-types/api";
 export interface DashboardParameterListProps
   extends Pick<
     ComponentProps<typeof ParametersList>,
-    "widgetsVariant" | "widgetsWithinPortal" | "vertical"
+    "widgetsVariant" | "widgetsWithinPortal" | "vertical" | "hasTestIdProps"
   > {
   className?: string;
   parameters: Array<Parameter & { value: unknown }>;
@@ -34,6 +34,7 @@ export const DashboardParameterList = forwardRef<
     widgetsVariant,
     widgetsWithinPortal,
     vertical,
+    hasTestIdProps = true,
   },
   ref,
 ) {
@@ -69,6 +70,7 @@ export const DashboardParameterList = forwardRef<
       widgetsVariant={widgetsVariant}
       widgetsWithinPortal={widgetsWithinPortal}
       vertical={vertical}
+      hasTestIdProps={hasTestIdProps}
       ref={ref}
     />
   );

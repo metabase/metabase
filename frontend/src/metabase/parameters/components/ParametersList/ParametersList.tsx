@@ -42,6 +42,8 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
       enableParameterRequiredBehavior,
       widgetsVariant = "default",
       widgetsWithinPortal,
+
+      hasTestIdProps = true,
     },
     ref,
   ) {
@@ -103,6 +105,7 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
           ) : null
         }
         isSortable={isSortable}
+        hasTestId={hasTestIdProps}
       />
     );
 
