@@ -45,22 +45,21 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
     const [bulkMove, bulkMoveReq] =
       useMoveCollectionDashboardQuestionCandidatesMutation();
 
-    // Track the click event when the modal is displayed for the first time
+    // Track the viewed event when the modal is displayed for the first time with candidates
     useEffect(() => {
-      if (
+      const shouldTrackModalViewed =
         !isAckedInfoLoading &&
         !ackedInfoStep &&
-        candidatesReq.data?.total !== undefined
-      ) {
+        (candidatesReq.data?.total ?? 0) > 0;
+
+      if (shouldTrackModalViewed) {
         trackSimpleEvent({
           event: "move_questions_into_dashboard_viewed",
-          target_id: null,
           triggered_from: "move_questions_into_dashboards_modal",
-          duration_ms: null,
-          result: candidatesReq.data.total.toString(),
+          result: candidatesReq.data!.total.toString(),
         });
       }
-    }, [isAckedInfoLoading, ackedInfoStep, candidatesReq.data?.total]);
+    }, [isAckedInfoLoading, ackedInfoStep, candidatesReq.data]);
 
     // redirect to base collection page if there's an invalid collection id
     useEffect(() => {
@@ -81,7 +80,6 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
 
           trackSimpleEvent({
             event: "move_questions_into_dashboard_confirmed",
-            target_id: null,
             triggered_from: "move_questions_into_dashboards_modal",
             duration_ms: duration,
             result: cardIds.length.toString(),
