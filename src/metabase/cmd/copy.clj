@@ -5,6 +5,7 @@
   database types."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.setup :as mdb.setup]
@@ -408,7 +409,9 @@
    target-db-type     :- [:enum :h2 :postgres :mysql]
    target-data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   ;; make sure all model namespaces are loaded
-  (doseq [ns-symb (vals models.resolution/model->namespace)]
+  (doseq [ns-symb (cond->> (vals models.resolution/model->namespace)
+                    (not config/ee-available?)
+                    (remove #(str/starts-with? (str %) "metabase-enterprise")))]
     (classloader/require ns-symb))
   ;; make sure the source database is up-do-date
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))
