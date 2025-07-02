@@ -1350,8 +1350,8 @@
 (defn- check-venues+categories-with-value-wrapped-args
   [[op & args] expected-rows]
   (check-venues+categories-on-condition
-   (into [op] (comp (map lib.expression/value)
-                    (map lib.convert/->legacy-MBQL))
+   (into [op] (map (comp lib.convert/->legacy-MBQL
+                         lib.expression/value))
          args)
    expected-rows))
 
@@ -1415,18 +1415,17 @@
      [:= 0 1]
      venues+categories-expected-rows-for-always-false-condition)))
 
-;; FIXME: QUE-1499 The sql driver does not compile the :!= clause
-#_(deftest ^:parallel join-expressions-operator-!=-always-true-condition-test
-    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
-      (check-venues+categories-with-value-wrapped-args
-       [:!= 0 1]
-       venues+categories-expected-rows-for-always-true-condition)))
+(deftest ^:parallel join-expressions-operator-!=-always-true-condition-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
+    (check-venues+categories-with-value-wrapped-args
+     [:!= 0 1]
+     venues+categories-expected-rows-for-always-true-condition)))
 
-#_(deftest ^:parallel join-expressions-operator-!=-always-false-condition-test
-    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
-      (check-venues+categories-with-value-wrapped-args
-       [:!= 1 1]
-       venues+categories-expected-rows-for-always-false-condition)))
+(deftest ^:parallel join-expressions-operator-!=-always-false-condition-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
+    (check-venues+categories-with-value-wrapped-args
+     [:!= 1 1]
+     venues+categories-expected-rows-for-always-false-condition)))
 
 (deftest ^:parallel join-expressions-aggregations-and-breakouts-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
