@@ -18,7 +18,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [net.cgrand.xforms :as xforms]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -323,7 +322,7 @@
                                   nested-fields)
              :visibility-type :details-only))))
 
-(defn- describe-dataset-rows [nested-column-lookup dataset-id [table-name table-rows]]
+(defn- describe-dataset-rows [nested-column-lookup dataset-id table-name table-rows]
   (let [max-position (transduce (keep :ordinal_position) max -1 table-rows)]
     (mapcat
      (fn [{column-name :column_name
@@ -367,9 +366,11 @@
                           (log/warnf e "error in describe-fields for dataset: %s" dataset-id)))
         nested-column-lookup (get-nested-columns-for-tables driver database project-id dataset-id table-names)]
     (eduction
-     (xforms/by-key :table_name (xforms/into []))
-     (mapcat #(->> (describe-dataset-rows nested-column-lookup dataset-id %)
-                   (sort-by (juxt :table-name :database-position :name))))
+     (partition-by :table_name)
+     (mapcat (fn [table-rows]
+               (let [table-name (:table_name (first table-rows))]
+                 (->> (describe-dataset-rows nested-column-lookup dataset-id table-name table-rows)
+                      (sort-by (juxt :table-name :database-position :name))))))
      named-rows)))
 
 ;; we redef this in a test, don't make `^:const`!
@@ -410,7 +411,7 @@
      (mapcat (fn [dataset-id]
                (let [table-names (or (seq (sort table-names)) (list-table-names driver database project-id dataset-id))]
                  (eduction
-                  (xforms/partition num-table-partitions num-table-partitions [])
+                  (partition-all num-table-partitions)
                   (mapcat #(describe-dataset-fields-reducible driver database project-id dataset-id %))
                   table-names))))
      (sort dataset-ids))))

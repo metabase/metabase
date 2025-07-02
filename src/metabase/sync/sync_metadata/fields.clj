@@ -50,7 +50,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.table :as table]
-   [net.cgrand.xforms :as xforms]
    [toucan2.core :as t2]
    [toucan2.util :as t2.util]))
 
@@ -90,9 +89,10 @@
                             (fetch-metadata/fields-metadata database :schema-names (sync-util/sync-schemas database))
                             (fetch-metadata/fields-metadata database))]
       (transduce (comp
-                  (xforms/by-key (juxt :table-name :table-schema) (xforms/into []))
-                  (map (fn [[[table-name table-schema] table-metadata]]
-                         (let [table   (->> (t2/select :model/Table
+                  (partition-by (juxt :table-name :table-schema))
+                  (map (fn [table-metadata]
+                         (let [{:keys [table-name table-schema]} (first table-metadata)
+                               table   (->> (t2/select :model/Table
                                                        :db_id (:id database)
                                                        :%lower.name (t2.util/lower-case-en table-name)
                                                        :%lower.schema (some-> table-schema t2.util/lower-case-en)
