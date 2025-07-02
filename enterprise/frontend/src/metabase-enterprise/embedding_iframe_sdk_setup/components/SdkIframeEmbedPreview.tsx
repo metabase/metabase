@@ -32,7 +32,7 @@ export const SdkIframeEmbedPreview = () => {
       if (isEmbedSettingsLoaded) {
         const script = document.createElement("script");
 
-        script.src = `${settings.instanceUrl}/app/embed.js`;
+        script.src = `${instanceUrl}/app/embed.js`;
         document.body.appendChild(script);
 
         script.onload = () => {
