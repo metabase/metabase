@@ -14,7 +14,7 @@ import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 
 import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView";
-import { usePublicDashboardEndpoints } from "../WithPublicDashboardEndpoints";
+import { usePublicDashboardEndpoints } from "../use-public-dashboard-endpoints";
 
 const PublicOrEmbeddedDashboardPageInner = ({
   location,

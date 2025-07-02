@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { setupJestCanvasMock } from "jest-canvas-mock";
 
 import {
   setupCardCreateEndpoint,
@@ -78,6 +79,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
     HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
 
     jest.resetAllMocks();
+    setupJestCanvasMock();
   });
 
   describe("creating models", () => {
@@ -274,7 +276,9 @@ describe("QueryBuilder - unsaved changes warning", () => {
           initialRoute: "/",
         });
 
-        history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+        act(() => {
+          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+        });
         await waitForLoaderToBeRemoved();
 
         await triggerNotebookQueryChange();
@@ -376,7 +380,9 @@ describe("QueryBuilder - unsaved changes warning", () => {
           initialRoute: "/",
         });
 
-        history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+        act(() => {
+          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+        });
         await waitForLoaderToBeRemoved();
 
         /**
@@ -817,7 +823,9 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: "/",
       });
 
-      history.push(`/question/${TEST_STRUCTURED_CARD.id}/notebook`);
+      act(() => {
+        history.push(`/question/${TEST_STRUCTURED_CARD.id}/notebook`);
+      });
       await waitForLoaderToBeRemoved();
 
       await triggerNotebookQueryChange();

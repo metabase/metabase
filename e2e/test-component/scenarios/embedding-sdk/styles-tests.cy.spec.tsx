@@ -10,17 +10,7 @@ import {
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  chartPathWithFillColor,
-  createDashboard,
-  createQuestion,
-  getDashboardCard,
-  modal,
-  moveDnDKitElement,
-  openVizSettingsSidebar,
-  tooltip,
-  updateSetting,
-} from "e2e/support/helpers";
+import * as H from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
@@ -83,7 +73,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
     it("should use the brand color from the app settings as fallback if they're present", () => {
       cy.signInAsAdmin();
-      updateSetting(
+      H.updateSetting(
         // @ts-expect-error -- that function doesn't understand enterprise settings _yet_
         "application-colors",
         {
@@ -106,7 +96,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
     it("but should prioritize the theme colors over the app settings", () => {
       cy.signInAsAdmin();
-      updateSetting(
+      H.updateSetting(
         // @ts-expect-error -- that function doesn't understand enterprise settings _yet_
         "application-colors",
         {
@@ -242,7 +232,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
     it("should fallback to the font from the instance if no fontFamily is set on the theme", () => {
       cy.signInAsAdmin();
-      updateSetting("application-font", "Roboto Mono");
+      H.updateSetting("application-font", "Roboto Mono");
       cy.signOut();
 
       cy.intercept("GET", "/api/user/current").as("getUser");
@@ -280,7 +270,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         Cypress.config().baseUrl +
         "/app/fonts/Open_Sans/OpenSans-Regular.woff2";
       // setting `application-font-files` will make getFont return "Custom"
-      updateSetting("application-font-files", [
+      H.updateSetting("application-font-files", [
         {
           src: fontUrl,
           fontWeight: 400,
@@ -334,7 +324,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         </MetabaseProvider>,
       );
 
-      modal()
+      H.modal()
         .findByText("New dashboard")
         .should("exist")
         .and("have.css", "font-family", "Lato");
@@ -375,7 +365,7 @@ describe("scenarios > embedding-sdk > styles", () => {
       beforeEach(() => {
         signInAsAdminAndEnableEmbeddingSdk();
 
-        createQuestion({
+        H.createQuestion({
           name: "Tooltip test",
           query: {
             "source-table": ORDERS_ID,
@@ -387,7 +377,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           display: "bar",
         })
           .then(({ body: { id: ordersQuestionId } }) =>
-            createDashboard({
+            H.createDashboard({
               dashcards: [
                 {
                   id: 1,
@@ -426,7 +416,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         getSdkRoot().findByText("Tooltip test").click();
         getSdkRoot().findByLabelText("Back to Test Dashboard").realHover();
 
-        tooltip()
+        H.tooltip()
           .findByText("Back to Test Dashboard")
           .should("have.css", "font-family", "Impact");
       });
@@ -442,8 +432,8 @@ describe("scenarios > embedding-sdk > styles", () => {
           });
         });
 
-        getDashboardCard(0).within(() => {
-          chartPathWithFillColor("#509EE3").eq(0).realHover();
+        H.getDashboardCard(0).within(() => {
+          H.chartPathWithFillColor("#509EE3").eq(0).realHover();
         });
 
         cy.findAllByTestId("echarts-tooltip")
@@ -465,10 +455,11 @@ describe("scenarios > embedding-sdk > styles", () => {
           },
         );
 
-        openVizSettingsSidebar();
+        H.openVizSettingsSidebar();
 
-        moveDnDKitElement(cy.findByTestId("draggable-item-ID"), {
-          vertical: -100,
+        H.moveDnDKitListElement("draggable-item-", {
+          startIndex: 0,
+          dropIndex: 1,
           onBeforeDragEnd: () => {
             cy.get(".drag-overlay").within(() => {
               cy.findByTestId("draggable-item-ID").should(

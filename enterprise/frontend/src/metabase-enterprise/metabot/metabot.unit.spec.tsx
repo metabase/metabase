@@ -27,6 +27,7 @@ import { Metabot } from "./components/Metabot";
 import {
   FIXED_METABOT_IDS,
   LONG_CONVO_MSG_LENGTH_THRESHOLD,
+  METABOT_ERR_MSG,
 } from "./constants";
 import { MetabotProvider } from "./context";
 import { useMetabotAgent } from "./hooks";
@@ -61,6 +62,7 @@ function setup(
     metabotPluginInitialState = {
       ...getMetabotInitialState(),
       visible: true,
+      useStreaming: false,
     },
     promptSuggestions = [],
   } = options || {};
@@ -250,7 +252,7 @@ describe("metabot", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should provide prompt suggestions if avaiable", async () => {
+    it("should provide prompt suggestions if available", async () => {
       const prompts = [
         {
           id: 1,
@@ -414,7 +416,7 @@ describe("metabot", () => {
       await enterChatMessage("Who is your favorite?");
 
       expect(await lastChatMessage()).toHaveTextContent(
-        /I'm currently offline, try again later./,
+        METABOT_ERR_MSG.agentOffline,
       );
       expect(await input()).toHaveValue("Who is your favorite?");
     });
@@ -426,7 +428,7 @@ describe("metabot", () => {
       await enterChatMessage("Who is your favorite?");
 
       expect(await lastChatMessage()).toHaveTextContent(
-        /Something went wrong, try again./,
+        METABOT_ERR_MSG.default,
       );
       expect(await input()).toHaveValue("Who is your favorite?");
     });
@@ -584,7 +586,6 @@ describe("metabot", () => {
       expect(_.omit(beforeResetState.messages[1], "id")).toStrictEqual({
         role: "agent",
         message: "You are... but don't tell anyone!",
-        type: "reply",
       });
 
       await userEvent.click(await resetChatButton());

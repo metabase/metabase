@@ -5,6 +5,7 @@ import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigg
 import SelectList from "metabase/common/components/SelectList";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import type { InputProps } from "../Input";
 import Input from "../Input";
@@ -15,6 +16,7 @@ export interface AutocompleteInputProps extends Omit<InputProps, "onChange"> {
   options?: string[];
   filterOptions?: (value: string | undefined, options: string[]) => string[];
   onOptionSelect?: (value: string) => void;
+  onChangeSettings?: (settings: Partial<VisualizationSettings>) => void;
   onChange: (value: string) => void;
 }
 
@@ -41,6 +43,7 @@ const AutocompleteInput = ({
   onFocus,
   onBlur,
   onOptionSelect,
+  onChangeSettings,
   ...rest
 }: AutocompleteInputProps) => {
   const optionsListRef = useRef<HTMLUListElement>(null);
