@@ -93,8 +93,14 @@ export function lastChatMessage() {
 
 export const mockMetabotResponse = (response: StaticResponse) => {
   return cy
-    .intercept("POST", "/api/ee/metabot-v3/v2/agent", (req) => {
-      req.reply(response);
+    .intercept("POST", "/api/ee/metabot-v3/v2/agent-streaming", (req) => {
+      req.reply({
+        ...response,
+        headers: {
+          "content-type": "text/event-stream; charset=utf-8",
+          ...response.headers,
+        },
+      });
     })
     .as("metabotAgent");
 };
