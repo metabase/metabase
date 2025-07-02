@@ -77,8 +77,8 @@ const ModalWrapper = ({
   children: React.ReactNode;
   onClose: () => void;
 }) => (
-  <Modal opened onClose={onClose} padding="xl" title={title}>
-    <Flex gap="md" pt="lg" direction="column">
+  <Modal opened onClose={onClose} padding="3rem" title={title} size="44rem">
+    <Flex gap="md" pt="xl" direction="column" justify="center">
       {children}
     </Flex>
   </Modal>
