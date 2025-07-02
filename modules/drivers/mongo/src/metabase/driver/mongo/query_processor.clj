@@ -246,6 +246,9 @@ function(bin) {
   [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
   (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))]
     (cond
+      (isa? coercion :Coercion/UNIXNanoSeconds->DateTime)
+      {:$dateFromParts {:millisecond {$divide [field-name 1000000]}, :year 1970, :timezone "UTC"}}
+
       (isa? coercion :Coercion/UNIXMicroSeconds->DateTime)
       {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970, :timezone "UTC"}}
 
@@ -751,7 +754,19 @@ function(bin) {
                                         :lang "js"}}
                           :onError    rvalue}}
 
-      ;; else
+      :unixnanoseconds
+      {:$dateFromParts {:millisecond {$divide [rvalue 1000000]}, :year 1970, :timezone "UTC"}}
+
+      :unixmicroseconds
+      {:$dateFromParts {:millisecond {$divide [rvalue 1000]}, :year 1970, :timezone "UTC"}}
+
+      :unixmilliseconds
+      {:$dateFromParts {:millisecond rvalue, :year 1970, :timezone "UTC"}}
+
+      :unixseconds
+      {:$dateFromParts {:second rvalue, :year 1970, :timezone "UTC"}}
+
+;; else
       (throw (ex-info (tru "Driver {0} does not support {1}" :mongo mode)
                       {:type driver-api/qp.error-type.unsupported-feature})))))
 
