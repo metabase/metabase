@@ -11,6 +11,7 @@ import {
   useMoveCollectionDashboardQuestionCandidatesMutation,
 } from "metabase/api";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
@@ -44,6 +45,22 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
     const [bulkMove, bulkMoveReq] =
       useMoveCollectionDashboardQuestionCandidatesMutation();
 
+    // Track the viewed event when the modal is displayed for the first time with candidates
+    useEffect(() => {
+      const shouldTrackModalViewed =
+        !isAckedInfoLoading &&
+        !ackedInfoStep &&
+        (candidatesReq.data?.total ?? 0) > 0;
+
+      if (shouldTrackModalViewed) {
+        trackSimpleEvent({
+          event: "move_questions_into_dashboard_viewed",
+          triggered_from: "move_questions_into_dashboards_modal",
+          result: candidatesReq.data!.total.toString(),
+        });
+      }
+    }, [isAckedInfoLoading, ackedInfoStep, candidatesReq.data]);
+
     // redirect to base collection page if there's an invalid collection id
     useEffect(() => {
       if (collectionId === undefined || !isAdmin) {
@@ -55,8 +72,19 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
     const handleBulkMoveQuestionIntoDashboards = async () => {
       if (collectionId) {
         const cardIds = candidatesReq.data?.data.map((card) => card.id) ?? [];
+        const startTime = Date.now();
+
         try {
           await bulkMove({ collectionId, cardIds }).unwrap();
+          const duration = Date.now() - startTime;
+
+          trackSimpleEvent({
+            event: "move_questions_into_dashboard_confirmed",
+            triggered_from: "move_questions_into_dashboards_modal",
+            duration_ms: duration,
+            result: cardIds.length.toString(),
+          });
+
           dispatch(
             addUndo({
               message: t`The questions were successfully moved into their dashboards`,
