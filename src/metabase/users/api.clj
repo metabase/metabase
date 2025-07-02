@@ -431,7 +431,9 @@
                                      (:attributes tenant)
                                      (when tenant
                                        {"@tenant.slug" (:slug tenant)}))]
-    (assoc user :structured_attributes combined-attributes)))
+    (assoc user
+           :structured_attributes combined-attributes
+           :login_attributes (update-vals combined-attributes :value))))
 
 (api.macros/defendpoint :get "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
