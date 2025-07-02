@@ -1,0 +1,26 @@
+<svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="-0.005" y="-0.005" width="16.01" height="16.01" fill="none" />
+  <path
+    d="M8 1.5L11.9282 3.75L13 8L11.9282 12.25L8 14.5L4.0718 12.25L3 8L4.0718 3.75L8 1.5Z"
+    stroke="currentcolor"
+    strokeWidth="1"
+    fill="none" />
+  <path
+    d="M8 3.5L10.0622 4.625L10.6 7.5L10.0622 10.375L8 11.5L5.9378 10.375L5.4 7.5L5.9378 4.625L8 3.5Z"
+    stroke="currentcolor"
+    strokeWidth="0.5"
+    fill="none" />
+  <path
+    d="M8 5.5L8.93 6.125L9.2 7.5L8.93 8.875L8 9.5L7.07 8.875L6.8 7.5L7.07 6.125L8 5.5Z"
+    stroke="currentcolor"
+    strokeWidth="0.5"
+    fill="none" />
+  <line x1="8" y1="1.5" x2="8" y2="14.5" stroke="currentcolor" strokeWidth="0.5" />
+  <line x1="11.9282" y1="3.75" x2="4.0718" y2="12.25" stroke="currentcolor" strokeWidth="0.5" />
+  <line x1="13" y1="8" x2="3" y2="8" stroke="currentcolor" strokeWidth="0.5" />
+  <line x1="11.9282" y1="12.25" x2="4.0718" y2="3.75" stroke="currentcolor" strokeWidth="0.5" />
+  <path
+    d="M8 2.5L11.2 5.5L10.5 9.5L5.5 9.5L4.8 5.5L8 2.5Z"
+    fill="currentcolor"
+    opacity="0.3" />
+</svg>
