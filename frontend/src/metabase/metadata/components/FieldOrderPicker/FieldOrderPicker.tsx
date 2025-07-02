@@ -34,6 +34,7 @@ export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
   return (
     <SegmentedControl
       aria-label={t`Column order`}
+      bg="var(--mantine-color-accent-gray-light-filled)"
       className={S.root}
       data={data}
       size="sm"
