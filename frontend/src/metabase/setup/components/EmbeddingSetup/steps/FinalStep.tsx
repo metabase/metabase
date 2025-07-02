@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useAsync } from "react-use";
 import { t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
@@ -25,14 +24,7 @@ import type { StepProps } from "./embeddingSetupSteps";
 
 export const FinalStep = ({ nextStep }: StepProps) => {
   const { url: docsUrl } = useDocsUrl("embedding/interactive-embedding");
-  const { createdDashboardIds, trackEmbeddingSetupClick } = useEmbeddingSetup();
-
-  const { loading, value: dashboards } = useAsync(async () => {
-    const dashboardPromises = createdDashboardIds.map((id) =>
-      fetch(`/api/dashboard/${id}`).then((res) => res.json()),
-    );
-    return Promise.all(dashboardPromises);
-  }, [createdDashboardIds]);
+  const { createdDashboard, trackEmbeddingSetupClick } = useEmbeddingSetup();
 
   const getEmbedCode = (url: string) => {
     return `<iframe src="${url}" width="800px" height="500px" />`;
@@ -40,7 +32,7 @@ export const FinalStep = ({ nextStep }: StepProps) => {
 
   const tabs = useMemo(
     () => [
-      ...(dashboards ?? []).map((dashboard: Dashboard) => ({
+      ...createdDashboard.map((dashboard: Dashboard) => ({
         title: dashboard.name,
         url: `${window.location.origin}/dashboard/${dashboard.id}`,
       })),
@@ -49,18 +41,10 @@ export const FinalStep = ({ nextStep }: StepProps) => {
         url: `${window.location.origin}/question/new`,
       },
     ],
-    [dashboards],
+    [createdDashboard],
   );
 
-  if (loading) {
-    return (
-      <Center h="500px">
-        <Loader size="lg" />
-      </Center>
-    );
-  }
-
-  if (!dashboards || dashboards.length === 0) {
+  if (!createdDashboard || createdDashboard.length === 0) {
     return (
       <Center h="500px">
         <Text>{t`No dashboards found`}</Text>
