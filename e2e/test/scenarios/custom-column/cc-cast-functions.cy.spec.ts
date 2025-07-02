@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+
 const { H } = cy;
 
 type CastTestCase = {
@@ -262,11 +264,21 @@ describe("exercise binary datetime() cast function", () => {
             query: test.query,
           },
         },
-        { visitQuestion: true },
-      );
-
-      cy.findByTestId("qb-header").findByText("Explore results").click();
-      cy.findByTestId("notebook-button").click();
+        { wrapId: true },
+      ).then((id) => {
+        H.visitQuestionAdhoc(
+          {
+            dataset_query: {
+              type: "query",
+              database: SAMPLE_DB_ID,
+              query: {
+                "source-table": `card__${id}`,
+              },
+            },
+          },
+          { mode: "notebook" },
+        );
+      });
 
       addCustomColumn({
         name: "parsed_date",
