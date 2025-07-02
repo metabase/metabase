@@ -106,6 +106,7 @@ const EventForm = ({
                     value={dayjs.tz(values.timestamp).toDate()}
                     name="date"
                     label={t`Time`}
+                    fw="bold"
                     flex={1}
                     onChange={(time) => {
                       const timePart = dayjs.tz(time);
@@ -132,15 +133,17 @@ const EventForm = ({
               name="description"
               label={t`Description`}
               description={t`You can add links and formatting via markdown`}
+              minRows={6}
               nullable
             />
             <FormSelect
               name="icon"
               label={t`Icon`}
+              fw="bold"
               data={iconOptions}
               leftSection={values.icon ? <Icon name={values.icon} /> : null}
               renderOption={({ option }) => (
-                <Group p="sm">
+                <Group p="sm" fw="bold">
                   {option.value && <Icon name={option.value as IconName} />}
                   <span>{option.label}</span>
                 </Group>
@@ -164,6 +167,7 @@ const EventForm = ({
                 {t`Cancel`}
               </Button>
               <FormSubmitButton
+                variant="filled"
                 disabled={!dirty}
                 label={isNew ? t`Create` : t`Update`}
               />
