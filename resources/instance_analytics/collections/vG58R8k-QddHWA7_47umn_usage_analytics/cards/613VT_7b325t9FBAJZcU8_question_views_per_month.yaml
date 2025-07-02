@@ -25,8 +25,6 @@ dataset_query:
   query:
     aggregation:
     - - count
-    aggregation-idents:
-      0: aggregation_613VT_7b325t9FBAJZcU8@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -35,8 +33,6 @@ dataset_query:
         - timestamp
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: month
-    breakout-idents:
-      0: breakout_613VT_7b325t9FBAJZcU8@0__0
     filter:
     - =
     - - field

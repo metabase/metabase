@@ -207,8 +207,6 @@
                                                               [:aggregation-options
                                                                [:max $rating]
                                                                {:name "max"}]]
-                                                :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
-                                                                     1 "O7xQpRu8mQfVAnjroblU2"}
                                                 :breakout    [$category]
                                                 :order-by    [[:asc $category]]})])
             (is (partial= {:data {:cols [{:name "sum" :display_name "Sum of Sum of Price"}
@@ -227,9 +225,7 @@
                                                                                 {:name "sum"}]
                                                                                [:aggregation-options
                                                                                 [:count]
-                                                                                {:name "count"}]]
-                                                                :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
-                                                                                     1 "q0awK8v8lIp1iW_ZhSS_E"}}}
+                                                                                {:name "count"}]]}}
                                                     (when model?
                                                       {:info {:metadata/model-metadata
                                                               (:result-metadata (lib.metadata/card (qp.store/metadata-provider) 1))}}))))))))))))
@@ -267,14 +263,12 @@
                                              {:fields [$id]
                                               :joins  [{:source-table $$products
                                                         :alias        "P"
-                                                        :ident        "Zh421ECf3-b2l2Ml7s_3P"
                                                         :fields       [&P.products.id &P.products.ean]
                                                         :condition    [:= $product_id &P.products.id]}]})
                                            (mt/mbql-query orders
                                              {:fields [$id]
                                               :joins  [{:source-table "card__1"
                                                         :alias        "RP"
-                                                        :ident        "FGuqyLkhyOtYbUCeFSpfl"
                                                         :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
                                                         :condition    [:= $product_id &RP.products.id]}]})])
           (is (=? {:status :completed}
@@ -638,7 +632,6 @@
                (qp/process-query
                 (query-with-source-card 1 (mt/mbql-query checkins
                                             {:aggregation [[:count]]
-                                             :aggregation-idents {0 "vX12AxUR50eQNFNZgdG0m"}
                                              :breakout    [!day.*date]})))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::breakout-year-test]
@@ -702,7 +695,6 @@
                (-> (query-with-source-card 1
                                            (mt/mbql-query checkins
                                              {:aggregation [[:count]]
-                                              :aggregation-idents {0 "D8bJ476ZFWsYM5G159Ndc"}
                                               :filter      [:= !quarter.*date "2014-01-01T08:00:00.000Z"]
                                               :breakout    [!month.*date]}))
                    qp/process-query
@@ -739,8 +731,7 @@
                 [int]
                 (qp/process-query
                  (query-with-source-card 1
-                                         {:aggregation [:count]
-                                          :aggregation-idents {0 "ApWqC4pOyxysqqeiuiPeS"}})))))))))
+                                         {:aggregation [:count]})))))))))
 
 (deftest ^:parallel card-perms-test
   (testing "perms for a Card with a SQL source query\n"
@@ -1006,7 +997,6 @@
                                                         :type :model
                                                         :name "Model 1"
                                                         :database-id (mt/id)
-                                                        :entity-id     (u/generate-nano-id)
                                                         :dataset-query query}]})
               (check-result (mt/run-mbql-query nil
                               {:source-table "card__1"})))))))))

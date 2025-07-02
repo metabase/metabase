@@ -19,6 +19,8 @@
   (cond-> x
     (string? x) keyword))
 
+;;; TODO (Cam 7/2/25) -- this does not do what it says on the box -- see
+;;; https://metaboat.slack.com/archives/C0645JP1W81/p1751477419072929
 (defn normalize-keyword-lower
   "Base normalization behavior for something that should be a keyword: calls [[clojure.core/keyword]] on it if it is a
   string. This is preferable to using [[clojure.core/keyword]] directly, because that will be tried on things that
@@ -39,19 +41,32 @@
     (cond-> m
       (string? (:lib/type m)) (update :lib/type keyword))))
 
-(def HORRIBLE-keys
-  "TODO (Cam 6/13/25) -- MEGA HACK -- keys that live in MLv2 that aren't SUPPOSED to be kebab-cased. We can and should
-  remove these keys altogether."
-  #{:model/inner_ident})
-
 (def ^:private ^{:arglists '([k])} memoized-kebab-key
   "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU caching
   [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever and
   get a nice performance boost."
-  (u.memo/fast-memo (fn [k]
-                      (if (contains? HORRIBLE-keys k)
-                        k
-                        (u/->kebab-case-en k)))))
+  (u.memo/fast-memo (comp u/->kebab-case-en keyword)))
+
+(defn kebab-cased-key?
+  "Whether `k` is a keyword that is kebab-cased (as opposed to snake_cased or camelCased)."
+  [k]
+  (and (keyword? k)
+       (= k (memoized-kebab-key k))))
+
+(defn kebab-cased-map?
+  "Whether `m` is a map with all [[kebab-cased-key?]] keys."
+  [m]
+  (and (map? m)
+       (every? kebab-cased-key? (keys m))))
+
+(mr/def ::kebab-cased-map
+  [:fn
+   {:error/message "map with all kebab-cased keys"
+    :error/fn      (fn [{:keys [value]} _]
+                     (if-not (map? value)
+                       "map with all kebab-cased keys"
+                       (str "map with all kebab-cased keys, got: " (pr-str (remove kebab-cased-key? (keys value))))))}
+   kebab-cased-map?])
 
 (defn map->kebab-case
   "Convert a map to kebab case, for use with `:decode/normalize`."
@@ -59,11 +74,42 @@
   (when (map? m)
     (update-keys m memoized-kebab-key)))
 
-(defn normalize-map
+(defn old-normalize-map
   "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`; convert map to
   kebab-case (excluding the so-called [[HORRIBLE-keys]]."
   [m]
   (-> m normalize-map-no-kebab-case map->kebab-case))
+
+(defn- fast-update-keys
+  "Faster version of [[clojure.core/update-keys]] -- see
+  https://gist.github.com/camsaul/38b11fc04d72e023fcf95646221d5caa for profiling supporting this optimization.
+
+  TODO (Cam 7/2/25) -- consider moving this somewhere more general like [[[metabase.util]]."
+  [m f]
+  (when (map? m)
+    (transduce
+     identity
+     (fn
+       ([m]
+        (persistent! m))
+       ([m k]
+        (let [k' (f k)]
+          (if (= k k')
+            m
+            (let [v (get m k)]
+              (-> m
+                  (dissoc! k)
+                  (assoc! k' v)))))))
+     (transient m)
+     (keys m))))
+
+(defn normalize-map
+  "Base normalization behavior for an MBQL 5 map for use with `:decode/normalize`: keywordize keys and keywordize
+  `:lib/type`; convert map to kebab-case."
+  [m]
+  (let [m (fast-update-keys m memoized-kebab-key)]
+    (cond-> m
+      (string? (:lib/type m)) (update :lib/type keyword))))
 
 (defn normalize-string-key
   "Base normalization behavior for things that should be string map keys. Converts keywords to strings if needed. This

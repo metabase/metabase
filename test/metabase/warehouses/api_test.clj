@@ -11,7 +11,6 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -1131,9 +1130,7 @@
     (mt/with-temp [:model/Card card (card-with-native-query
                                      "Birthday Card"
                                      :entity_id       "M6W4CLdyJxiW-DyzDbGl4"
-                                     :result_metadata [{:name "age_in_bird_years"
-                                                        :ident (lib/native-ident "age_in_bird_years"
-                                                                                 "M6W4CLdyJxiW-DyzDbGl4")}])]
+                                     :result_metadata [{:name "age_in_bird_years"}])]
       (let [response (mt/user-http-request :crowberto :get 200
                                            (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))]
         (is (malli= SavedQuestionsDB
@@ -1144,7 +1141,6 @@
                 :fields [{:name                     "age_in_bird_years"
                           :table_id                 (str "card__" (u/the-id card))
                           :id                       ["field" "age_in_bird_years" {:base-type "type/*"}]
-                          :ident                    (lib/native-ident "age_in_bird_years" "M6W4CLdyJxiW-DyzDbGl4")
                           :semantic_type            nil
                           :base_type                nil
                           :default_dimension_option nil

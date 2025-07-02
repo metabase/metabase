@@ -268,40 +268,36 @@
     (letfn [(native [query] {:type     :native
                              :native   {:query query :template-tags {}}
                              :database (meta/id)})]
-      (let [card1-eid (u/generate-nano-id)
-            card2-eid (u/generate-nano-id)]
-        (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                          meta/metadata-provider
-                                          {:cards [{:id              1
-                                                    :entity_id       card1-eid
-                                                    :name            "Card 1"
-                                                    :database-id     (meta/id)
-                                                    :dataset-query   (native "select 'foo' as A_COLUMN")
-                                                    :result-metadata [{:name         "A_COLUMN"
-                                                                       :display_name "A Column"
-                                                                       :base_type    :type/Text}]}
-                                                   {:id              2
-                                                    :entity_id       card2-eid
-                                                    :name            "Card 2"
-                                                    :database-id     (meta/id)
-                                                    :dataset-query   (native "select 'foo' as B_COLUMN")
-                                                    :result-metadata [{:name         "B_COLUMN"
-                                                                       :display_name "B Column"
-                                                                       :base_type    :type/Text}]}]})
-          (let [query (lib.tu.macros/mbql-query nil
-                        {:source-table "card__1"
-                         :joins        [{:fields       "all"
-                                         :source-table "card__2"
-                                         :condition    [:=
-                                                        [:field "A_COLUMN" {:base-type :type/Text}]
-                                                        [:field "B_COLUMN" {:base-type  :type/Text
-                                                                            :join-alias "alias"}]]
-                                         :alias        "alias"}]})
-                cols  (qp.preprocess/query->expected-cols query)]
-            (is (=? [{}
-                     {:display_name "alias → B Column"}]
-                    cols)
-                "cols has wrong display name")))))))
+      (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                        meta/metadata-provider
+                                        {:cards [{:id              1
+                                                  :name            "Card 1"
+                                                  :database-id     (meta/id)
+                                                  :dataset-query   (native "select 'foo' as A_COLUMN")
+                                                  :result-metadata [{:name         "A_COLUMN"
+                                                                     :display_name "A Column"
+                                                                     :base_type    :type/Text}]}
+                                                 {:id              2
+                                                  :name            "Card 2"
+                                                  :database-id     (meta/id)
+                                                  :dataset-query   (native "select 'foo' as B_COLUMN")
+                                                  :result-metadata [{:name         "B_COLUMN"
+                                                                     :display_name "B Column"
+                                                                     :base_type    :type/Text}]}]})
+        (let [query (lib.tu.macros/mbql-query nil
+                      {:source-table "card__1"
+                       :joins        [{:fields       "all"
+                                       :source-table "card__2"
+                                       :condition    [:=
+                                                      [:field "A_COLUMN" {:base-type :type/Text}]
+                                                      [:field "B_COLUMN" {:base-type  :type/Text
+                                                                          :join-alias "alias"}]]
+                                       :alias        "alias"}]})
+              cols  (qp.preprocess/query->expected-cols query)]
+          (is (=? [{}
+                   {:display_name "alias → B Column"}]
+                  cols)
+              "cols has wrong display name"))))))
 
 (deftest ^:parallel preserve-original-join-alias-e2e-test
   (testing "The join alias for the `:field_ref` in results metadata should match the one originally specified (#27464)"

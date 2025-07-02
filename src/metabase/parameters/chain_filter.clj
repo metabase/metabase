@@ -69,7 +69,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
    [metabase.parameters.field-values :as params.field-values]
@@ -372,7 +371,6 @@
                                 [:field lhs-field-id (when-not (= lhs-table-id source-table-id)
                                                        {:join-alias (joined-table-alias lhs-table-id)})]
                                 [:field rhs-field-id {:join-alias (joined-table-alias rhs-table-id)}]]
-                 :ident        (lib.ident/random-ident)
                  :alias        (joined-table-alias rhs-table-id)}]
        (log/tracef "Adding join against %s\n%s"
                    (name-for-logging :model/Table rhs-table-id) (u/pprint-to-str join))
@@ -394,51 +392,49 @@
   [field-id                          :- ms/PositiveInt
    constraints                       :- [:maybe Constraints]
    {:keys [original-field-id limit]} :- [:maybe Options]]
-  {:database (field/field-id->database-id field-id)
-   :type     :query
-   :query    (let [source-table-id       (field/field-id->table-id field-id)
-                   joins                 (find-all-joins source-table-id (cond-> (set (map :field-id constraints))
-                                                                           original-field-id (conj original-field-id)))
-                   joined-table-ids      (set (map #(get-in % [:rhs :table]) joins))
-                   original-field-clause (when original-field-id
-                                           (let [original-table-id (field/field-id->table-id original-field-id)]
-                                             [:field
-                                              original-field-id
-                                              (when-not (= source-table-id original-table-id)
-                                                {:join-alias (joined-table-alias original-table-id)})]))]
-               (when original-field-id
-                 (log/tracef "Finding values of %s, remapped from %s."
-                             (name-for-logging :model/Field field-id)
-                             (name-for-logging :model/Field original-field-id))
-                 (log/tracef "MBQL clause for %s is %s"
-                             (name-for-logging :model/Field original-field-id) (pr-str original-field-clause)))
-               (when (seq joins)
-                 (log/tracef "Generating joins and filters for source %s with joins info\n%s"
-                             (name-for-logging :model/Table source-table-id) (pr-str joins)))
-               (-> (merge {:source-table source-table-id
-                           ;; return the lesser of limit (if set) or max results
-                           :limit        ((fnil min Integer/MAX_VALUE) limit max-results)}
-                          (if original-field-clause
-                            {;; don't return rows that don't have values for the original Field. e.g. if
-                             ;; venues.category_id is remapped to categories.name and we do a search with query 's',
-                             ;; we only want to return [category_id name] tuples where [category_id] is not nil
-                             ;;
-                             ;; TODO -- would this be more efficient if we just did an INNER JOIN against the original
-                             ;; Table instead of a LEFT JOIN with this additional filter clause? Would that still
-                             ;; work?
-                             :filter   [:not-null original-field-clause]
-                             ;; for Field->Field remapping we want to return pairs of [original-value remapped-value],
-                             ;; but sort by [remapped-value]
-                             :order-by [[:asc [:field field-id nil]]]
-                             ;; original-field-id is used to power Field->Field breakouts.
-                             ;; We include both remapped and original
-                             :breakout    [original-field-clause [:field field-id nil]]
-                             :breakout-idents (lib.ident/indexed-idents 2)}
-                            {:breakout    [[:field field-id nil]]
-                             :breakout-idents (lib.ident/indexed-idents 1)}))
-                   (add-joins source-table-id joins)
-                   (add-filters source-table-id joined-table-ids constraints)
-                   schema.metadata-queries/add-required-filters-if-needed))
+  {:database   (field/field-id->database-id field-id)
+   :type       :query
+   :query      (let [source-table-id       (field/field-id->table-id field-id)
+                     joins                 (find-all-joins source-table-id (cond-> (set (map :field-id constraints))
+                                                                             original-field-id (conj original-field-id)))
+                     joined-table-ids      (set (map #(get-in % [:rhs :table]) joins))
+                     original-field-clause (when original-field-id
+                                             (let [original-table-id (field/field-id->table-id original-field-id)]
+                                               [:field
+                                                original-field-id
+                                                (when-not (= source-table-id original-table-id)
+                                                  {:join-alias (joined-table-alias original-table-id)})]))]
+                 (when original-field-id
+                   (log/tracef "Finding values of %s, remapped from %s."
+                               (name-for-logging :model/Field field-id)
+                               (name-for-logging :model/Field original-field-id))
+                   (log/tracef "MBQL clause for %s is %s"
+                               (name-for-logging :model/Field original-field-id) (pr-str original-field-clause)))
+                 (when (seq joins)
+                   (log/tracef "Generating joins and filters for source %s with joins info\n%s"
+                               (name-for-logging :model/Table source-table-id) (pr-str joins)))
+                 (-> (merge {:source-table source-table-id
+                             ;; return the lesser of limit (if set) or max results
+                             :limit        ((fnil min Integer/MAX_VALUE) limit max-results)}
+                            (if original-field-clause
+                              {;; don't return rows that don't have values for the original Field. e.g. if
+                               ;; venues.category_id is remapped to categories.name and we do a search with query 's',
+                               ;; we only want to return [category_id name] tuples where [category_id] is not nil
+                               ;;
+                               ;; TODO -- would this be more efficient if we just did an INNER JOIN against the original
+                               ;; Table instead of a LEFT JOIN with this additional filter clause? Would that still
+                               ;; work?
+                               :filter   [:not-null original-field-clause]
+                               ;; for Field->Field remapping we want to return pairs of [original-value remapped-value],
+                               ;; but sort by [remapped-value]
+                               :order-by [[:asc [:field field-id nil]]]
+                               ;; original-field-id is used to power Field->Field breakouts.
+                               ;; We include both remapped and original
+                               :breakout [original-field-clause [:field field-id nil]]}
+                              {:breakout [[:field field-id nil]]}))
+                     (add-joins source-table-id joins)
+                     (add-filters source-table-id joined-table-ids constraints)
+                     schema.metadata-queries/add-required-filters-if-needed))
    :middleware {:disable-remaps? true}})
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------

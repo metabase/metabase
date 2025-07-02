@@ -8,7 +8,6 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
@@ -60,9 +59,6 @@
                                   nil))
       (lib/with-binning nil)))
 
-(defn- copy-ident [to from]
-  (lib.options/update-options to m/assoc-some :ident (lib.options/ident from)))
-
 (mu/defn- update-second-stage-refs :- ::lib.schema/stage
   [stage            :- ::lib.schema/stage
    first-stage-cols :- [:sequential ::lib.schema.metadata/column]]
@@ -73,8 +69,7 @@
       (-> col
           update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
           lib/ref
-          (cond-> (:lib/external-remap col) (lib.options/update-options assoc ::externally-remapped-field true))
-          (cond-> (some #{:breakout} &parents) (copy-ident &match)))
+          (cond-> (:lib/external-remap col) (lib.options/update-options assoc ::externally-remapped-field true)))
       (lib.util/fresh-uuids &match))))
 
 (def ^:private granularity
@@ -144,11 +139,12 @@
                                    [(nth breakouts finest-temp-breakout)])
                            breakouts)
           explicit-order-bys (vec (:order-by stage))
-          explicit-order-by-exprs (set (for [[_dir _opts col-ref] explicit-order-bys]
-                                         (lib.schema.util/remove-randomized-idents col-ref)))
+          explicit-order-by-exprs (into #{}
+                                        (map (fn [[_dir _opts col-ref]]
+                                               col-ref))
+                                        explicit-order-bys)
           order-bys (into explicit-order-bys
-                          (comp (map lib.schema.util/remove-randomized-idents)
-                                (remove explicit-order-by-exprs)
+                          (comp (remove explicit-order-by-exprs)
                                 (map (fn [expr]
                                        (lib.options/ensure-uuid [:asc (lib.options/ensure-uuid expr)]))))
                           breakout-exprs)]

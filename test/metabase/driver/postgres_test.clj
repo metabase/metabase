@@ -1016,10 +1016,8 @@
     (do-with-enums-db!
      (fn [enums-db]
        (mt/with-db enums-db
-         (let [eid   (u/generate-nano-id)
-               query {:database (mt/id)
+         (let [query {:database (mt/id)
                       :type     :native
-                      :info     {:card-entity-id eid}
                       :native   {:query "select * from birds"
                                  :parameters []}}]
            (testing "results_metadata columns are correctly typed"

@@ -28,10 +28,6 @@
    [:cards    {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/card]]]]]
    [:segments {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/segment]]]]]])
 
-(defn- add-idents [field-skeletons]
-  (for [field field-skeletons]
-    (u/assoc-default field :ident (u/generate-nano-id))))
-
 (mu/defn- merged-metadata-map :- ::lib.tu.metadata-providers.mock/mock-metadata
   [parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
    properties               :- MergeableProperties]
@@ -41,7 +37,7 @@
                 (case object-type
                   :database (merge (lib.metadata/database parent-metadata-provider) x)
                   :tables   (merge-metadatas parent-metadata-provider lib.metadata/table x)
-                  :fields   (merge-metadatas parent-metadata-provider lib.metadata/field (add-idents x))
+                  :fields   (merge-metadatas parent-metadata-provider lib.metadata/field x)
                   :cards    (merge-metadatas parent-metadata-provider lib.metadata/card x)
                   :segments (merge-metadatas parent-metadata-provider lib.metadata/segment x))]))
         properties))

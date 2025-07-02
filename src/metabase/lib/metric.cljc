@@ -15,7 +15,6 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -149,10 +148,6 @@
           (assoc :display-name           (:name metric-meta) ; Metric card's name
                  :lib/hack-original-name (:name metric-meta) ; Metric card's name
                  :name                   (:name inner-meta)) ; Name of the inner aggregation column
-          ;; We emphatically DO NOT want to use the `:ident` of the inner aggregation from the metric's definition.
-          ;; If the `[:metric ...]` ref is a top-level aggregation, it will have its own ident, which we should use.
-          ;; If there is no ident in the `[:metric ...]` ref then *drop* the ident from column.
-          (u/assoc-dissoc :ident (:ident opts))
           ;; If the :metric ref has a :name option, that overrides the metric card's name.
           (cond-> (:name opts) (assoc :name (:name opts)))))
     {:lib/type :metadata/metric

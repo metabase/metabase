@@ -8,7 +8,6 @@
   used today."
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -22,6 +21,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -48,13 +48,7 @@
 (mr/def ::kebab-cased-map
   [:and
    ::col
-   [:fn
-    {:error/message "column with all kebab-cased keys"}
-    (fn [m]
-      (every? (fn [k]
-                (and (keyword? k)
-                     (not (str/includes? k "_"))))
-              (keys m)))]])
+   ::lib.schema.common/kebab-cased-map])
 
 (mr/def ::cols
   [:maybe [:sequential ::col]])
@@ -64,7 +58,7 @@
   from the driver to values calculated by MLv2."
   [driver-col :- [:maybe ::col]
    lib-col    :- [:maybe ::col]]
-  (let [driver-col (update-keys driver-col u/->kebab-case-en)]
+  (let [driver-col (lib.schema.common/normalize-map driver-col)] ; convert to kebab case (optimized impl)
     (merge lib-col
            (m/filter-vals some? driver-col)
            ;; Prefer our inferred base type if the driver returned `:type/*` and ours is more specific

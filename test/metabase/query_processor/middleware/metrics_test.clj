@@ -52,7 +52,6 @@
   ([metadata-provider query card-details]
    (let [metric (merge {:lib/type      :metadata/card
                         :id            (fresh-card-id metadata-provider)
-                        :entity-id     (u/generate-nano-id)
                         :database-id   (meta/id)
                         :name          "Mock Metric"
                         :type          :metric
@@ -369,15 +368,13 @@
                                          ;; Empty stage added by resolved-source-cards to nest join
                                          (=?/exactly {:lib/type                 :mbql.stage/mbql
                                                       :qp/stage-had-source-card (:id question)
-                                                      :source-query/model?      false
-                                                      :source-query/entity-id   (:entity-id question)})]}]}]}
+                                                      :source-query/model?      false})]}]}]}
             (adjust query)))))
 
 (defn- model-based-metric-question
   [mp model-query agg-col-fn]
   (let [model {:lib/type      :metadata/card
                :id            (fresh-card-id mp)
-               :entity-id     (u/generate-nano-id)
                :database-id   (meta/id)
                :name          "Mock Model"
                :type          :model
@@ -433,7 +430,6 @@
                         (lib/filter (lib/> (meta/field-metadata :orders :discount) 3)))
         model {:lib/type      :metadata/card
                :id            (fresh-card-id mp)
-               :entity-id     (u/generate-nano-id)
                :database-id   (meta/id)
                :name          "Base Mock Model"
                :type          :model
@@ -706,7 +702,6 @@
 (deftest ^:parallel model-based-metric-use-test
   (let [model {:lib/type :metadata/card
                :id (fresh-card-id meta/metadata-provider)
-               :entity-id (u/generate-nano-id)
                :database-id (meta/id)
                :name "Mock Model"
                :type :model

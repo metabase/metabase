@@ -1,33 +1,12 @@
 (ns metabase.lib.schema.metadata
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
-
-(defn- kebab-cased-key? [k]
-  (and (keyword? k)
-       (or (contains? lib.schema.common/HORRIBLE-keys k)
-           ;; apparently `str/includes?` doesn't work on keywords in ClojureScript ??
-           (not (str/includes? (str k) "_")))))
-
-(defn- kebab-cased-map? [m]
-  (and (map? m)
-       (every? kebab-cased-key? (keys m))))
-
-(mr/def ::kebab-cased-map
-  [:fn
-   {:error/message "map with all kebab-cased keys"
-    :error/fn      (fn [{:keys [value]} _]
-                     (if-not (map? value)
-                       "map with all kebab-cased keys"
-                       (str "map with all kebab-cased keys, got: " (pr-str (remove kebab-cased-key? (keys value))))))}
-   kebab-cased-map?])
 
 ;;; Column vs Field?
 ;;;
@@ -411,7 +390,7 @@
     [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
     [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]]
    ;; TODO (Cam 6/13/25) -- go add this to some of the other metadata schemas as well.
-   ::kebab-cased-map
+   ::lib.schema.common/kebab-cased-map
    ::column.validate-expression-source
    ::column.validate-native-column
    ::column.validate-table-defaults-column

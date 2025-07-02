@@ -59,8 +59,6 @@
    [:executed-by             {:optional true} [:maybe ::lib.schema.id/user]]
    [:action-id               {:optional true} [:maybe ::lib.schema.id/action]]
    [:card-id                 {:optional true} [:maybe ::lib.schema.id/card]]
-   ;; NanoID for the card. Gets set on the client even for ad-hoc queries.
-   [:card-entity-id          {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:card-name               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]

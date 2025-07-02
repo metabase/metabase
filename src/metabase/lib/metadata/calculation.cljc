@@ -9,7 +9,6 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -224,7 +223,6 @@
   [query stage-number x]
   (try
     {:lib/type     :metadata/column
-     :ident        (lib.options/ident x)
      ;; TODO -- effective-type
      :base-type    (type-of query stage-number x)
      :name         (column-name query stage-number x)
@@ -599,11 +597,7 @@
     x
     options        :- [:maybe ::visible-columns.options]]
    (let [options (merge (default-visible-columns-options) options)]
-     (u/prog1 (visible-columns-method query stage-number x options)
-       (lib.metadata.ident/assert-idents-present! <> {:query        query
-                                                      :stage-number stage-number
-                                                      :target       x
-                                                      :options      options})))))
+     (visible-columns-method query stage-number x options))))
 
 (mu/defn remapped-columns
   "Given a seq of columns, return metadata for any remapped columns, if the `:include-remaps?` option is set."
@@ -624,8 +618,7 @@
                :lib/source-column-alias  (column-name query stage-number remapped)
                :lib/hack-original-name   (or ((some-fn :lib/hack-original-name :name) column)
                                              (:name remapped))
-               :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query remapped))
-               :ident                    (lib.metadata.ident/remap-ident (:ident remapped) (:ident column)))))))
+               :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query remapped)))))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
@@ -667,14 +660,12 @@
         id->table (m/index-by :id (lib.metadata/bulk-metadata
                                    query :metadata/table (into #{} (map :table-id) target-fields)))]
     (into []
-          (mapcat (fn [{:keys [table-id], ::keys [fk-ident fk-field-id fk-field-name fk-join-alias]}]
+          (mapcat (fn [{:keys [table-id], ::keys [fk-field-id fk-field-name fk-join-alias]}]
                     (let [table-metadata (id->table table-id)
                           options        {:unique-name-fn               unique-name-fn
                                           :include-implicitly-joinable? false}]
                       (for [field (visible-columns-method query stage-number table-metadata options)
-                            :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)
-                                   field (m/assoc-some field
-                                                       :ident                    ident
+                            :let  [field (m/assoc-some field
                                                        :fk-field-id              fk-field-id
                                                        :fk-field-name            fk-field-name
                                                        :fk-join-alias            fk-join-alias

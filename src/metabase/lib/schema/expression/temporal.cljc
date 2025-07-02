@@ -60,6 +60,8 @@
             [:ref ::expression/string]      ;; parse string as date
             [:ref ::expression/temporal]]]) ;; truncate datetime to date
 
+;;; TODO (Cam 7/2/25) -- mismatch between this and the legacy MBQL equivalent -- see
+;;; https://metaboat.slack.com/archives/C0645JP1W81/p1751477419072929
 (mbql-clause/define-catn-mbql-clause :datetime :- :type/DateTime
   [:value [:schema [:ref ::expression/string]]] ;; need to support bytes type
   [:modes [:?

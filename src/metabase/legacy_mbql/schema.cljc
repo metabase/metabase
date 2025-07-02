@@ -724,6 +724,8 @@
 (defclause ^{:requires-features #{:expressions :expressions/date}} date
   string [:or StringExpressionArg DateTimeExpressionArg])
 
+;;; TODO (Cam 7/2/25) -- does this look like a "String"? Also, this disagrees with the MBQL 5 equivalent -- see
+;;; https://metaboat.slack.com/archives/C0645JP1W81/p1751477419072929
 (def ^:private LiteralDatetimeModeString
   [:enum {:error/message "datetime mode string"
           :decode/normalize lib.schema.common/normalize-keyword-lower}
@@ -1555,20 +1557,17 @@
 (mr/def ::MBQLQuery
   [:and
    [:map
-    [:source-query       {:optional true} SourceQuery]
-    [:source-table       {:optional true} SourceTable]
-    [:aggregation        {:optional true} [:sequential {:min 1} Aggregation]]
-    [:aggregation-idents {:optional true} [:ref ::IndexedIdents]]
-    [:breakout           {:optional true} [:sequential {:min 1} Field]]
-    [:breakout-idents    {:optional true} [:ref ::IndexedIdents]]
-    [:expressions        {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
-    [:expression-idents  {:optional true} [:ref ::ExpressionIdents]]
-    [:fields             {:optional true} Fields]
-    [:filter             {:optional true} Filter]
-    [:limit              {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
-    [:order-by           {:optional true} (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]])]
-    [:page               {:optional true} [:ref ::Page]]
-    [:joins              {:optional true} [:ref ::Joins]]
+    [:source-query {:optional true} SourceQuery]
+    [:source-table {:optional true} SourceTable]
+    [:aggregation  {:optional true} [:sequential {:min 1} Aggregation]]
+    [:breakout     {:optional true} [:sequential {:min 1} Field]]
+    [:expressions  {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
+    [:fields       {:optional true} Fields]
+    [:filter       {:optional true} Filter]
+    [:limit        {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
+    [:order-by     {:optional true} (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]])]
+    [:page         {:optional true} [:ref ::Page]]
+    [:joins        {:optional true} [:ref ::Joins]]
 
     [:source-metadata
      {:optional true
@@ -1585,16 +1584,7 @@
    [:fn
     {:error/message "Fields specified in `:breakout` should not be specified in `:fields`; this is implied."}
     (fn [{:keys [breakout fields]}]
-      (empty? (set/intersection (set breakout) (set fields))))]
-   ;; TODO: Re-enable this - it's a useful check but it currently breaks a pile of too-literal legacy tests.
-   #_[:fn
-      {:error/message ":expressions must have the same keys as :expression-idents"}
-      (fn [{:keys [expressions expression-idents]}]
-        (core/or (core/= nil expressions expression-idents)
-                 (core/and (map? expressions)
-                           (map? expression-idents)
-                           (core/= (set (keys expressions))
-                                   (set (keys expression-idents))))))]])
+      (empty? (set/intersection (set breakout) (set fields))))]])
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 

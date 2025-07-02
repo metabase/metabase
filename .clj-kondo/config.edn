@@ -1,7 +1,7 @@
 ;; -*- comment-column: 100; -*-
 {:config-paths ["macros" "src" "config"]
  :linters
- {;;
+ { ;;
   ;; enabled optional linters (these are disabled by default)
   ;;
 
@@ -49,7 +49,7 @@
   ;; disabled linters
   ;;
 
-  :redundant-ignore {:level :off} ; lots of false positives, see https://github.com/clj-kondo/clj-kondo/issues/2414
+  :redundant-ignore {:level :off}    ; lots of false positives, see https://github.com/clj-kondo/clj-kondo/issues/2414
   :unexpected-recur {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
 
   ;;
@@ -186,7 +186,7 @@
   :metabase/disallow-hardcoded-driver-names-in-tests
   ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
   ;; middleware or compilation behavior with just H2 since it's the default.
-  {:drivers #{;; core drivers
+  {:drivers #{ ;; core drivers
               #_:h2
               :postgres
               :mysql
@@ -214,7 +214,7 @@
   ;; misc config for built-in linters
   ;;
 
-  :invalid-arity       {:skip-args [metabase.lib.util.match/match]} ; TODO (cam): can we fix these?
+  :invalid-arity       {:skip-args [metabase.lib.util.match/match]}                    ; TODO (cam): can we fix these?
   :refer-all           {:level :warning, :exclude [clojure.test]}
   :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
 
@@ -406,7 +406,7 @@
   instaparse.core/defparser                                                             clojure.core/def
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
-metabase-enterprise.content-translation.routes-test/with-new-secret-key!                clojure.core/fn
+  metabase-enterprise.content-translation.routes-test/with-new-secret-key!                clojure.core/fn
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
@@ -761,9 +761,10 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
     ;; eventually we should do this for the whole codebase, but the args are in the opposite order so switching them
     ;; all at once isn't trivial, at least we can stop using it in new code.
     :discouraged-var
-    {medley.core/map-keys    {:message "Use clojure.core/update-keys"}
-     medley.core/map-vals    {:message "Use clojure.core/update-vals"}
-     metabase.test/with-temp {:message "Don't use application database inside MLv2 code"}}
+    {medley.core/map-keys           {:message "Use clojure.core/update-keys"}
+     medley.core/map-vals           {:message "Use clojure.core/update-vals"}
+     metabase.util/generate-nano-id {:message "entity IDs are no longer needed/used in Lib and QP code"}
+     metabase.test/with-temp        {:message "Don't use application database inside MLv2 code"}}
 
     :discouraged-namespace
     {metabase.driver            {:message "MLv2 code should be independent of driver code/methods"}
@@ -798,8 +799,12 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
     {medley.core/map-keys                 {:message "Use clojure.core/update-keys"}
      medley.core/map-vals                 {:message "Use clojure.core/update-vals"}
      metabase.app-db.core/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     metabase.app-db.core/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}
+     metabase.app-db.core/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
+     metabase.util/generate-nano-id       {:message "entity IDs are no longer needed/used in Lib and QP code"}}}}
 
   general-qp-and-driver-test-namespaces
   {:linters
-   {:metabase/disallow-hardcoded-driver-names-in-tests {:level :warning}}}}}
+   {:metabase/disallow-hardcoded-driver-names-in-tests {:level :warning}
+
+    :discouraged-var
+    {metabase.util/generate-nano-id {:message "entity IDs are no longer needed/used in Lib and QP code"}}}}}}

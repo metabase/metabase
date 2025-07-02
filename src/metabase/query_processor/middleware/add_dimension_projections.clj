@@ -35,7 +35,6 @@
    [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -193,7 +192,7 @@
    [:query  mbql.s/Query]])
 
 (defn- add-fk-remaps-one-level
-  [{:keys [fields order-by breakout breakout-idents], {source-query-remaps ::remaps} :source-query, :as query}]
+  [{:keys [fields order-by breakout], {source-query-remaps ::remaps} :source-query, :as query}]
   (let [query (m/dissoc-in query [:source-query ::remaps])]
     ;; fetch remapping column pairs if any exist...
     (if-let [infos (not-empty (remap-column-infos (concat fields breakout)))]
@@ -211,16 +210,13 @@
                                                   (remove (comp existing-normalized-fields-set mbql.u/remove-namespaced-options)))
                                             infos)
             new-breakout                   (add-fk-remaps-rewrite-breakout original->remapped breakout)
-            new-breakout-idents            (merge (lib.ident/indexed-idents new-breakout)
-                                                  breakout-idents)
             new-order-by                   (add-fk-remaps-rewrite-order-by original->remapped order-by)
             remaps                         (into [] (comp cat (distinct)) [source-query-remaps (map :dimension infos)])]
         ;; return the Dimensions we are using and the query
         (cond-> query
           (seq fields)   (assoc :fields new-fields)
           (seq order-by) (assoc :order-by new-order-by)
-          (seq breakout) (assoc :breakout new-breakout
-                                :breakout-idents new-breakout-idents)
+          (seq breakout) (assoc :breakout new-breakout)
           (seq remaps)   (assoc ::remaps remaps)))
       ;; otherwise return query as-is
       (cond-> query

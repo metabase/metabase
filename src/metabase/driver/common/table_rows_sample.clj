@@ -53,7 +53,6 @@
      :type       :query
      :query      (cond-> {:source-table (u/the-id table)
                           :expressions  expressions
-                          :expression-idents (update-vals expressions (fn [_] (u/generate-nano-id)))
                           :fields       (vec (for [field fields]
                                                (if-let [[expression-name _] (get field->expressions field)]
                                                  [:expression expression-name]

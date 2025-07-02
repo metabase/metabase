@@ -60,7 +60,6 @@
                                                     :base-type         :type/Text
                                                     :effective-type    :type/Date
                                                     :coercion-strategy :Coercion/ISO8601->Date
-                                                    :ident             "ybTElkkGoYYBAyDRTIiUe"
                                                     :name              "Field 4"}]}]})
           query    (lib/query provider {:lib/type :mbql/query
                                         :database 1
@@ -72,7 +71,6 @@
                 :coercion-strategy        :Coercion/ISO8601->Date
                 :id                       4
                 :name                     "Field 4"
-                :ident                    "ybTElkkGoYYBAyDRTIiUe"
                 :lib/source               :source/card
                 :lib/card-id              3
                 :lib/source-column-alias  "Field 4"
@@ -84,7 +82,6 @@
                :coercion-strategy       :Coercion/ISO8601->Date
                :id                      4
                :name                    "Field 4"
-               :ident                   "ybTElkkGoYYBAyDRTIiUe"
                :display-name            "Field 4"
                :lib/card-id             3
                :lib/source              :source/card
@@ -135,7 +132,6 @@
                                                    :stages   [{:lib/type     :mbql.stage/mbql
                                                                :source-table 2}]}
                                  :result-metadata [{:id    4
-                                                    :ident "ybTElkkGoYYBAyDRTIiUe"
                                                     :name  "Field 4"}]}]})
           query    (lib/query provider {:lib/type :mbql/query
                                         :database 1
@@ -146,7 +142,6 @@
                 :effective-type           :type/*
                 :id                       4
                 :name                     "Field 4"
-                :ident                    "ybTElkkGoYYBAyDRTIiUe"
                 :lib/source               :source/card
                 :lib/card-id              3
                 :lib/source-column-alias  "Field 4"
@@ -157,7 +152,6 @@
                :effective-type          :type/Text
                :id                      4
                :name                    "Field 4"
-               :ident                   "ybTElkkGoYYBAyDRTIiUe"
                :display-name            "Field 4"
                :lib/card-id             3
                :lib/source              :source/card

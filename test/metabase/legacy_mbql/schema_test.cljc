@@ -98,8 +98,7 @@
                     [:/
                      [:sum [:field 42 {:base-type :type/Float}]]
                      [:coalesce [:sum [:field 36 {:base-type :type/Float}]] 1]]
-                    {:name "Avg discount", :display-name "Avg discount"}]],
-                  :aggregation-idents {0 "ZOn_HshYdSEeteY5ArmS9"}},
+                    {:name "Avg discount", :display-name "Avg discount"}]]}
                  :parameters []}]
       (is (not (me/humanize (mr/explain mbql.s/Query query))))
       (is (= query (mbql.s/validate-query query))))))
@@ -111,9 +110,7 @@
                  :query
                  {:source-table 5,
                   :aggregation [[:count]],
-                  :breakout [[:field 49 {:base-type :type/Date, :temporal-unit :year-of-era, :source-field 43}]],
-                  :aggregation-idents {0 "sAl2I4RGqYvmLw1lfJinY"},
-                  :breakout-idents {0 "N7YYtmSRsForQqViDhkrg"}},
+                  :breakout [[:field 49 {:base-type :type/Date, :temporal-unit :year-of-era, :source-field 43}]]}
                  :parameters []}]
       (is (not (me/humanize (mr/explain mbql.s/Query query))))
       (is (= query (mbql.s/validate-query query))))))

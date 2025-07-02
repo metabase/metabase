@@ -11,11 +11,9 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -273,17 +271,6 @@
                                                       (:alias join)
                                                       source-column-alias)))))
 
-(mu/defn- adjust-ident :- :map
-  [join :- [:map
-            [:ident
-             {:error/message "Join must have an ident to determine column idents"
-              :optional true}
-             ::lib.schema.common/non-blank-string]]
-   col  :- :map]
-  (cond-> col
-    (:ident join)
-    (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join))))
-
 ;;; this returns ALL the columns 'visible' within the join, regardless of `:fields` ! `:fields` is only the list of
 ;;; things to get added to the parent stage `:fields`! See QUE-1380
 ;;;
@@ -304,7 +291,6 @@
                            :unique-name-fn (unique-name-fn)))]
     (mapv (fn [col]
             (->> (column-from-join query stage-number col join-alias)
-                 (adjust-ident join)
                  (add-source-and-desired-aliases join unique-name-fn)))
           cols)))
 
@@ -337,7 +323,6 @@
                   (assoc query :stages stages)
                   0 cols' (assoc options :unique-name-fn (unique-name-fn))))]
         (->> (column-from-join query stage-number col join-alias)
-             (adjust-ident join)
              (add-source-and-desired-aliases join unique-name-fn))))))
 
 (defmethod lib.metadata.calculation/visible-columns-method :mbql/join
@@ -346,9 +331,9 @@
 
 (mu/defn all-joins-visible-columns :- ::lib.metadata.calculation/columns-with-unique-aliases
   "Convenience for calling [[lib.metadata.calculation/visible-columns]] on all of the joins in a query stage."
-  [query          :- ::lib.schema/query
-   stage-number   :- :int
-   options        :- ::lib.metadata.calculation/visible-columns.options]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   options      :- ::lib.metadata.calculation/visible-columns.options]
   (into []
         (mapcat (fn [join]
                   (lib.metadata.calculation/visible-columns
@@ -659,7 +644,6 @@
   by default."
   ([joinable]
    (-> (join-clause-method joinable)
-       (u/assoc-default :ident (lib.ident/random-ident))
        (u/assoc-default :fields :all)))
 
   ([joinable conditions]

@@ -326,18 +326,15 @@
 (deftest native-query-with-cards-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-full-data-perms-for-all-users!
-      (let [source-eid   (u/generate-nano-id)
-            source-query {:native   {:query "select * from venues limit 1"}
+      (let [source-query {:native   {:query "select * from venues limit 1"}
                           :type     :native
                           :database (mt/id)}]
         (mt/with-temp [:model/Collection {collection-id :id} {}
                        :model/Card       {source-id :id}     {:table_id        nil
                                                               :collection_id   collection-id
                                                               :dataset_query   source-query
-                                                              :entity_id       source-eid
                                                               :result_metadata
                                                               (-> source-query
-                                                                  (assoc-in [:info :card-entity-id] source-eid)
                                                                   qp/process-query
                                                                   (get-in [:data :results_metadata :columns]))}
                        :model/Card       {card-id :id}       {:table_id      nil

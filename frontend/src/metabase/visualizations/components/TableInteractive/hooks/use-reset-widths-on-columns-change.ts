@@ -9,9 +9,8 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-// Only select fields that define column data identity, excluding technical fields like `ident` or `model/inner_ident`
-// that could be added in the future and break column comparison. For example, duplicating a model would produce
-// different model/inner_ident values
+// Only select fields that define column data identity, excluding technical fields
+// that could be added in the future and break column comparison.
 const DATA_COLUMN_KEYS: (keyof DatasetColumn)[] = [
   "active",
   "base_type",

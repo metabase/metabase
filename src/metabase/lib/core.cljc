@@ -22,12 +22,10 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.update :as lib.filter.update]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.join :as lib.join]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
@@ -62,12 +60,10 @@
          lib.field/keep-me
          lib.filter.update/keep-me
          lib.filter/keep-me
-         lib.ident/keep-me
          lib.join/keep-me
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
-         lib.metadata.ident/keep-me
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
@@ -263,8 +259,6 @@
   update-lat-lon-filter
   update-numeric-filter
   update-temporal-filter]
- [lib.ident
-  random-ident]
  [lib.join
   available-join-strategies
   join
@@ -303,21 +297,6 @@
   visible-columns]
  [lib.metadata.composed-provider
   composed-metadata-provider]
- [lib.metadata.ident
-  add-model-ident
-  assert-idents-present!
-  explicitly-joined-ident
-  implicit-join-clause-ident
-  implicitly-joined-ident
-  model-ident
-  native-ident
-  placeholder-card-entity-id-for-adhoc-query
-  remove-model-ident
-  replace-placeholder-idents
-  valid-basic-ident?
-  valid-model-ident?
-  valid-native-ident?
-  valid-native-model-ident?]
  [lib.native
   engine
   extract-template-tags

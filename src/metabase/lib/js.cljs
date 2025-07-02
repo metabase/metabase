@@ -78,7 +78,6 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -677,10 +676,11 @@
                                     (-> inner-query
                                         ;; We ignore the order of the fields in the lists, but need to make sure any
                                         ;; dupes match up. Therefore de-dupe with `frequencies` rather than `set`.
-                                        (assoc :fields (frequencies fields))
-                                        ;; Remove the randomized idents, which are of course not going to match.
-                                        (dissoc :aggregation-idents :breakout-idents :expression-idents)))))
+                                        (assoc :fields (frequencies fields))))))
       ;; Ignore :info since it contains the randomized :card-entity-id.
+      ;;
+      ;; TODO (Cam 7/2/25) -- this should no longer be the case now that entity IDs and idents have been removed from
+      ;; Lib/QP code -- not sure if we still need to do this at all or not.
       (dissoc :info)))
 
 (defn- prep-query-for-equals-pMBQL
@@ -690,8 +690,7 @@
                    (mapv (fn [id] [:field {} id]) field-ids))]
     (lib.util/update-query-stage a-query -1
                                  #(-> %
-                                      (assoc :fields (frequencies fields))
-                                      lib.schema.util/remove-randomized-idents))))
+                                      (assoc :fields (frequencies fields))))))
 
 (defn- prep-query-for-equals [a-query field-ids]
   (when-let [normalized-query (some-> a-query normalize-to-clj)]
@@ -722,10 +721,10 @@
          (= (first x) (first y) :field))
     (compare-field-refs x y)
 
-    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid and :ident values don't have to match.
+    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid values don't have to match.
     (and (map? x) (map? y))
-    (let [x (dissoc x :lib/uuid :ident)
-          y (dissoc y :lib/uuid :ident)]
+    (let [x (dissoc x :lib/uuid)
+          y (dissoc y :lib/uuid)]
       (and (= (set (keys x)) (set (keys y)))
            (every? (fn [[k v]]
                      (query=* v (get y k)))
@@ -2560,10 +2559,3 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
-
-(defn ^:export random-ident
-  "Returns a randomly generated `ident` string, suitable for a Card's `entity_id` or a query.
-
-  > **Code health:** Healthy, Single use. Only called when creating a new card/query."
-  []
-  (lib.core/random-ident))
