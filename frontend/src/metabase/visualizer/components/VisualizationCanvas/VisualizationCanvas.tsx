@@ -137,7 +137,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           <HorizontalWell display={display} />
         </Box>
         {display === "scatter" && (
-          <Box style={{ gridArea: "top-right" }}>
+          <Box style={{ gridArea: "top" }}>
             <ScatterFloatingWell />
           </Box>
         )}
