@@ -85,7 +85,7 @@ describe("scenarios > admin > datamodel", () => {
       );
     });
 
-    it("should be able to see details of each table", () => {
+    it("should be able to see empty state and name + description of the table", () => {
       H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
 
       cy.get("main")
@@ -97,6 +97,7 @@ describe("scenarios > admin > datamodel", () => {
         .findByText("Edit the table and fields")
         .should("be.visible");
 
+      H.DataModel.TableSection.getNameInput().should("have.value", "Orders");
       H.DataModel.TableSection.getDescriptionInput().should(
         "have.value",
         "Confirmed Sample Company orders for a product, from a user.",
