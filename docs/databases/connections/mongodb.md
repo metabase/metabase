@@ -60,7 +60,7 @@ If you need to use a certificate, connect via the [default method](#using-metaba
 
 ### Whitelist IP addresses
 
-If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP addresses](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist) in your Atlas cluster. If you are using self-hosted Metabase, you'll need to whitelist the IP of your Metabase instance.
+If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP addresses](../../cloud/ip-addresses-to-whitelist.md) in your Atlas cluster. If you are using self-hosted Metabase, you'll need to whitelist the IP of your Metabase instance.
 
 1. Log into your [Atlas cluster](https://cloud.mongodb.com)
 2. Go to **Network Access**

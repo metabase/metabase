@@ -11907,6 +11907,30 @@ databaseChangeLog:
             constraintName: fk_metabot_prompt_card_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v55.2025-06-09T01:00:00
+      author: metabase-dev
+      comment: Add inline_parameters to report_dashboardcard for card-level parameter display
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: report_dashboardcard
+                columnName: inline_parameters
+      changes:
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: inline_parameters
+                  type: ${text.type}
+                  remarks: JSON array of parameter IDs that should be displayed inline with this card
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: report_dashboardcard
+            columnName: inline_parameters
 
   - changeSet:
       id: v55.2025-06-16T17:36:06
@@ -11956,6 +11980,95 @@ databaseChangeLog:
                            'v52.2024-12-03T15:55:22',
                            'v54.2025-02-14T08:05:00'
                   );
+
+  - changeSet:
+      id: v55.2025-06-23T11:29:00
+      author: bronsa
+      comment: Added 0.55.0 -- add metabase_field_user_settings
+      changes:
+        - createTable:
+            tableName: metabase_field_user_settings
+            remarks: Mirror table of metabase_field to keep track of user-set values (only settable fields are mirrored)
+            columns:
+              - column:
+                  remarks: The related Field
+                  name: field_id
+                  type: int
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
+                    foreignKeyName: fk_field_user_setting_field_id
+                    deleteCascade: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the user setting was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the user setting was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: User-set semantic_type for the Field
+                  name: semantic_type
+                  type: varchar(254)
+              - column:
+                  remarks: User-set description for the Field
+                  name: description
+                  type: longtext
+              - column:
+                  remarks: User-set display_name for the Field
+                  name: display_name
+                  type: varchar(254)
+              - column:
+                  remarks: User-set visibility_type for the Field
+                  name: visibility_type
+                  type: varchar(32)
+              - column:
+                  remarks: User-set fk_target_field_id for the Field
+                  name: fk_target_field_id
+                  type: int
+              - column:
+                  remarks: User-set has_field_values for the Field
+                  name: has_field_values
+                  type: longtext
+              - column:
+                  remarks: User-set effective_type for the Field
+                  name: effective_type
+                  type: varchar(255)
+              - column:
+                  remarks: User-set coercion_strategy for the Field
+                  name: coercion_strategy
+                  type: varchar(255)
+              # the fields below are never updated by sync, but we keep them for completeness
+              - column:
+                  remarks: User-set caveats for the Field
+                  name: caveats
+                  type: longtext
+              - column:
+                  remarks: User-set points_of_interest for the Field
+                  name: points_of_interest
+                  type: longtext
+              - column:
+                  remarks: User-set nfc_path for the Field
+                  name: nfc_path
+                  type: varchar(254)
+              - column:
+                  remarks: User-set json_unfolding for the Field
+                  name: json_unfolding
+                  type: ${boolean.type}
+              - column:
+                  remarks: User-set settings for the Field
+                  name: settings
+                  type: longtext
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

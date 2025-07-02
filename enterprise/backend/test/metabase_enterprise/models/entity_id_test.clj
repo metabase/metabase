@@ -21,6 +21,7 @@
     :model/Table
     :model/Field
     :model/FieldValues
+    :model/FieldUserSettings
     ;; Settings have human-selected unique names.
     :model/Setting})
 

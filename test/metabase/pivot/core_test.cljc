@@ -97,7 +97,6 @@
            :source "aggregation",
            :field_ref ["aggregation" 0],
            :effective_type "type/BigInteger",
-           :aggregation_index 0,
            :ident "S75TeXxnjAh0tJJDbzKg2",
            :display_name "Count",
            :remapping nil,

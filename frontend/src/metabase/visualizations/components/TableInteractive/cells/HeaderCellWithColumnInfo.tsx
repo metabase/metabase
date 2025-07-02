@@ -2,7 +2,6 @@ import type React from "react";
 import { memo, useMemo } from "react";
 
 import { QueryColumnInfoPopover } from "metabase/common/components/MetadataInfo/ColumnInfoPopover";
-import { useMousePressed } from "metabase/common/hooks/use-mouse-pressed";
 import {
   HeaderCellPill,
   type HeaderCellProps,
@@ -45,7 +44,6 @@ export const HeaderCellWithColumnInfo = memo(
     className,
     renderTableHeader,
   }: HeaderCellWithColumnInfoProps) {
-    const isMousePressed = useMousePressed();
     const query = question?.query();
     const stageIndex = -1;
 
@@ -76,7 +74,6 @@ export const HeaderCellWithColumnInfo = memo(
             stageIndex={-1}
             column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
             timezone={timezone}
-            disabled={isMousePressed}
             openDelay={500}
             showFingerprintInfo
           >

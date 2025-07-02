@@ -193,7 +193,7 @@ describe("issue 18669", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     H.setupSMTP();
 
     H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
@@ -485,7 +485,7 @@ describe("issue 24223", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     H.setupSMTP();
   });
 
@@ -644,7 +644,7 @@ describe("issue 26988", () => {
     );
 
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should apply embedding settings passed in URL on load", () => {
@@ -1032,7 +1032,7 @@ describe("issue 49525", { tags: "@external" }, () => {
       // get the csv attachment file's contents
       cy.request({
         method: "GET",
-        url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${csvAttachment.fileName}`,
+        url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${csvAttachment.generatedFileName}`,
         encoding: "utf8",
       }).then((response) => {
         const csvContent = response.body;

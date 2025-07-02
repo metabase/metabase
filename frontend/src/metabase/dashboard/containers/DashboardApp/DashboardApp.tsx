@@ -11,16 +11,15 @@ import {
   addCardToDashboard,
   navigateToNewCardFromDashboard,
   setEditingDashboard,
+  toggleSidebar,
 } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { DashboardContextProvider } from "metabase/dashboard/context";
-import {
-  useDashboardUrlParams,
-  useDashboardUrlQuery,
-  useRefreshDashboard,
-} from "metabase/dashboard/hooks";
-import { parseHashOptions } from "metabase/lib/browser";
+import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
+import { useAutoScrollToDashcard } from "metabase/dashboard/hooks/use-auto-scroll-to-dashcard";
+import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
@@ -30,11 +29,41 @@ import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-das
 import { getFavicon } from "../../selectors";
 
 import { DashboardTitle } from "./DashboardTitle";
+import { useDashboardLocationSync } from "./use-dashboard-location-sync";
 import { useSlowCardNotification } from "./use-slow-card-notification";
 
-interface DashboardAppProps extends PropsWithChildren {
+interface DashboardAppProps
+  extends PropsWithChildren<WithRouterProps<{ slug: string }>> {
   dashboardId?: DashboardId;
   route: Route;
+}
+
+type DashboardAppInnerProps = Pick<
+  DashboardAppProps,
+  "location" | "route" | "children"
+>;
+
+function DashboardAppInner({
+  location,
+  route,
+  children,
+}: DashboardAppInnerProps) {
+  useDashboardLocationSync({ location });
+  const pageFavicon = useSelector(getFavicon);
+  useFavicon({ favicon: pageFavicon });
+  useSlowCardNotification();
+
+  return (
+    <>
+      <DashboardTitle />
+      <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
+        <DashboardLeaveConfirmationModal route={route} />
+        <Dashboard />
+        {/* For rendering modal urls */}
+        {children}
+      </div>
+    </>
+  );
 }
 
 export const DashboardApp = ({
@@ -44,7 +73,7 @@ export const DashboardApp = ({
   route,
   dashboardId: _dashboardId,
   children,
-}: DashboardAppProps & WithRouterProps<{ slug: string }>) => {
+}: DashboardAppProps) => {
   const dispatch = useDispatch();
 
   const [error, setError] = useState<string>();
@@ -57,37 +86,23 @@ export const DashboardApp = ({
   const editingOnLoad = options.edit;
   const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
 
-  const { refreshDashboard } = useRefreshDashboard({
-    dashboardId,
-    parameterQueryParams,
-  });
-
-  const {
-    hasNightModeToggle,
-    isFullscreen,
-    isNightMode,
-    onNightModeChange,
-    refreshPeriod,
-    onFullscreenChange,
-    setRefreshElapsedHook,
-    onRefreshPeriodChange,
-    autoScrollToDashcardId,
-    reportAutoScrolledToDashcard,
-    theme,
-    setTheme,
-  } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
-
   useRegisterDashboardMetabotContext();
   useDashboardUrlQuery(router, location);
+
+  const extractAndRemoveHashOption = (key: string) => {
+    const { [key]: removed, ...restHashOptions } = options;
+    const hash = stringifyHashOptions(restHashOptions);
+    dispatch(push({ ...location, hash: hash ? "#" + hash : "" }));
+  };
 
   const onLoadDashboard = (dashboard: IDashboard) => {
     try {
       if (editingOnLoad) {
-        onRefreshPeriodChange(null);
         dispatch(setEditingDashboard(dashboard));
-        dispatch(push({ ...location, hash: "" }));
+        extractAndRemoveHashOption("edit");
       }
       if (addCardOnLoad != null) {
+        extractAndRemoveHashOption("add");
         const searchParams = new URLSearchParams(window.location.search);
         const tabParam = searchParams.get("tab");
         const tabId = tabParam ? parseInt(tabParam, 10) : null;
@@ -110,21 +125,14 @@ export const DashboardApp = ({
     }
   };
 
+  const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
+    useAutoScrollToDashcard(location);
+
   return (
     <ErrorBoundary message={error}>
       <DashboardContextProvider
         dashboardId={dashboardId}
         parameterQueryParams={parameterQueryParams}
-        theme={theme}
-        setTheme={setTheme}
-        isFullscreen={isFullscreen}
-        onFullscreenChange={onFullscreenChange}
-        hasNightModeToggle={hasNightModeToggle}
-        onNightModeChange={onNightModeChange}
-        isNightMode={isNightMode}
-        refreshPeriod={refreshPeriod}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        onRefreshPeriodChange={onRefreshPeriodChange}
         autoScrollToDashcardId={autoScrollToDashcardId}
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
         onLoad={onLoadDashboard}
@@ -132,28 +140,15 @@ export const DashboardApp = ({
         navigateToNewCardFromDashboard={(opts) =>
           dispatch(navigateToNewCardFromDashboard(opts))
         }
+        onAddQuestion={(dashboard: IDashboard | null) => {
+          dispatch(setEditingDashboard(dashboard));
+          dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
+        }}
       >
-        <DashboardTitle />
-        <DashboardFavicon />
-        <DashboardNotifications />
-        <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
-          <DashboardLeaveConfirmationModal route={route} />
-          <Dashboard />
-          {/* For rendering modal urls */}
+        <DashboardAppInner location={location} route={route}>
           {children}
-        </div>
+        </DashboardAppInner>
       </DashboardContextProvider>
     </ErrorBoundary>
   );
 };
-
-function DashboardFavicon() {
-  const pageFavicon = useSelector(getFavicon);
-  useFavicon({ favicon: pageFavicon });
-  return null;
-}
-
-function DashboardNotifications() {
-  useSlowCardNotification();
-  return null;
-}

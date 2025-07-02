@@ -188,7 +188,7 @@ describe("scenarios > home > homepage", () => {
         cy.signInAsAdmin();
         // Setting this to true so that displaying popular items for new users works.
         // This requires the audit-app feature to be enabled
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         H.visitDashboard(ORDERS_DASHBOARD_ID);
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -621,7 +621,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     cy.log("From the app bar");
     H.newButton().should("be.visible").click();
-    cy.findByRole("dialog").should("be.visible");
+    cy.findByRole("menu", { name: /new/i }).should("be.visible");
     H.expectUnstructuredSnowplowEvent({
       event: "new_button_clicked",
       triggered_from: "app-bar",
@@ -629,7 +629,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     cy.log("Track closing the button as well");
     H.newButton().should("be.visible").click();
-    cy.findByRole("dialog").should("not.exist");
+    cy.findByRole("menu", { name: /new/i }).should("not.exist");
     H.expectUnstructuredSnowplowEvent(
       {
         event: "new_button_clicked",
@@ -645,7 +645,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
       cy.findByText("New").click();
     });
 
-    cy.findByRole("dialog").should("be.visible");
+    cy.findByRole("menu", { name: /new/i }).should("be.visible");
     H.expectUnstructuredSnowplowEvent({
       event: "new_button_clicked",
       triggered_from: "empty-collection",
@@ -660,7 +660,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     cy.visit("/");
 
     H.newButton().should("be.visible").click();
-    cy.findByRole("dialog").findByText("Dashboard").click();
+    cy.findByRole("menu", { name: /new/i }).findByText("Dashboard").click();
     cy.findByTestId("new-dashboard-modal").should("be.visible");
     H.expectUnstructuredSnowplowEvent({
       event: "new_button_item_clicked",
@@ -675,7 +675,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
       cy.findByText("This collection is empty").should("be.visible");
       cy.findByText("New").click();
     });
-    cy.findByRole("dialog").findByText("Dashboard").click();
+    cy.findByRole("menu", { name: /new/i }).findByText("Dashboard").click();
     cy.findByTestId("new-dashboard-modal").should("be.visible");
     H.expectUnstructuredSnowplowEvent(
       {
