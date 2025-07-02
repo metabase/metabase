@@ -274,7 +274,7 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
 });
 
 /**
- * Before the use creation we can't set the token, as that uses api calls that require being logged as admin.
+ * Before the user creation we can't set the token, as that uses api calls that require being logged as admin.
  * This simulates at least the `hosted/is-hosted?`
  */
 const mockCloudHosted = () => {
