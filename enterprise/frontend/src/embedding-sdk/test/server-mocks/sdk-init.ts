@@ -20,7 +20,10 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
+import {
+  createMockEmbedState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 export const setupSdkState = ({
   currentUser = createMockUser(),
@@ -51,6 +54,9 @@ export const setupSdkState = ({
     settings: mockSettings(settingValuesWithToken),
     currentUser,
     sdk: sdkState,
+    embed: createMockEmbedState({
+      isEmbeddingSdk: true,
+    }),
     ...stateOpts,
   });
 

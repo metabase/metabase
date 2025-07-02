@@ -6,7 +6,6 @@ import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Grid } from "metabase/dashboard/components/Dashboard/components/Grid";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
-import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { SetTitle } from "metabase/hoc/Title";
@@ -43,7 +42,6 @@ export function PublicOrEmbeddedDashboardView() {
     <DashboardHeaderButtonRow
       canResetFilters={false}
       onResetFilters={_.noop}
-      dashboardActionKeys={DASHBOARD_DISPLAY_ACTIONS}
       isPublic={true}
     />
   ) : null;
