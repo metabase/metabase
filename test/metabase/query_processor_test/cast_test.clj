@@ -504,12 +504,27 @@
 
 ;; date()
 
-(defn- date-type? [col]
-  (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
-                                       :type/Text ;; sqlite uses text :(
-                                       :type/Date
-                                       :type/* ;; Mongo
-                                       ]))
+(defmulti date-type-expected
+  "Which date type are we expecting from `date()`?"
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod date-type-expected :default
+  [_]
+  :type/Date)
+
+(defmethod date-type-expected :oracle
+  [_]
+  :type/DateTime)
+
+(defmethod date-type-expected :sqlite
+  [_]
+  :type/Text)
+
+(defmethod date-type-expected :mongo
+  [_]
+  :type/*)
 
 (defn- parse-date [s]
   (try
@@ -536,7 +551,8 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (date-type? (last cols)))
+            (is (types/field-is-type? (date-type-expected driver/*driver*)
+                                      (last cols)))
             (doseq [[_ uncasted-value casted-value] rows]
               (let [cd (parse-date casted-value)
                     ud (parse-date uncasted-value)]
