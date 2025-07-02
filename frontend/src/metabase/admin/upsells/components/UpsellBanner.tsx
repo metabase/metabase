@@ -3,7 +3,15 @@ import { t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
-import { Box, Flex, Icon, Text, Title, UnstyledButton } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  Icon,
+  Stack,
+  Text,
+  Title,
+  UnstyledButton,
+} from "metabase/ui";
 
 import { UPGRADE_URL } from "../constants";
 
@@ -69,14 +77,14 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
     >
       <Flex align="center" gap="md" wrap="nowrap">
         <UpsellGem />
-        <Box>
+        <Stack gap="xs">
           <Title lh={1.25} order={3} size="md">
             {title}
           </Title>
-          <Text lh="1rem" size="sm">
+          <Text lh="1rem" size="sm" c="text-secondary">
             {children}
           </Text>
-        </Box>
+        </Stack>
       </Flex>
 
       <Flex align="center" gap="md">
