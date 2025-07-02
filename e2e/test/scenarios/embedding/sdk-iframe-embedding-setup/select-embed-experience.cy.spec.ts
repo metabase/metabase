@@ -45,6 +45,19 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
       cy.findByText("Pick your starting data").should("be.visible");
     });
   });
+
+  it("localizes the iframe preview when ?locale is passed", () => {
+    cy.visit("/embed/new?locale=fr");
+    cy.wait("@dashboard");
+
+    // TODO: update this test once "Exploration" is localized in french.
+    getEmbedSidebar().findByText("Exploration").click();
+
+    H.getIframeBody().within(() => {
+      cy.log("data picker is localized");
+      cy.findByText("Choisissez vos données de départ").should("be.visible");
+    });
+  });
 });
 
 const getEmbedSidebar = () => cy.findByRole("complementary");
