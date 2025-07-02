@@ -312,7 +312,13 @@ function removeTableFields() {
   cy.realPress("Escape");
 }
 
-function addCustomColumn({ name, expression }: CastTestCase) {
+function addCustomColumn({
+  name,
+  expression,
+}: {
+  name: string;
+  expression: string;
+}) {
   H.getNotebookStep("data").button("Custom column").click();
   H.enterCustomColumnDetails({ formula: expression, name });
   H.popover().button("Done").click();
