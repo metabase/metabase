@@ -20,9 +20,49 @@ describe("scenarios > admin > datamodel", () => {
     cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
       "updateField",
     );
-    cy.intercept("POST", "/api/field/*/values").as("fieldValuesUpdate");
-    cy.intercept("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
-    cy.intercept("PUT", "/api/table/*").as("tableUpdate");
+    cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
+    cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
+    cy.intercept("PUT", "/api/table/*").as("updateTable");
+  });
+
+  describe("Table picker", () => {
+    it("should allow changing the table visibility", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+
+      H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
+      cy.wait("@updateTable");
+
+      H.undoToast().should("contain.text", "Hid Orders");
+
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        cy.findByText("People").should("be.visible");
+        cy.findByText("Orders").should("not.exist");
+      });
+
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+
+      H.DataModel.TablePicker.getTable("Orders").button("Unhide table").click();
+      cy.wait("@updateTable");
+
+      H.undoToast().should("contain.text", "Unhid Orders");
+
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        cy.findByText("People").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+      });
+    });
   });
 
   describe("Table section", () => {
@@ -107,24 +147,155 @@ describe("scenarios > admin > datamodel", () => {
       );
     });
 
-    it("should remap FK display value from the table section", () => {
+    it("should allow changing the table name", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
 
-      H.DataModel.TableSection.getFieldNameInput("Product ID")
+      H.DataModel.TableSection.getNameInput().clear().type("New orders").blur();
+      cy.wait("@updateTable");
+
+      H.undoToast().should("contain.text", "Table name updated");
+      cy.findByDisplayValue("New orders").should("be.visible");
+      H.DataModel.TableSection.getNameInput()
+        .should("have.value", "New orders")
+        .and("be.visible");
+      H.DataModel.TablePicker.getTable("New orders").should("be.visible");
+      H.DataModel.TablePicker.getTable("Orders").should("not.exist");
+
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        cy.findByText("People").should("be.visible");
+        cy.findByText("New orders").should("be.visible");
+      });
+    });
+
+    it("should allow changing the table description", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+
+      H.DataModel.TableSection.getDescriptionInput()
         .clear()
-        .type("Remapped Product ID")
-        .realPress("Tab");
+        .type("New description")
+        .blur();
+      cy.wait("@updateTable");
+
+      H.undoToast().should("contain.text", "Table description updated");
+      H.DataModel.TableSection.getDescriptionInput()
+        .should("have.value", "New description")
+        .and("be.visible");
+
+      cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Orders").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("New description").should("be.visible");
+    });
+
+    it("should allow clearing the table description", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+
+      H.DataModel.TableSection.getDescriptionInput().clear().blur();
+      cy.wait("@updateTable");
+
+      H.undoToast().should("contain.text", "Table description updated");
+      H.DataModel.TableSection.getDescriptionInput()
+        .should("have.value", "")
+        .and("be.visible");
+
+      cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Orders").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("No description yet").should("be.visible");
+    });
+
+    it("should allow changing the field name", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+
+      H.DataModel.TableSection.getFieldNameInput("Tax")
+        .clear()
+        .type("New tax")
+        .blur();
       cy.wait("@updateField");
 
-      H.openOrdersTable({ limit: 5 });
-      cy.findAllByTestId("header-cell").should(
-        "contain",
-        "Remapped Product ID",
+      H.undoToast().should("contain.text", "Display name for Tax updated");
+      H.DataModel.TableSection.getFieldNameInput("New tax").should(
+        "be.visible",
       );
+
+      H.openOrdersTable();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("New tax").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Tax").should("not.exist");
+    });
+
+    it("should allow changing the field description", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+
+      H.DataModel.TableSection.getFieldDescriptionInput("Total")
+        .clear()
+        .type("New description")
+        .blur();
+      cy.wait("@updateField");
+
+      H.undoToast().should("contain.text", "Description for Total updated");
+      H.DataModel.TableSection.getFieldDescriptionInput("Total").should(
+        "have.value",
+        "New description",
+      );
+
+      cy.visit(
+        `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+      );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Total").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("New description").should("be.visible");
+    });
+
+    it("should allow clearing the field description", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+
+      H.DataModel.TableSection.getFieldDescriptionInput("Total").clear().blur();
+      cy.wait("@updateField");
+
+      H.undoToast().should("contain.text", "Description for Total updated");
+      H.DataModel.TableSection.getFieldDescriptionInput("Total").should(
+        "have.value",
+        "",
+      );
+
+      cy.visit(
+        `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+      );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Total").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("No description yet").should("be.visible");
     });
 
     // https://linear.app/metabase/issue/SEM-423/data-loading-error-handling
@@ -151,7 +322,7 @@ describe("scenarios > admin > datamodel", () => {
         tableId: ORDERS_ID,
       });
       H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
-      cy.wait("@tableUpdate");
+      cy.wait("@updateTable");
 
       // Visit the main page, we shouldn't be able to see the table
       cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
@@ -486,7 +657,7 @@ describe("scenarios > admin > datamodel", () => {
           H.DataModel.FieldSection.getDisplayValuesInput().click();
           H.popover().findByText("Use foreign key").click();
           H.popover().findByText("Title").click();
-          cy.wait("@fieldDimensionUpdate");
+          cy.wait("@updateFieldDimension");
 
           cy.reload();
           H.DataModel.FieldSection.getDisplayValuesInput()
@@ -536,7 +707,7 @@ describe("scenarios > admin > datamodel", () => {
                     .type(remappedNullValue);
                   cy.button("Save").click();
                 });
-              cy.wait("@fieldValuesUpdate");
+              cy.wait("@updateFieldValues");
 
               cy.log("Make sure custom mapping appears in QB");
               H.openTable({
@@ -605,7 +776,7 @@ describe("scenarios > admin > datamodel", () => {
 
             cy.button("Save").click();
           });
-          cy.wait("@fieldValuesUpdate");
+          cy.wait("@updateFieldValues");
 
           cy.log("Numeric ratings should be remapped to custom strings");
           H.openReviewsTable();
@@ -672,7 +843,7 @@ describe("scenarios > admin > datamodel", () => {
               .should("be.visible")
               .click();
           });
-          cy.wait("@fieldDimensionUpdate");
+          cy.wait("@updateFieldDimension");
 
           H.visitQuestion(ORDERS_QUESTION_ID);
           cy.findAllByTestId("cell-data")
