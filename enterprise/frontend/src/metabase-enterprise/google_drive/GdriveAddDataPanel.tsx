@@ -85,10 +85,8 @@ export const GdriveAddDataPanel = ({
     { open: showConnectionDetails, close: closeConnectionDetails },
   ] = useDisclosure(false);
 
-  const [
-    isConnectionModalOpen,
-    { open: openConnectionModal, close: closeConnectionModal },
-  ] = useDisclosure(false);
+  const [isConnectionModalOpen, { open: openConnectionModal }] =
+    useDisclosure(false);
 
   const { errorMessage, isDeletingFolderLink, onDelete } =
     useDeleteGdriveFolderLink({
@@ -217,7 +215,9 @@ export const GdriveAddDataPanel = ({
   return (
     <PanelWrapper
       isModalOpen={isConnectionModalOpen}
-      onModalClose={closeConnectionModal}
+      // We are closing the parent (Add data) modal so we don't have to explicitly
+      // close the connection modal as well. It will be removed from DOM with its parent gone.
+      onModalClose={onAddDataModalClose}
     >
       <Button
         variant="filled"
