@@ -169,6 +169,105 @@ databaseChangeLog:
                   type: ${text.type}
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v56.2025-07-02T11:52:19
+      author: lbrdnk
+      comment: Create table for transforms
+      changes:
+        - createTable:
+            tableName: report_card_transform
+            remarks: xxx
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The related card
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_transform_ref_card_id
+                    deleteCascade: true
+              # TODO: does it make sense to store report_card's result_metadata?
+              - column:
+                  name: original_dataset_query
+                  remarks: the dataset_query that is source of cards transform
+                  # TODO: Verif
+                  type: varchar(max)
+      # on rollback: all the original query definitions should be written back to the report_card
+      rollback:
+        # Backfill the original report_card dataset queries
+        - sql:
+            dbms: postgresql
+            sql: >-
+              update report_card
+              set dataset_query = rct.odq
+              from (
+                  select card_id, odq
+                  from (
+                      select
+                          card_id,
+                          LAST_VALUE(original_dataset_query) 
+                          OVER (
+                              PARTITION BY card_id
+                              ORDER BY id
+                          ) odq
+                      from report_card_transform
+                  )
+                  group by card_id, odq
+              ) as rct
+              where rct.card_id = report_card.id
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              update 
+                report_card rc, (
+                  select cid, odq 
+                  from (
+                    select 
+                      card_id cid, 
+                      first_value(original_dataset_query) 
+                        over (partition by card_id order by id desc) odq 
+                    from report_card_transform
+                  ) yiy 
+                  group by cid, odq
+                ) xix
+              set rc.dataset_query = xix.odq 
+              where rc.id = xix.cid
+        - sql:
+            dbms: h2
+            sql: >-
+              with rct as (
+                select card_id, odq
+                from (
+                  select
+                    card_id,
+                    FIRST_VALUE (original_dataset_query)
+                      OVER (PARTITION BY card_id
+                            ORDER BY id DESC)
+                      odq
+                  from report_card_transform
+                )
+                group by card_id, odq
+              )
+              update report_card
+              set dataset_query = (select odq from rct where report_card.id = rct.card_id)
+              where report_card.id = (select card_id from rct where report_card.id = card_id)
+        # drop the table
+        - sql:
+            #dbms: h2,msyql,postgresql
+            sql: >-
+              DROP table report_card_transform
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
