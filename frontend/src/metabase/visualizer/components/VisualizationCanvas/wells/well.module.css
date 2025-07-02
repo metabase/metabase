@@ -17,12 +17,12 @@
 .isActive {
   border-color: var(--mb-color-brand);
   background-color: var(--mb-color-brand-lighter);
-}
 
-.isOver {
-  transform: scale(1.025);
-  outline: 1px solid var(--mb-color-brand);
-  background-color: var(--mb-color-brand-light);
+  &.isOver {
+    transform: scale(1.025);
+    outline: 1px solid var(--mb-color-brand);
+    background-color: var(--mb-color-brand-light);
+  }
 }
 
 .defaultBorderRadius {
