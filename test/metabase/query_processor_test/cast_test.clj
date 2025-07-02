@@ -957,8 +957,6 @@
    [2M "bar" #t "2020-04-21T16:43"]
    [3M "baz" #t "2021-04-21T16:43"]])
 
-;; TODO: Make a real feature for byte->temporal coercion strategies
-
 (deftest ^:parallel datetime-binary-cast
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime ::adt/yyyymmddhhss-binary-timestamps)
     (doseq [{:keys [dataset mode expected]}
@@ -984,3 +982,31 @@
                 rows (mt/rows result)]
             (is (= (expected driver/*driver*)
                    rows))))))))
+
+(deftest ^:parallel datetime-number-cast
+  (let [seconds-timestamp 1751481215
+        datetime #{"2025-07-02T18:33:35Z"
+                   "2025-07-02 18:33:35"}]
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
+      (doseq [{:keys [multiple mode]}
+              [{:multiple 1e0
+                :mode :unixseconds}
+               {:multiple 1e3
+                :mode :unixmilliseconds}
+               {:multiple 1e6
+                :mode :unixmicroseconds}
+               {:multiple 1e9
+                :mode :unixnanoseconds}]]
+        (testing (str "Parsing number"  " as datetime with " mode ".")
+          (let [mp (mt/metadata-provider)
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          (lib/with-fields [(lib.metadata/field mp (mt/id :orders :id))])
+                          (lib/expression "date_number" (lib/+ 0 (* seconds-timestamp multiple)))
+                          (as-> q
+                                (let [column (->> q lib/visible-columns (filter #(= "date_number" (u/lower-case-en (:name %)))) first)]
+                                  (lib/expression q "FCALL" (lib/datetime column mode))))
+                          (lib/limit 1))
+                result (-> query qp/process-query)
+                rows (mt/rows result)]
+            (is (contains? datetime
+                           (-> rows first (get 2))))))))))
