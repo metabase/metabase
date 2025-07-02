@@ -420,7 +420,7 @@ export function DashCardVisualization({
     dashcardId: dashcard.id,
   });
 
-  const { lastLoad } = useContext(DebugContext);
+  const { lastLoad, slowStateForced } = useContext(DebugContext);
   const [forceLoading, setForceLoading] = useState(false);
   useEffect(() => {
     if (!lastLoad) {
@@ -444,6 +444,7 @@ export function DashCardVisualization({
   return (
     <Visualization
       forceLoading={forceLoading}
+      slowStateForced={slowStateForced}
       className={cx(CS.flexFull, {
         [CS.overflowAuto]: visualizationOverlay,
         [CS.overflowHidden]: !visualizationOverlay,

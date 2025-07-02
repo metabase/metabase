@@ -3,12 +3,12 @@ import { useContext, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Form, FormNumberInput, FormProvider } from "metabase/forms";
-import { Button, Flex, Icon, Portal } from "metabase/ui";
+import { Button, Checkbox, Flex, Icon, Portal } from "metabase/ui";
 
 import { DebugContext } from "./DebugContext";
 
 export const DebugMenu = () => {
-  const { simulateLoad } = useContext(DebugContext);
+  const { simulateLoad, toggleSlowState } = useContext(DebugContext);
   const [open, setOpen] = useState(true);
   const [collapsed, setCollapsed] = useState(true);
   if (!open) {
@@ -52,19 +52,27 @@ export const DebugMenu = () => {
           {() => (
             <Form>
               {!collapsed && (
-                <Flex align="end" mx={-4}>
-                  <div style={{ padding: "0.25rem" }}>
-                    <FormNumberInput name="min" size="sm" label="min (ms)" />
+                <>
+                  <Flex align="end" mx={-4}>
+                    <div style={{ padding: "0.25rem" }}>
+                      <FormNumberInput name="min" size="sm" label="min (ms)" />
+                    </div>
+                    <div style={{ padding: "0.25rem" }}>
+                      <FormNumberInput name="max" size="sm" label="max (ms)" />
+                    </div>
+                    <div style={{ padding: "0.25rem" }}>
+                      <Button type="submit" size="sm">
+                        {"Set and trigger"}
+                      </Button>
+                    </div>
+                  </Flex>
+                  <div>
+                    <Checkbox
+                      label="Force slow state (reduced to 2s from 15s for testing only)"
+                      onChange={(e) => toggleSlowState(e.currentTarget.checked)}
+                    />
                   </div>
-                  <div style={{ padding: "0.25rem" }}>
-                    <FormNumberInput name="max" size="sm" label="max (ms)" />
-                  </div>
-                  <div style={{ padding: "0.25rem" }}>
-                    <Button type="submit" size="sm">
-                      {"Set and trigger"}
-                    </Button>
-                  </div>
-                </Flex>
+                </>
               )}
             </Form>
           )}

@@ -180,6 +180,7 @@ type VisualizationOwnProps = {
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
   forceLoading?: boolean;
+  slowStateForced?: boolean;
 } & VisualizationPassThroughProps;
 
 type VisualizationProps = StateDispatchProps &
@@ -704,7 +705,7 @@ class Visualization extends PureComponent<
 
     const extra = (
       <VisualizationActionButtonsContainer>
-        {isSlow && !loading && (
+        {isSlow && !loading && !this.props.slowStateForced && (
           <VisualizationSlowSpinner
             className={DashboardS.VisualizationSlowSpinner}
             size={18}

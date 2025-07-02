@@ -1,10 +1,18 @@
 import cx from "classnames";
 import { getIn } from "icepick";
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useMount, useUpdateEffect } from "react-use";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
+import { DebugContext } from "metabase/common/components/DebugMenu/DebugContext";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { addParameter, duplicateCard } from "metabase/dashboard/actions";
@@ -191,6 +199,7 @@ function DashCardInner({
   );
 
   const isAction = isActionCard(mainCard);
+  const { slowStateForced } = useContext(DebugContext);
 
   const { expectedDuration, isSlow } = useMemo(() => {
     const expectedDuration = Math.max(
@@ -201,8 +210,8 @@ function DashCardInner({
     if (isLoading && series.some((s) => s.isSlow)) {
       isSlow = isUsuallyFast ? "usually-fast" : "usually-slow";
     }
-    return { expectedDuration, isSlow };
-  }, [series, isLoading]);
+    return { expectedDuration, isSlow: isSlow || slowStateForced };
+  }, [series, isLoading, slowStateForced]);
 
   const error = useMemo(() => getDashcardResultsError(series), [series]);
   const hasError = !!error;
