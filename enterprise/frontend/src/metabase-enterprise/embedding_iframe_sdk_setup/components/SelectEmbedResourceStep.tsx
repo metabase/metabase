@@ -13,7 +13,7 @@ import type {
 } from "../types";
 
 import { SelectEmbedResourceMissingRecents } from "./SelectEmbedResourceMissingRecents";
-import S from "./SelectEmbedResourceStep.module.css";
+import { SelectEmbedResourceRecentItemCard } from "./SelectEmbedResourceRecentItemCard";
 
 export const SelectEmbedResourceStep = () => {
   const {
@@ -35,7 +35,6 @@ export const SelectEmbedResourceStep = () => {
 
   const isDashboard = experience === "dashboard";
   const recentItems = isDashboard ? recentDashboards : recentQuestions;
-  const embedIcon = isDashboard ? "dashboard" : "bar";
 
   const selectedItemId = isDashboard
     ? settings.dashboardId
@@ -80,31 +79,6 @@ export const SelectEmbedResourceStep = () => {
     });
   };
 
-  const renderRecentItemCard = (recentItem: SdkIframeEmbedSetupRecentItem) => (
-    <Card
-      p="md"
-      key={recentItem.id}
-      onClick={() => updateEmbedSettings(experience, recentItem.id)}
-      className={S.ResourceCard}
-      data-selected={selectedItemId === recentItem.id}
-      data-testid="embed-recent-item-card"
-    >
-      <Group align="start" gap="sm">
-        <Icon name={embedIcon} size={20} c="brand" />
-
-        <Stack gap="xs" flex={1}>
-          <Text fw="bold">{recentItem.name}</Text>
-
-          {recentItem.description && (
-            <Text size="sm" c="text-medium">
-              {recentItem.description}
-            </Text>
-          )}
-        </Stack>
-      </Group>
-    </Card>
-  );
-
   const renderSelectResourceList = () => {
     if (recentItems.length === 0) {
       return (
@@ -121,7 +95,15 @@ export const SelectEmbedResourceStep = () => {
           {getEmbedDescription(experience)}
         </Text>
 
-        {recentItems.map(renderRecentItemCard)}
+        {recentItems.map((recentItem) => (
+          <SelectEmbedResourceRecentItemCard
+            key={recentItem.id}
+            recentItem={recentItem}
+            experience={experience}
+            onSelect={updateEmbedSettings}
+            selectedItemId={selectedItemId}
+          />
+        ))}
       </Stack>
     );
   };
