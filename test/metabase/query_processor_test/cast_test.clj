@@ -1,15 +1,21 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.cast-test
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.driver.impl]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.query-processor-test.alternative-date-test :as adt]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.types.core :as types]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  (:import
+   (java.time OffsetDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -796,25 +802,187 @@
 (deftest ^:parallel datetime-cast
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
     (let [mp (mt/metadata-provider)]
-      (doseq [[table expressions] [[:people [{:expression (lib/concat "2025-05-15T22:20:01" "")
+      (doseq [[table expressions] [[:people [;; no mode
+                                             {:expression (lib/concat "2025-05-15T22:20:01" "")
                                               :mode nil
                                               :expected #{"2025-05-15T22:20:01Z"
-                                                          "2025-05-15 22:20:01"}
-                                              :limit 1}
+                                                          "2025-05-15 22:20:01"}}
                                              {:expression (lib/concat "2025-05-15 22:20:01" "")
                                               :mode nil
                                               :expected #{"2025-05-15T22:20:01Z"
-                                                          "2025-05-15 22:20:01"}
-                                              :limit 1}]]]
-              {:keys [expression mode expected limit]} expressions]
-        (testing (str "Parsing " expression " as datetime with " mode ".")
+                                                          "2025-05-15 22:20:01"}}
+
+                                             ;; iso mode
+                                             {:expression (lib/concat "2025-05-15T22:20:01" "")
+                                              :mode :iso
+                                              :expected #{"2025-05-15T22:20:01Z"
+                                                          "2025-05-15 22:20:01"}}
+                                             {:expression (lib/concat "2025-05-15 22:20:01" "")
+                                              :mode :iso
+                                              :expected #{"2025-05-15T22:20:01Z"
+                                                          "2025-05-15 22:20:01"}}
+
+                                             ;; simple mode
+                                             {:expression (lib/concat "20250515222001" "")
+                                              :mode :simple
+                                              :expected #{"2025-05-15T22:20:01Z"
+                                                          "2025-05-15 22:20:01"}}]]]
+              {:keys [expression mode expected]} expressions]
+        (testing (str "Parsing " expression " as datetime with " (or mode "no mode") ".")
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                           (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
-                          (lib/expression "DATETIME_PARSE" (lib/datetime expression))
-                          (lib/limit limit))
+                          (lib/expression "DATETIME_PARSE" (if mode
+                                                             (lib/datetime expression mode)
+                                                             (lib/datetime expression)))
+                          (lib/limit 1))
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
             (is (datetime-type? (last cols)))
             (doseq [[_id casted-value] rows]
               (is (contains? expected casted-value)))))))))
+
+(mt/defdataset yyyymmddhhss-binary-simple-cast
+  [["times" [{:field-name "name"
+              :effective-type :type/Text
+              :base-type :type/Text}
+             {:field-name "as_bytes"
+              :base-type {:natives {:postgres "BYTEA"
+                                    :h2       "BYTEA"
+                                    :mysql    "VARBINARY(100)"
+                                    :redshift "VARBYTE"
+                                    :presto-jdbc "VARBINARY"
+                                    :oracle "BLOB"
+                                    :sqlite "BLOB"}}}]
+    [["foo" (.getBytes "20190421164300")]
+     ["bar" (.getBytes "20200421164300")]
+     ["baz" (.getBytes "20210421164300")]]]])
+
+(mt/defdataset iso-binary-cast
+  [["times" [{:field-name "name"
+              :effective-type :type/Text
+              :base-type :type/Text}
+             {:field-name "as_bytes"
+              :base-type {:natives {:postgres "BYTEA"
+                                    :h2       "BYTEA"
+                                    :mysql    "VARBINARY(100)"
+                                    :redshift "VARBYTE"
+                                    :presto-jdbc "VARBINARY"
+                                    :oracle "BLOB"
+                                    :sqlite "BLOB"}}}]
+    [["foo" (.getBytes "2019-04-21 16:43:00")]
+     ["bar" (.getBytes "2020-04-21T16:43:00")]
+     ["baz" (.getBytes "2021-04-21 16:43:00")]]]])
+
+(defmulti binary-dates-expected-rows-simple
+  "Expected rows for the [[datetime-binary-cast]] test below."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod binary-dates-expected-rows-simple :default
+  [_driver]
+  [])
+
+(doseq [driver [:h2 :postgres :databricks]]
+  (defmethod binary-dates-expected-rows-simple driver
+    [_driver]
+    [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
+     [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
+     [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]))
+
+(doseq [driver [:mysql :sqlserver :presto-jdbc]]
+  (defmethod binary-dates-expected-rows-simple driver
+    [_driver]
+    [[1 "foo" #t "2019-04-21T16:43"]
+     [2 "bar" #t "2020-04-21T16:43"]
+     [3 "baz" #t "2021-04-21T16:43"]]))
+
+(defmethod binary-dates-expected-rows-simple :sqlite
+  [_driver]
+  [[1 "foo" "2019-04-21 16:43:00"]
+   [2 "bar" "2020-04-21 16:43:00"]
+   [3 "baz" "2021-04-21 16:43:00"]])
+
+(defmethod binary-dates-expected-rows-simple :mongo
+  [_driver]
+  [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
+   [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
+   [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
+
+(defmethod binary-dates-expected-rows-simple :oracle
+  [_driver]
+  [[1M "foo" #t "2019-04-21T16:43"]
+   [2M "bar" #t "2020-04-21T16:43"]
+   [3M "baz" #t "2021-04-21T16:43"]])
+
+(defmulti binary-dates-expected-rows-iso
+  "Expected rows for the [[datetime-binary-cast]] test below."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod binary-dates-expected-rows-iso :default
+  [_driver]
+  [])
+
+(doseq [driver [:databricks]]
+  (defmethod binary-dates-expected-rows-iso driver
+    [_driver]
+    [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
+     [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
+     [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]))
+
+(doseq [driver [:mysql :sqlserver :presto-jdbc :postgres :h2]]
+  (defmethod binary-dates-expected-rows-iso driver
+    [_driver]
+    [[1 "foo" #t "2019-04-21T16:43"]
+     [2 "bar" #t "2020-04-21T16:43"]
+     [3 "baz" #t "2021-04-21T16:43"]]))
+
+(defmethod binary-dates-expected-rows-iso :sqlite
+  [_driver]
+  [[1 "foo" "2019-04-21 16:43:00"]
+   [2 "bar" "2020-04-21 16:43:00"]
+   [3 "baz" "2021-04-21 16:43:00"]])
+
+(defmethod binary-dates-expected-rows-iso :mongo
+  [_driver]
+  [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
+   [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
+   [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
+
+(defmethod binary-dates-expected-rows-iso :oracle
+  [_driver]
+  [[1M "foo" #t "2019-04-21T16:43"]
+   [2M "bar" #t "2020-04-21T16:43"]
+   [3M "baz" #t "2021-04-21T16:43"]])
+
+;; TODO: Make a real feature for byte->temporal coercion strategies
+
+(deftest ^:parallel datetime-binary-cast
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :expressions/datetime)
+                                     (mt/normal-drivers-with-feature ::adt/yyyymmddhhss-binary-timestamps))
+    (doseq [{:keys [dataset mode expected]}
+            [{:dataset yyyymmddhhss-binary-simple-cast
+              :mode :simplebytes
+              :expected binary-dates-expected-rows-simple}
+             {:dataset iso-binary-cast
+              :mode :isobytes
+              :expected binary-dates-expected-rows-iso}]]
+      (mt/dataset dataset
+        (testing (str "Parsing bytes from " (:database-name dataset) " as datetime with " (or mode "no mode") ".")
+          (let [mp (mt/metadata-provider)
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id :times)))
+                          (lib/with-fields [(lib.metadata/field mp (mt/id :times :id))
+                                            (lib.metadata/field mp (mt/id :times :name))])
+                          (as-> q
+                                (let [column (->> q lib/visible-columns (filter #(= "as_bytes" (u/lower-case-en (:name %)))) first)]
+                                  (lib/expression q "FCALL" (if (nil? mode)
+                                                              (lib/datetime column)
+                                                              (lib/datetime column mode)))))
+                          (assoc :middleware {:format-rows? false}))
+                result (-> query qp/process-query)
+                rows (mt/rows result)]
+            (is (= (expected driver/*driver*)
+                   rows))))))))
