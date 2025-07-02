@@ -9,8 +9,8 @@ import {
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import _ from "underscore";
 
-import ExplicitSize from "metabase/components/ExplicitSize";
-import Modal from "metabase/components/Modal";
+import ExplicitSize from "metabase/common/components/ExplicitSize";
+import Modal from "metabase/common/components/Modal";
 import Databases from "metabase/entities/databases";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
@@ -24,6 +24,7 @@ import SnippetFormModal from "metabase/query_builder/components/template_tags/Sn
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import { Flex } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
@@ -49,7 +50,11 @@ import {
   THRESHOLD_FOR_AUTO_CLOSE,
 } from "./constants";
 import type { SelectionRange, SidebarFeatures } from "./types";
-import { calcInitialEditorHeight } from "./utils";
+import {
+  calcInitialEditorHeight,
+  canFormatForEngine,
+  formatQuery,
+} from "./utils";
 
 type OwnProps = {
   question: Question;
@@ -201,6 +206,22 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     }
   };
 
+  handleFormatQuery = async () => {
+    const { question } = this.props;
+    const query = question.query();
+    const engine = Lib.engine(query);
+    const queryText = Lib.rawNativeQuery(query);
+
+    if (!engine || !canFormatForEngine(engine)) {
+      // no engine found, do nothing
+      return;
+    }
+
+    const formattedQuery = await formatQuery(queryText, engine);
+    this.onChange(formattedQuery);
+    this.focus();
+  };
+
   render() {
     const {
       canChangeDatabase = true,
@@ -238,6 +259,9 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       (collection) => collection.can_write,
     );
 
+    const engine = Lib.engine(question.query());
+    const canFormatQuery = engine != null && canFormatForEngine(engine);
+
     return (
       <div
         className={S.queryEditor}
@@ -270,6 +294,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             toggleEditor={this.props.toggleEditor}
             setParameterValue={this.props.setParameterValue}
             setDatasetQuery={this.props.setDatasetQuery}
+            onFormatQuery={canFormatQuery ? this.handleFormatQuery : undefined}
           />
         )}
         <div
@@ -303,32 +328,39 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               }
             }}
           >
-            <Flex w="100%" flex="1" className={S.resizableBoxContent}>
-              <CodeMirrorEditor
-                ref={this.editor}
-                query={question.query()}
-                readOnly={readOnly}
-                highlightedLineNumbers={highlightedLineNumbers}
-                onChange={this.onChange}
-                onRunQuery={runQuery}
-                onSelectionChange={setNativeEditorSelectedRange}
-                onCursorMoveOverCardTag={openDataReferenceAtQuestion}
-                onRightClickSelection={this.handleRightClickSelection}
-              />
-
-              {hasEditingSidebar && !readOnly && (
-                <NativeQueryEditorRunButton
-                  cancelQuery={this.props.cancelQuery}
-                  isResultDirty={this.props.isResultDirty}
-                  isRunnable={this.props.isRunnable}
-                  isRunning={this.props.isRunning}
-                  nativeEditorSelectedText={this.props.nativeEditorSelectedText}
-                  runQuery={this.props.runQuery}
+            <>
+              <Flex w="100%" flex="1" className={S.resizableBoxContent}>
+                <CodeMirrorEditor
+                  ref={this.editor}
+                  query={question.query()}
+                  readOnly={readOnly}
+                  highlightedLineNumbers={highlightedLineNumbers}
+                  onChange={this.onChange}
+                  onRunQuery={runQuery}
+                  onSelectionChange={setNativeEditorSelectedRange}
+                  onCursorMoveOverCardTag={openDataReferenceAtQuestion}
+                  onRightClickSelection={this.handleRightClickSelection}
+                  onFormatQuery={
+                    canFormatQuery ? this.handleFormatQuery : undefined
+                  }
                 />
-              )}
-            </Flex>
 
-            <NativeQueryValidationError query={query.question().query()} />
+                {hasEditingSidebar && !readOnly && (
+                  <NativeQueryEditorRunButton
+                    cancelQuery={this.props.cancelQuery}
+                    isResultDirty={this.props.isResultDirty}
+                    isRunnable={this.props.isRunnable}
+                    isRunning={this.props.isRunning}
+                    nativeEditorSelectedText={
+                      this.props.nativeEditorSelectedText
+                    }
+                    runQuery={this.props.runQuery}
+                  />
+                )}
+              </Flex>
+
+              <NativeQueryValidationError query={query.question().query()} />
+            </>
           </ResizableBox>
         </div>
 

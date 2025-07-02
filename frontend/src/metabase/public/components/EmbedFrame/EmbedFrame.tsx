@@ -1,26 +1,25 @@
 import cx from "classnames";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
-import { TitleAndDescription } from "metabase/components/TitleAndDescription";
+import { TitleAndDescription } from "metabase/common/components/TitleAndDescription";
 import CS from "metabase/css/core/index.css";
 import TransitionS from "metabase/css/core/transitions.module.css";
 import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module.css";
 import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
 import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton";
 import {
-  DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID,
+  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
   DASHBOARD_PDF_EXPORT_ROOT_ID,
 } from "metabase/dashboard/constants";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { getDashboardType } from "metabase/dashboard/utils";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
-import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
+import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import type { DisplayTheme } from "metabase/public/lib/types";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import { useSyncUrlParameters } from "metabase/query_builder/hooks/use-sync-url-parameters";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
@@ -54,6 +53,7 @@ import {
   TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
 import { LogoBadge } from "./LogoBadge";
+import { useGlobalTheme } from "./useGlobalTheme";
 
 export type EmbedFrameBaseProps = Partial<{
   className: string;
@@ -177,6 +177,8 @@ export const EmbedFrame = ({
     }),
   });
 
+  const hasDashboardTabs = dashboard?.tabs && dashboard.tabs.length > 1;
+
   return (
     <Root
       hasScroll={hasFrameScroll}
@@ -223,9 +225,12 @@ export const EmbedFrame = ({
                   <Box style={{ flex: 1 }} />
                   {dashboard && pdfDownloadsEnabled && (
                     <ExportAsPdfButton
-                      dashboard={dashboard}
-                      hasTitle={titled}
-                      hasVisibleParameters={hasVisibleParameters}
+                      className={cx({
+                        [EmbedFrameS.CompactExportAsPdfButton]:
+                          !titled && (hasVisibleParameters || hasDashboardTabs),
+                        [EmbedFrameS.ParametersVisibleWithNoTabs]:
+                          hasVisibleParameters && !hasDashboardTabs,
+                      })}
                     />
                   )}
                   {headerButtons}
@@ -265,7 +270,7 @@ export const EmbedFrame = ({
           >
             <FixedWidthContainer
               className={DashboardS.ParametersFixedWidthContainer}
-              id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
+              id={DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}
               data-testid="fixed-width-filters"
               isFixedWidth={dashboard?.width === "fixed"}
             >
@@ -280,12 +285,13 @@ export const EmbedFrame = ({
                   enableParameterRequiredBehavior
                 }
               />
-              {dashboard && <FilterApplyButton />}
             </FixedWidthContainer>
           </FullWidthContainer>
         )}
         <Body>{children}</Body>
       </ContentContainer>
+
+      {dashboard && <FilterApplyToast position="fixed" />}
       {isFooterEnabled && (
         <Footer
           data-testid="embed-frame-footer"
@@ -301,32 +307,6 @@ export const EmbedFrame = ({
     </Root>
   );
 };
-
-function useGlobalTheme(theme: DisplayTheme | undefined) {
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
-  useEffect(() => {
-    // We don't want to modify user application DOM when using the SDK.
-    if (isEmbeddingSdk || theme == null) {
-      return;
-    }
-
-    const originalTheme = document.documentElement.getAttribute(
-      "data-metabase-theme",
-    );
-    document.documentElement.setAttribute("data-metabase-theme", theme);
-
-    return () => {
-      if (originalTheme == null) {
-        document.documentElement.removeAttribute("data-metabase-theme");
-      } else {
-        document.documentElement.setAttribute(
-          "data-metabase-theme",
-          originalTheme,
-        );
-      }
-    };
-  }, [isEmbeddingSdk, theme]);
-}
 
 function isParametersWidgetContainersSticky(parameterCount: number) {
   if (!isSmallScreen()) {

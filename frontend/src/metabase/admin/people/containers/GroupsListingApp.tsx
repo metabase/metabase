@@ -3,14 +3,14 @@ import { t } from "ttag";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
 import {
   useCreatePermissionsGroupMutation,
   useDeletePermissionsGroupMutation,
   useListPermissionsGroupsQuery,
   useUpdatePermissionsGroupMutation,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";

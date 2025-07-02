@@ -9,3 +9,4 @@ export * from "./UpsellSSO";
 export * from "./UpsellUploads";
 export * from "./UpsellUsageAnalytics";
 export * from "./UpsellWhitelabel";
+export { UpsellDevInstances } from "./UpsellDevInstances";

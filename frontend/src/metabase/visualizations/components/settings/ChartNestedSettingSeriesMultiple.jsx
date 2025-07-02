@@ -4,7 +4,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
-import IconWrapper from "metabase/components/IconWrapper";
+import IconWrapper from "metabase/common/components/IconWrapper";
 import CS from "metabase/css/core/index.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
 
@@ -59,6 +59,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
               >
                 <div className={cx(CS.flex, CS.alignCenter)}>
                   <ColorSelector
+                    withinPortal={false}
                     value={settings.color}
                     colors={getAccentColors()}
                     onChange={(value) =>

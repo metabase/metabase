@@ -33,7 +33,17 @@ export const isSsoEnabled = (state: State) =>
   getSetting(state, "saml-enabled") ||
   getSetting(state, "other-sso-enabled?");
 
-export const getStoreUrl = (path = "") => {
+type StorePaths =
+  /* store main page */
+  | ""
+  /* checkout page */
+  | "checkout"
+  /* plans management page */
+  | "account/manage/plans"
+  /* development instance specific upsell */
+  | "account/new-dev-instance";
+
+export const getStoreUrl = (path: StorePaths = "") => {
   return `https://store.metabase.com/${path}`;
 };
 

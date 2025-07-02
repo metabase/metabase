@@ -24,7 +24,9 @@
   `:remapped_from` and `:remapped_to` are the names of the columns, e.g. `category_id` is `:remapped_to` `name`, and
   `name` is `:remapped_from` `:category_id`.
 
-  See also [[metabase.parameters.chain-filter]] for another explanation of remapping."
+  See also [[metabase.parameters.chain-filter]] for another explanation of remapping.
+
+  TODO (Cam 6/19/25) -- rename this to `add-remaps` or something that makes it's purposes a little less opaque."
   (:require
    [clojure.data :as data]
    [clojure.walk :as walk]

@@ -4,8 +4,8 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Button from "metabase/common/components/Button";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
-import EditBar from "metabase/components/EditBar";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import EditBar from "metabase/common/components/EditBar";
 
 import PermissionsConfirm from "../PermissionsConfirm";
 

@@ -4,7 +4,7 @@ import { DragLayer } from "react-dnd";
 import _ from "underscore";
 
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
-import { BaseItemsTable } from "metabase/components/ItemsTable/BaseItemsTable";
+import { BaseItemsTable } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { Box, Portal } from "metabase/ui";
 
 // NOTE: our version of react-hot-loader doesn't play nice with react-dnd's DragLayer,

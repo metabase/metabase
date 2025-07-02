@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { GridItem } from "metabase/components/Grid";
+import { GridItem } from "metabase/common/components/Grid";
 
 export const ListHeader = styled.div`
   padding: 1rem 0;

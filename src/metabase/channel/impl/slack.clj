@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.appearance.core :as appearance]
    [metabase.channel.core :as channel]
+   [metabase.channel.impl.util :as impl.util]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.slack :as slack]
@@ -41,13 +42,30 @@
 (def block-text-length-limit "Section block character limit"   3000)
 (def ^:private attachment-text-length-limit                    2000)
 
+(defn- parameter-markdown
+  [parameter]
+  (truncate
+   (format "*%s*\n%s" (:name parameter) (shared.params/value-string parameter (system/site-locale)))
+   attachment-text-length-limit))
+
 (defn- text->markdown-block
-  [text]
-  (let [mrkdwn (markdown/process-markdown text :slack)]
-    (when (not (str/blank? mrkdwn))
-      {:blocks [{:type "section"
-                 :text {:type "mrkdwn"
-                        :text (truncate mrkdwn block-text-length-limit)}}]})))
+  ([text]
+   (text->markdown-block text nil))
+
+  ([text inline-parameters]
+   (let [mrkdwn (markdown/process-markdown text :slack)]
+     (when (not (str/blank? mrkdwn))
+       {:blocks
+        (cond-> [{:type "section"
+                  :text {:type "mrkdwn"
+                         :text (truncate mrkdwn block-text-length-limit)}}]
+          (seq inline-parameters)
+          (conj {:type "section"
+                 :fields (mapv
+                          (fn [parameter]
+                            {:type "mrkdwn"
+                             :text (parameter-markdown parameter)})
+                          inline-parameters)}))}))))
 
 (defn- part->attachment-data
   [part]
@@ -64,7 +82,7 @@
          :fallback        card-name})
 
       :text
-      (text->markdown-block (:text part))
+      (text->markdown-block (:text part) (:inline_parameters part))
 
       :tab-title
       (text->markdown-block (format "# %s" (:text part))))))
@@ -144,12 +162,6 @@
 ;;                                    Dashboard Subscriptions                                      ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn- filter-text
-  [filter]
-  (truncate
-   (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (system/site-locale)))
-   attachment-text-length-limit))
-
 (defn- include-branding?
   "Branding in exports is included only for instances that do not have a whitelabel feature flag."
   []
@@ -166,7 +178,7 @@
 (defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
   Slack dashboard subscription"
-  [dashboard creator-name parameters]
+  [dashboard creator-name all-params top-level-params]
   (let [header-section  {:type "header"
                          :text {:type "plain_text"
                                 :text (truncate (:name dashboard) header-text-limit)
@@ -174,7 +186,7 @@
         link-section    {:type "section"
                          :fields (cond-> [{:type "mrkdwn"
                                            :text (mkdwn-link-text
-                                                  (urls/dashboard-url (:id dashboard) parameters)
+                                                  (urls/dashboard-url (:id dashboard) all-params)
                                                   (format "*Sent from %s by %s*"
                                                           (appearance/site-name)
                                                           creator-name))}]
@@ -184,9 +196,9 @@
                                      :text (mkdwn-link-text
                                             metabase-branding-link
                                             metabase-branding-copy)}))}
-        filter-fields   (for [filter parameters]
+        filter-fields   (for [parameter top-level-params]
                           {:type "mrkdwn"
-                           :text (filter-text filter)})
+                           :text (parameter-markdown parameter)})
         filter-section  (when (seq filter-fields)
                           {:type   "section"
                            :fields filter-fields})]
@@ -202,10 +214,11 @@
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
   [_channel-type {:keys [payload creator]} _template recipients]
-  (let [parameters (:parameters payload)
+  (let [all-params       (:parameters payload)
+        top-level-params (impl.util/remove-inline-parameters all-params (:dashboard_parts payload))
         dashboard  (:dashboard payload)]
     (for [channel-id (map notification-recipient->channel-id recipients)]
       {:channel-id  channel-id
        :attachments (doall (remove nil?
-                                   (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
+                                   (flatten [(slack-dashboard-header dashboard (:common_name creator) all-params top-level-params)
                                              (create-slack-attachment-data (:dashboard_parts payload))])))})))

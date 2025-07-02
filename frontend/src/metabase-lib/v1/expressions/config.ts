@@ -323,13 +323,27 @@ const CONVERSION = defineClauses(
       displayName: "datetime",
       type: "datetime",
       requiresFeature: "expressions/datetime",
-      description: () => t`Converts a datetime string to a datetime.`,
+      description: () => t`Converts a datetime string or bytes to a datetime.`,
+      hasOptions: true,
+      validator(_value, mode) {
+        const validModes = ["iso", "simple", "isobytes", "simplebytes"];
+
+        if (mode !== undefined && !validModes.includes(mode)) {
+          return t`Invalid mode: ${mode}`;
+        }
+      },
       args: () => [
         {
           name: t`value`,
           type: "expression",
-          description: t`The string to convert to a datetime.`,
+          description: t`The string or bytes to convert to a datetime.`,
           example: "2025-03-20 12:45:04",
+        },
+        {
+          name: t`mode`,
+          type: "string",
+          description: t`The mode indicating the format. One of: "simple", "iso", "simplebytes", "simpleiso". Default is "iso".`,
+          optional: true,
         },
       ],
     },

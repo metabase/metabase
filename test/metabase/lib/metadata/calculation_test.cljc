@@ -77,7 +77,7 @@
     (let [query      (lib.tu/venues-query)
           field-id   (inc (apply max (map :id (lib/visible-columns query))))]
       (mu/disable-enforcement
-        (is (=? {:name              (str field-id)
+        (is (=? {:name              "Unknown Field"
                  :display-name      "Unknown Field"
                  :long-display-name "join → Unknown Field"}
                 (lib/display-info query [:field {:join-alias "join"} field-id])))))))
@@ -536,26 +536,13 @@
                          (lib/with-fields [(meta/field-metadata :orders :id)
                                            (meta/field-metadata :orders :product-id)
                                            (meta/field-metadata :orders :subtotal)]))
-          exp-main   [{:name  "ID"
-                       :ident (meta/ident :orders :id)}
-                      {:name  "PRODUCT_ID"
-                       :ident (meta/ident :orders :product-id)}
-                      {:name  "SUBTOTAL"
-                       :ident (meta/ident :orders :subtotal)}]
-          exp-join1  [{:name  "PRICE"
-                       :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :venues :price)
-                                                                          (:ident join1))}
-                      {:name  "CATEGORY_ID"
-                       :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :venues :category-id)
-                                                                          (:ident join1))}
-                      {:name  "NAME"
-                       :ident (lib.metadata.ident/remap-ident
-                               (meta/ident :categories :name)
-                               (lib.metadata.ident/explicitly-joined-ident
-                                (meta/ident :venues :category-id) (:ident join1)))}]
-          exp-join2  [{:name  "CATEGORY"
-                       :ident (lib.metadata.ident/explicitly-joined-ident
-                               (meta/ident :products :category) (:ident join2))}]
+          exp-main   [{:name  "ID"}
+                      {:name  "PRODUCT_ID"}
+                      {:name  "SUBTOTAL"}]
+          exp-join1  [{:name  "PRICE"}
+                      {:name  "CATEGORY_ID"}
+                      {:name  "NAME"}]
+          exp-join2  [{:name  "CATEGORY"}]
           cols       (fn [query]
                        (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))]
       (is (=? (concat exp-main exp-join1 exp-join2)
@@ -568,6 +555,123 @@
                   (lib/join join2)
                   (lib/join join1)
                   cols))))))
+
+(deftest ^:parallel remapped-visible-columns-test
+  (let [product-id  (meta/id :orders :product-id)
+        mp          (-> meta/metadata-provider
+                        (lib.tu/remap-metadata-provider product-id (meta/id :products :title)))
+        base        (lib/query mp (meta/table-metadata :orders))
+        ;; join1 explicitly joins the target of the remapping
+        join1       (-> (lib/join-clause (meta/table-metadata :products)
+                                         [(lib/= (meta/field-metadata :orders :product-id)
+                                                 (meta/field-metadata :products :id))])
+                        (lib/with-join-fields [(meta/field-metadata :products :title)]))
+        ;; join2 explicitly joins the target of the remapping and one more field from the same table (products)
+        join2       (-> (lib/join-clause (meta/table-metadata :products)
+                                         [(lib/= (meta/field-metadata :orders :product-id)
+                                                 (meta/field-metadata :products :id))])
+                        (lib/with-join-fields [(meta/field-metadata :products :title)
+                                               (meta/field-metadata :products :ean)]))
+        join1-query (lib/join base join1)
+        join2-query (lib/join base join2)
+        card1-id    11001100
+        card2-id    11001101
+        card-mp     (-> mp
+                        (lib.tu/metadata-provider-with-card-from-query card1-id join1-query)
+                        (lib.tu/metadata-provider-with-card-from-query card2-id join2-query))
+        card1-query (lib/query card-mp (lib.metadata/card card-mp card1-id))
+        card2-query (lib/query card-mp (lib.metadata/card card-mp card2-id))
+        cols        (fn cols
+                      ([query]
+                       (cols query {:include-remaps? true}))
+                      ([query opts]
+                       (lib/visible-columns query -1 (lib.util/query-stage query -1) opts)))
+        orders-id   (meta/id :orders)
+        products-id (meta/id :products)
+        people-id   (meta/id :people)
+        user-id     (meta/id :orders :user-id)
+        table-fields
+        [{:name "ID",         :lib/source :source/table-defaults, :table-id orders-id}
+         {:name "USER_ID",    :lib/source :source/table-defaults, :table-id orders-id, :fk-target-field-id (meta/id :people :id)}
+         {:name "PRODUCT_ID", :lib/source :source/table-defaults, :table-id orders-id, :fk-target-field-id (meta/id :products :id)}
+         {:name "SUBTOTAL",   :lib/source :source/table-defaults, :table-id orders-id}
+         {:name "TAX",        :lib/source :source/table-defaults, :table-id orders-id}
+         {:name "TOTAL",      :lib/source :source/table-defaults, :table-id orders-id}
+         {:name "DISCOUNT",   :lib/source :source/table-defaults, :table-id orders-id}
+         {:name "CREATED_AT", :lib/source :source/table-defaults, :table-id orders-id}
+         {:name "QUANTITY",   :lib/source :source/table-defaults, :table-id orders-id}
+         {:name "TITLE",      :lib/source :source/table-defaults, :table-id products-id}]
+        ;; the order of the fields is like this because the MP created by metadata-provider-with-card-from-query
+        ;; sorts the fields in the result metadata by :id
+        card2-fields
+        [{:name "TITLE",      :lib/source :source/card, :table-id products-id}
+         {:name "EAN",        :lib/source :source/card, :table-id products-id}
+         {:name "ID",         :lib/source :source/card, :table-id orders-id}
+         {:name "SUBTOTAL",   :lib/source :source/card, :table-id orders-id}
+         {:name "TOTAL",      :lib/source :source/card, :table-id orders-id}
+         {:name "TAX",        :lib/source :source/card, :table-id orders-id}
+         {:name "DISCOUNT",   :lib/source :source/card, :table-id orders-id}
+         {:name "QUANTITY",   :lib/source :source/card, :table-id orders-id}
+         {:name "CREATED_AT", :lib/source :source/card, :table-id orders-id}
+         {:name "PRODUCT_ID", :lib/source :source/card, :table-id orders-id, :fk-target-field-id (meta/id :products :id)}
+         {:name "USER_ID",    :lib/source :source/card, :table-id orders-id, :fk-target-field-id (meta/id :people :id)}]
+        ;; card1 has the same fields as card2, except EAN, which is not added by the join
+        card1-fields
+        (into [] (remove (comp #{"EAN"} :name)) card2-fields)
+        people-fields
+        [{:name "ID",         :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "ADDRESS",    :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "EMAIL",      :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "PASSWORD",   :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "NAME",       :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "CITY",       :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "LONGITUDE",  :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "STATE",      :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "SOURCE",     :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "BIRTH_DATE", :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "ZIP",        :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "LATITUDE",   :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}
+         {:name "CREATED_AT", :lib/source :source/implicitly-joinable, :table-id people-id, :fk-field-id user-id}]
+        ;; the fields of the product table can come from the explicit join...
+        products-join-fields
+        [{:name "ID",         :lib/source :source/joins, :table-id products-id}
+         {:name "EAN",        :lib/source :source/joins, :table-id products-id}
+         {:name "TITLE",      :lib/source :source/joins, :table-id products-id}
+         {:name "CATEGORY",   :lib/source :source/joins, :table-id products-id}
+         {:name "VENDOR",     :lib/source :source/joins, :table-id products-id}
+         {:name "PRICE",      :lib/source :source/joins, :table-id products-id}
+         {:name "RATING",     :lib/source :source/joins, :table-id products-id}
+         {:name "CREATED_AT", :lib/source :source/joins, :table-id products-id}]
+        ;; or they can come from an implicit join
+        products-implicit-join-fields
+        (mapv #(assoc %, :lib/source :source/implicitly-joinable, :fk-field-id product-id)
+              products-join-fields)]
+    (testing "base case: no joins"
+      (is (=? (concat table-fields
+                      people-fields
+                      products-implicit-join-fields)
+              (cols base))))
+    (testing "joins don't exclude implicitly joinable fields for _visible_ columns"
+      (let [expected-columns (concat table-fields
+                                     products-join-fields
+                                     people-fields)]
+        (is (=? expected-columns
+                (cols join1-query)))
+        (is (=? expected-columns
+                (cols join2-query)))))
+    (testing (str "joins in cards (previous stages)\n"
+                  "These tests demonstrate an unwanted difference in behavior.\n"
+                  "If they break such that both cases produce the same result, that's an improvement"
+                  " unless that single result cannot be considered correct")
+      (testing "implicit fields are NOT excluded, if all the joined fields are remapping targets"
+        (is (=? (concat card1-fields
+                        products-implicit-join-fields
+                        people-fields)
+                (cols card1-query))))
+      (testing "implicit fields are excluded, if NOT all the joined fields are remapping targets"
+        (is (=? (concat card2-fields
+                        people-fields)
+                (cols card2-query)))))))
 
 (defn- check-visible-columns
   "Check that calling [[lib/visible-columns]] on `query` produces the `expected-cols`.

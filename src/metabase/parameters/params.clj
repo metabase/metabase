@@ -83,7 +83,7 @@
           (try
             (mbql.u/unwrap-field-or-expression-clause field-form)
             (catch Exception e
-              (log/error e "Failed unwrap field form" field-form)))
+              (log/error e "Failed unwrap field form" (pr-str field-form))))
           (log/error "Could not find matching field clause for target:" target))))))
 
 (defn- pk-fields

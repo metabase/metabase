@@ -192,7 +192,7 @@ describe(
 
       cy.signOut();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       cy.updatePermissionsGraph({
         [DATA_GROUP]: {
           [SAMPLE_DB_ID]: {

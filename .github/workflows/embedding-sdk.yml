@@ -18,8 +18,9 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
-      documentation: ${{ steps.changes.outputs.documentation }}
+      e2e_embedding_sdk: ${{ steps.changes.outputs.e2e_embedding_sdk }}
       frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
+      embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -33,8 +34,9 @@ jobs:
     needs: [files-changed]
     if: |
       !cancelled() &&
-      (needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
-      needs.files-changed.outputs.documentation == 'true')
+      (needs.files-changed.outputs.e2e_embedding_sdk == 'true' ||
+      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
+      needs.files-changed.outputs.embedding_documentation == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     steps:
@@ -75,7 +77,7 @@ jobs:
   embedding-sdk-docs-snippets-type-check:
     needs: [files-changed, build]
     if: |
-      needs.files-changed.outputs.documentation == 'true' &&
+      needs.files-changed.outputs.embedding_documentation == 'true' &&
       needs.build.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
@@ -140,6 +142,7 @@ jobs:
         if: ${{ steps.docs-generation.outcome == 'failure' }}
         run: exit 1
 
+  # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk/dev.md`
   sdk-e2e-tests:
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
     needs: [build]
@@ -153,8 +156,9 @@ jobs:
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk-cross-version.yml
     secrets: inherit
 
+  # See `bin/backward-compatibility-test.js` for the documentation of this workflow.
   cross-version-for-breaking-changes:
-    # run on: every pr that targets a release branch
+    # run on: every pr that targets a release branch, it does NOT run for pr targeting master
     if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.') }}
     uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
     secrets: inherit

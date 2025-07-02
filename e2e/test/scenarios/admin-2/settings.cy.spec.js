@@ -221,11 +221,13 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
   it("should search for and select a new timezone", () => {
     cy.intercept("PUT", "**/report-timezone").as("reportTimezone");
     cy.visit("/admin/settings/localization");
-    const timezoneSelect = cy.findByRole("textbox", { name: /timezone/i });
-    timezoneSelect.clear().type("Centr");
+    cy.findByRole("textbox", { name: /timezone/i })
+      .as("timezoneSelect")
+      .clear()
+      .type("Centr");
     cy.findByRole("listbox").findByText("US/Central").click();
     cy.wait("@reportTimezone");
-    timezoneSelect.should("have.value", "US/Central");
+    cy.get("@timezoneSelect").should("have.value", "US/Central");
   });
 
   it("'General' admin settings should handle setup via `MB_SITE_URL` environment variable (metabase#14900)", () => {
@@ -320,7 +322,7 @@ describe("scenarios > admin > settings (EE)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
@@ -474,7 +476,7 @@ describe("Cloud settings section", () => {
   it("should be visible when running Metabase Cloud", () => {
     // Setting to none will give us an instance where token-features.hosting is set to true
     // Allowing us to pretend that we are a hosted instance (seems backwards though haha)
-    H.setTokenFeatures("none");
+    H.activateToken("pro-cloud");
 
     cy.visit("/admin/settings");
     cy.findByTestId("admin-layout-sidebar").findByText(/Cloud/i).click();
@@ -484,7 +486,7 @@ describe("Cloud settings section", () => {
   });
 
   it("should prompt us to migrate to cloud if we are not hosted", () => {
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.visit("/admin/settings/cloud");
     cy.findAllByTestId("settings-sidebar-link")
       .filter(":contains(Cloud)")
@@ -657,7 +659,7 @@ describe("scenarios > admin > license and billing", () => {
     });
 
     it("should show the user store info for an self-hosted instance managed by the store", () => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       mockBillingTokenFeatures([
         STORE_MANAGED_FEATURE_KEY,
         NO_UPSELL_FEATURE_HEY,
@@ -700,7 +702,7 @@ describe("scenarios > admin > license and billing", () => {
     });
 
     it("should not show license input for cloud-hosted instances", () => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       mockBillingTokenFeatures([
         STORE_MANAGED_FEATURE_KEY,
         NO_UPSELL_FEATURE_HEY,
@@ -711,7 +713,7 @@ describe("scenarios > admin > license and billing", () => {
     });
 
     it("should render an error if something fails when fetching billing info", () => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       mockBillingTokenFeatures([
         STORE_MANAGED_FEATURE_KEY,
         NO_UPSELL_FEATURE_HEY,

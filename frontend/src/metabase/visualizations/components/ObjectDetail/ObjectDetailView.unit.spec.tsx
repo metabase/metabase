@@ -8,7 +8,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { checkNotNull } from "metabase/lib/types";
 import type { WritebackAction } from "metabase-types/api";
@@ -242,6 +242,8 @@ function setup(
   options: Partial<ObjectDetailProps> &
     Required<Pick<ObjectDetailProps, "question">>,
 ) {
+  const fetchTableFks = jest.fn();
+
   renderWithProviders(
     <ObjectDetailView
       data={testDataset}
@@ -259,7 +261,7 @@ function setup(
       followForeignKey={() => null}
       onVisualizationClick={() => null}
       visualizationIsClickable={() => false}
-      fetchTableFks={() => null}
+      fetchTableFks={fetchTableFks}
       loadObjectDetailFKReferences={() => null}
       viewPreviousObjectDetail={() => null}
       viewNextObjectDetail={() => null}
@@ -267,6 +269,10 @@ function setup(
       {...options}
     />,
   );
+
+  return {
+    fetchTableFks,
+  };
 }
 
 describe("ObjectDetailView", () => {
@@ -310,6 +316,22 @@ describe("ObjectDetailView", () => {
     expect(
       await screen.findByText(/Extremely Hungry Toucan/i),
     ).toBeInTheDocument();
+  });
+
+  it("should fetch table foreign keys on mount", async () => {
+    const { fetchTableFks } = setup({
+      question: mockQuestion,
+      table: metadata.table(mockTable.id),
+    });
+    await waitFor(() => expect(fetchTableFks).toHaveBeenCalledTimes(1));
+  });
+
+  it("should not fetch table foreign keys in object detail viz (VIZ-1133)", async () => {
+    const { fetchTableFks } = setup({
+      question: mockQuestion.setDisplay("object"),
+      table: metadata.table(mockTable.id),
+    });
+    await waitFor(() => expect(fetchTableFks).not.toHaveBeenCalled());
   });
 
   it("shows not found if it can't find a missing row", async () => {

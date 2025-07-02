@@ -52,7 +52,8 @@
                               :now                     true
                               :identifiers-with-spaces true
                               :convert-timezone        true
-                              :expressions/date        false}]
+                              :expressions/date        false
+                              :database-routing        false}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (mr/def ::details
@@ -403,6 +404,16 @@
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
   [:to_timestamp expr "YYYYMMDDHH24miSS"])
+
+(defmethod sql.qp/cast-temporal-byte [:oracle :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:utl_raw.cast_to_varchar2 expr]))
+
+(defmethod sql.qp/cast-temporal-byte [:oracle :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
+                               [:utl_raw.cast_to_varchar2 expr]))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
   [driver _ field-or-value]
