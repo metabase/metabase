@@ -27,12 +27,12 @@ export function UpdatesNavItem() {
           disabled={!isNewVersionAvailable}
           styles={{
             indicator: {
-              transform: "translateX(0.5rem)",
+              right: "0.5rem",
             },
           }}
-          color="error"
-          size={6}
-          w="fit-content"
+          size={7}
+          // position the indicator to the right - can't use rightSection because it rotates on click
+          position="middle-end"
         >{t`Updates`}</Indicator>
       }
       icon="sparkles"
