@@ -22,14 +22,14 @@ export const SelectEmbedExperienceStep = () => {
     ]);
 
     // TODO(EMB-508): use the most recent question or dashboard.
-    const defaultEntityId = 1;
+    const defaultResourceId = 1;
 
     setSettings({
       // these settings do not change when the embed type changes
       ...persistedSettings,
 
       // these settings are overridden when the embed type changes
-      ...getDefaultSdkIframeEmbedSettings(experience, defaultEntityId),
+      ...getDefaultSdkIframeEmbedSettings(experience, defaultResourceId),
     } as SdkIframeEmbedSettings);
   };
 
