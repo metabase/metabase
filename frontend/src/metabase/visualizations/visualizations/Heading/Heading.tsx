@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import type { ComponentProps, MouseEvent, RefObject } from "react";
+import type { ComponentProps, MouseEvent } from "react";
 import {
   forwardRef,
   useCallback,
@@ -119,7 +119,6 @@ export function Heading({
   const placeholder = t`You can connect widgets to {{variables}} in heading cards.`;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const headingContentRef = useRef<HTMLDivElement | HTMLInputElement>(null);
   const parametersListRef = useRef<HTMLDivElement>(null);
 
   const [isNarrow, setIsNarrow] = useState(false);
@@ -189,7 +188,6 @@ export function Heading({
         isEditing={isEditing}
         onMouseDown={preventDragging}
         hasFilters={inlineParameters.length > 0}
-        ref={headingContentRef}
       >
         {hasContent ? content : placeholder}
       </HeadingContent>
@@ -211,7 +209,6 @@ export function Heading({
             onUpdateVisualizationSettings({ text: textValue });
           }
         }}
-        ref={headingContentRef as RefObject<HTMLInputElement>}
       />
     );
   }
@@ -253,7 +250,6 @@ export function Heading({
       <HeadingContent
         data-testid="saved-dashboard-heading-content"
         hasFilters={inlineParameters.length > 0}
-        ref={headingContentRef}
       >
         {content}
       </HeadingContent>
