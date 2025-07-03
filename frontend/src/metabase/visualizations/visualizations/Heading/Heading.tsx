@@ -28,7 +28,7 @@ import { useSelector } from "metabase/lib/redux";
 import resizeObserver from "metabase/lib/resize-observer";
 import { isEmpty } from "metabase/lib/validate";
 import { getSetting } from "metabase/selectors/settings";
-import { Flex, Icon, Menu } from "metabase/ui";
+import { Box, Flex, Icon, Menu } from "metabase/ui";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
@@ -179,7 +179,13 @@ export function Heading({
 
   if (hasVariables && isEditingParameter) {
     leftContent = (
-      <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
+      <Box h="100%" style={{ overflow: "hidden" }}>
+        <DashCardParameterMapper
+          compact
+          dashcard={dashcard}
+          isMobile={isMobile}
+        />
+      </Box>
     );
   } else if (isPreviewing) {
     leftContent = (

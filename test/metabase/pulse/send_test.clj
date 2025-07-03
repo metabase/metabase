@@ -191,12 +191,13 @@
        (is (= {:channel-id "#general"
                :attachments
                [{:blocks [{:type "header", :text {:type "plain_text", :text "🔔 Test card", :emoji true}}]}
-                {:title           pulse.test-util/card-name
-                 :rendered-info   {:attachments false
-                                   :content     true}
-                 :title_link      (str "https://testmb.com/question/" card-id)
-                 :attachment-name "image.png"
-                 :fallback        pulse.test-util/card-name}]}
+                {:title             pulse.test-util/card-name
+                 :rendered-info     {:attachments false
+                                     :content     true}
+                 :title_link        (str "https://testmb.com/question/" card-id)
+                 :attachment-name   "image.png"
+                 :inline-parameters nil
+                 :fallback          pulse.test-util/card-name}]}
               (pulse.test-util/thunk->boolean pulse-results))))
 
      :http
@@ -250,12 +251,13 @@
                           :attachments
                           [{:blocks
                             [{:type "header", :text {:type "plain_text", :text "🔔 Test card", :emoji true}}]}
-                           {:title           pulse.test-util/card-name
-                            :rendered-info   {:attachments false
-                                              :content     true}
-                            :title_link      (str "https://testmb.com/question/" card-id)
-                            :attachment-name "image.png"
-                            :fallback        pulse.test-util/card-name}]}
+                           {:title             pulse.test-util/card-name
+                            :rendered-info     {:attachments false
+                                                :content     true}
+                            :inline-parameters nil
+                            :title_link        (str "https://testmb.com/question/" card-id)
+                            :attachment-name   "image.png"
+                            :fallback          pulse.test-util/card-name}]}
                          (pulse.test-util/thunk->boolean pulse-results))))
                 (testing "attached-results-text should be invoked exactly once"
                   (is (= 1
@@ -390,12 +392,13 @@
               (fn [{:keys [card-id]} [result]]
                 (is (= {:channel-id  "#general",
                         :attachments [{:blocks [{:type "header", :text {:type "plain_text", :text "🔔 Test card", :emoji true}}]}
-                                      {:title           pulse.test-util/card-name
-                                       :rendered-info   {:attachments false
-                                                         :content     true}
-                                       :title_link      (str "https://testmb.com/question/" card-id)
-                                       :attachment-name "image.png"
-                                       :fallback        pulse.test-util/card-name}]}
+                                      {:title             pulse.test-util/card-name
+                                       :rendered-info     {:attachments false
+                                                           :content     true}
+                                       :inline-parameters nil
+                                       :title_link        (str "https://testmb.com/question/" card-id)
+                                       :attachment-name   "image.png"
+                                       :fallback          pulse.test-util/card-name}]}
                        (pulse.test-util/thunk->boolean result)))
                 (is (every? produces-bytes? (rest (:attachments result)))))}}
 
