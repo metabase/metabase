@@ -377,28 +377,29 @@
   [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric
    :metadata/segment])
 
-(mr/def ::card.result-metadata.map
-  "Schema for the maps in card `:result-metadata`. These can be either
+(letfn [(f [m]
+          (not (and (contains? m :display-name)
+                    (contains? m :display_name))))]
+  (mr/def ::card.result-metadata.map
+    "Schema for the maps in card `:result-metadata`. These can be either
   `:metabase.lib.schema.metadata/result-metadata` (i.e., kebab-cased) maps, or map snake_cased as returned by QP
   metadata, but they should NOT be a mixture of both -- if we mixed them somehow there is a bug in our code."
-  [:multi
-   {:dispatch #(boolean (:lib/type %))}
-   [true
-    [:merge
-     [:ref ::column]
-     [:map
-      {:error/message "If a Card result metadata column has :lib/type it MUST be a valid kebab-cased :metabase.lib.schema.metadata/column"}]]]
-   ;; If it's not already MLv2 metadata just make sure it at the least something that can pass for legacy metadata.
-   ;; This is a sanity check -- we should not be seen maps that have duplicate keys because of case confusion. They
-   ;; should be all one or the other.
-   [false
-    [:and
-     [:map]
-     [:fn
-      {:error/message "map that does not mix snake_case and kebab-case simple keywords"}
-      (fn [m]
-        (not (and (contains? m :display-name)
-                  (contains? m :display_name))))]]]])
+    [:multi
+     {:dispatch #(boolean (:lib/type %))}
+     [true
+      [:merge
+       [:ref ::column]
+       [:map
+        {:error/message "If a Card result metadata column has :lib/type it MUST be a valid kebab-cased :metabase.lib.schema.metadata/column"}]]]
+     ;; If it's not already MLv2 metadata just make sure it at the least something that can pass for legacy metadata.
+     ;; This is a sanity check -- we should not be seen maps that have duplicate keys because of case confusion. They
+     ;; should be all one or the other.
+     [false
+      [:and
+       [:map]
+       [:fn
+        {:error/message "map that does not mix snake_case and kebab-case simple keywords"}
+        f]]]]))
 
 (defn- normalize-card-query [query]
   (when query

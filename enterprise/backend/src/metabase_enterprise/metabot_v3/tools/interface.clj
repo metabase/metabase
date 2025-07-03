@@ -19,18 +19,19 @@
                             (keyword (u/->kebab-case-en x)))}
    :keyword])
 
-(mr/def ::metadata.parameter
-  [:and
-   [:map
-    [:type {:optional true} [:or
-                             ::metadata.parameter.type
-                             [:set ::metadata.parameter.type]]]
-    [:anyOf {:optional true} [:sequential [:ref ::metadata.parameter]]]
-    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
-   [:fn
-    {:error/message "metadata.parameter must specify either `:type`` or `:anyOf`, but not both."}
-    (fn [query]
-      (= (count (select-keys query [:type :anyOf])) 1))]])
+(letfn [(f [query]
+          (= (count (select-keys query [:type :anyOf])) 1))]
+  (mr/def ::metadata.parameter
+    [:and
+     [:map
+      [:type {:optional true} [:or
+                               ::metadata.parameter.type
+                               [:set ::metadata.parameter.type]]]
+      [:anyOf {:optional true} [:sequential [:ref ::metadata.parameter]]]
+      [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
+     [:fn
+      {:error/message "metadata.parameter must specify either `:type`` or `:anyOf`, but not both."}
+      f]]))
 
 (mr/def ::metadata.name
   [:and

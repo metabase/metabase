@@ -210,15 +210,16 @@
                         (some agg-expr? (nnext expr)))))]
        (not (agg-expr? %)))]])
 
-(mr/def ::expressions
-  "The `:expressions` definition map as found as a top-level key in an MBQL stage."
-  [:and
-   [:sequential {:min 1} [:ref ::expression.definition]]
-   [:fn
-    {:error/message "expressions must have unique names"}
-    (fn [expressions]
-      (or (empty? expressions)
-          (apply distinct? (map #(:lib/expression-name (lib.options/options %)) expressions))))]])
+(letfn [(f [expressions]
+          (or (empty? expressions)
+              (apply distinct? (map #(:lib/expression-name (lib.options/options %)) expressions))))]
+  (mr/def ::expressions
+    "The `:expressions` definition map as found as a top-level key in an MBQL stage."
+    [:and
+     [:sequential {:min 1} [:ref ::expression.definition]]
+     [:fn
+      {:error/message "expressions must have unique names"}
+      f]]))
 
 (mr/def ::positive-integer-or-numeric-expression
   [:and

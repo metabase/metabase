@@ -40,16 +40,17 @@
     (update-keys col key->qp-results-key)
     (m/update-existing col :binning_info update-keys key->qp-results-key)))
 
-(mr/def ::qp-results-cased-col
-  "Map where all simple keywords are snake_case, but lib keywords can stay in kebab-case."
-  [:and
-   ::col
-   [:fn
-    {:error/message "map with QP results casing rules for keys"}
-    (fn [m]
-      (every? (fn [k]
-                (= k (key->qp-results-key k)))
-              (keys m)))]])
+(letfn [(f [m]
+          (every? (fn [k]
+                    (= k (key->qp-results-key k)))
+                  (keys m)))]
+  (mr/def ::qp-results-cased-col
+    "Map where all simple keywords are snake_case, but lib keywords can stay in kebab-case."
+    [:and
+     ::col
+     [:fn
+      {:error/message "map with QP results casing rules for keys"}
+      f]]))
 
 (mr/def ::cols
   [:maybe [:sequential ::col]])

@@ -10,14 +10,15 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(mr/def ::reaction-type
-  "A MetaBot v3 reaction type keyword e.g. `:metabot.reaction/message`"
-  [:fn
-   {:error/message "Reaction type must be a kebab-case keyword starting whose namespace is `metabot.reaction`."}
-   (fn [x]
-     (and (qualified-keyword? x)
-          (= (u/->kebab-case-en (u/qualified-name x)) (u/qualified-name x))
-          (= (namespace x) "metabot.reaction")))])
+(letfn [(reaction-type [x]
+          (and (qualified-keyword? x)
+               (= (u/->kebab-case-en (u/qualified-name x)) (u/qualified-name x))
+               (= (namespace x) "metabot.reaction")))]
+  (mr/def ::reaction-type
+    "A MetaBot v3 reaction type keyword e.g. `:metabot.reaction/message`"
+    [:fn
+     {:error/message "Reaction type must be a kebab-case keyword starting whose namespace is `metabot.reaction`."}
+     reaction-type]))
 
 ;;; TODO -- need Kondo hook that registers the keyword
 (mu/defn defreaction

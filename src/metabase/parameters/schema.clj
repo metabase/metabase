@@ -11,12 +11,12 @@
   "Schema for the map of actual value -> human-readable value. Cannot be empty."
   [:map-of {:min 1} :any [:maybe :string]])
 
-(mr/def ::legacy-field-or-expression-reference
-  "Schema for a valid legacy `:field` or `:expression` reference (possibly not yet normalized)."
-  [:fn
-   (fn [k]
-     ((comp (mr/validator mbql.s/Field)
-            mbql.normalize/normalize-tokens) k))])
+(letfn [(legacy-field-or-expression-reference-fn [k]
+          ((comp (mr/validator mbql.s/Field)
+                 mbql.normalize/normalize-tokens) k))]
+  (mr/def ::legacy-field-or-expression-reference
+    "Schema for a valid legacy `:field` or `:expression` reference (possibly not yet normalized)."
+    [:fn legacy-field-or-expression-reference-fn]))
 
 (mr/def ::values-source-config
   "Schema for valid source_options within a Parameter"
