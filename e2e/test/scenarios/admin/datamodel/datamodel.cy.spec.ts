@@ -1795,13 +1795,27 @@ describe("scenarios > admin > datamodel", () => {
           H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
 
-          // Check json is unfolded initially
-          cy.findByLabelText("Json → A").should("be.visible");
-          cy.findByLabelText("Json").click();
+          // Check json is unfolded initially and shows prefix
+          TableSection.getField("Json → A").should("be.visible");
+          TableSection.clickField("Json → A");
+          TableSection.getField("Json → A")
+            .findByTestId("name-prefix")
+            .should("be.visible")
+            .and("have.text", "Json:");
+          FieldSection.get()
+            .findByTestId("name-prefix")
+            .should("be.visible")
+            .and("have.text", "Json:");
+          FieldSection.get().findByText("json.a").should("be.visible");
+          TableSection.getSortButton().click();
+          TableSection.getField("Json → A")
+            .findByTestId("name-prefix")
+            .should("be.visible")
+            .and("have.text", "Json:");
+          TableSection.get().button("Done").click();
+          TableSection.clickField("Json");
 
-          cy.findByPlaceholderText("Select whether to unfold JSON")
-            .should("have.value", "Yes")
-            .click();
+          FieldSection.getUnfoldJsonInput().should("have.value", "Yes").click();
           H.popover().findByText("No").click();
           cy.wait("@updateField");
           H.undoToast().should(
@@ -1811,10 +1825,7 @@ describe("scenarios > admin > datamodel", () => {
 
           // Check setting has persisted
           cy.reload();
-          cy.findByPlaceholderText("Select whether to unfold JSON").should(
-            "have.value",
-            "No",
-          );
+          FieldSection.getUnfoldJsonInput().should("have.value", "No");
 
           // Sync database
           cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
@@ -1825,7 +1836,8 @@ describe("scenarios > admin > datamodel", () => {
           // Check json field is not unfolded
           H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
-          cy.findByLabelText("Json → A").should("not.exist");
+          TableSection.getField("Json → A").should("not.exist");
+          cy.findByTestId("name-prefix").should("not.exist");
         });
       });
     });

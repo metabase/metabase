@@ -45,6 +45,7 @@ export const DataModel = {
     getFilteringInput: getFieldFilteringInput,
     getDisplayValuesInput: getFieldDisplayValuesInput,
     getDisplayValuesFkTargetInput: getFieldDisplayValuesFkTargetInput,
+    getUnfoldJsonInput: getFieldUnfoldJsonInput,
     getStyleInput: getFieldStyleInput,
     getPrefixInput: getFieldPrefixInput,
     getSuffixInput: getFieldSuffixInput,
@@ -283,6 +284,12 @@ function getFieldDisplayValuesInput() {
 
 function getFieldDisplayValuesFkTargetInput() {
   return getFieldSection().findByPlaceholderText("Choose a field");
+}
+
+function getFieldUnfoldJsonInput() {
+  return getFieldSection().findByPlaceholderText(
+    "Select whether to unfold JSON",
+  );
 }
 
 function getFieldStyleInput() {

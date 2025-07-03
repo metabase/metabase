@@ -41,12 +41,12 @@ export const DataModel = ({ children, location, params }: Props) => {
     error,
     isLoading,
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(tableId));
-  const fieldsById = useMemo(() => {
-    return _.indexBy(table?.fields ?? [], (field) => getRawTableFieldId(field));
+  const fieldsByName = useMemo(() => {
+    return _.indexBy(table?.fields ?? [], (field) => field.name);
   }, [table]);
   const field = table?.fields?.find((field) => field.id === fieldId);
-  const parentField =
-    field?.parent_id != null ? fieldsById[field.parent_id] : undefined;
+  const parentName = field?.nfc_path?.[0] ?? "";
+  const parentField = fieldsByName[parentName];
   const [previewType, setPreviewType] = useState<PreviewType>("table");
 
   const handlePreviewClick = () => {

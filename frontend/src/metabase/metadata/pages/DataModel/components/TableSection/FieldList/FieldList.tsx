@@ -17,16 +17,16 @@ export const FieldList = ({ activeFieldId, getFieldHref, table }: Props) => {
   const fields = useMemo(() => {
     return _.sortBy(table.fields ?? [], (item) => item.position);
   }, [table.fields]);
-  const fieldsById = useMemo(() => {
-    return _.indexBy(fields, (field) => getRawTableFieldId(field));
+  const fieldsByName = useMemo(() => {
+    return _.indexBy(fields, (field) => field.name);
   }, [fields]);
 
   return (
     <Stack gap={rem(12)}>
       {fields.map((field) => {
         const id = getRawTableFieldId(field);
-        const parent =
-          field.parent_id != null ? fieldsById[field.parent_id] : undefined;
+        const parentName = field.nfc_path?.[0] ?? "";
+        const parent = fieldsByName[parentName];
 
         return (
           <FieldItem

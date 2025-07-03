@@ -61,6 +61,7 @@ export const SortableFieldItem = ({
           {parent && (
             <Text
               c="text-light"
+              data-testid="name-prefix"
               flex="0 0 auto"
               lh="normal"
               lineClamp={1}
