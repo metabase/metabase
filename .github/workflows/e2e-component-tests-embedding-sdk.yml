@@ -90,7 +90,7 @@ jobs:
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar-sdk-tests
 
   e2e-tests:
     needs: [get-build-requirements, build-uberjar]
@@ -125,7 +125,7 @@ jobs:
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar-sdk-tests
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
