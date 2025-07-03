@@ -343,7 +343,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({ formula: "su", blur: false });
+    H.enterCustomColumnDetails({ formula: "[su", blur: false });
 
     H.CustomExpressionEditor.completion("Sum of Total").should("be.visible");
 
@@ -677,7 +677,7 @@ describe("scenarios > question > filter", () => {
     H.popover().findByText("Custom Expression").click();
 
     // Try to auto-complete Tax
-    H.CustomExpressionEditor.focus().type("Ta");
+    H.CustomExpressionEditor.focus().type("[Ta");
 
     // Suggestion popover shows up and this select the first one ([Tax])
     H.CustomExpressionEditor.acceptCompletion("tab");
