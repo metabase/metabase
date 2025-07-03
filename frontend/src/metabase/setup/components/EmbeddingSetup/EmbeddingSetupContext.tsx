@@ -44,7 +44,7 @@ type EmbeddingSetupContextType = {
   setError: (error: string) => void;
   selectedTables: Table[];
   setSelectedTables: (tables: Table[]) => void;
-  createdDashboard: Dashboard[];
+  createdDashboard2: Dashboard[];
   setCreatedDashboard: (dashboards: Dashboard[]) => void;
   stepKey: EmbeddingSetupStepKey;
   goToStep: (key: EmbeddingSetupStepKey) => void;
@@ -87,7 +87,7 @@ export const EmbeddingSetupProvider = ({
   const [processingStatus, setProcessingStatus] = useState("");
   const [error, setError] = useState("");
   const [selectedTables, setSelectedTables] = useState<Table[]>([]);
-  const [createdDashboard, setCreatedDashboard] = useState<Dashboard[]>([]);
+  const [createdDashboard2, setCreatedDashboard] = useState<Dashboard[]>([]);
   const [stepKey, goToStep] = useState<EmbeddingSetupStepKey>(STEPS[0].key);
 
   const stepIndex = getStepIndexByKey(stepKey);
@@ -130,7 +130,7 @@ export const EmbeddingSetupProvider = ({
         setError,
         selectedTables,
         setSelectedTables,
-        createdDashboard,
+        createdDashboard2,
         setCreatedDashboard,
         stepKey,
         goToStep,

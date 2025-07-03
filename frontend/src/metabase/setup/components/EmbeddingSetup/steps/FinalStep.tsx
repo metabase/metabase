@@ -24,7 +24,7 @@ import type { StepProps } from "./embeddingSetupSteps";
 
 export const FinalStep = ({ nextStep }: StepProps) => {
   const { url: docsUrl } = useDocsUrl("embedding/interactive-embedding");
-  const { createdDashboard, trackEmbeddingSetupClick } = useEmbeddingSetup();
+  const { createdDashboard2, trackEmbeddingSetupClick } = useEmbeddingSetup();
 
   const getEmbedCode = (url: string) => {
     return `<iframe src="${url}" width="800px" height="500px" />`;
@@ -32,7 +32,7 @@ export const FinalStep = ({ nextStep }: StepProps) => {
 
   const tabs = useMemo(
     () => [
-      ...createdDashboard.map((dashboard: Dashboard) => ({
+      ...createdDashboard2.map((dashboard: Dashboard) => ({
         title: dashboard.name,
         url: `${window.location.origin}/dashboard/${dashboard.id}`,
       })),
@@ -41,10 +41,10 @@ export const FinalStep = ({ nextStep }: StepProps) => {
         url: `${window.location.origin}/question/new`,
       },
     ],
-    [createdDashboard],
+    [createdDashboard2],
   );
 
-  if (!createdDashboard || createdDashboard.length === 0) {
+  if (!createdDashboard2 || createdDashboard2.length === 0) {
     return (
       <Center h="500px">
         <Text>{t`No dashboards found`}</Text>
