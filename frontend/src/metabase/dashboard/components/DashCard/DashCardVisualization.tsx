@@ -17,6 +17,7 @@ import {
 import { duration } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Box,
@@ -100,11 +101,16 @@ const DashCardLoadingView = ({
           <Box style={styles} className={CS.absolute} left={12} bottom={12}>
             <HoverCard width={288} offset={4} position="bottom-start">
               <HoverCard.Target>
-                <Button w={24} h={24} p={0} classNames={{ label: cx(CS.flex) }}>
+                <Button
+                  w={24}
+                  h={24}
+                  p={0}
+                  classNames={{ root: S.invertInNightMode, label: cx(CS.flex) }}
+                >
                   <Icon name="snail" size={12} d="flex" />
                 </Button>
               </HoverCard.Target>
-              <HoverCard.Dropdown ml={-8}>
+              <HoverCard.Dropdown ml={-8} className={EmbedFrameS.dropdown}>
                 <div className={cx(CS.p2, CS.textCentered)}>
                   <Text fw="bold">{t`Waiting for your data`}</Text>
                   <Text lh="1.5">
@@ -506,6 +512,7 @@ export function DashCardVisualization({
       forceLoading={forceLoading}
       slowStateForced={slowStateForced}
       className={cx(CS.flexFull, {
+        [S.isNightMode]: shouldRenderAsNightMode,
         [CS.overflowAuto]: visualizationOverlay,
         [CS.overflowHidden]: !visualizationOverlay,
 
