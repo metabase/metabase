@@ -2,5 +2,16 @@
   "base": {
     "name": "master",
     "hash": "a5c3bec1fad998eaecc3f6fa9fafac6214b35083"
+  },
+  "upstream": {
+    "branch": "emb-590-accept-entity-ids-in-all-sdk-related-endpoints-and-handle-it"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 60464,
+        "gqlID": "PR_kwDOAczgH86dUlhb"
+      }
+    }
   }
 }
