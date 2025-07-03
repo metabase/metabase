@@ -542,6 +542,7 @@
 
 (def ^:private CardUpdateSchema
   [:map
+   [:transform              {:optional true} [:maybe :boolean]]
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
    [:dataset_query          {:optional true} [:maybe ms/Map]]
@@ -667,9 +668,7 @@
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))
-        is-transform-after-update? (if (nil? type)
-                                     (card/transform? card-before-update)
-                                     (card/transform? card-updates))]
+        is-transform-after-update? (:transform card-updates)]
     ;; Do various permissions checks
     (doseq [f [check-allowed-to-move
                check-allowed-to-modify-query

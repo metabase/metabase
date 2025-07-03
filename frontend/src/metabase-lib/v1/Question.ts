@@ -227,6 +227,10 @@ class Question {
     return this.setCard(assoc(this.card(), "type", type));
   }
 
+  setTransform(t: bool) {
+    return this.setCard(assoc(this.card(), "transform", t));
+  }
+
   isPersisted() {
     return this._card && this._card.persisted;
   }

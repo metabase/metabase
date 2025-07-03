@@ -150,7 +150,7 @@ export const QuestionMoreActionsMenu = ({
         data-testid={TURN_INTO_DATASET_TESTID}
         onClick={handleTurnToModel}
       >
-        {t`Turn into a model`}
+        {t`Turn into a transform`}
       </Menu.Item>
     ),
     hasCollectionPermissions && isModel && (

@@ -30,9 +30,9 @@ export const turnQuestionIntoModel =
       return;
     }
 
-    // wip
     const model = question
-      .setType("model")
+        // .setType("model")
+        .setTransform(true)
       // .setType("transform")
       .setPinned(true)
       .setDisplay("table")
@@ -41,7 +41,7 @@ export const turnQuestionIntoModel =
 
     dispatch(
       addUndo({
-        message: t`This is a model now.`,
+        message: t`This is a transform now.`,
         actions: [apiUpdateQuestion(question, { rerunQuery: true })],
       }),
     );
