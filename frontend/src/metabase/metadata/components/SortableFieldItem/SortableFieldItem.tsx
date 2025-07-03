@@ -13,9 +13,15 @@ interface Props {
   active?: boolean;
   disabled?: boolean;
   field: Field;
+  parent?: Field | undefined;
 }
 
-export const SortableFieldItem = ({ active, disabled, field }: Props) => {
+export const SortableFieldItem = ({
+  active,
+  disabled,
+  field,
+  parent,
+}: Props) => {
   const id = getRawTableFieldId(field);
   const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
   const label = field.display_name;
@@ -42,8 +48,7 @@ export const SortableFieldItem = ({ active, disabled, field }: Props) => {
         withBorder
       >
         <Flex
-          gap="sm"
-          justify="space-between"
+          gap={0}
           mih={rem(40)}
           pos="relative"
           px="md"
@@ -51,14 +56,33 @@ export const SortableFieldItem = ({ active, disabled, field }: Props) => {
           w="100%"
           wrap="nowrap"
         >
-          <Icon className={S.icon} name={icon} />
+          <Icon className={S.icon} flex="0 0 auto" mr="sm" name={icon} />
+
+          {parent && (
+            <Text
+              c="text-light"
+              flex="0 0 auto"
+              lh="normal"
+              lineClamp={1}
+              maw="50%"
+              mr="xs"
+            >
+              {parent.display_name}
+              {":"}
+            </Text>
+          )}
 
           <Text flex="1" fw="bold" lh="normal" lineClamp={1}>
             {label}
           </Text>
 
           {draggable && (
-            <Icon className={S.grabber} flex="0 0 auto" name="grabber" />
+            <Icon
+              className={S.grabber}
+              flex="0 0 auto"
+              ml="sm"
+              name="grabber"
+            />
           )}
         </Flex>
       </Card>

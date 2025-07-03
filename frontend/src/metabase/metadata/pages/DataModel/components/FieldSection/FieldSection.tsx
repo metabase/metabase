@@ -21,6 +21,7 @@ interface Props {
   databaseId: DatabaseId;
   field: Field;
   isPreviewOpen: boolean;
+  parent?: Field;
   onPreviewClick: () => void;
 }
 
@@ -28,6 +29,7 @@ const FieldSectionBase = ({
   databaseId,
   field,
   isPreviewOpen,
+  parent,
   onPreviewClick,
 }: Props) => {
   const id = getRawTableFieldId(field);
@@ -51,6 +53,7 @@ const FieldSectionBase = ({
           nameIcon={getColumnIcon(Lib.legacyColumnTypeInfo(field))}
           nameMaxLength={254}
           namePlaceholder={t`Give this field a name`}
+          namePrefix={parent?.display_name}
           onNameChange={async (name) => {
             await updateField({ id, display_name: name });
 

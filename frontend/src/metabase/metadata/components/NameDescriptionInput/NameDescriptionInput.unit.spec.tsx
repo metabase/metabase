@@ -7,9 +7,14 @@ import { NameDescriptionInput } from "./NameDescriptionInput";
 interface SetupOpts {
   description: string;
   name: string;
+  namePrefix?: string;
 }
 
-function setup({ description = "", name = "" }: Partial<SetupOpts> = {}) {
+function setup({
+  description = "",
+  name = "",
+  namePrefix,
+}: Partial<SetupOpts> = {}) {
   const onDescriptionChange = jest.fn();
   const onNameChange = jest.fn();
 
@@ -20,6 +25,7 @@ function setup({ description = "", name = "" }: Partial<SetupOpts> = {}) {
       name={name}
       nameIcon="table2"
       namePlaceholder="Enter name"
+      namePrefix={namePrefix}
       onDescriptionChange={onDescriptionChange}
       onNameChange={onNameChange}
     />,
@@ -51,5 +57,11 @@ describe("NameDescriptionInput", () => {
 
     expect(onDescriptionChange.mock.calls).toEqual([[""]]);
     expect(descriptionInput).toHaveValue("");
+  });
+
+  it("should show name prefix", async () => {
+    setup({ namePrefix: "prefix" });
+
+    expect(screen.getByText("prefix:")).toBeInTheDocument();
   });
 });

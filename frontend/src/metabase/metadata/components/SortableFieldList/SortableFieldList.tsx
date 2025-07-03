@@ -29,6 +29,9 @@ export const SortableFieldList = ({
   const fields = useMemo(() => {
     return _.sortBy(table.fields ?? [], (item) => item.position);
   }, [table.fields]);
+  const fieldsById = useMemo(() => {
+    return _.indexBy(fields, (field) => getRawTableFieldId(field));
+  }, [fields]);
   const isDragDisabled = fields.length <= 1;
 
   const handleSortEnd = ({ itemIds }: DragEndEvent) => {
@@ -40,14 +43,20 @@ export const SortableFieldList = ({
       <SortableList<Field>
         getId={getRawTableFieldId}
         items={fields}
-        renderItem={({ id, item: field }) => (
-          <SortableFieldItem
-            active={id === activeFieldId}
-            disabled={isDragDisabled}
-            field={field}
-            key={id}
-          />
-        )}
+        renderItem={({ id, item: field }) => {
+          const parent =
+            field.parent_id != null ? fieldsById[field.parent_id] : undefined;
+
+          return (
+            <SortableFieldItem
+              active={id === activeFieldId}
+              disabled={isDragDisabled}
+              field={field}
+              parent={parent}
+              key={id}
+            />
+          );
+        }}
         sensors={[pointerSensor]}
         onSortEnd={handleSortEnd}
       />
