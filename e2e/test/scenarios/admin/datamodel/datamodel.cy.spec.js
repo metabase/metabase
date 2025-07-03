@@ -225,7 +225,10 @@ describe("scenarios > admin > datamodel > field", () => {
   });
 
   describe("Display Values", () => {
-    before(H.restore);
+    before(() => {
+      cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
+      H.restore();
+    });
 
     it("lets you change to 'Use foreign key' and change the target for field with fk", () => {
       H.visitAlias("@ORDERS_PRODUCT_ID_URL");
@@ -276,7 +279,8 @@ describe("scenarios > admin > datamodel > field", () => {
             .clear()
             .type(remappedNullValue);
           cy.button("Save").click();
-          cy.button("Saved!").should("be.visible");
+          cy.wait("@updateFieldValues");
+          cy.findByText(/Saved/).should("be.visible");
 
           cy.log("Make sure custom mapping appears in QB");
           H.openTable({ database: dbId, table: NUMBER_WITH_NULLS_ID });
