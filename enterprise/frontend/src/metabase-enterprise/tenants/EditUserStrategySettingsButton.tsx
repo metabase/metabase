@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 
-import * as Urls from "metabase/lib/urls";
 import { Button, Icon } from "metabase/ui";
+import * as Urls from "metabase-enterprise/urls";
 
 export const EditUserStrategySettingsButton = () => (
   <Link to={Urls.editUserStrategy()}>

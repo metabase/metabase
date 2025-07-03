@@ -4,7 +4,6 @@ import type {
   FieldId,
   SchemaId,
   TableId,
-  Tenant,
 } from "metabase-types/api";
 
 export const isInternalUser = (user: BaseUser) => user.tenant_id === null;
@@ -47,29 +46,6 @@ export function reactivateUser(user: BaseUser) {
 }
 
 // TODO: move to EE urls
-export function viewTenants() {
-  return `/admin/tenants`;
-}
-
-export function newTenant() {
-  return `/admin/tenants/new`;
-}
-
-export function editTenant(tenantId: Tenant["id"]) {
-  return `/admin/tenants/${tenantId}/edit`;
-}
-
-export function deactivateTenant(tenantId: Tenant["id"]) {
-  return `/admin/tenants/${tenantId}/deactivate`;
-}
-
-export function reactivateTenant(tenantId: Tenant["id"]) {
-  return `/admin/tenants/${tenantId}/reactivate`;
-}
-
-export function editUserStrategy() {
-  return `/admin/people/user-strategy`;
-}
 
 export function newDatabase() {
   return `/admin/databases/create`;

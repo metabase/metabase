@@ -32,10 +32,7 @@ import type {
 } from "metabase-types/store";
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
-import {
-  EXTERNAL_USERS_NO_ACCESS_COLLECTION,
-  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
-} from "../constants/messages";
+import { Messages } from "../constants/messages";
 import type { DataPermissionValue } from "../types";
 
 import { getPermissionWarningModal } from "./confirmations";
@@ -274,8 +271,8 @@ export const getCollectionsPermissionEditor = createSelector(
       const disabledTooltip = isIACollection
         ? PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE
         : isExternal
-          ? EXTERNAL_USERS_NO_ACCESS_COLLECTION
-          : UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+          ? Messages.EXTERNAL_USERS_NO_ACCESS_COLLECTION
+          : Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
 
       const disabled =
         (isTenantCollection && !isExternal) || isAdmin || isExternal;

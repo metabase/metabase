@@ -36,7 +36,7 @@ export const getRawDataQuestionForTable = (table: Table) => ({
 export const renderUserAttributesForSelect: SelectProps["renderOption"] = ({
   option,
 }) => (
-  <Group flex="1" p="0.5rem" gap="0.25rem" justify="space-between">
+  <Group flex="1" p="sm" gap="xs" justify="space-between">
     {option.label}
     {GET_USER_ATTRIBUTE_ICON_MAP()[option.value]}
   </Group>

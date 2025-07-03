@@ -3,7 +3,7 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
+import { Messages } from "metabase/admin/permissions/constants/messages";
 import { getDefaultGroupHasHigherAccessText } from "metabase/admin/permissions/selectors/confirmations";
 import {
   getDefaultGroup,
@@ -79,7 +79,9 @@ const getPermission = (
     permission: permissionKey,
     isDisabled,
     warning,
-    disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+    disabledTooltip: isAdmin
+      ? Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+      : null,
     value: getApplicationPermission(permissions, groupId, permissionKey),
     options: [
       APPLICATION_PERMISSIONS_OPTIONS.yes,

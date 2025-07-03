@@ -153,7 +153,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         </Route>
       </Route>
       {PLUGIN_METABOT.AdminRoute}
-      {/* Troubleshooting */}
       <Route path="tools" component={createAdminRouteGuard("tools")}>
         <Route title={t`Tools`} component={ToolsApp}>
           <IndexRedirect to="help" />

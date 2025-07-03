@@ -1,10 +1,7 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  EXTERNAL_USERS_NO_ACCESS_DATABASE,
-  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
-} from "metabase/admin/permissions/constants/messages";
+import { Messages } from "metabase/admin/permissions/constants/messages";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -142,9 +139,9 @@ export const buildDataModelPermission = (
     value,
     isHighlighted: isAdmin,
     disabledTooltip: isAdmin
-      ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+      ? Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
       : isExternal
-        ? EXTERNAL_USERS_NO_ACCESS_DATABASE
+        ? Messages.EXTERNAL_USERS_NO_ACCESS_DATABASE
         : null,
     options: [
       DATA_MODEL_PERMISSION_OPTIONS.none,

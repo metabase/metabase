@@ -369,7 +369,11 @@ describe("snapshots", () => {
 });
 
 function getDefaultInstanceData() {
+  // This is something we need to do to ensure that the All External Users group
+  // comes back with the call to /api/permissions/groups. After the API calls are
+  // finished, we disable it
   if (IS_ENTERPRISE) {
+    // Once the feature is released, we will not need to use the bleeding-edge token
     activateToken("bleeding-edge");
     cy.request("PUT", "/api/setting", {
       "use-tenants": true,

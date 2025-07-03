@@ -5,8 +5,7 @@ import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
+import { useToast } from "metabase/common/hooks";
 import { Modal } from "metabase/ui";
 import {
   useGetTenantQuery,
@@ -22,7 +21,7 @@ interface EditUserModalProps {
 }
 
 export const EditTenantModal = ({ params, onClose }: EditUserModalProps) => {
-  const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const tenantId = params.tenantId ? parseInt(params.tenantId, 10) : undefined;
   const {
@@ -44,7 +43,7 @@ export const EditTenantModal = ({ params, onClose }: EditUserModalProps) => {
     const tenant = _.omit({ ...vals, id: vals.id ?? 0 }, "slug");
 
     await updateTenant(tenant).unwrap();
-    dispatch(addUndo({ message: t`Tenant update successful` }));
+    sendToast({ message: t`Tenant update successful` });
     onClose();
   };
 

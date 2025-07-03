@@ -12,7 +12,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
+import { Messages } from "../../constants/messages";
 import {
   limitDatabasePermission,
   navigateToGranularPermissions,
@@ -98,7 +98,9 @@ const buildAccessPermission = (
     permission: DataPermission.VIEW_DATA,
     type: DataPermissionType.ACCESS,
     isDisabled: isAdmin,
-    disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+    disabledTooltip: isAdmin
+      ? Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+      : null,
     isHighlighted: isAdmin,
     value: accessPermissionValue,
     warning: accessPermissionWarning,

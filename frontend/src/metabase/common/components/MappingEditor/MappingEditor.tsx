@@ -87,7 +87,7 @@ const entryError = (entries: MappingEditorEntry[], key: string) => {
   if (entries.filter((e) => e.key === key).length > 1) {
     return t`Attribute keys can't have the same name`;
   }
-  if (entries.some((e) => e.key.startsWith("@"))) {
+  if (key.startsWith("@")) {
     return t`Keys starting with "@" are reserved for system use`;
   }
   return false;

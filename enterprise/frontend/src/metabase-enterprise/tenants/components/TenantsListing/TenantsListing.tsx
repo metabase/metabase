@@ -15,7 +15,6 @@ import UserAvatar from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import { regexpEscape } from "metabase/lib/string";
-import * as Urls from "metabase/lib/urls";
 import {
   Box,
   Button,
@@ -27,6 +26,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { tenantIdToColor } from "metabase-enterprise/tenants/utils/colors";
+import * as Urls from "metabase-enterprise/urls";
 import type { Tenant } from "metabase-types/api";
 
 interface TenantsListingProps {
