@@ -127,10 +127,13 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByLabelText("Product ID")
       .should("contain", "456");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "initialParameters",
-    });
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "embed_wizard_option_changed",
+        event_detail: "initialParameters",
+      },
+      2,
+    );
 
     cy.log("both default values should be in the code snippet");
     getEmbedSidebar().within(() => {
@@ -158,10 +161,13 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByTestId("dashboard-parameters-widget-container")
       .should("not.exist");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "hiddenParameters",
-    });
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "embed_wizard_option_changed",
+        event_detail: "hiddenParameters",
+      },
+      2,
+    );
 
     cy.log("code snippet should contain the hidden parameters");
     getEmbedSidebar().within(() => {
