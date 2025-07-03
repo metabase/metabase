@@ -7,6 +7,7 @@ import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, Loader, Menu, Text } from "metabase/ui";
 import { DRAGGABLE_ID } from "metabase/visualizer/constants";
+import { useIsCardPristine } from "metabase/visualizer/hooks/use-is-card-pristine";
 import {
   getDataSources,
   getDatasets,
@@ -65,6 +66,9 @@ export const ColumnsList = (props: ColumnListProps) => {
     dispatch(removeColumn({ name: columnRefName, well: "all" }));
   };
 
+  const isPristine = useIsCardPristine({
+    source: dataSources[0],
+  });
   const isSingleDataSource = dataSources.length === 1;
 
   return (
@@ -113,6 +117,7 @@ export const ColumnsList = (props: ColumnListProps) => {
                     <Menu.Item
                       key="reset_data_source"
                       leftSection={<Icon name="revert" />}
+                      disabled={isPristine}
                       onClick={() => {
                         trackSimpleEvent({
                           event: "visualizer_data_changed",
@@ -122,7 +127,7 @@ export const ColumnsList = (props: ColumnListProps) => {
                         });
                         onResetDataSource(source);
                       }}
-                      aria-label="Reset data source"
+                      aria-label={t`Reset data source`}
                       data-testid="reset-datasource-button"
                     >
                       {t`Reset to defaults`}

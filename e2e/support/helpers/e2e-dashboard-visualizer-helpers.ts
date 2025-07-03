@@ -69,22 +69,16 @@ export function removeDataSource(
   }
 }
 
-/**
- * Resets a data source.
- * Only works in "ColumnList" mode, despite the name...
- *
- * @param dataSourceName the data source name
- */
-export function resetDataSource(dataSourceName: string) {
+export function resetDataSourceButton(dataSourceName: string) {
   dataSource(dataSourceName)
     .realHover()
     .findByLabelText("Datasource actions")
     .click({ force: true });
-  cy.document()
+  return cy
+    .document()
     .its("body")
     .findByTestId("datasource-actions-dropdown")
-    .findByLabelText("Reset data source")
-    .click({ force: true });
+    .findByLabelText("Reset data source");
 }
 
 export function dataSourceColumn(dataSourceName: string, columnName: string) {

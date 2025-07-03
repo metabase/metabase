@@ -153,7 +153,7 @@ describe("Snowplow tracking", () => {
       });
 
       // resets a dataset
-      H.resetDataSource(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name);
+      H.resetDataSourceButton(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name).click();
       H.expectUnstructuredSnowplowEvent({
         event: "visualizer_data_changed",
         event_detail: "visualizer_datasource_reset",
