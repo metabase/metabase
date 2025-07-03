@@ -45,8 +45,7 @@ export const SelectEmbedResourceStep = () => {
     experience: SdkIframeEmbedSetupExperience,
     id: string | number,
   ) => {
-    const resourceId = typeof id === "string" ? parseInt(id, 10) : id;
-    trackEmbedWizardResourceSelected(resourceId, experience);
+    trackEmbedWizardResourceSelected(Number(id), experience);
 
     if (experience === "dashboard") {
       updateSettings({

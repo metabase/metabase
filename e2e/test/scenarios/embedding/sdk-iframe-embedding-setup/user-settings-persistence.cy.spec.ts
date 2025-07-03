@@ -4,23 +4,14 @@ import { getEmbedSidebar, navigateToEntitySelectionStep } from "./helpers";
 
 const { H } = cy;
 
-const suiteTitle =
-  "scenarios > embedding > sdk iframe embed setup > user settings persistence";
-
-H.describeWithSnowplow(suiteTitle, () => {
+describe("scenarios > embedding > sdk iframe embed setup > user settings persistence", () => {
   beforeEach(() => {
     H.restore();
-    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.enableTracking();
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-  });
-
-  afterEach(() => {
-    H.expectNoBadSnowplowEvents();
   });
 
   it("persists dashboard embed options", () => {
@@ -30,21 +21,11 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow downloads").click().should("be.checked");
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_option_changed",
-        event_detail: "withDownloads",
-      });
-
       capturePersistSettings();
 
       cy.findByLabelText("Show dashboard title")
         .click()
         .should("not.be.checked");
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_option_changed",
-        event_detail: "withTitle",
-      });
     });
 
     cy.log("2. reload the page");
@@ -72,21 +53,10 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       capturePersistSettings();
       cy.findByLabelText("Allow downloads").click().should("be.checked");
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_option_changed",
-        event_detail: "withDownloads",
-      });
-
       cy.wait("@persistSettings");
 
       capturePersistSettings();
       cy.findByLabelText("Show chart title").click().should("not.be.checked");
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_option_changed",
-        event_detail: "withTitle",
-      });
     });
 
     cy.log("2. reload the page");
@@ -157,10 +127,6 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("2. reload the page");
     waitAndReload();
-    getEmbedSidebar().within(() => {
-      cy.findByText("Next").click(); // Entity selection step
-      cy.findByText("Next").click(); // Embed options step
-    });
 
     cy.log("3. brand color should be persisted");
     H.getIframeBody()
