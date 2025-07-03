@@ -42,42 +42,184 @@ describe("scenarios > admin > datamodel", () => {
     cy.intercept("PUT", "/api/table/*").as("updateTable");
   });
 
+  // https://linear.app/metabase/issue/SEM-423/data-loading-error-handling
+  it.skip("should show 404 if database does not exist (metabase#14652)", () => {
+    H.DataModel.visit({ databaseId: 54321 });
+
+    cy.findAllByTestId("tree-item")
+      .filter('[data-type="table"]')
+      .should("have.length", 0);
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Not found.");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Select a database");
+  });
+
   describe("Table picker", () => {
-    it("should allow changing the table visibility", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
+    describe("Table visibility", () => {
+      it("should allow changing the table visibility", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+
+        H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
+        cy.wait("@updateTable");
+
+        H.undoToast().should("contain.text", "Hid Orders");
+
+        H.startNewQuestion();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab("Tables").click();
+          cy.findByText("People").should("be.visible");
+          cy.findByText("Orders").should("not.exist");
+        });
+
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+
+        H.DataModel.TablePicker.getTable("Orders")
+          .button("Unhide table")
+          .click();
+        cy.wait("@updateTable");
+
+        H.undoToast().should("contain.text", "Unhid Orders");
+
+        H.startNewQuestion();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab("Tables").click();
+          cy.findByText("People").should("be.visible");
+          cy.findByText("Orders").should("be.visible");
+        });
       });
 
-      H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
-      cy.wait("@updateTable");
+      // TODO: https://linear.app/metabase/issue/SEM-299
+      it.skip("should allow hiding and restoring all tables in a schema", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("4 Queryable Tables").should("be.visible");
+        cy.findByLabelText("Hide all").click();
+        cy.wait("@updateTables");
 
-      H.undoToast().should("contain.text", "Hid Orders");
-
-      H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByText("People").should("be.visible");
-        cy.findByText("Orders").should("not.exist");
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("8 Hidden Tables").should("be.visible");
+        cy.findByLabelText("Unhide all").click();
+        cy.wait("@updateTables");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("8 Queryable Tables").should("be.visible");
       });
 
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
+      it("hidden table should not show up in various places in UI", () => {
+        cy.signInAsAdmin();
+
+        // Toggle the orders table to be hidden as admin user
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+        H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
+        cy.wait("@updateTable");
+
+        // Visit the main page, we shouldn't be able to see the table
+        cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
+
+        cy.findByTestId("browse-schemas")
+          .findByText("Products")
+          .should("be.visible");
+        cy.findByTestId("browse-schemas")
+          .findByText("Orders")
+          .should("not.exist");
+
+        // It shouldn't show up for a normal user either
+        cy.signInAsNormalUser();
+        cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
+
+        cy.findByTestId("browse-schemas")
+          .findByText("Products")
+          .should("be.visible");
+        cy.findByTestId("browse-schemas")
+          .findByText("Orders")
+          .should("not.exist");
+
+        // It shouldn't show in a new question data picker
+        H.startNewQuestion();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab("Tables").click();
+          cy.contains("Products").should("exist");
+          cy.contains("Orders").should("not.exist");
+        });
       });
 
-      H.DataModel.TablePicker.getTable("Orders").button("Unhide table").click();
-      cy.wait("@updateTable");
+      describe("shouldn't prevent editing related question after turning table visibility off (metabase#15947)", () => {
+        it("simple question (metabase#15947-1)", () => {
+          turnTableVisibilityOff(ORDERS_ID);
+          H.visitQuestion(ORDERS_QUESTION_ID);
 
-      H.undoToast().should("contain.text", "Unhid Orders");
+          H.queryBuilderHeader().findByText("View-only").should("be.visible");
+        });
 
-      H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByText("People").should("be.visible");
-        cy.findByText("Orders").should("be.visible");
+        it.skip("question with joins (metabase#15947-2)", () => {
+          H.createQuestion({
+            name: "15947",
+            query: {
+              "source-table": ORDERS_ID,
+              joins: [
+                {
+                  fields: "all",
+                  "source-table": PRODUCTS_ID,
+                  condition: [
+                    "=",
+                    ["field", ORDERS.PRODUCT_ID, null],
+                    ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+                  ],
+                  alias: "Products",
+                },
+              ],
+              filter: [
+                "and",
+                ["=", ["field", ORDERS.QUANTITY, null], 1],
+                [
+                  ">",
+                  ["field", PRODUCTS.RATING, { "join-alias": "Products" }],
+                  3,
+                ],
+              ],
+              aggregation: [
+                ["sum", ["field", ORDERS.TOTAL, null]],
+                [
+                  "sum",
+                  ["field", PRODUCTS.RATING, { "join-alias": "Products" }],
+                ],
+              ],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+                ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+              ],
+            },
+          }).then(({ body: { id: QUESTION_ID } }) => {
+            turnTableVisibilityOff(PRODUCTS_ID);
+            cy.visit(`/question/${QUESTION_ID}/notebook`);
+            cy.findByText("Products");
+            cy.findByText("Quantity is equal to 1");
+            cy.findByText("Rating is greater than 3");
+            H.queryBuilderHeader().findByText("View-only").should("be.visible");
+          });
+        });
       });
     });
   });
@@ -163,32 +305,6 @@ describe("scenarios > admin > datamodel", () => {
       );
     });
 
-    it("should allow changing the table name", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-      });
-
-      H.DataModel.TableSection.getNameInput().clear().type("New orders").blur();
-      cy.wait("@updateTable");
-
-      H.undoToast().should("contain.text", "Table name updated");
-      cy.findByDisplayValue("New orders").should("be.visible");
-      H.DataModel.TableSection.getNameInput()
-        .should("have.value", "New orders")
-        .and("be.visible");
-      H.DataModel.TablePicker.getTable("New orders").should("be.visible");
-      H.DataModel.TablePicker.getTable("Orders").should("not.exist");
-
-      H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByText("People").should("be.visible");
-        cy.findByText("New orders").should("be.visible");
-      });
-    });
-
     it(
       "should be able to select and update a table in a database without schemas",
       { tags: ["@external"] },
@@ -215,508 +331,400 @@ describe("scenarios > admin > datamodel", () => {
       },
     );
 
-    it("should allow changing the table name with data model permissions only", () => {
-      H.activateToken("pro-self-hosted");
-      setDataModelPermissions({ tableIds: [ORDERS_ID] });
+    describe("Name and description", () => {
+      it("should allow changing the table name with data model permissions only", () => {
+        H.activateToken("pro-self-hosted");
+        setDataModelPermissions({ tableIds: [ORDERS_ID] });
 
-      cy.signIn("none");
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
+        cy.signIn("none");
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+
+        H.DataModel.TableSection.getNameInput()
+          .clear()
+          .type("New orders")
+          .blur();
+        cy.wait("@updateTable");
+
+        H.DataModel.TableSection.getNameInput().should(
+          "have.value",
+          "New orders",
+        );
+
+        H.undoToast().should("contain.text", "Table name updated");
+        cy.signOut();
+
+        cy.signInAsNormalUser();
+        H.startNewQuestion();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab("Tables").click();
+          cy.findByText("People").should("be.visible");
+          cy.findByText("New orders").should("be.visible");
+        });
       });
 
-      H.DataModel.TableSection.getNameInput().clear().type("New orders").blur();
-      cy.wait("@updateTable");
+      it("should allow changing the table description", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
 
-      H.DataModel.TableSection.getNameInput().should(
-        "have.value",
-        "New orders",
-      );
+        H.DataModel.TableSection.getDescriptionInput()
+          .clear()
+          .type("New description")
+          .blur();
+        cy.wait("@updateTable");
 
-      H.undoToast().should("contain.text", "Table name updated");
-      cy.signOut();
+        H.undoToast().should("contain.text", "Table description updated");
+        H.DataModel.TableSection.getDescriptionInput()
+          .should("have.value", "New description")
+          .and("be.visible");
 
-      cy.signInAsNormalUser();
-      H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByText("People").should("be.visible");
-        cy.findByText("New orders").should("be.visible");
-      });
-    });
-
-    it("should allow changing the table description", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
+        cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Orders").should("be.visible");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("New description").should("be.visible");
       });
 
-      H.DataModel.TableSection.getDescriptionInput()
-        .clear()
-        .type("New description")
-        .blur();
-      cy.wait("@updateTable");
+      it("should allow clearing the table description", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
 
-      H.undoToast().should("contain.text", "Table description updated");
-      H.DataModel.TableSection.getDescriptionInput()
-        .should("have.value", "New description")
-        .and("be.visible");
+        H.DataModel.TableSection.getDescriptionInput().clear().blur();
+        cy.wait("@updateTable");
 
-      cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New description").should("be.visible");
-    });
+        H.undoToast().should("contain.text", "Table description updated");
+        H.DataModel.TableSection.getDescriptionInput()
+          .should("have.value", "")
+          .and("be.visible");
 
-    it("should allow clearing the table description", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-      });
-
-      H.DataModel.TableSection.getDescriptionInput().clear().blur();
-      cy.wait("@updateTable");
-
-      H.undoToast().should("contain.text", "Table description updated");
-      H.DataModel.TableSection.getDescriptionInput()
-        .should("have.value", "")
-        .and("be.visible");
-
-      cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("No description yet").should("be.visible");
-    });
-
-    it("should allow changing the field name", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-      });
-
-      H.DataModel.TableSection.getFieldNameInput("Tax")
-        .clear()
-        .type("New tax")
-        .blur();
-      cy.wait("@updateField");
-
-      H.undoToast().should("contain.text", "Display name for Tax updated");
-      H.DataModel.TableSection.getFieldNameInput("New tax").should(
-        "be.visible",
-      );
-
-      H.openOrdersTable();
-      H.tableHeaderColumn("New tax").should("be.visible");
-      H.tableHeaderColumn("Tax", { scrollIntoView: false }).should("not.exist");
-    });
-
-    it("should allow changing the field name with data model permissions only", () => {
-      H.activateToken("pro-self-hosted");
-      setDataModelPermissions({ tableIds: [ORDERS_ID] });
-
-      cy.signIn("none");
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-      });
-      H.DataModel.TableSection.getFieldNameInput("Tax")
-        .clear()
-        .type("New tax")
-        .blur();
-      cy.wait("@updateField");
-
-      H.undoToast().should("contain.text", "Display name for Tax updated");
-      H.DataModel.TableSection.getFieldNameInput("New tax").should(
-        "be.visible",
-      );
-      H.DataModel.TableSection.getField("New tax").should("be.visible");
-
-      cy.signInAsNormalUser();
-      H.openOrdersTable();
-      H.tableHeaderColumn("New tax").should("be.visible");
-      H.tableHeaderColumn("Tax", { scrollIntoView: false }).should("not.exist");
-    });
-
-    it("should allow changing the field description", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-      });
-
-      H.DataModel.TableSection.getFieldDescriptionInput("Total")
-        .clear()
-        .type("New description")
-        .blur();
-      cy.wait("@updateField");
-
-      H.undoToast().should("contain.text", "Description for Total updated");
-      H.DataModel.TableSection.getFieldDescriptionInput("Total").should(
-        "have.value",
-        "New description",
-      );
-
-      cy.visit(
-        `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
-      );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Total").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New description").should("be.visible");
-    });
-
-    it("should allow clearing the field description", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-      });
-
-      H.DataModel.TableSection.getFieldDescriptionInput("Total").clear().blur();
-      cy.wait("@updateField");
-
-      H.undoToast().should("contain.text", "Description for Total updated");
-      H.DataModel.TableSection.getFieldDescriptionInput("Total").should(
-        "have.value",
-        "",
-      );
-
-      cy.visit(
-        `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
-      );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Total").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("No description yet").should("be.visible");
-    });
-
-    it("should allow sorting fields as in the database", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: PRODUCTS_ID,
-      });
-
-      H.DataModel.TableSection.getSortButton().click();
-      H.DataModel.TableSection.getSortOrderInput()
-        .findByDisplayValue("database")
-        .should("be.checked");
-
-      H.openProductsTable();
-      assertTableHeader([
-        "ID",
-        "Ean",
-        "Title",
-        "Category",
-        "Vendor",
-        "Price",
-        "Rating",
-        "Created At",
-      ]);
-    });
-
-    it("should allow sorting fields alphabetically", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: PRODUCTS_ID,
-      });
-
-      H.DataModel.TableSection.getSortButton().click();
-      H.DataModel.TableSection.getSortOrderInput()
-        .findByLabelText("Alphabetical order")
-        .click();
-      cy.wait("@updateTable");
-
-      H.DataModel.TableSection.getSortOrderInput()
-        .findByDisplayValue("alphabetical")
-        .should("be.checked");
-
-      H.openProductsTable();
-      assertTableHeader([
-        "Category",
-        "Created At",
-        "Ean",
-        "ID",
-        "Price",
-        "Rating",
-        "Title",
-        "Vendor",
-      ]);
-    });
-
-    it("should allow sorting fields smartly", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: PRODUCTS_ID,
-      });
-
-      H.DataModel.TableSection.getSortButton().click();
-      H.DataModel.TableSection.getSortOrderInput()
-        .findByLabelText("Auto order")
-        .click();
-      cy.wait("@updateTable");
-
-      H.DataModel.TableSection.getSortOrderInput()
-        .findByDisplayValue("smart")
-        .should("be.checked");
-
-      H.openProductsTable();
-      assertTableHeader([
-        "ID",
-        "Created At",
-        "Category",
-        "Ean",
-        "Price",
-        "Rating",
-        "Title",
-        "Vendor",
-      ]);
-    });
-
-    it("should allow sorting fields in the custom order", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: PRODUCTS_ID,
-      });
-
-      H.DataModel.TableSection.getSortButton().click();
-      H.DataModel.TableSection.getSortOrderInput()
-        .findByDisplayValue("database")
-        .should("be.checked");
-
-      H.moveDnDKitElement(H.DataModel.TableSection.getSortableField("ID"), {
-        vertical: 50,
-      });
-      cy.wait("@updateFieldOrder");
-
-      cy.log("should not show loading state after an update (metabase#56482)");
-      cy.findByTestId("loading-indicator", { timeout: 0 }).should("not.exist");
-
-      H.DataModel.TableSection.getSortOrderInput()
-        .findByDisplayValue("custom")
-        .should("be.checked");
-
-      H.openProductsTable();
-      assertTableHeader([
-        "Ean",
-        "ID",
-        "Title",
-        "Category",
-        "Vendor",
-        "Price",
-        "Rating",
-        "Created At",
-      ]);
-    });
-
-    it("should allow switching to predefined order after drag & drop (metabase#56482)", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: PRODUCTS_ID,
-      });
-
-      H.DataModel.TableSection.getSortButton().click();
-      H.DataModel.TableSection.getSortOrderInput()
-        .findByDisplayValue("database")
-        .should("be.checked");
-
-      H.moveDnDKitElement(H.DataModel.TableSection.getSortableField("ID"), {
-        vertical: 50,
-      });
-      cy.wait("@updateFieldOrder");
-
-      cy.log("should not show loading state after an update (metabase#56482)");
-      cy.findByTestId("loading-indicator", { timeout: 0 }).should("not.exist");
-
-      H.DataModel.TableSection.getSortableFields().should(($items) => {
-        expect($items[0].textContent).to.equal("Ean");
-        expect($items[1].textContent).to.equal("ID");
-      });
-
-      H.DataModel.TableSection.getSortOrderInput()
-        .findByDisplayValue("custom")
-        .should("be.checked");
-
-      cy.log(
-        "should allow switching to predefined order afterwards (metabase#56482)",
-      );
-      H.DataModel.TableSection.getSortOrderInput()
-        .findByLabelText("Database order")
-        .click();
-      cy.wait("@updateTable");
-
-      H.DataModel.TableSection.getSortOrderInput()
-        .findByDisplayValue("database")
-        .should("be.checked");
-      H.DataModel.TableSection.getSortableFields().should(($items) => {
-        expect($items[0].textContent).to.equal("ID");
-        expect($items[1].textContent).to.equal("Ean");
-      });
-
-      cy.log("should allow drag & drop afterwards (metabase#56482)"); // extra sanity check
-      H.moveDnDKitElement(H.DataModel.TableSection.getSortableField("ID"), {
-        vertical: 50,
-      });
-      cy.wait("@updateFieldOrder");
-
-      cy.log("should not show loading state after an update (metabase#56482)");
-      cy.findByTestId("loading-indicator", { timeout: 0 }).should("not.exist");
-
-      H.DataModel.TableSection.getSortableFields().should(($items) => {
-        expect($items[0].textContent).to.equal("Ean");
-        expect($items[1].textContent).to.equal("ID");
+        cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Orders").should("be.visible");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("No description yet").should("be.visible");
       });
     });
 
-    // TODO: https://linear.app/metabase/issue/SEM-299
-    it.skip("should allow hiding and restoring all tables in a schema", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-      });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("4 Queryable Tables").should("be.visible");
-      cy.findByLabelText("Hide all").click();
-      cy.wait("@updateTables");
+    describe("Field name and description", () => {
+      it("should allow changing the field name", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
 
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
+        H.DataModel.TableSection.getFieldNameInput("Tax")
+          .clear()
+          .type("New tax")
+          .blur();
+        cy.wait("@updateField");
+
+        H.undoToast().should("contain.text", "Display name for Tax updated");
+        H.DataModel.TableSection.getFieldNameInput("New tax").should(
+          "be.visible",
+        );
+
+        H.openOrdersTable();
+        H.tableHeaderColumn("New tax").should("be.visible");
+        H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
+          "not.exist",
+        );
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("8 Hidden Tables").should("be.visible");
-      cy.findByLabelText("Unhide all").click();
-      cy.wait("@updateTables");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("8 Queryable Tables").should("be.visible");
+
+      it("should allow changing the field name with data model permissions only", () => {
+        H.activateToken("pro-self-hosted");
+        setDataModelPermissions({ tableIds: [ORDERS_ID] });
+
+        cy.signIn("none");
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+        H.DataModel.TableSection.getFieldNameInput("Tax")
+          .clear()
+          .type("New tax")
+          .blur();
+        cy.wait("@updateField");
+
+        H.undoToast().should("contain.text", "Display name for Tax updated");
+        H.DataModel.TableSection.getFieldNameInput("New tax").should(
+          "be.visible",
+        );
+        H.DataModel.TableSection.getField("New tax").should("be.visible");
+
+        cy.signInAsNormalUser();
+        H.openOrdersTable();
+        H.tableHeaderColumn("New tax").should("be.visible");
+        H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
+          "not.exist",
+        );
+      });
+
+      it("should allow changing the field description", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+
+        H.DataModel.TableSection.getFieldDescriptionInput("Total")
+          .clear()
+          .type("New description")
+          .blur();
+        cy.wait("@updateField");
+
+        H.undoToast().should("contain.text", "Description for Total updated");
+        H.DataModel.TableSection.getFieldDescriptionInput("Total").should(
+          "have.value",
+          "New description",
+        );
+
+        cy.visit(
+          `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+        );
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Total").should("be.visible");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("New description").should("be.visible");
+      });
+
+      it("should allow clearing the field description", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+
+        H.DataModel.TableSection.getFieldDescriptionInput("Total")
+          .clear()
+          .blur();
+        cy.wait("@updateField");
+
+        H.undoToast().should("contain.text", "Description for Total updated");
+        H.DataModel.TableSection.getFieldDescriptionInput("Total").should(
+          "have.value",
+          "",
+        );
+
+        cy.visit(
+          `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+        );
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Total").should("be.visible");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("No description yet").should("be.visible");
+      });
     });
 
-    // https://linear.app/metabase/issue/SEM-423/data-loading-error-handling
-    it.skip("should show 404 if database does not exist (metabase#14652)", () => {
-      H.DataModel.visit({ databaseId: 54321 });
+    describe("Sorting", () => {
+      it("should allow sorting fields as in the database", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: PRODUCTS_ID,
+        });
 
-      cy.findAllByTestId("tree-item")
-        .filter('[data-type="table"]')
-        .should("have.length", 0);
+        H.DataModel.TableSection.getSortButton().click();
+        H.DataModel.TableSection.getSortOrderInput()
+          .findByDisplayValue("database")
+          .should("be.checked");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Not found.");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Select a database");
-    });
-
-    it("hidden table should not show up in various places in UI", () => {
-      cy.signInAsAdmin();
-
-      // Toggle the orders table to be hidden as admin user
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-      });
-      H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
-      cy.wait("@updateTable");
-
-      // Visit the main page, we shouldn't be able to see the table
-      cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
-
-      cy.findByTestId("browse-schemas")
-        .findByText("Products")
-        .should("be.visible");
-      cy.findByTestId("browse-schemas")
-        .findByText("Orders")
-        .should("not.exist");
-
-      // It shouldn't show up for a normal user either
-      cy.signInAsNormalUser();
-      cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
-
-      cy.findByTestId("browse-schemas")
-        .findByText("Products")
-        .should("be.visible");
-      cy.findByTestId("browse-schemas")
-        .findByText("Orders")
-        .should("not.exist");
-
-      // It shouldn't show in a new question data picker
-      H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.contains("Products").should("exist");
-        cy.contains("Orders").should("not.exist");
-      });
-    });
-
-    describe("shouldn't prevent editing related question after turning table visibility off (metabase#15947)", () => {
-      it("simple question (metabase#15947-1)", () => {
-        turnTableVisibilityOff(ORDERS_ID);
-        H.visitQuestion(ORDERS_QUESTION_ID);
-
-        H.queryBuilderHeader().findByText("View-only").should("be.visible");
+        H.openProductsTable();
+        assertTableHeader([
+          "ID",
+          "Ean",
+          "Title",
+          "Category",
+          "Vendor",
+          "Price",
+          "Rating",
+          "Created At",
+        ]);
       });
 
-      it.skip("question with joins (metabase#15947-2)", () => {
-        H.createQuestion({
-          name: "15947",
-          query: {
-            "source-table": ORDERS_ID,
-            joins: [
-              {
-                fields: "all",
-                "source-table": PRODUCTS_ID,
-                condition: [
-                  "=",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-                ],
-                alias: "Products",
-              },
-            ],
-            filter: [
-              "and",
-              ["=", ["field", ORDERS.QUANTITY, null], 1],
-              [
-                ">",
-                ["field", PRODUCTS.RATING, { "join-alias": "Products" }],
-                3,
-              ],
-            ],
-            aggregation: [
-              ["sum", ["field", ORDERS.TOTAL, null]],
-              ["sum", ["field", PRODUCTS.RATING, { "join-alias": "Products" }]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-              ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
-            ],
-          },
-        }).then(({ body: { id: QUESTION_ID } }) => {
-          turnTableVisibilityOff(PRODUCTS_ID);
-          cy.visit(`/question/${QUESTION_ID}/notebook`);
-          cy.findByText("Products");
-          cy.findByText("Quantity is equal to 1");
-          cy.findByText("Rating is greater than 3");
-          H.queryBuilderHeader().findByText("View-only").should("be.visible");
+      it("should allow sorting fields alphabetically", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: PRODUCTS_ID,
+        });
+
+        H.DataModel.TableSection.getSortButton().click();
+        H.DataModel.TableSection.getSortOrderInput()
+          .findByLabelText("Alphabetical order")
+          .click();
+        cy.wait("@updateTable");
+
+        H.DataModel.TableSection.getSortOrderInput()
+          .findByDisplayValue("alphabetical")
+          .should("be.checked");
+
+        H.openProductsTable();
+        assertTableHeader([
+          "Category",
+          "Created At",
+          "Ean",
+          "ID",
+          "Price",
+          "Rating",
+          "Title",
+          "Vendor",
+        ]);
+      });
+
+      it("should allow sorting fields smartly", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: PRODUCTS_ID,
+        });
+
+        H.DataModel.TableSection.getSortButton().click();
+        H.DataModel.TableSection.getSortOrderInput()
+          .findByLabelText("Auto order")
+          .click();
+        cy.wait("@updateTable");
+
+        H.DataModel.TableSection.getSortOrderInput()
+          .findByDisplayValue("smart")
+          .should("be.checked");
+
+        H.openProductsTable();
+        assertTableHeader([
+          "ID",
+          "Created At",
+          "Category",
+          "Ean",
+          "Price",
+          "Rating",
+          "Title",
+          "Vendor",
+        ]);
+      });
+
+      it("should allow sorting fields in the custom order", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: PRODUCTS_ID,
+        });
+
+        H.DataModel.TableSection.getSortButton().click();
+        H.DataModel.TableSection.getSortOrderInput()
+          .findByDisplayValue("database")
+          .should("be.checked");
+
+        H.moveDnDKitElement(H.DataModel.TableSection.getSortableField("ID"), {
+          vertical: 50,
+        });
+        cy.wait("@updateFieldOrder");
+
+        cy.log(
+          "should not show loading state after an update (metabase#56482)",
+        );
+        cy.findByTestId("loading-indicator", { timeout: 0 }).should(
+          "not.exist",
+        );
+
+        H.DataModel.TableSection.getSortOrderInput()
+          .findByDisplayValue("custom")
+          .should("be.checked");
+
+        H.openProductsTable();
+        assertTableHeader([
+          "Ean",
+          "ID",
+          "Title",
+          "Category",
+          "Vendor",
+          "Price",
+          "Rating",
+          "Created At",
+        ]);
+      });
+
+      it("should allow switching to predefined order after drag & drop (metabase#56482)", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: PRODUCTS_ID,
+        });
+
+        H.DataModel.TableSection.getSortButton().click();
+        H.DataModel.TableSection.getSortOrderInput()
+          .findByDisplayValue("database")
+          .should("be.checked");
+
+        H.moveDnDKitElement(H.DataModel.TableSection.getSortableField("ID"), {
+          vertical: 50,
+        });
+        cy.wait("@updateFieldOrder");
+
+        cy.log(
+          "should not show loading state after an update (metabase#56482)",
+        );
+        cy.findByTestId("loading-indicator", { timeout: 0 }).should(
+          "not.exist",
+        );
+
+        H.DataModel.TableSection.getSortableFields().should(($items) => {
+          expect($items[0].textContent).to.equal("Ean");
+          expect($items[1].textContent).to.equal("ID");
+        });
+
+        H.DataModel.TableSection.getSortOrderInput()
+          .findByDisplayValue("custom")
+          .should("be.checked");
+
+        cy.log(
+          "should allow switching to predefined order afterwards (metabase#56482)",
+        );
+        H.DataModel.TableSection.getSortOrderInput()
+          .findByLabelText("Database order")
+          .click();
+        cy.wait("@updateTable");
+
+        H.DataModel.TableSection.getSortOrderInput()
+          .findByDisplayValue("database")
+          .should("be.checked");
+        H.DataModel.TableSection.getSortableFields().should(($items) => {
+          expect($items[0].textContent).to.equal("ID");
+          expect($items[1].textContent).to.equal("Ean");
+        });
+
+        cy.log("should allow drag & drop afterwards (metabase#56482)"); // extra sanity check
+        H.moveDnDKitElement(H.DataModel.TableSection.getSortableField("ID"), {
+          vertical: 50,
+        });
+        cy.wait("@updateFieldOrder");
+
+        cy.log(
+          "should not show loading state after an update (metabase#56482)",
+        );
+        cy.findByTestId("loading-indicator", { timeout: 0 }).should(
+          "not.exist",
+        );
+
+        H.DataModel.TableSection.getSortableFields().should(($items) => {
+          expect($items[0].textContent).to.equal("Ean");
+          expect($items[1].textContent).to.equal("ID");
         });
       });
     });
   });
 
   describe("Field section", () => {
-    describe("Header", () => {
+    describe("Name and description", () => {
       it("should allow changing the field name", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
