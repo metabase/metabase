@@ -422,38 +422,47 @@ export class AceEditorInner extends Component<AceEditorProps> {
     }
   };
 
-  getSnippetNameAtCursor = ({ row, column }: Ace.Position) => {
+  getLineAtCursor = ({ row }: Ace.Position) => {
     if (!this._editor) {
       return null;
     }
-    const lines = this._editor.getValue().split("\n");
-    const linePrefix = lines[row].slice(0, column);
+    // Split on all possoble line endings, since sometimes ace gets confused about the
+    // new line mode and this causes errors.
+    const lines = this._editor.getValue().split(/\r\n|\n|\r/);
+    return lines[row] ?? null;
+  };
+
+  getSnippetNameAtCursor = (cursor: Ace.Position) => {
+    const line = this.getLineAtCursor(cursor);
+    if (!line) {
+      return null;
+    }
+    const linePrefix = line.slice(0, cursor.column);
     const match = linePrefix.match(/\{\{\s*snippet:\s*([^\}]*)$/);
     return match?.[1] || null;
   };
 
-  getCardTagNameAtCursor = ({ row, column }: Ace.Position) => {
-    if (!this._editor) {
+  getCardTagNameAtCursor = (cursor: Ace.Position) => {
+    const line = this.getLineAtCursor(cursor);
+    if (!line) {
       return null;
     }
-    const lines = this._editor.getValue().split("\n");
-    const linePrefix = lines[row].slice(0, column);
+    const linePrefix = line.slice(0, cursor.column);
     const match = linePrefix.match(/\{\{\s*(#[^\}]*)$/);
     return match?.[1] || null;
   };
 
-  cardTagIdAtCursor = ({ row, column }: Ace.Position) => {
-    if (!this._editor) {
+  cardTagIdAtCursor = (cursor: Ace.Position) => {
+    const line = this.getLineAtCursor(cursor);
+    if (!line) {
       return null;
     }
-    const line = this._editor.getValue().split("\n")[row];
     const matches = Array.from(line.matchAll(CARD_TAG_REGEX));
-
     const match = matches.find(
       (m) =>
         typeof m.index === "number" &&
-        column > m.index &&
-        column < m.index + m[0].length,
+        cursor.column > m.index &&
+        cursor.column < m.index + m[0].length,
     );
     const idStr = match?.[2];
 
