@@ -76,7 +76,7 @@ export const SdkIframeEmbedPreview = () => {
 
   return (
     <div>
-      <Box id="iframe-embed-container" />
+      <Box id="iframe-embed-container" data-iframe-loaded={isIframeLoaded} />
     </div>
   );
 };
