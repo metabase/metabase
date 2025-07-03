@@ -22,6 +22,7 @@
    ;; if a column's source is `:source/fields` or `:source/breakouts`, that means it either came from the previous
    ;; stage, or the source table or a join in this stage. So we can determine if it was from the previous stage if
    ;;
+   ;;
    ;; 1. there is a previous stage (or source card), and
    ;;
    ;; 2a. it DOES NOT have a join alias, OR
