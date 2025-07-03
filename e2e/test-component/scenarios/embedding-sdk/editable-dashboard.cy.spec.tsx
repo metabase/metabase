@@ -6,6 +6,12 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  getDashboardCard,
+  getDashboardCards,
+  modal,
+  popover,
+} from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
@@ -198,6 +204,47 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
 
       cy.findByText("New Question").should("be.visible");
       cy.findByText("New SQL query").should("not.exist");
+    });
+  });
+
+  describe("create new question from dashboards", () => {
+    it("should allow creating a new question from the dashboard", () => {
+      cy.get("@dashboardId").then((dashboardId) => {
+        mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
+      });
+
+      getSdkRoot().within(() => {
+        cy.button("Edit dashboard").should("be.visible").click();
+        cy.button("Add questions").should("be.visible").click();
+        cy.button("New Question").should("be.visible").click();
+
+        cy.log("building the query");
+        popover().findByRole("link", { name: "Orders" }).click();
+        /**
+         * We need to visualize before we can save the question.
+         * This will be addressed in EMB-584
+         */
+        cy.button("Visualize").click();
+        cy.button("Save").click();
+
+        modal().within(() => {
+          cy.findByRole("heading", { name: "Save new question" }).should(
+            "be.visible",
+          );
+          cy.findByLabelText("Name").clear().type("Orders in a dashboard");
+          cy.button("Save").click();
+        });
+
+        cy.log("Now we should be back on the dashboard in the edit mode");
+        cy.findByText("You're editing this dashboard.").should("be.visible");
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        getDashboardCard()
+          .findByText("Orders in a dashboard")
+          .should("be.visible");
+
+        cy.button("Save").click();
+        cy.findByText("You're editing this dashboard.").should("not.exist");
+      });
     });
   });
 });
