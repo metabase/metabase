@@ -6,7 +6,7 @@ export interface EmailSMTPSettings {
   "email-smtp-username": string | null;
 }
 
-export interface EmailSMTPSettingsOverride {
+export interface EmailSMTPOverrideSettings {
   "email-smtp-host-override": string;
   "email-smtp-password-override": string | null;
   "email-smtp-port-override": 465 | 587 | 2525;

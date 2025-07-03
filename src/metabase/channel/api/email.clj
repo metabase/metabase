@@ -24,7 +24,7 @@
    :email-smtp-port     :port
    :email-smtp-security :security})
 
-(def ^:private mb-to-smtp-settings-override
+(def ^:private mb-to-smtp-override-settings
   {:email-smtp-host-override     :host
    :email-smtp-username-override :user
    :email-smtp-password-override :pass
@@ -168,7 +168,7 @@
     (throw (ex-info (tru "Invalid email-smtp-security-override value")
                     {:status-code 400})))
 
-  (u/prog1 (check-and-update-settings settings mb-to-smtp-settings-override (channel.settings/email-smtp-password-override))
+  (u/prog1 (check-and-update-settings settings mb-to-smtp-override-settings (channel.settings/email-smtp-password-override))
     (when (nil? (:errors (:body <>))) (channel.settings/smtp-override-enabled! true))))
 
 (api.macros/defendpoint :delete "/"
@@ -183,7 +183,7 @@
   []
   (check-features)
   (perms/check-has-application-permission :setting)
-  (setting/set-many! (assoc (zipmap (keys mb-to-smtp-settings-override) (repeat nil))
+  (setting/set-many! (assoc (zipmap (keys mb-to-smtp-override-settings) (repeat nil))
                             :smtp-override-enabled false))
   api/generic-204-no-content)
 

@@ -16,7 +16,7 @@
            (#'api.email/humanize-error-messages @#'api.email/mb-to-smtp-settings
                                                 {::email/error (Exception. "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar")})))
     (is (= {:errors {:email-smtp-host-override "Wrong host or port", :email-smtp-port-override "Wrong host or port"}}
-           (#'api.email/humanize-error-messages @#'api.email/mb-to-smtp-settings-override
+           (#'api.email/humanize-error-messages @#'api.email/mb-to-smtp-override-settings
                                                 {::email/error (Exception. "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar")}))))
   (is (= {:message "Sorry, something went wrong. Please try again. Error: Some unexpected message"}
          (#'api.email/humanize-error-messages @#'api.email/mb-to-smtp-settings
@@ -32,7 +32,7 @@
              (#'api.email/humanize-error-messages @#'api.email/mb-to-smtp-settings {::email/error exception})))
       (is (= {:errors {:email-smtp-username-override "Wrong username or password"
                        :email-smtp-password-override "Wrong username or password"}}
-             (#'api.email/humanize-error-messages @#'api.email/mb-to-smtp-settings-override {::email/error exception}))))))
+             (#'api.email/humanize-error-messages @#'api.email/mb-to-smtp-override-settings {::email/error exception}))))))
 
 (defn- email-settings
   []
@@ -42,7 +42,7 @@
    :email-smtp-username (setting/get :email-smtp-username)
    :email-smtp-password (setting/get :email-smtp-password)})
 
-(defn- email-settings-override  []
+(defn- email-override-settings  []
   {:email-smtp-host-override     (setting/get :email-smtp-host-override)
    :email-smtp-port-override     (setting/get :email-smtp-port-override)
    :email-smtp-security-override (setting/get :email-smtp-security-override)
@@ -56,7 +56,7 @@
    :email-smtp-username "munchkin"
    :email-smtp-password "gobble gobble"})
 
-(def ^:private default-email-settings-override
+(def ^:private default-email-override-settings
   {:email-smtp-host-override     "foobar"
    :email-smtp-port-override     465
    :email-smtp-security-override :tls
@@ -174,22 +174,22 @@
             (is (nil? (setting/get-value-of-type :string :email-smtp-password)))
             (is (= 123 (setting/get-value-of-type :integer :email-smtp-port)))))))))
 
-(deftest update-email-settings-override-test
+(deftest update-email-override-settings-test
   ;; There is a lot of overlap with the /api/email test, but enough differences that we keep them separate.
   ;; NOTE: When adding tests, ask yourself "should this also be tested in the /api/email test?"
   (testing "PUT /api/email/override - check updating email settings"
     (with-redefs [premium-features/is-hosted? (constantly false)]
       (testing "Cannot call without hosting"
         (is (= "API is not available on non-hosted servers."
-               (mt/user-http-request :crowberto :put 403 "email/override" default-email-settings-override)))))
+               (mt/user-http-request :crowberto :put 403 "email/override" default-email-override-settings)))))
     (with-redefs [premium-features/is-hosted? (constantly true)]
       (mt/with-premium-features []
         (testing "Cannot call without the :cloud-custom-smtp feature"
           (is (= "API is not available in your Metabase plan. Please upgrade to use this feature."
-                 (mt/user-http-request :crowberto :put 403 "email/override" default-email-settings-override)))))
+                 (mt/user-http-request :crowberto :put 403 "email/override" default-email-override-settings)))))
       (mt/with-premium-features [:cloud-custom-smtp]
-        (let [original-values (email-settings-override)
-              body default-email-settings-override]
+        (let [original-values (email-override-settings)
+              body default-email-override-settings]
           (doseq [;; test what happens on both a successful and an unsuccessful connection.
                   [success? f] {true  (fn [thunk]
                                         (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
@@ -204,7 +204,7 @@
                      (testing "API request"
                        (testing (format "\nRequest body =\n%s" (u/pprint-to-str body))
                          (if success?
-                           (is (= (-> default-email-settings-override
+                           (is (= (-> default-email-override-settings
                                       (assoc :with-corrections {})
                                       (update :email-smtp-security-override name))
                                   (mt/user-http-request :crowberto :put 200 "email/override" body)))
@@ -213,16 +213,16 @@
                                   (mt/user-http-request :crowberto :put 400 "email/override" body))))))
                      (testing "Settings after API request is finished"
                        (is (= (if success?
-                                default-email-settings-override
+                                default-email-override-settings
                                 original-values)
-                              (email-settings-override)))))))))))
+                              (email-override-settings)))))))))))
 
       (mt/with-premium-features [:cloud-custom-smtp]
         (testing "Cannot use non-secure settings"
           (is (= "Invalid email-smtp-security-override value"
-                 (mt/user-http-request :crowberto :put 400 "email/override" (assoc default-email-settings-override :email-smtp-security-override "none"))))
+                 (mt/user-http-request :crowberto :put 400 "email/override" (assoc default-email-override-settings :email-smtp-security-override "none"))))
           (is (= "Invalid email-smtp-port-override value"
-                 (mt/user-http-request :crowberto :put 400 "email/override" (assoc default-email-settings-override :email-smtp-port-override 25)))))
+                 (mt/user-http-request :crowberto :put 400 "email/override" (assoc default-email-override-settings :email-smtp-port-override 25)))))
         (testing "Updating values with obfuscated password (#23919)"
           (mt/with-temporary-setting-values [email-smtp-host-override "www.test.com"
                                              email-smtp-password-override "preexisting"]
@@ -233,7 +233,7 @@
                                                            {::email/error (ex-info "Sent obfuscated password" {})}
                                                            settings)))]
               (testing "If we don't change the password we don't see the password"
-                (let [payload (-> (email-settings-override)
+                (let [payload (-> (email-override-settings)
                                 ;; user changes one property
                                   (assoc :email-smtp-port 999)
                                 ;; the FE will have an obfuscated value
@@ -241,7 +241,7 @@
                       response (mt/user-http-request :crowberto :put 200 "email/override" payload)]
                   (is (= (setting/obfuscate-value "preexisting") (:email-smtp-password-override response)))))
               (testing "If we change the password we can receive the password"
-                (let [payload (-> (email-settings-override)
+                (let [payload (-> (email-override-settings)
                                 ;; user types in a new password
                                   (assoc :email-smtp-password-override "new-password"))
                       response (mt/user-http-request :crowberto :put 200 "email/override" payload)]
@@ -271,28 +271,28 @@
                     :email-smtp-password nil}
                    (email-settings)))))))))
 
-(deftest clear-email-settings-override-test
+(deftest clear-email-override-settings-test
   (testing "DELETE /api/email/override"
     (with-redefs [premium-features/is-hosted? (constantly false)]
       (testing "Cannot call without hosting"
         (is (= "API is not available on non-hosted servers."
-               (mt/user-http-request :crowberto :delete 403 "email/override" default-email-settings-override)))))
+               (mt/user-http-request :crowberto :delete 403 "email/override" default-email-override-settings)))))
     (with-redefs [premium-features/is-hosted? (constantly true)]
       (mt/with-premium-features [:cloud-custom-smtp]
         (tu/discard-setting-changes [email-smtp-host-override email-smtp-port-override email-smtp-security-override
                                      email-smtp-username-override email-smtp-password-override]
           (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
-            (is (= (-> default-email-settings-override
+            (is (= (-> default-email-override-settings
                        (assoc :with-corrections {})
                        (update :email-smtp-security-override name))
-                   (mt/user-http-request :crowberto :put 200 "email/override" default-email-settings-override)))
-            (let [new-email-settings-override (email-settings-override)]
+                   (mt/user-http-request :crowberto :put 200 "email/override" default-email-override-settings)))
+            (let [new-email-override-settings (email-override-settings)]
               (is (nil? (mt/user-http-request :crowberto :delete 204 "email/override")))
-              (is (= default-email-settings-override
-                     new-email-settings-override))
+              (is (= default-email-override-settings
+                     new-email-override-settings))
               (is (= {:email-smtp-host-override     nil
                       :email-smtp-port-override     nil
                       :email-smtp-security-override :ssl
                       :email-smtp-username-override nil
                       :email-smtp-password-override nil}
-                     (email-settings-override))))))))))
+                     (email-override-settings))))))))))

@@ -1,6 +1,6 @@
 import type {
+  EmailSMTPOverrideSettings,
   EmailSMTPSettings,
-  EmailSMTPSettingsOverride,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -25,7 +25,7 @@ export const settingsApi = Api.injectEndpoints({
     }),
     updateCloudEmailSMTPSettings: builder.mutation<
       void,
-      EmailSMTPSettingsOverride
+      EmailSMTPOverrideSettings
     >({
       query: (emailSettingsOverride) => ({
         method: "PUT",

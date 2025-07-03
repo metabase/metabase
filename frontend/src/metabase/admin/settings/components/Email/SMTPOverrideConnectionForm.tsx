@@ -23,7 +23,7 @@ import {
 import * as Errors from "metabase/lib/errors";
 import { Box, Button, Chip, Flex, Modal, Stack } from "metabase/ui";
 import type {
-  EmailSMTPSettingsOverride,
+  EmailSMTPOverrideSettings,
   SettingDefinitionMap,
 } from "metabase-types/api";
 
@@ -42,7 +42,7 @@ const emailSettingKeys = [
 const anySchema = Yup.mixed().nullable().default(null);
 
 type FormValues = Omit<
-  EmailSMTPSettingsOverride,
+  EmailSMTPOverrideSettings,
   "email-smtp-port-override"
 > & {
   "email-smtp-port-override": string; // FormChip doesn't work well with integers
@@ -140,7 +140,7 @@ export const SMTPOverrideConnectionForm = ({
     async (formData: FormValues) => {
       const smtpPort = parseInt(
         formData["email-smtp-port-override"],
-      ) as EmailSMTPSettingsOverride["email-smtp-port-override"];
+      ) as EmailSMTPOverrideSettings["email-smtp-port-override"];
 
       try {
         await updateCloudEmailSMTPSettings({
