@@ -87,10 +87,8 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       cy.signInAsNormalUser();
       H.openOrdersTable();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New tax").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Tax").should("not.exist");
+      H.tableHeaderColumn("New tax").should("be.visible");
+      H.tableHeaderColumn("Tax", { scrollIntoView: false }).should("not.exist");
     });
 
     it("should allow changing the field name with data model permissions only in field settings", () => {
@@ -115,10 +113,10 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       cy.signInAsNormalUser();
       H.openOrdersTable();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New total").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Total").should("not.exist");
+      H.tableHeaderColumn("New total").should("be.visible");
+      H.tableHeaderColumn("Total", { scrollIntoView: false }).should(
+        "not.exist",
+      );
     });
 
     it("should allow changing the field foreign key target", () => {
@@ -158,8 +156,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         H.entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("User ID").should("be.visible");
+      cy.findByLabelText("Left column").should("contain.text", "User ID");
     });
 
     it("should allow setting foreign key mapping for accessible tables", () => {
