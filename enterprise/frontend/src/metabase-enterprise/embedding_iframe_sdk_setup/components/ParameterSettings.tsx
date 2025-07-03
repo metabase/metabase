@@ -1,5 +1,5 @@
 import { useDebouncedCallback } from "@mantine/hooks";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -48,6 +48,16 @@ export const ParameterSettings = () => {
     500,
   );
 
+  const parameterValues = useMemo(() => {
+    if (settings.dashboardId) {
+      return settings.initialParameters;
+    } else if (settings.questionId) {
+      return settings.initialSqlParameters;
+    }
+
+    return {};
+  }, [settings]);
+
   // Only show parameters for dashboards and questions
   if (!isQuestionOrDashboardEmbed) {
     return null;
@@ -70,11 +80,14 @@ export const ParameterSettings = () => {
             .with(P.nullish, () => param.name.toLowerCase())
             .otherwise((val) => val.toString());
 
+          const defaultValue = parameterValues?.[param.slug] ?? undefined;
+
           return (
             <TextInput
               key={param.id}
               label={param.name}
               placeholder={placeholder}
+              defaultValue={defaultValue}
               onChange={(e) =>
                 updateInitialParameterValue(param.slug, e.target.value)
               }
