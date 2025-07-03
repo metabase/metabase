@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.appearance.core :as appearance]
    [metabase.channel.core :as channel]
+   [metabase.channel.impl.util :as impl.util]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.slack :as slack]
@@ -41,13 +42,37 @@
 (def block-text-length-limit "Section block character limit"   3000)
 (def ^:private attachment-text-length-limit                    2000)
 
+(defn- parameter-markdown
+  [parameter]
+  (truncate
+   (format "*%s*\n%s" (:name parameter) (shared.params/value-string parameter (system/site-locale)))
+   attachment-text-length-limit))
+
+(defn- maybe-append-params-block
+  "Appends an inline parameters block to a collection of blocks if parameters exist."
+  [blocks inline-parameters]
+  (if (seq inline-parameters)
+    (conj blocks {:type "section"
+                  :fields (mapv
+                           (fn [parameter]
+                             {:type "mrkdwn"
+                              :text (parameter-markdown parameter)})
+                           inline-parameters)})
+    blocks))
+
 (defn- text->markdown-block
-  [text]
-  (let [mrkdwn (markdown/process-markdown text :slack)]
-    (when (not (str/blank? mrkdwn))
-      {:blocks [{:type "section"
-                 :text {:type "mrkdwn"
-                        :text (truncate mrkdwn block-text-length-limit)}}]})))
+  ([text]
+   (text->markdown-block text nil))
+
+  ([text inline-parameters]
+   (let [mrkdwn (markdown/process-markdown text :slack)]
+     (when (not (str/blank? mrkdwn))
+       {:blocks
+        (maybe-append-params-block
+         [{:type "section"
+           :text {:type "mrkdwn"
+                  :text (truncate mrkdwn block-text-length-limit)}}]
+         inline-parameters)}))))
 
 (defn- part->attachment-data
   [part]
@@ -56,15 +81,19 @@
       :card
       (let [{:keys [card dashcard result]}         part
             {card-id :id card-name :name :as card} card]
-        {:title           (or (-> dashcard :visualization_settings :card.title)
-                              card-name)
-         :rendered-info   (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
-         :title_link      (urls/card-url card-id)
-         :attachment-name "image.png"
-         :fallback        card-name})
+        {:title             (or (-> dashcard :visualization_settings :card.title)
+                                card-name)
+         :inline-parameters (-> dashcard :visualization_settings :inline_parameters)
+         :rendered-info     (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
+         :title_link        (urls/card-url card-id)
+         :attachment-name   "image.png"
+         :fallback          card-name})
 
       :text
-      (text->markdown-block (:text part))
+      (text->markdown-block (:text part) (:inline_parameters part))
+
+      :heading
+      (text->markdown-block (format "## %s" (:text part)) (:inline_parameters part))
 
       :tab-title
       (text->markdown-block (format "# %s" (:text part))))))
@@ -86,29 +115,33 @@
 (defn- create-and-upload-slack-attachment!
   "Create an attachment in Slack for a given Card by rendering its content into an image and uploading it.
   Attachments containing `:blocks` lists containing text cards are returned unmodified."
-  [{:keys [title title_link attachment-name rendered-info blocks] :as attachment-data}]
+  [{:keys [title title_link attachment-name rendered-info blocks inline-parameters] :as attachment-data}]
   (cond
     blocks attachment-data
 
     (:render/text rendered-info)
-    {:blocks [{:type "section"
-               :text {:type     "mrkdwn"
-                      :text     (mkdwn-link-text title_link title)
-                      :verbatim true}}
-              {:type "section"
-               :text {:type "plain_text"
-                      :text (:render/text rendered-info)}}]}
+    {:blocks
+     (-> [{:type "section"
+           :text {:type     "mrkdwn"
+                  :text     (mkdwn-link-text title_link title)
+                  :verbatim true}}]
+         (maybe-append-params-block inline-parameters)
+         (conj {:type "section"
+                :text {:type "plain_text"
+                       :text (:render/text rendered-info)}}))}
 
     :else
     (let [image-bytes   (channel.render/png-from-render-info rendered-info slack-width)
           {file-id :id} (slack/upload-file! image-bytes attachment-name)]
-      {:blocks [{:type "section"
-                 :text {:type     "mrkdwn"
-                        :text     (mkdwn-link-text title_link title)
-                        :verbatim true}}
-                {:type       "image"
-                 :slack_file {:id file-id}
-                 :alt_text   title}]})))
+      {:blocks
+       (-> [{:type "section"
+             :text {:type     "mrkdwn"
+                    :text     (mkdwn-link-text title_link title)
+                    :verbatim true}}]
+           (maybe-append-params-block inline-parameters)
+           (conj {:type       "image"
+                  :slack_file {:id file-id}
+                  :alt_text   title}))})))
 
 (def ^:private SlackMessage
   [:map {:closed true}
@@ -144,12 +177,6 @@
 ;;                                    Dashboard Subscriptions                                      ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn- filter-text
-  [filter]
-  (truncate
-   (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (system/site-locale)))
-   attachment-text-length-limit))
-
 (defn- include-branding?
   "Branding in exports is included only for instances that do not have a whitelabel feature flag."
   []
@@ -166,7 +193,7 @@
 (defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
   Slack dashboard subscription"
-  [dashboard creator-name parameters]
+  [dashboard creator-name all-params top-level-params]
   (let [header-section  {:type "header"
                          :text {:type "plain_text"
                                 :text (truncate (:name dashboard) header-text-limit)
@@ -174,7 +201,7 @@
         link-section    {:type "section"
                          :fields (cond-> [{:type "mrkdwn"
                                            :text (mkdwn-link-text
-                                                  (urls/dashboard-url (:id dashboard) parameters)
+                                                  (urls/dashboard-url (:id dashboard) all-params)
                                                   (format "*Sent from %s by %s*"
                                                           (appearance/site-name)
                                                           creator-name))}]
@@ -184,9 +211,9 @@
                                      :text (mkdwn-link-text
                                             metabase-branding-link
                                             metabase-branding-copy)}))}
-        filter-fields   (for [filter parameters]
+        filter-fields   (for [parameter top-level-params]
                           {:type "mrkdwn"
-                           :text (filter-text filter)})
+                           :text (parameter-markdown parameter)})
         filter-section  (when (seq filter-fields)
                           {:type   "section"
                            :fields filter-fields})]
@@ -202,10 +229,11 @@
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
   [_channel-type {:keys [payload creator]} _template recipients]
-  (let [parameters (:parameters payload)
+  (let [all-params       (:parameters payload)
+        top-level-params (impl.util/remove-inline-parameters all-params (:dashboard_parts payload))
         dashboard  (:dashboard payload)]
     (for [channel-id (map notification-recipient->channel-id recipients)]
       {:channel-id  channel-id
        :attachments (doall (remove nil?
-                                   (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
+                                   (flatten [(slack-dashboard-header dashboard (:common_name creator) all-params top-level-params)
                                              (create-slack-attachment-data (:dashboard_parts payload))])))})))

@@ -17,6 +17,7 @@ export type ParametersListProps = {
     editingParameter: Parameter | null | undefined;
 
     isEditing: boolean;
+    isSortable?: boolean;
     vertical: boolean;
     commitImmediately: boolean;
     setParameterValue: (parameterId: ParameterId, value: any) => void;
@@ -27,6 +28,10 @@ export type ParametersListProps = {
     ) => void;
     setEditingParameter: (parameterId: ParameterId | null) => void;
     enableParameterRequiredBehavior: boolean;
+    widgetsVariant?: "default" | "subtle";
+    widgetsWithinPortal?: boolean;
+    layout?: "horizontal" | "vertical";
+    hasTestIdProps?: boolean;
   } & Pick<DashboardFullscreenControls, "isFullscreen"> &
     Pick<DashboardNightModeControls, "isNightMode"> &
     Pick<EmbedHideParametersControls, "hideParameters">

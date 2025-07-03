@@ -18,7 +18,7 @@ describe("Dashboard > Dashboard Questions", () => {
   describe("admin", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("can save a new question to a dashboard and move it to a collection", () => {

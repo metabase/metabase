@@ -103,8 +103,6 @@ const ORDERS_JOIN_PRODUCTS_QUERY = (function () {
       joinTable,
       [
         Lib.joinConditionClause(
-          query,
-          -1,
           Lib.joinConditionOperators(query, -1)[0],
           Lib.joinConditionLHSColumns(query, -1)[0],
           Lib.joinConditionRHSColumns(query, -1, joinTable)[0],

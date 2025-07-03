@@ -409,8 +409,8 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
 
     H.modal().within(() => {
-      cy.findByLabelText("Back").as("undoButton");
-      cy.findByLabelText("Forward").as("redoButton");
+      cy.findByLabelText("Undo").as("undoButton");
+      cy.findByLabelText("Redo").as("redoButton");
 
       cy.get("@undoButton").should("be.disabled");
       cy.get("@redoButton").should("be.disabled");
@@ -497,8 +497,8 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
 
     H.modal().within(() => {
-      cy.findByLabelText("Back").as("undoButton");
-      cy.findByLabelText("Forward").as("redoButton");
+      cy.findByLabelText("Undo").as("undoButton");
+      cy.findByLabelText("Redo").as("redoButton");
 
       cy.get("@undoButton").should("be.disabled");
       cy.get("@redoButton").should("be.disabled");

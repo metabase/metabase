@@ -99,6 +99,7 @@
   log-permissions-changes
   sandboxed-or-impersonated-user?
   sandboxed-user?
+  increment-implicit-perms-revision!
   save-perms-revision!]
  [metabase.permissions.validation
   check-group-manager

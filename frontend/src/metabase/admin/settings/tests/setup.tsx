@@ -13,6 +13,7 @@ import {
   setupSlackManifestEndpoint,
   setupTokenStatusEndpoint,
   setupUploadManagementEndpoint,
+  setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
@@ -140,6 +141,11 @@ export const setup = async ({
   setupDatabasesEndpoints([]);
   setupSlackManifestEndpoint();
   setupUploadManagementEndpoint([]);
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-dev_instances",
+    value: true,
+  });
 
   fetchMock.get("path:/api/cloud-migration", { status: 204 });
 
