@@ -1090,6 +1090,60 @@ describe("scenarios > admin > datamodel", () => {
             .contains("December 31, 1969, 4:00 PM")
             .should("have.length.greaterThan", 0);
         });
+
+        it("should allow to enable, change, and disable coercion strategy", () => {
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: FEEDBACK_ID,
+            fieldId: FEEDBACK.RATING,
+          });
+
+          cy.log("show error when strategy not chosen after toggling");
+          FieldSection.getCoercionToggle()
+            .parent()
+            .click({ scrollBehavior: "center" });
+          clickAway();
+          FieldSection.get()
+            .findByText("To enable casting, please select a data type")
+            .should("be.visible");
+
+          cy.log("enable casting");
+          FieldSection.getCoercionInput().click({ scrollBehavior: "center" });
+          H.popover().findByText("UNIX nanoseconds → Datetime").click();
+          cy.wait("@updateField");
+          H.undoToast().should("contain.text", "Casting enabled for Rating");
+          H.undoToast().icon("close").click();
+
+          cy.log("change casting");
+          FieldSection.getCoercionInput().click({ scrollBehavior: "center" });
+          H.popover().findByText("UNIX seconds → Datetime").click();
+          cy.wait("@updateField");
+          H.undoToast().should("contain.text", "Casting enabled for Rating");
+          H.undoToast().icon("close").click();
+
+          cy.log("disable casting");
+          FieldSection.getCoercionToggle()
+            .parent()
+            .click({ scrollBehavior: "center" });
+          cy.wait("@updateField");
+          H.undoToast().should("contain.text", "Casting disabled for Rating");
+          H.undoToast().icon("close").click();
+
+          cy.log("enable casting");
+          FieldSection.getCoercionToggle()
+            .parent()
+            .click({ scrollBehavior: "center" });
+          H.popover().findByText("UNIX seconds → Datetime").click();
+          cy.wait("@updateField");
+          H.undoToast().should("contain.text", "Casting enabled for Rating");
+          H.undoToast().icon("close").click();
+
+          H.openTable({ database: SAMPLE_DB_ID, table: FEEDBACK_ID });
+          cy.findAllByTestId("cell-data")
+            .contains("December 31, 1969, 4:00 PM")
+            .should("have.length.greaterThan", 0);
+        });
       });
     });
 
@@ -2016,4 +2070,8 @@ function verifyFieldSectionEmptyState() {
       "Select a field to edit it. Then change the display name, semantic type or filtering behavior.",
     )
     .should("be.visible");
+}
+
+function clickAway() {
+  cy.get("body").click(0, 0);
 }
