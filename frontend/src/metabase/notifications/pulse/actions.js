@@ -1,4 +1,5 @@
 import { createAction } from "redux-actions";
+import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
 import Pulses from "metabase/entities/pulses";
@@ -66,9 +67,10 @@ export const saveEditingPulse = createThunkAction(
   function () {
     return async function (dispatch, getState) {
       const editingPulse = getEditingPulse(getState());
+      const isEdit = editingPulse.id != null;
 
       try {
-        if (editingPulse.id != null) {
+        if (isEdit) {
           return Pulses.HACK_getObjectFromAction(
             await dispatch(Pulses.actions.update(editingPulse)),
           );
@@ -78,13 +80,15 @@ export const saveEditingPulse = createThunkAction(
           );
         }
       } catch (error) {
-        const message = getActionErrorMessage(error);
+        const errorMessage = getActionErrorMessage(error);
 
         dispatch(
           addUndo({
             icon: "warning",
             toastColor: "error",
-            message,
+            message: isEdit
+              ? t`Cannot edit subscription. ${errorMessage} Please contact your administrator.`
+              : t`Cannot create subscription. ${errorMessage} Please contact your administrator.`,
           }),
         );
 

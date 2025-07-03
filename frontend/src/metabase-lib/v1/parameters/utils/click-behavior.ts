@@ -427,6 +427,15 @@ export function formatSourceForTarget(
     }
   }
 
+  if (parameter?.type === "number/between" && "column" in datum) {
+    const value = datum.value;
+    const binWidth = datum.column?.binning_info?.bin_width;
+
+    if (binWidth != null && typeof value === "number") {
+      return [value, value + binWidth];
+    }
+  }
+
   return parameter ? parseParameterValue(datum.value, parameter) : datum.value;
 }
 

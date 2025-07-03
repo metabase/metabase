@@ -51,6 +51,7 @@ import type {
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {
   canResetFilter,
+  findDashCardForInlineParameter,
   getMappedParametersIds,
   hasDatabaseActionsEnabled,
   hasInlineParameters,
@@ -367,6 +368,22 @@ export const getEditingParameter = createSelector(
     return editingParameterId != null
       ? _.findWhere(parameters, { id: editingParameterId })
       : null;
+  },
+);
+
+/**
+ * Returns the dashcard id of the dashcard that contains the parameter.
+ * If the parameter is dashboard header parameter, it returns undefined.
+ */
+export const getEditingParameterInlineDashcard = createSelector(
+  [getEditingParameterId, getDashcards],
+  (editingParameterId, dashcards) => {
+    return editingParameterId
+      ? findDashCardForInlineParameter(
+          editingParameterId,
+          Object.values(dashcards),
+        )
+      : undefined;
   },
 );
 

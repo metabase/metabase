@@ -4,6 +4,7 @@ import { isActionDashCard } from "metabase/actions/utils";
 import {
   getDashcardParameterMappingOptions,
   getEditingParameter,
+  getEditingParameterInlineDashcard,
   getParameterTarget,
   getQuestionByCard,
 } from "metabase/dashboard/selectors";
@@ -41,6 +42,7 @@ const mapStateToProps = (
     target: getParameterTarget(state, props),
     question: getQuestionByCard(state, props),
     mappingOptions: getDashcardParameterMappingOptions(state, props),
+    editingParameterInlineDashcard: getEditingParameterInlineDashcard(state),
     isRecentlyAutoConnected: getIsRecentlyAutoConnectedDashcard(
       state,
       props,
@@ -59,6 +61,8 @@ interface DashcardCardParameterMapperProps {
   question?: Question;
   mappingOptions: ParameterMappingOption[];
   isRecentlyAutoConnected: boolean;
+  editingParameterInlineDashcard?: DashboardCard;
+  compact?: boolean;
 }
 
 export function DashCardCardParameterMapper({
@@ -70,6 +74,8 @@ export function DashCardCardParameterMapper({
   question,
   mappingOptions,
   isRecentlyAutoConnected,
+  editingParameterInlineDashcard,
+  compact,
 }: DashcardCardParameterMapperProps) {
   const isQuestion = isQuestionDashCard(dashcard);
   const hasSeries = isQuestion && dashcard.series && dashcard.series.length > 0;
@@ -114,11 +120,13 @@ export function DashCardCardParameterMapper({
         editingParameter={editingParameter}
         mappingOptions={mappingOptions}
         isQuestion={isQuestion}
+        editingParameterInlineDashcard={editingParameterInlineDashcard}
         card={card}
         selectedMappingOption={selectedMappingOption}
         target={target}
         shouldShowAutoConnectHint={shouldShowAutoConnectHint}
         layoutHeight={layoutHeight}
+        compact={compact}
       />
       <Transition
         mounted={shouldShowAutoConnectHint && layoutHeight > 3}
