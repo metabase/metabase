@@ -15,7 +15,16 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { Box, Button, Divider, Flex, Modal, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  Flex,
+  type IconName,
+  Modal,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 import type { TokenStatus } from "metabase-types/api";
@@ -76,6 +85,28 @@ function handleMessageToken(
   onMessage(message);
 }
 
+async function sendMessageToStore(
+  storeWindow: WindowProxy,
+  notifyLicense: (args: { message: string; icon: IconName }) => void,
+) {
+  const success = Math.random() > 0.5;
+  const message = success
+    ? t`Your license is active!`
+    : t`Your license is not active!`;
+  storeWindow.postMessage(
+    {
+      type: "metabase",
+      source: "instance",
+      payload: {
+        success: Math.random() > 0.5,
+        message,
+      },
+    },
+    "*",
+  );
+  notifyLicense({ message, icon: "info" });
+}
+
 export const LicenseAndBillingSettings = () => {
   const { data: allSettings, isLoading: isLoadingToken } =
     useGetAdminSettingsDetailsQuery();
@@ -86,6 +117,8 @@ export const LicenseAndBillingSettings = () => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [sendToast] = useToast();
+  const storeRef = useRef<{ window: WindowProxy | null }>({ window: null });
+  const [notifyLicense] = useToast();
 
   const sendActivatedToast = useCallback(() => {
     sendToast({ message: t`Your license is active!` });
@@ -98,9 +131,12 @@ export const LicenseAndBillingSettings = () => {
         (token) => {
           setLicenseToken(token);
           setIsModalOpen(false);
+          setMessage(token);
         },
-        (message: string) => {
-          setMessage(message);
+        () => {
+          if (storeRef.current.window) {
+            sendMessageToStore(storeRef.current.window, notifyLicense);
+          }
         },
       );
     }
@@ -110,13 +146,13 @@ export const LicenseAndBillingSettings = () => {
     return () => {
       window.removeEventListener("message", onMessage);
     };
-  }, []);
+  }, [notifyLicense]);
 
   function openStore() {
     const returnUrl = encodeURIComponent(
       document.referrer || window.location.href,
     );
-    window.open(
+    storeRef.current.window = window.open(
       `${iframeOrigin}${iframePath}?returnUrl=${returnUrl}`,
       "_blank",
     );
