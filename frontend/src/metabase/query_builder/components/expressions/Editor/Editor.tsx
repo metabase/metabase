@@ -1,7 +1,3 @@
-import {
-  hasNextSnippetField,
-  hasPrevSnippetField,
-} from "@codemirror/autocomplete";
 import { EditorSelection, type EditorState } from "@codemirror/state";
 import { useDisclosure } from "@mantine/hooks";
 import type { ViewUpdate } from "@uiw/react-codemirror";
@@ -41,6 +37,7 @@ import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
+import { hasActiveSnippet } from "./utils";
 
 type EditorProps = {
   id?: string;
@@ -152,10 +149,7 @@ export function Editor(props: EditorProps) {
 
   const [isSnippetActive, setIsSnippetActive] = useState(false);
   const handleUpdate = useCallback((update: ViewUpdate) => {
-    const { state } = update;
-    setIsSnippetActive(
-      hasNextSnippetField(state) || hasPrevSnippetField(state),
-    );
+    setIsSnippetActive(hasActiveSnippet(update.state));
   }, []);
 
   return (
