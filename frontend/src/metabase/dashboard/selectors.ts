@@ -7,6 +7,7 @@ import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
+import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,
@@ -50,6 +51,7 @@ import type {
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {
   canResetFilter,
+  findDashCardForInlineParameter,
   getMappedParametersIds,
   hasDatabaseActionsEnabled,
   hasInlineParameters,
@@ -167,6 +169,10 @@ export const getDashboard = createSelector(
 );
 
 export const getDashcards = (state: State) => state.dashboard.dashcards;
+
+export const getDashcardList = createSelector([getDashcards], (dashcards) =>
+  Object.values(dashcards),
+);
 
 export const getDashCardById = (state: State, dashcardId: DashCardId) => {
   const dashcards = getDashcards(state);
@@ -365,6 +371,22 @@ export const getEditingParameter = createSelector(
   },
 );
 
+/**
+ * Returns the dashcard id of the dashcard that contains the parameter.
+ * If the parameter is dashboard header parameter, it returns undefined.
+ */
+export const getEditingParameterInlineDashcard = createSelector(
+  [getEditingParameterId, getDashcards],
+  (editingParameterId, dashcards) => {
+    return editingParameterId
+      ? findDashCardForInlineParameter(
+          editingParameterId,
+          Object.values(dashcards),
+        )
+      : undefined;
+  },
+);
+
 const getCard = (state: State, { card }: { card: Card | VirtualCard }) => card;
 const getDashCard = (state: State, { dashcard }: { dashcard: DashboardCard }) =>
   dashcard;
@@ -447,9 +469,9 @@ export const getDashCardInlineValuePopulatedParameters = createSelector(
     if (!dashcard || !hasInlineParameters(dashcard)) {
       return [];
     }
-    const inlineParameters = dashcard.inline_parameters.map((parameterId) =>
-      parameters.find((p) => p.id === parameterId),
-    );
+    const inlineParameters = dashcard.inline_parameters
+      .map((parameterId) => parameters.find((p) => p.id === parameterId))
+      .filter(isNotNull);
     return _getValuePopulatedParameters({
       parameters: inlineParameters,
       values: parameterValues,
