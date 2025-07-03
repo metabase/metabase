@@ -348,7 +348,7 @@ jobs:
               enable-ssl-tests: 'false'
           - name: MySQL 8.0
             junit-name: be-tests-mysql-8-0-ee
-            image: cimg/mysql:8.0
+            image: mysql:8.0
             env:
               enable-ssl-tests: 'false'
           - name: MySQL Latest
