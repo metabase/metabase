@@ -24,12 +24,12 @@
    :email-smtp-port     :port
    :email-smtp-security :security})
 
-(def ^:private override-mb-to-smtp-settings
-  {:override-email-smtp-host     :host
-   :override-email-smtp-username :user
-   :override-email-smtp-password :pass
-   :override-email-smtp-port     :port
-   :override-email-smtp-security :security})
+(def ^:private mb-to-smtp-settings-override
+  {:email-smtp-host-override     :host
+   :email-smtp-username-override :user
+   :email-smtp-password-override :pass
+   :email-smtp-port-override     :port
+   :email-smtp-security-override :security})
 
 (defn- smtp->mb-setting
   "Convert a SMTP setting to a Metabase setting name."
@@ -151,25 +151,25 @@
   [_route-params
    _query-params
    settings :- [:map
-                [:override-email-smtp-host {:optional true} [:or string? nil?]]
-                [:override-email-smtp-password {:optional true} [:or string? nil?]]
-                [:override-email-smtp-port {:optional true} [:or int? nil?]]
-                [:override-email-smtp-security {:optional true} [:or string? nil?]]
-                [:override-email-smtp-username {:optional true} [:or string? nil?]]]]
+                [:email-smtp-host-override {:optional true} [:or string? nil?]]
+                [:email-smtp-password-override {:optional true} [:or string? nil?]]
+                [:email-smtp-port-override {:optional true} [:or int? nil?]]
+                [:email-smtp-security-override {:optional true} [:or string? nil?]]
+                [:email-smtp-username-override {:optional true} [:or string? nil?]]]]
   (check-features)
 
   ;; Validations match validation in settings, but pre-checking here to avoid attempting network checks for invalid settings.
-  (when (and (:override-email-smtp-port settings)
-             (not (#{465 587 2525} (:override-email-smtp-port settings))))
-    (throw (ex-info (tru "Invalid cloud-email-smtp-port value")
+  (when (and (:email-smtp-port-override settings)
+             (not (#{465 587 2525} (:email-smtp-port-override settings))))
+    (throw (ex-info (tru "Invalid email-smtp-port-override value")
                     {:status-code 400})))
-  (when (and (:override-email-smtp-security settings)
-             (not (#{:tls :ssl :starttls} (keyword (:override-email-smtp-security settings)))))
-    (throw (ex-info (tru "Invalid cloud-email-smtp-security value")
+  (when (and (:email-smtp-security-override settings)
+             (not (#{:tls :ssl :starttls} (keyword (:email-smtp-security-override settings)))))
+    (throw (ex-info (tru "Invalid email-smtp-security-override value")
                     {:status-code 400})))
 
-  (u/prog1 (check-and-update-settings settings override-mb-to-smtp-settings (channel.settings/override-email-smtp-password))
-    (when (nil? (:errors (:body <>))) (channel.settings/override-smtp-enabled! true))))
+  (u/prog1 (check-and-update-settings settings mb-to-smtp-settings-override (channel.settings/email-smtp-password-override))
+    (when (nil? (:errors (:body <>))) (channel.settings/smtp-override-enabled! true))))
 
 (api.macros/defendpoint :delete "/"
   "Clear all email related settings. You must be a superuser or have `setting` permission to do this."
@@ -178,13 +178,13 @@
   (setting/set-many! (zipmap (keys mb-to-smtp-settings) (repeat nil)))
   api/generic-204-no-content)
 
-(api.macros/defendpoint :delete "/cloud"
+(api.macros/defendpoint :delete "/override"
   "Clear all cloud email related settings. You must be a superuser or have `setting` permission to do this."
   []
   (check-features)
   (perms/check-has-application-permission :setting)
-  (setting/set-many! (assoc (zipmap (keys override-mb-to-smtp-settings) (repeat nil))
-                            :cloud-smtp-enabled false))
+  (setting/set-many! (assoc (zipmap (keys mb-to-smtp-settings-override) (repeat nil))
+                            :smtp-override-enabled false))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/test"

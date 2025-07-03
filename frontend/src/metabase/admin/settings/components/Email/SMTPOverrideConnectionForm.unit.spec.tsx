@@ -20,7 +20,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { CloudSMTPConnectionForm } from "./CloudSMTPConnectionForm";
+import { CloudSMTPConnectionForm } from "./SMTPOverrideConnectionForm";
 
 const setup = async ({
   setEnvVars,
@@ -33,33 +33,33 @@ const setup = async ({
   const settingsDefinitionsWithDefaults: {
     [K in EnterpriseSettingKey]?: SettingDefinition;
   } = {
-    "cloud-email-smtp-host": createMockSettingDefinition({
-      key: "cloud-email-smtp-host",
+    "email-smtp-host-override": createMockSettingDefinition({
+      key: "email-smtp-host-override",
       value: "smtp.rotom.com",
       env_name: "MB_EMAIL_SMTP_HOST",
       is_env_setting: setEnvVars === "all" || setEnvVars === "host",
     }),
-    "cloud-email-smtp-port": createMockSettingDefinition({
-      key: "cloud-email-smtp-port",
+    "email-smtp-port-override": createMockSettingDefinition({
+      key: "email-smtp-port-override",
       value: 465,
       env_name: "MB_EMAIL_SMTP_PORT",
       is_env_setting: setEnvVars === "all",
     }),
-    "cloud-email-smtp-security": createMockSettingDefinition({
-      key: "cloud-email-smtp-security",
+    "email-smtp-security-override": createMockSettingDefinition({
+      key: "email-smtp-security-override",
       value: "ssl",
       env_name: "MB_EMAIL_SMTP_SECURITY",
       is_env_setting: setEnvVars === "all",
     }),
-    "cloud-email-smtp-username": createMockSettingDefinition({
-      key: "cloud-email-smtp-username",
+    "email-smtp-username-override": createMockSettingDefinition({
+      key: "email-smtp-username-override",
       value: "misty@example.com",
       env_name: "MB_EMAIL_SMTP_USERNAME",
       is_env_setting: setEnvVars === "all",
     }),
 
-    "cloud-email-smtp-password": createMockSettingDefinition({
-      key: "cloud-email-smtp-password",
+    "email-smtp-password-override": createMockSettingDefinition({
+      key: "email-smtp-password-override",
       value: "*****chu",
       env_name: "MB_EMAIL_SMTP_PASSWORD",
       is_env_setting: setEnvVars === "all",
@@ -167,13 +167,13 @@ describe("CloudSMTPConnectionForm", () => {
     const puts = await findRequests("PUT");
     const { url, body } = puts[0];
 
-    expect(url).toContain("/api/email/cloud");
+    expect(url).toContain("/api/email/override");
     expect(body).toEqual({
-      "cloud-email-smtp-host": "smtp.treeko.com",
-      "cloud-email-smtp-port": 587,
-      "cloud-email-smtp-security": "tls",
-      "cloud-email-smtp-username": "ash@example.com",
-      "cloud-email-smtp-password": "teamrocket",
+      "email-smtp-host-override": "smtp.treeko.com",
+      "email-smtp-port-override": 587,
+      "email-smtp-security-override": "tls",
+      "email-smtp-username-override": "ash@example.com",
+      "email-smtp-password-override": "teamrocket",
     });
   });
 

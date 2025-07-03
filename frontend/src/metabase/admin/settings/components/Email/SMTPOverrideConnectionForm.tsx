@@ -23,7 +23,7 @@ import {
 import * as Errors from "metabase/lib/errors";
 import { Box, Button, Chip, Flex, Modal, Stack } from "metabase/ui";
 import type {
-  CloudEmailSMTPSettings,
+  EmailSMTPSettingsOverride,
   SettingDefinitionMap,
 } from "metabase-types/api";
 
@@ -32,17 +32,20 @@ import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
 import { trackSMTPSetupSuccess } from "./analytics";
 
 const emailSettingKeys = [
-  "cloud-email-smtp-host",
-  "cloud-email-smtp-port",
-  "cloud-email-smtp-security",
-  "cloud-email-smtp-username",
-  "cloud-email-smtp-password",
+  "email-smtp-host-override",
+  "email-smtp-port-override",
+  "email-smtp-security-override",
+  "email-smtp-username-override",
+  "email-smtp-password-override",
 ] as const;
 
 const anySchema = Yup.mixed().nullable().default(null);
 
-type FormValues = Omit<CloudEmailSMTPSettings, "cloud-email-smtp-port"> & {
-  "cloud-email-smtp-port": string; // FormChip doesn't work well with integers
+type FormValues = Omit<
+  EmailSMTPSettingsOverride,
+  "email-smtp-port-override"
+> & {
+  "email-smtp-port-override": string; // FormChip doesn't work well with integers
 };
 
 // we need to allow this form to be submitted even when we have removed certain inputs
@@ -51,11 +54,11 @@ const getFormValueSchema = (
   settingsDetails: SettingDefinitionMap | undefined,
 ) => {
   return Yup.object({
-    "cloud-email-smtp-host": settingsDetails?.["cloud-email-smtp-host"]
+    "email-smtp-host-override": settingsDetails?.["email-smtp-host-override"]
       ?.is_env_setting
       ? anySchema
       : Yup.string().required(Errors.required).default(""),
-    "cloud-email-smtp-port": settingsDetails?.["cloud-email-smtp-port"]
+    "email-smtp-port-override": settingsDetails?.["email-smtp-port-override"]
       ?.is_env_setting
       ? anySchema
       : Yup.string()
@@ -63,8 +66,9 @@ const getFormValueSchema = (
           .nullable()
           // .required(Errors.required)
           .default("465"),
-    "cloud-email-smtp-security": settingsDetails?.["cloud-email-smtp-security"]
-      ?.is_env_setting
+    "email-smtp-security-override": settingsDetails?.[
+      "email-smtp-security-override"
+    ]?.is_env_setting
       ? anySchema
       : Yup.string()
           .oneOf(
@@ -74,12 +78,14 @@ const getFormValueSchema = (
           .nullable()
           // .required(Errors.required)
           .default("ssl"),
-    "cloud-email-smtp-username": settingsDetails?.["cloud-email-smtp-username"]
-      ?.is_env_setting
+    "email-smtp-username-override": settingsDetails?.[
+      "email-smtp-username-override"
+    ]?.is_env_setting
       ? anySchema
       : Yup.string().default(""),
-    "cloud-email-smtp-password": settingsDetails?.["cloud-email-smtp-password"]
-      ?.is_env_setting
+    "email-smtp-password-override": settingsDetails?.[
+      "email-smtp-password-override"
+    ]?.is_env_setting
       ? anySchema
       : Yup.string().default(""),
   });
@@ -99,16 +105,17 @@ export const CloudSMTPConnectionForm = ({
   const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
   const initialValues = useMemo<FormValues>(
     () => ({
-      "cloud-email-smtp-host": settingValues?.["cloud-email-smtp-host"] ?? "",
-      "cloud-email-smtp-port": settingValues?.["cloud-email-smtp-port"]
-        ? settingValues?.["cloud-email-smtp-port"] + ""
+      "email-smtp-host-override":
+        settingValues?.["email-smtp-host-override"] ?? "",
+      "email-smtp-port-override": settingValues?.["email-smtp-port-override"]
+        ? settingValues?.["email-smtp-port-override"] + ""
         : "465",
-      "cloud-email-smtp-security":
-        settingValues?.["cloud-email-smtp-security"] ?? "ssl",
-      "cloud-email-smtp-username":
-        settingValues?.["cloud-email-smtp-username"] ?? "",
-      "cloud-email-smtp-password":
-        settingValues?.["cloud-email-smtp-password"] ?? "",
+      "email-smtp-security-override":
+        settingValues?.["email-smtp-security-override"] ?? "ssl",
+      "email-smtp-username-override":
+        settingValues?.["email-smtp-username-override"] ?? "",
+      "email-smtp-password-override":
+        settingValues?.["email-smtp-password-override"] ?? "",
     }),
     [settingValues],
   );
@@ -132,13 +139,13 @@ export const CloudSMTPConnectionForm = ({
   const handleUpdateEmailSettings = useCallback(
     async (formData: FormValues) => {
       const smtpPort = parseInt(
-        formData["cloud-email-smtp-port"],
-      ) as CloudEmailSMTPSettings["cloud-email-smtp-port"];
+        formData["email-smtp-port-override"],
+      ) as EmailSMTPSettingsOverride["email-smtp-port-override"];
 
       try {
         await updateCloudEmailSMTPSettings({
           ...formData,
-          "cloud-email-smtp-port": smtpPort,
+          "email-smtp-port-override": smtpPort,
         }).unwrap();
         trackSMTPSetupSuccess({ eventDetail: "cloud" });
         sendToast({
@@ -174,7 +181,7 @@ export const CloudSMTPConnectionForm = ({
       opened
       onClose={onClose}
       padding="xl"
-      data-testid="cloud-smtp-connection-form"
+      data-testid="smtp-override-connection-form"
     >
       <Box data-testid="settings-updates" pt="lg">
         <FormProvider
@@ -187,24 +194,24 @@ export const CloudSMTPConnectionForm = ({
             <Form>
               <Stack gap="lg">
                 <SetByEnvVarWrapper
-                  settingKey="cloud-email-smtp-host"
-                  settingDetails={settingsDetails?.["cloud-email-smtp-host"]}
+                  settingKey="email-smtp-host-override"
+                  settingDetails={settingsDetails?.["email-smtp-host-override"]}
                 >
                   <FormTextInput
-                    name="cloud-email-smtp-host"
+                    name="email-smtp-host-override"
                     label={t`SMTP Host`}
                     description={
-                      settingsDetails?.["cloud-email-smtp-host"]?.description
+                      settingsDetails?.["email-smtp-host-override"]?.description
                     }
                     placeholder={"smtp.yourservice.com"}
                   />
                 </SetByEnvVarWrapper>
                 <SetByEnvVarWrapper
-                  settingKey="cloud-email-smtp-port"
-                  settingDetails={settingsDetails?.["cloud-email-smtp-port"]}
+                  settingKey="email-smtp-port-override"
+                  settingDetails={settingsDetails?.["email-smtp-port-override"]}
                 >
                   <FormChipGroup
-                    name="cloud-email-smtp-port"
+                    name="email-smtp-port-override"
                     label={t`SMTP Port`}
                     groupProps={{ mt: "0.5rem" }}
                   >
@@ -221,13 +228,13 @@ export const CloudSMTPConnectionForm = ({
                   </FormChipGroup>
                 </SetByEnvVarWrapper>
                 <SetByEnvVarWrapper
-                  settingKey="cloud-email-smtp-security"
+                  settingKey="email-smtp-security-override"
                   settingDetails={
-                    settingsDetails?.["cloud-email-smtp-security"]
+                    settingsDetails?.["email-smtp-security-override"]
                   }
                 >
                   <FormChipGroup
-                    name="cloud-email-smtp-security"
+                    name="email-smtp-security-override"
                     label={t`SMTP Security`}
                     groupProps={{ mt: "0.5rem" }}
                   >
@@ -244,25 +251,25 @@ export const CloudSMTPConnectionForm = ({
                   </FormChipGroup>
                 </SetByEnvVarWrapper>
                 <SetByEnvVarWrapper
-                  settingKey="cloud-email-smtp-username"
+                  settingKey="email-smtp-username-override"
                   settingDetails={
-                    settingsDetails?.["cloud-email-smtp-username"]
+                    settingsDetails?.["email-smtp-username-override"]
                   }
                 >
                   <FormTextInput
-                    name="cloud-email-smtp-username"
+                    name="email-smtp-username-override"
                     label={t`SMTP Username`}
                     placeholder={"nicetoseeyou"}
                   />
                 </SetByEnvVarWrapper>
                 <SetByEnvVarWrapper
-                  settingKey="cloud-email-smtp-password"
+                  settingKey="email-smtp-password-override"
                   settingDetails={
-                    settingsDetails?.["cloud-email-smtp-password"]
+                    settingsDetails?.["email-smtp-password-override"]
                   }
                 >
                   <FormTextInput
-                    name="cloud-email-smtp-password"
+                    name="email-smtp-password-override"
                     type="password"
                     label={t`SMTP Password`}
                     placeholder={"Shhh..."}

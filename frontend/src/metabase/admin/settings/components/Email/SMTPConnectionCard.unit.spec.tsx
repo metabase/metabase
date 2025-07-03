@@ -106,12 +106,12 @@ describe("SMTPConnectionCard", () => {
       }),
     );
     expect(
-      screen.getByTestId("cloud-smtp-connection-form"),
+      screen.getByTestId("smtp-override-connection-form"),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByLabelText("Close"));
 
     expect(
-      screen.queryByTestId("cloud-smtp-connection-form"),
+      screen.queryByTestId("smtp-override-connection-form"),
     ).not.toBeInTheDocument();
   });
 

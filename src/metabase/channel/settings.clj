@@ -130,7 +130,7 @@
   :visibility :settings-manager
   :audit      :getter)
 
-(defsetting override-email-from-address
+(defsetting email-from-address-override
   (deferred-tru "The email address you want to use for the sender of emails from your custom SMTP server.")
   :encryption :no
   :feature   :cloud-custom-smtp
@@ -179,7 +179,7 @@
   :visibility :settings-manager
   :audit      :getter)
 
-(defsetting override-email-smtp-host
+(defsetting email-smtp-host-override
   (deferred-tru "The address of the custom SMTP server that handles your emails.")
   :encryption :when-encryption-key-set
   :feature   :cloud-custom-smtp
@@ -193,7 +193,7 @@
   :visibility :settings-manager
   :audit      :getter)
 
-(defsetting override-email-smtp-username
+(defsetting email-smtp-username-override
   (deferred-tru "Custom SMTP server username.")
   :encryption :when-encryption-key-set
   :feature   :cloud-custom-smtp
@@ -208,7 +208,7 @@
   :sensitive? true
   :audit      :getter)
 
-(defsetting override-email-smtp-password
+(defsetting email-smtp-password-override
   (deferred-tru "Custom SMTP server password.")
   :encryption :when-encryption-key-set
   :feature   :cloud-custom-smtp
@@ -224,7 +224,7 @@
   :visibility :settings-manager
   :audit      :getter)
 
-(defsetting override-email-smtp-port
+(defsetting email-smtp-port-override
   (deferred-tru "The port your custom SMTP server uses for outgoing emails. Only ports 465, 587, and 2525 are supported.")
   :encryption :when-encryption-key-set
   :type :integer
@@ -236,7 +236,7 @@
             (when (some? new-value)
               (assert (#{465 587 2525} new-value)
                       (tru "Invalid custom email-smtp-port! Only SMTP ports of 465, 587, or 2525 are allowed.")))
-            (setting/set-value-of-type! :integer :cloud-email-smtp-port new-value)))
+            (setting/set-value-of-type! :integer :email-smtp-port-override new-value)))
 
 (defsetting email-smtp-security
   (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
@@ -250,7 +250,7 @@
                   (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
                 (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
 
-(defsetting override-email-smtp-security
+(defsetting email-smtp-security-override
   (deferred-tru "SMTP secure connection protocol for your custom server. (tls, ssl, or starttls)")
   :encryption :when-encryption-key-set
   :feature    :cloud-custom-smtp
@@ -262,10 +262,10 @@
   :setter     (fn [new-value]
                 (when (some? new-value)
                   (assert (#{:tls :ssl :starttls} (keyword new-value))
-                          (tru "Invalid cloud-email-smtp-security! Only values of tls, ssl, and starttls are allowed.")))
-                (setting/set-value-of-type! :keyword :cloud-email-smtp-security new-value)))
+                          (tru "Invalid email-smtp-security-override! Only values of tls, ssl, and starttls are allowed.")))
+                (setting/set-value-of-type! :keyword :email-smtp-security-override new-value)))
 
-(defsetting override-smtp-enabled
+(defsetting smtp-override-enabled
   (deferred-tru "Whether to use the custom SMTP server rather than the standard settings.")
   :encryption :no
   :feature    :cloud-custom-smtp
@@ -275,9 +275,9 @@
   :audit      :getter
   :export?    false
   :setter     (fn [new-value]
-                (when (and new-value (not (setting/get-value-of-type :string :cloud-email-smtp-host)))
-                  (throw (ex-info (tru "Cannot enable cloud-smtp when it is not configured.") {:status-code 400})))
-                (setting/set-value-of-type! :boolean :cloud-smtp-enabled new-value)))
+                (when (and new-value (not (setting/get-value-of-type :string :email-smtp-host-override)))
+                  (throw (ex-info (tru "Cannot enable smtp-override when it is not configured.") {:status-code 400})))
+                (setting/set-value-of-type! :boolean :smtp-override-enabled new-value)))
 
 (defsetting email-max-recipients-per-second
   (deferred-tru "The maximum number of recipients, summed across emails, that can be sent per second.

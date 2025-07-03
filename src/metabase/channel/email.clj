@@ -85,13 +85,13 @@
      {})))
 
 (defn- smtp-settings []
-  (merge (if (and (channel.settings/override-smtp-enabled) (premium-features/is-hosted?))
-           (-> {:host         (channel.settings/override-email-smtp-host)
-                :user         (channel.settings/override-email-smtp-username)
-                :pass         (channel.settings/override-email-smtp-password)
-                :port         (channel.settings/override-email-smtp-port)
-                :from-address (channel.settings/override-email-from-address)}
-               (add-ssl-settings (channel.settings/override-email-smtp-security)))
+  (merge (if (and (channel.settings/smtp-override-enabled) (premium-features/is-hosted?))
+           (-> {:host         (channel.settings/email-smtp-host-override)
+                :user         (channel.settings/email-smtp-username-override)
+                :pass         (channel.settings/email-smtp-password-override)
+                :port         (channel.settings/email-smtp-port-override)
+                :from-address (channel.settings/email-from-address-override)}
+               (add-ssl-settings (channel.settings/email-smtp-security-override)))
            (-> {:host         (channel.settings/email-smtp-host)
                 :user         (channel.settings/email-smtp-username)
                 :pass         (channel.settings/email-smtp-password)
