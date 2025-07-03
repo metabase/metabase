@@ -1,10 +1,15 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 
 import { SdkIframeEmbedSetup } from "./SdkIframeEmbedSetup";
 
-const setup = () => renderWithProviders(<SdkIframeEmbedSetup />);
+const setup = () => {
+  setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
+
+  renderWithProviders(<SdkIframeEmbedSetup />);
+};
 
 describe("Embed flow > initial setup", () => {
   it("shows the embed experience step as the first step", () => {
@@ -32,7 +37,7 @@ describe("Embed flow > forward and backward navigation", () => {
     ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("select entity placeholder")).toBeInTheDocument();
+    expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Back" })).toBeEnabled();
 
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -56,16 +61,16 @@ describe("Embed flow > forward and backward navigation", () => {
   it("navigates backward to the previous step", async () => {
     setup();
 
-    // Select embed type > select entity > select embed options
+    // Select embed type > select resource > select embed options
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(
       screen.getByText("select embed options placeholder"),
     ).toBeInTheDocument();
 
-    // Back to select entity
+    // Back to select resource
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(screen.getByText("select entity placeholder")).toBeInTheDocument();
+    expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
 
     // Back to select embed type
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
@@ -75,19 +80,19 @@ describe("Embed flow > forward and backward navigation", () => {
     expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
   });
 
-  it("skips the 'select entity' step for exploration", async () => {
+  it("skips the 'select resource' step for exploration", async () => {
     setup();
 
     await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
 
-    // Clicking next skips "select entity" and go directly to "select embed options"
+    // Clicking next skips "select resource" and go directly to "select embed options"
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(
       screen.getByText("select embed options placeholder"),
     ).toBeInTheDocument();
 
     expect(
-      screen.queryByText("select entity placeholder"),
+      screen.queryByText("Select a dashboard to embed"),
     ).not.toBeInTheDocument();
   });
 });
