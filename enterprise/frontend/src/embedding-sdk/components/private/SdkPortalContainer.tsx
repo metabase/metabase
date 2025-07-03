@@ -1,7 +1,6 @@
-import styled from "@emotion/styled";
-
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
+import { Box } from "metabase/ui";
 
 import { PublicComponentStylesWrapper } from "./PublicComponentStylesWrapper";
 
@@ -12,16 +11,14 @@ import { PublicComponentStylesWrapper } from "./PublicComponentStylesWrapper";
  */
 export const PortalContainer = () => (
   <PublicComponentStylesWrapper>
-    <FixedPosition
-      className={ZIndex.Overlay}
+    <Box
       id={EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}
-    ></FixedPosition>
+      className={ZIndex.Overlay}
+      // needed otherwise it will rendered "in place" and push the content below
+      pos="fixed"
+      left={0}
+      top={0}
+      w={"100%"}
+    ></Box>
   </PublicComponentStylesWrapper>
 );
-
-const FixedPosition = styled.div`
-  // needed otherwise it will rendered "in place" and push the content below
-  position: fixed;
-  left: 0;
-  top: 0;
-`;
