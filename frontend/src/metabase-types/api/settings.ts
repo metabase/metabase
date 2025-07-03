@@ -249,7 +249,7 @@ export const tokenFeatures = [
   "ai_sql_generation",
   "ai_entity_analysis",
   "database_routing",
-  "development-mode",
+  "development_mode",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
