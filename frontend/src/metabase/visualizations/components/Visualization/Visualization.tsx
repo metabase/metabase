@@ -799,8 +799,8 @@ class Visualization extends PureComponent<
             <SmallGenericError bordered={false} />
           ) : loading ? (
             renderLoadingView({
-              expectedDuration: expectedDuration,
-              isSlow: !!isSlow,
+              expectedDuration,
+              isSlow,
             })
           ) : isPlaceholder ? (
             <EmptyVizState

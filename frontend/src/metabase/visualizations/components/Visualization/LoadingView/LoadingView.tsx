@@ -12,7 +12,7 @@ import {
 } from "./LoadingView.styled";
 
 export interface LoadingViewProps {
-  isSlow: CardSlownessStatus;
+  isSlow: CardSlownessStatus | undefined;
   expectedDuration?: number;
 }
 
