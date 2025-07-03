@@ -211,7 +211,7 @@ databaseChangeLog:
               update report_card
               set dataset_query = rct.odq
               from (
-                  select card_id, odq
+                  select asdf.card_id, asdf.odq
                   from (
                       select
                           card_id,
@@ -221,8 +221,8 @@ databaseChangeLog:
                               ORDER BY id
                           ) odq
                       from report_card_transform
-                  )
-                  group by card_id, odq
+                  ) asdf
+                  group by asdf.card_id, asdf.odq
               ) as rct
               where rct.card_id = report_card.id
         - sql:
