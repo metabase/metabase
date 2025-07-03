@@ -20,7 +20,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { CloudSMTPConnectionForm } from "./SMTPOverrideConnectionForm";
+import { SMTPOverrideConnectionForm } from "./SMTPOverrideConnectionForm";
 
 const setup = async ({
   setEnvVars,
@@ -73,7 +73,7 @@ const setup = async ({
   });
   setupPropertiesEndpoints(createMockSettings(settingValues));
 
-  renderWithProviders(<CloudSMTPConnectionForm onClose={() => {}} />, {
+  renderWithProviders(<SMTPOverrideConnectionForm onClose={() => {}} />, {
     storeInitialState: createMockState({
       settings: createMockSettingsState({
         ...settingValues,
@@ -89,7 +89,7 @@ const setup = async ({
   }
 };
 
-describe("CloudSMTPConnectionForm", () => {
+describe("SMTPOverrideConnectionForm", () => {
   it("should render the smtp connection form", async () => {
     await setup({});
     expect(screen.getByText(/SMTP Host/i)).toBeInTheDocument();

@@ -91,7 +91,7 @@ const getFormValueSchema = (
   });
 };
 
-export const CloudSMTPConnectionForm = ({
+export const SMTPOverrideConnectionForm = ({
   onClose,
 }: {
   onClose: () => void;

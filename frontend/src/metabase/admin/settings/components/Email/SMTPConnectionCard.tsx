@@ -3,7 +3,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 
 import { CloudSMTPConnectionCard } from "./CloudSMTPConnectionCard";
-import { CloudSMTPConnectionForm } from "./SMTPOverrideConnectionForm";
+import { SMTPOverrideConnectionForm } from "./SMTPOverrideConnectionForm";
 import { SelfHostedSMTPConnectionCard } from "./SelfHostedSMTPConnectionCard";
 import { SelfHostedSMTPConnectionForm } from "./SelfHostedSMTPConnectionForm";
 import { trackSMTPSetupClick } from "./analytics";
@@ -37,7 +37,7 @@ export const SMTPConnectionCard = () => {
             trackSMTPSetupClick({ eventDetail: "cloud" });
           }}
         />
-        {showModal && <CloudSMTPConnectionForm onClose={closeModal} />}
+        {showModal && <SMTPOverrideConnectionForm onClose={closeModal} />}
       </>
     );
   }
