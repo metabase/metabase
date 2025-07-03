@@ -45,6 +45,7 @@ type EditorProps = {
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
   expressionIndex?: number;
+  availableColumns: Lib.ColumnMetadata[];
   reportTimezone?: string;
   readOnly?: boolean;
   error?: ExpressionError | Error | null;
@@ -68,7 +69,7 @@ export function Editor(props: EditorProps) {
     expressionMode = "expression",
     stageIndex,
     query,
-    expressionIndex,
+    availableColumns,
     readOnly,
     error,
     reportTimezone,
@@ -118,7 +119,7 @@ export function Editor(props: EditorProps) {
     expressionMode,
     query,
     stageIndex,
-    expressionIndex,
+    availableColumns,
     reportTimezone,
     metadata,
     extensions: [customTooltip],
@@ -232,8 +233,9 @@ function useExpression({
   clause,
   expressionMode,
   stageIndex,
-  query,
   expressionIndex,
+  query,
+  availableColumns,
   metadata,
   onChange,
 }: EditorProps & {
@@ -263,13 +265,13 @@ function useExpression({
       format(clause, {
         query,
         stageIndex,
-        expressionIndex,
+        availableColumns,
         printWidth: 55, // 60 is the width of the editor
       })
         .catch(() => "")
         .then(done);
     },
-    [clause, query, stageIndex, expressionIndex],
+    [clause, query, stageIndex, availableColumns],
   );
 
   const handleChange = useCallback<typeof onChange>(
@@ -302,8 +304,9 @@ function useExpression({
         expressionMode,
         query,
         stageIndex,
-        metadata,
         expressionIndex,
+        metadata,
+        availableColumns,
       });
       if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
@@ -316,10 +319,11 @@ function useExpression({
       query,
       stageIndex,
       expressionMode,
+      expressionIndex,
       metadata,
       handleChange,
       debouncedOnChange,
-      expressionIndex,
+      availableColumns,
     ],
   );
 
