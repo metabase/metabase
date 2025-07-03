@@ -19,7 +19,7 @@ import {
 import { useBooleanMap } from "metabase/visualizer/hooks/use-boolean-map";
 import { getDataSources } from "metabase/visualizer/selectors";
 import {
-  addDataSource,
+  initializeVisualizer,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerDataSource } from "metabase-types/api";
@@ -48,17 +48,9 @@ export const DataImporter = ({ className }: { className?: string }) => {
 
   const onResetDataSource = useCallback(
     (source: VisualizerDataSource) => {
-      if (dataSources.length === 1) {
-        handlers.open();
-      }
-
-      const index = dataSources.findIndex((ds) => ds.id === source.id);
-
-      dispatch(removeDataSource({ source }));
-      dispatch(addDataSource({ id: source.id, index }));
-      handlers.close();
+      dispatch(initializeVisualizer({ cardId: source.sourceId }));
     },
-    [dataSources, handlers, dispatch],
+    [dispatch],
   );
 
   const {
