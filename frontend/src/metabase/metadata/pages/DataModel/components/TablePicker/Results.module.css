@@ -16,10 +16,13 @@
     outline: 2px solid var(--mb-color-focus);
   }
 
-  &.active,
   &:hover {
     background-color: var(--mb-color-brand-lighter);
+  }
+
+  &.active {
     color: var(--mb-color-brand);
+    background-color: var(--mb-color-brand-light);
 
     .icon {
       opacity: 1;
@@ -50,14 +53,6 @@
 .label {
   user-select: none;
   overflow-wrap: anywhere;
-}
-
-.track {
-  position: absolute;
-  border-left: 1px solid var(--mb-base-color-orion-20);
-  border-bottom: 1px solid var(--mb-base-color-orion-20);
-  border-bottom-left-radius: 4px;
-  width: 10px;
 }
 
 .visibilityToggle {

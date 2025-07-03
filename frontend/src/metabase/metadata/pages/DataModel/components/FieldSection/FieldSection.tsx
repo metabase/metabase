@@ -36,13 +36,14 @@ const FieldSectionBase = ({
   const [isFieldValuesModalOpen, setIsFieldValuesModalOpen] = useState(false);
 
   return (
-    <Stack data-testid="field-section" gap={0} p="xl" pt={0}>
+    <Stack data-testid="field-section" gap={0} pb="xl">
       <Box
-        bg="bg-white"
+        bg="accent-gray-light"
         className={S.header}
         pb="lg"
         pos="sticky"
         pt="xl"
+        px="xl"
         top={0}
       >
         <NameDescriptionInput
@@ -77,7 +78,7 @@ const FieldSectionBase = ({
         />
       </Box>
 
-      <Stack gap={12} mb={12}>
+      <Stack gap={12} mb={12} px="xl">
         <Group align="center" gap="md" justify="space-between">
           <Text flex="0 0 auto" fw="bold">{t`Field settings`}</Text>
 
@@ -110,7 +111,7 @@ const FieldSectionBase = ({
         </Group>
       </Stack>
 
-      <Stack gap="xl">
+      <Stack gap="xl" px="xl">
         <DataSection field={field} />
         <MetadataSection databaseId={databaseId} field={field} />
         <BehaviorSection databaseId={databaseId} field={field} />

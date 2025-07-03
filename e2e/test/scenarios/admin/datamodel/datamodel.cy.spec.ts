@@ -208,6 +208,7 @@ describe("scenarios > admin > datamodel > field", () => {
 
     cy.reload();
     H.DataModel.FieldSection.getVisibilityInput()
+      .scrollIntoView()
       .should("be.visible")
       .and("have.value", "Do not include");
   });
@@ -1021,18 +1022,18 @@ describe("scenarios > admin > databases > table", () => {
 
     it("should see multiple fields", () => {
       H.DataModel.TableSection.clickField("ID");
-      H.DataModel.FieldSection.getDataTypeInput()
+      H.DataModel.FieldSection.getDataType()
         .should("be.visible")
-        .and("have.value", "BIGINT");
+        .and("have.text", "BIGINT");
       H.DataModel.FieldSection.getSemanticTypeInput().should(
         "have.value",
         "Entity Key",
       );
 
       H.DataModel.TableSection.clickField("User ID");
-      H.DataModel.FieldSection.getDataTypeInput()
+      H.DataModel.FieldSection.getDataType()
         .should("be.visible")
-        .and("have.value", "INTEGER");
+        .and("have.text", "INTEGER");
       H.DataModel.FieldSection.getSemanticTypeInput().should(
         "have.value",
         "Foreign Key",
@@ -1043,27 +1044,27 @@ describe("scenarios > admin > databases > table", () => {
       );
 
       H.DataModel.TableSection.clickField("Tax");
-      H.DataModel.FieldSection.getDataTypeInput()
+      H.DataModel.FieldSection.getDataType()
         .should("be.visible")
-        .and("have.value", "DOUBLE PRECISION");
+        .and("have.text", "DOUBLE PRECISION");
       H.DataModel.FieldSection.getSemanticTypeInput().should(
         "have.value",
         "No semantic type",
       );
 
       H.DataModel.TableSection.clickField("Discount");
-      H.DataModel.FieldSection.getDataTypeInput()
+      H.DataModel.FieldSection.getDataType()
         .should("be.visible")
-        .and("have.value", "DOUBLE PRECISION");
+        .and("have.text", "DOUBLE PRECISION");
       H.DataModel.FieldSection.getSemanticTypeInput().should(
         "have.value",
         "Discount",
       );
 
       H.DataModel.TableSection.clickField("Created At");
-      cy.findByLabelText("Data type")
+      H.DataModel.FieldSection.getDataType()
         .should("be.visible")
-        .and("have.value", "TIMESTAMP");
+        .and("have.text", "TIMESTAMP");
       H.DataModel.FieldSection.getSemanticTypeInput().should(
         "have.value",
         "Creation timestamp",

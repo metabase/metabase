@@ -9,10 +9,9 @@ import { useToast } from "metabase/common/hooks";
 import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Box, Stack } from "metabase/ui";
 import type { DatabaseId, Field } from "metabase-types/api";
 
-import { SectionPill } from "../SectionPill";
+import { TitledSection } from "../TitledSection";
 
 interface Props {
   databaseId: DatabaseId;
@@ -29,11 +28,7 @@ const MetadataSectionBase = ({ databaseId, field }: Props) => {
   const [sendToast] = useToast();
 
   return (
-    <Stack gap="md">
-      <Box>
-        <SectionPill title={t`Metadata`} />
-      </Box>
-
+    <TitledSection title={t`Metadata`}>
       <SemanticTypeAndTargetPicker
         description={t`What this data represents`}
         field={field}
@@ -49,7 +44,7 @@ const MetadataSectionBase = ({ databaseId, field }: Props) => {
           });
         }}
       />
-    </Stack>
+    </TitledSection>
   );
 };
 

@@ -8,12 +8,13 @@ import {
   canCoerceFieldType,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Box, Flex, Icon, Stack, Switch, TextInput, rem } from "metabase/ui";
+import { Flex, Stack, Switch, rem } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
-import { SectionPill } from "../../SectionPill";
+import { TitledSection } from "../../TitledSection";
 
 import S from "./DataSection.module.css";
+import { LabeledValue } from "./LabeledValue";
 import SubInputFollowIllustration from "./illustrations/sub-input-follow.svg?component";
 import SubInputIllustration from "./illustrations/sub-input.svg?component";
 
@@ -37,33 +38,15 @@ const DataSectionBase = ({ field }: Props) => {
   }, [field.coercion_strategy]);
 
   return (
-    <Stack gap="md">
-      <Box>
-        <SectionPill title={t`Data`} />
-      </Box>
-
-      <TextInput
-        classNames={{ input: S.disabledInput }}
-        disabled
-        label={t`Field name`}
-        rightSection={<Icon className={S.disabledInputIcon} name="lock" />}
-        rightSectionPointerEvents="none"
-        value={field.name}
-      />
+    <TitledSection title={t`Data`}>
+      <LabeledValue label={t`Field name`}>{field.name}</LabeledValue>
 
       <Stack gap={0}>
-        <TextInput
-          classNames={{ input: S.disabledInput }}
-          disabled
-          label={t`Data type`}
-          rightSection={<Icon className={S.disabledInputIcon} name="lock" />}
-          rightSectionPointerEvents="none"
-          value={field.database_type}
-        />
+        <LabeledValue label={t`Data type`}>{field.database_type}</LabeledValue>
 
         {canCoerceFieldType(field) && (
           <>
-            <Flex gap="xs" ml={rem(12)}>
+            <Flex gap="xs" ml={rem(12)} wrap="nowrap">
               {isCasting ? (
                 <SubInputFollowIllustration />
               ) : (
@@ -72,6 +55,9 @@ const DataSectionBase = ({ field }: Props) => {
 
               <Switch
                 checked={isCasting}
+                classNames={{
+                  body: S.switchBody,
+                }}
                 flex="1"
                 label={t`Cast to a specific data type`}
                 mt="md"
@@ -120,7 +106,7 @@ const DataSectionBase = ({ field }: Props) => {
           </>
         )}
       </Stack>
-    </Stack>
+    </TitledSection>
   );
 };
 

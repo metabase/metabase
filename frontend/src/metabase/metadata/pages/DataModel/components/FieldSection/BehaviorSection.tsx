@@ -15,10 +15,9 @@ import {
   isFieldJsonUnfolded,
 } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Box, Stack } from "metabase/ui";
 import type { DatabaseId, Field } from "metabase-types/api";
 
-import { SectionPill } from "../SectionPill";
+import { TitledSection } from "../TitledSection";
 
 interface Props {
   databaseId: DatabaseId;
@@ -35,11 +34,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
   const [sendToast] = useToast();
 
   return (
-    <Stack gap="md">
-      <Box>
-        <SectionPill title={t`Behavior`} />
-      </Box>
-
+    <TitledSection title={t`Behavior`}>
       <FieldVisibilityPicker
         description={t`Where this field should be displayed`}
         label={t`Visibility`}
@@ -109,7 +104,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
           }}
         />
       )}
-    </Stack>
+    </TitledSection>
   );
 };
 

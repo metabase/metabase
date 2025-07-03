@@ -59,6 +59,7 @@ const PreviewSectionBase = ({
       h="100%"
       px="lg"
       py="md"
+      withBorder
     >
       <Group justify="space-between">
         <Text fw="bold">{t`Field preview`}</Text>

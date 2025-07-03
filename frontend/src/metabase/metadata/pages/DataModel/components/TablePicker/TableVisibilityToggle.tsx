@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
-import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, Loader, Tooltip } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 export function TableVisibilityToggle({
@@ -12,7 +12,7 @@ export function TableVisibilityToggle({
   table?: Table;
   className?: string;
 }) {
-  const [updateTable] = useUpdateTableMutation();
+  const [updateTable, { isLoading }] = useUpdateTableMutation();
   const [sendToast] = useToast();
 
   if (!table) {
@@ -61,11 +61,20 @@ export function TableVisibilityToggle({
     }
   };
 
+  if (isLoading) {
+    return (
+      <ActionIcon disabled variant="transparent">
+        <Loader size="xs" data-testid="loading-indicator" />
+      </ActionIcon>
+    );
+  }
+
   return (
     <Tooltip label={isHidden ? t`Unhide table` : t`Hide table`}>
       <ActionIcon
         aria-label={isHidden ? t`Unhide table` : t`Hide table`}
         className={className}
+        disabled={isLoading}
         variant="transparent"
         onClick={(event) => {
           event.stopPropagation();

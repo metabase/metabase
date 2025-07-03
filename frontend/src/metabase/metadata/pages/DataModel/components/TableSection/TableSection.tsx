@@ -11,7 +11,7 @@ import {
   NameDescriptionInput,
   SortableFieldList,
 } from "metabase/metadata/components";
-import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { Box, Button, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
@@ -29,19 +29,22 @@ interface Props {
 const TableSectionBase = ({ params, table }: Props) => {
   const { fieldId, ...parsedParams } = parseRouteParams(params);
   const [updateTable] = useUpdateTableMutation();
+  const [updateTableSorting, { isLoading: isChangingSorting }] =
+    useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const [sendToast] = useToast();
   const [isSorting, setIsSorting] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
   return (
-    <Stack data-testid="table-section" gap={0} p="xl" pt={0}>
+    <Stack data-testid="table-section" gap={0} pb="xl">
       <Box
-        bg="bg-white"
+        bg="accent-gray-light"
         className={S.header}
         pb="lg"
         pos="sticky"
         pt="xl"
+        px="xl"
         top={0}
       >
         <NameDescriptionInput
@@ -70,29 +73,10 @@ const TableSectionBase = ({ params, table }: Props) => {
         />
       </Box>
 
-      <Stack gap="lg">
+      <Stack gap="lg" px="xl">
         <Stack gap={12}>
           <Group align="center" gap="md" justify="space-between">
-            <Group align="center" gap="md" h="100%" wrap="nowrap">
-              {!isSorting && <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>}
-
-              {isSorting && (
-                <FieldOrderPicker
-                  value={table.field_order}
-                  onChange={async (fieldOrder) => {
-                    await updateTable({
-                      id: table.id,
-                      field_order: fieldOrder,
-                    });
-
-                    sendToast({
-                      icon: "check",
-                      message: t`Field order updated`,
-                    });
-                  }}
-                />
-              )}
-            </Group>
+            <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
 
             <Group
               className={S.buttons}
@@ -101,6 +85,10 @@ const TableSectionBase = ({ params, table }: Props) => {
               justify="flex-end"
               wrap="nowrap"
             >
+              {isChangingSorting && (
+                <Loader size="xs" data-testid="loading-indicator" />
+              )}
+
               {!isSorting && (
                 <Button
                   h={32}
@@ -121,6 +109,23 @@ const TableSectionBase = ({ params, table }: Props) => {
                   size="xs"
                   onClick={() => setIsSyncModalOpen(true)}
                 >{t`Sync options`}</Button>
+              )}
+
+              {isSorting && (
+                <FieldOrderPicker
+                  value={table.field_order}
+                  onChange={async (fieldOrder) => {
+                    await updateTableSorting({
+                      id: table.id,
+                      field_order: fieldOrder,
+                    });
+
+                    sendToast({
+                      icon: "check",
+                      message: t`Field order updated`,
+                    });
+                  }}
+                />
               )}
 
               {isSorting && (

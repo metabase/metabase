@@ -1,6 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { Fragment, type KeyboardEvent, useEffect, useRef } from "react";
+import { type KeyboardEvent, useEffect, useRef } from "react";
 import _ from "underscore";
 
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
@@ -82,7 +82,7 @@ export function Results({
   return (
     <Box ref={ref} px="xl" pb="lg" className={S.results}>
       <Box style={{ height: virtual.getTotalSize() }}>
-        {virtualItems.map(({ start, size, index }) => {
+        {virtualItems.map(({ start, index }) => {
           const item = items[index];
           const {
             value,
@@ -98,9 +98,6 @@ export function Results({
           const isActive = type === "table" && _.isEqual(path, value);
 
           const parentIndex = items.findIndex((item) => item.key === parent);
-          const parentItem = virtualItems.find(
-            (item) => item.index === parentIndex,
-          );
 
           const handleItemSelect = (open?: boolean) => {
             if (disabled) {
@@ -171,58 +168,53 @@ export function Results({
           };
 
           return (
-            <Fragment key={key}>
-              {type !== "database" && (
-                <Track
-                  start={
-                    parentItem ? parentItem.start + 0.5 * parentItem.size : 0
-                  }
-                  end={start + 0.5 * size}
-                  level={level}
-                />
-              )}
-              <Flex
-                key={key}
-                align="center"
-                justify="space-between"
-                gap="sm"
-                ref={virtual.measureElement}
-                className={cx(S.item, S[type], {
-                  [S.active]: isActive,
-                  [S.selected]: selectedIndex === index,
-                })}
-                data-index={index}
-                data-open={isExpanded}
-                tabIndex={
-                  disabled
-                    ? -1
-                    : selectedIndex === undefined || type === "table"
-                      ? 0
-                      : undefined
-                }
-                style={{
-                  top: start,
-                  marginLeft: level * INDENT_OFFSET,
-                  pointerEvents: disabled ? "none" : undefined,
-                }}
-                data-testid="tree-item"
-                data-type={type}
-                onKeyDown={handleKeyDown}
-                onClick={() => handleItemSelect()}
-                onFocus={() => onSelectedIndexChange?.(index)}
-              >
-                <Flex align="center" gap="xs" py="xs" mih={ITEM_MIN_HEIGHT}>
-                  {hasChildren(type) && (
-                    <Icon
-                      name="chevronright"
-                      size={10}
-                      color="var(--mb-color-text-light)"
-                      className={cx(S.chevron, {
-                        [S.expanded]: isExpanded,
-                      })}
-                    />
-                  )}
-                  <Icon name={TYPE_ICONS[type]} className={S.icon} />
+            <Flex
+              key={key}
+              align="center"
+              justify="space-between"
+              gap="sm"
+              ref={virtual.measureElement}
+              className={cx(S.item, S[type], {
+                [S.active]: isActive,
+                [S.selected]: selectedIndex === index,
+              })}
+              data-index={index}
+              data-open={isExpanded}
+              tabIndex={
+                disabled
+                  ? -1
+                  : selectedIndex === undefined || type === "table"
+                    ? 0
+                    : undefined
+              }
+              style={{
+                top: start,
+                marginLeft: level * INDENT_OFFSET,
+                pointerEvents: disabled ? "none" : undefined,
+              }}
+              data-testid="tree-item"
+              data-type={type}
+              onKeyDown={handleKeyDown}
+              onClick={() => handleItemSelect()}
+              onFocus={() => onSelectedIndexChange?.(index)}
+            >
+              <Flex align="center" py="xs" mih={ITEM_MIN_HEIGHT} w="100%">
+                <Flex align="flex-start" gap="xs" w="100%">
+                  <Flex align="center" gap="xs">
+                    {hasChildren(type) && (
+                      <Icon
+                        name="chevronright"
+                        size={10}
+                        color="var(--mb-color-text-light)"
+                        className={cx(S.chevron, {
+                          [S.expanded]: isExpanded,
+                        })}
+                      />
+                    )}
+
+                    <Icon name={TYPE_ICONS[type]} className={S.icon} />
+                  </Flex>
+
                   {isLoading ? (
                     <Loading />
                   ) : (
@@ -235,17 +227,18 @@ export function Results({
                     </Box>
                   )}
                 </Flex>
-                {type === "table" &&
-                  value?.tableId !== undefined &&
-                  item.table &&
-                  !disabled && (
-                    <TableVisibilityToggle
-                      className={S.visibilityToggle}
-                      table={item.table}
-                    />
-                  )}
               </Flex>
-            </Fragment>
+
+              {type === "table" &&
+                value?.tableId !== undefined &&
+                item.table &&
+                !disabled && (
+                  <TableVisibilityToggle
+                    className={S.visibilityToggle}
+                    table={item.table}
+                  />
+                )}
+            </Flex>
           );
         })}
       </Box>
@@ -262,32 +255,6 @@ function Loading() {
       height={rem(12)}
       width={`${w}%`}
       radius="sm"
-    />
-  );
-}
-
-function Track({
-  start,
-  end,
-  level,
-}: {
-  start: number;
-  end: number;
-  level: number;
-}) {
-  const LEFT = 18;
-  const TOP = 20;
-
-  const top = start + TOP;
-
-  return (
-    <div
-      className={S.track}
-      style={{
-        top,
-        height: end - top,
-        left: LEFT + level * INDENT_OFFSET,
-      }}
     />
   );
 }

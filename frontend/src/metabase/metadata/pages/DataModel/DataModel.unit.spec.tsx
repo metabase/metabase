@@ -238,21 +238,17 @@ async function setup({
   );
 
   if (waitForDatabase) {
-    await waitFor(async () => {
-      expect(
-        await findTablePickerDatabase(databases[0].name),
-      ).toBeInTheDocument();
-    });
+    expect(
+      await findTablePickerDatabase(databases[0].name),
+    ).toBeInTheDocument();
   }
 
   if (waitForTable) {
-    await waitFor(async () => {
-      const tableName = checkNotNull(databases[0].tables)[0].display_name;
-      expect(await findTablePickerTable(tableName)).toBeInTheDocument();
-    });
-
-    await waitForLoaderToBeRemoved();
+    const tableName = checkNotNull(databases[0].tables)[0].display_name;
+    expect(await findTablePickerTable(tableName)).toBeInTheDocument();
   }
+
+  await waitForLoaderToBeRemoved();
 
   return { history };
 }

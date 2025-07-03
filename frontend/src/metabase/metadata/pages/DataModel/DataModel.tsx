@@ -61,9 +61,9 @@ export const DataModel = ({ children, location, params }: Props) => {
   });
 
   return (
-    <Flex h="100%">
+    <Flex bg="accent-gray-light" h="100%">
       <Stack
-        bg="accent-gray-light"
+        bg="bg-white"
         className={S.column}
         flex={COLUMN_CONFIG.nav.flex}
         gap={0}
@@ -88,7 +88,6 @@ export const DataModel = ({ children, location, params }: Props) => {
         <>
           {tableId && (
             <Box
-              bg="bg-white"
               className={S.column}
               flex={COLUMN_CONFIG.table.flex}
               h="100%"
@@ -113,7 +112,6 @@ export const DataModel = ({ children, location, params }: Props) => {
 
           {!isEmptyStateShown && (
             <Box
-              bg="bg-white"
               className={S.column}
               flex={COLUMN_CONFIG.field.flex}
               h="100%"
@@ -167,7 +165,6 @@ export const DataModel = ({ children, location, params }: Props) => {
           {isEmptyStateShown && (
             <Flex
               align="center"
-              bg="bg-white"
               flex="1"
               justify="center"
               miw={rem(EMPTY_STATE_MIN_WIDTH)}

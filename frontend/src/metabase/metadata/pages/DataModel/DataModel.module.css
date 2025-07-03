@@ -13,7 +13,5 @@
 }
 
 .preview {
-  box-shadow:
-    0 10px 30px 0 hsla(0, 0%, 0%, 0.1),
-    0 0 0 1px hsla(0, 0%, 0%, 0.05);
+  box-shadow: 0 10px 30px 0 hsla(0, 0%, 0%, 0.1);
 }

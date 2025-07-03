@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type MouseEvent, memo } from "react";
+import type { MouseEvent } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -8,13 +8,11 @@ import EditableText from "metabase/common/components/EditableText";
 import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Flex, Group, Icon, TextareaBlurChange, rem } from "metabase/ui";
+import { Box, Card, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
 import S from "./FieldItem.module.css";
-
-const MemoizedTextareaBlurChange = memo(TextareaBlurChange);
 
 interface Props {
   active?: boolean;
@@ -43,10 +41,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
     }
   };
 
-  const handleDescriptionChange = async (event: {
-    target: HTMLTextAreaElement;
-  }) => {
-    const description = event.target.value;
+  const handleDescriptionChange = async (description: string) => {
     const newDescription = description.trim();
 
     if ((field.description ?? "") === newDescription) {
@@ -89,73 +84,78 @@ export const FieldItem = ({ active, field, href }: Props) => {
   };
 
   return (
-    <Flex
+    <Card
       aria-label={field.display_name}
-      bg={active ? "brand-lighter" : "bg-white"}
+      bg={active ? "brand-light" : "bg-white"}
       c="text-medium"
-      className={cx(S.field, {
+      className={cx(S.card, {
         [S.active]: active,
       })}
-      component={Link}
-      direction="column"
-      align="flex-start"
-      gap={rem(12)}
-      justify="space-between"
-      mih={rem(40)}
-      pos="relative"
-      px="md"
-      py={rem(12)}
       role="listitem"
-      to={href}
-      w="100%"
-      wrap="nowrap"
-      onClick={handleClick}
-      draggable={false}
+      p={0}
+      pb={1}
+      withBorder
     >
-      <Group flex="0 0 auto" gap="sm" maw="100%" wrap="nowrap">
-        <Icon className={S.icon} flex="0 0 auto" name={icon} />
+      <Flex
+        align="flex-start"
+        component={Link}
+        direction="column"
+        draggable={false} // this + onClick handler is required, otherwise interaction is broken on macOS
+        gap={rem(12)}
+        justify="space-between"
+        mih={rem(40)}
+        pos="relative"
+        px="md"
+        py={rem(12)}
+        to={href}
+        w="100%"
+        wrap="nowrap"
+        onClick={handleClick} // this + draggable={false} is required, otherwise interaction is broken on macOS
+      >
+        <Group flex="0 0 auto" gap="sm" maw="100%" wrap="nowrap">
+          <Icon className={S.icon} flex="0 0 auto" name={icon} />
+
+          <Box
+            className={cx(S.input, S.name)}
+            // TODO: fix EditableText or use something else
+            // https://linear.app/metabase/issue/SEM-429/data-model-inline-field-namedescription-inputs
+            component={EditableText}
+            fw="bold"
+            initialValue={field.display_name}
+            maxLength={254}
+            mb={rem(-4)}
+            miw={0}
+            ml={rem(-2)}
+            mt={rem(-3)}
+            placeholder={t`Give this field a name`}
+            px={rem(1)}
+            py={rem(2)}
+            tabIndex={undefined} // override the default 0 which breaks a11y
+            onChange={handleNameChange}
+            onClick={handleInputClick}
+          />
+        </Group>
 
         <Box
-          className={S.name}
+          className={S.input}
+          // TODO: fix EditableText or use something else
+          // https://linear.app/metabase/issue/SEM-429/data-model-inline-field-namedescription-inputs
           component={EditableText}
-          fw="bold"
-          initialValue={field.display_name}
-          maxLength={254}
+          initialValue={field.description ?? ""}
+          isMultiline
+          isOptional
+          maw="100%"
           mb={rem(-4)}
-          miw={0}
-          ml={rem(-2)}
           mt={rem(-3)}
-          placeholder={t`Give this field a name`}
+          mx={rem(-2)}
           px={rem(1)}
-          py={rem(2)}
+          py={0}
+          placeholder={t`No description yet`}
           tabIndex={undefined} // override the default 0 which breaks a11y
-          onChange={handleNameChange}
+          onChange={handleDescriptionChange}
           onClick={handleInputClick}
         />
-      </Group>
-
-      {/**
-       * The description input does not use EditableText component because we want to make it
-       * multiline, with max of 4 lines of text, showing a scrollbar when there's more text.
-       *
-       * EditableText component breaks when scrollbar is shown. This is especially problematic
-       * when you're starting with an empty input, and then type 1-4 characters - scrollbar would
-       * immediately be shown and text rendered with "content: attr(data-value)" would wrap.
-       */}
-      <MemoizedTextareaBlurChange
-        autosize
-        classNames={{
-          input: S.descriptionInput,
-        }}
-        maxRows={4}
-        minRows={1}
-        placeholder={t`No description yet`}
-        resetOnEsc
-        value={field.description ?? ""}
-        w="100%"
-        onBlurChange={handleDescriptionChange}
-        onClick={handleInputClick}
-      />
-    </Flex>
+      </Flex>
+    </Card>
   );
 };

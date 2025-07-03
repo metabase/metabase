@@ -1,9 +1,3 @@
-.disabledInput:disabled {
-  background: var(--mb-color-bg-white);
-  color: var(--mb-color-text-primary);
-  opacity: 1;
-}
-
-.disabledInputIcon {
-  color: var(--mb-color-text-light);
+.switchBody {
+  align-items: flex-start !important;
 }

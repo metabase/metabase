@@ -30,7 +30,7 @@ export const DataModel = {
     get: getFieldSection,
     getNameInput: getFieldNameInput,
     getDescriptionInput: getFieldDescriptionInput,
-    getDataTypeInput: getFieldDataTypeInput,
+    getDataType: getFieldDataType,
     getCoercionToggle: getFieldCoercionToggle,
     getCoercionInput: getFieldCoercionInput,
     getSemanticTypeInput: getFieldSemanticTypeInput,
@@ -178,7 +178,7 @@ function getTableSortOrderInput() {
 }
 
 function getTableSectionField(name: string) {
-  return getTableSection().get(`a[aria-label="${name}"]`);
+  return getTableSection().findByLabelText(name);
 }
 
 function getTableSectionSortableField(name: string) {
@@ -220,7 +220,7 @@ function getFieldDescriptionInput() {
   );
 }
 
-function getFieldDataTypeInput() {
+function getFieldDataType() {
   return getFieldSection().findByLabelText("Data type");
 }
 

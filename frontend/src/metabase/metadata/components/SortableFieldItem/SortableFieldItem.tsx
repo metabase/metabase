@@ -3,7 +3,7 @@ import cx from "classnames";
 import { Sortable } from "metabase/common/components/Sortable";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Flex, Group, Icon, Text, rem } from "metabase/ui";
+import { Card, Flex, Icon, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
@@ -28,36 +28,40 @@ export const SortableFieldItem = ({ active, disabled, field }: Props) => {
       draggingStyle={{ opacity: 0.5 }}
       id={id}
     >
-      <Flex
-        align="center"
+      <Card
         aria-label={label}
-        bg={active ? "brand-lighter" : "bg-white"}
+        bg={active ? "brand-light" : "bg-white"}
         c="text-medium"
-        className={cx(S.content, {
+        className={cx(S.card, {
           [S.active]: active,
           [S.draggable]: draggable,
         })}
         draggable={draggable}
-        gap="md"
-        justify="space-between"
-        mih={rem(40)}
-        pos="relative"
-        px="md"
-        py={rem(12)}
         role="listitem"
-        w="100%"
-        wrap="nowrap"
+        p={0}
+        withBorder
       >
-        <Group flex="0 0 auto" gap="sm" w="100%" wrap="nowrap">
+        <Flex
+          gap="sm"
+          justify="space-between"
+          mih={rem(40)}
+          pos="relative"
+          px="md"
+          py={rem(12)}
+          w="100%"
+          wrap="nowrap"
+        >
           <Icon className={S.icon} name={icon} />
 
           <Text flex="1" fw="bold" lh="normal" lineClamp={1}>
             {label}
           </Text>
-        </Group>
 
-        {draggable && <Icon className={S.grabber} name="grabber" />}
-      </Flex>
+          {draggable && (
+            <Icon className={S.grabber} flex="0 0 auto" name="grabber" />
+          )}
+        </Flex>
+      </Card>
     </Sortable>
   );
 };

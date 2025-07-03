@@ -1,11 +1,10 @@
 .sortableField {
-  /* make border-radius of focus state match border-radius of .content */
+  /* make border-radius of focus state match border-radius of .card */
   border-radius: var(--default-border-radius);
 }
 
-.content {
-  border-radius: var(--default-border-radius);
-  border: 1px solid var(--mb-color-border);
+.card {
+  box-shadow: 0 2px 4px 0 hsla(0, 0%, 0%, 0.05) !important;
 
   &.draggable {
     cursor: grab;

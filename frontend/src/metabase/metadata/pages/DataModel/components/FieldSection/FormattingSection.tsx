@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { useUpdateFieldMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Stack } from "metabase/ui";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { isCurrency } from "metabase-lib/v1/types/utils/isa";
@@ -13,7 +12,7 @@ import type {
   FieldFormattingSettings as FieldSettings,
 } from "metabase-types/api";
 
-import { SectionPill } from "../SectionPill";
+import { TitledSection } from "../TitledSection";
 
 interface Props {
   field: Field;
@@ -31,11 +30,7 @@ const FormattingSectionBase = ({ field }: Props) => {
   }, [field]);
 
   return (
-    <Stack gap="md">
-      <Box>
-        <SectionPill title={t`Formatting`} />
-      </Box>
-
+    <TitledSection title={t`Formatting`}>
       <ColumnSettings
         column={field}
         denylist={denyList}
@@ -52,7 +47,7 @@ const FormattingSectionBase = ({ field }: Props) => {
           });
         }}
       />
-    </Stack>
+    </TitledSection>
   );
 };
 
