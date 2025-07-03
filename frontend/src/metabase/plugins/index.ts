@@ -589,6 +589,10 @@ type GdriveConnectionModalProps = {
   reconnect: boolean;
 };
 
+type GdriveAddDataPanelProps = {
+  onAddDataModalClose: () => void;
+};
+
 export const PLUGIN_UPLOAD_MANAGEMENT = {
   FileUploadErrorModal: _FileUploadErrorModal,
   UploadManagementTable: PluginPlaceholder,
@@ -596,7 +600,8 @@ export const PLUGIN_UPLOAD_MANAGEMENT = {
   GdriveConnectionModal:
     PluginPlaceholder as ComponentType<GdriveConnectionModalProps>,
   GdriveDbMenu: PluginPlaceholder,
-  GdriveAddDataPanel: PluginPlaceholder,
+  GdriveAddDataPanel:
+    PluginPlaceholder as ComponentType<GdriveAddDataPanelProps>,
 };
 
 export const PLUGIN_IS_EE_BUILD = {

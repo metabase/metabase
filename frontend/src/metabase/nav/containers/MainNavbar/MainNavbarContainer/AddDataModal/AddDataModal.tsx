@@ -114,7 +114,9 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
               <DatabasesPanel canSeeContent={isAdmin} />
             </Tabs.Panel>
             <Tabs.Panel value="gsheets" className={S.panel}>
-              <PLUGIN_UPLOAD_MANAGEMENT.GdriveAddDataPanel />
+              <PLUGIN_UPLOAD_MANAGEMENT.GdriveAddDataPanel
+                onAddDataModalClose={onClose}
+              />
             </Tabs.Panel>
           </Box>
         </Tabs>

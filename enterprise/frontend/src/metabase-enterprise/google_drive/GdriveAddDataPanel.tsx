@@ -39,8 +39,6 @@ import { getStatus, useDeleteGdriveFolderLink, useShowGdrive } from "./utils";
 const PanelWrapper = ({
   title = t`Connect Google Sheets`,
   subtitle = t`Sync a spreadsheet or an entire Google Drive folder with your instance.`,
-  isModalOpen,
-  onModalClose,
   children,
 }: PropsWithChildren<{
   title?: string;
@@ -53,25 +51,16 @@ const PanelWrapper = ({
   );
 
   return (
-    <>
-      <Stack gap="md" align="center" justify="center" pt="2.5rem">
-        <Center component="img" src={illustration} w="3rem" />
-        <Box component="header" ta="center" maw={CONTENT_MAX_WIDTH}>
-          <Title order={2} size="h4" mb="sm">
-            {title}
-          </Title>
-          <Text c="text-medium">{subtitle}</Text>
-        </Box>
-        {children}
-      </Stack>
-      {onModalClose && (
-        <GdriveConnectionModal
-          isModalOpen={!!isModalOpen}
-          onClose={onModalClose}
-          reconnect={true}
-        />
-      )}
-    </>
+    <Stack gap="md" align="center" justify="center" pt="2.5rem">
+      <Center component="img" src={illustration} w="3rem" />
+      <Box component="header" ta="center" maw={CONTENT_MAX_WIDTH}>
+        <Title order={2} size="h4" mb="sm">
+          {title}
+        </Title>
+        <Text c="text-medium">{subtitle}</Text>
+      </Box>
+      {children}
+    </Stack>
   );
 };
 
@@ -119,7 +108,11 @@ const ConnectionDetails = ({
   );
 };
 
-export const GdriveAddDataPanel = () => {
+export const GdriveAddDataPanel = ({
+  onAddDataModalClose,
+}: {
+  onAddDataModalClose: () => void;
+}) => {
   const [
     areConnectionDetailsShown,
     { open: showConnectionDetails, close: closeConnectionDetails },
@@ -150,6 +143,8 @@ export const GdriveAddDataPanel = () => {
     !showGdrive ? skipToken : undefined,
     { refetchOnMountOrArgChange: 5 },
   );
+
+  const status = getStatus({ status: folder?.status, error });
 
   const folderUrl = folder?.url;
 
@@ -196,7 +191,6 @@ export const GdriveAddDataPanel = () => {
 
   // Finally, all conditions have been met, and all screens below this line depend only
   // on the status of the attempted connection
-  const status = getStatus({ status: folder?.status, error });
 
   if (status === "active") {
     return (
@@ -231,26 +225,54 @@ export const GdriveAddDataPanel = () => {
     );
   }
 
+  if (status === "not-connected") {
+    return (
+      <>
+        <PanelWrapper>
+          <Button
+            variant="filled"
+            w={INNER_WIDTH}
+            onClick={() => {
+              trackSheetConnectionClick({ from: "add-data-modal" });
+              openConnectionModal();
+            }}
+          >
+            {t`Connect`}
+          </Button>
+        </PanelWrapper>
+        <GdriveConnectionModal
+          isModalOpen={isConnectionModalOpen}
+          onClose={(success) => {
+            // This convoluted logic is currently needed because we don't have a good, holistic way
+            // of dealing with stacked modals. The parent modal is "Add data" modal and it renders
+            // the "Google Drive connect" modal as a child. As soon as we establish a connection,
+            // we want the child to close both itself and the parent. In all other cases (when a
+            // user manually closes it), we want it to only close itself.
+            if (success) {
+              onAddDataModalClose();
+            }
+
+            closeConnectionModal();
+          }}
+          reconnect={false}
+        />
+      </>
+    );
+  }
+
   const buttonText = match(status)
-    .with("not-connected", () => t`Connect`)
     .with("syncing", () => t`Connecting...`)
     .with("error", () => t`Something went wrong`)
     .exhaustive();
 
   return (
-    <PanelWrapper
-      isModalOpen={isConnectionModalOpen}
-      onModalClose={closeConnectionModal}
-    >
+    <PanelWrapper>
       <Button
         variant="filled"
         w={INNER_WIDTH}
         onClick={() => {
           trackSheetConnectionClick({ from: "add-data-modal" });
-
-          status === "not-connected"
-            ? openConnectionModal()
-            : showConnectionDetails();
+          showConnectionDetails();
         }}
       >
         {buttonText}

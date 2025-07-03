@@ -40,7 +40,7 @@ export function GdriveConnectionModal({
   reconnect,
 }: {
   isModalOpen: boolean;
-  onClose: () => void;
+  onClose: (success?: boolean) => void;
   reconnect: boolean;
 }) {
   const shouldShow = useShowGdrive();
@@ -94,7 +94,7 @@ function GoogleSheetsConnectModal({
   folderUrl,
   serviceAccountEmail,
 }: {
-  onClose: () => void;
+  onClose: (success?: boolean) => void;
   folderUrl: string | null;
   serviceAccountEmail: string;
 }) {
@@ -125,7 +125,7 @@ function GoogleSheetsConnectModal({
       .unwrap()
       .then(() => {
         dispatch(reloadSettings());
-        onClose();
+        onClose(true);
       })
       .catch((response) => {
         setErrorMessage(response?.data?.message ?? "Something went wrong");
