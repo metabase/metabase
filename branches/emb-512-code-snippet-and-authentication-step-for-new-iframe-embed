@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-549-end-to-end-tests-for-selecting-resource-to-embed-for-new",
-    "hash": "74017345109a12d2f4a20235a790e43297cc15a6"
+    "hash": "aad6ba9602df638404ea68d9e55db77911757e11"
   },
   "upstream": {
     "branch": "emb-512-code-snippet-and-authentication-step-for-new-iframe-embed"
