@@ -406,6 +406,7 @@ export const duplicateCard = createThunkAction(
       };
 
       if (hasInlineParameters(dashcard)) {
+        const originalParameterIds = [...dashcard.inline_parameters];
         const newParameters = duplicateParameters(
           dispatch,
           getState,
@@ -414,6 +415,22 @@ export const duplicateCard = createThunkAction(
         dashcard.inline_parameters = newParameters.map(
           (parameter) => parameter.id,
         );
+        if (Array.isArray(dashcard.parameter_mappings)) {
+          dashcard.parameter_mappings = dashcard.parameter_mappings.map(
+            (mapping) => {
+              const inlineParameterIndex = originalParameterIds.indexOf(
+                mapping.parameter_id,
+              );
+              if (inlineParameterIndex !== -1) {
+                return {
+                  ...mapping,
+                  parameter_id: newParameters[inlineParameterIndex].id,
+                };
+              }
+              return mapping;
+            },
+          );
+        }
       }
 
       dispatch(
