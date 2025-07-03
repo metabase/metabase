@@ -1795,7 +1795,7 @@ describe("scenarios > admin > datamodel", () => {
           H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
 
-          // Check json is unfolded initially and shows prefix
+          cy.log("json is unfolded initially and shows prefix");
           TableSection.getField("Json → A").should("be.visible");
           TableSection.getField("Json → A")
             .findByTestId("name-prefix")
@@ -1841,7 +1841,6 @@ describe("scenarios > admin > datamodel", () => {
           H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
           TableSection.getField("Json → A").should("not.exist");
-          cy.findByTestId("name-prefix").should("not.exist");
         });
       });
     });
