@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "new-iframe-embedding-setup-flow",
-    "hash": "5bb56123ff1f9623301f243ef5a6219b37d95fd9"
+    "hash": "d531fa08f132fcbcb661ac295feeedd69e1ec25c"
   },
   "upstream": {
     "branch": "emb-549-end-to-end-tests-for-selecting-resource-to-embed-for-new"
