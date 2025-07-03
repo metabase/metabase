@@ -466,14 +466,10 @@ describe("scenarios > admin > datamodel", () => {
     it("should be able to see details of a table", () => {
       H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
 
-      cy.get("main")
-        .findByText("Start by selecting data to model")
-        .should("be.visible");
+      verifyTableSectionEmptyState();
 
       TablePicker.getTable("Orders").click();
-      cy.get("main")
-        .findByText("Edit the table and fields")
-        .should("be.visible");
+      verifyFieldSectionEmptyState();
       TableSection.getNameInput().should("have.value", "Orders");
       TableSection.getDescriptionInput().should(
         "have.value",
