@@ -1,15 +1,13 @@
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type { Dashboard, RecentItem } from "metabase-types/api";
+
+import {
+  assertDashboard,
+  assertRecentItemName,
+  getEmbedSidebar,
+  visitNewEmbedPage,
+} from "./helpers";
 
 const { H } = cy;
-
-type RecentActivityIntercept = {
-  response: Cypress.Response<{ recents: RecentItem[] }>;
-};
-
-type DashboardIntercept = {
-  response: Cypress.Response<Dashboard>;
-};
 
 describe("scenarios > embedding > sdk iframe embed setup > select embed experience", () => {
   beforeEach(() => {
@@ -114,30 +112,3 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     });
   });
 });
-
-const getEmbedSidebar = () => cy.findByRole("complementary");
-
-const visitNewEmbedPage = () => {
-  cy.visit("/embed/new");
-  cy.wait("@dashboard");
-};
-
-const assertRecentItemName = (
-  model: "dashboard" | "card",
-  resourceName: string,
-) => {
-  cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
-    const recentItem = intercept.response?.body.recents?.find(
-      (recent) => recent.model === model,
-    );
-
-    expect(recentItem?.name).to.be.equal(resourceName);
-  });
-};
-
-const assertDashboard = ({ id, name }: { id: number; name: string }) => {
-  cy.get<DashboardIntercept>("@dashboard").should((intercept) => {
-    expect(intercept.response?.body.id).to.be.equal(id);
-    expect(intercept.response?.body.name).to.be.equal(name);
-  });
-};
