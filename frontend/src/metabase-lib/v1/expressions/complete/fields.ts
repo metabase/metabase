@@ -2,7 +2,6 @@ import type { CompletionContext } from "@codemirror/autocomplete";
 
 // eslint-disable-next-line no-restricted-imports
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { FK_SYMBOL } from "metabase/lib/formatting";
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
@@ -33,7 +32,7 @@ export function suggestFields({ query, stageIndex, expressionIndex }: Options) {
         displayInfo.displayName,
       ]
         .filter(isNotNull)
-        .join(` ${FK_SYMBOL} `),
+        .join(" "),
       icon: getColumnIcon(column),
       column,
     };

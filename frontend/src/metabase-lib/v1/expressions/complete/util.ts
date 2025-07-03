@@ -62,19 +62,16 @@ export function fuzzyMatcher(
       .filter((result) => (result.score ?? 0) <= 0.5)
       .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
       .map((result) => {
-        const key = result.matches?.[0]?.key;
-        const indices = result.matches?.[0]?.indices;
-
-        const item = result.item;
-
-        const displayLabel = key
-          ? (item[key as keyof typeof item] as string | undefined)
-          : null;
+        const { item, matches = [] } = result;
+        const key = matches[0]?.key;
+        const indices = matches[0]?.indices;
 
         // We need to preserve item identity here, so we need to return the original item
         // possible with updated values for displayLabel and matches
-        item.displayLabel = displayLabel ?? item.displayLabel;
-        item.matches = Array.from(indices ?? []);
+        // item.displayLabel = displayLabel ?? item.displayLabel;
+        if (key === "displayLabel") {
+          item.matches = Array.from(indices ?? []);
+        }
 
         return item;
       });
