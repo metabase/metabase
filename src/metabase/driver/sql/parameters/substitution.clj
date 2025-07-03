@@ -363,7 +363,11 @@
 (mu/defmethod ->replacement-snippet-info [:sql FieldFilter]
   [driver                            :- :keyword
    {:keys [value], :as field-filter} :- [:map
-                                         [:field :any]
+                                         [:field [:or
+                                                  driver-api/schema.metadata.column
+                                                  [:map
+                                                   [:column driver-api/schema.common.non-blank-string]
+                                                   [:effective-type driver-api/schema.common.base-type]]]]
                                          [:value :any]]]
   (cond
     ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1

@@ -359,13 +359,12 @@
         first)))
 
 ;; With sparksql, ->honeysql returns a fully qualified name (eg `test_data`.`orders`.`created_at`), but sparksql
-;; expects you to use the relevant alias instead (eg `t1`.`created_at`).
+;; doesn't like fully qualified names here.  Instead, it wants either the bare column name or the relevant alias.
 (defmethod tx/field-reference :sparksql
   ([driver field-id]
    (let [parent-method (get-method tx/field-reference :sql/test-extensions)
          full-reference (parent-method driver field-id)
          [_ _ field-name] (str/split full-reference #"\.")]
-     #_(format "`t1`.%s" field-name)
      field-name)))
 
 ;; With bigquery, ->honeysql returns `db`.`orders`.`created_at`, but for whatever reason, the query actually wants

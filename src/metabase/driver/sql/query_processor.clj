@@ -1354,7 +1354,7 @@
     (datetime-diff driver unit x y)))
 
 (defmethod ->honeysql [:sql :raw]
-  [driver [_ sql _opts]]
+  [_driver [_ sql _opts]]
   [:raw sql])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1368,7 +1368,7 @@
   `::add/desired-alias` key in the clause options.
 
   Optional third parameter `unique-name-fn` is no longer used as of 0.42.0."
-  ([_driver                                               :- :keyword
+  ([driver                                                :- :keyword
     [clause-type id-or-name opts] :- vector?]
    (let [desired-alias (or (get opts driver-api/qp.add.desired-alias)
                            ;; fallback behavior for anyone using SQL QP functions directly without including the stuff
