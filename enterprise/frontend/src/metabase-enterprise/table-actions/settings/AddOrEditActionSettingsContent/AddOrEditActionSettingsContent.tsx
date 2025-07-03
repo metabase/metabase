@@ -18,6 +18,7 @@ import type {
   DatabaseId,
   RowActionFieldSettings,
   TableActionDisplaySettings,
+  WritebackActionBase,
 } from "metabase-types/api";
 
 import { ActionParameterMappingForm } from "./ActionParameterMappingForm";
@@ -30,7 +31,7 @@ interface Props {
   onClose: () => void;
   onSubmit: (actionParams: {
     id?: string;
-    action: ActionItem;
+    action: Pick<WritebackActionBase, "id" | "name">;
     name: string | undefined;
     parameterMappings: RowActionFieldSettings[];
   }) => void;
@@ -91,7 +92,7 @@ export function AddOrEditActionSettingsContent({
   const handleSubmit = useCallback(
     (actionParams: {
       id?: string;
-      action: ActionItem;
+      action: Pick<WritebackActionBase, "id" | "name">;
       name: string | undefined;
       parameterMappings: RowActionFieldSettings[];
     }) => {

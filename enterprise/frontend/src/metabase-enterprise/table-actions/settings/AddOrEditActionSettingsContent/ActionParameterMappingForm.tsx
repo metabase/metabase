@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import type { ActionItem } from "metabase/common/components/DataPicker";
 import EditableText from "metabase/common/components/EditableText";
 import EmptyState from "metabase/common/components/EmptyState";
 import { Form, FormProvider } from "metabase/forms";
 import { Box, Button, Center, Loader, Stack, Title } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
-import { useGetFormConfigurationMutation } from "metabase-enterprise/api";
+import { useConfigureActionFormMutation } from "metabase-enterprise/api";
 import type {
   ActionScope,
   RowActionFieldSettings,
   TableActionDisplaySettings,
+  WritebackActionBase,
 } from "metabase-types/api";
 
 import { ActionParameterSettingsItem } from "./ActionParameterSettingsItem";
@@ -20,13 +20,13 @@ import type { ActionParametersFormValues } from "./types";
 import { cleanEmptyVisibility, isValidMapping } from "./utils";
 
 interface ActionParameterMappingProps {
-  action: ActionItem;
+  action: Pick<WritebackActionBase, "id" | "name">;
   actionSettings: TableActionDisplaySettings | null | undefined;
   actionScope: ActionScope;
   tableColumns: BasicTableViewColumn[];
   onSubmit: (actionParams: {
     id?: string;
-    action: ActionItem;
+    action: Pick<WritebackActionBase, "id" | "name">;
     name: string | undefined;
     parameterMappings: RowActionFieldSettings[];
   }) => void;
@@ -44,7 +44,7 @@ export const ActionParameterMappingForm = ({
   );
 
   const [fetchFormConfiguration, { data: formConfiguration }] =
-    useGetFormConfigurationMutation();
+    useConfigureActionFormMutation();
 
   useEffect(() => {
     // Pass ActionExpression as ID if actionSettings.id is not provided

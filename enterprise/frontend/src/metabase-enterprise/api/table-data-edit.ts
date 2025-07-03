@@ -125,7 +125,7 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
         body,
       }),
     }),
-    getFormConfiguration: builder.mutation<
+    configureActionForm: builder.mutation<
       ConfigFormResponse,
       ConfigFormRequest
     >({
@@ -147,5 +147,5 @@ export const {
   useGetActionsQuery,
   useExecuteActionMutation,
   useDescribeActionFormMutation,
-  useGetFormConfigurationMutation,
+  useConfigureActionFormMutation,
 } = tableDataEditApi;
