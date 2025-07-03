@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import {
@@ -70,6 +71,10 @@ const setup = async ({
 };
 
 describe("LicenseAndBilling", () => {
+  beforeEach(() => {
+    jest.spyOn(dayjs.prototype, "diff").mockReturnValue(27209);
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
