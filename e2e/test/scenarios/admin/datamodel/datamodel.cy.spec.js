@@ -225,10 +225,7 @@ describe("scenarios > admin > datamodel > field", () => {
   });
 
   describe("Display Values", () => {
-    before(() => {
-      cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
-      H.restore();
-    });
+    before(H.restore);
 
     it("lets you change to 'Use foreign key' and change the target for field with fk", () => {
       H.visitAlias("@ORDERS_PRODUCT_ID_URL");
@@ -248,6 +245,8 @@ describe("scenarios > admin > datamodel > field", () => {
     });
 
     it("allows 'Custom mapping' null values", () => {
+      cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
+
       const dbId = 2;
       const remappedNullValue = "nothin";
 
