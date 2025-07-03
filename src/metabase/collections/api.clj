@@ -16,6 +16,7 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.interface :as mi]
@@ -980,8 +981,9 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch a specific Collection with standard details added"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (collection-detail (api/read-check :model/Collection id)))
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (let [resolved-id (eid-translation/->id :collection id)]
+    (collection-detail (api/read-check :model/Collection resolved-id))))
 
 (api.macros/defendpoint :get "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
