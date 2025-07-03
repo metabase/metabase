@@ -32,6 +32,10 @@ export function viewTenants() {
   return `/admin/tenants`;
 }
 
+export function viewTenantUsers() {
+  return `/admin/tenants`;
+}
+
 export function newTenant() {
   return `/admin/tenants/new`;
 }

@@ -54,7 +54,7 @@ export function PeopleNav() {
   );
 }
 
-const PeopleNavItem = (props: AdminNavItemProps) => {
+export const PeopleNavItem = (props: AdminNavItemProps) => {
   const location = useSelector(getLocation);
   const subpath = location?.pathname;
 

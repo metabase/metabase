@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { IndexRedirect, IndexRoute } from "react-router";
 import { t } from "ttag";
 
+import { PeopleNavItem } from "metabase/admin/people/components/PeopleNav";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
@@ -14,7 +15,9 @@ import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
+import { Divider } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import * as Urls from "metabase-enterprise/urls";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
@@ -79,6 +82,24 @@ if (hasPremiumFeature("tenants")) {
           <ModalRoute path="reactivate" modal={TenantActivationModal} noWrap />
         </Route>
       </Route>
+    </>
+  );
+
+  PLUGIN_TENANTS.PeopleNav = (
+    <>
+      <Divider my="sm" />
+      <PeopleNavItem
+        path={Urls.viewTenants()}
+        data-testid="nav-item"
+        label={t`Tenants`}
+        icon="globe"
+      />
+      <PeopleNavItem
+        path={Urls.viewTenantUsers()}
+        data-testid="nav-item"
+        label={t`External Users`}
+        icon="group"
+      />
     </>
   );
 
