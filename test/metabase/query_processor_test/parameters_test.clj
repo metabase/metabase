@@ -231,7 +231,7 @@
              (run-count-query query))))))
 
 (deftest ^:parallel custom-filter-param-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-custom-filters :test/dynamic-dataset-loading)
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native/custom-filters :test/dynamic-dataset-loading)
     (testing "temporal custom filters"
       (mt/dataset attempted-murders-no-time
         (doseq [[field field-type]
@@ -251,7 +251,7 @@
                                                    :attempts field-type field value-type value))))))))
 
 (deftest ^:parallel custom-filter-param-test-2
-  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-custom-filters ::field-filter-param-test-2)
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native/custom-filters ::field-filter-param-test-2)
     (testing "text custom filters"
       (custom-filter-param-test-is-count-= 1
                                            :venues :type/Text :name :text "In-N-Out Burger"))

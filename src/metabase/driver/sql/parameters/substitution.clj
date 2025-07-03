@@ -266,9 +266,13 @@
   (and (:column field)
        (:effective-type field)))
 
-(mu/defn- field->clause :- driver-api/mbql.schema.field
+(mu/defn- field->clause :- [:or driver-api/mbql.schema.field driver-api/mbql.schema.raw]
   [driver     :- :keyword
-   field      :- :any
+   field      :- [:or
+                  driver-api/schema.metadata.column
+                  [:map
+                   [:column driver-api/schema.common.non-blank-string]
+                   [:effective-type driver-api/schema.common.base-type]]]
    param-type :- driver-api/schema.parameter.type
    value]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before

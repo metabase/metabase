@@ -327,6 +327,15 @@
        base-type
        true))])
 
+(mr/def ::raw
+  (helpers/clause
+   :raw
+   "sql" ::lib.schema.common/non-blank-string))
+
+(def ^{:added "0.56.0"} raw
+  "Schema for a `:raw` clause."
+  (with-meta [:ref ::raw] {:clause-name :raw}))
+
 (mr/def ::field
   [:and
    {:doc/title [:span [:code ":field"] " clause"]}
@@ -414,10 +423,12 @@
                   (string? x)                     :string
                   (is-clause? string-functions x) :string-expression
                   (is-clause? :value x)           :value
+                  (is-clause? :raw x)             :raw
                   :else                           :else))}
    [:string            :string]
    [:string-expression StringExpression]
    [:value             value]
+   [:raw               raw]
    [:else              Field]])
 
 (def ^:private StringExpressionArg
@@ -469,11 +480,13 @@
                        (is-clause? numeric-functions x) :numeric-expression
                        (is-clause? aggregations x)      :aggregation
                        (is-clause? :value x)            :value
+                       (is-clause? :raw x)              :raw
                        :else                            :field))}
    [:number             number?]
    [:numeric-expression NumericExpression]
    [:aggregation        Aggregation]
    [:value              value]
+   [:raw                raw]
    [:field              Field]])
 
 (def ^:private NumericExpressionArg
@@ -487,10 +500,12 @@
                        (is-clause? aggregations x)       :aggregation
                        (is-clause? :value x)             :value
                        (is-clause? datetime-functions x) :datetime-expression
+                       (is-clause? :raw x)               :raw
                        :else                             :else))}
    [:aggregation         Aggregation]
    [:value               value]
    [:datetime-expression DatetimeExpression]
+   [:raw                 raw]
    [:else                [:or [:ref ::DateOrDatetimeLiteral] Field]]])
 
 (def ^:private DateTimeExpressionArg
@@ -510,6 +525,7 @@
                        (string? x)                       :string
                        (is-clause? string-functions x)   :string-expression
                        (is-clause? :value x)             :value
+                       (is-clause? :raw x)               :raw
                        :else                             :else))}
    [:number               number?]
    [:boolean              :boolean]
@@ -520,6 +536,7 @@
    [:string               :string]
    [:string-expression    StringExpression]
    [:value                value]
+   [:raw                  raw]
    [:else                 Field]])
 
 (def ^:private ExpressionArg

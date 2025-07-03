@@ -64,12 +64,11 @@
   [[sql args missing] {[k column] :args} {:keys [effective-type value] :as v}]
   (if (and (params/CustomFilter? v) (string? k) (string? column))
     (let [{:keys [replacement-snippet prepared-statement-args]}
-          (mu/disable-enforcement
-            (sql.params.substitution/->replacement-snippet-info driver/*driver*
-                                                                (params/map->FieldFilter
-                                                                 {:field {:column column
-                                                                          :effective-type effective-type}
-                                                                  :value value})))]
+          (sql.params.substitution/->replacement-snippet-info driver/*driver*
+                                                              (params/map->FieldFilter
+                                                               {:field {:column column
+                                                                        :effective-type effective-type}
+                                                                :value value}))]
       [(str sql replacement-snippet) (concat args prepared-statement-args) missing])
     [sql args (conj missing k)]))
 
