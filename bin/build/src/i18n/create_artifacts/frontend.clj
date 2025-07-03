@@ -26,7 +26,6 @@
   {"" (into {}
             (comp
              ;; filter out i18n messages that aren't used on the FE client
-             (filter frontend-message?)
              i18n/print-message-count-xform
              (map (fn [message]
                     [(->ttag-reference (:id message))

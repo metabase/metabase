@@ -51,7 +51,7 @@ export function updateStartOfWeek(startOfWeekDayName) {
 MetabaseSettings.on("start-of-week", updateStartOfWeek);
 
 function setLanguage(translationsObject) {
-  const locale = translationsObject.headers.language;
+  const locale = translationsObject.headers.language ?? "en";
   addMsgIds(translationsObject);
 
   // add and set locale with ttag
