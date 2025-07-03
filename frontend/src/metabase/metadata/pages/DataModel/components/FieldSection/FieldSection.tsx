@@ -59,7 +59,7 @@ const FieldSectionBase = ({
 
             sendToast({
               icon: "check",
-              message: t`Field name updated`,
+              message: t`Display name for ${field.display_name} updated`,
             });
           }}
           description={field.description ?? ""}
@@ -75,7 +75,7 @@ const FieldSectionBase = ({
 
             sendToast({
               icon: "check",
-              message: t`Field description updated`,
+              message: t`Description for ${field.display_name} updated`,
             });
           }}
         />

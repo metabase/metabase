@@ -12,10 +12,14 @@ import {
   getHasEmptyValues,
 } from "./utils";
 
+interface ChangeOptions {
+  isAutomatic?: boolean;
+}
+
 interface Props {
   isOpen: boolean;
   value: Mapping;
-  onChange: (value: Mapping) => void;
+  onChange: (value: Mapping, options?: ChangeOptions) => void;
   onClose: () => void;
 }
 
@@ -60,7 +64,7 @@ export const CustomMappingModal = ({
     if (hasUnsetMappings) {
       // Save the initial values to make sure that we aren't left in a potentially broken state where
       // the dimension type is "internal" but we don't have any values in metabase_fieldvalues
-      onChangeRef.current(newMapping);
+      onChangeRef.current(newMapping, { isAutomatic: true });
     }
   }, [onChangeRef, mappingRef, value]); // run this effect only when "value" prop changes
 

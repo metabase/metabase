@@ -37,7 +37,7 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
     if (!error) {
       sendToast({
         icon: "check",
-        message: t`Field name updated`,
+        message: t`Display name for ${field.display_name} updated`,
       });
     }
   };
@@ -58,7 +58,7 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
     if (!error) {
       sendToast({
         icon: "check",
-        message: t`Field description updated`,
+        message: t`Description for ${field.display_name} updated`,
       });
     }
   };
