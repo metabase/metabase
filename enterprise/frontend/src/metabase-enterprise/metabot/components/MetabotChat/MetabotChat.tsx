@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { useMemo } from "react";
 import { c, jt, t } from "ttag";
-import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
@@ -190,10 +189,7 @@ export const MetabotChat = () => {
               {metabot.isDoingScience && (
                 <MetabotThinking
                   toolCalls={metabot.useStreaming ? metabot.toolCalls : []}
-                  hideLoader={
-                    metabot.useStreaming &&
-                    _.last(metabot.messages)?.role === "agent"
-                  }
+                  hideLoader={false}
                 />
               )}
 

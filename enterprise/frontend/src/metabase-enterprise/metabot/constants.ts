@@ -20,17 +20,36 @@ export const METABOT_ERR_MSG = {
 // We don't need to translate this yet, as it's from ai-service which isn't translated
 export const METABOT_RESULTS_MESSAGE = "Here are the results";
 
-export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
-  get construct_notebook_query() {
-    return t`Creating a query`;
+export const TOOL_CALL_MESSAGES: Record<string, string> = new Proxy(
+  {
+    get construct_notebook_query() {
+      return t`Creating a query`;
+    },
+    get analyze_data() {
+      return t`Analyzing the data`;
+    },
+    get analyze_chart() {
+      return t`Inspecting the visualization`;
+    },
+    get list_available_fields() {
+      return t`Checking available fields`;
+    },
+    get get_field_values() {
+      return t`Checking field values`;
+    },
+    get edit_sql_query() {
+      return t`Editing the SQL query`;
+    },
+    get edit_chart() {
+      return t`Editing the chart`;
+    },
   },
-  get analyze_data() {
-    return t`Analyzing the data`;
+  {
+    get(target, prop) {
+      if (prop in target) {
+        return target[prop as keyof typeof target];
+      }
+      return t`Using tool ${String(prop)}`;
+    },
   },
-  get analyze_chart() {
-    return t`Inspecting the visualization`;
-  },
-  get list_available_fields() {
-    return undefined;
-  },
-};
+) as Record<string, string>;
