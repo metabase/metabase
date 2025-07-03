@@ -169,7 +169,222 @@ databaseChangeLog:
                   type: ${text.type}
                   constraints:
                     nullable: false
-# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+
+  - changeSet:
+      id: v56.2025-07-03T16:00:00
+      author: qnkhuat
+      comment: Create app table for data apps functionality
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: app
+      changes:
+        - createTable:
+            tableName: app
+            remarks: Applications
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: App name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the app was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the app was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: app
+
+  - changeSet:
+      id: v56.2025-07-03T16:01:00
+      author: qnkhuat
+      comment: Create app_definition table for data apps functionality
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: app_definition
+      changes:
+        - createTable:
+            tableName: app_definition
+            remarks: App definitions (append only)
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: app_id
+                  remarks: Referenced app
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: app
+                    referencedColumnNames: id
+                    foreignKeyName: fk_app_definition_app_id
+                    deleteCascade: true
+              - column:
+                  name: version
+                  remarks: Version number for ordering
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: config
+                  remarks: App configuration JSON
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  remarks: SHA hash for the entity
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: app_definition
+
+- changeSet:
+      id: v56.2025-07-03T16:04:00
+      author: qnkhuat
+      comment: Add index on app_definition.app_id
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: app_definition
+        - not:
+            - indexExists:
+                tableName: app_definition
+                indexName: idx_app_definition_app_id
+      changes:
+        - createIndex:
+            tableName: app_definition
+            indexName: idx_app_definition_app_id
+            columns:
+              - column:
+                  name: app_id
+      rollback:
+        - dropIndex:
+            tableName: app_definition
+            indexName: idx_app_definition_app_id
+
+  - changeSet:
+      id: v56.2025-07-03T16:02:00
+      author: qnkhuat
+      comment: Create app_publishing table for data apps functionality
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: app_publishing
+      changes:
+        - createTable:
+            tableName: app_publishing
+            remarks: App publishing records
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: app_id
+                  remarks: Referenced app
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: app
+                    referencedColumnNames: id
+                    foreignKeyName: fk_app_publishing_app_id
+                    deleteCascade: true
+              - column:
+                  name: app_definition_id
+                  remarks: Referenced app definition
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: app_definition
+                    referencedColumnNames: id
+                    foreignKeyName: fk_app_publishing_app_definition_id
+                    deleteCascade: true
+              - column:
+                  name: version_number
+                  remarks: Semantic version number
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the app was published
+                  name: published_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  remarks: Whether this version is active
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: app_publishing
+
+  - changeSet:
+      id: v56.2025-07-03T16:05:00
+      author: qnkhuat
+      comment: Add composite index on app_publishing.app_id and active
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: app_publishing
+        - not:
+            - indexExists:
+                tableName: app_publishing
+                indexName: idx_app_publishing_app_id_active
+      changes:
+        - createIndex:
+            tableName: app_publishing
+            indexName: idx_app_publishing_app_id_active
+            columns:
+              - column:
+                  name: app_id
+              - column:
+                  name: active
+      rollback:
+        - dropIndex:
+            tableName: app_publishing
+            indexName: idx_app_publishing_app_id_active
 
 ########################################################################################################################
 #
