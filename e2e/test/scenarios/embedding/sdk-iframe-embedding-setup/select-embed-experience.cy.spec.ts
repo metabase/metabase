@@ -122,10 +122,10 @@ const assertRecentItemName = (
   resourceName: string,
 ) => {
   cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
-    const recentItem = intercept.response?.body.recents?.filter(
+    const recentItem = intercept.response?.body.recents?.find(
       (recent) => recent.model === model,
-    )?.[0];
+    );
 
-    expect(recentItem.name).to.be.equal(resourceName);
+    expect(recentItem?.name).to.be.equal(resourceName);
   });
 };
