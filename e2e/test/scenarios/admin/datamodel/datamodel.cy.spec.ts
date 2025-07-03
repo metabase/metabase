@@ -1580,6 +1580,58 @@ describe("scenarios > admin > datamodel", () => {
       });
 
       describe("Display values", () => {
+        it("should show tooltips explaining why remapping options are disabled", () => {
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: PRODUCTS_ID,
+            fieldId: PRODUCTS.TITLE,
+          });
+
+          FieldSection.getDisplayValuesInput().click();
+
+          cy.log("foreign key mapping");
+          H.popover().within(() => {
+            cy.findByRole("option", { name: /Use foreign key/ }).should(
+              "have.attr",
+              "data-combobox-disabled",
+              "true",
+            );
+            cy.findByRole("option", { name: /Use foreign key/ })
+              .icon("info")
+              .realHover();
+          });
+          H.tooltip().should(
+            "contain.text",
+            'You can only use foreign key mapping for fields with the semantic type set to "Foreign Key"',
+          );
+
+          cy.log("custom mapping");
+          H.popover().within(() => {
+            cy.findByRole("option", { name: /Custom mapping/ }).should(
+              "have.attr",
+              "data-combobox-disabled",
+              "true",
+            );
+            cy.findByRole("option", { name: /Custom mapping/ })
+              .icon("info")
+              .realHover();
+          });
+          H.tooltip().should(
+            "contain.text",
+            'You can only use custom mapping for numerical fields with filtering set to "A list of all values"',
+          );
+
+          cy.log("clicking disabled option does not change the value");
+          cy.findByRole("option", { name: /Custom mapping/ }).click({
+            force: true, // try to click it despite pointer-events: none
+          });
+          FieldSection.getDisplayValuesInput().should(
+            "have.value",
+            "Use original value",
+          );
+        });
+
         it("should let you change to 'Use foreign key' and change the target for field with fk", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
