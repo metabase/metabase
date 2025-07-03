@@ -8,8 +8,16 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
-const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS, REVIEWS_ID, PRODUCTS_ID } =
-  SAMPLE_DATABASE;
+const {
+  FEEDBACK,
+  FEEDBACK_ID,
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  REVIEWS,
+  REVIEWS_ID,
+  PRODUCTS_ID,
+} = SAMPLE_DATABASE;
 
 describe("scenarios > admin > datamodel", () => {
   beforeEach(() => {
@@ -559,7 +567,7 @@ describe("scenarios > admin > datamodel", () => {
       });
     });
 
-    describe("turning table visibility off shouldn't prevent editing related question (metabase#15947)", () => {
+    describe("shouldn't prevent editing related question after turning table visibility off (metabase#15947)", () => {
       it("simple question (metabase#15947-1)", () => {
         turnTableVisibilityOff(ORDERS_ID);
         H.visitQuestion(ORDERS_QUESTION_ID);
@@ -710,6 +718,36 @@ describe("scenarios > admin > datamodel", () => {
 
         H.openOrdersTable({ limit: 5 });
         H.tableHeaderColumn("Remapped Product ID").should("be.visible");
+      });
+    });
+
+    describe("Data", () => {
+      describe("Coercion strategy", () => {
+        it("should allow you to cast a field to a data type", () => {
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: FEEDBACK_ID,
+            fieldId: FEEDBACK.RATING,
+          });
+
+          cy.log(
+            "Ensure that Coercion strategy has been humanized (metabase#44723)",
+          );
+          H.DataModel.FieldSection.getCoercionToggle()
+            .parent()
+            .scrollIntoView()
+            .click();
+          H.popover().should("not.contain.text", "Coercion");
+          H.popover().findByText("UNIX seconds → Datetime").click();
+          cy.wait("@updateField");
+          H.undoToast().should("contain.text", "Casting enabled for Rating");
+
+          H.openTable({ database: SAMPLE_DB_ID, table: FEEDBACK_ID });
+          cy.findAllByTestId("cell-data")
+            .contains("December 31, 1969, 4:00 PM")
+            .should("have.length.greaterThan", 0);
+        });
       });
     });
 
@@ -941,8 +979,10 @@ describe("scenarios > admin > datamodel", () => {
           );
 
           H.openOrdersTable();
-          cy.findAllByTestId("header-cell").should("contain.text", "Total");
-          cy.findAllByTestId("header-cell").should("not.contain.text", "Tax");
+          H.tableHeaderColumn("Total").should("be.visible");
+          H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
+            "not.exist",
+          );
         });
       });
 
@@ -991,7 +1031,7 @@ describe("scenarios > admin > datamodel", () => {
             .and("have.value", "Title");
         });
 
-        it("allows 'Custom mapping' null values", () => {
+        it("should allow 'Custom mapping' null values", () => {
           const databaseId = 2;
           const remappedNullValue = "nothin";
 
@@ -1110,7 +1150,7 @@ describe("scenarios > admin > datamodel", () => {
           });
         });
 
-        it("display value 'Custom mapping' should be available only for 'Search box' filtering type (metabase#16322)", () => {
+        it("should allow 'Custom mapping' option only for 'Search box' filtering type (metabase#16322)", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1146,7 +1186,7 @@ describe("scenarios > admin > datamodel", () => {
             .should("not.have.attr", "data-combobox-disabled");
         });
 
-        it("allows to map FK to date fields (metabase#7108)", () => {
+        it("should allow to map FK to date fields (metabase#7108)", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
