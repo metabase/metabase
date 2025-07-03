@@ -978,13 +978,6 @@
                   :can_restore
                   :can_delete)))
 
-(api.macros/defendpoint :get "/:id"
-  "Fetch a specific Collection with standard details added"
-  [{:keys [id]} :- [:map
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [resolved-id (eid-translation/->id :collection id)]
-    (collection-detail (api/read-check :model/Collection resolved-id))))
-
 (api.macros/defendpoint :get "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
   []
@@ -1212,6 +1205,15 @@
                                     ;; default to sorting official collections first, but provide the option not to
                                     :official-collections-first? (or (nil? official_collections_first)
                                                                      (boolean official_collections_first))}})))
+
+;;; ------------------------------------------ Fetching a single Collection -------------------------------------------
+
+(api.macros/defendpoint :get "/:id"
+  "Fetch a specific Collection with standard details added"
+  [{:keys [id]} :- [:map
+                    [:id [:or ms/PositiveInt :string]]]]
+  (let [resolved-id (eid-translation/->id :collection id)]
+    (collection-detail (api/read-check :model/Collection resolved-id))))
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
