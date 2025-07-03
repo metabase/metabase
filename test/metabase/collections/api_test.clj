@@ -539,6 +539,11 @@
         (is (=? {:name "Coin Collection"}
                 (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection)))))))
 
+    (testing "check that we can see collection details using entity ID"
+      (mt/with-temp [:model/Collection collection {:name "Coin Collection"}]
+        (is (=? {:name "Coin Collection"}
+                (mt/user-http-request :rasta :get 200 (str "collection/" (:entity_id collection)))))))
+
     (testing "check that collections detail properly checks permissions"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection]
