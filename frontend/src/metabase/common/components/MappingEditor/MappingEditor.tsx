@@ -13,6 +13,7 @@ import {
   type TextInputProps,
   Tooltip,
 } from "metabase/ui";
+import type { StructuredUserAttribute } from "metabase-types/api";
 
 type DefaultRenderInputProps = {
   value: MappingValue;
@@ -71,7 +72,9 @@ export type MappingEditorEntry = {
   key: string;
   value: string;
   keyOpts?: Omit<DefaultRenderInputProps, "value">;
-  valueOpts?: Omit<DefaultRenderInputProps, "value">;
+  valueOpts?: Omit<DefaultRenderInputProps, "value"> & {
+    revert?: StructuredUserAttribute;
+  };
 };
 
 const buildEntries = (mapping: MappingType): MappingEditorEntry[] =>
@@ -89,7 +92,11 @@ const entryError = (entries: MappingEditorEntry[], key: string) => {
   if (entries.filter((e) => e.key === key).length > 1) {
     return t`Attribute keys can't have the same name`;
   }
-  if (entries.some((e) => !e.keyOpts?.disabled && e.key.startsWith("@"))) {
+  if (
+    entries.some(
+      (e) => !e.keyOpts?.disabled && e.key === key && e.key.startsWith("@"),
+    )
+  ) {
     return t`Keys starting with "@" are reserved for system use`;
   }
   return false;
@@ -119,10 +126,9 @@ export const MappingEditor = ({
   addButtonProps,
   swapKeyAndValue,
 }: MappingEditorProps) => {
-  const [entries, setEntries] = useState<MappingEditorEntry[]>([
-    ...specialEntries,
-    ...buildEntries({ ...mapping }),
-  ]);
+  const [entries, setEntries] = useState<MappingEditorEntry[]>(
+    specialEntries?.length ? specialEntries : buildEntries({ ...mapping }), // FIXME
+  );
 
   const handleChange = (newEntries: MappingEditorEntry[]) => {
     setEntries(newEntries);
@@ -166,8 +172,10 @@ export const MappingEditor = ({
             canDelete && !keyOpts?.disabled && !valueOpts?.disabled;
           const canRevert =
             !canDeleteThis &&
-            valueOpts?.tenantValue &&
-            valueOpts?.tenantValue !== value;
+            valueOpts?.revert &&
+            valueOpts?.revert.value !== value;
+
+          // console.log({ canRevert, valueOpts })
 
           return (
             <tr key={index}>
@@ -202,7 +210,9 @@ export const MappingEditor = ({
               )}
               {canRevert && (
                 <td className={CS.pb1} style={{ verticalAlign: "top" }}>
-                  <Tooltip label={t`Revert to tenant value`}>
+                  <Tooltip
+                    label={t`Revert to "${valueOpts?.revert?.value}" value from ${valueOpts?.revert?.source}`}
+                  >
                     <Button
                       leftSection={<Icon name="refresh" />}
                       variant="subtle"
@@ -211,7 +221,7 @@ export const MappingEditor = ({
                           replaceEntryValue(
                             entries,
                             index,
-                            valueOpts?.tenantValue || "",
+                            valueOpts.revert?.value || "",
                           ),
                         )
                       }

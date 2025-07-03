@@ -1,19 +1,20 @@
-import { useField, useFormikContext } from "formik";
+import { useField } from "formik";
 import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
+import { skipToken, useGetUserQuery } from "metabase/api";
 import FormField from "metabase/common/components/FormField";
 import { MappingEditor } from "metabase/common/components/MappingEditor";
 import { Accordion, Box, Loader } from "metabase/ui";
-import { useGetTenantQuery } from "metabase-enterprise/api";
+import type { UserId } from "metabase-types/api";
 
-import { getDisabledTenantUserAttribute } from "../utils";
+import { getSpecialEntries } from "../utils";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   name: string;
   title?: string;
   description?: string;
+  userId?: UserId;
 }
 
 export const LoginAttributesWidget = ({
@@ -22,6 +23,7 @@ export const LoginAttributesWidget = ({
   description,
   className,
   style,
+  userId,
 }: Props) => {
   const [{ value }, , { setValue, setError }] = useField(name);
 
@@ -38,12 +40,7 @@ export const LoginAttributesWidget = ({
     }
   };
 
-  const { values } = useFormikContext<{ tenant_id: number }>();
-
-  const { data: tenant, isLoading } = useGetTenantQuery(
-    values.tenant_id ?? skipToken,
-  );
-
+  const { data: userData, isLoading } = useGetUserQuery(userId ?? skipToken);
   return (
     <FormField className={className} style={style} description={description}>
       <Accordion>
@@ -55,11 +52,8 @@ export const LoginAttributesWidget = ({
                 <Loader />
               ) : (
                 <MappingEditor
-                  specialEntries={getDisabledTenantUserAttribute(tenant, value)}
-                  value={removeDuplicateKeys(
-                    value ?? {},
-                    tenant?.attributes ?? {},
-                  )}
+                  specialEntries={getSpecialEntries(userData)}
+                  value={userId ? {} : value}
                   onChange={handleChange}
                   onError={handleError}
                   addText={t`Add an attribute`}
@@ -70,15 +64,5 @@ export const LoginAttributesWidget = ({
         </Accordion.Item>
       </Accordion>
     </FormField>
-  );
-};
-
-const removeDuplicateKeys = (userAttributes, tenantAttributes) => {
-  const tenantAttributeSet = new Set(Object.keys(tenantAttributes));
-
-  return Object.fromEntries(
-    Object.entries(userAttributes).filter(
-      ([key]) => !tenantAttributeSet.has(key),
-    ),
   );
 };

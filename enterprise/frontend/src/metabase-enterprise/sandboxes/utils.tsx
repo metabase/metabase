@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import type { MappingEditorEntry } from "metabase/common/components/MappingEditor";
 import { Group, Icon, type SelectProps, Tooltip } from "metabase/ui";
-import type { GroupTableAccessPolicy, Table, Tenant } from "metabase-types/api";
+import type { GroupTableAccessPolicy, Table, User } from "metabase-types/api";
 
 import type { GroupTableAccessPolicyParams } from "./types";
 
@@ -42,58 +43,43 @@ export const renderUserAttributesForSelect: SelectProps["renderOption"] = ({
   </Group>
 );
 
-export const getDisabledTenantUserAttribute = (
-  tenant?: Tenant,
-  userValues: Record<string, string> = {},
-): MappingEditorEntry[] => {
-  if (tenant) {
-    return [
-      {
-        key: TENANT_SLUG_ATTRIBUTE,
-        value: tenant.slug,
-        keyOpts: {
-          disabled: true,
-          leftSection: (
-            <Tooltip label={t`This attribute is system defined`}>
-              <Icon name="info" c="text-light" />
-            </Tooltip>
-          ),
-        },
-        valueOpts: {
-          disabled: true,
-        },
-      },
-      ...Object.entries(tenant.attributes ?? {}).map(
-        ([attributeKey, attributeValue]) => ({
-          key: attributeKey,
-          value: userValues[attributeKey] ?? attributeValue, // override tenant value with user value if it exists
-          keyOpts: {
-            disabled: true,
-            leftSection: (
-              <Tooltip
-                label={t`This attribute is inherited from the tenant, but you can override its value`}
-                maw="20rem"
-              >
-                <Icon name="info" c="text-light" />
-              </Tooltip>
-            ),
-          },
-          valueOpts: {
-            disabled: false,
-            tenantValue: attributeValue,
-            revertButton: !userValues[attributeKey] && (
-              <Tooltip
-                label={t`Revert this value to the value set on the tenant`}
-                maw="20rem"
-              >
-                <Icon name="refresh" c="text-light" />
-              </Tooltip>
-            ),
-          },
-        }),
-      ),
-    ];
-  }
+const SystemDefined = () => (
+  <Tooltip label={t`This attribute is system defined`}>
+    <Icon name="info" c="text-light" />
+  </Tooltip>
+);
 
-  return [];
+const TenantDefined = () => (
+  <Tooltip
+    label={t`This attribute is inherited from the tenant, but you can override its value`}
+    maw="20rem"
+  >
+    <Icon name="info" c="text-light" />
+  </Tooltip>
+);
+
+export const getSpecialEntries = (user?: User): MappingEditorEntry[] => {
+  return Object.entries(user?.structured_attributes ?? {})
+    .map(([key, { value, source, frozen, original }]) => ({
+      key,
+      value,
+      keyOpts: {
+        disabled: source !== "user" || !!original,
+        leftSection: match(original?.source || source)
+          .with("system", () => <SystemDefined />)
+          .with("tenant", () => <TenantDefined />)
+          .otherwise(() => null),
+      },
+      valueOpts: {
+        disabled: frozen,
+        revert: original,
+      },
+    }))
+    .sort((a, b) =>
+      // sort so that disabled keys and values are first
+      String(a.keyOpts.disabled) + String(a.valueOpts.disabled) <
+      String(b.keyOpts.disabled) + String(b.valueOpts.disabled)
+        ? 1
+        : -1,
+    );
 };
