@@ -127,10 +127,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
     cy.log("2. reload the page");
     waitAndReload();
-    getEmbedSidebar().within(() => {
-      cy.findByText("Next").click(); // Entity selection step
-      cy.findByText("Next").click(); // Embed options step
-    });
 
     cy.log("3. brand color should be persisted");
     H.getIframeBody()
@@ -166,14 +162,88 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       codeBlock().should("not.contain", "useExistingUserSession");
     });
   });
+
+  it("persists default and hidden parameters", () => {
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Orders table",
+        query: { "source-table": 1 },
+      },
+      dashboardDetails: {
+        name: "Dashboard with Parameters",
+        parameters: DASHBOARD_PARAMETERS,
+      },
+    }).then(({ body: card }) => {
+      H.editDashboardCard(card, {
+        parameter_mappings: DASHBOARD_PARAMETERS.map((parameter) => ({
+          card_id: card.card_id,
+          parameter_id: parameter.id,
+          target: ["dimension", ["field", 1, null]],
+        })),
+      });
+    });
+
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: "Dashboard with Parameters",
+    });
+
+    cy.log("1. hide one parameter and set default value for another");
+    getEmbedSidebar().within(() => {
+      parameterVisibilityToggle("id").click();
+      parameterVisibilityToggle("id").should(
+        "have.attr",
+        "data-hidden",
+        "true",
+      );
+
+      capturePersistSettings();
+
+      cy.findByLabelText("Product ID").type("456").blur();
+    });
+
+    H.getIframeBody().within(() => {
+      cy.findByTestId("dashboard-parameters-widget-container").within(() => {
+        cy.findByLabelText("ID").should("not.exist");
+        cy.findByLabelText("Product ID").should("contain", "456");
+      });
+    });
+
+    cy.log("2. reload the page");
+    waitAndReload();
+    getEmbedSidebar().within(() => {
+      cy.findByText("Next").click(); // Entity selection step
+      cy.findByText("Next").click(); // Embed options step
+    });
+
+    cy.log("3. parameter settings should be persisted");
+    getEmbedSidebar().within(() => {
+      parameterVisibilityToggle("id").should(
+        "have.attr",
+        "data-hidden",
+        "true",
+      );
+
+      cy.findByLabelText("Product ID").should("have.value", "456");
+    });
+
+    H.getIframeBody().within(() => {
+      cy.findByTestId("dashboard-parameters-widget-container").within(() => {
+        cy.findByLabelText("ID").should("not.exist");
+        cy.findByLabelText("Product ID").should("contain", "456");
+      });
+    });
+  });
 });
 
 const navigateToEmbedOptionsStep = ({
   experience,
+  resourceName,
 }: {
   experience: "dashboard" | "chart" | "exploration";
+  resourceName?: string;
 }) => {
-  navigateToEntitySelectionStep({ experience });
+  navigateToEntitySelectionStep({ experience, resourceName });
 
   getEmbedSidebar().within(() => {
     cy.findByText("Next").click(); // Embed options step
@@ -216,3 +286,23 @@ const waitAndReload = () => {
     );
   });
 };
+
+const parameterVisibilityToggle = (slug: string) =>
+  cy
+    .findAllByTestId("parameter-visibility-toggle")
+    .get(`[data-parameter-slug="${slug}"]`);
+
+const DASHBOARD_PARAMETERS = [
+  {
+    name: "ID",
+    slug: "id",
+    id: "11111111",
+    type: "id",
+  },
+  {
+    name: "Product ID",
+    slug: "product_id",
+    id: "22222222",
+    type: "id",
+  },
+];
