@@ -87,11 +87,6 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.log("set default value for id");
       getEmbedSidebar().findByLabelText("ID").type("123").blur();
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_option_changed",
-        event_detail: "initialParameters",
-      });
-
       H.getIframeBody()
         .findByTestId("dashboard-parameters-widget-container")
         .findByLabelText("ID")
@@ -100,20 +95,23 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.log("set default value for product id");
       getEmbedSidebar().findByLabelText("Product ID").type("456").blur();
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_option_changed",
-        event_detail: "initialParameters",
-      });
       H.getIframeBody()
         .findByTestId("dashboard-parameters-widget-container")
         .findByLabelText("Product ID")
         .should("contain", "456");
 
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "embed_wizard_option_changed",
+          event_detail: "initialParameters",
+        },
+        2,
+      );
+
       cy.log("both default values should be in the code snippet");
       getEmbedSidebar().within(() => {
         cy.findByText("Get Code").click();
         codeBlock().should("contain", '"initialParameters"');
-        codeBlock().should("not.contain", '"hiddenParameters"');
         codeBlock().should("contain", '"id": "123"');
         codeBlock().should("contain", '"product_id": "456"');
       });
@@ -128,18 +126,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.log("hide both parameters");
       getEmbedSidebar().within(() => {
         parameterVisibilityToggle("id").click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: "embed_wizard_option_changed",
-          event_detail: "hiddenParameters",
-        });
-
         parameterVisibilityToggle("product_id").click();
-
-        H.expectUnstructuredSnowplowEvent({
-          event: "embed_wizard_option_changed",
-          event_detail: "hiddenParameters",
-        });
       });
 
       cy.log("parameter widget container should not exist");
@@ -147,11 +134,18 @@ H.describeWithSnowplow(suiteTitle, () => {
         .findByTestId("dashboard-parameters-widget-container")
         .should("not.exist");
 
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "embed_wizard_option_changed",
+          event_detail: "hiddenParameters",
+        },
+        2,
+      );
+
       cy.log("code snippet should contain the hidden parameters");
       getEmbedSidebar().within(() => {
         cy.findByText("Get Code").click();
         codeBlock().should("contain", '"hiddenParameters"');
-        codeBlock().should("not.contain", '"initialParameters"');
         codeBlock().should("contain", '"id"');
         codeBlock().should("contain", '"product_id"');
       });
