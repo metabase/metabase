@@ -1425,7 +1425,40 @@ describe("scenarios > admin > datamodel", () => {
 
     describe("Behavior", () => {
       describe("Visibility", () => {
-        it("should let you change field visibility", () => {
+        it("should let you change field visibility to 'Everywhere'", () => {
+          cy.request("PUT", `/api/field/${ORDERS.TAX}`, {
+            visibility_type: "sensitive",
+          });
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.TAX,
+          });
+
+          FieldSection.getVisibilityInput()
+            .should("have.value", "Do not include")
+            .click();
+          H.popover().findByText("Everywhere").click();
+          cy.wait("@updateField");
+          H.undoToast().should("contain.text", "Visibility for Tax updated");
+          FieldSection.getVisibilityInput().should("have.value", "Everywhere");
+
+          cy.log("table viz");
+          H.openOrdersTable();
+          H.tableHeaderColumn("Total").should("be.visible");
+          H.tableHeaderColumn("Tax").should("be.visible");
+
+          cy.log("object detail viz");
+          cy.findByTestId("table-body")
+            .findAllByTestId("cell-data")
+            .eq(0)
+            .click();
+          H.modal().findByText("Tax").should("be.visible");
+          H.modal().findByText("2.07").should("be.visible");
+        });
+
+        it("should let you change field visibility to 'Do not include'", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1444,11 +1477,55 @@ describe("scenarios > admin > datamodel", () => {
             "Do not include",
           );
 
+          cy.log("table viz");
           H.openOrdersTable();
           H.tableHeaderColumn("Total").should("be.visible");
           H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
             "not.exist",
           );
+
+          cy.log("object detail viz");
+          cy.findByTestId("table-body")
+            .findAllByTestId("cell-data")
+            .eq(0)
+            .click();
+          H.modal().findByText("Tax").should("not.exist");
+          H.modal().findByText("2.07").should("not.exist");
+        });
+
+        it("should let you change field visibility to 'Only in detail views'", () => {
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.TAX,
+          });
+
+          FieldSection.getVisibilityInput()
+            .should("have.value", "Everywhere")
+            .click();
+          H.popover().findByText("Only in detail views").click();
+          cy.wait("@updateField");
+          H.undoToast().should("contain.text", "Visibility for Tax updated");
+          FieldSection.getVisibilityInput().should(
+            "have.value",
+            "Only in detail views",
+          );
+
+          cy.log("table viz");
+          H.openOrdersTable();
+          H.tableHeaderColumn("Total").should("be.visible");
+          H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
+            "not.exist",
+          );
+
+          cy.log("object detail viz");
+          cy.findByTestId("table-body")
+            .findAllByTestId("cell-data")
+            .eq(0)
+            .click();
+          H.modal().findByText("Tax").should("be.visible");
+          H.modal().findByText("2.07").should("be.visible");
         });
 
         it(
