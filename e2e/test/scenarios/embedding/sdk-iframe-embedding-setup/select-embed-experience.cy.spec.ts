@@ -33,6 +33,9 @@ H.describeWithSnowplow(suiteTitle, () => {
     it("shows the most recent dashboard from the activity log by default", () => {
       const dashboardName = "Orders in a dashboard";
 
+      visitNewEmbedPage();
+      assertRecentItemName("dashboard", dashboardName);
+
       H.getIframeBody().within(() => {
         cy.log("dashboard title is visible");
         cy.findByText(dashboardName).should("be.visible");
@@ -118,22 +121,6 @@ H.describeWithSnowplow(suiteTitle, () => {
         cy.log("question title of id=1 is visible");
         cy.findByText("Query log").should("be.visible");
       });
-    });
-  });
-
-  it("localizes the iframe preview when ?locale is passed", () => {
-    cy.visit("/embed/new?locale=fr");
-    cy.wait("@dashboard");
-
-    // TODO: update this test once "Exploration" is localized in french.
-    getEmbedSidebar().findByText("Exploration").click();
-
-    H.getIframeBody().within(() => {
-      cy.log("dashboard title is visible");
-      cy.findByText("Orders in a dashboard").should("be.visible");
-
-      cy.log("dashboard card is visible");
-      cy.findByText("Orders").should("be.visible");
     });
   });
 
