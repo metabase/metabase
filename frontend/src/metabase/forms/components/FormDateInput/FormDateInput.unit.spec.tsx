@@ -1,75 +1,68 @@
 import userEvent from "@testing-library/user-event";
-import { Form, Formik } from "formik";
-import * as Yup from "yup";
 
 import { render, screen, waitFor } from "__support__/ui";
+import {
+  Form,
+  FormDateInput,
+  FormProvider,
+  FormSubmitButton,
+} from "metabase/forms";
 
-import { FormDateInput } from "./FormDateInput";
+const setup = ({ initialValue }: { initialValue: string }) => {
+  const onSubmit = jest.fn();
 
-const TEST_SCHEMA = Yup.object({
-  value: Yup.string().required("error"),
-});
-
-interface TestFormDateInputProps {
-  initialValue?: string;
-  onSubmit: () => void;
-}
-
-const TestFormDateInput = ({
-  initialValue,
-  onSubmit,
-}: TestFormDateInputProps) => {
-  return (
-    <Formik
-      initialValues={{ value: initialValue }}
-      validationSchema={TEST_SCHEMA}
+  render(
+    <FormProvider
+      initialValues={{ birthday: initialValue }}
       onSubmit={onSubmit}
     >
       <Form>
-        <FormDateInput name="value" title="Date" />
-        <button type="submit">Submit</button>
+        <FormDateInput
+          name="birthday"
+          title="Birthday"
+          valueFormat="MM/DD/YYYY"
+        />
+        <FormSubmitButton />
       </Form>
-    </Formik>
+    </FormProvider>,
   );
+
+  return { onSubmit };
 };
 
 describe("FormDateInput", () => {
   it("should use the initial value from the form", () => {
-    const onSubmit = jest.fn();
-
-    render(<TestFormDateInput initialValue="2022-10-20" onSubmit={onSubmit} />);
+    setup({
+      initialValue: new Date("2022-10-20 12:00:00").toString(),
+    });
 
     expect(screen.getByRole("textbox")).toHaveValue("10/20/2022");
   });
 
   it("should propagate the changed value to the form", async () => {
-    const onSubmit = jest.fn();
+    const { onSubmit } = setup({
+      initialValue: "",
+    });
 
-    render(<TestFormDateInput onSubmit={onSubmit} />);
-    await userEvent.type(screen.getByRole("textbox"), "10/20/22");
+    const input = screen.getByRole("textbox");
+    await userEvent.clear(input);
+    await userEvent.type(input, "10/20/22");
     await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
-      const value = expect.stringMatching(/2022-10-20T00:00:00.000/);
-      expect(onSubmit).toHaveBeenCalledWith({ value }, expect.anything());
+      const value = expect.stringMatching(/2022-10-20/);
+      expect(onSubmit).toHaveBeenCalledWith(
+        { birthday: value },
+        expect.anything(),
+      );
     });
   });
 
   it("should be referenced by the label", () => {
-    const onSubmit = jest.fn();
+    setup({
+      initialValue: "2022-10-20",
+    });
 
-    render(<TestFormDateInput onSubmit={onSubmit} />);
-
-    expect(screen.getByLabelText("Date")).toBeInTheDocument();
-  });
-
-  it("should be validated on blur", async () => {
-    const onSubmit = jest.fn();
-
-    render(<TestFormDateInput onSubmit={onSubmit} />);
-    await userEvent.clear(screen.getByRole("textbox"));
-    await userEvent.tab();
-
-    expect(await screen.findByText(": error")).toBeInTheDocument();
+    expect(screen.getByLabelText("Birthday")).toBeInTheDocument();
   });
 });

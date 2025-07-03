@@ -85,7 +85,7 @@ const EventForm = ({
       onSubmit={onSubmit}
     >
       {({ dirty, values, setFieldValue }) => (
-        <Form disabled={!dirty}>
+        <Form disabled={!dirty} data-testid="event-form">
           <Stack>
             <FormTextInput
               name="name"
