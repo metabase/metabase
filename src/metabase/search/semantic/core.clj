@@ -61,14 +61,17 @@
   {})
 
 (defmethod search.engine/init! :search.engine/semantic
-  [_engine opts]
+  [_engine {:keys [re-populate?] :as opts}]
   (log/info "Semantic search init called with opts:" opts)
   (let [index-created (semantic.index/when-index-created)]
     (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
       (do
         (log/debug "TODO: implement reindex when index is old"))
 
-      (let [created? (semantic.index/ensure-ready! opts)]))))
+      (let [created? (semantic.index/ensure-ready! opts)]
+        (when (or created? re-populate?)
+          (log/debug "Populating semantic index")
+          (semantic.index/populate-index! :search/updating))))))
 
 (defmethod search.engine/reindex! :search.engine/semantic
   [_engine opts]

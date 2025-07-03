@@ -1,5 +1,6 @@
 (ns metabase.search.semantic.index
   (:require
+   [clj-http.client :as http]
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
@@ -7,13 +8,17 @@
    [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang ExceptionInfo)))
+   (clojure.lang ExceptionInfo)
+   (org.h2.jdbc JdbcSQLSyntaxErrorException)
+   (org.postgresql.util PSQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -138,7 +143,8 @@
 (def ^:private base-schema
   (into [[:model [:varchar 32] :not-null]
          [:display_data :text :not-null]
-         [:legacy_input :text :not-null]
+         ;; TODO: figure out if legacy_input is needed
+         #_[:legacy_input :text :not-null]
          ;; useful for tracking the speed and age of the index
          [:created_at :timestamp-with-time-zone
           [:default [:raw "CURRENT_TIMESTAMP"]]
@@ -158,15 +164,6 @@
   "Return creation time of the active index, or nil if there is none."
   []
   (search-index-metadata/when-index-created :semantic *index-version-id*))
-(comment
-  (require
-   '[clj-http.client :as http]
-   '[metabase.util.json :as json])
-  (def response (http/post "http://localhost:11434/api/embeddings"
-                           {:headers {"Content-Type" "application/json"}
-                            :body    (json/encode {:model "mxbai-embed-large"
-                                                   :prompt "hello world"})}))
-  (-> (json/decode (:body response) true) :embedding count))
 
 (defn- table-schema
   "Returns the HoneySQL schema for the semantic search index table"
@@ -177,8 +174,10 @@
 
 ;; TODO: create indexes here?
 (defn- post-create-statements
-  [_ _]
-  [])
+  [prefix table-name]
+  (mapv
+   (fn [template] (format template prefix table-name))
+   ["CREATE UNIQUE INDEX IF NOT EXISTS %s_identity_idx ON %s (model, model_id)"]))
 
 (defn create-table!
   "Create an index table with the given name. Should fail if it already exists."
@@ -227,6 +226,99 @@
       ;; Did *we* do a rotation?
       (boolean pending))))
 
+(defn- extra-embedding-field
+  [entity]
+  (let [response (http/post "http://localhost:11434/api/embeddings"
+                            {:headers {"Content-Type" "application/json"}
+                             :body    (json/encode {:model "mxbai-embed-large"
+                                                    :prompt (:searchable_text entity)})})
+        embedding (-> (json/decode (:body response) true) :embedding)
+        embedding-str (str "[" (str/join ", " embedding) "]")]
+    ;; Fully raw to avoid JDBC trying to parameterize it
+    {:embedding [:raw (format "'%s'::vector" embedding-str)]}))
+
+;; TODO: consider where the embedding should actually be fetched from
+(defn- document->entry
+  [entity]
+  (-> entity
+      (select-keys
+       ;; remove attrs that get explicitly aliased below
+       (remove #{:id :created_at :updated_at :native_query}
+               (conj search.spec/attr-columns :model :display_data :legacy_input)))
+      (update :display_data json/encode)
+      (dissoc :legacy_input)
+      #_(update :legacy_input json/encode)
+      (assoc
+       :updated_at       :%now
+       :model_id         (:id entity)
+       :model_created_at (:created_at entity)
+       :model_updated_at (:updated_at entity))
+      (merge (extra-embedding-field entity))))
+
+;; copied from specialization/batch-upsert!
+(defn- batch-upsert!
+  [table entries]
+  (when (seq entries)
+    (t2/query
+     ;; The cost of dynamically calculating these keys should be small compared to the IO cost, so unoptimized.
+     (let [update-keys (vec (disj (set (keys (first entries))) :id :model :model_id))
+           excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
+       {:insert-into   table
+        :values        entries
+        :on-conflict   [:model :model_id]
+        :do-update-set (zipmap update-keys (map excluded-kw update-keys))}))))
+
+(defn- safe-batch-upsert! [table-name entries]
+  ;; For convenience, no-op if we are not tracking any table.
+  (when table-name
+    (try
+      (batch-upsert! table-name entries)
+      (catch Exception e
+        ;; TODO we should handle the MySQL and MariaDB flavors here too
+        (if (or (instance? PSQLException (ex-cause e))
+                (instance? JdbcSQLSyntaxErrorException (ex-cause e)))
+          ;; If resetting tracking atoms resolves the issue (which is likely happened because of stale tracking data),
+          ;; suppress the issue - but throw it all the way to the caller if the issue persists
+          (do (sync-tracking-atoms!)
+              (batch-upsert! table-name entries))
+          (throw e))))))
+
+(defn- batch-update!
+  "Create the given search index entries in bulk"
+  [context documents]
+  ;; Protect against tests that nuke the appdb
+  (when config/is-test?
+    (when-let [table (active-table)]
+      (when (not (exists? table))
+        (log/warnf "Unable to find table %s and no longer tracking it as active", table)
+        (swap! *indexes* assoc :active nil)))
+    (when-let [table (pending-table)]
+      (when (not (exists? table))
+        (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
+        (swap! *indexes* assoc :pending nil))))
+
+  (let [active-table (active-table)
+        entries (map document->entry documents)
+        ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
+        active-updated? (when-not (and active-table (= context :search/reindexing)) (safe-batch-upsert! active-table entries))
+        pending-updated? (safe-batch-upsert! (pending-table) entries)]
+    (when (or active-updated? pending-updated?)
+      (u/prog1 (->> entries (map :model) frequencies)
+        (log/trace "indexed documents for " <>)
+        #_(when active-updated?
+            (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-table))))))))
+
+(defn populate-index!
+  "Populate the semantic search index with all searchable documents. Returns a map of model names to counts of indexed documents."
+  [context]
+  (let [document-reducible (search.ingestion/searchable-documents)]
+    (transduce
+     (comp
+      (partition-all insert-batch-size)
+      (map (partial batch-update! context)))
+     (partial merge-with +)
+     document-reducible)))
+
 (defn reset-index!
   "Ensure we have a blank slate; in case the table schema or stored data format has changed."
   []
@@ -249,3 +341,4 @@
 
     (when (or force-reset? (not (exists? (active-table))))
       (reset-index!))))
+
