@@ -14,7 +14,8 @@
    [metabase.session.models.session :as session]
    [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [tru]]
-   [ring.util.response :as response])
+   [ring.util.response :as response]
+   [toucan2.core :as t2])
   (:import
    (java.net URLEncoder)))
 
@@ -22,7 +23,7 @@
 
 (defn fetch-or-create-user!
   "Returns a session map for the given `email`. Will create the user if needed."
-  [first-name last-name email user-attributes]
+  [first-name last-name email user-attributes tenant-slug]
   (when-not (sso-settings/jwt-enabled)
     (throw
      (IllegalArgumentException.
@@ -31,7 +32,11 @@
               :last_name        last-name
               :email            email
               :sso_source       :jwt
-              :login_attributes user-attributes}]
+              :login_attributes user-attributes
+              :tenant_id        (when tenant-slug
+                                  (or (t2/select-one-pk :model/Tenant :slug tenant-slug :is_active true)
+                                      (throw (ex-info (tru "Cannot find tenant with slug {0}" tenant-slug)
+                                                      {:status-code 400}))))}]
     (or (sso-utils/fetch-and-update-login-attributes! user (sso-settings/jwt-user-provisioning-enabled?))
         (sso-utils/check-user-provisioning :jwt)
         (sso-utils/create-new-sso-user! user))))
@@ -44,6 +49,9 @@
 
 (def ^:private ^{:arglists '([])} jwt-attribute-lastname
   (comp keyword sso-settings/jwt-attribute-lastname))
+
+(def ^:private ^{:arglists '([])} jwt-attribute-tenant
+  (comp keyword sso-settings/jwt-attribute-tenant))
 
 (def ^:private ^{:arglists '([])} jwt-attribute-groups
   (comp keyword sso-settings/jwt-attribute-groups))
@@ -58,6 +66,7 @@
          (jwt-attribute-email)
          (jwt-attribute-firstname)
          (jwt-attribute-lastname)
+         (jwt-attribute-tenant)
          registered-claims))
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time. 3 minutes is the time
@@ -93,20 +102,21 @@
   [jwt {{redirect :return_to} :params, :as request}]
   (let [redirect-url (or redirect (URLEncoder/encode "/"))]
     (sso-utils/check-sso-redirect redirect-url)
-    (let [jwt-data     (try
-                         (jwt/unsign jwt (sso-settings/jwt-shared-secret)
-                                     {:max-age three-minutes-in-seconds})
-                         (catch Throwable e
-                           (throw
-                            (ex-info (ex-message e)
-                                     {:status      "error-jwt-bad-unsigning"
-                                      :status-code 401}))))
-          login-attrs  (jwt-data->login-attributes jwt-data)
-          email        (get jwt-data (jwt-attribute-email))
-          first-name   (get jwt-data (jwt-attribute-firstname))
-          last-name    (get jwt-data (jwt-attribute-lastname))
-          user         (fetch-or-create-user! first-name last-name email login-attrs)
-          session      (session/create-session! :sso user (request/device-info request))]
+    (let [jwt-data    (try
+                        (jwt/unsign jwt (sso-settings/jwt-shared-secret)
+                                    {:max-age three-minutes-in-seconds})
+                        (catch Throwable e
+                          (throw
+                           (ex-info (ex-message e)
+                                    {:status      "error-jwt-bad-unsigning"
+                                     :status-code 401}))))
+          login-attrs (jwt-data->login-attributes jwt-data)
+          email       (get jwt-data (jwt-attribute-email))
+          tenant-slug (get jwt-data (jwt-attribute-tenant))
+          first-name  (get jwt-data (jwt-attribute-firstname))
+          last-name   (get jwt-data (jwt-attribute-lastname))
+          user        (fetch-or-create-user! first-name last-name email login-attrs tenant-slug)
+          session     (session/create-session! :sso user (request/device-info request))]
       (sync-groups! user jwt-data)
       {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 

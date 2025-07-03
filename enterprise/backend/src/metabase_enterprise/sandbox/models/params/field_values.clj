@@ -54,7 +54,7 @@
   ;; -> [1, {\"State\" \"CA\"}]"
   [{:keys [table_id] :as _field}]
   (when-let [gtap (table-id->gtap table_id)]
-    (let [login-attributes     (:login_attributes @api/*current-user*)
+    (let [login-attributes     (api/current-user-attributes)
           attribute_remappings (:attribute_remappings gtap)
           field-ids            (t2/select-fn-set :id :model/Field :table_id table_id)]
       [(:card_id gtap)
