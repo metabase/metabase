@@ -59,7 +59,7 @@ export function fuzzyMatcher(
   return function (word: string) {
     return fuse
       .search(word)
-      .filter((result) => (result.score ?? 0) <= 0.5)
+      .filter((result) => (result.score ?? 0) <= 0.6)
       .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
       .map((result) => {
         const { item, matches = [] } = result;
