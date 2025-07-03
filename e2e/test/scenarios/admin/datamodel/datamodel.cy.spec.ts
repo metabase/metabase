@@ -92,6 +92,26 @@ describe("scenarios > admin > datamodel", () => {
           );
         });
       });
+
+      it("should allow searching for tables", { tags: ["@external"] }, () => {
+        H.restore("mysql-8");
+        H.DataModel.visit();
+
+        TablePicker.getSearchInput().type("rEvIeWs");
+        TablePicker.getDatabases().should("have.length", 2);
+        TablePicker.getDatabase("QA MySQL8").should("be.visible");
+        TablePicker.getDatabase("Sample Database").should("be.visible");
+        TablePicker.getTables().should("have.length", 2);
+
+        TablePicker.getTables().eq(0).click();
+        TableSection.getNameInput().should("have.value", "Reviews");
+        verifyFieldSectionEmptyState();
+        cy.location("pathname").should((pathname) => {
+          return pathname.startsWith(
+            `/admin/datamodel/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
+          );
+        });
+      });
     });
 
     describe("1 database, 1 schema", () => {
