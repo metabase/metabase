@@ -21,8 +21,8 @@ const {
   PRODUCTS_ID,
 } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
-// const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
-// const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
+const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
+const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
 
 const CUSTOM_MAPPING_ERROR =
   "You need unrestricted data access on this table to map custom display values.";
@@ -188,6 +188,32 @@ describe("scenarios > admin > datamodel", () => {
         cy.findByText("New orders").should("be.visible");
       });
     });
+
+    it(
+      "should be able to select and update a table in a database without schemas",
+      { tags: ["@external"] },
+      () => {
+        H.restore("mysql-8");
+
+        H.DataModel.visit({
+          databaseId: MYSQL_DB_ID,
+          schemaId: MYSQL_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+
+        H.DataModel.TableSection.getNameInput()
+          .clear()
+          .type("New orders")
+          .blur();
+        cy.wait("@updateTable");
+
+        H.undoToast().should("contain.text", "Table name updated");
+        H.DataModel.TableSection.getNameInput().should(
+          "have.value",
+          "New orders",
+        );
+      },
+    );
 
     it("should allow changing the table name with data model permissions only", () => {
       H.activateToken("pro-self-hosted");
@@ -1182,6 +1208,31 @@ describe("scenarios > admin > datamodel", () => {
             "not.exist",
           );
         });
+
+        it(
+          "should be able to select and update a field in a database without schemas",
+          { tags: ["@external"] },
+          () => {
+            H.restore("mysql-8");
+
+            H.DataModel.visit({
+              databaseId: MYSQL_DB_ID,
+              schemaId: MYSQL_DB_SCHEMA_ID,
+              tableId: ORDERS_ID,
+            });
+
+            H.DataModel.TableSection.clickField("Tax");
+            H.DataModel.FieldSection.getVisibilityInput().click();
+            H.popover().findByText("Do not include").click();
+            cy.wait("@updateField");
+
+            H.undoToast().should("contain.text", "Visibility for Tax updated");
+            H.DataModel.FieldSection.getVisibilityInput().should(
+              "have.value",
+              "Do not include",
+            );
+          },
+        );
       });
 
       describe("Filtering", () => {
