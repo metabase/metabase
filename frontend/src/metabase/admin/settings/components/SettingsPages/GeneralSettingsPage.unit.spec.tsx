@@ -6,6 +6,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
+  setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
@@ -53,6 +54,12 @@ const setup = async () => {
     ),
   );
 
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-dev_instances",
+    value: true,
+  });
+
   renderWithProviders(
     <>
       <GeneralSettingsPage />
@@ -88,7 +95,7 @@ describe("GeneralSettingsPage", () => {
     await waitFor(() => {
       const calls = fetchMock.calls();
       const urls = calls.map((call) => call[0]);
-      expect(urls).toHaveLength(4);
+      expect(urls).toHaveLength(5);
     });
     const calls = fetchMock.calls();
     const urls = calls.map((call) => call[0]);
