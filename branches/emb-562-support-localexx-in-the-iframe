@@ -1,7 +1,7 @@
 {
   "base": {
-    "name": "emb-506-live-previews-for-new-iframe-embed-flow",
-    "hash": "9c6f7dba458f3e866968d1c1e92be8fe60b4ce04"
+    "name": "new-iframe-embedding-setup-flow",
+    "hash": "e3bf603a070f8786649bfb057f72b9942c169820"
   },
   "upstream": {
     "branch": "emb-562-support-localexx-in-the-iframe"
