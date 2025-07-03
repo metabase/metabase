@@ -1,6 +1,10 @@
-import type { EditorState } from "@codemirror/state";
+import {
+  hasNextSnippetField,
+  hasPrevSnippetField,
+} from "@codemirror/autocomplete";
+import { EditorSelection, type EditorState } from "@codemirror/state";
 import { useDisclosure } from "@mantine/hooks";
-import { EditorSelection } from "@uiw/react-codemirror";
+import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
@@ -146,6 +150,14 @@ export function Editor(props: EditorProps) {
     );
   }, []);
 
+  const [isSnippetActive, setIsSnippetActive] = useState(false);
+  const handleUpdate = useCallback((update: ViewUpdate) => {
+    const { state } = update;
+    setIsSnippetActive(
+      hasNextSnippetField(state) || hasPrevSnippetField(state),
+    );
+  }, []);
+
   return (
     <>
       <LayoutMain className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
@@ -164,13 +176,16 @@ export function Editor(props: EditorProps) {
           width="100%"
           indentWithTab={false}
           autoFocus
+          onUpdate={handleUpdate}
           autoCorrect="off"
           tabIndex={0}
           onFormat={
-            error === null && isValidated ? formatExpression : undefined
+            error === null && isValidated && !isSnippetActive
+              ? formatExpression
+              : undefined
           }
         />
-        <Errors error={error} />
+        <Errors error={isSnippetActive ? null : error} />
 
         {source.trim() === "" && !isFormatting && error == null && (
           <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
