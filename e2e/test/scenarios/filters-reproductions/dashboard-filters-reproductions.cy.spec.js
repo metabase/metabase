@@ -4679,7 +4679,7 @@ describe("issue 47951", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should do X (metabase#47951)", () => {
