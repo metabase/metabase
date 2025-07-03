@@ -1333,6 +1333,7 @@ describe("scenarios > admin > datamodel", () => {
           H.popover().findByText("Currency").click();
           cy.wait("@updateField");
           H.undoToast().should("contain.text", "Semantic type for Tax updated");
+          H.undoToast().icon("close").click();
 
           FieldSection.getSemanticTypeCurrencyInput()
             .scrollIntoView()
@@ -1341,6 +1342,7 @@ describe("scenarios > admin > datamodel", () => {
             .click();
           H.popover().findByText("Canadian Dollar").click();
           cy.wait("@updateField");
+          H.undoToast().should("contain.text", "Semantic type for Tax updated");
 
           H.openOrdersTable();
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -1533,7 +1535,6 @@ describe("scenarios > admin > datamodel", () => {
           { tags: ["@external"] },
           () => {
             H.restore("mysql-8");
-
             H.DataModel.visit({
               databaseId: MYSQL_DB_ID,
               schemaId: MYSQL_DB_SCHEMA_ID,
@@ -1544,7 +1545,6 @@ describe("scenarios > admin > datamodel", () => {
             FieldSection.getVisibilityInput().click();
             H.popover().findByText("Do not include").click();
             cy.wait("@updateField");
-
             H.undoToast().should("contain.text", "Visibility for Tax updated");
             FieldSection.getVisibilityInput().should(
               "have.value",
@@ -1566,6 +1566,10 @@ describe("scenarios > admin > datamodel", () => {
           FieldSection.getFilteringInput().click();
           H.popover().findByText("Search box").click();
           cy.wait("@updateField");
+          H.undoToast().should(
+            "contain.text",
+            "Filtering for Quantity updated",
+          );
 
           cy.reload();
           FieldSection.getFilteringInput()
