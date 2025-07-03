@@ -101,7 +101,7 @@ const DashCardLoadingView = ({
             <HoverCard width={288} offset={4} position="bottom-start">
               <HoverCard.Target>
                 <Button w={24} h={24} p={0} classNames={{ label: cx(CS.flex) }}>
-                  <Icon name="hourglass" size={12} d="flex" />
+                  <Icon name="snail" size={12} d="flex" />
                 </Button>
               </HoverCard.Target>
               <HoverCard.Dropdown ml={-8}>
