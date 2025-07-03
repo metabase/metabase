@@ -10,7 +10,7 @@ import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import { getLocale } from "metabase/setup/selectors";
 import type { EmbeddingSetupClickEvent } from "metabase-types/analytics";
-import type { DashboardId, DatabaseData, Table } from "metabase-types/api";
+import type { Dashboard, DatabaseData, Table } from "metabase-types/api";
 
 import { DataConnectionStep } from "./steps/DataConnectionStep";
 import { DoneStep } from "./steps/DoneStep";
@@ -44,8 +44,8 @@ type EmbeddingSetupContextType = {
   setError: (error: string) => void;
   selectedTables: Table[];
   setSelectedTables: (tables: Table[]) => void;
-  createdDashboardIds: DashboardId[];
-  setCreatedDashboardIds: (ids: DashboardId[]) => void;
+  createdDashboard2: Dashboard[];
+  setCreatedDashboard: (dashboards: Dashboard[]) => void;
   stepKey: EmbeddingSetupStepKey;
   goToStep: (key: EmbeddingSetupStepKey) => void;
   steps: StepDefinition[];
@@ -87,9 +87,7 @@ export const EmbeddingSetupProvider = ({
   const [processingStatus, setProcessingStatus] = useState("");
   const [error, setError] = useState("");
   const [selectedTables, setSelectedTables] = useState<Table[]>([]);
-  const [createdDashboardIds, setCreatedDashboardIds] = useState<DashboardId[]>(
-    [],
-  );
+  const [createdDashboard2, setCreatedDashboard] = useState<Dashboard[]>([]);
   const [stepKey, goToStep] = useState<EmbeddingSetupStepKey>(STEPS[0].key);
 
   const stepIndex = getStepIndexByKey(stepKey);
@@ -132,8 +130,8 @@ export const EmbeddingSetupProvider = ({
         setError,
         selectedTables,
         setSelectedTables,
-        createdDashboardIds,
-        setCreatedDashboardIds,
+        createdDashboard2,
+        setCreatedDashboard,
         stepKey,
         goToStep,
         steps: STEPS,

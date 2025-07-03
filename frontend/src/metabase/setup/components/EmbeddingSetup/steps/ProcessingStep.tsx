@@ -7,7 +7,7 @@ import { useSaveDashboardMutation } from "metabase/api/dashboard";
 import { useUpdateSettingsMutation } from "metabase/api/settings";
 import { useSetting } from "metabase/common/hooks";
 import { Box, Loader, Stack, Text, Title } from "metabase/ui";
-import type { DashboardId } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 
@@ -28,7 +28,7 @@ export const ProcessingStep = () => {
     selectedTables,
     processingStatus,
     setProcessingStatus,
-    setCreatedDashboardIds,
+    setCreatedDashboard,
   } = useEmbeddingSetup();
 
   const setupSettings = useCallback(async () => {
@@ -88,14 +88,14 @@ export const ProcessingStep = () => {
         );
 
         // Save the dashboards one at the time, to avoid creating multiple "Automatically Generated Dashboards" collections
-        const dashboardIds: DashboardId[] = [];
+        const dashboards: Dashboard[] = [];
         for (const dashboard of dashboardsContent) {
           const savedDashboard = await saveDashboard(dashboard).unwrap();
           setProcessingStep((prev) => prev + 1);
-          dashboardIds.push(savedDashboard.id);
+          dashboards.push(savedDashboard);
         }
 
-        setCreatedDashboardIds(dashboardIds);
+        setCreatedDashboard(dashboards);
 
         goToNextStep();
       } catch (err) {
@@ -108,7 +108,7 @@ export const ProcessingStep = () => {
     database?.id,
     selectedTables,
     setProcessingStatus,
-    setCreatedDashboardIds,
+    setCreatedDashboard,
     setupSettings,
     goToNextStep,
     createCard,
