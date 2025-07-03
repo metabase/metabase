@@ -1588,7 +1588,7 @@ describe("scenarios > admin > datamodel", () => {
       });
 
       describe("Filtering", () => {
-        it("should let you change to 'Search box'", () => {
+        it("should let you change filtering to 'Search box'", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1596,7 +1596,9 @@ describe("scenarios > admin > datamodel", () => {
             fieldId: ORDERS.QUANTITY,
           });
 
-          FieldSection.getFilteringInput().click();
+          FieldSection.getFilteringInput()
+            .should("have.value", "A list of all values")
+            .click();
           H.popover().findByText("Search box").click();
           cy.wait("@updateField");
           H.undoToast().should(
@@ -1610,6 +1612,53 @@ describe("scenarios > admin > datamodel", () => {
             .should("be.visible")
             .and("have.value", "Search box");
         });
+      });
+
+      it("should let you change filtering to 'Plain input box'", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.QUANTITY,
+        });
+
+        FieldSection.getFilteringInput()
+          .should("have.value", "A list of all values")
+          .click();
+        H.popover().findByText("Plain input box").click();
+        cy.wait("@updateField");
+        H.undoToast().should("contain.text", "Filtering for Quantity updated");
+
+        cy.reload();
+        FieldSection.getFilteringInput()
+          .scrollIntoView()
+          .should("be.visible")
+          .and("have.value", "Plain input box");
+      });
+
+      it("should let you change filtering to 'A list of all values'", () => {
+        cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+          has_field_values: "none",
+        });
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.QUANTITY,
+        });
+
+        FieldSection.getFilteringInput()
+          .should("have.value", "Plain input box")
+          .click();
+        H.popover().findByText("A list of all values").click();
+        cy.wait("@updateField");
+        H.undoToast().should("contain.text", "Filtering for Quantity updated");
+
+        cy.reload();
+        FieldSection.getFilteringInput()
+          .scrollIntoView()
+          .should("be.visible")
+          .and("have.value", "A list of all values");
       });
 
       describe("Display values", () => {
