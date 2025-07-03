@@ -1,11 +1,3 @@
 {
-  "continuations": [
-    {
-      "command": [
-        "stack",
-        "restack"
-      ],
-      "branch": "new-iframe-embedding-setup-flow"
-    }
-  ]
+  "continuations": null
 }
