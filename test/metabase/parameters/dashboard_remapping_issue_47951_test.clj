@@ -5,9 +5,12 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.parameters.dashboard :as params.dashboard]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (deftest ^:sequential dashboard-remapping-multi-field-permissions-test
@@ -17,7 +20,8 @@
     (mt/dataset test-data
       (let [orders-product-id-field-id (mt/id :orders :product_id)
             reviews-product-id-field-id (mt/id :reviews :product_id)]
-          ;; Create dashboard with parameter mapped to both fields
+        (field-values/clear-field-values-for-field! (mt/id :products :id))
+        ;; Create dashboard with parameter mapped to both fields
         (mt/with-temp [:model/Card {orders-card-id :id} {:dataset_query (mt/mbql-query orders)}
                        :model/Card {reviews-card-id :id} {:dataset_query (mt/mbql-query reviews)}
                        :model/Dashboard {dashboard-id :id} {:parameters [{:id "p1"
@@ -61,8 +65,7 @@
       (let [orders-product-id-field-id (mt/id :orders :product_id)
             reviews-product-id-field-id (mt/id :reviews :product_id)
             products-table-id (mt/id :products)]
-
-          ;; Create dashboard with parameter mapped to both fields
+        ;; Create dashboard with parameter mapped to both fields
         (mt/with-temp [:model/Card {orders-card-id :id} {:dataset_query (mt/mbql-query orders)}
                        :model/Card {reviews-card-id :id} {:dataset_query (mt/mbql-query reviews)}
                        :model/Dashboard {dashboard-id :id} {:parameters [{:id "p1"
@@ -83,26 +86,38 @@
                                                                       :target ["dimension" ["field" reviews-product-id-field-id nil]]}]}]
           (mt/with-column-remappings [orders.product_id products.title
                                       reviews.product_id products.title]
-            (testing "With restricted permissions (view-data only, no create-queries)"
-              ;; Set up restricted permissions: no create-queries on products table
-              (perms.test-util/with-perm-for-group-and-table! (perms-group/all-users) (mt/id :reviews)
-                :perms/view-data :blocked
-                ;; :perms/create-queries :no
-                (perms.test-util/with-perm-for-group-and-table! (perms-group/all-users) (mt/id :orders)
-                  :perms/view-data :blocked
-                  ;; :perms/create-queries :no
+            (binding [api/*current-user-id* (mt/user->id :rasta)]
+              (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                    parameter (first (:parameters dashboard))]
+                (testing "With restricted permissions (view-data only, no create-queries)"
+                  ;; Set up restricted permissions: no create-queries on any of the tables:
+                  (perms.test-util/with-perms-for-group-and-tables!
+                    (perms-group/all-users)
+                    {(mt/id :reviews) {:perms/create-queries :no}
+                     (mt/id :orders) {:perms/view-data :blocked}
+                     products-table-id {:perms/create-queries :no}}
+                    ;; Clears the cache:
+                    (data-perms/with-relevant-permissions-for-user (mt/user->id :rasta)
+                      ;; Mimicks the API endpoint:
+                      (binding [qp.perms/*param-values-query* true]
+                        (let [remapped-values (params.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
+
+                          (testing "Should get only raw value with restricted permissions (reproducing bug)"
+                            (is (= [1 "Rustic Paper Wallet"]
+                                   remapped-values)
+                                "Even with no query-creating permissions, we still get the remapped value."))))))
                   (perms.test-util/with-perm-for-group-and-table! (perms-group/all-users) products-table-id
                     :perms/view-data :blocked
-                    ;; :perms/create-queries :no
                     (binding [api/*current-user-id* (mt/user->id :rasta)]
-                      (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
-                            parameter (first (:parameters dashboard))
-                            remapped-values (params.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
-
-                        (testing "Should get only raw value with restricted permissions (reproducing bug)"
-                          (is (= [1 "Rustic Paper Wallet"]
-                                 remapped-values)
-                              "Even with no query-creating permissions, we still get the remapped value."))))))))))))))
+                      ;; Necessary to prevent regular permissions caching:
+                      (data-perms/with-relevant-permissions-for-user (mt/user->id :rasta)
+                        (binding [;; Mimicking the API endpoint:
+                                  qp.perms/*param-values-query* true]
+                          (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                                parameter (first (:parameters dashboard))]
+                            (is (thrown-with-msg?
+                                 Exception #"Error executing"
+                                 (params.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)))))))))))))))))
 
 (deftest ^:sequential dashboard-remapping-conflict-scenarios-test
   "Test various scenarios where FK1, FK2, and PK have different remapping configurations.
