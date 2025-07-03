@@ -374,7 +374,7 @@
   "Compare maps of scores and results. Must return -1, 0, or 1. The score is assumed to be a vector, and will be
   compared in order."
   [{score-1 :score} {score-2 :score}]
-  (compare score-1 score-2))
+  (compare score-2 score-1))
 
 (defn top-results
   "Given a reducible collection (i.e., from `jdbc/reducible-query`) and a transforming function for it, applies the
@@ -383,5 +383,5 @@
   [reducible-results max-results xf]
   (->> reducible-results
        (transduce xf (u/sorted-take max-results compare-score))
-       rseq
+       ; rseq
        (map :result)))

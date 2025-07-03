@@ -24,7 +24,7 @@
 (defsetting semantic-search-enabled
   "Whether to enable semantic search. If enabled, the engine will be available for use."
   :type :boolean
-  :default false
+  :default true
   :visibility :internal
   :description "Enable semantic search engine.")
 
@@ -150,10 +150,11 @@
   #{})
 
 (defmethod search.engine/score :search.engine/semantic
+
   [search-ctx result]
   ;; TODO: Implement semantic scoring logic
   {:result (dissoc result :score)
-   :score  (:score result 0)})
+   :score  1})
 
 ;;; ---------------------------------------- Index Management ----------------------------------------
 

@@ -209,7 +209,8 @@
         ;; It would be good to have a warning on start up for this.
         :search.engine/in-place))
     (first (filter search.engine/supported-engine?
-                   [:search.engine/appdb
+                   [:search.engine/semantic
+                    :search.engine/appdb
                     :search.engine/in-place]))))
 
 (defn- parse-engine [value]
@@ -394,10 +395,10 @@
       :offset           (:offset-int search-ctx)
       :table_db_id      (:table-db-id search-ctx)
       :engine           (:search-engine search-ctx)
-      :total            (count total-results)}
+      :total            (count total-results)
 
       (:calculate-available-models? search-ctx)
-      (assoc :available_models (model-set-fn search-ctx)))))
+      (assoc :available_models (model-set-fn search-ctx))})))
 
 (defn- hydrate-dashboards [results]
   (->> (t2/hydrate results [:dashboard :moderation_status])
