@@ -1,3 +1,12 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "upstack",
+        "onto",
+        "new-iframe-embedding-setup-flow"
+      ],
+      "branch": "emb-512-code-snippet-and-authentication-step-for-new-iframe-embed"
+    }
+  ]
 }
