@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-512-code-snippet-and-authentication-step-for-new-iframe-embed",
-    "hash": "b909da44869c883ff623a432527a1c584e8949ae"
+    "hash": "b92407b2ab1d68a0080f8786c0cef721c013ed86"
   },
   "upstream": {
     "branch": "emb-509-embed-behavior-and-appearance-for-new-iframe-embed-flow"
