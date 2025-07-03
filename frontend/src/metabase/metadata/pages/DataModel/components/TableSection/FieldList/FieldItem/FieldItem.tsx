@@ -92,18 +92,16 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
       className={cx(S.card, {
         [S.active]: active,
       })}
-      draggable={false}
       role="listitem"
       p={0}
       pb={1}
       withBorder
-      onClick={handleClick}
     >
       <Flex
         align="flex-start"
         component={Link}
         direction="column"
-        draggable={false}
+        draggable={false} // this + onClick handler is required, otherwise interaction is broken on macOS
         gap={rem(12)}
         justify="space-between"
         mih={rem(40)}
@@ -113,7 +111,7 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
         to={href}
         w="100%"
         wrap="nowrap"
-        onClick={handleClick}
+        onClick={handleClick} // this + draggable={false} is required, otherwise interaction is broken on macOS
       >
         <Group
           align="center"
