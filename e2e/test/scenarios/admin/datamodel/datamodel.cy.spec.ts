@@ -1797,16 +1797,20 @@ describe("scenarios > admin > datamodel", () => {
 
           // Check json is unfolded initially and shows prefix
           TableSection.getField("Json → A").should("be.visible");
-          TableSection.clickField("Json → A");
           TableSection.getField("Json → A")
             .findByTestId("name-prefix")
             .should("be.visible")
             .and("have.text", "Json:");
+
+          cy.log("shows prefix in field section");
+          TableSection.clickField("Json → A");
           FieldSection.get()
             .findByTestId("name-prefix")
             .should("be.visible")
             .and("have.text", "Json:");
           FieldSection.get().findByText("json.a").should("be.visible");
+
+          cy.log("show prefix in table section when sorting");
           TableSection.getSortButton().click();
           TableSection.getField("Json → A")
             .findByTestId("name-prefix")
