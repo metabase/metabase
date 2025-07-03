@@ -283,7 +283,7 @@ describe("Text", () => {
         ).toBeInTheDocument();
       });
 
-      it("should not show mapping UI if a card doesn't have variables", () => {
+      it("should show an info message if a card doesn't have variables", () => {
         setup({
           isEditing: true,
           isEditingParameter: true,
@@ -297,6 +297,12 @@ describe("Text", () => {
         expect(
           screen.queryByTestId("parameter-mapper-container"),
         ).not.toBeInTheDocument();
+
+        expect(
+          screen.getByText(
+            "You can connect widgets to {{ variables }} in heading cards.",
+          ),
+        ).toBeInTheDocument();
       });
     });
   });
