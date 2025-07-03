@@ -901,6 +901,47 @@ describe("scenarios > admin > datamodel", () => {
         });
       });
     });
+
+    describe("Sync options", () => {
+      it("should allow to sync table schema, re-scan table, and discard cached field values", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: PRODUCTS_ID,
+        });
+        TableSection.getSyncOptionsButton().click();
+
+        cy.log("sync table schema");
+        H.modal().within(() => {
+          cy.button("Sync table schema").click();
+          cy.button("Sync table schema").should("not.exist");
+          cy.button("Sync triggered!").should("be.visible");
+          cy.button("Sync triggered!").should("not.exist");
+          cy.button("Sync table schema").should("be.visible");
+        });
+
+        cy.log("re-scan table");
+        H.modal().within(() => {
+          cy.button("Re-scan table").click();
+          cy.button("Re-scan table").should("not.exist");
+          cy.button("Scan triggered!").should("be.visible");
+          cy.button("Scan triggered!").should("not.exist");
+          cy.button("Re-scan table").should("be.visible");
+        });
+
+        cy.log("discard cached field values");
+        H.modal().within(() => {
+          cy.button("Discard cached field values").click();
+          cy.button("Discard cached field values").should("not.exist");
+          cy.button("Discard triggered!").should("be.visible");
+          cy.button("Discard triggered!").should("not.exist");
+          cy.button("Discard cached field values").should("be.visible");
+        });
+
+        cy.realPress("Escape");
+        H.modal().should("not.exist");
+      });
+    });
   });
 
   describe("Field section", () => {

@@ -23,6 +23,7 @@ export const DataModel = {
     getDescriptionInput: getTableDescriptionInput,
     getSortButton: getTableSortButton,
     getSortOrderInput: getTableSortOrderInput,
+    getSyncOptionsButton: getTableSyncOptionsButton,
     getField: getTableSectionField,
     getFieldNameInput: getTableSectionFieldNameInput,
     getFieldDescriptionInput: getTableSectionFieldDescriptionInput,
@@ -195,6 +196,10 @@ function getTableSortButton() {
 
 function getTableSortOrderInput() {
   return getTableSection().findByLabelText("Column order");
+}
+
+function getTableSyncOptionsButton() {
+  return getTableSection().button(/Sync options/);
 }
 
 function getTableSectionField(name: string) {
