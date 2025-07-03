@@ -687,6 +687,14 @@
                (select-keys (first (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id parent) "/items?model=collection"))))
                             [:id :collection_id])))))))
 
+(deftest collection-items-entity-id-test
+  (testing "GET /api/collection/:id/items with entity ID"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       {card-id :id} {:collection_id (u/the-id collection)}]
+      (testing "Should be able to get collection items using entity ID"
+        (is (= 1 (count (:data (mt/user-http-request :crowberto :get 200
+                                                     (str "collection/" (:entity_id collection) "/items"))))))))))
+
 (deftest collection-items-return-database-id-for-datasets-test
   (testing "GET /api/collection/:id/items"
     (testing "Database id is returned for items in which dataset is true"
