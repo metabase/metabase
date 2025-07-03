@@ -92,7 +92,7 @@ const AddDataEmptyState = ({
   upsell,
 }: EmptyStateProps) => {
   return (
-    <Stack gap="lg" align="center" justify="center" pt="3rem">
+    <Stack gap="lg" align="center" justify="center" pt="2.5rem">
       {illustration}
       <Box component="header" ta="center" maw={CONTENT_MAX_WIDTH}>
         <Title order={2} size="h4" mb="xs">
