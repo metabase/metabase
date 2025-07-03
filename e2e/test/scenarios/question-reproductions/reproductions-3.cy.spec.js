@@ -2671,3 +2671,61 @@ describe("issue 23449", () => {
     checkTable();
   });
 });
+
+describe("issue 12679", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("removing the first aggregation should not re-target the filter (metabase#12679)", () => {
+    const questionDetails = {
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["sum", ["field", ORDERS.SUBTOTAL, null]],
+              ["sum", ["field", ORDERS.TAX, null]],
+              ["sum", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }],
+            ],
+          },
+          filter: [">", ["field", "sum_2", { "base-type": "type/Float" }], 100],
+        },
+      },
+    };
+
+    H.visitQuestionAdhoc(questionDetails, { mode: "notebook" });
+    H.getNotebookStep("filter", { stage: 1 })
+      .findByText("Sum of Tax is greater than 100")
+      .should("exist");
+
+    H.getNotebookStep("summarize").within(() => {
+      cy.findByText("Sum of Subtotal").parent().icon("close").click();
+      cy.findByText("Sum of Subtotal").should("not.exist");
+    });
+    H.getNotebookStep("filter", { stage: 1 })
+      .findByText("Sum of Tax is greater than 100")
+      .should("exist");
+
+    H.visualize();
+
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Sum of Tax is greater than 100")
+      .should("exist");
+    cy.findByTestId("table-header").within(() => {
+      cy.findByText("Sum of Subtotal").should("not.exist");
+      cy.findByText("Sum of Tax").should("exist");
+      cy.findByText("Sum of Total").should("exist");
+    });
+    cy.findByTestId("question-row-count")
+      .findByText("Showing 174 rows")
+      .should("exist");
+  });
+});
