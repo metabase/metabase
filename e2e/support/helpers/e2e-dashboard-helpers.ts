@@ -8,7 +8,13 @@ import type {
 } from "metabase-types/api";
 
 import { visitDashboard } from "./e2e-misc-helpers";
-import { menu, popover, sidebar, sidesheet } from "./e2e-ui-elements-helpers";
+import {
+  filterWidget,
+  menu,
+  popover,
+  sidebar,
+  sidesheet,
+} from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(
@@ -110,9 +116,8 @@ export function saveDashboard({
 }
 
 export function checkFilterLabelAndValue(label: string, value: string) {
-  cy.get("fieldset").find("legend").invoke("text").should("eq", label);
-
-  cy.get("fieldset").contains(value);
+  filterWidget().findByLabelText(label, { exact: false }).should("exist");
+  filterWidget().contains(value);
 }
 
 function _setFilter(type: string, subType?: string, name?: string) {
