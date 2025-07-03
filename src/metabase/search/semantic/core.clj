@@ -13,6 +13,7 @@
    [metabase.search.permissions :as search.permissions]
    [metabase.search.semantic.index :as semantic.index]
    [metabase.settings.models.setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -106,7 +107,7 @@
       {:select [:search_index.model_id
                 :search_index.model
                 :search_index.legacy_input
-                [[:raw (str "embedding <-> '" query-embedding "'::vector")] :distance]]
+                [[:raw (str "embedding <=> '" query-embedding "'::vector")] :distance]]
        :from   [[active-table :search_index]]
        :order-by [[:distance :asc]]
        :limit  100}
@@ -176,18 +177,28 @@
   (let [index-created (semantic.index/when-index-created)]
     (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
       (do
-        (log/debug "TODO: implement reindex when index is old"))
+        (log/debug "Forcing early reindex because existing index is old")
+        (search.engine/reindex! :search.engine/semantic {}))
 
       (let [created? (semantic.index/ensure-ready! opts)]
         (when (or created? re-populate?)
           (log/debug "Populating semantic index")
           (semantic.index/populate-index! :search/updating))))))
 
+(comment
+  (search.engine/init! :search.engine/semantic
+                       {:re-populate? true}))
+
 (defmethod search.engine/reindex! :search.engine/semantic
-  [_engine opts]
-  ;; TODO: Perform full reindex of semantic search
-  (log/info "Semantic search reindex called with opts:" opts)
-  {})
+  [_ {:keys [in-place?]}]
+  (semantic.index/ensure-ready!)
+  (if in-place?
+    (when-let [table (semantic.index/active-table)]
+      ;; keep the current table, just delete its contents
+      (t2/delete! table))
+    (semantic.index/maybe-create-pending!))
+  (u/prog1 (semantic.index/populate-index! (if in-place? :search/updating :search/reindexing))
+    (semantic.index/activate-table!)))
 
 (defmethod search.engine/reset-tracking! :search.engine/semantic [_]
   ;; TODO: Reset any internal tracking state
