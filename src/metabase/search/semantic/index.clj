@@ -143,8 +143,7 @@
 (def ^:private base-schema
   (into [[:model [:varchar 32] :not-null]
          [:display_data :text :not-null]
-         ;; TODO: figure out if legacy_input is needed
-         #_[:legacy_input :text :not-null]
+         [:legacy_input :text :not-null]
          ;; useful for tracking the speed and age of the index
          [:created_at :timestamp-with-time-zone
           [:default [:raw "CURRENT_TIMESTAMP"]]
@@ -246,8 +245,7 @@
        (remove #{:id :created_at :updated_at :native_query}
                (conj search.spec/attr-columns :model :display_data :legacy_input)))
       (update :display_data json/encode)
-      (dissoc :legacy_input)
-      #_(update :legacy_input json/encode)
+      (update :legacy_input json/encode)
       (assoc
        :updated_at       :%now
        :model_id         (:id entity)

@@ -1,12 +1,23 @@
 (ns metabase.search.semantic.core
   "Semantic search engine implementation."
   (:require
+   [clj-http.client :as http]
+   [clojure.string :as str]
+   [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
+   [metabase.request.core :as request]
    [metabase.search.engine :as search.engine]
+   [metabase.search.filter :as search.filter]
+   [metabase.search.permissions :as search.permissions]
    [metabase.search.semantic.index :as semantic.index]
    [metabase.settings.models.setting :refer [defsetting]]
-   [metabase.util.log :as log]))
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
+  (:import
+   (java.time OffsetDateTime)))
 
 ;;; ---------------------------------------- Engine Registration ----------------------------------------
 
@@ -28,11 +39,109 @@
 
 ;;; ---------------------------------------- Search Implementation ----------------------------------------
 
+(defn- fetch-query-embedding
+  "Fetch embedding for the search query from the local model."
+  [search-string]
+  (when-not (str/blank? search-string)
+    (try
+      (let [response (http/post "http://localhost:11434/api/embeddings"
+                                {:headers {"Content-Type" "application/json"}
+                                 :body    (json/encode {:model "mxbai-embed-large"
+                                                        :prompt search-string})})
+            embedding (-> (json/decode (:body response) true) :embedding)]
+        (str "[" (str/join ", " embedding) "]"))
+      (catch Exception e
+        (log/error e "Failed to fetch embedding for query:" search-string)
+        nil))))
+
+(defn- parse-datetime [s]
+  (when s (OffsetDateTime/parse s)))
+
+(defn- collapse-id [{:keys [id] :as row}]
+  (assoc row :id (if (number? id) id (parse-long (last (str/split (:id row) #":"))))))
+
+(defn- rehydrate [index-row]
+  (-> (json/decode+kw (:legacy_input index-row))
+      collapse-id
+      (assoc :score (:distance index-row 1.0))
+      (update :created_at parse-datetime)
+      (update :updated_at parse-datetime)
+      (update :last_edited_at parse-datetime)))
+
+(defn- add-table-where-clauses
+  "Add a `WHERE` clause to the query to only return tables the current user has access to"
+  [search-ctx qry]
+  (sql.helpers/where qry
+                     [:or
+                      [:= :search_index.model nil]
+                      [:!= :search_index.model [:inline "table"]]
+                      [:and
+                       [:= :search_index.model [:inline "table"]]
+                       [:exists {:select [1]
+                                 :from   [[:metabase_table :mt_toplevel]]
+                                 :where  [:and [:= :mt_toplevel.id [:cast :search_index.model_id :integer]]
+                                          (search.permissions/permitted-tables-clause search-ctx :mt_toplevel.id)]}]]]))
+
+(defn- add-collection-join-and-where-clauses
+  "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
+  so we can return its `:name`."
+  [search-ctx qry]
+  (if api/*current-user-id*
+    (let [collection-id-col :search_index.collection_id
+          permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
+          personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)
+          excluded-models   (search.filter/models-without-collection)
+          or-null           #(vector :or [:in :search_index.model excluded-models] %)]
+      (cond-> qry
+        true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
+        true (sql.helpers/where (or-null permitted-clause))
+        personal-clause (sql.helpers/where (or-null personal-clause))))
+    qry))
+
+(defn- semantic-search-query
+  "Build a semantic search query using vector similarity."
+  [search-string search-ctx]
+  (when-let [active-table (semantic.index/active-table)]
+    (if-let [query-embedding (fetch-query-embedding search-string)]
+      {:select [:search_index.model_id
+                :search_index.model
+                :search_index.legacy_input
+                [[:raw (str "embedding <-> '" query-embedding "'::vector")] :distance]]
+       :from   [[active-table :search_index]]
+       :order-by [[:distance :asc]]
+       :limit  100}
+      ;; Fallback to simple query without vector similarity if embedding fetch fails
+      {:select [:search_index.model_id
+                :search_index.model
+                :search_index.legacy_input
+                [[:inline 1.0] :distance]]
+       :from   [[active-table :search_index]]
+       :limit  100})))
+
 (defmethod search.engine/results :search.engine/semantic
-  [search-ctx]
-  ;; TODO: Implement semantic search query logic
-  (log/info "Semantic search results called with context:" search-ctx)
-  [])
+  [{:keys [search-string] :as search-ctx}]
+  ;; Check whether there is a query-able index.
+  (when-not (semantic.index/active-table)
+    (throw (ex-info "Semantic Search Index not found."
+                    {:search-engine :search.engine/semantic
+                     :db-type       (app-db/db-type)})))
+
+  (try
+    (->> (semantic-search-query search-string search-ctx)
+         (add-collection-join-and-where-clauses search-ctx)
+         (search.filter/with-filters search-ctx)
+         (add-table-where-clauses search-ctx)
+         t2/query
+         (map rehydrate))
+    (catch Exception e
+      ;; Rule out the error coming from stale index metadata.
+      (#'semantic.index/sync-tracking-atoms!)
+      (throw e))))
+
+(comment
+  (request/as-admin
+    (search.engine/results {:search-string "example search"
+                            :search-engine :search.engine/semantic})))
 
 (defmethod search.engine/model-set :search.engine/semantic
   [search-ctx]
