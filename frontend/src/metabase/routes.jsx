@@ -16,10 +16,10 @@ import {
   BrowseSchemas,
   BrowseTables,
 } from "metabase/browse";
+import { ArchiveCollectionModal } from "metabase/collections/components/ArchiveCollectionModal";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
-import ArchiveCollectionModal from "metabase/common/components/ArchiveCollectionModal";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
 import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
 import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
