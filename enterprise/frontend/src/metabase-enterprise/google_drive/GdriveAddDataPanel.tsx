@@ -75,6 +75,50 @@ const PanelWrapper = ({
   );
 };
 
+const ConnectionDetails = ({
+  onClose,
+  onDelete,
+  deleteError,
+  isDeleteInProgress,
+}: {
+  onClose: () => void;
+  onDelete: () => void;
+  deleteError?: string;
+  isDeleteInProgress: boolean;
+}) => {
+  const { title, bodyCopy, connectButtonText, disconnectButtonText } =
+    getDisconnectModalStrings({ reconnect: true });
+
+  return (
+    <PanelWrapper title={title} subtitle={bodyCopy}>
+      <Stack gap="sm" mt="sm">
+        <Button
+          variant="filled"
+          color="danger"
+          loading={isDeleteInProgress}
+          onClick={onDelete}
+          w={INNER_WIDTH}
+        >
+          {disconnectButtonText}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={onClose}
+          disabled={isDeleteInProgress}
+          w={INNER_WIDTH}
+        >
+          {connectButtonText}
+        </Button>
+      </Stack>
+      {deleteError && (
+        <Text fz="sm" c="danger">
+          {deleteError}
+        </Text>
+      )}
+    </PanelWrapper>
+  );
+};
+
 export const GdriveAddDataPanel = () => {
   const [
     areConnectionDetailsShown,
@@ -140,36 +184,13 @@ export const GdriveAddDataPanel = () => {
   }
 
   if (areConnectionDetailsShown) {
-    const { title, bodyCopy, connectButtonText, disconnectButtonText } =
-      getDisconnectModalStrings({ reconnect: true });
-
     return (
-      <PanelWrapper title={title} subtitle={bodyCopy}>
-        <Stack gap="sm" mt="sm">
-          <Button
-            variant="filled"
-            color="danger"
-            loading={isDeletingFolderLink}
-            onClick={onDelete}
-            w={INNER_WIDTH}
-          >
-            {disconnectButtonText}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={closeConnectionDetails}
-            disabled={isDeletingFolderLink}
-            w={INNER_WIDTH}
-          >
-            {connectButtonText}
-          </Button>
-        </Stack>
-        {deleteError && (
-          <Text fz="sm" c="danger">
-            {deleteError}
-          </Text>
-        )}
-      </PanelWrapper>
+      <ConnectionDetails
+        onClose={closeConnectionDetails}
+        isDeleteInProgress={isDeletingFolderLink}
+        onDelete={onDelete}
+        deleteError={deleteError}
+      />
     );
   }
 
