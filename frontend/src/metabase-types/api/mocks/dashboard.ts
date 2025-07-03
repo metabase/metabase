@@ -157,15 +157,18 @@ export const createMockTextDashboardCard = ({
     },
   });
 
-export const createMockHeadingDashboardCard = (
-  opts?: VirtualDashboardCardOpts & { text?: string },
-): VirtualDashboardCard =>
+type HeadingDashboardCardOpts = VirtualDashboardCardOpts & {
+  text?: string;
+};
+
+export const createMockHeadingDashboardCard = ({
+  text = "Heading Text",
+  ...opts
+}: HeadingDashboardCardOpts = {}): VirtualDashboardCard =>
   createMockVirtualDashCard({
     ...opts,
     card: createMockVirtualCard({ display: "heading" }),
-    visualization_settings: {
-      text: opts?.text ?? "Heading Text",
-    },
+    visualization_settings: { text },
   });
 
 export const createMockLinkDashboardCard = ({

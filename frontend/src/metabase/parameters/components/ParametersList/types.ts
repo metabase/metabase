@@ -31,6 +31,7 @@ export type ParametersListProps = {
     widgetsVariant?: "default" | "subtle";
     widgetsWithinPortal?: boolean;
     layout?: "horizontal" | "vertical";
+    hasTestIdProps?: boolean;
   } & Pick<DashboardFullscreenControls, "isFullscreen"> &
     Pick<DashboardNightModeControls, "isNightMode"> &
     Pick<EmbedHideParametersControls, "hideParameters">
