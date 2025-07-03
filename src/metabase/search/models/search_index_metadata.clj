@@ -76,6 +76,17 @@
       (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code (i18n/site-locale-string) :status :pending} {:status :active}))
     (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :active)))
 
+(defn when-index-created
+  "Return creation time of the active index for the given engine and version, or nil if there is none."
+  [engine version]
+  (t2/select-one-fn :created_at
+                    :model/SearchIndexMetadata
+                    :engine engine
+                    :version version
+                    :lang_code (i18n/site-locale-string)
+                    :status :active
+                    {:order-by [[:created_at :desc]]}))
+
 (defn delete-obsolete!
   "Remove metadata corresponding to obsolete Metabase versions.
   It is up to the relevant engine to delete the actual indexes themselves."

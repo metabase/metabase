@@ -56,6 +56,7 @@
                                             {:mvn/version "2.1.214"}            ; embedded SQL database
   com.ibm.icu/icu4j                         {:mvn/version "77.1"}               ; Used to transliterate Unicode characters into Latin characters
   com.mchange/c3p0                          {:mvn/version "0.10.1"}             ; DB connection pool
+  com.pgvector/pgvector                     {:mvn/version "0.1.6"}              ; Postgres vector type support
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
   {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.taoensso/nippy                        {:mvn/version "3.5.0"}              ; Fast serialization (i.e., GZIP) library for Clojure
