@@ -1,10 +1,14 @@
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type { RecentItem } from "metabase-types/api";
+import type { Dashboard, RecentItem } from "metabase-types/api";
 
 const { H } = cy;
 
 type RecentActivityIntercept = {
-  response: { body: { recents: RecentItem[] } };
+  response: Cypress.Response<{ recents: RecentItem[] }>;
+};
+
+type DashboardIntercept = {
+  response: Cypress.Response<Dashboard>;
 };
 
 describe("scenarios > embedding > sdk iframe embed setup > select embed experience", () => {
@@ -13,7 +17,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
-    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+    cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
@@ -74,6 +78,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
 
     it("shows dashboard of id=1 when activity log is empty", () => {
       visitNewEmbedPage();
+      assertDashboard({ id: 1, name: "Person overview" });
       cy.wait("@emptyRecentItems");
 
       cy.log("dashboard title and card of id=1 should be visible");
@@ -127,5 +132,12 @@ const assertRecentItemName = (
     );
 
     expect(recentItem?.name).to.be.equal(resourceName);
+  });
+};
+
+const assertDashboard = ({ id, name }: { id: number; name: string }) => {
+  cy.get<DashboardIntercept>("@dashboard").should((intercept) => {
+    expect(intercept.response?.body.id).to.be.equal(id);
+    expect(intercept.response?.body.name).to.be.equal(name);
   });
 };
