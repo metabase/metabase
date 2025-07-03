@@ -11,7 +11,9 @@ import {
   Icon,
   TextInput,
   type TextInputProps,
+  Tooltip,
 } from "metabase/ui";
+import type { StructuredUserAttribute } from "metabase-types/api";
 
 type DefaultRenderInputProps = {
   value: MappingValue;
@@ -46,7 +48,7 @@ type MappingValue = string;
 type MappingType = Record<string, MappingValue>;
 
 export interface MappingEditorProps {
-  disabledValues?: MappingEditorEntry[];
+  specialEntries?: MappingEditorEntry[];
   value: MappingType;
   onChange: (val: MappingType) => void;
   onError?: (val: boolean) => void;
@@ -70,6 +72,9 @@ export type MappingEditorEntry = {
   key: string;
   value: string;
   keyOpts?: Omit<DefaultRenderInputProps, "value">;
+  valueOpts?: Omit<DefaultRenderInputProps, "value"> & {
+    revert?: StructuredUserAttribute;
+  };
 };
 
 const buildEntries = (mapping: MappingType): MappingEditorEntry[] =>
@@ -87,7 +92,11 @@ const entryError = (entries: MappingEditorEntry[], key: string) => {
   if (entries.filter((e) => e.key === key).length > 1) {
     return t`Attribute keys can't have the same name`;
   }
-  if (entries.some((e) => e.key.startsWith("@"))) {
+  if (
+    entries.some(
+      (e) => !e.keyOpts?.disabled && e.key === key && e.key.startsWith("@"),
+    )
+  ) {
     return t`Keys starting with "@" are reserved for system use`;
   }
   return false;
@@ -98,7 +107,7 @@ const hasError = (entries: MappingEditorEntry[]) => {
 };
 
 export const MappingEditor = ({
-  disabledValues: disabledEntries = [],
+  specialEntries = [],
   value: mapping,
   onChange,
   onError,
@@ -118,7 +127,7 @@ export const MappingEditor = ({
   swapKeyAndValue,
 }: MappingEditorProps) => {
   const [entries, setEntries] = useState<MappingEditorEntry[]>(
-    buildEntries(mapping),
+    specialEntries?.length ? specialEntries : buildEntries({ ...mapping }), // FIXME
   );
 
   const handleChange = (newEntries: MappingEditorEntry[]) => {
@@ -142,38 +151,11 @@ export const MappingEditor = ({
         </thead>
       ) : null}
       <tbody>
-        {disabledEntries.map(({ key, value, keyOpts }, index) => {
-          const keyInput = renderKeyInput({
-            value: key,
-            disabled: true,
-            ...keyOpts,
-          });
-          const valueInput = renderValueInput({
-            value: value,
-            disabled: true,
-          });
-
-          return (
-            <tr key={index}>
-              <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
-                {!swapKeyAndValue ? keyInput : valueInput}
-              </td>
-              <td
-                className={cx(CS.pb1, CS.px1)}
-                style={{ verticalAlign: "middle" }}
-              >
-                {divider}
-              </td>
-              <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
-                {!swapKeyAndValue ? valueInput : keyInput}
-              </td>
-            </tr>
-          );
-        })}
-        {entries.map(({ key, value }, index) => {
+        {entries.map(({ key, value, keyOpts, valueOpts }, index) => {
           const keyInput = renderKeyInput({
             value: key,
             placeholder: keyPlaceholder,
+            ...keyOpts,
             onChange: (newKey) =>
               handleChange(replaceEntryKey(entries, index, newKey)),
             error: entryError(entries, key),
@@ -181,12 +163,26 @@ export const MappingEditor = ({
           const valueInput = renderValueInput({
             value: value,
             placeholder: valuePlaceholder,
+            ...valueOpts,
             onChange: (newValue) =>
               handleChange(replaceEntryValue(entries, index, newValue)),
           });
+
+          const canDeleteThis =
+            canDelete && !keyOpts?.disabled && !valueOpts?.disabled;
+          const canRevert =
+            !canDeleteThis &&
+            valueOpts?.revert &&
+            valueOpts?.revert.value !== value;
+
+          // console.log({ canRevert, valueOpts })
+
           return (
             <tr key={index}>
-              <td className={CS.pb1} style={{ verticalAlign: "top" }}>
+              <td
+                className={CS.pb1}
+                style={{ verticalAlign: "top", width: "auto" }}
+              >
                 {!swapKeyAndValue ? keyInput : valueInput}
               </td>
               <td
@@ -195,10 +191,13 @@ export const MappingEditor = ({
               >
                 {divider}
               </td>
-              <td className={CS.pb1} style={{ verticalAlign: "top" }}>
+              <td
+                className={CS.pb1}
+                style={{ verticalAlign: "top", width: "auto" }}
+              >
                 {!swapKeyAndValue ? valueInput : keyInput}
               </td>
-              {canDelete && (
+              {canDeleteThis && (
                 <td className={CS.pb1} style={{ verticalAlign: "top" }}>
                   <Button
                     leftSection={<Icon name="close" />}
@@ -207,6 +206,29 @@ export const MappingEditor = ({
                     color={"text"}
                     data-testid="remove-mapping"
                   />
+                </td>
+              )}
+              {canRevert && (
+                <td className={CS.pb1} style={{ verticalAlign: "top" }}>
+                  <Tooltip
+                    label={t`Revert to "${valueOpts?.revert?.value}" value from ${valueOpts?.revert?.source}`}
+                  >
+                    <Button
+                      leftSection={<Icon name="refresh" />}
+                      variant="subtle"
+                      onClick={() =>
+                        handleChange(
+                          replaceEntryValue(
+                            entries,
+                            index,
+                            valueOpts.revert?.value || "",
+                          ),
+                        )
+                      }
+                      color={"text"}
+                      data-testid="revert-mapping"
+                    />
+                  </Tooltip>
                 </td>
               )}
             </tr>
