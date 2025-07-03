@@ -1,5 +1,6 @@
 import { snippetCompletion } from "@codemirror/autocomplete";
 import Fuse from "fuse.js";
+import _ from "underscore";
 
 import {
   CALL,
@@ -42,14 +43,13 @@ export function expressionClauseSnippet(clause: MBQLClauseFunctionConfig) {
   return `${clause.displayName}(${args})`;
 }
 
-export function fuzzyMatcher(
-  options: Completion[],
-  {
-    keys = ["displayLabel"],
-  }: {
-    keys?: (string | { name: string; weight?: number })[];
-  } = {},
-) {
+export const fuzzyMatcher = _.memoize(function ({
+  options,
+  keys = ["displayLabel"],
+}: {
+  options: Completion[];
+  keys?: (string | { name: string; weight?: number })[];
+}) {
   const fuse = new Fuse(options, {
     keys,
     includeScore: true,
@@ -76,7 +76,7 @@ export function fuzzyMatcher(
         return item;
       });
   };
-}
+}, JSON.stringify);
 
 export function tokenAtPos(source: string, pos: number): Token | null {
   const tokens = lexify(source);
