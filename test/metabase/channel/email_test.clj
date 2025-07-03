@@ -371,9 +371,9 @@
       (tu/with-temporary-setting-values [email-from-address "standard@metabase.com"
                                          email-from-name "From Name"
                                          email-reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
-                                         cloud-email-smtp-host "cloud.metabase.com"
-                                         cloud-email-from-address "cloud@metabase.com"
-                                         cloud-smtp-enabled true]
+                                         override-email-smtp-host "cloud.metabase.com"
+                                         override-email-from-address "cloud@metabase.com"
+                                         override-smtp-enabled true]
         (testing "Sends to cloud email settings when enabled"
           (is (=
                [{:from     "From Name <cloud@metabase.com>"
@@ -390,7 +390,7 @@
                   :message "101. Metabase will make you a better person")
                  (@inbox "test@test.com")))))
         (testing "Sends to standard email settings when disabled, even if cloud settings are set"
-          (tu/with-temporary-setting-values [cloud-smtp-enabled false]
+          (tu/with-temporary-setting-values [override-smtp-enabled false]
             (is (=
                  [{:from     "From Name <standard@metabase.com>"
                    :to       ["test@test.com"]

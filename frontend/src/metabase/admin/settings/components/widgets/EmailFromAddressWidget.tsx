@@ -12,7 +12,7 @@ import { AdminSettingInput } from "./AdminSettingInput";
 export function EmailFromAddressWidget() {
   const { value: fromAddressValue } = useAdminSetting("email-from-address");
   const isHosted = useSetting("is-hosted?");
-  const isCloudSMTPEnabled = useSetting("cloud-smtp-enabled");
+  const isCloudSMTPEnabled = useSetting("smtp-override-enabled");
   const hasCloudCustomSMTPFeature = useHasTokenFeature("cloud-custom-smtp");
 
   if (!isHosted) {
@@ -30,7 +30,7 @@ export function EmailFromAddressWidget() {
       <AdminSettingInput
         title={t`From Address`}
         inputType="text"
-        name="cloud-email-from-address"
+        name="email-from-address-override"
       />
     );
   }

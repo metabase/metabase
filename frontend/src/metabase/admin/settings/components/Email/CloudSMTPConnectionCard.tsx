@@ -12,9 +12,12 @@ export const CloudSMTPConnectionCard = ({
 }: {
   onOpenCloudSMTPModal: () => void;
 }) => {
-  const isCloudSMTPConfigured = Boolean(useSetting("cloud-email-smtp-host"));
-  const { value: iscloudSMTPEnabled, updateSetting } =
-    useAdminSetting("cloud-smtp-enabled");
+  const isSMTPOverrideConfigured = Boolean(
+    useSetting("email-smtp-host-override"),
+  );
+  const { value: iscloudSMTPEnabled, updateSetting } = useAdminSetting(
+    "smtp-override-enabled",
+  );
   const [localValue, setLocalValue] = useState(iscloudSMTPEnabled);
 
   useEffect(() => {
@@ -27,7 +30,10 @@ export const CloudSMTPConnectionCard = ({
       return;
     }
     setLocalValue(newIsCloudSMTPEnabled);
-    updateSetting({ key: "cloud-smtp-enabled", value: newIsCloudSMTPEnabled });
+    updateSetting({
+      key: "smtp-override-enabled",
+      value: newIsCloudSMTPEnabled,
+    });
   };
 
   return (
@@ -40,7 +46,7 @@ export const CloudSMTPConnectionCard = ({
           <Box p="lg">
             <Group justify="space-between">
               <Group wrap="nowrap" align="flex-start">
-                {isCloudSMTPConfigured ? (
+                {isSMTPOverrideConfigured ? (
                   <Radio.Indicator className={S.indicator} />
                 ) : (
                   <Icon name="check" c="success" size={20} />
@@ -57,7 +63,7 @@ export const CloudSMTPConnectionCard = ({
           </Box>
         </Radio.Card>
         <Divider />
-        {isCloudSMTPConfigured && (
+        {isSMTPOverrideConfigured && (
           <Radio.Card radius="md" value="custom" className={S.RadioCardRoot}>
             <Box p="lg">
               <Group justify="space-between">
@@ -79,7 +85,7 @@ export const CloudSMTPConnectionCard = ({
             </Box>
           </Radio.Card>
         )}
-        {!isCloudSMTPConfigured && (
+        {!isSMTPOverrideConfigured && (
           <Box p="sm">
             <Button
               variant="subtle"

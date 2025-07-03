@@ -24,14 +24,14 @@ const setup = async (props: {
   cloudCustomSMTPConfigured?: boolean;
 }) => {
   const emailSettings = {
-    "cloud-email-smtp-host": props.cloudCustomSMTPConfigured
+    "email-smtp-host-override": props.cloudCustomSMTPConfigured
       ? "host@test.com"
       : undefined,
     "token-features": createMockTokenFeatures({
       hosting: !!props.hosted,
       "cloud-custom-smtp": props.cloudCustomSMTPFF,
     }),
-    "cloud-smtp-enabled": props.cloudSMTPEnabled,
+    "smtp-override-enabled": props.cloudSMTPEnabled,
     "is-hosted?": !!props.hosted,
   } as const;
 
@@ -42,11 +42,11 @@ const setup = async (props: {
   setupSettingsEndpoints([
     createMockSettingDefinition({ key: "is-hosted?", value: props.hosted }),
     createMockSettingDefinition({
-      key: "cloud-smtp-enabled",
+      key: "smtp-override-enabled",
       value: props.cloudSMTPEnabled,
     }),
     createMockSettingDefinition({
-      key: "cloud-email-smtp-host",
+      key: "email-smtp-host-override",
       value: props.cloudCustomSMTPConfigured ? "host@test.com" : undefined,
     }),
   ]);
@@ -119,7 +119,7 @@ describe("CloudSMTPConnectionCard", () => {
     const puts = await findRequests("PUT");
     const { url: putUrl, body: putBody } = puts[0];
 
-    expect(putUrl).toContain("/api/setting/cloud-smtp-enabled");
+    expect(putUrl).toContain("/api/setting/smtp-override-enabled");
     expect(putBody).toEqual({ value: true });
 
     await waitFor(() => {

@@ -28,13 +28,13 @@ const setup = async (props: {
 }) => {
   const emailSettings = {
     "email-from-address": props.selfHostedFromAddress || "env@metabase.com",
-    "cloud-email-from-address": props.cloudCustomFromAddress,
+    "email-from-address-override": props.cloudCustomFromAddress,
     "token-features": createMockTokenFeatures({
       hosting: !!props.hosted,
       "cloud-custom-smtp": props.cloudCustomSMTPFF,
     }),
-    "cloud-email-smtp-host": props.smtpHost,
-    "cloud-smtp-enabled": props.cloudSMTPEnabled,
+    "email-smtp-host-override": props.smtpHost,
+    "smtp-override-enabled": props.cloudSMTPEnabled,
     "is-hosted?": !!props.hosted,
   } as const;
 
@@ -52,17 +52,17 @@ const setup = async (props: {
         !props.cloudCustomFromAddress && !props.selfHostedFromAddress,
     }),
     createMockSettingDefinition({
-      key: "cloud-email-from-address",
+      key: "email-from-address-override",
       value: props.cloudCustomFromAddress,
       description: "Cloud email from address description",
     }),
     createMockSettingDefinition({ key: "is-hosted?", value: props.hosted }),
     createMockSettingDefinition({
-      key: "cloud-smtp-enabled",
+      key: "smtp-override-enabled",
       value: props.cloudSMTPEnabled,
     }),
     createMockSettingDefinition({
-      key: "cloud-email-smtp-host",
+      key: "email-smtp-host-override",
       value: props.smtpHost,
     }),
   ]);
@@ -167,7 +167,7 @@ describe("EmailFromAddressWidgets", () => {
     const puts = await findRequests("PUT");
     const { url: putUrl, body: putBody } = puts[0];
 
-    expect(putUrl).toContain("/api/setting/cloud-email-from-address");
+    expect(putUrl).toContain("/api/setting/email-from-address-override");
     expect(putBody).toEqual({ value: "grovyle@brock.com" });
 
     await waitFor(() => {
