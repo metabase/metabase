@@ -41,63 +41,6 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signInAsAdmin();
     });
 
-    it("should allow changing the field name", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-        fieldId: ORDERS.TAX,
-      });
-
-      H.DataModel.FieldSection.getNameInput().clear().type("New tax").blur();
-      cy.wait("@updateField");
-
-      H.undoToast().should("contain.text", "Display name for Tax updated");
-      H.DataModel.FieldSection.getNameInput().should("have.value", "New tax");
-      H.DataModel.TableSection.getFieldNameInput("New tax").should(
-        "be.visible",
-      );
-
-      H.openOrdersTable();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New tax").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Tax").should("not.exist");
-    });
-
-    it("should allow changing the field description", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-        fieldId: ORDERS.TOTAL,
-      });
-
-      H.DataModel.FieldSection.getDescriptionInput()
-        .clear()
-        .type("New description")
-        .blur();
-      cy.wait("@updateField");
-
-      H.undoToast().should("contain.text", "Description for Total updated");
-      H.DataModel.FieldSection.getDescriptionInput().should(
-        "have.value",
-        "New description",
-      );
-      H.DataModel.TableSection.getFieldDescriptionInput("Total").should(
-        "have.value",
-        "New description",
-      );
-
-      cy.visit(
-        `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
-      );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Total").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New description").should("be.visible");
-    });
-
     it("should allow changing the field visibility", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,

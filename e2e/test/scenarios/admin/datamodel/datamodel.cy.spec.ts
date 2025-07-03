@@ -136,7 +136,6 @@ describe("scenarios > admin > datamodel", () => {
         .findByText("Start by selecting data to model")
         .should("be.visible");
 
-      // Orders
       H.DataModel.TablePicker.getTable("Orders").click();
       cy.get("main")
         .findByText("Edit the table and fields")
@@ -240,10 +239,8 @@ describe("scenarios > admin > datamodel", () => {
       );
 
       H.openOrdersTable();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New tax").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Tax").should("not.exist");
+      H.tableHeaderColumn("New tax").should("be.visible");
+      H.tableHeaderColumn("Tax", { scrollIntoView: false }).should("not.exist");
     });
 
     it("should allow changing the field description", () => {
@@ -619,40 +616,82 @@ describe("scenarios > admin > datamodel", () => {
 
   describe("Field section", () => {
     describe("Header", () => {
-      it("should let you change field name and description", () => {
+      it("should allow changing the field name", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
-          fieldId: ORDERS.CREATED_AT,
+          fieldId: ORDERS.TAX,
         });
 
-        // update the name
-        H.DataModel.FieldSection.getNameInput()
-          .should("have.value", "Created At")
-          .clear()
-          .type("new display_name")
-          .blur();
+        H.DataModel.FieldSection.getNameInput().clear().type("New tax").blur();
         cy.wait("@updateField");
 
-        // update the description
+        H.undoToast().should("contain.text", "Display name for Tax updated");
+        H.DataModel.TableSection.getFieldNameInput("New tax").should(
+          "be.visible",
+        );
+
+        H.openOrdersTable();
+        H.tableHeaderColumn("New tax").should("be.visible");
+        H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
+          "not.exist",
+        );
+      });
+
+      it("should allow changing the field description", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.TOTAL,
+        });
+
         H.DataModel.FieldSection.getDescriptionInput()
-          .should("have.value", "The date and time an order was submitted.")
           .clear()
-          .type("new description")
+          .type("New description")
           .blur();
         cy.wait("@updateField");
 
-        // reload and verify they have been updated
-        cy.reload();
-        H.DataModel.FieldSection.getNameInput().should(
+        H.undoToast().should("contain.text", "Description for Total updated");
+        H.DataModel.TableSection.getFieldDescriptionInput("Total").should(
           "have.value",
-          "new display_name",
+          "New description",
         );
-        H.DataModel.FieldSection.getDescriptionInput().should(
+
+        cy.visit(
+          `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+        );
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Total").should("be.visible");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("New description").should("be.visible");
+      });
+
+      it("should allow clearing the field description", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.TOTAL,
+        });
+
+        H.DataModel.FieldSection.getDescriptionInput().clear().blur();
+        cy.wait("@updateField");
+
+        H.undoToast().should("contain.text", "Description for Total updated");
+        H.DataModel.TableSection.getFieldDescriptionInput("Total").should(
           "have.value",
-          "new description",
+          "",
         );
+
+        cy.visit(
+          `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+        );
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Total").should("be.visible");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("No description yet").should("be.visible");
       });
 
       it("should remap FK display value from field section", () => {
@@ -670,10 +709,7 @@ describe("scenarios > admin > datamodel", () => {
         cy.wait("@updateField");
 
         H.openOrdersTable({ limit: 5 });
-        cy.findAllByTestId("header-cell").should(
-          "contain",
-          "Remapped Product ID",
-        );
+        H.tableHeaderColumn("Remapped Product ID").should("be.visible");
       });
     });
 
