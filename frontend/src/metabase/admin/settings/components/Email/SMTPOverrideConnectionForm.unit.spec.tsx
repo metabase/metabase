@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   findRequests,
-  setupCloudEmailEndpoints,
+  setupEmailOverrideEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -65,7 +65,7 @@ const setup = async ({
       is_env_setting: setEnvVars === "all",
     }),
   };
-  setupCloudEmailEndpoints();
+  setupEmailOverrideEndpoints();
   setupSettingsEndpoints(Object.values(settingsDefinitionsWithDefaults));
   const settingValues: any = {};
   Object.entries(settingsDefinitionsWithDefaults).forEach(([key, setting]) => {
