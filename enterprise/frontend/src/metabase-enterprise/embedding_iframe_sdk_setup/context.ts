@@ -4,17 +4,31 @@ import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_ifram
 
 import type {
   SdkIframeEmbedSetupExperience,
+  SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupStep,
 } from "./types";
 
 export interface SdkIframeEmbedSetupContextType {
+  // Navigation
   currentStep: SdkIframeEmbedSetupStep;
   setCurrentStep: (step: SdkIframeEmbedSetupStep) => void;
 
   experience: SdkIframeEmbedSetupExperience;
+
+  // Embed settings
   settings: SdkIframeEmbedSettings;
   setSettings: (settings: SdkIframeEmbedSettings) => void;
   updateSettings: (nextSettings: Partial<SdkIframeEmbedSettings>) => void;
+
+  // Recent items
+  recentDashboards: SdkIframeEmbedSetupRecentItem[];
+  recentQuestions: SdkIframeEmbedSetupRecentItem[];
+  addRecentItem: (
+    type: "dashboard" | "question",
+    recentItem: SdkIframeEmbedSetupRecentItem,
+  ) => void;
+
+  isEmbedSettingsLoaded: boolean;
 }
 
 export const SdkIframeEmbedSetupContext =

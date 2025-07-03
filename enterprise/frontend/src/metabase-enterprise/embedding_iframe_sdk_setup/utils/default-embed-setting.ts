@@ -39,7 +39,3 @@ export const getDefaultSdkIframeEmbedSettings = (
       }),
     )
     .exhaustive();
-
-// TODO: will be replaced with the most recently visited dashboard once EMB-508 is merged.
-export const DEFAULT_SDK_IFRAME_EMBED_SETTINGS =
-  getDefaultSdkIframeEmbedSettings("dashboard", 1);
