@@ -1,6 +1,7 @@
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
+  USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -13,11 +14,18 @@ const {
   FEEDBACK_ID,
   ORDERS,
   ORDERS_ID,
+  PEOPLE_ID,
   PRODUCTS,
   REVIEWS,
   REVIEWS_ID,
   PRODUCTS_ID,
 } = SAMPLE_DATABASE;
+const { ALL_USERS_GROUP } = USER_GROUPS;
+// const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
+// const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
+
+const CUSTOM_MAPPING_ERROR =
+  "You need unrestricted data access on this table to map custom display values.";
 
 describe("scenarios > admin > datamodel", () => {
   beforeEach(() => {
@@ -181,6 +189,37 @@ describe("scenarios > admin > datamodel", () => {
       });
     });
 
+    it("should allow changing the table name with data model permissions only", () => {
+      H.activateToken("pro-self-hosted");
+      setDataModelPermissions({ tableIds: [ORDERS_ID] });
+
+      cy.signIn("none");
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+
+      H.DataModel.TableSection.getNameInput().clear().type("New orders").blur();
+      cy.wait("@updateTable");
+
+      H.DataModel.TableSection.getNameInput().should(
+        "have.value",
+        "New orders",
+      );
+
+      H.undoToast().should("contain.text", "Table name updated");
+      cy.signOut();
+
+      cy.signInAsNormalUser();
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        cy.findByText("People").should("be.visible");
+        cy.findByText("New orders").should("be.visible");
+      });
+    });
+
     it("should allow changing the table description", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
@@ -246,6 +285,34 @@ describe("scenarios > admin > datamodel", () => {
         "be.visible",
       );
 
+      H.openOrdersTable();
+      H.tableHeaderColumn("New tax").should("be.visible");
+      H.tableHeaderColumn("Tax", { scrollIntoView: false }).should("not.exist");
+    });
+
+    it("should allow changing the field name with data model permissions only", () => {
+      H.activateToken("pro-self-hosted");
+      setDataModelPermissions({ tableIds: [ORDERS_ID] });
+
+      cy.signIn("none");
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+      H.DataModel.TableSection.getFieldNameInput("Tax")
+        .clear()
+        .type("New tax")
+        .blur();
+      cy.wait("@updateField");
+
+      H.undoToast().should("contain.text", "Display name for Tax updated");
+      H.DataModel.TableSection.getFieldNameInput("New tax").should(
+        "be.visible",
+      );
+      H.DataModel.TableSection.getField("New tax").should("be.visible");
+
+      cy.signInAsNormalUser();
       H.openOrdersTable();
       H.tableHeaderColumn("New tax").should("be.visible");
       H.tableHeaderColumn("Tax", { scrollIntoView: false }).should("not.exist");
@@ -647,6 +714,41 @@ describe("scenarios > admin > datamodel", () => {
         );
       });
 
+      it("should allow changing the field name with data model permissions only", () => {
+        H.activateToken("pro-self-hosted");
+        setDataModelPermissions({ tableIds: [ORDERS_ID] });
+
+        cy.signIn("none");
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.TOTAL,
+        });
+
+        H.DataModel.FieldSection.getNameInput()
+          .clear()
+          .type("New total")
+          .blur();
+        cy.wait("@updateField");
+
+        H.undoToast().should("contain.text", "Display name for Total updated");
+        H.DataModel.FieldSection.getNameInput().should(
+          "have.value",
+          "New total",
+        );
+        H.DataModel.TableSection.getFieldNameInput("New total")
+          .scrollIntoView()
+          .should("be.visible");
+
+        cy.signInAsNormalUser();
+        H.openOrdersTable();
+        H.tableHeaderColumn("New total").should("be.visible");
+        H.tableHeaderColumn("Total", { scrollIntoView: false }).should(
+          "not.exist",
+        );
+      });
+
       it("should allow changing the field description", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
@@ -826,7 +928,10 @@ describe("scenarios > admin > datamodel", () => {
           H.DataModel.FieldSection.getSemanticTypeFkTarget()
             .should("have.value", "People → ID")
             .click();
-          H.popover().findByText("Products → ID").click();
+          H.popover().within(() => {
+            cy.findByText("Reviews → ID").should("be.visible");
+            cy.findByText("Products → ID").click();
+          });
           cy.wait("@updateField");
           H.undoToast().should(
             "contain.text",
@@ -848,6 +953,99 @@ describe("scenarios > admin > datamodel", () => {
             cy.findByText("Products").click();
           });
           cy.findByLabelText("Left column").should("contain.text", "User ID");
+        });
+
+        it("should allow to change the field foreign key target with no permissions to Reviews table", () => {
+          H.activateToken("pro-self-hosted");
+          setDataModelPermissions({
+            tableIds: [ORDERS_ID, PRODUCTS_ID, PEOPLE_ID],
+          });
+
+          cy.signIn("none");
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.USER_ID,
+          });
+          H.DataModel.FieldSection.getSemanticTypeFkTarget()
+            .should("have.value", "People → ID")
+            .click();
+          H.popover().within(() => {
+            cy.findByText("Reviews → ID").should("not.exist");
+            cy.findByText("Products → ID").click();
+          });
+          cy.wait("@updateField");
+
+          H.undoToast().should(
+            "contain.text",
+            "Semantic type for User ID updated",
+          );
+          H.DataModel.FieldSection.getSemanticTypeFkTarget().should(
+            "have.value",
+            "Products → ID",
+          );
+
+          cy.signInAsNormalUser();
+          H.openTable({
+            database: SAMPLE_DB_ID,
+            table: ORDERS_ID,
+            mode: "notebook",
+          });
+          cy.icon("join_left_outer").click();
+          H.entityPickerModal().within(() => {
+            H.entityPickerModalTab("Tables").click();
+            cy.findByText("Products").click();
+          });
+          cy.findByLabelText("Left column").should("contain.text", "User ID");
+        });
+
+        it("should allow to change foreign key target for accessible tables", () => {
+          H.activateToken("pro-self-hosted");
+          setDataModelPermissions({
+            tableIds: [ORDERS_ID, REVIEWS_ID, PRODUCTS_ID],
+          });
+
+          cy.signIn("none");
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: REVIEWS_ID,
+            fieldId: REVIEWS.PRODUCT_ID,
+          });
+
+          H.DataModel.FieldSection.getDisplayValuesInput().click();
+          H.popover().findByText("Use foreign key").click();
+          H.popover().findByText("Title").click();
+          cy.wait("@updateFieldDimension");
+
+          cy.signInAsNormalUser();
+          H.openReviewsTable({ limit: 1 });
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          cy.findByText("Rustic Paper Wallet").should("be.visible");
+        });
+
+        it("should not allow setting foreign key target for inaccessible tables", () => {
+          H.activateToken("pro-self-hosted");
+          setDataModelPermissions({ tableIds: [REVIEWS_ID] });
+
+          cy.signIn("none");
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: REVIEWS_ID,
+            fieldId: REVIEWS.PRODUCT_ID,
+          });
+          H.DataModel.FieldSection.getDisplayValuesInput().click();
+
+          H.popover().within(() => {
+            cy.findByRole("option", { name: /Use original value/ })
+              .should("be.visible")
+              .and("not.have.attr", "data-combobox-disabled");
+            cy.findByRole("option", { name: /Use foreign key/ })
+              .should("be.visible")
+              .and("have.attr", "data-combobox-disabled", "true");
+          });
         });
 
         it("should allow to change the type to 'Currency' and choose the currency", () => {
@@ -929,7 +1127,7 @@ describe("scenarios > admin > datamodel", () => {
             .and("not.contain.text", "Number");
         });
 
-        it("semantic picker should not overflow the screen on smaller viewports (metabase#56442)", () => {
+        it("should not overflow the screen on smaller viewports (metabase#56442)", () => {
           const viewportHeight = 400;
 
           cy.viewport(1280, viewportHeight);
@@ -1148,6 +1346,51 @@ describe("scenarios > admin > datamodel", () => {
               .scrollIntoView()
               .should("be.visible");
           });
+        });
+
+        it("should show a proper error message when using custom mapping", () => {
+          H.activateToken("pro-self-hosted");
+          setDataModelPermissions({ tableIds: [REVIEWS_ID] });
+
+          cy.signIn("none");
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: REVIEWS_ID,
+            fieldId: REVIEWS.RATING,
+          });
+          H.DataModel.FieldSection.getDisplayValuesInput().click();
+
+          H.popover().within(() => {
+            cy.findByRole("option", { name: /Use original value/ })
+              .should("be.visible")
+              .and("not.have.attr", "data-combobox-disabled");
+            cy.findByRole("option", { name: /Custom mapping/ })
+              .should("be.visible")
+              .and("have.attr", "data-combobox-disabled", "true");
+          });
+
+          cy.signInAsAdmin();
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: REVIEWS_ID,
+            fieldId: REVIEWS.RATING,
+          });
+          H.DataModel.FieldSection.getDisplayValuesInput().click();
+          H.popover().findByText("Custom mapping").click();
+          cy.wait("@updateFieldDimension");
+
+          cy.signIn("none");
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: REVIEWS_ID,
+            fieldId: REVIEWS.RATING,
+          });
+
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          cy.findByText(CUSTOM_MAPPING_ERROR).should("exist");
         });
 
         it("should allow 'Custom mapping' option only for 'Search box' filtering type (metabase#16322)", () => {
@@ -1391,5 +1634,26 @@ const assertTableHeader = (columns: string[]) => {
   columns.forEach((column, index) => {
     // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(index).should("have.text", column);
+  });
+};
+
+const setDataModelPermissions = ({
+  tableIds = [],
+}: {
+  tableIds: TableId[];
+}) => {
+  const permissions = Object.fromEntries(tableIds.map((id) => [id, "all"]));
+
+  // @ts-expect-error invalid cy.updatePermissionsGraph typing
+  cy.updatePermissionsGraph({
+    [ALL_USERS_GROUP]: {
+      [SAMPLE_DB_ID]: {
+        "data-model": {
+          schemas: {
+            PUBLIC: permissions,
+          },
+        },
+      },
+    },
   });
 };
