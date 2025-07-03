@@ -35,6 +35,7 @@ export const DataModel = {
     get: getFieldSection,
     getNameInput: getFieldNameInput,
     getDescriptionInput: getFieldDescriptionInput,
+    getFieldValuesButton: getFieldValuesButton,
     getDataType: getFieldDataType,
     getCoercionToggle: getFieldCoercionToggle,
     getCoercionInput: getFieldCoercionInput,
@@ -244,6 +245,10 @@ function getFieldDescriptionInput() {
   return getFieldSection().findByPlaceholderText(
     "Give this field a description",
   );
+}
+
+function getFieldValuesButton() {
+  return getFieldSection().button(/Field values/);
 }
 
 function getFieldDataType() {
