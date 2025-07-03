@@ -395,12 +395,11 @@ export const CreateOrEditQuestionAlertModal = ({
           <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
           <ActionButton
             primary
-            titleForState={{
-              default: isEditMode && hasChanges ? t`Save changes` : t`Done`,
-            }}
             disabled={!isValid}
             actionFn={onCreateOrEditAlert}
-          />
+          >
+            {isEditMode && hasChanges ? t`Save changes` : t`Done`}
+          </ActionButton>
         </div>
       </Flex>
     </Modal>
