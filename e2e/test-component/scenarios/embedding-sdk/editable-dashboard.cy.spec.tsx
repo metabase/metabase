@@ -6,12 +6,6 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  getDashboardCard,
-  getDashboardCards,
-  modal,
-  popover,
-} from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
@@ -208,6 +202,26 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
   });
 
   describe("create new question from dashboards", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      cy.get("@dashboardId").then((dashboardId) => {
+        const cards = [
+          H.getTextCardDetails({
+            row: 1,
+            size_x: 24,
+            size_y: 24,
+            text: "Very big card",
+          }),
+        ];
+
+        H.updateDashboardCards({
+          dashboard_id: dashboardId as unknown as number,
+          cards,
+        });
+      });
+      cy.signOut();
+    });
+
     it("should allow creating a new question from the dashboard", () => {
       cy.get("@dashboardId").then((dashboardId) => {
         mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
@@ -219,7 +233,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
         cy.button("New Question").should("be.visible").click();
 
         cy.log("building the query");
-        popover().findByRole("link", { name: "Orders" }).click();
+        H.popover().findByRole("link", { name: "Orders" }).click();
         /**
          * We need to visualize before we can save the question.
          * This will be addressed in EMB-584
@@ -227,7 +241,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
         cy.button("Visualize").click();
         cy.button("Save").click();
 
-        modal().within(() => {
+        H.modal().within(() => {
           cy.findByRole("heading", { name: "Save new question" }).should(
             "be.visible",
           );
@@ -238,7 +252,15 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
         cy.log("Now we should be back on the dashboard in the edit mode");
         cy.findByText("You're editing this dashboard.").should("be.visible");
         cy.findByText("Orders in a dashboard").should("be.visible");
-        getDashboardCard()
+        const NEW_DASHCARD_INDEX = 1;
+        cy.log(
+          "It should scroll to the new dashcard, so it's invisible at first",
+        );
+        H.getDashboardCard(NEW_DASHCARD_INDEX)
+          .findByText("Orders in a dashboard")
+          .should("not.be.visible");
+        // After auto scrolling
+        H.getDashboardCard(NEW_DASHCARD_INDEX)
           .findByText("Orders in a dashboard")
           .should("be.visible");
 
