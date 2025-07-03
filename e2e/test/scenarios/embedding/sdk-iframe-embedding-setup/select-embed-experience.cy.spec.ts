@@ -1,6 +1,7 @@
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 import {
+  assertDashboard,
   assertRecentItemName,
   getEmbedSidebar,
   visitNewEmbedPage,
