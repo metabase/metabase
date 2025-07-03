@@ -33,7 +33,8 @@
 ;;-----------------------------------------------------------------------------------------------;;
 
 (mr/def ::AppDefinitionConfig
-  [:maybe [:map {:closed true}]])
+  [:maybe [:map {:closed true}
+           [:version pos-int?]]])
 
 (defn- validate-app-definition
   "Validate an AppDefinition."
@@ -83,13 +84,45 @@
 (t2/define-before-update :model/AppPublishing
   [instance]
   ;; AppPublishing is append-only, so prevent updates except for active status
-  (when-let [disallowed-key (some #(when (not= % :active) %) (keys (t2/changes instance)))]
-    (throw (ex-info (format "AppPublishing is append-only. Only 'active' field can be updated, but got: %s"
-                            (name disallowed-key))
-                    {:status-code 400
-                     :changes     (t2/changes instance)})))
-  (ensure-single-active-publication! instance))
+  (let [changed-keys (-> instance t2/changes keys set)]
+    (when-not (= #{:active} changed-keys)
+      (throw (ex-info (format "AppPublishing is append-only. Only 'active' field can be updated, but got: %s"
+                              changed-keys)
+                      {:status-code 400}))))
+  instance)
+
+;;------------------------------------------------------------------------------------------------;;
+;;                                       Serialization                                            ;;
+;;------------------------------------------------------------------------------------------------;;
+
+(comment
+  #_todo)
 
 ;;------------------------------------------------------------------------------------------------;;
 ;;                                        Public APIs                                             ;;
 ;;------------------------------------------------------------------------------------------------;;
+
+(defn create-app!
+  "Create a new App with an initial definition."
+  [app-data]
+  (t2/with-transaction [_conn]
+    (let [app (t2/insert-returning-pk! :model/App (dissoc app-data :definition))
+          app-definition (t2/insert-returning-instance! :model/AppDefinition
+                                                        {:app_id (:id app)
+                                                         :definition (:definition app-data)})]
+      (assoc app :definition app-definition))))
+
+(defn new-definition!
+  "Create a new definition for an existing app."
+  [app-id definition]
+  (t2/insert-returning-instance! :model/AppDefinition
+                                 {:app_id app-id
+                                  :definition definition}))
+
+(defn publish!
+  "Publish an new definition of an app"
+  [app-id app-definition-id]
+  (t2/insert-returning-instance! :model/AppPublishing
+                                 {:app_id app-id
+                                  :app_definition_id app-definition-id
+                                  :active true}))
