@@ -11,25 +11,39 @@ import ColorPickerContent from "./ColorPickerContent";
 import S from "./ColorPillPicker.module.css";
 
 export interface ColorPillPickerProps extends ColorPickerAttributes {
-  initialValue: string;
-  debounceMs?: number;
-  placeholder?: string;
   onChange: (color?: string) => void;
+
+  /**
+   * The original color is typically from the application settings.
+   * We revert back to this color if the user clears the color input.
+   **/
+  originalColor: string;
+
+  /**
+   * The initial color to display in the color picker.
+   * Useful if the color has been set before e.g. in user settings.
+   * Defaults to the `originalColor`.
+   */
+  initialColor?: string;
+
+  debounceMs?: number;
 }
 
 const COLOR_PICKER_DEBOUNCE_MS = 300;
 
 export const ColorPillPicker = forwardRef(function ColorPillPicker(
   {
-    initialValue,
-    placeholder,
     onChange,
     debounceMs = COLOR_PICKER_DEBOUNCE_MS,
+    originalColor,
+    initialColor,
     ...props
   }: ColorPillPickerProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [previewValue, setPreviewValue] = useState<string>(initialValue);
+  const [previewValue, setPreviewValue] = useState<string>(
+    initialColor ?? originalColor,
+  );
 
   const debouncedUpdate = useDebouncedCallback(onChange, debounceMs);
 
@@ -44,13 +58,12 @@ export const ColorPillPicker = forwardRef(function ColorPillPicker(
       popoverContent={
         <ColorPickerContent
           value={previewValue}
-          onChange={(value) => {
-            if (!value) {
-              return;
-            }
+          onChange={(nextColor) => {
+            // Fallback to the original color if the value is cleared.
+            const colorWithDefault = nextColor ?? originalColor;
 
-            setPreviewValue(value);
-            debouncedUpdate(value);
+            setPreviewValue(colorWithDefault);
+            debouncedUpdate(colorWithDefault);
           }}
         />
       }

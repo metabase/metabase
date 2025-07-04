@@ -2,8 +2,10 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { ColorPillPicker } from "metabase/common/components/ColorPicker";
+import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 import { Card, Checkbox, Divider, Group, Stack, Text } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -11,6 +13,8 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 export const SelectEmbedOptionsStep = () => {
   const { experience, settings, updateSettings } =
     useSdkIframeEmbedSetupContext();
+
+  const applicationColors = useSetting("application-colors");
 
   const { theme } = settings;
 
@@ -77,18 +81,29 @@ export const SelectEmbedOptionsStep = () => {
         </Text>
 
         <Group align="start" gap="xl" mb="lg">
-          {getConfigurableThemeColors().map(({ key, name, defaultColor }) => (
-            <Stack gap="xs" align="start" key={key}>
-              <Text size="sm" fw="bold">
-                {name}
-              </Text>
+          {getConfigurableThemeColors().map(
+            ({ key, name, originalColorKey }) => {
+              // Use the default from appearance settings.
+              // If not set, use the default Metabase color.
+              const originalColor =
+                applicationColors?.[originalColorKey] ??
+                defaultMetabaseColors[originalColorKey];
 
-              <ColorPillPicker
-                initialValue={theme?.colors?.[key] ?? defaultColor}
-                onChange={(color) => updateColor({ [key]: color })}
-              />
-            </Stack>
-          ))}
+              return (
+                <Stack gap="xs" align="start" key={key}>
+                  <Text size="sm" fw="bold">
+                    {name}
+                  </Text>
+
+                  <ColorPillPicker
+                    onChange={(color) => updateColor({ [key]: color })}
+                    initialColor={theme?.colors?.[key]}
+                    originalColor={originalColor}
+                  />
+                </Stack>
+              );
+            },
+          )}
         </Group>
 
         {isDashboardOrInteractiveQuestion && (
@@ -112,16 +127,22 @@ const getConfigurableThemeColors = () =>
     {
       name: t`Brand Color`,
       key: "brand",
-      defaultColor: defaultMetabaseColors.brand,
+      originalColorKey: "brand",
     },
     {
       name: t`Text Color`,
       key: "text-primary",
-      defaultColor: defaultMetabaseColors["text-dark"],
+      originalColorKey: "text-dark",
     },
     {
       name: t`Background Color`,
       key: "background",
-      defaultColor: defaultMetabaseColors["bg-white"],
+      originalColorKey: "bg-white",
     },
-  ] as const;
+  ] as const satisfies {
+    name: string;
+    key: keyof MetabaseColors;
+
+    // Populate colors from appearance settings.
+    originalColorKey: ColorName;
+  }[];
