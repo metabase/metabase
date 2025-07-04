@@ -18,7 +18,7 @@
   (derive model :metabase/model))
 
 (derive :model/App :hook/timestamped?)
-
+(derive :model/AppDefinition :hook/created-at-timestamped?)
 (derive :model/AppDefinition :hook/entity-id)
 
 ;;------------------------------------------------------------------------------------------------;;
