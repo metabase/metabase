@@ -266,13 +266,15 @@
   (and (:column field)
        (:effective-type field)))
 
+(def raw-field
+  "Schema for a 'raw field' that a field filter will accept and treat as raw sql."
+  [:map
+   [:column driver-api/schema.common.non-blank-string]
+   [:effective-type driver-api/schema.common.base-type]])
+
 (mu/defn- field->clause :- [:or driver-api/mbql.schema.field driver-api/mbql.schema.raw]
   [driver     :- :keyword
-   field      :- [:or
-                  driver-api/schema.metadata.column
-                  [:map
-                   [:column driver-api/schema.common.non-blank-string]
-                   [:effective-type driver-api/schema.common.base-type]]]
+   field      :- [:or driver-api/schema.metadata.column raw-field]
    param-type :- driver-api/schema.parameter.type
    value]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
@@ -363,11 +365,7 @@
 (mu/defmethod ->replacement-snippet-info [:sql FieldFilter]
   [driver                            :- :keyword
    {:keys [value], :as field-filter} :- [:map
-                                         [:field [:or
-                                                  driver-api/schema.metadata.column
-                                                  [:map
-                                                   [:column driver-api/schema.common.non-blank-string]
-                                                   [:effective-type driver-api/schema.common.base-type]]]]
+                                         [:field [:or driver-api/schema.metadata.column raw-field]]
                                          [:value :any]]]
   (cond
     ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1

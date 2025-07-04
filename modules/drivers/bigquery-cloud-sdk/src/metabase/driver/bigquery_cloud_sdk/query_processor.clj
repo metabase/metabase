@@ -1020,11 +1020,7 @@
 (mu/defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk FieldFilter]
   [driver                            :- :keyword
    {:keys [field], :as field-filter} :- [:map
-                                         [:field [:or
-                                                  driver-api/schema.metadata.column
-                                                  [:map
-                                                   [:column driver-api/schema.common.non-blank-string]
-                                                   [:effective-type driver-api/schema.common.base-type]]]]]]
+                                         [:field [:or driver-api/schema.metadata.column sql.params.substitution/raw-field]]]]
   (let [field-temporal-type (temporal-type field)
         parent-method       (get-method sql.params.substitution/->replacement-snippet-info [:sql FieldFilter])
         result              (parent-method driver field-filter)]
