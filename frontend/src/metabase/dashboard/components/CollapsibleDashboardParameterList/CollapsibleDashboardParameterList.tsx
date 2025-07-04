@@ -12,13 +12,14 @@ import { Icon, Menu } from "metabase/ui";
 interface CollapsibleDashboardParameterListProps
   extends ComponentProps<typeof DashboardParameterList> {
   isCollapsed: boolean;
+  triggerClassName?: string;
 }
 
 export const CollapsibleDashboardParameterList = forwardRef<
   HTMLDivElement,
   CollapsibleDashboardParameterListProps
 >(function CollapsibleDashboardParameterList(
-  { isCollapsed, ...listProps },
+  { isCollapsed, triggerClassName, ...listProps },
   ref,
 ) {
   const { editingParameter } = useDashboardContext();
@@ -53,6 +54,7 @@ export const CollapsibleDashboardParameterList = forwardRef<
         <Menu>
           <Menu.Target data-testid="show-filter-parameter-button">
             <ToolbarButton
+              className={triggerClassName}
               aria-label={t`Show filters`}
               tooltipLabel={t`Show filters`}
               onClick={(e) => {

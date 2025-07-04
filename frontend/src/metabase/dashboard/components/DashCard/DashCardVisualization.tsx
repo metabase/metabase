@@ -6,6 +6,7 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
+import { useResponsiveParameterList } from "metabase/dashboard/hooks/use-responsive-parameter-list";
 import {
   getDashCardInlineValuePopulatedParameters,
   getDashcardData,
@@ -14,8 +15,10 @@ import {
   getVirtualCardType,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
+import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { getSetting } from "metabase/selectors/settings";
 import {
   Flex,
   Group,
@@ -26,6 +29,10 @@ import {
 } from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import {
+  LEGEND_LABEL_FONT_SIZE,
+  LEGEND_LABEL_FONT_WEIGHT,
+} from "metabase/visualizations/components/legend/LegendCaption";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
@@ -52,7 +59,7 @@ import type {
   VisualizerDataSourceId,
 } from "metabase-types/api";
 
-import { DashboardParameterList } from "../DashboardParameterList";
+import { CollapsibleDashboardParameterList } from "../CollapsibleDashboardParameterList";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
@@ -138,6 +145,7 @@ export function DashCardVisualization({
     cardTitled,
     dashboard,
     dashcardMenu,
+    editingParameter,
     getClickActionMode,
     isEditing = false,
     shouldRenderAsNightMode,
@@ -384,6 +392,22 @@ export function DashCardVisualization({
     return settings["card.title"] ?? series?.[0].card.name ?? "";
   }, [series]);
 
+  const fontFamily = useSelector((state) =>
+    getSetting(state, "application-font"),
+  );
+
+  const { shouldCollapseList, containerRef, parameterListRef } =
+    useResponsiveParameterList({
+      reservedWidth: measureTextWidth(cardTitle, {
+        family: fontFamily,
+        size: LEGEND_LABEL_FONT_SIZE,
+        weight: LEGEND_LABEL_FONT_WEIGHT,
+      }),
+
+      // Bigger buffer space to account for varying chart padding
+      bufferSpace: 100,
+    });
+
   const actionButtons = useMemo(() => {
     const result = series[0] as unknown as Dataset;
 
@@ -399,15 +423,22 @@ export function DashCardVisualization({
       return null;
     }
 
+    const effectiveParameters = editingParameter
+      ? inlineParameters.filter((param) => param.id === editingParameter.id)
+      : inlineParameters;
+
     return (
       <Group mr="sm">
-        {inlineParameters.length > 0 && (
-          <DashboardParameterList
+        {effectiveParameters.length > 0 && (
+          <CollapsibleDashboardParameterList
             className={S.InlineParametersList}
-            parameters={inlineParameters}
+            triggerClassName={S.InlineParametersMenuTrigger}
+            parameters={effectiveParameters}
+            isCollapsed={shouldCollapseList}
             isSortable={false}
             widgetsVariant="subtle"
             widgetsPopoverPosition="bottom-end"
+            ref={parameterListRef}
           />
         )}
         {!isEditing && (
@@ -429,12 +460,15 @@ export function DashCardVisualization({
     dashcard,
     dashcardMenu,
     isEditing,
+    editingParameter,
     inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
     question,
     series,
     titleMenuItems,
+    shouldCollapseList,
+    parameterListRef,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
@@ -442,49 +476,53 @@ export function DashCardVisualization({
   });
 
   return (
-    <Visualization
+    <div
       className={cx(CS.flexFull, {
         [CS.overflowAuto]: visualizationOverlay,
         [CS.overflowHidden]: !visualizationOverlay,
         [CS.pointerEventsNone]: isEditingDashboardLayout,
       })}
-      dashboard={dashboard ?? undefined}
-      dashcard={dashcard}
-      rawSeries={series}
-      visualizerRawSeries={
-        isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
-      }
-      metadata={metadata}
-      mode={getClickActionMode}
-      getHref={getHref}
-      gridSize={gridSize}
-      totalNumGridCols={totalNumGridCols}
-      headerIcon={headerIcon}
-      expectedDuration={expectedDuration}
-      error={error?.message}
-      errorIcon={error?.icon}
-      showTitle={cardTitled}
-      canToggleSeriesVisibility={!isEditing}
-      isAction={isAction}
-      isDashboard
-      isSlow={isSlow}
-      isFullscreen={isFullscreen}
-      isNightMode={shouldRenderAsNightMode}
-      isEditing={isEditing}
-      isPreviewing={isPreviewing}
-      isEditingParameter={isEditingParameter}
-      isMobile={isMobile}
-      actionButtons={actionButtons}
-      replacementContent={visualizationOverlay}
-      getExtraDataForClick={getExtraDataForClick}
-      onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
-      onTogglePreviewing={onTogglePreviewing}
-      onChangeCardAndRun={onChangeCardAndRun}
-      onChangeLocation={onChangeLocation}
-      token={token}
-      uuid={uuid}
-      titleMenuItems={titleMenuItems}
-      errorMessageOverride={visualizerErrMsg}
-    />
+      ref={containerRef}
+    >
+      <Visualization
+        dashboard={dashboard ?? undefined}
+        dashcard={dashcard}
+        rawSeries={series}
+        visualizerRawSeries={
+          isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
+        }
+        metadata={metadata}
+        mode={getClickActionMode}
+        getHref={getHref}
+        gridSize={gridSize}
+        totalNumGridCols={totalNumGridCols}
+        headerIcon={headerIcon}
+        expectedDuration={expectedDuration}
+        error={error?.message}
+        errorIcon={error?.icon}
+        showTitle={cardTitled}
+        canToggleSeriesVisibility={!isEditing}
+        isAction={isAction}
+        isDashboard
+        isSlow={isSlow}
+        isFullscreen={isFullscreen}
+        isNightMode={shouldRenderAsNightMode}
+        isEditing={isEditing}
+        isPreviewing={isPreviewing}
+        isEditingParameter={isEditingParameter}
+        isMobile={isMobile}
+        actionButtons={actionButtons}
+        replacementContent={visualizationOverlay}
+        getExtraDataForClick={getExtraDataForClick}
+        onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
+        onTogglePreviewing={onTogglePreviewing}
+        onChangeCardAndRun={onChangeCardAndRun}
+        onChangeLocation={onChangeLocation}
+        token={token}
+        uuid={uuid}
+        titleMenuItems={titleMenuItems}
+        errorMessageOverride={visualizerErrMsg}
+      />
+    </div>
   );
 }
