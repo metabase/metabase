@@ -81,7 +81,7 @@ function pickColumns(
     return pickColumnsFromTableToBarChart(originalColumns);
   }
 
-  if (isCartesianChart(display) || display === "combo") {
+  if (isCartesianChart(display)) {
     return originalColumns.filter((col) => {
       return (
         settings["graph.metrics"]?.includes(col.name) ||

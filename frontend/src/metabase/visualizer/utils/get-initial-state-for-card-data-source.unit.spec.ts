@@ -1,8 +1,4 @@
-import { registerVisualization } from "metabase/visualizations";
-import { BarChart } from "metabase/visualizations/visualizations/BarChart/BarChart";
-import { Funnel } from "metabase/visualizations/visualizations/Funnel";
-import { Scalar } from "metabase/visualizations/visualizations/Scalar";
-import Table from "metabase/visualizations/visualizations/Table/Table";
+import registerVisualizations from "metabase/visualizations/register";
 import type { CardDisplayType } from "metabase-types/api";
 import {
   createMockCard,
@@ -15,16 +11,7 @@ import {
 
 import { getInitialStateForCardDataSource } from "./get-initial-state-for-card-data-source";
 
-// Not registering all visualizations here for perf reasons
-// @ts-expect-error -- TODO fix this error?
-registerVisualization(Table);
-// @ts-expect-error -- TODO fix this error?
-registerVisualization(BarChart);
-// @ts-expect-error -- TODO fix this error?
-registerVisualization(Scalar);
-
-// @ts-expect-error -- TODO fix this error?
-registerVisualization(Funnel);
+registerVisualizations();
 
 describe("getInitialStateForCardDataSource", () => {
   const dashCard = createMockDashboardCard({
