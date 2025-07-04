@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "stack",
+        "restack"
+      ],
+      "branch": "emb-509-embed-behavior-and-appearance-for-new-iframe-embed-flow"
+    }
+  ]
 }
