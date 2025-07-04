@@ -1,15 +1,15 @@
 drop view if exists v_alerts;
 
-create or replace view v_alerts as
+create view v_alerts as
 with parsed_cron as (
     select
         n.id,
         ns.cron_schedule,
         ns.ui_display_type,
-        split_part(ns.cron_schedule, ' ', 2) as minutes,
-        split_part(ns.cron_schedule, ' ', 3) as hours,
-        split_part(ns.cron_schedule, ' ', 4) as day_of_month,
-        split_part(ns.cron_schedule, ' ', 6) as day_of_week
+        substring_index(substring_index(ns.cron_schedule, ' ', 2), ' ', -1) as minutes,
+        substring_index(substring_index(ns.cron_schedule, ' ', 3), ' ', -1) as hours,
+        substring_index(substring_index(ns.cron_schedule, ' ', 4), ' ', -1) as day_of_month,
+        substring_index(substring_index(ns.cron_schedule, ' ', 6), ' ', -1) as day_of_week
     from notification n
     join notification_subscription ns on n.id = ns.notification_id
     where n.payload_type = 'notification/card'
@@ -20,51 +20,55 @@ schedule_info as (
         id,
         case
             when ui_display_type = 'cron/raw' then 'custom'
-            when minutes ~ '^\*$' or minutes ~ '^\d+/\d+$' then 'by the minute'
+            when minutes REGEXP '^\\*$' or minutes REGEXP '^[0-9]+/[0-9]+$' then 'by the minute'
             when day_of_month != '*' and
                  (day_of_week = '?' or
-                  day_of_week ~ '^\d#1$' or
-                  day_of_week ~ '^\dL$') then 'monthly'
+                  day_of_week REGEXP '^[0-9]#1$' or
+                  day_of_week REGEXP '^[0-9]L$') then 'monthly'
             when day_of_week != '?' and day_of_week != '*' then 'weekly'
             when hours != '*' then 'daily'
             else 'hourly'
         end as schedule_type,
         case
-            when day_of_week ~ '^1' then 'sun'
-            when day_of_week ~ '^2' then 'mon'
-            when day_of_week ~ '^3' then 'tue'
-            when day_of_week ~ '^4' then 'wed'
-            when day_of_week ~ '^5' then 'thu'
-            when day_of_week ~ '^6' then 'fri'
-            when day_of_week ~ '^7' then 'sat'
+            when day_of_week REGEXP '^1' then 'sun'
+            when day_of_week REGEXP '^2' then 'mon'
+            when day_of_week REGEXP '^3' then 'tue'
+            when day_of_week REGEXP '^4' then 'wed'
+            when day_of_week REGEXP '^5' then 'thu'
+            when day_of_week REGEXP '^6' then 'fri'
+            when day_of_week REGEXP '^7' then 'sat'
             else null
         end as schedule_day,
         case
             when hours = '*' then null
-            else cast(hours as integer)
+            when hours REGEXP '^[0-9]+$' then cast(hours as signed)
+            when hours REGEXP '^([0-9]+)/[0-9]+$' then cast(substring_index(hours, '/', 1) as signed)
+            else null
         end as schedule_hour
     from parsed_cron
 ),
 agg_recipients as (
     select
         nr.notification_handler_id,
-        string_agg(cu.email, ',') as recipients,
-        (select string_agg(nr2.details, ',')
-         from notification_recipient nr2
-         where nr2.notification_handler_id = nr.notification_handler_id
-         and nr2.type = 'notification-recipient/raw-value') as recipient_external
+        group_concat(cu.email) as recipients,
+        group_concat(
+            case
+                when nr.type = 'notification-recipient/raw-value' then nr.details
+                else null
+            end
+        ) as recipient_external
     FROM notification_recipient nr
     left join core_user cu on nr.user_id = cu.id and nr.type = 'notification-recipient/user'
     group by nr.notification_handler_id
 )
 select
     n.id as entity_id,
-    'notification_' || n.id as entity_qualified_id,
+    concat('notification_', n.id) as entity_qualified_id,
     n.created_at,
     n.updated_at,
     n.creator_id,
     nc.card_id,
-    'card_' || nc.card_id as card_qualified_id,
+    concat('card_', nc.card_id) as card_qualified_id,
     case
         when nc.send_condition = 'has_result' then 'rows'
         when nc.send_condition in ('goal_above', 'goal_below') then 'goal'

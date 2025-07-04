@@ -41,9 +41,7 @@ schedule_info as (
         end as schedule_day,
         case
             when hours = '*' then null
-            when hours REGEXP '^[0-9]+$' then cast(hours as signed)
-            when hours REGEXP '^([0-9]+)/[0-9]+$' then cast(substring_index(hours, '/', 1) as signed)
-            else null
+            else cast(hours as signed)
         end as schedule_hour
     from parsed_cron
 ),
