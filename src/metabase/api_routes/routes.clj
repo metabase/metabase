@@ -19,6 +19,7 @@
    [metabase.collections.api]
    [metabase.config.core :as config]
    [metabase.dashboards.api]
+   [metabase.data-apps.api]
    [metabase.eid-translation.api]
    [metabase.embedding.api]
    [metabase.geojson.api]
@@ -67,6 +68,7 @@
          metabase.cloud-migration.api/keep-me
          metabase.collections.api/keep-me
          metabase.dashboards.api/keep-me
+         metabase.data-apps.api/keep-me
          metabase.eid-translation.api/keep-me
          metabase.geojson.api/keep-me
          metabase.indexed-entities.api/keep-me
@@ -131,6 +133,7 @@
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
    "/api-key"              (+auth 'metabase.api-keys.api)
+   "/app"                  (+auth 'metabase.data-apps.api)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
    "/bug-reporting"        (+auth 'metabase.bug-reporting.api)
