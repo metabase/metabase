@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ComponentProps } from "react";
+import { type ComponentProps, forwardRef } from "react";
 
 import {
   setEditingParameter,
@@ -16,21 +16,28 @@ import type { Parameter } from "metabase-types/api";
 export interface DashboardParameterListProps
   extends Pick<
     ComponentProps<typeof ParametersList>,
-    "widgetsVariant" | "widgetsWithinPortal" | "vertical"
+    "widgetsVariant" | "widgetsWithinPortal" | "vertical" | "hasTestIdProps"
   > {
   className?: string;
   parameters: Array<Parameter & { value: unknown }>;
   isSortable?: boolean;
 }
 
-export function DashboardParameterList({
-  className,
-  parameters,
-  isSortable = true,
-  widgetsVariant = "subtle",
-  widgetsWithinPortal,
-  vertical,
-}: DashboardParameterListProps) {
+export const DashboardParameterList = forwardRef<
+  HTMLDivElement,
+  DashboardParameterListProps
+>(function DashboardParameterList(
+  {
+    className,
+    parameters,
+    isSortable = true,
+    widgetsVariant = "subtle",
+    widgetsWithinPortal,
+    vertical,
+    hasTestIdProps = true,
+  },
+  ref,
+) {
   const dispatch = useDispatch();
 
   const {
@@ -63,6 +70,8 @@ export function DashboardParameterList({
       widgetsVariant={widgetsVariant}
       widgetsWithinPortal={widgetsWithinPortal}
       vertical={vertical}
+      hasTestIdProps={hasTestIdProps}
+      ref={ref}
     />
   );
-}
+});

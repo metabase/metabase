@@ -623,3 +623,15 @@ export function assertDashboardFullWidth() {
     MAX_WIDTH,
   );
 }
+
+export function clickBehaviorSidebar(
+  dashcardIndex = 0,
+): Cypress.Chainable<JQuery<HTMLElement>> {
+  showDashboardCardActions(dashcardIndex);
+
+  getDashboardCard(dashcardIndex)
+    .findByLabelText("Click behavior")
+    .click({ force: true });
+
+  return cy.findByTestId("click-behavior-sidebar");
+}

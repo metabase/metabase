@@ -149,6 +149,8 @@ export function notificationList() {
 /**
  * Get the `fieldset` HTML element that we use as a filter widget container.
  *
+ * @param {boolean} isEditing - whether dashboard editing mode is enabled
+ *
  * @returns HTMLFieldSetElement
  *
  * @example
@@ -165,8 +167,10 @@ export function notificationList() {
  * @todo Add the ability to alias the chosen filter widget.
  * @todo Extract into a separate helper file.
  */
-export function filterWidget() {
-  return cy.findAllByTestId("parameter-widget");
+export function filterWidget({ isEditing = false } = {}) {
+  return cy.findAllByTestId(
+    isEditing ? "editing-parameter-widget" : "parameter-widget",
+  );
 }
 
 export function clearFilterWidget(index = 0) {

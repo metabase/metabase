@@ -595,7 +595,7 @@ describe("scenarios > question > saved", () => {
 
       cy.intercept("/api/session/properties", (req) => {
         req.continue((res) => {
-          res.body["token-features"]["development-mode"] = true;
+          res.body["token-features"].development_mode = true;
         });
       });
 

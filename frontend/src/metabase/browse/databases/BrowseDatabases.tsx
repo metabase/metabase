@@ -12,17 +12,9 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { newDatabase } from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import {
-  Box,
-  Group,
-  Icon,
-  SimpleGrid,
-  Stack,
-  type StackProps,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Box, Group, Stack, Text, Title } from "metabase/ui";
 
+import { BrowseCard } from "../components/BrowseCard";
 import {
   BrowseContainer,
   BrowseMain,
@@ -30,6 +22,7 @@ import {
   CenteredEmptyState,
 } from "../components/BrowseContainer.styled";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
+import { BrowseGrid } from "../components/BrowseGrid";
 
 import DB from "./BrowseDatabases.module.css";
 import { trackAddDatabaseDBList } from "./analytics";
@@ -65,49 +58,22 @@ export const BrowseDatabases = () => {
     <BrowseContainer>
       <BrowseDataHeader />
       <BrowseMain>
-        <BrowseSection>
-          <SimpleGrid data-testid="database-browser" cols={3}>
+        <BrowseSection direction="column">
+          <BrowseGrid data-testid="database-browser">
             {databases &&
               databases.length > 0 &&
               databases.map((database) => (
-                <Link to={Urls.browseDatabase(database)} key={database.id}>
-                  <DatabaseCard
-                    bg="bg-white"
-                    className={cx(CS.rounded, CS.bordered, DB.dbCard)}
-                  >
-                    <Icon name="database" color={color("accent2")} size={32} />
-                    <Title order={2} size="md" lh={1.2} c="inherit">
-                      {database.name}
-                    </Title>
-                  </DatabaseCard>
-                </Link>
+                <BrowseCard
+                  to={Urls.browseDatabase(database)}
+                  key={database.id}
+                  title={database.name}
+                  icon="database"
+                  size="lg"
+                  iconColor={color("accent2")} // can we change this?
+                />
               ))}
-
-            {isAdmin && (
-              <Link to={newDatabase()} onClick={() => trackAddDatabaseDBList()}>
-                <DatabaseCard
-                  className={cx(CS.rounded, CS.bordered, DB.addCard)}
-                >
-                  <Group gap="xs">
-                    <CardImageWrapper database={"postgres"} />
-                    <CardImageWrapper database={"mysql"} />
-                    <CardImageWrapper database={"snowflake"} />
-                  </Group>
-                  <div>
-                    <Title order={2} size="md" lh={1.2} c="inherit">
-                      {t`Add a database`}
-                    </Title>
-                    <Text
-                      color="inherit"
-                      fz="sm"
-                      lh={1}
-                      span
-                    >{t`20+ data connectors. Start exploring in minutes.`}</Text>
-                  </div>
-                </DatabaseCard>
-              </Link>
-            )}
-          </SimpleGrid>
+            {isAdmin && <AddDatabaseCard />}
+          </BrowseGrid>
         </BrowseSection>
       </BrowseMain>
     </BrowseContainer>
@@ -132,10 +98,30 @@ const CardImageWrapper = ({ database }: { database: string }) => {
   );
 };
 
-const DatabaseCard = ({ children, ...props }: StackProps) => {
-  return (
-    <Stack h="8.5rem" justify="space-between" p="lg" {...props}>
-      {children}
+const AddDatabaseCard = () => (
+  <Link to={newDatabase()} onClick={() => trackAddDatabaseDBList()}>
+    <Stack
+      h="8.5rem"
+      justify="space-between"
+      p="lg"
+      className={cx(CS.rounded, CS.bordered, DB.addCard)}
+    >
+      <Group gap="xs">
+        <CardImageWrapper database={"postgres"} />
+        <CardImageWrapper database={"mysql"} />
+        <CardImageWrapper database={"snowflake"} />
+      </Group>
+      <div>
+        <Title order={2} size="md" lh={1.2} c="inherit">
+          {t`Add a database`}
+        </Title>
+        <Text
+          color="inherit"
+          fz="sm"
+          lh={1}
+          span
+        >{t`20+ data connectors. Start exploring in minutes.`}</Text>
+      </div>
     </Stack>
-  );
-};
+  </Link>
+);
