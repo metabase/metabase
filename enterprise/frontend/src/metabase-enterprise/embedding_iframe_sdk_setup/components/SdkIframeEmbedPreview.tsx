@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParam } from "react-use";
+import _ from "underscore";
 
 import { Box } from "metabase/ui";
 import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
@@ -69,7 +70,9 @@ export const SdkIframeEmbedPreview = () => {
         questionId: undefined,
         dashboardId: undefined,
 
-        ...settings,
+        // We must always use user sessions in the preview.
+        // We never use SSO in the preview as that adds complexity.
+        ..._.omit(settings, ["useExistingUserSession"]),
       });
     }
   }, [settings, isIframeLoaded]);
