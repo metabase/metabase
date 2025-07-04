@@ -23,7 +23,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     it(`should display proper drills on cell click for unaggregated query - development-mode: ${devMode}`, () => {
       cy.intercept("/api/session/properties", (req) => {
         req.continue((res) => {
-          res.body["token-features"]["development-mode"] = devMode;
+          res.body["token-features"].development_mode = devMode;
         });
       });
       H.openReviewsTable({ limit: 3 });

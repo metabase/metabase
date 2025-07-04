@@ -18,6 +18,7 @@ function compile(
     query,
     stageIndex,
     expressionMode,
+    availableColumns: columns,
     resolver() {
       return columns[0];
     },
