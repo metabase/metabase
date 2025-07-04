@@ -262,7 +262,7 @@
       ftree
       (let [ftree-paths (raw-path->ftree-paths raw-path)
             parents-paths (butlast ftree-paths)
-            leaf-path (last ftree-paths)
+            leaf-path (last ftree-paths)]
         (recur dbfields* (-> (reduce #(-> %1
                                           (ftree-set-type %2 "object")
                                           (assoc-in (conj %2 :visibility-type) :details-only))
