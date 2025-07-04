@@ -245,6 +245,8 @@ describe("scenarios > admin > datamodel > field", () => {
     });
 
     it("allows 'Custom mapping' null values", () => {
+      cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
+
       const dbId = 2;
       const remappedNullValue = "nothin";
 
@@ -276,7 +278,8 @@ describe("scenarios > admin > datamodel > field", () => {
             .clear()
             .type(remappedNullValue);
           cy.button("Save").click();
-          cy.button("Saved!").should("be.visible");
+          cy.wait("@updateFieldValues");
+          cy.findByText(/Saved/).should("be.visible");
 
           cy.log("Make sure custom mapping appears in QB");
           H.openTable({ database: dbId, table: NUMBER_WITH_NULLS_ID });
