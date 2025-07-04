@@ -20,6 +20,7 @@ import S from "./QueryColumnPicker.module.css";
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
+  combinedDisplayName?: string;
 };
 
 export type QueryColumnPickerSection = BaseSection<ColumnListItem>;
@@ -47,6 +48,13 @@ export interface QueryColumnPickerProps {
   disableSearch?: boolean;
 }
 
+const SEARCH_PROP = [
+  "name",
+  "displayName",
+  "combinedDisplayName",
+  "longDisplayName",
+] as const;
+
 export function QueryColumnPicker({
   className,
   query,
@@ -72,14 +80,18 @@ export function QueryColumnPicker({
     const columnSections = columnGroups.map((group) => {
       const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
-      const items = Lib.getColumnsFromColumnGroup(group).map((column) => ({
-        ...Lib.displayInfo(
+      const items = Lib.getColumnsFromColumnGroup(group).map((column) => {
+        const columnInfo = Lib.displayInfo(
           query,
           stageIndex,
           getColumnWithoutBucketing(column, hasTemporalBucketing, hasBinning),
-        ),
-        column,
-      }));
+        );
+        return {
+          ...columnInfo,
+          column,
+          combinedDisplayName: `${columnInfo.table?.displayName ?? ""} ${columnInfo.displayName}`,
+        };
+      });
 
       return {
         name: groupInfo.displayName,
@@ -223,7 +235,7 @@ export function QueryColumnPicker({
         }}
         maxHeight={Infinity}
         data-testid={dataTestId}
-        searchProp={["name", "displayName", "longDisplayName"]}
+        searchProp={SEARCH_PROP}
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
