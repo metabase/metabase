@@ -340,12 +340,12 @@
 (defn delete-old-datasets!
   []
   (let [all-outdated (execute!
-                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets` WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 day))"
+                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets` WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 hour))"
                            " UNION ALL "
                            "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
                              where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
                              and d.schema_name like 'sha_%%'
-                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 day))")
+                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 hour))")
                       (project-id)
                       (project-id)
                       (project-id))]
@@ -474,7 +474,6 @@
   (apply execute! (sql.tx/drop-view-sql driver database view-name options)))
 
 (comment
-  "REPL utilities for static datasets"
   (setup-tracking-dataset!)
   (destroy-dataset! "metabase_test_tracking")
   (destroy-dataset! (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
