@@ -5,7 +5,11 @@ import {
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 import { enableSamlAuth } from "e2e/support/helpers/embedding-sdk-testing";
 
-import { getEmbedSidebar, navigateToEntitySelectionStep } from "./helpers";
+import {
+  codeBlock,
+  getEmbedSidebar,
+  navigateToEntitySelectionStep,
+} from "./helpers";
 
 const { H } = cy;
 
@@ -136,5 +140,3 @@ const navigateToGetCodeStep = ({
     cy.findByText("Get Code").click(); // Get code step
   });
 };
-
-const codeBlock = () => cy.get(".cm-content");

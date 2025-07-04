@@ -93,3 +93,5 @@ export const navigateToEntitySelectionStep = ({
     });
   }
 };
+
+export const codeBlock = () => cy.get(".cm-content");
