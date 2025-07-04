@@ -195,8 +195,8 @@ export const InteractiveQuestionDefaultView = ({
           {isEditorOpen ? (
             <>
               {/* Use the same horizontal padding as https://github.com/metabase/metabase/blob/98e2dcc7c8c7c9147f4a787cc7ed36eddde9c080/frontend/src/metabase/querying/notebook/components/Notebook/Notebook.tsx#L48 */}
-              {/* Vertical padding matches the visualization header above*/}
-              {/* If we don't conditionally render this button, it will be shown twice after visualize the query once. */}
+              {/* Vertical padding matches the visualization header above */}
+              {/* If we don't conditionally render this button, it will be shown twice after visualizing the query once. */}
               {!queryResults && (
                 <Box px={{ base: "1rem", sm: "2rem" }} pt="md">
                   <InteractiveQuestion.BackButton />
