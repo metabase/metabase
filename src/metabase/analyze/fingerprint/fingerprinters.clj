@@ -311,6 +311,7 @@
               field
               (do
                 (swap! found-name update table-id (fn [b] (or b is-name?)))
+                ;; todo: what if the field is new to the table and there already is one entity name?
                 (assoc field :semantic_type semantic-type))))
           field)))
      (apply col-wise))))
