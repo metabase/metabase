@@ -14,10 +14,12 @@ import { Box, Flex, Stack, rem } from "metabase/ui";
 import S from "./DataModel.module.css";
 import {
   FieldSection,
+  FieldValuesModal,
   PreviewSection,
   type PreviewType,
   RouterTablePicker,
   SegmentsLink,
+  SyncOptionsModal,
   TableSection,
 } from "./components";
 import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
@@ -34,6 +36,8 @@ export const DataModel = ({ children, location, params }: Props) => {
   const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isFieldValuesModalOpen, setIsFieldValuesModalOpen] = useState(false);
   const isEmptyStateShown =
     databaseId == null || tableId == null || fieldId == null;
   const {
@@ -53,18 +57,26 @@ export const DataModel = ({ children, location, params }: Props) => {
     setIsPreviewOpen(true);
   };
 
-  useWindowEvent("keydown", (event) => {
-    const activeElement = document.activeElement;
-    const isInputFocused =
-      activeElement instanceof HTMLElement &&
-      (["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
-        activeElement.isContentEditable);
+  useWindowEvent(
+    "keydown",
+    (event) => {
+      const activeElement = document.activeElement;
+      const isInputFocused =
+        activeElement instanceof HTMLElement &&
+        (["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
+          activeElement.isContentEditable);
+      const isModalOpen = isSyncModalOpen || isFieldValuesModalOpen;
 
-    if (event.key === "Escape" && isPreviewOpen && !isInputFocused) {
-      event.stopPropagation();
-      setIsPreviewOpen(false);
-    }
-  });
+      if (event.key === "Escape" && !isInputFocused && !isModalOpen) {
+        event.stopPropagation();
+        setIsPreviewOpen(false);
+      }
+    },
+    {
+      // otherwise modals get closed ealier and isModalOpen evaluates to false in the handler
+      capture: true,
+    },
+  );
 
   return (
     <Flex bg="accent-gray-light" h="100%">
@@ -110,6 +122,7 @@ export const DataModel = ({ children, location, params }: Props) => {
                     key={table.id}
                     params={params}
                     table={table}
+                    onSyncOptionsClick={() => setIsSyncModalOpen(true)}
                   />
                 )}
               </LoadingAndErrorWrapper>
@@ -138,6 +151,9 @@ export const DataModel = ({ children, location, params }: Props) => {
                          * This is to avoid state mix-up with optimistic updates.
                          */
                         key={getRawTableFieldId(field)}
+                        onFieldValuesClick={() =>
+                          setIsFieldValuesModalOpen(true)
+                        }
                         onPreviewClick={handlePreviewClick}
                       />
                     </Box>
@@ -194,6 +210,22 @@ export const DataModel = ({ children, location, params }: Props) => {
             </Flex>
           )}
         </>
+      )}
+
+      {table && (
+        <SyncOptionsModal
+          isOpen={isSyncModalOpen}
+          tableId={table.id}
+          onClose={() => setIsSyncModalOpen(false)}
+        />
+      )}
+
+      {fieldId && (
+        <FieldValuesModal
+          fieldId={fieldId}
+          isOpen={isFieldValuesModalOpen}
+          onClose={() => setIsFieldValuesModalOpen(false)}
+        />
       )}
     </Flex>
   );

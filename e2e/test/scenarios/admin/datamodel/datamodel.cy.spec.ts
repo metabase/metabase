@@ -2616,6 +2616,91 @@ describe("scenarios > admin > datamodel", () => {
       });
     });
   });
+
+  describe("Preview section", () => {
+    it("should allow closing the preview with Esc key", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.PRODUCT_ID,
+      });
+
+      PreviewSection.get().should("not.exist");
+
+      FieldSection.getPreviewButton().click();
+      FieldSection.getPreviewButton().should("not.exist");
+      PreviewSection.get().should("be.visible");
+
+      cy.realPress("Escape");
+      PreviewSection.get().should("not.exist");
+      FieldSection.getPreviewButton().should("be.visible");
+    });
+
+    it("should not close the preview when hitting Esc key while modal is open", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.PRODUCT_ID,
+      });
+
+      FieldSection.getPreviewButton().click();
+      PreviewSection.get().should("be.visible");
+
+      TableSection.getSyncOptionsButton().click();
+      H.modal().should("be.visible");
+
+      cy.realPress("Escape");
+      H.modal().should("not.exist");
+      PreviewSection.get().should("be.visible");
+
+      FieldSection.getFieldValuesButton().click();
+      H.modal().should("be.visible");
+
+      cy.realPress("Escape");
+      H.modal().should("not.exist");
+      PreviewSection.get().should("be.visible");
+    });
+
+    it("should not close the preview when hitting Esc key while popover is open", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.PRODUCT_ID,
+      });
+
+      FieldSection.getPreviewButton().click();
+      PreviewSection.get().should("be.visible");
+
+      FieldSection.getSemanticTypeInput().click();
+      H.popover().should("be.visible");
+
+      cy.realPress("Escape");
+      H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
+      PreviewSection.get().should("be.visible");
+    });
+
+    it("should not close the preview when hitting Esc key while command palette is open", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.PRODUCT_ID,
+      });
+
+      FieldSection.getPreviewButton().click();
+      PreviewSection.get().should("be.visible");
+
+      H.openCommandPalette();
+      H.commandPalette().should("be.visible");
+
+      cy.realPress("Escape");
+      H.commandPalette().should("not.exist");
+      PreviewSection.get().should("be.visible");
+    });
+  });
 });
 
 function turnTableVisibilityOff(tableId: TableId) {

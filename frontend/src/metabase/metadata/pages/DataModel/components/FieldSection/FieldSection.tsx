@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
@@ -13,7 +13,6 @@ import type { DatabaseId, Field } from "metabase-types/api";
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
 import S from "./FieldSection.module.css";
-import { FieldValuesModal } from "./FieldValuesModal";
 import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
 
@@ -22,6 +21,7 @@ interface Props {
   field: Field;
   isPreviewOpen: boolean;
   parent?: Field;
+  onFieldValuesClick: () => void;
   onPreviewClick: () => void;
 }
 
@@ -30,12 +30,12 @@ const FieldSectionBase = ({
   field,
   isPreviewOpen,
   parent,
+  onFieldValuesClick,
   onPreviewClick,
 }: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
-  const [isFieldValuesModalOpen, setIsFieldValuesModalOpen] = useState(false);
 
   return (
     <Stack data-testid="field-section" gap={0} pb="xl">
@@ -108,7 +108,7 @@ const FieldSectionBase = ({
               px="sm"
               py="xs"
               size="xs"
-              onClick={() => setIsFieldValuesModalOpen(true)}
+              onClick={onFieldValuesClick}
             >{t`Field values`}</Button>
           </Group>
         </Group>
@@ -120,12 +120,6 @@ const FieldSectionBase = ({
         <BehaviorSection databaseId={databaseId} field={field} />
         <FormattingSection field={field} />
       </Stack>
-
-      <FieldValuesModal
-        fieldId={id}
-        isOpen={isFieldValuesModalOpen}
-        onClose={() => setIsFieldValuesModalOpen(false)}
-      />
     </Stack>
   );
 };
