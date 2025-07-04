@@ -36,16 +36,51 @@
    :name tag-name
    :id   (str (random-uuid))})
 
+(defn- non-empty-string? [s]
+  (and (string? s)
+       (seq s)))
+
+;; map of function names to min/max expected arguments
+(def ^:private function-expected-args
+  {"mb.time_grouping" {:args-count      [2 2]
+                       :args-validators [non-empty-string? non-empty-string?]}
+   "mb.filter"        {:args-count      [2 2]
+                       :args-validators [non-empty-string? non-empty-string?]}})
+
+(defn- check-args [function-name arg-list]
+  (let [args-count (count arg-list)
+        {[args-min args-max] :args-count
+         :keys               [args-validators]} (function-expected-args function-name)]
+    (cond
+      (not args-min)
+      (str "Unknown function: " function-name)
+
+      (< args-count args-min)
+      (str function-name " got too few parameters.  Got "
+           args-count ", expected at least " args-min ".")
+
+      (> args-count args-max)
+      (str function-name " got too many parameters.  Got "
+           args-count ", expected at most " args-max ".")
+
+      (not-every? identity (map #(%1 %2) args-validators arg-list))
+      (str function-name " got invalid parameters")
+
+      :else
+      nil)))
+
 (defn- fresh-function-tag [function-name args]
-  (case function-name
-    "mb.time_grouping" (let [param-name (first args)]
-                         (when (and (string? param-name)
-                                    (= (count args) 2)
-                                    (every? (comp not empty?) args))
-                           {:type :temporal-unit
-                            :name param-name
-                            :id (str (random-uuid))}))
-    nil))
+  (when (nil? (check-args function-name args))
+    (case function-name
+      "mb.time_grouping" {:type :temporal-unit
+                          :name (first args)
+                          :id (str (random-uuid))}
+      "mb.filter"        {:type :custom-filter
+                          :name (first args)
+                          :id (str (random-uuid))
+                          :widget-type :string/=
+                          :effective-type :type/Text}
+      nil)))
 
 (defn- recognize-template-tags [query-text]
   (let [parsed (lib.parse/parse {} query-text)]
@@ -104,6 +139,11 @@
         (dissoc old-name)
         (assoc new-name new-tag))))
 
+(def #^:private special-tag-types
+  "If a tag changes to or from one of these types, it is a fundamentally different tag and the new value should
+  replace the old value."
+  #{:temporal-unit :custom-filter})
+
 (defn- update-tags
   [tags query-tags]
   (into {}
@@ -112,8 +152,8 @@
                  ;; if a tag swapped to or from temporal unit, use the new tag instead of the old tag
                  (if (and new-tag current-tag
                           (not= (:type new-tag) (:type current-tag))
-                          (or (= (:type new-tag) :temporal-unit)
-                              (= (:type current-tag) :temporal-unit)))
+                          (or (special-tag-types (:type new-tag))
+                              (special-tag-types (:type current-tag))))
                    [tag-name new-tag]
                    [tag-name current-tag]))))
         tags))
@@ -214,13 +254,9 @@
                                         :native             sql-or-other-native-query}])
          (with-native-extras native-extras)))))
 
-;; map of function names to min/max expected arguments
-(def ^:private function-expected-args
-  {"mb.time_grouping" {:args-count      [2 2]
-                       :args-validators [(comp not empty?) (comp not empty?)]}})
-
 (def ^:private tag-type->display-name
   {:temporal-unit "time grouping"
+   :custom-filter "custom filter"
    :text "variable"
    :card "card reference"
    :snippet "snippet"})
@@ -262,24 +298,11 @@
           :name function-name
           :args args}]
         (let [current (fresh-function-tag function-name args)
-              args-count (count args)
-              {[args-min args-max] :args-count
-               :keys               [args-validators]} (function-expected-args function-name)
               prev (some-> current :name found)
+              arg-error (check-args function-name args)
               error (cond
-                      (not args-min)
-                      (str "Unknown function: " function-name)
-
-                      (< args-count args-min)
-                      (str function-name " got too few parameters.  Got "
-                           args-count ", expected at least " args-min ".")
-
-                      (> args-count args-max)
-                      (str function-name " got too many parameters.  Got "
-                           args-count ", expected at most " args-max ".")
-
-                      (not-every? identity (map #(%1 %2) args-validators args))
-                      (str function-name " got invalid parameters")
+                      arg-error
+                      arg-error
 
                       (not current)
                       (str "Invalid call to function: " function-name)

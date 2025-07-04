@@ -50,7 +50,9 @@
     {"unit" {:name "unit"
              :type :temporal-unit}} "SELECT *, {{mb.time_grouping('unit', 'foo')}}, {{mb.time_grouping('unit', 'bar')}} FROM table WHERE some_field IS NOT NULL"
     {"unit" {:name "unit"
-             :type :temporal-unit}} "SELECT *, {{mb.time_grouping(\"unit\", \"foo\")}}, {{unit}} FROM table WHERE some_field IS NOT NULL"))
+             :type :temporal-unit}} "SELECT *, {{mb.time_grouping(\"unit\", \"foo\")}}, {{unit}} FROM table WHERE some_field IS NOT NULL"
+    {"param" {:name "param"
+              :type :custom-filter}} "SELECT * FROM table WHERE {{mb.filter(\"param\", \"foo\")}}"))
 
 (deftest ^:parallel template-tags-test
   (testing "snippet tags"
@@ -151,6 +153,12 @@
                              :type :temporal-unit})}
               (lib.native/extract-template-tags
                "SELECT {{mb.time_grouping('var', 'created_at')}} from orders"
+               {"var" (mktag {:name "var"
+                              :id (str (random-uuid))})})))
+      (is (=? {"var" (mktag {:name "var"
+                             :type :custom-filter})}
+              (lib.native/extract-template-tags
+               "SELECT * from orders where {{mb.filter('var', 'created_at')}}"
                {"var" (mktag {:name "var"
                               :id (str (random-uuid))})}))))))
 
@@ -490,7 +498,24 @@
                 ["Syntax error in: mb.time_grouping(\"unit\", \"created_\""]]
                ["SELECT {{mb.time_grouping}} {{mb.time_grouping}} FROM ORDERS"
                 ["mb.time_grouping should be used as a function call, e.g. mb.time_grouping('arg1', ...)"
-                 "mb.time_grouping should be used as a function call, e.g. mb.time_grouping('arg1', ...)"]]]]
+                 "mb.time_grouping should be used as a function call, e.g. mb.time_grouping('arg1', ...)"]]
+               ["SELECT * from orders where {{mb.filter(\"unit\", \"created_at\")}}"
+                []]
+               ["SELECT * from orders where {{mb.filter(\"unit\", \"created_at\")}} and {{unit}}"
+                ["Parameter unit is used as both a custom filter and a variable. This is not allowed."]]
+               ["SELECT * from orders where {{mb.filter(\"foo\", \"created_at\")}}"
+                []]
+               ["SELECT * from orders where {{mb.filter(\"unit\", \"created_at\")}} and {{mb.filter(\"unit\", \"updated_at\")}}"
+                []]
+               ["SELECT * from orders where {{mb.filter(\"unit\", \"created_at\")}} and {{other}}"
+                []]
+               ["SELECT * from orders where {{mb.filter(\"unit\")}}"
+                ["mb.filter got too few parameters.  Got 1, expected at least 2."]]
+               ["SELECT {{mb.filter(\"unit\", '')}} as unit FROM ORDERS"
+                ["mb.filter got invalid parameters"]]
+               ["SELECT * from orders where {{mb.filter}} and {{mb.filter}}"
+                ["mb.filter should be used as a function call, e.g. mb.filter('arg1', ...)"
+                 "mb.filter should be used as a function call, e.g. mb.filter('arg1', ...)"]]]]
     (doseq [[query expected] cases]
       (is (=? expected (-> {:stages [{:native query}]}
                            lib.native/validate-native-query))
