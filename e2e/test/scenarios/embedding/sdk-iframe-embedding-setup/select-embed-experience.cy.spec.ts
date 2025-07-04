@@ -9,15 +9,24 @@ import {
 
 const { H } = cy;
 
-describe("scenarios > embedding > sdk iframe embed setup > select embed experience", () => {
+const suiteTitle =
+  "scenarios > embedding > sdk iframe embed setup > select embed experience";
+
+H.describeWithSnowplow(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.enableTracking();
 
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   describe("select embed experiences with a non-empty activity log", () => {
@@ -47,6 +56,12 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
       assertRecentItemName("card", questionName);
 
       getEmbedSidebar().findByText("Chart").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_experience_selected",
+        event_detail: "chart",
+      });
+
       cy.wait("@cardQuery");
 
       H.getIframeBody().within(() => {
@@ -58,6 +73,11 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     it("shows exploration template when selected", () => {
       visitNewEmbedPage();
       getEmbedSidebar().findByText("Exploration").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_experience_selected",
+        event_detail: "exploration",
+      });
 
       H.getIframeBody().within(() => {
         cy.log("data picker is visible");
@@ -91,6 +111,11 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
       cy.wait("@emptyRecentItems");
 
       getEmbedSidebar().findByText("Chart").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_experience_selected",
+        event_detail: "chart",
+      });
 
       H.getIframeBody().within(() => {
         cy.log("question title of id=1 is visible");
