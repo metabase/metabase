@@ -986,3 +986,17 @@
                 rows (mt/rows result)]
             (is (= (expected driver/*driver*)
                    rows))))))))
+
+;; today()
+
+(deftest ^:parallel today-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/today)
+    (testing "Calling today() and getting today's date"
+      (let [mp (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/with-fields [(lib.metadata/field mp (mt/id :orders :id))])
+                      (lib/expression "TODAY" (lib/today))
+                      (lib/limit 1))
+            result (-> query qp/process-query)
+            rows (mt/rows result)]
+        (prn rows)))))
