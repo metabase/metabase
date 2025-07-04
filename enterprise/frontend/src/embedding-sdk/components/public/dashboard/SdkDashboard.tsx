@@ -288,7 +288,7 @@ const SdkDashboardInner = ({
         .with("queryBuilder", () => (
           <DashboardQueryBuilder
             targetDashboardId={dashboardId}
-            onSave={(question) => {
+            onCreate={(question) => {
               setNewDashboardQuestionId(question.id);
               setRenderMode("dashboard");
               refetchDashboardRef.current();
@@ -326,7 +326,7 @@ function SdkDashboardParameterList(
 
 type DashboardQueryBuilderProps = {
   targetDashboardId: DashboardId;
-  onSave: (question: MetabaseQuestion) => void;
+  onCreate: (question: MetabaseQuestion) => void;
 };
 
 /**
@@ -334,7 +334,7 @@ type DashboardQueryBuilderProps = {
  */
 function DashboardQueryBuilder({
   targetDashboardId,
-  onSave,
+  onCreate,
 }: DashboardQueryBuilderProps) {
   const dispatch = useSdkDispatch();
   const { dashboard } = useDashboardContext();
@@ -342,15 +342,11 @@ function DashboardQueryBuilder({
     <InteractiveQuestionProvider
       questionId="new"
       targetDashboardId={targetDashboardId}
-      /**
-       * This is called on both the question creation and editing.
-       * Since we will only render this query builder when users
-       * are creating a new question, we don't really need to worry
-       * about the editing.
-       */
-      onSave={(question) => {
-        onSave(question);
-        dispatch(setEditingDashboard(dashboard));
+      onSave={(question, { isNewQuestion }) => {
+        if (isNewQuestion) {
+          onCreate(question);
+          dispatch(setEditingDashboard(dashboard));
+        }
       }}
     >
       <InteractiveQuestionDefaultView withResetButton withChartTypeSelector />
