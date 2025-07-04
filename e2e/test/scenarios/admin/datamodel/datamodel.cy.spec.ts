@@ -1337,6 +1337,16 @@ describe("scenarios > admin > datamodel", () => {
             "Semantic type for Product ID updated",
           );
 
+          cy.log("verify preview");
+          FieldSection.getPreviewButton().click();
+          cy.wait("@dataset");
+          PreviewSection.get()
+            .findAllByTestId("cell-data")
+            .should("have.length", 6)
+            .eq(1)
+            // FKs get blueish background
+            .should("have.css", "background-color", "rgba(0, 0, 0, 0)");
+
           cy.reload();
           cy.wait("@metadata");
 
@@ -1365,6 +1375,16 @@ describe("scenarios > admin > datamodel", () => {
           );
           H.undoToast().icon("close").click();
 
+          cy.log("verify preview");
+          FieldSection.getPreviewButton().click();
+          cy.wait("@dataset");
+          PreviewSection.get()
+            .findAllByTestId("cell-data")
+            .should("have.length", 6)
+            .eq(1)
+            // FKs get blueish background
+            .should("not.have.css", "background-color", "rgba(0, 0, 0, 0)");
+
           FieldSection.getSemanticTypeFkTarget()
             .should("have.value", "")
             .click();
@@ -1374,6 +1394,15 @@ describe("scenarios > admin > datamodel", () => {
             "contain.text",
             "Semantic type for Quantity updated",
           );
+
+          cy.log("verify preview");
+          cy.wait("@dataset");
+          PreviewSection.get()
+            .findAllByTestId("cell-data")
+            .should("have.length", 6)
+            .eq(1)
+            // FKs get blueish background
+            .should("not.have.css", "background-color", "rgba(0, 0, 0, 0)");
 
           cy.reload();
           cy.wait(["@metadata", "@metadata"]);
@@ -1451,6 +1480,19 @@ describe("scenarios > admin > datamodel", () => {
             "Products → ID",
           );
 
+          cy.log("verify preview");
+          FieldSection.getPreviewButton().click();
+          cy.wait("@dataset");
+          PreviewSection.get()
+            .findByText("Sorry, you don’t have permission to see that.")
+            .should("be.visible");
+          PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+          cy.wait("@dataset");
+          PreviewSection.get()
+            .findByText("Sorry, you don’t have permission to see that.")
+            .should("be.visible");
+
+          cy.log("verify viz as normal user");
           cy.signInAsNormalUser();
           H.openTable({
             database: SAMPLE_DB_ID,
@@ -1504,6 +1546,19 @@ describe("scenarios > admin > datamodel", () => {
           H.undoToast().should("contain.text", "Semantic type for Tax updated");
           H.undoToast().icon("close").click();
 
+          cy.log("verify preview");
+          TableSection.clickField("Tax");
+          FieldSection.getPreviewButton().click();
+          verifyTablePreview({
+            column: "Tax ($)",
+            values: ["2.07", "6.10", "2.90", "6.01", "7.03"],
+          });
+          verifyObjectDetailPreview({
+            index: 4,
+            row: ["Tax ($)", "$2.07"],
+          });
+
+          cy.log("change currency");
           FieldSection.getSemanticTypeCurrencyInput()
             .scrollIntoView()
             .should("be.visible")
@@ -1513,6 +1568,17 @@ describe("scenarios > admin > datamodel", () => {
           cy.wait("@updateField");
           H.undoToast().should("contain.text", "Semantic type for Tax updated");
 
+          cy.log("verify preview");
+          verifyTablePreview({
+            column: "Tax (CA$)",
+            values: ["2.07", "6.10", "2.90", "6.01", "7.03"],
+          });
+          verifyObjectDetailPreview({
+            index: 4,
+            row: ["Tax (CA$)", "CA$2.07"],
+          });
+
+          cy.log("verify viz");
           H.openOrdersTable();
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Tax (CA$)").should("be.visible");
