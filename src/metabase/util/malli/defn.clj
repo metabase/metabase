@@ -97,7 +97,7 @@
     (if-not instrument?
       `(def ~(vary-meta fn-name merge attr-map)
          ~docstring
-         ~(mu.fn/deparameterized-fn-form parsed cosmetic-name))
+         ~(mu.fn/deparameterized-fn-form parsed))
       `(def ~(vary-meta fn-name merge attr-map)
          ~docstring
          ~(macros/case
