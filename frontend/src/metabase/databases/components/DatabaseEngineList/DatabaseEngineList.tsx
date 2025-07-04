@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { MAX_INITIAL_ENGINES_SHOWN } from "metabase/databases/constants";
@@ -24,8 +24,12 @@ import S from "./DatabaseEngineList.module.css";
 
 export const DatabaseEngineList = ({
   onSelect,
+  isSetupStep,
+  engineKey,
 }: {
-  onSelect: (engineKey: string) => void;
+  onSelect: (engineKey?: string) => void;
+  isSetupStep?: boolean;
+  engineKey?: string;
 }) => {
   const combobox = useCombobox();
   const [search, setSearch] = useState("");
@@ -40,6 +44,29 @@ export const DatabaseEngineList = ({
   );
 
   const databasesList = isExpanded ? searchResults : elevatedEngines;
+
+  const clearSelectedItem = useCallback(() => {
+    onSelect(undefined);
+  }, [onSelect]);
+
+  // This is just a temporary way to show a selected item. The plan is to redesign
+  // this particular bit, and it will live outside this component.
+  if (isSetupStep && engineKey) {
+    const selected = options.find((option) => option.value === engineKey);
+    return (
+      <Button
+        alia-label={t`Remove Database`}
+        fullWidth
+        justify="space-between"
+        mb="lg"
+        onClick={clearSelectedItem}
+        rightSection={<Icon name="close" />}
+        variant="filled"
+      >
+        {selected?.name ?? engineKey}
+      </Button>
+    );
+  }
 
   return (
     <Stack gap="lg" h="100%">
