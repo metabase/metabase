@@ -29,7 +29,7 @@ export const SelectEmbedExperienceStep = () => {
     const persistedSettings = _.pick(settings, [
       "theme",
       "instanceUrl",
-      "apiKey",
+      "useExistingUserSession",
     ]);
 
     // Use the most recent item for the selected type.
