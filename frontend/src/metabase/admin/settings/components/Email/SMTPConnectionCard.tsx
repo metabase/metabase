@@ -1,9 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
 
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { PLUGIN_SMTP_OVERRIDE } from "metabase/plugins";
 
-import { CloudSMTPConnectionCard } from "./CloudSMTPConnectionCard";
-import { SMTPOverrideConnectionForm } from "./SMTPOverrideConnectionForm";
 import { SelfHostedSMTPConnectionCard } from "./SelfHostedSMTPConnectionCard";
 import { SelfHostedSMTPConnectionForm } from "./SelfHostedSMTPConnectionForm";
 import { trackSMTPSetupClick } from "./analytics";
@@ -27,17 +26,20 @@ export const SMTPConnectionCard = () => {
       </>
     );
   }
-
   if (isHosted && hasCloudSMTPFeature) {
     return (
       <>
-        <CloudSMTPConnectionCard
+        <PLUGIN_SMTP_OVERRIDE.CloudSMTPConnectionCard
           onOpenCloudSMTPModal={() => {
             openModal();
             trackSMTPSetupClick({ eventDetail: "cloud" });
           }}
         />
-        {showModal && <SMTPOverrideConnectionForm onClose={closeModal} />}
+        {showModal && (
+          <PLUGIN_SMTP_OVERRIDE.SMTPOverrideConnectionForm
+            onClose={closeModal}
+          />
+        )}
       </>
     );
   }

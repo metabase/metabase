@@ -3,14 +3,13 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { isErrorWithMessage } from "metabase/admin/performance/utils";
+import { trackSMTPSetupSuccess } from "metabase/admin/settings/components/Email/analytics";
+import { SetByEnvVarWrapper } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
 } from "metabase/api";
-import {
-  useDeleteCloudEmailSMTPSettingsMutation,
-  useUpdateCloudEmailSMTPSettingsMutation,
-} from "metabase/api/email";
+import {} from "metabase/api/email";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import {
@@ -22,14 +21,14 @@ import {
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Box, Button, Chip, Flex, Modal, Stack } from "metabase/ui";
+import {
+  useDeleteEmailSMTPOverrideSettingsMutation,
+  useUpdateEmailSMTPOverrideSettingsMutation,
+} from "metabase-enterprise/api/smtp-override";
 import type {
   EmailSMTPOverrideSettings,
   SettingDefinitionMap,
 } from "metabase-types/api";
-
-import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
-
-import { trackSMTPSetupSuccess } from "./analytics";
 
 const emailSettingKeys = [
   "email-smtp-host-override",
@@ -97,9 +96,9 @@ export const SMTPOverrideConnectionForm = ({
   onClose: () => void;
 }) => {
   const [updateCloudEmailSMTPSettings] =
-    useUpdateCloudEmailSMTPSettingsMutation();
+    useUpdateEmailSMTPOverrideSettingsMutation();
   const [deleteCloudEmailSMTPSettings] =
-    useDeleteCloudEmailSMTPSettingsMutation();
+    useDeleteEmailSMTPOverrideSettingsMutation();
   const [sendToast] = useToast();
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();

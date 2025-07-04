@@ -53,8 +53,10 @@ export const CloudSMTPConnectionCard = ({
                 )}
 
                 <div>
+                  {/* eslint-disable-next-line no-literal-metabase-strings -- Not user configurable */}
                   <Text className={S.label}>{t`Managed by Metabase`}</Text>
                   <Text>
+                    {/* eslint-disable-next-line no-literal-metabase-strings -- Not user configurable */}
                     {t`Emails come from Metabase (e.g. noreply@metabase.com)`}
                   </Text>
                 </div>
