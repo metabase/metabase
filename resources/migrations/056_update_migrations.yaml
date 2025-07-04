@@ -383,6 +383,8 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-07-03T16:04:00
       author: qnkhuat
+      comment: index app_release.app_definition_id
+      preConditions:
         - onFail: MARK_RAN
         - not:
             - indexExists:
