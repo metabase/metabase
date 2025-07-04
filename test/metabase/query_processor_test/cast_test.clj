@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.impl]
    [metabase.lib.core :as lib]
@@ -111,9 +112,9 @@
                 (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                                 (lib/with-fields [])
                                 (as-> q
-                                      (lib/expression q "UNCAST" (->> q lib/visible-columns (filter #(= "uncasted" (u/lower-case-en (:name %)))) first)))
+                                      (lib/expression q "UNCAST" (->> q lib/visible-columns (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))))
                                 (as-> q
-                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "uncasted" (u/lower-case-en (:name %)))) first)))))
+                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))))))
                       result (-> query qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
@@ -175,9 +176,9 @@
                 (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                                 (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
                                 (as-> q
-                                      (lib/expression q "UNCAST" (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first)))
+                                      (lib/expression q "UNCAST" (->> q lib/visible-columns (m/find-first #(= "UNCASTED" (:name %))))))
                                 (as-> q
-                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first))))
+                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (m/find-first #(= "UNCASTED" (:name %)))))))
                                 (lib/limit 10))
                       result (-> query qp/process-query)
                       cols (mt/cols result)
@@ -346,8 +347,7 @@
                 (let [card-query (lib/query mp (lib.metadata/card mp card-id))
                       uncast-column (->> card-query
                                          lib/visible-columns
-                                         (filter #(= "uncasted" (u/lower-case-en (:name %))))
-                                         first)
+                                         (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))
                       query (-> card-query
                                 (lib/expression "UNCAST"               uncast-column)
                                 (lib/expression "FLOATCAST" (lib/float uncast-column)))
@@ -413,8 +413,7 @@
                 (let [card-query (lib/query mp (lib.metadata/card mp card-id))
                       uncast-column (->> card-query
                                          lib/visible-columns
-                                         (filter #(= "uncasted" (u/lower-case-en (:name %))))
-                                         first)
+                                         (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))
                       query (-> card-query
                                 (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
                                 (lib/expression "UNCAST"               uncast-column)
@@ -693,7 +692,7 @@
                (mt/card-with-source-metadata-for-query native-query)]
               (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                               (as-> q
-                                    (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (filter #(= "uncasted" (u/lower-case-en (:name %)))) first)))))
+                                    (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))))))
                     result (-> query qp/process-query)
                     cols (mt/cols result)
                     rows (mt/rows result)]
@@ -751,7 +750,7 @@
                (mt/card-with-source-metadata-for-query nested-query)]
               (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                               (as-> q
-                                    (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first))))
+                                    (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (m/find-first #(= "UNCASTED" (:name %)))))))
                               (lib/limit 10))
                     result (-> query qp/process-query)
                     cols (mt/cols result)
@@ -989,7 +988,7 @@
                           (lib/with-fields [(lib.metadata/field mp (mt/id :times :id))
                                             (lib.metadata/field mp (mt/id :times :name))])
                           (as-> q
-                                (let [column (->> q lib/visible-columns (filter #(= "as_bytes" (u/lower-case-en (:name %)))) first)]
+                                (let [column (->> q lib/visible-columns (m/find-first #(= "as_bytes" (u/lower-case-en (:name %)))))]
                                   (lib/expression q "FCALL" (if (nil? mode)
                                                               (lib/datetime column)
                                                               (lib/datetime column mode)))))
@@ -1036,7 +1035,7 @@
                           (lib/with-fields [(lib.metadata/field mp (mt/id :orders :id))])
                           (lib/expression "date_number" (lib/+ 0 (* seconds-timestamp multiple)))
                           (as-> q
-                                (let [column (->> q lib/visible-columns (filter #(= "date_number" (u/lower-case-en (:name %)))) first)]
+                                (let [column (->> q lib/visible-columns (m/find-first #(= "date_number" (u/lower-case-en (:name %)))))]
                                   (lib/expression q "FCALL" (lib/datetime column mode))))
                           (lib/limit 1))
                 result (-> query qp/process-query)
