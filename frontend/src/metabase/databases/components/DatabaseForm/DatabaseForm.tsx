@@ -13,7 +13,7 @@ import { useSelector } from "metabase/lib/redux";
 import { Flex } from "metabase/ui";
 import type { DatabaseData, Engine } from "metabase-types/api";
 
-import { getEngines, getIsHosted } from "../../selectors";
+import { getEngines } from "../../selectors";
 import { getDefaultEngineKey } from "../../utils/engine";
 import {
   getSubmitValues,
@@ -65,7 +65,6 @@ export const DatabaseForm = ({
   const engineFieldState = config.engine?.fieldState;
 
   const engines = useSelector(getEngines);
-  const isHosted = useSelector(getIsHosted);
   const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
   const [engineKey, setEngineKey] = useState(initialEngineKey);
   const engine = getEngine(engines, engineKey);
@@ -109,7 +108,6 @@ export const DatabaseForm = ({
         engines={engines}
         engineFieldState={engineFieldState}
         autofocusFieldName={autofocusFieldName}
-        isHosted={isHosted}
         isAdvanced={isAdvanced}
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
@@ -126,7 +124,6 @@ interface DatabaseFormBodyProps {
   engines: Record<string, Engine>;
   engineFieldState?: "default" | "hidden" | "disabled";
   autofocusFieldName?: string;
-  isHosted: boolean;
   isAdvanced: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
@@ -140,7 +137,6 @@ const DatabaseFormBody = ({
   engines,
   engineFieldState = "default",
   autofocusFieldName,
-  isHosted,
   isAdvanced,
   onEngineChange,
   onCancel,
@@ -164,7 +160,6 @@ const DatabaseFormBody = ({
           <DatabaseEngineField
             engineKey={engineKey}
             engines={engines}
-            isHosted={isHosted}
             isAdvanced={isAdvanced}
             onChange={onEngineChange}
             disabled={engineFieldState === "disabled"}
