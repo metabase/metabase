@@ -1013,7 +1013,7 @@
   [_]
   "2025-07-02 18:33:35")
 
-;; sqlserver's sql.qp/unix-timestamp->honeysql rounds to minutes
+;; sqlserver's sql.qp/unix-timestamp->honeysql truncates to minutes
 (defmethod datetime-number-cast-expected :sqlserver
   [_]
   "2025-07-02T18:33:00Z")
