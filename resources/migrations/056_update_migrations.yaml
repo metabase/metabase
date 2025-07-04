@@ -199,6 +199,13 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: url
+                  remarks: unique url of an app
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
                   remarks: The timestamp of when the app was created
                   name: created_at
                   type: ${timestamp_type}
@@ -278,7 +285,7 @@ databaseChangeLog:
             tableName: app_definition
 
   - changeSet:
-      id: v56.2025-07-03T16:04:00
+      id: v56.2025-07-03T16:02:00
       author: qnkhuat
       comment: Add index on app_definition.app_id
       preConditions:
@@ -302,7 +309,7 @@ databaseChangeLog:
             indexName: idx_app_definition_app_id
 
   - changeSet:
-      id: v56.2025-07-03T16:02:00
+      id: v56.2025-07-03T16:03:00
       author: qnkhuat
       comment: Create app_publishing table for data apps functionality
       preConditions:
@@ -359,7 +366,7 @@ databaseChangeLog:
               - column:
                   name: active
                   remarks: Whether this version is active
-                  type: boolean
+                  type: ${boolean.type}
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
@@ -368,7 +375,7 @@ databaseChangeLog:
             tableName: app_publishing
 
   - changeSet:
-      id: v56.2025-07-03T16:05:00
+      id: v56.2025-07-03T16:04:00
       author: qnkhuat
       comment: Add composite index on app_publishing.app_id and active
       preConditions:
