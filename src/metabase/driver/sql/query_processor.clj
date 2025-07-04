@@ -785,13 +785,13 @@
                             :iso              :Coercion/ISO8601->DateTime
                             :simple           :Coercion/YYYYMMDDHHMMSSString->Temporal
                             ;; Binary
-                            :isobytes         :Coercion/ISO8601Bytes->Temporal
-                            :simplebytes      :Coercion/YYYYMMDDHHMMSSBytes->Temporal
+                            :iso-bytes         :Coercion/ISO8601Bytes->Temporal
+                            :simple-bytes      :Coercion/YYYYMMDDHHMMSSBytes->Temporal
                             ;; Number
-                            :unixmilliseconds :Coercion/UNIXMilliSeconds->DateTime
-                            :unixseconds      :Coercion/UNIXSeconds->DateTime
-                            :unixmicroseconds :Coercion/UNIXMicroSeconds->DateTime
-                            :unixnanoseconds  :Coercion/UNIXNanoSeconds->DateTime)]
+                            :unix-milliseconds :Coercion/UNIXMilliSeconds->DateTime
+                            :unix-seconds      :Coercion/UNIXSeconds->DateTime
+                            :unix-microseconds :Coercion/UNIXMicroSeconds->DateTime
+                            :unix-nanoseconds  :Coercion/UNIXNanoSeconds->DateTime)]
     (cond
       (isa? coercion-strategy :Coercion/UNIXTime->Temporal)
       (unix-timestamp->honeysql driver

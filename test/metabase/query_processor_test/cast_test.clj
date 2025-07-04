@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.cast-test
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -505,12 +504,27 @@
 
 ;; date()
 
-(defn- date-type? [col]
-  (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
-                                       :type/Text ;; sqlite uses text :(
-                                       :type/Date
-                                       :type/* ;; Mongo
-                                       ]))
+(defmulti date-type-expected
+  "Which date type are we expecting from `date()`?"
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod date-type-expected :default
+  [_]
+  :type/Date)
+
+(defmethod date-type-expected :oracle
+  [_]
+  :type/DateTime)
+
+(defmethod date-type-expected :sqlite
+  [_]
+  :type/Text)
+
+(defmethod date-type-expected :mongo
+  [_]
+  :type/*)
 
 (defn- parse-date [s]
   (try
@@ -537,7 +551,8 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (date-type? (last cols)))
+            (is (types/field-is-type? (date-type-expected driver/*driver*)
+                                      (last cols)))
             (doseq [[_ uncasted-value casted-value] rows]
               (let [cd (parse-date casted-value)
                     ud (parse-date uncasted-value)]
@@ -958,17 +973,14 @@
    [2M "bar" #t "2020-04-21T16:43"]
    [3M "baz" #t "2021-04-21T16:43"]])
 
-;; TODO: Make a real feature for byte->temporal coercion strategies
-
 (deftest ^:parallel datetime-binary-cast
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :expressions/datetime)
-                                     (mt/normal-drivers-with-feature ::adt/yyyymmddhhss-binary-timestamps))
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime ::adt/yyyymmddhhss-binary-timestamps)
     (doseq [{:keys [dataset mode expected]}
             [{:dataset yyyymmddhhss-binary-simple-cast
-              :mode :simplebytes
+              :mode :simple-bytes
               :expected binary-dates-expected-rows-simple}
              {:dataset iso-binary-cast
-              :mode :isobytes
+              :mode :iso-bytes
               :expected binary-dates-expected-rows-iso}]]
       (mt/dataset dataset
         (testing (str "Parsing bytes from " (:database-name dataset) " as datetime with " (or mode "no mode") ".")
@@ -986,6 +998,51 @@
                 rows (mt/rows result)]
             (is (= (expected driver/*driver*)
                    rows))))))))
+
+(defmulti datetime-number-cast-expected
+  "Expected datetime string for [[datetime-number-cast]] test."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod datetime-number-cast-expected :default
+  [_]
+  "2025-07-02T18:33:35Z")
+
+(defmethod datetime-number-cast-expected :sqlite
+  [_]
+  "2025-07-02 18:33:35")
+
+;; sqlserver's sql.qp/unix-timestamp->honeysql rounds to minutes
+(defmethod datetime-number-cast-expected :sqlserver
+  [_]
+  "2025-07-02T18:33:00Z")
+
+(deftest ^:parallel datetime-number-cast
+  (let [seconds-timestamp 1751481215]
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
+      (doseq [{:keys [multiple mode]}
+              [{:multiple (long 1e0)
+                :mode :unix-seconds}
+               {:multiple (long 1e3)
+                :mode :unix-milliseconds}
+               {:multiple (long 1e6)
+                :mode :unix-microseconds}
+               {:multiple (long 1e9)
+                :mode :unix-nanoseconds}]]
+        (testing (str "Parsing number"  " as datetime with " mode ".")
+          (let [mp (mt/metadata-provider)
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          (lib/with-fields [(lib.metadata/field mp (mt/id :orders :id))])
+                          (lib/expression "date_number" (lib/+ 0 (* seconds-timestamp multiple)))
+                          (as-> q
+                                (let [column (->> q lib/visible-columns (filter #(= "date_number" (u/lower-case-en (:name %)))) first)]
+                                  (lib/expression q "FCALL" (lib/datetime column mode))))
+                          (lib/limit 1))
+                result (-> query qp/process-query)
+                rows (mt/rows result)]
+            (is (= (datetime-number-cast-expected driver/*driver*)
+                   (-> rows first (get 2))))))))))
 
 ;; today()
 

@@ -143,7 +143,7 @@ const DATE_TEST_CASES: CastTestCase[] = [
   },
 ];
 
-const DATETIME_TEST_CASES: CastTestCase[] = [
+const DATETIME_STRING_TEST_CASES: CastTestCase[] = [
   {
     name: "String",
     expression: 'datetime("2025-03-20 12:03")',
@@ -191,6 +191,66 @@ const DATETIME_TEST_CASES: CastTestCase[] = [
   },
 ];
 
+const DATETIME_NUMBER_TEST_CASES: CastTestCase[] = [
+  {
+    name: "NumberUnixSeconds",
+    expression: 'datetime(1741694580, "unixSeconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+  {
+    name: "NumberUnixMilliseconds",
+    expression: 'datetime(1741694580000, "unixMilliseconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+  {
+    name: "NumberUnixMicroseconds",
+    expression: 'datetime(1741694580000000, "unixMicroseconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+  {
+    name: "NumberUnixNanoseconds",
+    expression: 'datetime(1741694580000000000, "unixNanoseconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+
+  {
+    name: "NumberUnixSecondsExpression",
+    expression: 'datetime(1741694580 * 1, "unixSeconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+  {
+    name: "NumberUnixMillisecondsExpression",
+    expression: 'datetime(1741694580 * 1000, "unixMilliseconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+  {
+    name: "NumberUnixMicrosecondsExpression",
+    expression: 'datetime(1741694580000000 * 1, "unixMicroseconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+  {
+    name: "NumberUnixNanosecondsExpression",
+    expression: 'datetime(1741694580 * 1000000000, "unixNanoseconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+];
+
 const FLOAT_TEST_CASES: CastTestCase[] = [
   {
     name: "Float",
@@ -233,8 +293,12 @@ describe(
       testFilterWithExpressions(DATE_TEST_CASES, addDateFilter);
     });
 
-    it("should support datetime function", () => {
-      testFilterWithExpressions(DATETIME_TEST_CASES, addDateTimeFilter);
+    it("should support datetime function on strings", () => {
+      testFilterWithExpressions(DATETIME_STRING_TEST_CASES, addDateTimeFilter);
+    });
+
+    it("should support datetime function on numbers", () => {
+      testFilterWithExpressions(DATETIME_NUMBER_TEST_CASES, addDateFilter);
     });
   },
 );
