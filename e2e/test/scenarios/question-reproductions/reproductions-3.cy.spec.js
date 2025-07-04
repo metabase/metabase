@@ -2832,3 +2832,85 @@ describe("issue 51856", () => {
     });
   });
 });
+
+describe("issue 33972", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  const queryDetails = {
+    name: "Issue 33972",
+    type: "question",
+    query: {
+      "source-table": ORDERS_ID,
+      fields: [
+        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+        ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
+      ],
+      joins: [
+        {
+          fields: [
+            [
+              "field",
+              PRODUCTS.CATEGORY,
+              { "base-type": "type/Text", "join-alias": "Products" },
+            ],
+          ],
+          strategy: "left-join",
+          alias: "Products",
+          condition: [
+            "=",
+            [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+            [
+              "field",
+              PRODUCTS.ID,
+              {
+                "base-type": "type/BigInteger",
+                "join-alias": "Products",
+              },
+            ],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+      ],
+    },
+  };
+
+  it("should be able to distinguish explicitly and implicitly joined fields (metabase#33972)", () => {
+    H.createQuestion(queryDetails, { wrapId: true });
+    cy.get("@questionId").then((questionId) => {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": "card__" + questionId,
+          },
+          type: "query",
+        },
+      });
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-list-container")
+        .findByText("Add or remove columns")
+        .click();
+      cy.findByTestId("product-table-columns").findByText("Category").click();
+      cy.findByTestId("product-table-columns").findByText("Ean").click();
+      cy.findByTestId("table-header").within(() => {
+        cy.findByText("ID").should("exist");
+        cy.findByText("Product ID").should("exist");
+        cy.findByText("Products → Category").should("exist");
+        cy.findByText("Product → Category").should("exist");
+        cy.findByText("Product → Ean").should("exist");
+      });
+      cy.findByTestId("question-row-count")
+        .findByText("Showing first 2,000 rows")
+        .should("exist");
+    });
+  });
+});
