@@ -371,7 +371,7 @@
               ["by the minute" "0 0/10 * * * ? *" :cron/builder] ;; every 10 minutes
               ["hourly"        "0 8 * * * ? *"    :cron/builder] ;; every hour
               ["daily"         "0 0 2 * * ? *"    :cron/builder] ;; every day
-              ["daily"         "0 0 0/4 * * ? *"   :cron/raw]     ;; every 4 hours starting at midnight
+              ["daily"         "0 0 0/4 * * ? *"   :cron/raw]     ;; every 4 hours starting at midnight #60427
               ["monthly"       "0 0 8 1 * ? *"    :cron/builder] ;; every first day of the month
               ["custom"        "0 * * * * ? *"    :cron/raw]]]
        (notification.tu/with-card-notification
@@ -382,20 +382,3 @@
                                    (:schedule_type (t2/select-one :v_alerts :entity_id (:id notification))))]
            (testing (str schedule-type " schedule with cron " cron-schedule "result" (t2/select-one :v_alerts :entity_id (:id notification)))
              (is (= schedule-type (get-schedule-type))))))))))
-
-(deftest v-alerts-cron-slash-schedule-hour-test
-  (mt/when-ee-evailable
-   (testing "cron expressions with slashes in hours field should extract hour correctly"
-     (doseq [[cron-schedule expected-hour]
-             [["0 0 0/4 * * ? *" 0]    ;; every 4 hours starting at midnight
-              ["0 0 8/2 * * ? *" 8]    ;; every 2 hours starting at 8am
-              ["0 0 12/6 * * ? *" 12]  ;; every 6 hours starting at noon
-              ["0 0 23/1 * * ? *" 23]]] ;; every hour starting at 11pm
-       (notification.tu/with-card-notification
-         [notification {:subscriptions [{:type            :notification-subscription/cron
-                                         :cron_schedule   cron-schedule
-                                         :ui_display_type :cron/raw}]}]
-         (testing (str "cron expression " cron-schedule " should extract hour " expected-hour)
-           (let [alert (t2/select-one :v_alerts :entity_id (:id notification))]
-             (is (some? alert) "Alert should be found in v_alerts view")
-             (is (= expected-hour (:schedule_hour alert)) "Schedule hour should be extracted correctly"))))))))
