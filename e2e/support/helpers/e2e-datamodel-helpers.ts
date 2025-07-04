@@ -34,6 +34,7 @@ export const DataModel = {
   FieldSection: {
     get: getFieldSection,
     getNameInput: getFieldNameInput,
+    getRawName: getRawFieldName,
     getDescriptionInput: getFieldDescriptionInput,
     getPreviewButton: getFieldPreviewButton,
     getFieldValuesButton: getFieldValuesButton,
@@ -258,6 +259,10 @@ function getFieldPreviewButton() {
 
 function getFieldValuesButton() {
   return getFieldSection().button(/Field values/);
+}
+
+function getRawFieldName() {
+  return getFieldSection().findByLabelText("Field name");
 }
 
 function getFieldDataType() {

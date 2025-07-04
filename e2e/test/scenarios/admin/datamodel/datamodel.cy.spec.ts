@@ -1845,59 +1845,92 @@ describe("scenarios > admin > datamodel", () => {
             "Filtering for Quantity updated",
           );
 
+          cy.log("verify preview");
+          TableSection.clickField("Quantity");
+          FieldSection.getPreviewButton().click();
+          PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+          PreviewSection.get()
+            .findByPlaceholderText("Enter a number")
+            .should("be.visible");
+
           cy.reload();
           FieldSection.getFilteringInput()
             .scrollIntoView()
             .should("be.visible")
             .and("have.value", "Search box");
         });
-      });
 
-      it("should let you change filtering to 'Plain input box'", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-          fieldId: ORDERS.QUANTITY,
+        it("should let you change filtering to 'Plain input box'", () => {
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.QUANTITY,
+          });
+
+          FieldSection.getFilteringInput()
+            .should("have.value", "A list of all values")
+            .click();
+          H.popover().findByText("Plain input box").click();
+          cy.wait("@updateField");
+          H.undoToast().should(
+            "contain.text",
+            "Filtering for Quantity updated",
+          );
+
+          cy.log("verify preview");
+          TableSection.clickField("Quantity");
+          FieldSection.getPreviewButton().click();
+          PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+          PreviewSection.get()
+            .findByPlaceholderText("Min")
+            .should("be.visible");
+          PreviewSection.get()
+            .findByPlaceholderText("Max")
+            .should("be.visible");
+
+          cy.reload();
+          FieldSection.getFilteringInput()
+            .scrollIntoView()
+            .should("be.visible")
+            .and("have.value", "Plain input box");
         });
 
-        FieldSection.getFilteringInput()
-          .should("have.value", "A list of all values")
-          .click();
-        H.popover().findByText("Plain input box").click();
-        cy.wait("@updateField");
-        H.undoToast().should("contain.text", "Filtering for Quantity updated");
+        it("should let you change filtering to 'A list of all values'", () => {
+          cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+            has_field_values: "none",
+          });
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.QUANTITY,
+          });
 
-        cy.reload();
-        FieldSection.getFilteringInput()
-          .scrollIntoView()
-          .should("be.visible")
-          .and("have.value", "Plain input box");
-      });
+          FieldSection.getFilteringInput()
+            .should("have.value", "Plain input box")
+            .click();
+          H.popover().findByText("A list of all values").click();
+          cy.wait("@updateField");
+          H.undoToast().should(
+            "contain.text",
+            "Filtering for Quantity updated",
+          );
 
-      it("should let you change filtering to 'A list of all values'", () => {
-        cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
-          has_field_values: "none",
+          cy.log("verify preview");
+          TableSection.clickField("Quantity");
+          FieldSection.getPreviewButton().click();
+          PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+          PreviewSection.get()
+            .findByPlaceholderText("Search the list")
+            .should("be.visible");
+
+          cy.reload();
+          FieldSection.getFilteringInput()
+            .scrollIntoView()
+            .should("be.visible")
+            .and("have.value", "A list of all values");
         });
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-          fieldId: ORDERS.QUANTITY,
-        });
-
-        FieldSection.getFilteringInput()
-          .should("have.value", "Plain input box")
-          .click();
-        H.popover().findByText("A list of all values").click();
-        cy.wait("@updateField");
-        H.undoToast().should("contain.text", "Filtering for Quantity updated");
-
-        cy.reload();
-        FieldSection.getFilteringInput()
-          .scrollIntoView()
-          .should("be.visible")
-          .and("have.value", "A list of all values");
       });
 
       describe("Display values", () => {
@@ -1961,6 +1994,17 @@ describe("scenarios > admin > datamodel", () => {
             fieldId: ORDERS.PRODUCT_ID,
           });
 
+          cy.log("verify preview");
+          FieldSection.getPreviewButton().click();
+          verifyTablePreview({
+            column: "Product ID",
+            values: ["14", "123", "105", "94", "132"],
+          });
+          verifyObjectDetailPreview({
+            index: 2,
+            row: ["Product ID", "14"],
+          });
+
           FieldSection.getDisplayValuesInput().click();
           H.popover().findByText("Use foreign key").click();
           H.popover().findByText("Title").click();
@@ -1969,6 +2013,22 @@ describe("scenarios > admin > datamodel", () => {
             "contain.text",
             "Display values for Product ID updated",
           );
+
+          cy.log("verify preview");
+          verifyObjectDetailPreview({
+            index: 2,
+            row: ["Product ID", "Awesome Concrete Shoes"],
+          });
+          verifyTablePreview({
+            column: "Product ID",
+            values: [
+              "Awesome Concrete Shoes",
+              "Mediocre Wooden Bench",
+              "Fantastic Wool Shirt",
+              "Awesome Bronze Plate",
+              "Sleek Steel Table",
+            ],
+          });
 
           cy.reload();
           FieldSection.getDisplayValuesInput()
@@ -2088,7 +2148,24 @@ describe("scenarios > admin > datamodel", () => {
             "Display values for Product ID updated",
           );
 
-          cy.findByTestId("field-section")
+          cy.log("verify preview");
+          FieldSection.getPreviewButton().click();
+          verifyObjectDetailPreview({
+            index: 2,
+            row: ["Product ID", "Awesome Concrete Shoes"],
+          });
+          verifyTablePreview({
+            column: "Product ID",
+            values: [
+              "Awesome Concrete Shoes",
+              "Mediocre Wooden Bench",
+              "Fantastic Wool Shirt",
+              "Awesome Bronze Plate",
+              "Sleek Steel Table",
+            ],
+          });
+
+          FieldSection.get()
             .findByText(
               "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
             )
@@ -2145,6 +2222,23 @@ describe("scenarios > admin > datamodel", () => {
             "contain.text",
             "Display values for Rating updated",
           );
+
+          cy.log("verify preview");
+          FieldSection.getPreviewButton().click();
+          verifyTablePreview({
+            column: "Rating",
+            values: [
+              "Perfecto",
+              "Enjoyable",
+              "Perfecto",
+              "Enjoyable",
+              "Perfecto",
+            ],
+          });
+          verifyObjectDetailPreview({
+            index: 3,
+            row: ["Rating", "Perfecto"],
+          });
 
           cy.log("Numeric ratings should be remapped to custom strings");
           H.openReviewsTable();
@@ -2276,6 +2370,23 @@ describe("scenarios > admin > datamodel", () => {
             "Display values for User ID updated",
           );
 
+          cy.log("verify preview");
+          FieldSection.getPreviewButton().click();
+          verifyTablePreview({
+            column: "User ID",
+            values: [
+              "2023-10-07T01:34:35.462-07:00",
+              "2023-10-07T01:34:35.462-07:00",
+              "2023-10-07T01:34:35.462-07:00",
+              "2023-10-07T01:34:35.462-07:00",
+              "2023-10-07T01:34:35.462-07:00",
+            ],
+          });
+          verifyObjectDetailPreview({
+            index: 1,
+            row: ["User ID", "2023-10-07T01:34:35.462-07:00"],
+          });
+
           H.visitQuestion(ORDERS_QUESTION_ID);
           cy.findAllByTestId("cell-data")
             .eq(10) // 1st data row, 2nd column (User ID)
@@ -2316,9 +2427,20 @@ describe("scenarios > admin > datamodel", () => {
             .findByTestId("name-prefix")
             .should("be.visible")
             .and("have.text", "Json:");
-          FieldSection.getDataType()
+          FieldSection.getRawName()
             .should("be.visible")
             .and("have.text", "json.a");
+
+          cy.log("verify preview");
+          FieldSection.getPreviewButton().click();
+          verifyTablePreview({
+            column: "Json → A",
+            values: ["10", "10"],
+          });
+          verifyObjectDetailPreview({
+            index: 1,
+            row: ["Json → A", "10"],
+          });
 
           cy.log("show prefix in table section when sorting");
           TableSection.getSortButton().click();
@@ -2371,6 +2493,17 @@ describe("scenarios > admin > datamodel", () => {
           "contain.text",
           "Field formatting for Quantity updated",
         );
+
+        cy.log("verify preview");
+        FieldSection.getPreviewButton().click();
+        verifyTablePreview({
+          column: "Quantity",
+          values: ["200%", "300%", "200%", "600%", "500%"],
+        });
+        verifyObjectDetailPreview({
+          index: 8,
+          row: ["Quantity", "200%"],
+        });
       });
 
       it("should only show currency formatting options for currency fields", () => {
@@ -2437,6 +2570,18 @@ describe("scenarios > admin > datamodel", () => {
           "Field formatting for Quantity updated",
         );
 
+        cy.log("verify preview");
+        FieldSection.getPreviewButton().click();
+        verifyTablePreview({
+          column: "Quantity",
+          values: ["about 2", "about 3", "about 2", "about 6", "about 5"],
+        });
+        verifyObjectDetailPreview({
+          index: 8,
+          row: ["Quantity", "about 2"],
+        });
+
+        cy.log("verify viz");
         H.visitQuestionAdhoc({
           dataset_query: {
             database: SAMPLE_DB_ID,
