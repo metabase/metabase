@@ -19,6 +19,12 @@
    "NativeQuerySnippet"
    "Timeline"])
 
+(def to-implement-models
+  "The list of exported models but are pending for implementation."
+  ["App"
+   "AppDefinition"
+   "AppPublishing"])
+
 (def exported-models
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model

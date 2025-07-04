@@ -408,6 +408,12 @@
            warehouse-schema
            xrays}}
 
+  data-apps
+  {:team "Workflows"
+   :api  #{metabase.data-apps.core}
+   :uses #{models
+           util}}
+
   database-routing
   {:team "Admin Webapp"
    :api  #{metabase.database-routing.core}
