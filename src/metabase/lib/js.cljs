@@ -1268,7 +1268,10 @@
   (and (map? arg) (= :metadata/column (:lib/type arg))))
 
 (defn ^:export metric-metadata?
-  "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/metric`.
+  "Returns true if arg is named entity that can be used as an aggregation expression on its own, i.e., without
+  wrapping it into an aggregating function.
+  Currently, this can be an MLv2 metric (`:lib/type :metadata/metric`) or an aggregation column
+  (`:lib/type :metadata/column` and `:lib/source :source/aggregations`).
 
   > **Code health:** Single use. This is used in the expression editor to parse and
   format expression clauses."

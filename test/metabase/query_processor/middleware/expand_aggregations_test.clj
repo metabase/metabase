@@ -85,7 +85,7 @@
                   :rows [[1510617.7 3021235.4]]}
                  (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))))))
 
-(deftest ^:parallel expand-aggregations-perserve-name-test
+(deftest ^:parallel expand-aggregations-preserve-name-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         find-col (fn [query col-name]
                    (->> (lib/aggregable-columns query nil)
