@@ -59,3 +59,6 @@ export const EMBED_FALLBACK_DASHBOARD_ID = 1;
 
 /** If the activity log of the user is completely empty, we fallback to this question. */
 export const EMBED_FALLBACK_QUESTION_ID = 1;
+
+/** How long to wait before saving the embed settings to the user settings. */
+export const PERSIST_EMBED_SETTINGS_DEBOUNCE_MS = 500;
