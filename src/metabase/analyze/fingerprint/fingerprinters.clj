@@ -23,7 +23,7 @@
 (set! *warn-on-reflection* true)
 
 (defn col-wise
-  "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
+  "Apply reducing functions `rfs` coll-wise to a seq of seqs."
   [& rfs]
   (let [rfs (vec rfs)]
     (fn
