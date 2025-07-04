@@ -97,10 +97,12 @@ const cartesianToFunnel = (
     "graph.metrics": metrics = [],
     "graph.dimensions": dimensions = [],
     "card.title": cardTitle,
+    ...otherSettings
   } = settings;
 
   return {
     settings: {
+      ...otherSettings,
       "card.title": cardTitle,
       "funnel.metric": metrics[0],
       "funnel.dimension": dimensions[0],
@@ -121,12 +123,14 @@ const pieToFunnel = (
     "pie.metric": metric,
     "pie.dimension": dimension,
     "card.title": cardTitle,
+    ...otherSettings
   } = settings;
 
   return {
     columns,
     columnValuesMapping,
     settings: {
+      ...otherSettings,
       "card.title": cardTitle,
       "funnel.metric": metric,
       "funnel.dimension": dimension,
