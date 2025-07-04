@@ -1159,7 +1159,7 @@
                                 :source-card (:id (:orders (lib.tu/mock-cards)))}]}
           product-card (:products (lib.tu/mock-cards))
           [orders-id orders-product-id] (lib/join-condition-lhs-columns base-query product-card nil nil)
-          [products-id] (lib/join-condition-rhs-columns base-query product-card orders-product-id nil)
+          [products-id] (lib/join-condition-rhs-columns base-query product-card (lib/ref orders-product-id) nil)
           query (lib/join base-query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))
           [join] (lib/joins query)
           new-clause (lib.join/with-join-alias

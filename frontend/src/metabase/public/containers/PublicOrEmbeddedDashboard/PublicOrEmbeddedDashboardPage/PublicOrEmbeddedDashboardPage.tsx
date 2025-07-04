@@ -1,6 +1,7 @@
 import type { WithRouterProps } from "react-router";
 
 import { DashCardQuestionDownloadButton } from "metabase/dashboard/components/DashCard/DashCardQuestionDownloadButton";
+import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/use-dashboard-location-sync";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
@@ -14,7 +15,7 @@ import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 
 import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView";
-import { usePublicDashboardEndpoints } from "../WithPublicDashboardEndpoints";
+import { usePublicDashboardEndpoints } from "../use-public-dashboard-endpoints";
 
 const PublicOrEmbeddedDashboardPageInner = ({
   location,
@@ -79,6 +80,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
             />
           )
         }
+        dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
       >
         <PublicOrEmbeddedDashboardPageInner {...props} />
       </DashboardContextProvider>

@@ -869,6 +869,35 @@
                          :lib/source-uuid string?}]}
             (lib.fe-util/expression-parts query (second (lib/aggregations query)))))))
 
+(deftest ^:parallel join-condition-clause-test
+  (let [lhs (lib/ref (meta/field-metadata :orders :product-id))
+        rhs (lib/ref (meta/field-metadata :products :id))]
+    (is (=? [:= {} lhs rhs]
+            (lib.fe-util/join-condition-clause := lhs rhs)))))
+
+(deftest ^:parallel join-condition-parts-test
+  (let [lhs (lib/ref (meta/field-metadata :orders :product-id))
+        rhs (lib/ref (meta/field-metadata :products :id))]
+    (is (= {:operator :=, :lhs-expression lhs, :rhs-expression rhs}
+           (lib.fe-util/join-condition-parts (lib/= lhs rhs))))))
+
+(deftest ^:parallel join-condition-lhs-or-rhs-column?-test
+  (let [query             (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        products          (meta/table-metadata :products)
+        lhs-columns       (lib/join-condition-lhs-columns query products nil nil)
+        lhs-order-tax     (m/find-first (comp #{"TAX"} :name) lhs-columns)
+        rhs-columns       (lib/join-condition-rhs-columns query products nil nil)
+        rhs-product-price (m/find-first (comp #{"PRICE"} :name) rhs-columns)]
+    (are [lhs-or-rhs] (true? (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs))
+      (lib/ref lhs-order-tax)
+      (lib/ref rhs-product-price))
+    (are [lhs-or-rhs] (false? (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs))
+      (lib.expression/value 1)
+      (lib/+ lhs-order-tax 1)
+      (lib/+ lhs-order-tax lhs-order-tax)
+      (lib/+ 1 rhs-product-price)
+      (lib/+ rhs-product-price rhs-product-price))))
+
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (m/filter-vals some? (meta/field-metadata :products :created-at))
         date-arg-1 "2023-11-02"

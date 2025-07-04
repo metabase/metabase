@@ -14,6 +14,7 @@ import {
   REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
 
+import { columnsForExpressionMode } from "../mode";
 import { queryWithAggregation, sharedMetadata } from "../test/shared";
 
 import { complete } from "./__support__";
@@ -62,12 +63,17 @@ describe("suggestFields", () => {
         },
       },
     });
-
+    const stageIndex = 0;
+    const expressionIndex = 0;
     const source = suggestFields({
       query,
-      stageIndex: 0,
-      expressionIndex: 0,
-      expressionMode: "expression",
+      stageIndex,
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "expression",
+        expressionIndex,
+      }),
     });
 
     return function (doc: string) {
@@ -176,11 +182,16 @@ describe("suggestFields", () => {
   });
 
   it("should suggest foreign fields", () => {
+    const query = createQuery();
+    const stageIndex = -1;
     const source = suggestFields({
-      query: createQuery(),
-      stageIndex: -1,
-      expressionIndex: undefined,
-      expressionMode: "expression",
+      query,
+      stageIndex,
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "expression",
+      }),
     });
 
     const result = complete(source, "[Use|");
@@ -329,12 +340,15 @@ describe("suggestFields", () => {
       metadata: sharedMetadata,
       query: queryWithJoins,
     });
-
+    const stageIndex = -1;
     const source = suggestFields({
       query,
-      stageIndex: -1,
-      expressionIndex: undefined,
-      expressionMode: "expression",
+      stageIndex,
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "expression",
+      }),
     });
 
     complete(source, "Foo|");
@@ -387,8 +401,11 @@ describe("suggestFields", () => {
     const source = suggestFields({
       query,
       stageIndex: stageIndexAfterNesting,
-      expressionIndex: undefined,
-      expressionMode: "expression",
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex: stageIndexAfterNesting,
+        expressionMode: "expression",
+      }),
     });
 
     const result = complete(source, "T|");
@@ -422,11 +439,17 @@ describe("suggestFields", () => {
   it.each(["expression", "filter"] as const)(
     "should not suggest aggregations when expressionMode = %s",
     async (expressionMode) => {
+      const query = queryWithAggregation;
+      const stageIndex = -1;
+
       const source = suggestFields({
-        query: queryWithAggregation,
-        stageIndex: -1,
-        expressionIndex: undefined,
-        expressionMode,
+        query,
+        stageIndex,
+        availableColumns: columnsForExpressionMode({
+          query,
+          stageIndex,
+          expressionMode,
+        }),
       });
 
       const result = await complete(source, "[Bar aggregat|]");
@@ -438,11 +461,16 @@ describe("suggestFields", () => {
   );
 
   it("should suggest aggregations when expressionMode = aggregation", async () => {
+    const query = queryWithAggregation;
+    const stageIndex = -1;
     const source = suggestFields({
-      query: queryWithAggregation,
-      stageIndex: -1,
-      expressionIndex: undefined,
-      expressionMode: "aggregation",
+      query,
+      stageIndex,
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "aggregation",
+      }),
     });
 
     const result = await complete(source, "[Bar aggregat|]");
@@ -456,11 +484,15 @@ describe("suggestFields", () => {
     "should suggest aggregations when expressionMode = %s in later stages",
     async (expressionMode) => {
       const query = Lib.appendStage(queryWithAggregation);
+      const stageIndex = -1;
       const source = suggestFields({
         query,
-        stageIndex: -1,
-        expressionIndex: undefined,
-        expressionMode,
+        stageIndex,
+        availableColumns: columnsForExpressionMode({
+          query,
+          stageIndex,
+          expressionMode,
+        }),
       });
 
       const result = await complete(source, "[Bar aggregat|]");

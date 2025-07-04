@@ -5,7 +5,6 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
 
 import { formatIdentifier } from "../identifier";
-import { columnsForExpressionMode } from "../mode";
 
 import type { CompletionResult } from "./types";
 import { content, fuzzyMatcher, tokenAtPos } from "./util";
@@ -13,13 +12,15 @@ import { content, fuzzyMatcher, tokenAtPos } from "./util";
 export type Options = {
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex?: number;
-  expressionMode: Lib.ExpressionMode;
+  availableColumns: Lib.ColumnMetadata[];
 };
 
-export function suggestFields(options: Options) {
-  const { query, stageIndex } = options;
-  const columns = columnsForExpressionMode(options).map((column) => {
+export function suggestFields({
+  query,
+  stageIndex,
+  availableColumns,
+}: Options) {
+  const columns = availableColumns.map((column) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, column);
     return {
       type: "field",

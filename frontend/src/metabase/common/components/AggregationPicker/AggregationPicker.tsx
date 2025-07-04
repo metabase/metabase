@@ -169,6 +169,11 @@ export function AggregationPicker({
     allowCustomExpressions,
   ]);
 
+  const availableColumns = useMemo(
+    () => Lib.expressionableColumns(query, stageIndex),
+    [query, stageIndex],
+  );
+
   const checkIsItemSelected = useCallback(
     (item: ListItem) => item.selected,
     [],
@@ -246,6 +251,7 @@ export function AggregationPicker({
       <ExpressionWidget
         query={query}
         stageIndex={stageIndex}
+        availableColumns={availableColumns}
         name={displayInfo?.displayName}
         clause={clause}
         withName

@@ -58,7 +58,6 @@ import {
   setMultipleDashCardAttributes,
   showClickBehaviorSidebar,
   trashDashboardQuestion,
-  undoRemoveCardFromDashboard,
 } from "../actions";
 import { type DashboardContextReturned, useDashboardContext } from "../context";
 import {
@@ -120,7 +119,6 @@ const mapDispatchToProps = {
   markNewCardSeen,
   setMultipleDashCardAttributes,
   setDashCardAttributes,
-  undoRemoveCardFromDashboard,
   replaceCard,
   fetchCardData,
   replaceCardWithVisualization,
@@ -461,15 +459,6 @@ class DashboardGridInner extends Component<
     this.props.removeCardFromDashboard({
       dashcardId: dc.id,
       cardId: dc.card_id,
-    });
-
-    this.props.addUndo({
-      message: this.getIsLastDashboardQuestionDashcard(dc)
-        ? t`Trashed and removed card`
-        : t`Removed card`,
-      undo: true,
-      action: () =>
-        this.props.undoRemoveCardFromDashboard({ dashcardId: dc.id }),
     });
   };
 

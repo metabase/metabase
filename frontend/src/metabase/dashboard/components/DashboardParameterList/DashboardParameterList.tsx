@@ -1,4 +1,5 @@
-import type { ComponentProps } from "react";
+import cx from "classnames";
+import { type ComponentProps, forwardRef } from "react";
 
 import {
   setEditingParameter,
@@ -15,19 +16,28 @@ import type { Parameter } from "metabase-types/api";
 export interface DashboardParameterListProps
   extends Pick<
     ComponentProps<typeof ParametersList>,
-    "widgetsVariant" | "widgetsWithinPortal" | "vertical"
+    "widgetsVariant" | "widgetsWithinPortal" | "vertical" | "hasTestIdProps"
   > {
+  className?: string;
   parameters: Array<Parameter & { value: unknown }>;
   isSortable?: boolean;
 }
 
-export function DashboardParameterList({
-  parameters,
-  isSortable = true,
-  widgetsVariant,
-  widgetsWithinPortal,
-  vertical,
-}: DashboardParameterListProps) {
+export const DashboardParameterList = forwardRef<
+  HTMLDivElement,
+  DashboardParameterListProps
+>(function DashboardParameterList(
+  {
+    className,
+    parameters,
+    isSortable = true,
+    widgetsVariant = "subtle",
+    widgetsWithinPortal,
+    vertical,
+    hasTestIdProps = true,
+  },
+  ref,
+) {
   const dispatch = useDispatch();
 
   const {
@@ -41,7 +51,7 @@ export function DashboardParameterList({
 
   return (
     <ParametersList
-      className={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME}
+      className={cx(DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME, className)}
       parameters={parameters}
       editingParameter={editingParameter}
       hideParameters={hideParameters}
@@ -60,6 +70,8 @@ export function DashboardParameterList({
       widgetsVariant={widgetsVariant}
       widgetsWithinPortal={widgetsWithinPortal}
       vertical={vertical}
+      hasTestIdProps={hasTestIdProps}
+      ref={ref}
     />
   );
-}
+});

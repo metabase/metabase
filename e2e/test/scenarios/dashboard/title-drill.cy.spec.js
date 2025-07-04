@@ -160,7 +160,7 @@ describe("scenarios > dashboard > title drill", () => {
         checkFilterLabelAndValue("Text contains", "bb");
         checkScalarResult("12");
 
-        // Drill through on the quesiton's title
+        // Drill through on the question's title
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("16181").click();
 
@@ -186,7 +186,7 @@ describe("scenarios > dashboard > title drill", () => {
         checkFilterLabelAndValue("Text contains", "bb");
         checkScalarResult("12");
 
-        // Drill through on the quesiton's title
+        // Drill through on the question's title
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("16181").click();
 
@@ -552,7 +552,7 @@ describe("scenarios > dashboard > title drill", () => {
 });
 
 function checkFilterLabelAndValue(label, value) {
-  H.filterWidget().find("legend").invoke("text").should("eq", label);
+  H.filterWidget().findByLabelText(label, { exact: false }).should("exist");
   H.filterWidget().contains(value);
 }
 

@@ -5,7 +5,6 @@ import * as Lib from "metabase-lib";
 
 import { CompileError } from "./errors";
 import { EDITOR_FK_SYMBOLS, getDisplayNameWithSeparator } from "./identifier";
-import { columnsForExpressionMode } from "./mode";
 import type { Node } from "./pratt";
 import type { ExpressionType } from "./types";
 
@@ -19,16 +18,14 @@ type Options = {
   query: Lib.Query;
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
+  availableColumns: Lib.ColumnMetadata[];
 };
 
 export function resolver(options: Options): Resolver {
-  const { query, stageIndex, expressionMode } = options;
+  const { query, stageIndex, expressionMode, availableColumns } = options;
 
   const metrics = _.memoize(() => Lib.availableMetrics(query, stageIndex));
   const segments = _.memoize(() => Lib.availableSegments(query, stageIndex));
-  const columns = _.memoize(() =>
-    columnsForExpressionMode({ query, stageIndex, expressionMode }),
-  );
   const cache = infoCache(options);
 
   return function (type, name, node) {
@@ -36,7 +33,7 @@ export function resolver(options: Options): Resolver {
 
     if (type === "aggregation") {
       // Return metrics
-      const dimension = findByName([...metrics(), ...columns()]);
+      const dimension = findByName([...metrics(), ...availableColumns]);
       if (!dimension) {
         throw new CompileError(t`Unknown Aggregation or Metric: ${name}`, node);
       } else if (!Lib.isMetricMetadata(dimension)) {
@@ -57,7 +54,7 @@ export function resolver(options: Options): Resolver {
       // Return segments and boolean columns
       const dimension = findByName([
         ...segments(),
-        ...columns().filter(Lib.isBoolean),
+        ...availableColumns.filter(Lib.isBoolean),
       ]);
       if (!dimension) {
         throw new CompileError(
@@ -70,7 +67,7 @@ export function resolver(options: Options): Resolver {
 
     // Return columns and, in the case of aggregation expressions, metrics
     const dimension = findByName([
-      ...columns(),
+      ...availableColumns,
       ...(expressionMode === "aggregation" ? metrics() : []),
     ]);
     if (!dimension) {

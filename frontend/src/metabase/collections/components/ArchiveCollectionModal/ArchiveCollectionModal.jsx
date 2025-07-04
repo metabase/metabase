@@ -35,12 +35,10 @@ class ArchiveCollectionModalInner extends Component {
   }
 }
 
-const ArchiveCollectionModal = _.compose(
+export const ArchiveCollectionModal = _.compose(
   connect(null, mapDispatchToProps),
   Collections.load({
     id: (state, props) => Urls.extractCollectionId(props.params.slug),
   }),
   withRouter,
 )(ArchiveCollectionModalInner);
-
-export default ArchiveCollectionModal;
