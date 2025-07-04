@@ -17,12 +17,14 @@ import type {
   Parameter,
 } from "metabase-types/api";
 
+const DASHBOARD_NAME = "Embedding SDK Test Dashboard";
+
 describe("scenarios > embedding-sdk > editable-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
     H.createDashboard({
-      name: "Embedding SDK Test Dashboard",
+      name: DASHBOARD_NAME,
     }).then(({ body: dashboard }) => {
       cy.wrap(dashboard.id).as("dashboardId");
       cy.wrap(dashboard.entity_id).as("dashboardEntityId");
@@ -213,6 +215,14 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
         cy.button("New Question").should("be.visible").click();
 
         cy.log("building the query");
+        H.popover().findByRole("link", { name: "Orders" }).click();
+        cy.button("Visualize").click();
+
+        cy.log("test going back to the dashboard from the visualization");
+        cy.button(`Back to ${DASHBOARD_NAME}`).should("be.visible").click();
+
+        cy.log("create a new question again");
+        cy.button("New Question").should("be.visible").click();
         H.popover().findByRole("link", { name: "Orders" }).click();
         /**
          * We need to visualize before we can save the question.
