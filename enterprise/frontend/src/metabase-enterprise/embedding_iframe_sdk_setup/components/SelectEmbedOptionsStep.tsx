@@ -1,13 +1,12 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { ColorPillPicker } from "metabase/common/components/ColorPicker";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import { Card, Checkbox, Divider, Group, Stack, Text } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
-
-import { DebouncedColorPillPicker } from "./DebouncedColorPillPicker";
 
 export const SelectEmbedOptionsStep = () => {
   const { experience, settings, updateSettings } =
@@ -84,10 +83,9 @@ export const SelectEmbedOptionsStep = () => {
                 {name}
               </Text>
 
-              <DebouncedColorPillPicker
+              <ColorPillPicker
                 initialValue={theme?.colors?.[key] ?? defaultColor}
                 onChange={(color) => updateColor({ [key]: color })}
-                debounceMs={300}
               />
             </Stack>
           ))}

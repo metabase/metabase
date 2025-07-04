@@ -1,4 +1,5 @@
-import { type Ref, forwardRef } from "react";
+import { useDebouncedCallback } from "@mantine/hooks";
+import { type Ref, forwardRef, useState } from "react";
 
 import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Group } from "metabase/ui";
@@ -10,24 +11,49 @@ import ColorPickerContent from "./ColorPickerContent";
 import S from "./ColorPillPicker.module.css";
 
 export interface ColorPillPickerProps extends ColorPickerAttributes {
-  value: string;
+  initialValue: string;
+  debounceMs?: number;
   placeholder?: string;
-  onChange?: (color?: string) => void;
+  onChange: (color?: string) => void;
 }
 
+const COLOR_PICKER_DEBOUNCE_MS = 300;
+
 export const ColorPillPicker = forwardRef(function ColorPillPicker(
-  { value, placeholder, onChange, ...props }: ColorPillPickerProps,
+  {
+    initialValue,
+    placeholder,
+    onChange,
+    debounceMs = COLOR_PICKER_DEBOUNCE_MS,
+    ...props
+  }: ColorPillPickerProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const [previewValue, setPreviewValue] = useState<string>(initialValue);
+
+  const debouncedUpdate = useDebouncedCallback(onChange, debounceMs);
+
   return (
     <TippyPopoverWithTrigger
       disableContentSandbox
       renderTrigger={({ onClick }) => (
         <Group {...props} ref={ref} wrap="nowrap">
-          <ColorPill color={value} onClick={onClick} />
+          <ColorPill color={previewValue} onClick={onClick} />
         </Group>
       )}
-      popoverContent={<ColorPickerContent value={value} onChange={onChange} />}
+      popoverContent={
+        <ColorPickerContent
+          value={previewValue}
+          onChange={(value) => {
+            if (!value) {
+              return;
+            }
+
+            setPreviewValue(value);
+            debouncedUpdate(value);
+          }}
+        />
+      }
       className={S.ColorPillPicker}
     />
   );
