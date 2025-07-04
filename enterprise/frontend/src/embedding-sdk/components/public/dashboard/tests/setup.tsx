@@ -128,6 +128,7 @@ export const setupSdkDashboard = async ({
   const dashboardId = props?.dashboardId || TEST_DASHBOARD_ID;
   const dashboard = createMockDashboard({
     id: dashboardId,
+    name: "Test dashboard",
     dashcards,
     tabs: dashboardTabs,
     parameters: [parameter],
