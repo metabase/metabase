@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
@@ -60,12 +61,23 @@ const TablePreviewBase = (props: Props) => {
 function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
   const datasetQuery = getPreviewQuery(databaseId, tableId, fieldId);
 
-  const { data, refetch, ...rest } = useGetAdhocQueryQuery({
-    ...datasetQuery,
-    _refetchDeps: field,
-  });
-
+  const { data, refetch, ...rest } = useGetAdhocQueryQuery(
+    {
+      ...datasetQuery,
+      ignore_error: true,
+      _refetchDeps: field,
+    },
+    {},
+  );
   const base = { ...rest, error: undefined, rawSeries: undefined };
+
+  if (rest?.status === "rejected") {
+    return {
+      ...base,
+      isError: true,
+      error: t`Sorry, you don’t have permission to see that.`,
+    };
+  }
 
   if (data?.status === "failed") {
     return { ...base, isError: true, error: getErrorMessage(data) };

@@ -656,6 +656,18 @@ describe("scenarios > admin > datamodel", () => {
         TableSection.getFieldNameInput("New tax").should("be.visible");
         TableSection.getField("New tax").should("be.visible");
 
+        cy.log("verify preview");
+        TableSection.clickField("New tax");
+        FieldSection.getPreviewButton().click();
+        PreviewSection.get()
+          .findByText("Sorry, you don’t have permission to see that.")
+          .should("be.visible");
+        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+        PreviewSection.get()
+          .findByText("Sorry, you don’t have permission to see that.")
+          .should("be.visible");
+
+        cy.log("verify viz as normal user");
         cy.signInAsNormalUser();
         H.openOrdersTable();
         H.tableHeaderColumn("New tax").should("be.visible");
