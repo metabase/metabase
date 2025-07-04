@@ -4,12 +4,14 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.test :as met]
    [metabase.app-db.core :as mdb]
+   [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data :as data]
+   [metabase.test.data.bigquery-cloud-sdk :as bigquery-cloud-sdk]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
@@ -222,16 +224,23 @@
                 (t2/update! :model/Database :id (:id child)
                             {:details (assoc (:details child) :destination-database true)})))]
       (mt/with-premium-features #{:database-routing}
-        (mt/dataset routed-data
-          (let [routed (mt/db)]
-            (mt/dataset router-data
-              (let [router (mt/db)]
-                (wire-routing {:parent router :children [routed]})
-                (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
-                                                        :user_attribute "db_name"}]
-                  (met/with-user-attributes! :rasta {"db_name" (:name routed)}
-                    (let [crowberto (mt/with-current-user (mt/user->id :crowberto)
-                                      (mt/rows (mt/process-query (mt/query t))))
-                          rasta (mt/with-current-user (mt/user->id :rasta)
-                                  (mt/rows (mt/process-query (mt/query t))))]
-                      (is (not= crowberto rasta) "rows were identical meaning it did not route"))))))))))))
+        (with-redefs [bigquery-cloud-sdk/test-dataset-id (constantly "metabase_routing_dataset")]
+          (binding [bigquery-cloud-sdk/*use-routing-project* true]
+            (mt/dataset routed-data
+              (let [routed (mt/db)]
+                (binding [bigquery-cloud-sdk/*use-routing-project* false]
+                  (mt/dataset router-data
+                    (let [router (mt/db)]
+                      (wire-routing {:parent router :children [routed]})
+                      (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
+                                                              :user_attribute "db_name"}]
+                        (met/with-user-attributes! :rasta {"db_name" (:name routed)}
+                          (let [crowberto (mt/with-current-user (mt/user->id :crowberto)
+                                            (mt/rows (mt/process-query (mt/query t))))
+                                rasta (mt/with-current-user (mt/user->id :rasta)
+                                        (mt/rows (mt/process-query (mt/query t))))]
+                            (is (not= crowberto rasta) "rows were identical meaning it did not route")
+                            (is (= [[1 "original-foo"] [2 "original-bar"]]
+                                   crowberto))
+                            (is (= [[1 "routed-foo"] [2 "routed-bar"]]
+                                   rasta))))))))))))))))

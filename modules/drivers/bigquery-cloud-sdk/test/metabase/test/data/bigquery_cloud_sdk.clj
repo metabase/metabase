@@ -62,12 +62,16 @@
     database-name
     (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
+(def ^:dynamic *use-routing-project*
+  "Data warehouse JDBC Connection to use for doing CRUD Actions. Bind this to reuse the same Connection/transaction
+  throughout a single bulk Action."
+  false)
+
 (defn- test-db-details []
-  (reduce
-   (fn [acc env-var]
-     (assoc acc env-var (tx/db-test-env-var :bigquery-cloud-sdk env-var)))
-   {}
-   [:project-id :service-account-json]))
+  {:project-id (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
+   :service-account-json (if *use-routing-project*
+                           (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json-routing)
+                           (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json))})
 
 (defn- bigquery
   "Get an instance of a `Bigquery` client."
