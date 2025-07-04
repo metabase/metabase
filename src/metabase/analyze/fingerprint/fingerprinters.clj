@@ -299,9 +299,18 @@
 (defn fingerprint-fields
   "Return a transducer for fingerprinting a resultset with fields `fields`."
   [fields]
-  (apply col-wise (for [field fields]
-                    (fingerprinter
-                     (cond-> field
-                       ;; Try to get a better guestimate of what we're dealing with on first sync
-                       (every? nil? ((juxt :semantic_type :last_analyzed) field))
-                       (assoc :semantic_type (classifiers.name/infer-semantic-type-by-name field)))))))
+  (let [found-name (atom {})]
+    (->>
+     (for [{table-id :table_id :as field} fields]
+       (fingerprinter
+        ;; Try to get a better guestimate of what we're dealing with on first sync
+        (if (every? nil? ((juxt :semantic_type :last_analyzed) field))
+          (let [semantic-type (classifiers.name/infer-semantic-type-by-name field)
+                is-name? (= semantic-type :type/Name)]
+            (if (and is-name? (get @found-name table-id))
+              field
+              (do
+                (swap! found-name update table-id (fn [b] (or b is-name?)))
+                (assoc field :semantic_type semantic-type))))
+          field)))
+     (apply col-wise))))
