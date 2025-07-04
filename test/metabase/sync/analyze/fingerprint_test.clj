@@ -351,3 +351,30 @@
                         :failed-fingerprints 1)
                  (sync.fingerprint/fingerprint-fields-for-db! (mt/db) (constantly nil))))
           (is (= 1 @tables-fingerprinted)))))))
+
+;; todo:
+;; 1- test that on a new table, only 1 name gets type/name
+;; create table test7( id serial, fullName varchar, firstName varchar, lastName varchar );
+;; insert into test7(fullName, firstName, lastName) values
+;;                                                      ('Alice Smith', 'Alice', 'Smith'),
+;;                                                      ('Bob Johnson', 'Bob', 'Johnson');
+;; 2- test that on an existing table with no type/name cols, adding 1, then 2, sets only 1 type/name
+;; 3- test that on an existing table name with 2 type/name cols, they stay unchanged and adding more is a no-op
+
+(deftest single-name-field-per-table-test
+  (testing "On a new table, only 1 field gets type/Name semantic type"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:name "users" :db_id (:id db)}
+                   :model/Field _ {:name "id" :base_type :type/Integer :table_id (:id table)}
+                   :model/Field _ {:name "fullName" :base_type :type/Text :table_id (:id table)}
+                   :model/Field _ {:name "firstName" :base_type :type/Text :table_id (:id table)}
+                   :model/Field _ {:name "lastName" :base_type :type/Text :table_id (:id table)}]
+
+      (sync.fingerprint/fingerprint-table! table)
+
+      (let [name-fields (t2/select :model/Field
+                                   :table_id (:id table)
+                                   :semantic_type :type/Name)]
+        (is (= 1 (count name-fields)))
+        ;; Should be the first name field encountered
+        (is (= "fullName" (:name (first name-fields))))))))
