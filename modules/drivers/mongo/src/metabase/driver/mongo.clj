@@ -234,7 +234,7 @@
 
 (defn- ftree-path->raw-path
   [ftree-path]
-  (str/join "." (remove (partial = :children) ftree-path)))
+  (str/join "." (remove #{:children} ftree-path)))
 
 (defn- ftree-set-type
   "Set type in ftree node.
@@ -261,7 +261,8 @@
     (if (nil? dbfield)
       ftree
       (let [ftree-paths (raw-path->ftree-paths raw-path)
-            [parents-paths [leaf-path]] (split-at (dec (count ftree-paths)) ftree-paths)]
+            parents-paths (butlast ftree-paths)
+            leaf-path (last ftree-paths)
         (recur dbfields* (-> (reduce #(-> %1
                                           (ftree-set-type %2 "object")
                                           (assoc-in (conj %2 :visibility-type) :details-only))
@@ -339,7 +340,7 @@
   "Build ftree from `dbfields`. Ftree is intermediate structure, later transformed for needs
   of [[driver/describe-table]]. For details see the [[ftree->nested-fields]].
 
-  Ftree if of form
+  Ftree is of form
   {:children {'toplevelkey' {:name 'toplevelkey'
                              :database-position <int>
                              :database-type <string>
@@ -370,7 +371,7 @@
             (-> (if (not (contains? ftree* :children))
                   ftree*
                   (-> ftree*
-                      (update :children (comp set (partial map ftree->nested-fields*) vals))
+                      (update :children #(set (map ftree->nested-fields* (vals %))))
                       (set/rename-keys {:children :nested-fields})))
                 (dissoc :index)))]
     (:nested-fields (ftree->nested-fields* ftree))))
