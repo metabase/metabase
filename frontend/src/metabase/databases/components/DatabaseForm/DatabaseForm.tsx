@@ -1,16 +1,15 @@
 import { useFormikContext } from "formik";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
-import Button from "metabase/common/components/Button";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import FormErrorMessage from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import { Form, FormProvider } from "metabase/forms";
+import { FormErrorMessage } from "metabase/forms/components/FormErrorMessage";
+import { FormSubmitButton } from "metabase/forms/components/FormSubmitButton";
 import { useSelector } from "metabase/lib/redux";
-import { Flex } from "metabase/ui";
+import { Button, Flex, Text } from "metabase/ui";
 import type { DatabaseData, Engine } from "metabase-types/api";
 
 import { getEngines } from "../../selectors";
@@ -24,8 +23,6 @@ import DatabaseDetailField from "../DatabaseDetailField";
 import { DatabaseEngineField } from "../DatabaseEngineField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
 import DatabaseNameField from "../DatabaseNameField";
-
-import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
 
 export type EngineFieldState = "default" | "hidden" | "disabled";
 
@@ -50,6 +47,7 @@ interface DatabaseFormProps {
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
   config?: DatabaseFormConfig;
+  hasSampleDatabase?: boolean;
 }
 
 export const DatabaseForm = ({
@@ -212,6 +210,8 @@ const DatabaseFormFooter = ({
   // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup + admin pages only
   const { url: docsUrl } = useDocsUrl("databases/connecting");
 
+  const hasSampleDatabase = useSetting("has-sample-database?");
+
   const className = "database-form-footer";
 
   if (isAdvanced) {
@@ -232,33 +232,49 @@ const DatabaseFormFooter = ({
           )}
 
           <Flex gap="sm">
-            <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+            <Button onClick={onCancel}>{t`Cancel`}</Button>
             <FormSubmitButton
               disabled={!isDirty}
-              title={isNew ? t`Save` : t`Save changes`}
-              primary
+              variant="filled"
+              label={isNew ? t`Save` : t`Save changes`}
             />
           </Flex>
         </Flex>
       </FormFooter>
     );
-  } else if (values.engine) {
+  }
+
+  if (values.engine) {
     return (
       <FormFooter className={className}>
         <FormErrorMessage inline />
-        <Button type="button" onClick={onCancel}>{t`Skip`}</Button>
-        <FormSubmitButton title={t`Connect database`} primary />
+        <Button onClick={onCancel}>{t`Skip`}</Button>
+        <FormSubmitButton variant="filled" label={t`Connect database`} />
       </FormFooter>
     );
-  } else {
+  }
+
+  if (hasSampleDatabase) {
     return (
-      <LinkFooter className={className}>
-        <LinkButton type="button" onClick={onCancel}>
-          {t`I'll add my data later`}
-        </LinkButton>
-      </LinkFooter>
+      <>
+        <Button variant="filled" mb="md" mt="lg" onClick={onCancel}>
+          {t`Continue with sample data`}
+        </Button>
+        <Text fz="sm">
+          {c("{0} is 'Sample Database'").jt`Use our ${(
+            <strong key="sample">{t`Sample Database`}</strong>
+          )} to explore and test the app.`}
+        </Text>
+        <Text fz="sm">{t`Add your own data at any time.`}</Text>
+      </>
     );
   }
+
+  return (
+    <Button variant="subtle" mt="lg" onClick={onCancel}>
+      {t`I'll add my data later`}
+    </Button>
+  );
 };
 
 const getEngine = (engines: Record<string, Engine>, engineKey?: string) => {

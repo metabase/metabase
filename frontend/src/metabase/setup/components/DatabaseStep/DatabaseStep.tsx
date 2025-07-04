@@ -1,10 +1,10 @@
 import { updateIn } from "icepick";
 import { c, t } from "ttag";
 
-import { useToast } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box } from "metabase/ui";
+import { Text } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 import type { InviteInfo } from "metabase-types/store";
 
@@ -43,6 +43,8 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
     dispatch(updateDatabaseEngine(engine));
   };
 
+  const hasSampleDatabase = useSetting("has-sample-database?");
+
   const handleDatabaseSubmit = async (database: DatabaseData) => {
     try {
       await dispatch(submitDatabase(database)).unwrap();
@@ -77,15 +79,17 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
       title={getStepTitle(database, invite, isStepCompleted)}
       label={stepLabel}
     >
-      <Box mt="sm" mb="xl">
-        <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
-        <div>{t`Not ready? Skip and play around with our Sample Database.`}</div>
-      </Box>
+      <Text mt="sm" mb="md">
+        {c("{0} referes to the word '(optional)'")
+          .jt`Are you ready to start exploring your data? Add it below ${(<strong key="optional">{t`(optional)`}</strong>)}.`}
+      </Text>
+
       <DatabaseForm
         initialValues={database}
         onSubmit={handleDatabaseSubmit}
         onEngineChange={handleEngineChange}
         onCancel={handleStepCancel}
+        hasSampleDatabase={hasSampleDatabase}
       />
       {isEmailConfigured && (
         <SetupSection

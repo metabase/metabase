@@ -237,6 +237,7 @@ export const createMockSettings = (
   "example-dashboard-id": 1,
   gsheets: {},
   "humanization-strategy": "simple",
+  "has-sample-database?": true,
   "has-user-setup": true,
   "hide-embed-branding?": true,
   "instance-creation": dayjs().toISOString(),
