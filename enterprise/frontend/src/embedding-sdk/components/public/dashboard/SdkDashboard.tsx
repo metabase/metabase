@@ -3,6 +3,7 @@ import {
   type PropsWithChildren,
   type ReactNode,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -179,6 +180,13 @@ const SdkDashboardInner = ({
     useState<number>();
 
   const dashboard = useSelector(getDashboardComplete);
+  const autoScrollToDashcardId = useMemo(
+    () =>
+      dashboard?.dashcards.find(
+        (dashcard) => dashcard.card_id === newDashboardQuestionId,
+      )?.id,
+    [dashboard?.dashcards, newDashboardQuestionId],
+  );
 
   const errorPage = useSdkSelector(getErrorPage);
   const dispatch = useSdkDispatch();
@@ -247,11 +255,7 @@ const SdkDashboardInner = ({
       setRefetchDashboard={(refetchDashboard) => {
         refetchDashboardRef.current = refetchDashboard;
       }}
-      autoScrollToDashcardId={
-        dashboard?.dashcards.find(
-          (dashcard) => dashcard.card_id === newDashboardQuestionId,
-        )?.id
-      }
+      autoScrollToDashcardId={autoScrollToDashcardId}
     >
       {match(finalRenderMode)
         .with("question", () => (
