@@ -9,7 +9,6 @@ import {
 } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { InteractiveQuestionProvider } from "embedding-sdk/components/private/InteractiveQuestion/context";
@@ -49,6 +48,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   type DashboardContextProps,
   DashboardContextProvider,
+  type DashboardContextProviderHandle,
   useDashboardContext,
 } from "metabase/dashboard/context";
 import {
@@ -174,7 +174,7 @@ const SdkDashboardInner = ({
     : renderModeState;
 
   // Now only used when rerendering the dashboard after creating a new question from the dashboard.
-  const refetchDashboardRef = useRef(_.noop);
+  const dashboardContextProviderRef = useRef<DashboardContextProviderHandle>();
 
   const [newDashboardQuestionId, setNewDashboardQuestionId] =
     useState<number>();
@@ -224,6 +224,7 @@ const SdkDashboardInner = ({
 
   return (
     <DashboardContextProvider
+      ref={dashboardContextProviderRef}
       dashboardId={dashboardId}
       parameterQueryParams={initialParameters}
       navigateToNewCardFromDashboard={
@@ -250,10 +251,6 @@ const SdkDashboardInner = ({
       onAddQuestion={(dashboard) => {
         dispatch(setEditingDashboard(dashboard));
         dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
-      }}
-      // We only want the dashboard view to be rerendered, so the new dashboard questions are loaded after being created.
-      setRefetchDashboard={(refetchDashboard) => {
-        refetchDashboardRef.current = refetchDashboard;
       }}
       autoScrollToDashcardId={autoScrollToDashcardId}
     >
@@ -291,7 +288,7 @@ const SdkDashboardInner = ({
             onCreate={(question) => {
               setNewDashboardQuestionId(question.id);
               setRenderMode("dashboard");
-              refetchDashboardRef.current();
+              dashboardContextProviderRef.current?.refetchDashboard();
             }}
           />
         ))
