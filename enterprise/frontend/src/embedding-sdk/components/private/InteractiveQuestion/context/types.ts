@@ -56,7 +56,7 @@ type InteractiveQuestionConfig = {
    * A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`
    */
   onSave?: (
-    question: MetabaseQuestion | undefined,
+    question: MetabaseQuestion,
     context: { isNewQuestion: boolean },
   ) => void;
 

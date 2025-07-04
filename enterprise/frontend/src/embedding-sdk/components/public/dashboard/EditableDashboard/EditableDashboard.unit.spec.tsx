@@ -96,7 +96,7 @@ describe("EditableDashboard", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should allow to create a new question", async () => {
+  it("should allow to create a new question in addition to adding existing questions", async () => {
     await setup();
     // These endpoints are used in the simple data picker
     setupCollectionItemsEndpoint({
