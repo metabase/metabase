@@ -7,12 +7,12 @@ import {
   useSensor,
 } from "@dnd-kit/core";
 import { useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
-import { useResizeObserver } from "metabase/visualizer/hooks/use-resize-observer";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
 import { getDraggedItem } from "metabase/visualizer/selectors";
 import {
@@ -134,8 +134,6 @@ const VisualizerInner = (props: VisualizerProps) => {
     [dispatch],
   );
 
-  const [containerRef, containerRect] = useResizeObserver<HTMLDivElement>();
-
   const classNames = [
     S.Container,
     isDataSidebarOpen ? S.dataSidebarOpen : undefined,
@@ -157,21 +155,9 @@ const VisualizerInner = (props: VisualizerProps) => {
             : MEASURE_HORIZONTAL_ITEM,
         },
       }}
-      modifiers={[
-        (args) => {
-          const { transform, activeNodeRect } = args;
-
-          return {
-            ...transform,
-            x: transform.x - containerRect.x,
-            y:
-              transform.y - containerRect.y + (activeNodeRect?.height ?? 0) / 2,
-          };
-        },
-      ]}
     >
       {/* main container */}
-      <Box className={classNames} ref={containerRef}>
+      <Box className={classNames}>
         {/* left side bar */}
         <Box className={S.dataSidebar}>
           <DataImporter className={S.dataSidebarContent} />
@@ -197,9 +183,12 @@ const VisualizerInner = (props: VisualizerProps) => {
           <VizSettingsSidebar className={S.settingsSidebarContent} />
         </Box>
 
-        <DragOverlay dropAnimation={null}>
-          {draggedItem && <VisualizerDragOverlay item={draggedItem} />}
-        </DragOverlay>
+        {createPortal(
+          <DragOverlay dropAnimation={null}>
+            {draggedItem && <VisualizerDragOverlay item={draggedItem} />}
+          </DragOverlay>,
+          document.body,
+        )}
       </Box>
     </DndContext>
   );
