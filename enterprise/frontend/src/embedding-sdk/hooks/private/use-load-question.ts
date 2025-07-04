@@ -129,7 +129,14 @@ export function useLoadQuestion({
       setIsQuestionLoading(false);
       return {};
     }
-  }, [dispatch, options, deserializedCard, questionId, sqlParameterKey]);
+  }, [
+    dispatch,
+    options,
+    deserializedCard,
+    questionId,
+    sqlParameterKey,
+    targetDashboardId,
+  ]);
 
   const [runQuestionState, queryQuestion] = useAsyncFn(async () => {
     if (!question) {
