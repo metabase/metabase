@@ -688,6 +688,9 @@
     ;; Does this driver support casting text to floats? (`float()` custom expression function)
     :expressions/float
 
+    ;; Does this driver support returning the current date? (`today()` custom expression function)
+    :expressions/today
+
     ;; Does this driver support "temporal-unit" template tags in native queries?
     :native-temporal-units
 
