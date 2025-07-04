@@ -71,6 +71,7 @@ const PreviewSectionBase = ({
 
       <Flex py="sm" w="100%">
         <SegmentedControl
+          aria-label={t`Preview type`}
           data={data}
           value={previewType}
           w="100%"

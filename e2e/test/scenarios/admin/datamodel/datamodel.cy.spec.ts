@@ -23,7 +23,7 @@ const {
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
-const { FieldSection, TablePicker, TableSection } = H.DataModel;
+const { FieldSection, PreviewSection, TablePicker, TableSection } = H.DataModel;
 
 const CUSTOM_MAPPING_ERROR =
   "You need unrestricted data access on this table to map custom display values.";
@@ -625,6 +625,18 @@ describe("scenarios > admin > datamodel", () => {
         cy.wait("@updateField");
         H.undoToast().should("contain.text", "Display name for Tax updated");
         TableSection.getFieldNameInput("New tax").should("be.visible");
+
+        TableSection.clickField("New tax");
+        FieldSection.getPreviewButton().click();
+
+        PreviewSection.getPreviewTypeInput()
+          .findByDisplayValue("table")
+          .should("be.checked");
+        PreviewSection.get().within(() => {
+          H.assertTableData({ columns: ["New tax"], firstRows: [["2.07"]] });
+        });
+        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+        verifyObjectDetailRow({ rowIndex: 4, label: "New tax", value: "2.07" });
 
         H.openOrdersTable();
         H.tableHeaderColumn("New tax").should("be.visible");
@@ -2291,4 +2303,31 @@ function verifyFieldSectionEmptyState() {
 
 function clickAway() {
   cy.get("body").click(0, 0);
+}
+
+function verifyObjectDetailRow({
+  rowIndex,
+  label,
+  value,
+}: {
+  rowIndex: number;
+  label: string;
+  value: string;
+}) {
+  const labelIndex = rowIndex * 2;
+  const valueIndex = labelIndex + 1;
+
+  cy.findAllByTestId("object-details-table-cell").should((elements) => {
+    const index = [...elements].findIndex(
+      (element) => element.textContent?.trim() === label,
+    );
+    expect(index).to.eq(labelIndex);
+  });
+
+  cy.findAllByTestId("object-details-table-cell").should((elements) => {
+    const index = [...elements].findIndex(
+      (element) => element.textContent?.trim() === value,
+    );
+    expect(index).to.eq(valueIndex);
+  });
 }

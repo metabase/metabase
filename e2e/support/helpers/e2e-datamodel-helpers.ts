@@ -35,6 +35,7 @@ export const DataModel = {
     get: getFieldSection,
     getNameInput: getFieldNameInput,
     getDescriptionInput: getFieldDescriptionInput,
+    getPreviewButton: getFieldPreviewButton,
     getFieldValuesButton: getFieldValuesButton,
     getDataType: getFieldDataType,
     getCoercionToggle: getFieldCoercionToggle,
@@ -50,6 +51,10 @@ export const DataModel = {
     getStyleInput: getFieldStyleInput,
     getPrefixInput: getFieldPrefixInput,
     getSuffixInput: getFieldSuffixInput,
+  },
+  PreviewSection: {
+    get: getPreviewSection,
+    getPreviewTypeInput: getPreviewTabsInput,
   },
 };
 
@@ -247,6 +252,10 @@ function getFieldDescriptionInput() {
   );
 }
 
+function getFieldPreviewButton() {
+  return getFieldSection().button(/Preview/);
+}
+
 function getFieldValuesButton() {
   return getFieldSection().button(/Field values/);
 }
@@ -307,4 +316,14 @@ function getFieldPrefixInput() {
 
 function getFieldSuffixInput() {
   return getFieldSection().findByTestId("suffix");
+}
+
+/** preview section helpers */
+
+function getPreviewSection() {
+  return cy.findByTestId("preview-section");
+}
+
+function getPreviewTabsInput() {
+  return getPreviewSection().findByLabelText("Preview type");
 }

@@ -498,6 +498,11 @@ export function segmentEditorPopover() {
   return popover({ testId: "segment-popover" });
 }
 
+/**
+ * @param {Object} params
+ * @param {string[]} params.columns
+ * @param {string[][]} [params.firstRows=[]]
+ */
 export function assertTableData({ columns, firstRows = [] }) {
   tableInteractive()
     .findAllByTestId("header-cell")
