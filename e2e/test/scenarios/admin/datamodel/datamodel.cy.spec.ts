@@ -626,18 +626,13 @@ describe("scenarios > admin > datamodel", () => {
         H.undoToast().should("contain.text", "Display name for Tax updated");
         TableSection.getFieldNameInput("New tax").should("be.visible");
 
+        cy.log("verify preview");
         TableSection.clickField("New tax");
         FieldSection.getPreviewButton().click();
+        verifyTablePreview({ column: "New tax", values: ["2.07"] });
+        verifyObjectDetailPreview({ index: 4, row: ["New tax", "2.07"] });
 
-        PreviewSection.getPreviewTypeInput()
-          .findByDisplayValue("table")
-          .should("be.checked");
-        PreviewSection.get().within(() => {
-          H.assertTableData({ columns: ["New tax"], firstRows: [["2.07"]] });
-        });
-        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
-        verifyObjectDetailRow({ rowIndex: 4, label: "New tax", value: "2.07" });
-
+        cy.log("verify viz");
         H.openOrdersTable();
         H.tableHeaderColumn("New tax").should("be.visible");
         H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
@@ -2305,17 +2300,34 @@ function clickAway() {
   cy.get("body").click(0, 0);
 }
 
-function verifyObjectDetailRow({
-  rowIndex,
-  label,
-  value,
+function verifyTablePreview({
+  column,
+  values,
 }: {
-  rowIndex: number;
-  label: string;
-  value: string;
+  column: string;
+  values: string[];
 }) {
-  const labelIndex = rowIndex * 2;
+  PreviewSection.getPreviewTypeInput().findByText("Table").click();
+  PreviewSection.get().within(() => {
+    H.assertTableData({
+      columns: [column],
+      firstRows: values.map((value) => [value]),
+    });
+  });
+}
+
+function verifyObjectDetailPreview({
+  index,
+  row,
+}: {
+  index: number;
+  row: [string, string];
+}) {
+  const [label, value] = row;
+  const labelIndex = index * 2;
   const valueIndex = labelIndex + 1;
+
+  PreviewSection.getPreviewTypeInput().findByText("Detail").click();
 
   cy.findAllByTestId("object-details-table-cell").should((elements) => {
     const index = [...elements].findIndex(
