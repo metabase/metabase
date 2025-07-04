@@ -1,4 +1,8 @@
-import { getEmbedSidebar, navigateToEntitySelectionStep } from "./helpers";
+import {
+  codeBlock,
+  getEmbedSidebar,
+  navigateToEntitySelectionStep,
+} from "./helpers";
 
 const { H } = cy;
 
@@ -232,5 +236,3 @@ const navigateToEmbedOptionsStep = ({
     cy.findByText("Next").click(); // Embed options step
   });
 };
-
-const codeBlock = () => cy.get(".cm-content");
