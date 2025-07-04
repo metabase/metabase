@@ -1681,6 +1681,18 @@ describe("scenarios > admin > datamodel", () => {
           H.undoToast().should("contain.text", "Visibility for Tax updated");
           FieldSection.getVisibilityInput().should("have.value", "Everywhere");
 
+          cy.log("verify preview");
+          TableSection.clickField("Tax");
+          FieldSection.getPreviewButton().click();
+          verifyTablePreview({
+            column: "Tax",
+            values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
+          });
+          verifyObjectDetailPreview({
+            index: 4,
+            row: ["Tax", "2.07"],
+          });
+
           cy.log("table viz");
           H.openOrdersTable();
           H.tableHeaderColumn("Total").should("be.visible");
@@ -1713,6 +1725,18 @@ describe("scenarios > admin > datamodel", () => {
             "have.value",
             "Do not include",
           );
+
+          cy.log("verify preview");
+          TableSection.clickField("Tax");
+          FieldSection.getPreviewButton().click();
+
+          // TODO: assert table preview shows empty state
+          // https://linear.app/metabase/issue/SEM-433/empty-table-preview-of-columns-with-hidden-visibility
+          // Currently works incorrectly because of metabase#60487
+
+          PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+          cy.wait("@dataset");
+          PreviewSection.get().findByText("Tax").should("not.exist");
 
           cy.log("table viz");
           H.openOrdersTable();
@@ -1748,6 +1772,19 @@ describe("scenarios > admin > datamodel", () => {
             "have.value",
             "Only in detail views",
           );
+
+          cy.log("verify preview");
+          TableSection.clickField("Tax");
+          FieldSection.getPreviewButton().click();
+          cy.wait("@dataset");
+          // TODO: https://linear.app/metabase/issue/SEM-433/empty-table-preview-of-columns-with-hidden-visibility
+          PreviewSection.get()
+            .findByText("Every field is hidden right now")
+            .should("be.visible");
+          verifyObjectDetailPreview({
+            index: 4,
+            row: ["Tax", "2.07"],
+          });
 
           cy.log("table viz");
           H.openOrdersTable();
