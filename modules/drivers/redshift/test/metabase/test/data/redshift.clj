@@ -61,13 +61,34 @@
   [_ _]
   (throw (UnsupportedOperationException. "Redshift does not have a TIME data type.")))
 
+(comment
+
+  (mt/test-driver :redshift
+    (let [schema-name "routing_schema"]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver/*driver*
+       (sql-jdbc.conn/connection-details->spec driver/*driver* (:details (mt/db)))
+       {:write? true}
+       (fn [conn]
+         (delete-old-schemas! conn)
+         (with-open [stmt (.createStatement conn)]
+           (doseq [^String sql [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name)
+                                (format "CREATE SCHEMA \"%s\";"  schema-name)]]
+             (log/info (u/format-color 'blue "[redshift] %s" sql))
+             (.execute stmt sql)))))))
+
+  (tx/dbdef->connection-details :redshift {})
+
+  (tap> 1))
+
 (defn unique-session-schema []
-  (str (sql.tu.unique-prefix/unique-prefix) "schema"))
+  "routing_schema"
+  #_(str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
 (def db-connection-details
   (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
           :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db                      (tx/db-test-env-var-or-throw :redshift :db)
+          :db                      "massive" #_(tx/db-test-env-var-or-throw :redshift :db)
           :user                    (tx/db-test-env-var-or-throw :redshift :user)
           :password                (tx/db-test-env-var-or-throw :redshift :password)
           :schema-filters-type     "inclusion"
