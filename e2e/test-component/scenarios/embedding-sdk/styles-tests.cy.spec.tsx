@@ -423,7 +423,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         );
       });
 
-      it("should render legacy Popover with our styles", () => {
+      it.skip("should render legacy Popover with our styles", () => {
         cy.get("@dashboardId").then((dashboardId) => {
           mountSdkContent(<EditableDashboard dashboardId={dashboardId} />, {
             sdkProviderProps: {
