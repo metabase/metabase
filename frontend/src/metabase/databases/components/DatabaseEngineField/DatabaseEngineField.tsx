@@ -8,7 +8,7 @@ import { getEngineOptions } from "../../utils/engine";
 import DatabaseEngineSelect from "./DatabaseEngineSelect";
 import DatabaseEngineWidget from "./DatabaseEngineWidget";
 
-export interface DatabaseEngineFieldProps {
+interface DatabaseEngineFieldProps {
   engineKey: string | undefined;
   engines: Record<string, Engine>;
   isHosted: boolean;
@@ -17,7 +17,7 @@ export interface DatabaseEngineFieldProps {
   onChange: (engine: string | undefined) => void;
 }
 
-const DatabaseEngineField = ({
+export const DatabaseEngineField = ({
   engineKey,
   engines,
   isHosted,
@@ -46,6 +46,3 @@ const DatabaseEngineField = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseEngineField;
