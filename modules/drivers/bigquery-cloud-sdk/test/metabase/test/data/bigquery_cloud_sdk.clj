@@ -474,6 +474,7 @@
   (apply execute! (sql.tx/drop-view-sql driver database view-name options)))
 
 (comment
+  "REPL utilities for static datasets"
   (setup-tracking-dataset!)
   (destroy-dataset! "metabase_test_tracking")
   (destroy-dataset! (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
