@@ -115,7 +115,8 @@
    [:object [:fn #(t2/instance-of? :model/Database %)]]
    [:previous-object {:optional true} [:fn #(t2/instance-of? :model/Database %)]]
    [:details {:optional true} :map]
-   [:user-id pos-int?]])
+   [:user-id pos-int?]
+   [:details-changed? {:optional true} [:maybe :boolean]]])
 
 (mr/def :event/database-create ::database)
 (mr/def :event/database-update ::database)

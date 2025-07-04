@@ -1245,3 +1245,40 @@
                (fn [^java.sql.Connection conn]
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                              driver/*driver* conn schema table-name))))))))))))
+
+(deftest healthcheck-after-private-key-update-test
+  (testing "healthcheck after updating with a new private key should work correctly"
+    (mt/test-driver :snowflake
+      (let [priv-key->base64 (fn [pk-var]
+                               (-> (format-env-key (tx/db-test-env-var-or-throw :snowflake pk-var))
+                                   u/string-to-bytes
+                                   mt/bytes->base64-data-uri))
+            rsa-details (merge (dissoc (tx/dbdef->connection-details :snowflake nil nil) :password)
+                               {:db (tx/db-test-env-var-or-throw :snowflake :db)
+                                :user (tx/db-test-env-var-or-throw :snowflake :pk-user)
+                                :private-key-options "uploaded"
+                                :private-key-value (priv-key->base64 :pk-private-key)
+                                :use-password false})
+            new-rsa-details (assoc rsa-details :private-key-value (priv-key->base64 :pk-private-key-2))
+            normal-details (merge (tx/dbdef->connection-details :snowflake nil nil)
+                                  {:db (tx/db-test-env-var-or-throw :snowflake :db)})
+            set-user-public-key (fn [pub-key-var]
+                                  (let [spec (sql-jdbc.conn/connection-details->spec :snowflake normal-details)]
+                                    (jdbc/execute! spec [(format "ALTER USER %s SET RSA_PUBLIC_KEY = '%s'"
+                                                                 (tx/db-test-env-var-or-throw :snowflake :pk-user)
+                                                                 (tx/db-test-env-var-or-throw :snowflake pub-key-var))])))]
+        (mt/with-temp [:model/Database db {:engine :snowflake :details rsa-details}]
+          ;; assert we can connect to the db with the original rsa details
+          (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" (:id db) "/healthcheck"))))
+          ;; update the snowflake rsa user to use the new public key
+          (set-user-public-key :pk-public-key-2)
+          ;; assert we can no longer connect with the original rsa details
+          (let [resp (mt/user-http-request :crowberto :get 200 (str "database/" (:id db) "/healthcheck"))]
+            (is (= "error" (:status resp)))
+            (is (str/starts-with? (:message resp) "JWT token is invalid.")))
+          ;; update the database details to use the new rsa details
+          (mt/user-http-request :crowberto :put 200 (str "database/" (:id db)) {:details new-rsa-details})
+          ;; assert we can connect to the db with the new rsa details
+          (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" (:id db) "/healthcheck"))))
+          ;; reset the snowflake rsa user to use the original public key
+          (set-user-public-key :pk-public-key))))))
