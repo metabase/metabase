@@ -34,6 +34,7 @@ describe("scenarios > admin > datamodel", () => {
     cy.signInAsAdmin();
 
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
+    cy.intercept("POST", "/api/dataset*").as("dataset");
     cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
       "updateField",
     );
@@ -629,7 +630,10 @@ describe("scenarios > admin > datamodel", () => {
         cy.log("verify preview");
         TableSection.clickField("New tax");
         FieldSection.getPreviewButton().click();
-        verifyTablePreview({ column: "New tax", values: ["2.07"] });
+        verifyTablePreview({
+          column: "New tax",
+          values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
+        });
         verifyObjectDetailPreview({ index: 4, row: ["New tax", "2.07"] });
 
         cy.log("verify viz");
@@ -659,10 +663,12 @@ describe("scenarios > admin > datamodel", () => {
         cy.log("verify preview");
         TableSection.clickField("New tax");
         FieldSection.getPreviewButton().click();
+        cy.wait("@dataset");
         PreviewSection.get()
           .findByText("Sorry, you don’t have permission to see that.")
           .should("be.visible");
         PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+        cy.wait("@dataset");
         PreviewSection.get()
           .findByText("Sorry, you don’t have permission to see that.")
           .should("be.visible");
@@ -688,11 +694,20 @@ describe("scenarios > admin > datamodel", () => {
           .type("New description")
           .blur();
         cy.wait("@updateField");
-        H.undoToast().should("contain.text", "Field description updated");
+        H.undoToast().should("contain.text", "Description for Total updated");
         TableSection.getFieldDescriptionInput("Total").should(
           "have.value",
           "New description",
         );
+
+        cy.log("verify preview");
+        TableSection.clickField("Total");
+        FieldSection.getPreviewButton().click();
+        verifyTablePreview({
+          column: "Total",
+          description: "New description",
+          values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
+        });
 
         cy.visit(
           `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
@@ -712,8 +727,18 @@ describe("scenarios > admin > datamodel", () => {
 
         TableSection.getFieldDescriptionInput("Total").clear().blur();
         cy.wait("@updateField");
-        H.undoToast().should("contain.text", "Field description updated");
+        H.undoToast().should("contain.text", "Description for Total updated");
         TableSection.getFieldDescriptionInput("Total").should("have.value", "");
+
+        cy.log("verify preview");
+        TableSection.clickField("Total");
+        FieldSection.getPreviewButton().click();
+        verifyTablePreview({
+          column: "Total",
+          values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
+        });
+        PreviewSection.get().findByTestId("header-cell").realHover();
+        H.hovercard().should("not.contain.text", "The total billed amount.");
 
         cy.visit(
           `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
@@ -978,6 +1003,16 @@ describe("scenarios > admin > datamodel", () => {
         H.undoToast().should("contain.text", "Display name for Tax updated");
         TableSection.getFieldNameInput("New tax").should("be.visible");
 
+        cy.log("verify preview");
+        TableSection.clickField("New tax");
+        FieldSection.getPreviewButton().click();
+        verifyTablePreview({
+          column: "New tax",
+          values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
+        });
+        verifyObjectDetailPreview({ index: 4, row: ["New tax", "2.07"] });
+
+        cy.log("verify viz");
         H.openOrdersTable();
         H.tableHeaderColumn("New tax").should("be.visible");
         H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
@@ -1004,6 +1039,20 @@ describe("scenarios > admin > datamodel", () => {
           .scrollIntoView()
           .should("be.visible");
 
+        cy.log("verify preview");
+        TableSection.clickField("New total");
+        FieldSection.getPreviewButton().click();
+        cy.wait("@dataset");
+        PreviewSection.get()
+          .findByText("Sorry, you don’t have permission to see that.")
+          .should("be.visible");
+        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+        cy.wait("@dataset");
+        PreviewSection.get()
+          .findByText("Sorry, you don’t have permission to see that.")
+          .should("be.visible");
+
+        cy.log("verify viz as normal user");
         cy.signInAsNormalUser();
         H.openOrdersTable();
         H.tableHeaderColumn("New total").should("be.visible");
@@ -1025,11 +1074,20 @@ describe("scenarios > admin > datamodel", () => {
           .type("New description")
           .blur();
         cy.wait("@updateField");
-        H.undoToast().should("contain.text", "Field description updated");
+        H.undoToast().should("contain.text", "Description for Total updated");
         TableSection.getFieldDescriptionInput("Total").should(
           "have.value",
           "New description",
         );
+
+        cy.log("verify preview");
+        TableSection.clickField("Total");
+        FieldSection.getPreviewButton().click();
+        verifyTablePreview({
+          column: "Total",
+          description: "New description",
+          values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
+        });
 
         cy.visit(
           `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
@@ -1050,8 +1108,18 @@ describe("scenarios > admin > datamodel", () => {
 
         FieldSection.getDescriptionInput().clear().blur();
         cy.wait("@updateField");
-        H.undoToast().should("contain.text", "Field description updated");
+        H.undoToast().should("contain.text", "Description for Total updated");
         TableSection.getFieldDescriptionInput("Total").should("have.value", "");
+
+        cy.log("verify preview");
+        TableSection.clickField("Total");
+        FieldSection.getPreviewButton().click();
+        verifyTablePreview({
+          column: "Total",
+          values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
+        });
+        PreviewSection.get().findByTestId("header-cell").realHover();
+        H.hovercard().should("not.contain.text", "The total billed amount.");
 
         cy.visit(
           `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
@@ -1080,6 +1148,18 @@ describe("scenarios > admin > datamodel", () => {
           "Display name for Product ID updated",
         );
 
+        cy.log("verify preview");
+        FieldSection.getPreviewButton().click();
+        verifyTablePreview({
+          column: "Remapped Product ID",
+          values: ["14", "123", "105", "94", "132"],
+        });
+        verifyObjectDetailPreview({
+          index: 2,
+          row: ["Remapped Product ID", "14"],
+        });
+
+        cy.log("verify viz");
         H.openOrdersTable({ limit: 5 });
         H.tableHeaderColumn("Remapped Product ID").should("be.visible");
       });
@@ -2314,18 +2394,30 @@ function clickAway() {
 
 function verifyTablePreview({
   column,
+  description,
   values,
 }: {
   column: string;
+  description?: string;
   values: string[];
 }) {
   PreviewSection.getPreviewTypeInput().findByText("Table").click();
+  cy.wait("@dataset");
+
   PreviewSection.get().within(() => {
     H.assertTableData({
       columns: [column],
       firstRows: values.map((value) => [value]),
     });
+
+    if (description != null) {
+      cy.findByTestId("header-cell").realHover();
+    }
   });
+
+  if (description != null) {
+    H.hovercard().should("contain.text", description);
+  }
 }
 
 function verifyObjectDetailPreview({
@@ -2340,6 +2432,7 @@ function verifyObjectDetailPreview({
   const valueIndex = labelIndex + 1;
 
   PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+  cy.wait("@dataset");
 
   cy.findAllByTestId("object-details-table-cell").should((elements) => {
     const index = [...elements].findIndex(

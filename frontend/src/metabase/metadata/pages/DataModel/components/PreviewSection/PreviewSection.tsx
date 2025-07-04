@@ -11,6 +11,7 @@ import {
   SegmentedControl,
   Text,
 } from "metabase/ui";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatabaseId,
   Field,
@@ -50,6 +51,7 @@ const PreviewSectionBase = ({
   onPreviewTypeChange,
 }: Props) => {
   const data = useMemo(() => getPreviewTypeData(), []);
+  const pkFields = table.fields?.filter((field) => isPK(field)) ?? [];
 
   return (
     <Card
@@ -85,6 +87,7 @@ const PreviewSectionBase = ({
             databaseId={databaseId}
             field={field}
             fieldId={fieldId}
+            pkFields={pkFields}
             tableId={tableId}
           />
         )}
