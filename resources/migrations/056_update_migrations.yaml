@@ -377,41 +377,6 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-07-03T16:04:00
       author: qnkhuat
-      comment: Add composite index on app_publishing.app_id and active
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: app_publishing
-        - not:
-            - indexExists:
-                tableName: app_publishing
-                indexName: idx_app_publishing_app_id_active
-      changes:
-        - createIndex:
-            tableName: app_publishing
-            indexName: idx_app_publishing_app_id_active
-            columns:
-              - column:
-                  name: app_id
-              - column:
-                  name: active
-      rollback:
-        # MySQL requires that a foreign key constraint always has a supporting index. When the composite index (app_id, active)
-        # is dropped, we must first create a single-column index on app_id so the foreign key constraint (fk_app_publishing_app_id)
-        # remains valid. Otherwise, MySQL will throw an error when dropping the composite index because it is needed for the FK.
-        - createIndex:
-            tableName: app_publishing
-            indexName: idx_app_publishing_app_id_fk
-            columns:
-              - column:
-                  name: app_id
-        - dropIndex:
-            tableName: app_publishing
-            indexName: idx_app_publishing_app_id_active
-
-  - changeSet:
-      id: v56.2025-07-03T16:05:00
-      author: qnkhuat
       comment: Add index on app_publishing.app_definition_id
       preConditions:
         - onFail: MARK_RAN
