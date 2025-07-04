@@ -12,6 +12,7 @@ import { useUnmount } from "react-use";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
+import { useResizeObserver } from "metabase/visualizer/hooks/use-resize-observer";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
 import { getDraggedItem } from "metabase/visualizer/selectors";
 import {
@@ -133,6 +134,8 @@ const VisualizerInner = (props: VisualizerProps) => {
     [dispatch],
   );
 
+  const [containerRef, containerRect] = useResizeObserver<HTMLDivElement>();
+
   const classNames = [
     S.Container,
     isDataSidebarOpen ? S.dataSidebarOpen : undefined,
@@ -154,9 +157,21 @@ const VisualizerInner = (props: VisualizerProps) => {
             : MEASURE_HORIZONTAL_ITEM,
         },
       }}
+      modifiers={[
+        (args) => {
+          const { transform, activeNodeRect } = args;
+
+          return {
+            ...transform,
+            x: transform.x - containerRect.x,
+            y:
+              transform.y - containerRect.y + (activeNodeRect?.height ?? 0) / 2,
+          };
+        },
+      ]}
     >
       {/* main container */}
-      <Box className={classNames}>
+      <Box className={classNames} ref={containerRef}>
         {/* left side bar */}
         <Box className={S.dataSidebar}>
           <DataImporter className={S.dataSidebarContent} />
