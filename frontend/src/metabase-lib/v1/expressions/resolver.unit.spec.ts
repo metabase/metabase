@@ -1,5 +1,6 @@
 import * as Lib from "metabase-lib";
 
+import { columnsForExpressionMode } from "./mode";
 import { resolver as makeResolver } from "./resolver";
 import {
   expressions,
@@ -261,6 +262,11 @@ describe("resolver", () => {
           query,
           stageIndex,
           expressionMode,
+          availableColumns: columnsForExpressionMode({
+            query,
+            stageIndex,
+            expressionMode,
+          }),
         });
 
         it.each(["number", "datetime", "string", "boolean"] as const)(
@@ -549,6 +555,11 @@ describe("resolver", () => {
       query,
       stageIndex,
       expressionMode: "expression",
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "expression",
+      }),
     });
 
     describe("type = boolean", () => {

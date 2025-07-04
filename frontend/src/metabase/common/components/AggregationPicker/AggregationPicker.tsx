@@ -170,8 +170,8 @@ export function AggregationPicker({
   ]);
 
   const availableColumns = useMemo(
-    () => Lib.expressionableColumns(query, stageIndex),
-    [query, stageIndex],
+    () => Lib.aggregableColumns(query, stageIndex, clauseIndex),
+    [query, stageIndex, clauseIndex],
   );
 
   const checkIsItemSelected = useCallback(
