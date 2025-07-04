@@ -20,6 +20,7 @@ import * as Lib from "metabase-lib";
 import {
   type DefinedClauseName,
   clausesForMode,
+  getClauseDefinition,
 } from "metabase-lib/v1/expressions";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
@@ -233,9 +234,19 @@ export function QueryColumnPicker({
     ],
   );
 
-  const handleSearchTextChange = useCallback((searchText: string) => {
-    setIsSearching(searchText !== "");
-  }, []);
+  const handleSearchTextChange = useCallback(
+    (searchText: string) => {
+      setIsSearching(searchText !== "");
+      if (searchText.trim().endsWith("(")) {
+        const name = searchText.trim().slice(0, -1);
+        const clause = getClauseDefinition(name);
+        if (clause) {
+          onSelectExpression?.(clause.name);
+        }
+      }
+    },
+    [onSelectExpression],
+  );
 
   const renderItemExtra = useCallback(
     (item: Item) => {
