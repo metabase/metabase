@@ -38,7 +38,11 @@ select
     end as schedule_day,
     case
         when REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1) = '*' then null
-        else cast(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1) as integer)
+        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1), '^[0-9]+$') then
+            cast(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1) as integer)
+        when REGEXP_LIKE(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1), '^[0-9]+/[0-9]+$') then
+            cast(REGEXP_SUBSTR(REGEXP_SUBSTR(ns.cron_schedule, '^[^ ]+ [^ ]+ ([^ ]+)', 1, 1, '', 1), '^([0-9]+)/[0-9]+$', 1, 1, '', 1) as integer)
+        else null
     end as schedule_hour,
     not n.active as archived,
     nh.channel_type as recipient_type,

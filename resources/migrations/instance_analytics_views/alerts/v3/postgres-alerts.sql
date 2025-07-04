@@ -41,7 +41,9 @@ schedule_info as (
         end as schedule_day,
         case
             when hours = '*' then null
-            else cast(hours as integer)
+            when hours ~ '^\d+$' then cast(hours as integer)
+            when hours ~ '^(\d+)/\d+$' then cast(substring(hours from '^(\d+)/\d+$') as integer)
+            else null
         end as schedule_hour
     from parsed_cron
 ),
