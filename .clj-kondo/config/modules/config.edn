@@ -371,12 +371,6 @@
    :api  #{metabase.core.initialization-status}
    :uses :any}
 
-  data-apps
-  {:team "Workflows"
-   :api  #{metabase.data-apps.core}
-   :uses #{models
-           util}}
-
   dashboards
   {:team "DashViz"
    :api  #{metabase.dashboards.api
@@ -413,6 +407,12 @@
            util
            warehouse-schema
            xrays}}
+
+  data-apps
+  {:team "Workflows"
+   :api  #{metabase.data-apps.core}
+   :uses #{models
+           util}}
 
   database-routing
   {:team "Admin Webapp"
