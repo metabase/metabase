@@ -40,6 +40,7 @@ type ParameterWidgetProps = PropsWithChildren<
       variant?: "default" | "subtle";
       withinPortal?: boolean;
       fullWidth?: boolean;
+      hasTestId?: boolean;
     } & Pick<DashboardFullscreenControls, "isFullscreen">
   >
 >;
@@ -64,6 +65,7 @@ export const ParameterWidget = ({
   variant = "default",
   withinPortal,
   fullWidth,
+  hasTestId = true,
 }: ParameterWidgetProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const isEditingParameter = editingParameter?.id === parameter.id;
@@ -94,6 +96,7 @@ export const ParameterWidget = ({
           onClick={() =>
             setEditingParameter?.(isEditingParameter ? null : parameter.id)
           }
+          data-testid={hasTestId ? "editing-parameter-widget" : undefined}
         >
           <div className={CS.mr1} onClick={(e) => e.stopPropagation()}>
             {dragHandle}
@@ -108,7 +111,7 @@ export const ParameterWidget = ({
   if (variant === "subtle") {
     return (
       <Flex
-        data-testid="parameter-widget"
+        data-testid={hasTestId ? "parameter-widget" : undefined}
         fz={isFullscreen ? "md" : undefined}
         align="center"
         className={cx(className, S.SubtleParameterWidget, {
@@ -144,7 +147,10 @@ export const ParameterWidget = ({
   }
 
   return (
-    <Box fz={isFullscreen ? "md" : undefined} data-testid="parameter-widget">
+    <Box
+      fz={isFullscreen ? "md" : undefined}
+      data-testid={hasTestId ? "parameter-widget" : undefined}
+    >
       <FieldSet
         className={cx(
           className,

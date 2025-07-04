@@ -14,7 +14,7 @@ type Options = {
   expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex: number | undefined;
+  availableColumns: Lib.ColumnMetadata[];
   metadata: Metadata;
   extensions?: Extension[];
 };
@@ -37,7 +37,7 @@ export function useExtensions(options: Options): Extension[] {
     expressionMode,
     query,
     stageIndex,
-    expressionIndex,
+    availableColumns,
     metadata,
     extensions: extra = [],
   } = options;
@@ -48,7 +48,7 @@ export function useExtensions(options: Options): Extension[] {
         expressionMode,
         query,
         stageIndex,
-        expressionIndex,
+        availableColumns,
         metadata,
       }),
       expander(),
@@ -56,7 +56,7 @@ export function useExtensions(options: Options): Extension[] {
         query,
         stageIndex,
         expressionMode,
-        expressionIndex,
+        availableColumns,
         metadata,
       }),
       tooltips({
@@ -72,7 +72,7 @@ export function useExtensions(options: Options): Extension[] {
     expressionMode,
     query,
     stageIndex,
-    expressionIndex,
+    availableColumns,
     metadata,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,

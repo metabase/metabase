@@ -9,7 +9,7 @@ export type SuggestOptions = {
   stageIndex: number;
   metadata: Metadata;
   expressionMode: Lib.ExpressionMode;
-  expressionIndex: number | undefined;
+  availableColumns: Lib.ColumnMetadata[];
 };
 
 import { suggestAggregations } from "./aggregations";

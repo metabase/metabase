@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 
 import {
   AccordionList,
-  type Section,
+  type Section as BaseSection,
 } from "metabase/common/components/AccordionList";
 import {
   HoverParent,
@@ -22,6 +22,8 @@ export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
 };
 
+export type QueryColumnPickerSection = BaseSection<ColumnListItem>;
+
 export interface QueryColumnPickerProps {
   className?: string;
   query: Lib.Query;
@@ -34,7 +36,9 @@ export interface QueryColumnPickerProps {
   maxHeight?: number;
   color?: ColorName;
   checkIsColumnSelected: (item: ColumnListItem) => boolean;
+  extraSections?: QueryColumnPickerSection[];
   onSelect: (column: Lib.ColumnMetadata) => void;
+  onSelectSection?: (section: QueryColumnPickerSection) => void;
   onClose?: () => void;
   "data-testid"?: string;
   width?: string;
@@ -48,6 +52,7 @@ export function QueryColumnPicker({
   query,
   stageIndex,
   columnGroups,
+  extraSections,
   hasBinning = false,
   hasTemporalBucketing = false,
   withDefaultBucketing = true,
@@ -55,6 +60,7 @@ export function QueryColumnPicker({
   color: colorProp = "brand",
   checkIsColumnSelected,
   onSelect,
+  onSelectSection,
   onClose,
   width,
   "data-testid": dataTestId,
@@ -62,24 +68,34 @@ export function QueryColumnPicker({
   alwaysExpanded,
   disableSearch,
 }: QueryColumnPickerProps) {
-  const sections: Section<ColumnListItem>[] = useMemo(
-    () =>
-      columnGroups.map((group) => {
-        const groupInfo = Lib.displayInfo(query, stageIndex, group);
+  const sections: QueryColumnPickerSection[] = useMemo(() => {
+    const columnSections = columnGroups.map((group) => {
+      const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
-        const items = Lib.getColumnsFromColumnGroup(group).map((column) => ({
-          ...Lib.displayInfo(query, stageIndex, column),
-          column,
-        }));
+      const items = Lib.getColumnsFromColumnGroup(group).map((column) => ({
+        ...Lib.displayInfo(
+          query,
+          stageIndex,
+          getColumnWithoutBucketing(column, hasTemporalBucketing, hasBinning),
+        ),
+        column,
+      }));
 
-        return {
-          name: groupInfo.displayName,
-          icon: getColumnGroupIcon(groupInfo),
-          items,
-        };
-      }),
-    [query, stageIndex, columnGroups],
-  );
+      return {
+        name: groupInfo.displayName,
+        icon: getColumnGroupIcon(groupInfo),
+        items,
+      };
+    });
+    return [...columnSections, ...(extraSections ?? [])];
+  }, [
+    query,
+    stageIndex,
+    columnGroups,
+    extraSections,
+    hasTemporalBucketing,
+    hasBinning,
+  ]);
 
   const handleSelect = useCallback(
     (column: Lib.ColumnMetadata) => {
@@ -190,11 +206,12 @@ export function QueryColumnPicker({
 
   return (
     <DelayGroup>
-      <AccordionList<ColumnListItem>
+      <AccordionList<ColumnListItem, QueryColumnPickerSection>
         className={className}
         sections={sections}
         alwaysExpanded={alwaysExpanded}
         onChange={handleSelectColumn}
+        onChangeSection={onSelectSection}
         itemIsSelected={checkIsColumnSelected}
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}
@@ -219,6 +236,22 @@ export function QueryColumnPicker({
       />
     </DelayGroup>
   );
+}
+
+// if there is a separate picker for temporal bucketing or binning,
+// we do not want to include it in the column name
+function getColumnWithoutBucketing(
+  column: Lib.ColumnMetadata,
+  hasTemporalBucketing: boolean,
+  hasBinning: boolean,
+) {
+  if (hasTemporalBucketing && Lib.temporalBucket(column) != null) {
+    return Lib.withTemporalBucket(column, null);
+  }
+  if (hasBinning && Lib.binning(column) != null) {
+    return Lib.withBinning(column, null);
+  }
+  return column;
 }
 
 function renderItemName(item: ColumnListItem) {

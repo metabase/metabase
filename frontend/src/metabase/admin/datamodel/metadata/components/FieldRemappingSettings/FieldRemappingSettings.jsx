@@ -5,7 +5,7 @@ import { Component, createRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ButtonWithStatus from "metabase/common/components/ButtonWithStatus";
+import ActionButton from "metabase/common/components/ActionButton";
 import Select from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
@@ -13,6 +13,7 @@ import { connect } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
+import { Flex } from "metabase/ui";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 
 import FieldSeparator from "../FieldSeparator";
@@ -320,7 +321,7 @@ class ValueRemappings extends Component {
   }
 
   onSaveClick = () => {
-    // Returns the promise so that ButtonWithStatus can show the saving status
+    // Returns the promise so that ActionButton can show the saving status
     return this.props.updateRemappings(this.state.editingRemappings);
   };
 
@@ -360,15 +361,15 @@ class ValueRemappings extends Component {
             </li>
           ))}
         </ol>
-        <div className={cx(CS.flex, CS.alignCenter)}>
-          <ButtonWithStatus
-            className={CS.mlAuto}
+        <Flex justify="end">
+          <ActionButton
             disabled={!this.customValuesAreNonEmpty()}
-            onClickOperation={this.onSaveClick}
+            actionFn={this.onSaveClick}
+            primary
           >
             {t`Save`}
-          </ButtonWithStatus>
-        </div>
+          </ActionButton>
+        </Flex>
       </FieldMappingRoot>
     );
   }

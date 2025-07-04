@@ -200,7 +200,7 @@ type VisualizationState = {
 };
 
 const mapStateToProps = (state: State): StateProps => ({
-  hasDevWatermark: getTokenFeature(state, "development-mode"),
+  hasDevWatermark: getTokenFeature(state, "development_mode"),
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
   isEmbeddingSdk: getIsEmbeddingSdk(state),
