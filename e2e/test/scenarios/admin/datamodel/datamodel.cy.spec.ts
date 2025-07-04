@@ -1217,6 +1217,24 @@ describe("scenarios > admin > datamodel", () => {
           cy.wait("@updateField");
           H.undoToast().should("contain.text", "Casting enabled for Rating");
 
+          cy.log("verify preview");
+          FieldSection.getPreviewButton().click();
+          verifyTablePreview({
+            column: "Rating",
+            values: [
+              "December 31, 1969, 4:00 PM",
+              "December 31, 1969, 4:00 PM",
+              "December 31, 1969, 4:00 PM",
+              "December 31, 1969, 4:00 PM",
+              "December 31, 1969, 4:00 PM",
+            ],
+          });
+          verifyObjectDetailPreview({
+            index: 4,
+            row: ["Rating", "December 31, 1969, 4:00 PM"],
+          });
+
+          cy.log("verify viz");
           H.openTable({ database: SAMPLE_DB_ID, table: FEEDBACK_ID });
           cy.findAllByTestId("cell-data")
             .contains("December 31, 1969, 4:00 PM")
@@ -1246,6 +1264,25 @@ describe("scenarios > admin > datamodel", () => {
           cy.wait("@updateField");
           H.undoToast().should("contain.text", "Casting enabled for Rating");
           H.undoToast().icon("close").click();
+
+          cy.log("verify preview");
+          FieldSection.getPreviewButton().click();
+          // ideally we should change the formatting to show smaller values and assert those
+          // but we can't set formatting on a coerced field (metabase#60483)
+          verifyTablePreview({
+            column: "Rating",
+            values: [
+              "December 31, 1969, 4:00 PM",
+              "December 31, 1969, 4:00 PM",
+              "December 31, 1969, 4:00 PM",
+              "December 31, 1969, 4:00 PM",
+              "December 31, 1969, 4:00 PM",
+            ],
+          });
+          verifyObjectDetailPreview({
+            index: 4,
+            row: ["Rating", "December 31, 1969, 4:00 PM"],
+          });
 
           cy.log("change casting");
           FieldSection.getCoercionInput().click({ scrollBehavior: "center" });
