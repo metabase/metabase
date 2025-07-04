@@ -10,11 +10,11 @@
 
 (methodical/defmethod t2/table-name :model/App           [_model] :app)
 (methodical/defmethod t2/table-name :model/AppDefinition [_model] :app_definition)
-(methodical/defmethod t2/table-name :model/AppPublishing [_model] :app_publishing)
+(methodical/defmethod t2/table-name :model/AppRelease    [_model] :app_release)
 
 (doseq [model [:model/App
                :model/AppDefinition
-               :model/AppPublishing]]
+               :model/AppRelease]]
   (derive model :metabase/model))
 
 (derive :model/App :hook/timestamped?)
@@ -60,33 +60,33 @@
                    :changes     (t2/changes instance)})))
 
 ;;------------------------------------------------------------------------------------------------;;
-;;                                     :model/AppPublishing                                       ;;
+;;                                     :model/AppRelease                                       ;;
 ;;------------------------------------------------------------------------------------------------;;
 
-(defn- ensure-single-active-publication!
+(defn- ensure-single-active-release!
   "Ensure at most one active publication per app_id."
   [instance]
   (when (:active instance)
-    (t2/update! :model/AppPublishing
+    (t2/update! :model/AppRelease
                 {:app_id (:app_id instance)
                  :active true}
                 {:active false}))
   instance)
 
-(t2/define-before-insert :model/AppPublishing
+(t2/define-before-insert :model/AppRelease
   [instance]
   (let [instance (merge {:active       true
                          :published_at :%now}
                         instance)]
-    (ensure-single-active-publication! instance)
+    (ensure-single-active-release! instance)
     instance))
 
-(t2/define-before-update :model/AppPublishing
+(t2/define-before-update :model/AppRelease
   [instance]
-  ;; AppPublishing is append-only, so prevent updates except for active status
+  ;; AppRelease is append-only, so prevent updates except for active status
   (let [changed-keys (-> instance t2/changes keys set)]
     (when-not (= #{:active} changed-keys)
-      (throw (ex-info (format "AppPublishing is append-only. Only 'active' field can be updated, but got: %s"
+      (throw (ex-info (format "AppRelease is append-only. Only 'active' field can be updated, but got: %s"
                               changed-keys)
                       {:status-code 400}))))
   instance)
@@ -122,7 +122,7 @@
 (defn publish!
   "Publish an new definition of an app"
   [app-id app-definition-id]
-  (t2/insert-returning-instance! :model/AppPublishing
+  (t2/insert-returning-instance! :model/AppRelease
                                  {:app_id app-id
                                   :app_definition_id app-definition-id
                                   :active true}))

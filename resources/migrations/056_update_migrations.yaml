@@ -206,6 +206,18 @@ databaseChangeLog:
                     nullable: false
                     unique: true
               - column:
+                  name: status
+                  remarks: Status of the app (draft, published, archived)
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  remarks: Entity id
+                  type: char(21)
+                  constraints:
+                    nullable: false
+              - column:
                   remarks: The timestamp of when the app was created
                   name: created_at
                   type: ${timestamp_type}
@@ -311,15 +323,15 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-07-03T16:03:00
       author: qnkhuat
-      comment: Create app_publishing table for data apps functionality
+      comment: Create app_release table for data apps functionality
       preConditions:
         - onFail: MARK_RAN
         - not:
             - tableExists:
-                tableName: app_publishing
+                tableName: app_release
       changes:
         - createTable:
-            tableName: app_publishing
+            tableName: app_release
             remarks: App publishing records
             columns:
               - column:
@@ -338,7 +350,7 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: app
                     referencedColumnNames: id
-                    foreignKeyName: fk_app_publishing_app_id
+                    foreignKeyName: fk_app_release_app_id
                     deleteCascade: true
               - column:
                   name: app_definition_id
@@ -348,14 +360,8 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: app_definition
                     referencedColumnNames: id
-                    foreignKeyName: fk_app_publishing_app_definition_id
+                    foreignKeyName: fk_app_release_app_definition_id
                     deleteCascade: true
-              - column:
-                  name: version_number
-                  remarks: Semantic version number
-                  type: ${text.type}
-                  constraints:
-                    nullable: false
               - column:
                   remarks: The timestamp of when the app was published
                   name: published_at
@@ -372,22 +378,20 @@ databaseChangeLog:
                     nullable: false
       rollback:
         - dropTable:
-            tableName: app_publishing
+            tableName: app_release
 
   - changeSet:
       id: v56.2025-07-03T16:04:00
       author: qnkhuat
-      comment: Add index on app_publishing.app_definition_id
-      preConditions:
         - onFail: MARK_RAN
         - not:
             - indexExists:
-                tableName: app_publishing
-                indexName: idx_app_publishing_app_definition_id
+                tableName: app_release
+                indexName: idx_app_release_app_definition_id
       changes:
         - createIndex:
-            tableName: app_publishing
-            indexName: idx_app_publishing_app_definition_id
+            tableName: app_release
+            indexName: idx_app_release_app_definition_id
             columns:
               - column:
                   name: app_definition_id

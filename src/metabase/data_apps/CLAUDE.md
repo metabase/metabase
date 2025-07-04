@@ -7,7 +7,7 @@ This directory contains the core functionality for Metabase Data Apps - a featur
 ## Key Components
 
 - **core.clj** - Public API for the data apps module (all external interactions should go through this namespace)
-- **models.clj** - Internal database models and schema definitions for Apps, AppDefinitions, and AppPublishing
+- **models.clj** - Internal database models and schema definitions for Apps, AppDefinitions, and AppRelease
 
 ## Data Model
 
@@ -18,6 +18,8 @@ app
 ├── id (PK)
 ├── name
 ├── url (unique)
+├── status
+├── entity_id
 ├── created_at
 └── updated_at
 
@@ -29,11 +31,10 @@ app_definition
 ├── entity_id (SHA hash)
 └── created_at
 
-app_publishing
+app_release
 ├── id (PK)
 ├── app_id (FK -> app.id, cascade delete)
 ├── app_definition_id (FK -> app_definition.id, cascade delete)
-├── version_number (semantic version)
 ├── published_at
 └── active (boolean, default false)
 ```
@@ -45,14 +46,14 @@ app_publishing
    - Definitions are append-only (immutable once created)
    - Indexed on `app_id` for efficient queries
 
-2. **App → AppPublishing** (1:N)
+2. **App → AppRelease** (1:N)
    - Each app can have multiple publishing records
    - Only one can be `active` at a time
    - Composite index on `(app_id, active)` for fast lookups
 
-3. **AppDefinition → AppPublishing** (1:N)
+3. **AppDefinition → AppRelease** (1:N)
    - Each definition can be published multiple times
-   - Publishing records track when a definition was made active
+   - Release records track when a definition was made active
 
 ## Development Guidelines
 
@@ -61,7 +62,7 @@ app_publishing
 The data apps feature uses three main models:
 - `:model/App` - The main app entity with unique URL
 - `:model/AppDefinition` - Immutable versioned app configurations
-- `:model/AppPublishing` - Publishing records tracking active versions
+- `:model/AppRelease` - Release records tracking active versions
 
 ### Public API (core.clj)
 
@@ -69,14 +70,14 @@ These functions form the public interface for the data apps module. All external
 
 - `create-app!` - Creates a new app with its initial definition
 - `new-definition!` - Creates a new version of an app definition
-- `publish!` - Publishes a specific app definition version
+- `release!` - Releases a specific app definition version
 
 **Important:** Do not import or use functions from `models.clj` directly outside of this module. Always use the public API in `core.clj`.
 
 ### Database Considerations
 
 - App definitions are versioned automatically
-- Only one definition can be active/published at a time
+- Only one definition can be released at a time
 - Validation occurs before insert/update operations
 
 ### Common Patterns
