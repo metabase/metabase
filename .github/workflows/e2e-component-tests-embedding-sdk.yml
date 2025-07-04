@@ -25,6 +25,7 @@ jobs:
 
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
+    name: "[Backport only] Get build requirements"
     if: |
       !cancelled() &&
       contains(github.base_ref || github.ref, 'release-x')
