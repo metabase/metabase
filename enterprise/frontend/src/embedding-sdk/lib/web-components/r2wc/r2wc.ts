@@ -2,13 +2,14 @@ import React, { type ComponentType } from "react";
 import { createRoot } from "react-dom/client";
 
 import {
+  type R2wcBaseProps,
   type R2wcOptions,
   type R2wcRenderContext,
   r2wcCore,
 } from "./r2wc-core";
 
 function mount<TProps extends object>(
-  container: HTMLElement,
+  container: ShadowRoot,
   ReactComponent: ComponentType<TProps>,
   props: TProps,
 ): R2wcRenderContext<TProps> {
@@ -37,7 +38,7 @@ function unmount<TProps extends object>({
   root.unmount();
 }
 
-export function r2wc<TProps extends object, TContextProps = never>(
+export function r2wc<TProps extends R2wcBaseProps, TContextProps = never>(
   ReactComponent: React.ComponentType<TProps>,
   options: R2wcOptions<TProps, TContextProps> = {},
 ): CustomElementConstructor {

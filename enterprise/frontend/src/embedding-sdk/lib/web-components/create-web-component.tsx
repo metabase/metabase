@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 
+import { MetabaseProvider } from "embedding-sdk/components/public/MetabaseProvider";
 import {
-  MetabaseProvider,
   type MetabaseProviderWebComponentContextProps,
-} from "embedding-sdk";
+  metabaseProviderContextProps,
+} from "embedding-sdk/components/public/metabase-provider.web-component";
 import type { WebComponentElementConstructor } from "embedding-sdk/types/web-components";
-import { ShadowRootProvider } from "metabase/embedding-sdk/components";
+import { ShadowRootProvider } from "metabase/embedding-sdk/components/ShadowRootProvider";
 
 import { r2wc } from "./r2wc";
 import type { R2wcBaseProps, R2wcOptions } from "./r2wc/r2wc-core";
@@ -17,32 +18,27 @@ type MergedProps<TComponentProps> = R2wcBaseProps &
 
 type CreateWebComponentConfig<TComponentProps, TContextProps> = {
   withProviders?: boolean;
-  shadow?: "open" | null;
   propTypes: R2wcPropTypes<TComponentProps>;
   contextPropTypes?: R2wcPropTypes<TContextProps>;
   defineContext?: R2wcOptions<TComponentProps, TContextProps>["defineContext"];
 };
 
-export const createWebComponent = <TComponentProps, TContextProps = never>(
-  component: (props: TComponentProps) => ReactNode,
+export function createWebComponent<TComponentProps, TContextProps = never>(
+  component: (props: R2wcBaseProps & TComponentProps) => ReactNode,
   {
     withProviders = true,
-    shadow = "open",
     propTypes,
     contextPropTypes,
     defineContext,
   }: CreateWebComponentConfig<TComponentProps, TContextProps>,
-): WebComponentElementConstructor => {
-  const metabaseProviderPropTypes = {
-    authConfig: "json",
-    theme: "json",
-  } as const;
-
+): WebComponentElementConstructor {
   return r2wc(
     (props: MergedProps<TComponentProps>) => {
-      const { container, authConfig, theme, ...componentProps } = props;
+      const { authConfig, locale, theme, ...componentProps } = props;
 
-      const componentElement = component(componentProps as TComponentProps);
+      const componentElement = component(
+        componentProps as R2wcBaseProps & TComponentProps,
+      );
 
       if (!withProviders) {
         return componentElement;
@@ -52,22 +48,29 @@ export const createWebComponent = <TComponentProps, TContextProps = never>(
         return null;
       }
 
+      if (!ShadowRootProvider || !MetabaseProvider) {
+        return null;
+      }
+
       return (
         <ShadowRootProvider>
-          <MetabaseProvider authConfig={authConfig} theme={theme}>
+          <MetabaseProvider
+            authConfig={authConfig}
+            locale={locale}
+            theme={theme}
+          >
             {componentElement}
           </MetabaseProvider>
         </ShadowRootProvider>
       );
     },
     {
-      shadow: shadow ?? undefined,
       props: {
-        ...metabaseProviderPropTypes,
+        ...metabaseProviderContextProps,
         ...propTypes,
       },
       contextProps: contextPropTypes,
       defineContext,
     },
   );
-};
+}

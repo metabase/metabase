@@ -9,39 +9,47 @@ import type {
 } from "embedding-sdk/types";
 import type { MetabaseAuthConfigWithJwt } from "embedding-sdk/types/auth-config";
 
+import { Slot } from "../private/Slot";
+
 export type MetabaseProviderWebComponentAttributes = {
   "metabase-instance-url"?: MetabaseAuthConfigWithJwt["metabaseInstanceUrl"];
   "fetch-request-token"?: string;
   "api-key"?: MetabaseAuthConfigWithApiKey["apiKey"];
+  locale?: string;
 };
 
 export type MetabaseProviderWebComponentProps = {
   apiKey?: MetabaseAuthConfigWithJwt["apiKey"];
   metabaseInstanceUrl?: MetabaseAuthConfigWithJwt["metabaseInstanceUrl"];
   fetchRequestToken?: MetabaseAuthConfigWithJwt["fetchRequestToken"];
+  locale?: string;
 };
 
 export type MetabaseProviderWebComponentContextProps = {
   authConfig: MetabaseAuthConfig;
+  locale: string;
   theme: MetabaseTheme;
 };
+
+export const metabaseProviderContextProps = {
+  // These are passed as properties only, not as attributes
+  authConfig: "json",
+  locale: "string",
+  theme: "json",
+} as const;
 
 const MetabaseProviderWebComponent = createWebComponent<
   MetabaseProviderWebComponentProps,
   MetabaseProviderWebComponentContextProps
->(() => null, {
+>(({ container, slot }) => <Slot container={container} slot={slot} />, {
   withProviders: false,
-  shadow: null,
   propTypes: {
     metabaseInstanceUrl: "string",
     fetchRequestToken: "function",
     apiKey: "string",
+    locale: "string",
   },
-  contextPropTypes: {
-    // These are passed as properties only, not as attributes
-    authConfig: "json",
-    theme: "json",
-  },
+  contextPropTypes: metabaseProviderContextProps,
   defineContext: {
     childrenComponents: [
       "interactive-question",
@@ -60,6 +68,7 @@ const MetabaseProviderWebComponent = createWebComponent<
         },
         ...instance.authConfig,
       } as MetabaseAuthConfig,
+      locale: instance.locale,
       theme: instance.theme as MetabaseTheme,
     }),
   },

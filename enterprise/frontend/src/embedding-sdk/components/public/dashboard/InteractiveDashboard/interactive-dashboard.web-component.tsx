@@ -20,7 +20,7 @@ export type InteractiveDashboardWebComponentProps = Pick<
 
 const InteractiveDashboardWebComponent =
   createWebComponent<InteractiveDashboardWebComponentProps>(
-    (props) => <InteractiveDashboard {...props} />,
+    ({ container, slot, ...props }) => <InteractiveDashboard {...props} />,
     {
       propTypes: {
         dashboardId: "id",

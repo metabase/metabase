@@ -1,18 +1,21 @@
 import type { ComponentType } from "react";
 import type { Root } from "react-dom/client";
 
-import { noopTransform } from "embedding-sdk/lib/web-components/r2wc/transforms/noop";
+import { uuid } from "metabase/lib/uuid";
 
-import { toDashedCase } from "../../string";
+import { toDashedCase } from "../../../lib/string";
 
+import { noopTransform } from "./transforms/noop";
 import { transforms } from "./transforms/transforms";
 import type { R2wcPropTransformType } from "./types";
 
-type PropName<TProps> = Exclude<Extract<keyof TProps, string>, "container">;
+type PropName<TProps> = Exclude<
+  Extract<keyof TProps, string>,
+  "container" | "childrenNodes" | "slot"
+>;
 type PropNames<TProps> = Array<PropName<TProps>>;
 
 export interface R2wcOptions<TProps, TContextProps = never> {
-  shadow?: "open" | "closed";
   props?:
     | PropNames<TProps>
     | Partial<Record<PropName<TProps>, R2wcPropTransformType>>;
@@ -33,7 +36,7 @@ export interface R2wcRenderContext<TProps> {
 
 export interface R2wcRenderer<TProps> {
   mount: (
-    container: HTMLElement,
+    container: ShadowRoot,
     ReactComponent: ComponentType<TProps>,
     props: TProps,
   ) => R2wcRenderContext<TProps>;
@@ -42,13 +45,19 @@ export interface R2wcRenderer<TProps> {
 }
 
 export interface R2wcBaseProps {
-  container?: HTMLElement;
+  container: ShadowRoot;
+  slot: string;
 }
 
 const renderSymbol = Symbol.for("r2wc.render");
 const connectedSymbol = Symbol.for("r2wc.connected");
 const contextSymbol = Symbol.for("r2wc.context");
 const propsSymbol = Symbol.for("r2wc.props");
+const observerSymbol = Symbol.for("r2wc.observer");
+const shadowRootSymbol = Symbol.for("r2wc.shadowRoot");
+const childrenNodesSymbol = Symbol.for("r2wc.childrenNodesSymbol");
+const slotSymbol = Symbol.for("r2wc.slot");
+const onRenderHandlerSymbol = Symbol.for("r2wc.onRenderHadlerSymbol");
 const provideContextToChildrenSymbol = Symbol.for(
   "r2wc.provideContextToChildrenSymbol",
 );
@@ -107,23 +116,25 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
       return Object.keys(mapAttributeProp);
     }
 
-    [connectedSymbol] = true;
+    [connectedSymbol] = false;
     [contextSymbol]?: R2wcRenderContext<TProps>;
     [propsSymbol]: TProps = {} as TProps;
-    container: HTMLElement;
+    [observerSymbol]?: MutationObserver;
+    [shadowRootSymbol]: ShadowRoot;
+    [slotSymbol]: string = uuid();
+    [childrenNodesSymbol]: HTMLElement[] = [];
 
     constructor() {
       super();
 
-      if (options.shadow) {
-        this.container = this.attachShadow({
-          mode: options.shadow,
-        }) as unknown as HTMLElement;
-      } else {
-        this.container = document.createElement("div");
-      }
+      this[onRenderHandlerSymbol] = this[onRenderHandlerSymbol].bind(this);
 
-      this[propsSymbol].container = this.container;
+      this[shadowRootSymbol] = this.attachShadow({
+        mode: "open",
+      });
+
+      this[propsSymbol].slot = this[slotSymbol];
+      this[propsSymbol].container = this[shadowRootSymbol];
 
       for (const prop of propNames) {
         const attribute = mapPropAttribute[prop];
@@ -136,6 +147,7 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
           this[propsSymbol][prop] = transform.parse(value);
         }
       }
+
       for (const event of eventNames) {
         // @ts-expect-error dynamic key
         this[propsSymbol][event] = (detail) => {
@@ -148,8 +160,30 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
     }
 
     connectedCallback() {
+      [...this.childNodes].forEach((node) => {
+        this[childrenNodesSymbol].push(node as HTMLElement);
+        node.remove();
+      });
+
       this[connectedSymbol] = true;
       this[renderSymbol]();
+
+      this[shadowRootSymbol].addEventListener(
+        `slot-${this[slotSymbol]}-loaded`,
+        this[onRenderHandlerSymbol],
+      );
+
+      this[observerSymbol] = new MutationObserver(() => {
+        const childrenNodes = [...this.children] as HTMLElement[];
+
+        childrenNodes.forEach((node) => {
+          node.setAttribute("slot", this[slotSymbol]);
+        });
+
+        this[renderSymbol]();
+      });
+
+      this[observerSymbol].observe(this, { childList: true });
     }
 
     disconnectedCallback() {
@@ -158,7 +192,16 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
       if (this[contextSymbol]) {
         renderer.unmount(this[contextSymbol]);
       }
+
       delete this[contextSymbol];
+
+      this[observerSymbol]?.disconnect();
+      this[childrenNodesSymbol] = [];
+
+      this[shadowRootSymbol].removeEventListener(
+        `slot-${this[slotSymbol]}-loaded`,
+        this[onRenderHandlerSymbol],
+      );
     }
 
     attributeChangedCallback(
@@ -183,14 +226,25 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
       }
     }
 
-    [renderSymbol]() {
+    // Update children when a slot is rendered
+    [onRenderHandlerSymbol]() {
+      for (const child of this[childrenNodesSymbol]) {
+        child.setAttribute("slot", this[slotSymbol]);
+        this.appendChild(child);
+      }
+    }
+
+    async [renderSymbol]() {
       if (!this[connectedSymbol]) {
         return;
       }
 
+      // To avoid conflicts with react updates
+      await Promise.resolve();
+
       if (!this[contextSymbol]) {
         this[contextSymbol] = renderer.mount(
-          this.container,
+          this[shadowRootSymbol],
           ReactComponent,
           this[propsSymbol],
         );
@@ -211,9 +265,6 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
       }
 
       const { provider } = defineContext;
-
-      const childrenSelector = childrenComponents.join(",");
-      const children = this.querySelectorAll<HTMLElement>(childrenSelector);
 
       // @ts-expect-error `this` typecast
       const contextProps = provider(this);
@@ -238,6 +289,9 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
           if (value === undefined) {
             return;
           }
+
+          const childrenSelector = childrenComponents.join(",");
+          const children = this.querySelectorAll<HTMLElement>(childrenSelector);
 
           const attributeName = toDashedCase(prop.toString());
 

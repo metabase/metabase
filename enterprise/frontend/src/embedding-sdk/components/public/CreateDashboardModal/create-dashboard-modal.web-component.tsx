@@ -20,7 +20,7 @@ export type CreateDashboardModalWebComponentProps = Pick<
 
 const CreateDashboardModalWebComponent =
   createWebComponent<CreateDashboardModalWebComponentProps>(
-    (props) => <CreateDashboardModal {...props} />,
+    ({ container, slot, ...props }) => <CreateDashboardModal {...props} />,
     {
       propTypes: {
         initialCollectionId: "id",

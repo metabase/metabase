@@ -21,7 +21,7 @@ describe("r2wc-core", () => {
     document.body.innerHTML = "";
   });
 
-  it("mounts and unmounts in light mode", async () => {
+  it("mounts and unmounts in open shadow mode", async () => {
     const ReactComponent: FC = () => <h1>Hello</h1>;
 
     const WebComponent = r2wcCore(
@@ -29,56 +29,21 @@ describe("r2wc-core", () => {
       {},
       { mount, unmount, update },
     );
-    customElements.define("test-light", WebComponent);
-
-    const element = new WebComponent();
-
-    document.body.appendChild(element);
-    expect(mount).toHaveBeenCalledTimes(1);
-
-    document.body.removeChild(element);
-    expect(unmount).toHaveBeenCalledTimes(1);
-    expect(unmount).toHaveBeenCalledWith({ why: "context" });
-  });
-
-  it("mounts and unmounts in open shadow mode", async () => {
-    const ReactComponent: FC = () => <h1>Hello</h1>;
-
-    const WebComponent = r2wcCore(
-      ReactComponent,
-      { shadow: "open" },
-      { mount, unmount, update },
-    );
     customElements.define("test-shadow-open", WebComponent);
 
     const element = new WebComponent();
 
     document.body.appendChild(element);
+
+    await flushPromises();
+
     expect(element).toHaveProperty("shadowRoot");
     expect(mount).toHaveBeenCalledTimes(1);
 
     document.body.removeChild(element);
-    expect(unmount).toHaveBeenCalledTimes(1);
-    expect(unmount).toHaveBeenCalledWith({ why: "context" });
-  });
 
-  it("mounts and unmounts in closed shadow mode", async () => {
-    const ReactComponent: FC = () => <h1>Hello</h1>;
+    await flushPromises();
 
-    const WebComponent = r2wcCore(
-      ReactComponent,
-      { shadow: "closed" },
-      { mount, unmount, update },
-    );
-    customElements.define("test-shadow-closed", WebComponent);
-
-    const element = new WebComponent();
-
-    document.body.appendChild(element);
-    expect(element).toHaveProperty("shadowRoot");
-    expect(mount).toHaveBeenCalledTimes(1);
-
-    document.body.removeChild(element);
     expect(unmount).toHaveBeenCalledTimes(1);
     expect(unmount).toHaveBeenCalledWith({ why: "context" });
   });

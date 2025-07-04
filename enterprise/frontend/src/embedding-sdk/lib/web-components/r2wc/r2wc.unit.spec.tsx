@@ -2,12 +2,20 @@ import PropTypes from "prop-types";
 import React, { type FC } from "react";
 
 import { r2wc } from "./r2wc";
+import type { R2wcBaseProps } from "./r2wc-core";
 
 function flushPromises() {
-  return new Promise((resolve) => setTimeout(resolve));
+  // We properly deal with DOM updates and `Promise.resolve` in r2wcCore,
+  return new Promise((resolve) =>
+    setTimeout(() => {
+      setTimeout(resolve);
+    }),
+  );
 }
 
-const Greeting: FC<{ name: string }> = ({ name }) => <h1>Hello, {name}</h1>;
+const Greeting: FC<{ name: string } & R2wcBaseProps> = ({ name }) => (
+  <h1>Hello, {name}</h1>
+);
 
 describe("r2wc", () => {
   beforeEach(() => {
@@ -26,7 +34,7 @@ describe("r2wc", () => {
   });
 
   it("works with props array", async () => {
-    function TestComponent({ name }: { name: string }) {
+    function TestComponent({ name }: { name: string } & R2wcBaseProps) {
       return <div>hello, {name}</div>;
     }
 
@@ -39,12 +47,14 @@ describe("r2wc", () => {
 
     await flushPromises();
 
-    const div = body.querySelector("div");
+    const child = body.querySelector("test-hello");
+    const div = child?.shadowRoot?.querySelector("div");
+
     expect(div?.textContent).toBe("hello, Bavin");
   });
 
   it("works with proptypes", async () => {
-    function WithProptypes({ name }: { name: string }) {
+    function WithProptypes({ name }: { name: string } & R2wcBaseProps) {
       return <div>hello, {name}</div>;
     }
 
@@ -61,12 +71,16 @@ describe("r2wc", () => {
 
     await flushPromises();
 
-    const div = body.querySelector("div");
+    const child = body.querySelector("with-proptypes");
+    const div = child?.shadowRoot?.querySelector("div");
+
     expect(div?.textContent).toBe("hello, Bavin");
   });
 
   it("works with class components", async () => {
-    class TestClassComponent extends React.Component<{ name: string }> {
+    class TestClassComponent extends React.Component<
+      { name: string } & R2wcBaseProps
+    > {
       render() {
         return <div>hello, {this.props.name}</div>;
       }
@@ -83,7 +97,8 @@ describe("r2wc", () => {
 
     await flushPromises();
 
-    const div = body.querySelector("div");
+    const child = body.querySelector("test-class");
+    const div = child?.shadowRoot?.querySelector("div");
     const testClassEl = body.querySelector("test-class");
 
     expect(testClassEl).toBeInstanceOf(TestClassElement);
@@ -92,7 +107,6 @@ describe("r2wc", () => {
 
   it("works with shadow DOM `options.shadow === 'open'`", async () => {
     const MyWelcome = r2wc(Greeting, {
-      shadow: "open",
       props: {
         name: "string",
       },
@@ -101,42 +115,26 @@ describe("r2wc", () => {
     customElements.define("my-shadow-welcome", MyWelcome);
 
     const body = document.body;
-    const myWelcome = new MyWelcome() as HTMLElement & { name: string };
-    body.appendChild(myWelcome);
+    body.innerHTML = "<my-shadow-welcome name='Bavin'></my-shadow-welcome>";
 
     await flushPromises();
 
-    expect(myWelcome.shadowRoot).not.toEqual(undefined);
-    expect(myWelcome.shadowRoot?.children.length).toEqual(1);
+    const webComponent = body.querySelector("my-shadow-welcome");
+    const shadowRoot = webComponent?.shadowRoot;
 
-    const child = myWelcome.shadowRoot?.childNodes[0] as HTMLElement;
+    expect(shadowRoot).not.toEqual(undefined);
+    expect(shadowRoot?.children.length).toEqual(1);
+
+    const child = shadowRoot?.childNodes[0] as HTMLElement;
 
     expect(child.tagName).toEqual("H1");
-    expect(child.innerHTML).toEqual("Hello, ");
+    expect(child.innerHTML).toEqual("Hello, Bavin");
 
-    myWelcome.name = "Justin";
+    webComponent?.setAttribute("name", "Justin");
 
     await flushPromises();
 
     expect(child.innerHTML).toBe("Hello, Justin");
-  });
-
-  it('works without shadow option set to "true"', async () => {
-    const MyWelcome = r2wc(Greeting);
-
-    customElements.define("my-noshadow-welcome", MyWelcome);
-
-    const body = document.body;
-
-    const myWelcome = new MyWelcome();
-    body.appendChild(myWelcome);
-
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        expect(myWelcome.shadowRoot).toEqual(null);
-        resolve(true);
-      }, 0);
-    });
   });
 
   it("converts dashed-attributes to camelCase", async () => {
@@ -144,7 +142,7 @@ describe("r2wc", () => {
       camelCaseName,
     }: {
       camelCaseName: string;
-    }) => <h1>Hello, {camelCaseName}</h1>;
+    } & R2wcBaseProps) => <h1>Hello, {camelCaseName}</h1>;
 
     const MyGreeting = r2wc(CamelCaseGreeting, { props: ["camelCaseName"] });
 
@@ -157,9 +155,10 @@ describe("r2wc", () => {
 
     await flushPromises();
 
-    expect(body.firstElementChild?.innerHTML).toEqual(
-      "<h1>Hello, Christopher</h1>",
-    );
+    const child = body.querySelector("my-dashed-style-greeting");
+    const shadowRoot = child?.shadowRoot;
+
+    expect(shadowRoot?.innerHTML).toEqual("<h1>Hello, Christopher</h1>");
   });
 
   it("options.props can specify and will convert the String attribute value into Number, Boolean, Array, and/or Object", async () => {
@@ -183,7 +182,7 @@ describe("r2wc", () => {
       falseProp,
       arrayProp,
       objProp,
-    }: CastinProps) {
+    }: CastinProps & R2wcBaseProps) {
       global.castedValues = {
         stringProp,
         numProp,
@@ -261,7 +260,7 @@ describe("r2wc", () => {
       handleClick,
     }: {
       handleClick: (arg: string) => void;
-    }) {
+    } & R2wcBaseProps) {
       return (
         <div>
           <button onClick={() => handleClick("V")}>V</button>
@@ -300,9 +299,11 @@ describe("r2wc", () => {
       body.innerHTML = "<theme-select handle-click='globalFn'></theme-select>";
 
       setTimeout(() => {
-        const button = document.querySelector(
-          "theme-select button:last-child",
+        const child = document.querySelector("theme-select");
+        const button = child?.shadowRoot?.querySelector(
+          "button:last-child",
         ) as HTMLButtonElement;
+
         button.click();
       }, 0);
     });

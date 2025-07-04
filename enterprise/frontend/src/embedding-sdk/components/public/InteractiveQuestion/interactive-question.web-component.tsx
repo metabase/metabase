@@ -19,7 +19,7 @@ export type InteractiveQuestionWebComponentProps = Pick<
 
 const InteractiveQuestionWebComponent =
   createWebComponent<InteractiveQuestionWebComponentProps>(
-    (props) => <InteractiveQuestion {...props} />,
+    ({ container, slot, ...props }) => <InteractiveQuestion {...props} />,
     {
       propTypes: {
         questionId: "id",
