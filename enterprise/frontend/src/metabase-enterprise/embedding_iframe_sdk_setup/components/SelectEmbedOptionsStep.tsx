@@ -43,7 +43,7 @@ export const SelectEmbedOptionsStep = () => {
           {isQuestionOrDashboardEmbed && (
             <Checkbox
               label={t`Allow users to drill through on data points`}
-              checked={settings.isDrillThroughEnabled ?? false}
+              checked={settings.isDrillThroughEnabled}
               onChange={(e) =>
                 updateSettings({ isDrillThroughEnabled: e.target.checked })
               }
@@ -53,7 +53,7 @@ export const SelectEmbedOptionsStep = () => {
           {isDashboardOrInteractiveQuestion && (
             <Checkbox
               label={t`Allow downloads`}
-              checked={settings.withDownloads ?? false}
+              checked={settings.withDownloads}
               onChange={(e) =>
                 updateSettings({ withDownloads: e.target.checked })
               }
@@ -63,7 +63,7 @@ export const SelectEmbedOptionsStep = () => {
           {isExplorationEmbed && (
             <Checkbox
               label={t`Allow users to save new questions`}
-              checked={settings.isSaveEnabled ?? false}
+              checked={settings.isSaveEnabled}
               onChange={(e) =>
                 updateSettings({ isSaveEnabled: e.target.checked })
               }
@@ -99,7 +99,7 @@ export const SelectEmbedOptionsStep = () => {
 
             <Checkbox
               label={t`Show ${experience} title`}
-              checked={settings.withTitle ?? true}
+              checked={settings.withTitle}
               onChange={(e) => updateSettings({ withTitle: e.target.checked })}
             />
           </>
