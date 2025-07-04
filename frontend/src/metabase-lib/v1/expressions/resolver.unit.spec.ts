@@ -292,7 +292,11 @@ describe("resolver", () => {
       query,
       stageIndex,
       expressionMode: "aggregation",
-      availableColumns: Lib.expressionableColumns(query, stageIndex),
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "aggregation",
+      }),
     });
 
     describe("type = boolean", () => {
