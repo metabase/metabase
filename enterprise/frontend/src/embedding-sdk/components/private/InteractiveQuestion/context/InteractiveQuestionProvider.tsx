@@ -48,6 +48,7 @@ export const InteractiveQuestionProvider = ({
   withDownloads,
   variant,
   targetDashboardId,
+  backToDashboard,
 }: InteractiveQuestionProviderProps) => {
   const handleCreateQuestion = useCreateQuestion();
   const handleSaveQuestion = useSaveQuestion();
@@ -145,6 +146,7 @@ export const InteractiveQuestionProvider = ({
     withDownloads,
     variant,
     onRun,
+    backToDashboard,
   };
 
   useEffect(() => {

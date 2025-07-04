@@ -25,13 +25,18 @@ export type InteractiveQuestionBackButtonProps = Omit<
 export const BackButton = ({
   ...actionIconProps
 }: InteractiveQuestionBackButtonProps) => {
-  const { onNavigateBack } = useInteractiveQuestionContext();
+  const { onNavigateBack, backToDashboard } = useInteractiveQuestionContext();
 
   if (!onNavigateBack) {
     return null;
   }
 
   return (
-    <DashboardBackButton noLink onClick={onNavigateBack} {...actionIconProps} />
+    <DashboardBackButton
+      noLink
+      onClick={onNavigateBack}
+      dashboardOverride={backToDashboard}
+      {...actionIconProps}
+    />
   );
 };
