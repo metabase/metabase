@@ -28,7 +28,6 @@ import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   createDataSource,
   isVisualizerDashboardCard,
@@ -380,6 +379,11 @@ export function DashCardVisualization({
     [dashcard, rawSeries, onOpenQuestion, isEditing],
   );
 
+  const cardTitle = useMemo(() => {
+    const settings = getComputedSettingsForSeries(series);
+    return settings["card.title"] ?? series?.[0].card.name ?? "";
+  }, [series]);
+
   const actionButtons = useMemo(() => {
     const result = series[0] as unknown as Dataset;
 
@@ -394,12 +398,6 @@ export function DashCardVisualization({
     ) {
       return null;
     }
-
-    // We only show the titleMenuItems if the card has no title.
-    const settings = getComputedSettingsForSeries(
-      series,
-    ) as ComputedVisualizationSettings;
-    const title = settings["card.title"] ?? series?.[0].card.name ?? "";
 
     return (
       <Group mr="sm">
@@ -419,13 +417,14 @@ export function DashCardVisualization({
             dashcard={dashcard}
             onEditVisualization={onEditVisualization}
             openUnderlyingQuestionItems={
-              onChangeCardAndRun && (title ? undefined : titleMenuItems)
+              onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems)
             }
           />
         )}
       </Group>
     );
   }, [
+    cardTitle,
     dashboard,
     dashcard,
     dashcardMenu,
