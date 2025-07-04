@@ -29,7 +29,8 @@
     DateTimeRange
     FieldFilter
     ReferencedCardQuery
-    ReferencedQuerySnippet)))
+    ReferencedQuerySnippet
+    TemporalUnitWithCol)))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
@@ -261,9 +262,19 @@
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
-(mu/defn- field->clause :- driver-api/mbql.schema.field
+(defn- is-raw-field? [field]
+  (and (:column field)
+       (:effective-type field)))
+
+(def raw-field
+  "Schema for a 'raw field' that a field filter will accept and treat as raw sql."
+  [:map
+   [:column driver-api/schema.common.non-blank-string]
+   [:effective-type driver-api/schema.common.base-type]])
+
+(mu/defn- field->clause :- [:or driver-api/mbql.schema.field driver-api/mbql.schema.raw]
   [driver     :- :keyword
-   field      :- driver-api/schema.metadata.column
+   field      :- [:or driver-api/schema.metadata.column raw-field]
    param-type :- driver-api/schema.parameter.type
    value]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
@@ -272,23 +283,27 @@
   ;; middleware would work either because we don't know what Field this parameter actually refers to until we resolve
   ;; the parameter. There's probably _some_ way to structure things that would make this "duplicate" call unneeded, but
   ;; I haven't figured out what that is yet
-  [:field
-   (u/the-id field)
-   {:base-type                     (:base-type field)
-    :temporal-unit                 (align-temporal-unit-with-param-type-and-value driver field param-type value)
-    driver-api/qp.add.source-table (:table-id field)
-    ;; in case anyone needs to know we're compiling a Field filter.
-    ::compiling-field-filter?      true}])
+  (if (is-raw-field? field)
+    [:raw (:column field)]
+    [:field
+     (u/the-id field)
+     {:base-type                     (:base-type field)
+      :temporal-unit                 (align-temporal-unit-with-param-type-and-value driver field param-type value)
+      driver-api/qp.add.source-table (:table-id field)
+      ;; in case anyone needs to know we're compiling a Field filter.
+      ::compiling-field-filter?      true}]))
 
 (mu/defn- field->identifier :- driver-api/schema.common.non-blank-string
   "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
   [driver field param-type value]
-  (->> (field->clause driver field param-type value)
-       (sql.qp/->honeysql driver)
-       (honeysql->replacement-snippet-info driver)
-       :replacement-snippet))
+  (if (is-raw-field? field)
+    (:column field)
+    (->> (field->clause driver field param-type value)
+         (sql.qp/->honeysql driver)
+         (honeysql->replacement-snippet-info driver)
+         :replacement-snippet)))
 
 (defn- field-filter->replacement-snippet-for-datetime-field
   "Generate replacement snippet for field filter on datetime field. For details on how range is generated see
@@ -304,7 +319,8 @@
 (mu/defn- field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
   [driver {{param-type :type, value :value, :as params} :value, field :field, :as field-filter}]
-  (assert (:id field) (format "Why doesn't Field have an ID?\n%s" (u/pprint-to-str field)))
+  (assert (or (:id field) (is-raw-field? field))
+          (format "Why doesn't Field have an ID?\n%s" (u/pprint-to-str field)))
   (letfn [(prepend-field [x]
             (update x :replacement-snippet
                     (partial str (field->identifier driver field param-type value) " ")))
@@ -349,7 +365,7 @@
 (mu/defmethod ->replacement-snippet-info [:sql FieldFilter]
   [driver                            :- :keyword
    {:keys [value], :as field-filter} :- [:map
-                                         [:field driver-api/schema.metadata.column]
+                                         [:field [:or driver-api/schema.metadata.column raw-field]]
                                          [:value :any]]]
   (cond
     ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1
@@ -379,20 +395,12 @@
   {:prepared-statement-args nil
    :replacement-snippet     content})
 
-(defmulti time-grouping->replacement-snippet-info
-  "Like ->replacement-snipped-info, but specialized for converting time-groupings.  This is separate from the main
-  ->replacement-snippet-info because it requires an extra argument."
-  {:arglists '([driver column temporal-unit])
-   :added "0.55.0"}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
 (def date-groupings
   "Set of time groupings that should be coerced to dates"
   #{"day" "week" "month" "quarter" "year"})
 
-(defmethod time-grouping->replacement-snippet-info :sql
-  [driver column {:keys [value]}]
+(defmethod ->replacement-snippet-info [:sql TemporalUnitWithCol]
+  [driver {:keys [value column]}]
   (honeysql->replacement-snippet-info driver
                                       (if (= value params/no-value)
                                         [:raw column]

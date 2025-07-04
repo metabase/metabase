@@ -190,6 +190,10 @@
   (p/import-def qp.error-type/qp qp.error-type.qp)
   (p/import-def qp.error-type/unsupported-feature qp.error-type.unsupported-feature))
 
+(def schema.common.base-type
+  "::lib.schema.common/base-type"
+  ::lib.schema.common/base-type)
+
 (def schema.common.non-blank-string
   "::lib.schema.common/non-blank-string"
   ::lib.schema.common/non-blank-string)
@@ -253,6 +257,10 @@
 (def mbql.schema.value
   "mbql.s/value"
   mbql.s/value)
+
+(def mbql.schema.raw
+  "mbql.s/raw"
+  mbql.s/raw)
 
 (def mbql.schema.field
   "mbql.s/field"

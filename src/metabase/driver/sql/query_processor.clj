@@ -1353,6 +1353,10 @@
     (datetime-diff-check-args x y (partial re-find #"(?i)^(timestamp|date)"))
     (datetime-diff driver unit x y)))
 
+(defmethod ->honeysql [:sql :raw]
+  [_driver [_ sql _opts]]
+  [:raw sql])
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Field Aliases (AS Forms)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
