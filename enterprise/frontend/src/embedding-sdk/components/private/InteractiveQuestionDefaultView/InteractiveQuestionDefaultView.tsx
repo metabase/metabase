@@ -193,7 +193,17 @@ export const InteractiveQuestionDefaultView = ({
       <Box className={InteractiveQuestionS.Main} p="sm" w="100%" h="100%">
         <Box className={InteractiveQuestionS.Content}>
           {isEditorOpen ? (
-            <InteractiveQuestion.Editor onApply={closeEditor} />
+            <>
+              {/* Use the same horizontal padding as https://github.com/metabase/metabase/blob/98e2dcc7c8c7c9147f4a787cc7ed36eddde9c080/frontend/src/metabase/querying/notebook/components/Notebook/Notebook.tsx#L48 */}
+              {/* Vertical padding matches the visualization header above*/}
+              {/* If we don't conditionally render this button, it will be shown twice after visualize the query once. */}
+              {!queryResults && (
+                <Box px={{ base: "1rem", sm: "2rem" }} pt="md">
+                  <InteractiveQuestion.BackButton />
+                </Box>
+              )}
+              <InteractiveQuestion.Editor onApply={closeEditor} />
+            </>
           ) : (
             <InteractiveQuestion.QuestionVisualization height="100%" />
           )}

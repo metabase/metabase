@@ -364,7 +364,12 @@ function DashboardQueryBuilder({
       onNavigateBack={onNavigateBack}
       backToDashboard={dashboard}
     >
-      <InteractiveQuestionDefaultView withResetButton withChartTypeSelector />
+      <InteractiveQuestionDefaultView
+        withResetButton
+        withChartTypeSelector
+        // The default value is 600px and it cuts off the "Visualize" button.
+        height="700px"
+      />
     </InteractiveQuestionProvider>
   );
 }
