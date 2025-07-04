@@ -29,8 +29,8 @@ export const SortableFieldList = ({
   const fields = useMemo(() => {
     return _.sortBy(table.fields ?? [], (item) => item.position);
   }, [table.fields]);
-  const fieldsById = useMemo(() => {
-    return _.indexBy(fields, (field) => getRawTableFieldId(field));
+  const fieldsByName = useMemo(() => {
+    return _.indexBy(fields, (field) => field.name);
   }, [fields]);
   const isDragDisabled = fields.length <= 1;
 
@@ -44,8 +44,8 @@ export const SortableFieldList = ({
         getId={getRawTableFieldId}
         items={fields}
         renderItem={({ id, item: field }) => {
-          const parent =
-            field.parent_id != null ? fieldsById[field.parent_id] : undefined;
+          const parentName = field.nfc_path?.[0] ?? "";
+          const parent = fieldsByName[parentName];
 
           return (
             <SortableFieldItem

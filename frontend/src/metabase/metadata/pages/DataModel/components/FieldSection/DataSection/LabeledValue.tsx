@@ -25,6 +25,7 @@ export const LabeledValue = ({ children, label }: Props) => {
         p="sm"
         radius="md"
         size="lg"
+        tt="none"
         variant="default"
       >
         {children}

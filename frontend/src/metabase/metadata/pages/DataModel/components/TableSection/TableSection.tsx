@@ -18,15 +18,15 @@ import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 
 import { FieldList } from "./FieldList";
-import { SyncOptionsModal } from "./SyncOptionsModal";
 import S from "./TableSection.module.css";
 
 interface Props {
   params: RouteParams;
   table: Table;
+  onSyncOptionsClick: () => void;
 }
 
-const TableSectionBase = ({ params, table }: Props) => {
+const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const { fieldId, ...parsedParams } = parseRouteParams(params);
   const [updateTable] = useUpdateTableMutation();
   const [updateTableSorting, { isLoading: isChangingSorting }] =
@@ -34,7 +34,6 @@ const TableSectionBase = ({ params, table }: Props) => {
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const [sendToast] = useToast();
   const [isSorting, setIsSorting] = useState(false);
-  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
   return (
     <Stack data-testid="table-section" gap={0} pb="xl">
@@ -107,7 +106,7 @@ const TableSectionBase = ({ params, table }: Props) => {
                   px="sm"
                   py="xs"
                   size="xs"
-                  onClick={() => setIsSyncModalOpen(true)}
+                  onClick={onSyncOptionsClick}
                 >{t`Sync options`}</Button>
               )}
 
@@ -115,15 +114,17 @@ const TableSectionBase = ({ params, table }: Props) => {
                 <FieldOrderPicker
                   value={table.field_order}
                   onChange={async (fieldOrder) => {
-                    await updateTableSorting({
+                    const { error } = await updateTableSorting({
                       id: table.id,
                       field_order: fieldOrder,
                     });
 
-                    sendToast({
-                      icon: "check",
-                      message: t`Field order updated`,
-                    });
+                    if (!error) {
+                      sendToast({
+                        icon: "check",
+                        message: t`Field order updated`,
+                      });
+                    }
                   }}
                 />
               )}
@@ -145,16 +146,18 @@ const TableSectionBase = ({ params, table }: Props) => {
               activeFieldId={fieldId}
               table={table}
               onChange={async (fieldOrder) => {
-                await updateTableFieldsOrder({
+                const { error } = await updateTableFieldsOrder({
                   id: table.id,
                   // in this context field id will never be a string because it's a raw table field, so it's ok to cast
                   field_order: fieldOrder as FieldId[],
                 });
 
-                sendToast({
-                  icon: "check",
-                  message: t`Field order updated`,
-                });
+                if (!error) {
+                  sendToast({
+                    icon: "check",
+                    message: t`Field order updated`,
+                  });
+                }
               }}
             />
           )}
@@ -168,12 +171,6 @@ const TableSectionBase = ({ params, table }: Props) => {
           )}
         </Stack>
       </Stack>
-
-      <SyncOptionsModal
-        isOpen={isSyncModalOpen}
-        tableId={table.id}
-        onClose={() => setIsSyncModalOpen(false)}
-      />
     </Stack>
   );
 };

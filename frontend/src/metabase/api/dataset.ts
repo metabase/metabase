@@ -21,13 +21,21 @@ interface RefetchDeps {
   _refetchDeps?: unknown;
 }
 
+interface IgnorableError {
+  ignore_error?: boolean;
+}
+
 export const datasetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    getAdhocQuery: builder.query<Dataset, DatasetQuery & RefetchDeps>({
-      query: ({ _refetchDeps, ...body }) => ({
+    getAdhocQuery: builder.query<
+      Dataset,
+      DatasetQuery & RefetchDeps & IgnorableError
+    >({
+      query: ({ _refetchDeps, ignore_error, ...body }) => ({
         method: "POST",
         url: "/api/dataset",
         body,
+        noEvent: ignore_error,
       }),
     }),
     getAdhocQueryMetadata: builder.query<CardQueryMetadata, DatasetQuery>({

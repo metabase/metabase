@@ -6,6 +6,7 @@ import { useToast } from "metabase/common/hooks";
 import { CoercionStrategyPicker } from "metabase/metadata/components";
 import {
   canCoerceFieldType,
+  getFieldRawName,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
 import { Flex, Stack, Switch, rem } from "metabase/ui";
@@ -39,7 +40,9 @@ const DataSectionBase = ({ field }: Props) => {
 
   return (
     <TitledSection title={t`Data`}>
-      <LabeledValue label={t`Field name`}>{field.name}</LabeledValue>
+      <LabeledValue label={t`Field name`}>
+        {getFieldRawName(field)}
+      </LabeledValue>
 
       <Stack gap={0}>
         <LabeledValue label={t`Data type`}>{field.database_type}</LabeledValue>

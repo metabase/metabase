@@ -52,7 +52,14 @@ export const NameDescriptionInput = ({
             <Icon c="brand" flex="0 0 auto" name={nameIcon} size={20} />
 
             {namePrefix && (
-              <Text c="text-light" flex="1" lh="normal" lineClamp={1} size="lg">
+              <Text
+                c="text-light"
+                data-testid="name-prefix"
+                flex="1"
+                lh="normal"
+                lineClamp={1}
+                size="lg"
+              >
                 {namePrefix}
                 {":"}
               </Text>

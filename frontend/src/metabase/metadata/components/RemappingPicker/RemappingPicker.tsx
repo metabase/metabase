@@ -10,6 +10,7 @@ import {
   useGetTableQueryMetadataQuery,
   useUpdateFieldValuesMutation,
 } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
@@ -52,6 +53,7 @@ export const RemappingPicker = ({
   field,
   ...props
 }: Props) => {
+  const [sendToast] = useToast();
   const [hasChanged, setHasChanged] = useState(false);
   const [isCustomMappingOpen, setIsCustomMappingOpen] = useState(false);
   const [isFkTargetTouched, setIsFkTargetTouched] = useState(false);
@@ -116,19 +118,33 @@ export const RemappingPicker = ({
     setIsChoosingInitialFkTarget(false);
 
     if (value === "original") {
-      await deleteFieldDimension(id);
-      setHasChanged(false);
+      const { error } = await deleteFieldDimension(id);
+
+      if (!error) {
+        sendToast({
+          icon: "check",
+          message: t`Display values for ${field.display_name} updated`,
+        });
+        setHasChanged(false);
+      }
     } else if (value === "foreign") {
       // Try to find a entity name field from target table and choose it as remapping target field if it exists
       const entityNameFieldId = getFkTargetTableEntityNameOrNull(fkTargetTable);
 
       if (entityNameFieldId) {
-        await createFieldDimension({
+        const { error } = await createFieldDimension({
           id,
           type: "external",
           name: field.display_name,
           human_readable_field_id: entityNameFieldId,
         });
+
+        if (!error) {
+          sendToast({
+            icon: "check",
+            message: t`Display values for ${field.display_name} updated`,
+          });
+        }
       } else {
         // Enter a special state where we are choosing an initial value for FK target
         setHasChanged(true);
@@ -137,28 +153,42 @@ export const RemappingPicker = ({
 
       setIsFkTargetTouched(false);
     } else if (value === "custom") {
-      await createFieldDimension({
+      const { error } = await createFieldDimension({
         id,
         type: "internal",
         name: field.display_name,
         human_readable_field_id: null,
       });
-      setHasChanged(true);
-      setIsCustomMappingOpen(true);
+
+      if (!error) {
+        sendToast({
+          icon: "check",
+          message: t`Display values for ${field.display_name} updated`,
+        });
+        setHasChanged(true);
+        setIsCustomMappingOpen(true);
+      }
     } else {
       throw new Error(t`Unrecognized mapping type`);
     }
   };
 
-  const handleFkRemappingFieldChange = (fkFieldId: FieldId) => {
+  const handleFkRemappingFieldChange = async (fkFieldId: FieldId) => {
     setIsChoosingInitialFkTarget(false);
 
-    createFieldDimension({
+    const { error } = await createFieldDimension({
       id,
       type: "external",
       name: field.display_name,
       human_readable_field_id: fkFieldId,
     });
+
+    if (!error) {
+      sendToast({
+        icon: "check",
+        message: t`Display values for ${field.display_name} updated`,
+      });
+    }
   };
 
   return (
@@ -233,8 +263,18 @@ export const RemappingPicker = ({
               <CustomMappingModal
                 isOpen={isCustomMappingOpen}
                 value={mapping}
-                onChange={(remappings) => {
-                  updateFieldValues({ id, values: Array.from(remappings) });
+                onChange={async (remappings, options) => {
+                  const { error } = await updateFieldValues({
+                    id,
+                    values: Array.from(remappings),
+                  });
+
+                  if (!error && !options?.isAutomatic) {
+                    sendToast({
+                      icon: "check",
+                      message: t`Display values for ${field.display_name} updated`,
+                    });
+                  }
                 }}
                 onClose={() => setIsCustomMappingOpen(false)}
               />

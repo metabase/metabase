@@ -21,7 +21,7 @@ export function TablePicker({
   const deferredQuery = useDeferredValue(query);
 
   return (
-    <Stack mih={rem(200)}>
+    <Stack data-testid="table-picker" mih={rem(200)}>
       <Box p="xl" pb={0}>
         <Input
           leftSection={<Icon name="search" />}

@@ -206,12 +206,9 @@ export function useSearch(query: string) {
     data?.data.forEach((result) => {
       const { model, database_name, database_id, table_schema, id, name } =
         result;
+      const tableSchema = table_schema ?? "";
 
-      if (
-        model !== "table" ||
-        database_name === null ||
-        table_schema === null
-      ) {
+      if (model !== "table" || database_name === null) {
         return;
       }
 
@@ -230,17 +227,16 @@ export function useSearch(query: string) {
         tree.children.push(databaseNode);
       }
 
-      let schemaNode = databaseNode.children.find(
-        (node) =>
-          node.type === "schema" && node.value.schemaName === table_schema,
-      );
+      let schemaNode = databaseNode.children.find((node) => {
+        return node.type === "schema" && node.value.schemaName === tableSchema;
+      });
       if (!schemaNode) {
         schemaNode = node<SchemaNode>({
           type: "schema",
-          label: table_schema,
+          label: tableSchema,
           value: {
             databaseId: database_id,
-            schemaName: table_schema,
+            schemaName: tableSchema,
           },
         });
         databaseNode.children.push(schemaNode);
@@ -255,7 +251,7 @@ export function useSearch(query: string) {
           label: name,
           value: {
             databaseId: database_id,
-            schemaName: table_schema,
+            schemaName: tableSchema,
             tableId: id,
           },
           disabled: !isSyncCompleted(result),
