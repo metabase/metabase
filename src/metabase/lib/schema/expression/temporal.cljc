@@ -60,6 +60,8 @@
             [:ref ::expression/string]      ;; parse string as date
             [:ref ::expression/temporal]]]) ;; truncate datetime to date
 
+(mbql-clause/define-tuple-mbql-clause :today :- :type/Date)
+
 (mbql-clause/define-catn-mbql-clause :datetime :- :type/DateTime
   [:value [:schema :any]] ;; need to support bytes type
   [:mode [:?
