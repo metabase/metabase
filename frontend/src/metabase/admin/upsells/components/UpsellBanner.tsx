@@ -56,7 +56,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   buttonLink,
   internalLink,
   campaign,
-  source,
+  source: location,
   large,
   children,
   ...props
@@ -64,11 +64,11 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   const url = useUpsellLink({
     url: buttonLink ?? UPGRADE_URL,
     campaign,
-    source,
+    location,
   });
 
   useMount(() => {
-    trackUpsellViewed({ source, campaign });
+    trackUpsellViewed({ location, campaign });
   });
 
   const { dismissible, onDismiss, ...domProps } =
@@ -100,7 +100,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       <Flex align="center" gap="md">
         {buttonLink !== undefined ? (
           <ExternalLink
-            onClickCapture={() => trackUpsellClicked({ source, campaign })}
+            onClickCapture={() => trackUpsellClicked({ location, campaign })}
             href={url}
             className={S.UpsellCTALink}
           >
@@ -108,7 +108,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
           </ExternalLink>
         ) : (
           <Link
-            onClickCapture={() => trackUpsellClicked({ source, campaign })}
+            onClickCapture={() => trackUpsellClicked({ location, campaign })}
             to={internalLink}
             className={S.UpsellCTALink}
           >
