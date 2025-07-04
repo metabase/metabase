@@ -1250,13 +1250,13 @@
   (testing "healthcheck after updating with a new private key should work correctly"
     (mt/test-driver :snowflake
       (let [normal-details (:details (mt/db))
-            priv-key->base64 (fn [pk-var]
-                               (-> (format-env-key (tx/db-test-env-var-or-throw :snowflake pk-var))
+            priv-key->base64 (fn [priv-key-var]
+                               (-> (tx/db-test-env-var-or-throw :snowflake priv-key-var)
+                                   format-env-key
                                    u/string-to-bytes
                                    mt/bytes->base64-data-uri))
-            rsa-details (merge (dissoc (tx/dbdef->connection-details :snowflake nil nil) :password)
-                               {:db (:db normal-details)
-                                :user (tx/db-test-env-var-or-throw :snowflake :pk-user)
+            rsa-details (merge (dissoc normal-details :password)
+                               {:user (tx/db-test-env-var-or-throw :snowflake :pk-user)
                                 :private-key-options "uploaded"
                                 :private-key-value (priv-key->base64 :pk-private-key)
                                 :use-password false})
@@ -1267,17 +1267,19 @@
                                                                  (tx/db-test-env-var-or-throw :snowflake :pk-user)
                                                                  (tx/db-test-env-var-or-throw :snowflake pub-key-var))])))]
         (mt/with-temp [:model/Database rsa-db {:engine :snowflake :details rsa-details}]
-          ;; assert we can connect to the db with the original rsa details
-          (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))))
-          ;; update the snowflake rsa user to use the new public key
-          (set-user-public-key :pk-public-key-2)
-          ;; assert we can no longer connect with the original rsa details
-          (let [resp (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))]
-            (is (= "error" (:status resp)))
-            (is (str/starts-with? (:message resp) "JWT token is invalid.")))
-          ;; update the database details to use the new rsa details
-          (mt/user-http-request :crowberto :put 200 (str "database/" (:id rsa-db)) {:details new-rsa-details})
-          ;; assert we can connect to the db with the new rsa details
-          (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))))
-          ;; reset the snowflake rsa user to use the original public key
-          (set-user-public-key :pk-public-key))))))
+          (try
+            ;; assert we can connect to the db with the original rsa details
+            (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))))
+            ;; update the snowflake rsa user to use the new public key
+            (set-user-public-key :pk-public-key-2)
+            ;; assert we can no longer connect with the original rsa details
+            (let [resp (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))]
+              (is (= "error" (:status resp)))
+              (is (str/starts-with? (:message resp) "JWT token is invalid.")))
+            ;; update the database details to use the new rsa details
+            (mt/user-http-request :crowberto :put 200 (str "database/" (:id rsa-db)) {:details new-rsa-details})
+            ;; assert we can connect to the db with the new rsa details
+            (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))))
+            (finally
+              ;; reset the snowflake rsa user to use the original public key
+              (set-user-public-key :pk-public-key))))))))
