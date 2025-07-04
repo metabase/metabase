@@ -16,6 +16,7 @@ import type {
   Table,
   UserId,
   VirtualCardDisplay,
+  VisualizationSettings,
   VisualizerVizDefinition,
 } from "metabase-types/api";
 
@@ -24,7 +25,7 @@ import type {
   WritebackAction,
   WritebackActionId,
 } from "./actions";
-import type { Card, CardId, VisualizationSettings } from "./card";
+import type { Card, CardId } from "./card";
 import type { Dataset } from "./dataset";
 import type { ModerationReview } from "./moderation";
 import type { SearchModel } from "./search";

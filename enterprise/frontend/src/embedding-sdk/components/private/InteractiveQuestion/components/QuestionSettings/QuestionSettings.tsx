@@ -40,7 +40,7 @@ const QuestionSettingsContent = ({
     ];
   }, [queryResults, question]);
 
-  const onChange = async (settings: VisualizationSettings) => {
+  const onChange = async (settings: Partial<VisualizationSettings>) => {
     await updateQuestion(question.updateSettings(settings).lockDisplay());
   };
 

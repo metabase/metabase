@@ -45,11 +45,9 @@ import {
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import { computeNumericDataInterval } from "metabase/visualizations/lib/numeric";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
   ColumnSettings,
-  ComputedVisualizationSettings,
-} from "metabase/visualizations/types";
-import type {
   DatasetColumn,
   DateTimeAbsoluteUnit,
   NumericScale,
@@ -77,9 +75,7 @@ const KEYS_TO_COMPARE = new Set([
   "suffix",
 ]);
 
-function getLineAreaBarComparisonSettings(
-  columnSettings: Record<string, unknown>,
-) {
+function getLineAreaBarComparisonSettings(columnSettings: ColumnSettings) {
   return _.pick(columnSettings, (value, key) => {
     if (!KEYS_TO_COMPARE.has(key)) {
       return false;
@@ -291,9 +287,8 @@ const getYAxisSplit = (
 
   const axisBySeriesKey = seriesModels.reduce(
     (acc, seriesModel) => {
-      const seriesSettings: SeriesSettings = settings.series(
-        seriesModel.legacySeriesSettingsObjectKey,
-      );
+      const seriesSettings: SeriesSettings =
+        settings.series?.(seriesModel.legacySeriesSettingsObjectKey) ?? {};
 
       const seriesStack = stackModels.find((stackModel) =>
         stackModel.seriesKeys.includes(seriesModel.dataKey),
@@ -566,6 +561,7 @@ export function getYAxisModel(
     formatGoal,
     isNormalized: stackType === "normalized",
     splitNumber:
+      settings["graph.y_axis.split_number"] != null &&
       settings["graph.y_axis.split_number"] > 0
         ? settings["graph.y_axis.split_number"]
         : undefined,

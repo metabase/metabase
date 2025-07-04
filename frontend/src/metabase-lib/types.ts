@@ -9,6 +9,7 @@ import type {
   TableId,
   TableVisibilityType,
   TemporalUnit,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import type { ColumnExtractionTag } from "./extractions";
@@ -622,7 +623,7 @@ export interface ClickObject {
   element?: Element;
   seriesIndex?: number;
   cardId?: CardId;
-  settings?: Record<string, unknown>;
+  settings?: VisualizationSettings;
   columnShortcuts?: boolean;
   origin?: {
     row: RowValue[];

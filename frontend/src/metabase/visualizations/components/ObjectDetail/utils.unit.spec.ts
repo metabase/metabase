@@ -215,7 +215,7 @@ describe("ObjectDetail utils", () => {
             date_abbreviate: false,
             date_separator: "/",
             date_style: "MMMM D, YYYY",
-            time_enabled: false,
+            time_enabled: null,
             time_style: "h:mm A",
           }),
         },

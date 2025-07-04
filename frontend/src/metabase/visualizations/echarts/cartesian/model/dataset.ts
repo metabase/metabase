@@ -299,7 +299,7 @@ export const getNullReplacerTransform = (
   const replaceNullsWithZeroDataKeys = seriesModels
     .filter(
       (seriesModel) =>
-        settings.series(seriesModel.legacySeriesSettingsObjectKey)[
+        settings.series?.(seriesModel.legacySeriesSettingsObjectKey)[
           "line.missing"
         ] === "zero",
     )

@@ -53,6 +53,7 @@ describe("DashboardChartSettings", () => {
       click_behavior: {
         type: "link",
         linkType: "url",
+        linkTemplate: "https://example.com",
       },
     });
 

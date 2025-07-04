@@ -502,9 +502,8 @@ export const getChartPadding = (
   // We handle non-categorical scatter plots differently, because echarts places
   // the tick labels on the very edge of the x-axis for scatter plots only.
   const isScatterPlot = chartModel.seriesModels.some((seriesModel) => {
-    const seriesSettings = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
+    const seriesSettings =
+      settings.series?.(seriesModel.legacySeriesSettingsObjectKey) ?? {};
     return seriesSettings.display === "scatter";
   });
   if (isScatterPlot && chartModel.xAxisModel.axisType !== "category") {

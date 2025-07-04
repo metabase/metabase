@@ -186,9 +186,13 @@ export const getCardSeriesModels = (
           card.name,
         );
 
-      const color = getHexColor(
-        settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey],
-      );
+      const colorRaw = settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey];
+      if (colorRaw == null) {
+        throw new Error(
+          `Series color is not set for ${vizSettingsKey} in ${card.name}`,
+        );
+      }
+      const color = getHexColor(colorRaw);
 
       const dataKey = getDatasetKey(metric.column, cardId);
 
@@ -250,9 +254,13 @@ export const getCardSeriesModels = (
         card.name,
       );
 
-    const color = getHexColor(
-      settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey],
-    );
+    const colorRaw = settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey];
+    if (colorRaw == null) {
+      throw new Error(
+        `Series color is not set for ${vizSettingsKey} in ${card.name}`,
+      );
+    }
+    const color = getHexColor(colorRaw);
 
     const dataKey = getDatasetKey(metric.column, cardId, breakoutValue);
 
@@ -549,9 +557,8 @@ export function getDisplaySeriesSettingsByDataKey(
 ) {
   const seriesSettingsByKey = seriesModels.reduce(
     (acc, seriesModel) => {
-      acc[seriesModel.dataKey] = settings.series(
-        seriesModel.legacySeriesSettingsObjectKey,
-      );
+      acc[seriesModel.dataKey] =
+        settings.series?.(seriesModel.legacySeriesSettingsObjectKey) ?? {};
       return acc;
     },
     {} as Record<DataKey, SeriesSettings>,
@@ -709,7 +716,7 @@ const getSeriesLabelsFormatters = (
 
   const seriesModelsWithLabels = seriesModels.filter((seriesModel) => {
     const seriesSettings =
-      settings.series(seriesModel.legacySeriesSettingsObjectKey) ?? {};
+      settings.series?.(seriesModel.legacySeriesSettingsObjectKey) ?? {};
 
     return !!seriesSettings["show_series_values"];
   });

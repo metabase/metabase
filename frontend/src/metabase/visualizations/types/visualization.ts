@@ -17,6 +17,7 @@ import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
+  ColumnSettings,
   Dashboard,
   DashboardCard,
   DatasetColumn,
@@ -24,6 +25,8 @@ import type {
   RawSeries,
   RowValue,
   Series,
+  SeriesSettings,
+  SingleSeries,
   TimelineEvent,
   TimelineEventId,
   TransformedSeries,
@@ -32,7 +35,6 @@ import type {
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
 import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
 
-import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
 
 export interface Padding {
@@ -90,14 +92,26 @@ export type OnChangeCardAndRunOpts = {
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
-export type ColumnSettings = OptionsType & {
-  "pivot_table.column_show_totals"?: boolean;
-  text_align?: "left" | "middle" | "right";
-  [key: string]: unknown;
+// export type ColumnSettings = OptionsType & {
+//   "pivot_table.column_show_totals"?: boolean;
+//   text_align?: "left" | "middle" | "right";
+//   [key: string]: unknown;
+// };
+
+type NestedSettingsGetter<TEntity, TSettings> = (entity: TEntity) => TSettings;
+
+export type SeriesSettingsKey = {
+  card: {
+    _seriesKey: string;
+  };
 };
 
 export type ComputedVisualizationSettings = VisualizationSettings & {
-  column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
+  series?: NestedSettingsGetter<
+    SeriesSettingsKey | SingleSeries,
+    SeriesSettings
+  >;
+  column?: NestedSettingsGetter<DatasetColumn, ColumnSettings>;
 };
 
 export interface StaticVisualizationProps {

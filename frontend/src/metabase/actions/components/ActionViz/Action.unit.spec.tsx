@@ -416,7 +416,7 @@ describe("Actions > ActionViz > Action", () => {
   });
 
   describe("Form actions", () => {
-    const formSettings = { actionDisplayType: "form" };
+    const formSettings = { actionDisplayType: "form" as const };
 
     it("should render an action form", async () => {
       await setup({ settings: formSettings });

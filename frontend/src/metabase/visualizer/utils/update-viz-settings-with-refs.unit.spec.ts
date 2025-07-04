@@ -85,8 +85,8 @@ describe("updateVizSettingsKeysWithRefs", () => {
         count: { color: "#f00" },
       },
       column_settings: {
-        avg: { format: "number" },
-        ['["name","avg"]']: { format: "currency" },
+        avg: { number_style: "decimal" },
+        ['["name","avg"]']: { number_style: "currency" },
       },
       data: [
         { series: "avg", value: 10 },

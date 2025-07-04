@@ -1,7 +1,7 @@
 import { assocIn } from "icepick";
 
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
-import type { Card, VisualizationSettings } from "metabase-types/api/card";
+import type { Card, VisualizationSettings } from "metabase-types/api";
 
 export const updateSeriesColor = (
   settings: VisualizationSettings,
@@ -11,6 +11,6 @@ export const updateSeriesColor = (
   return assocIn(settings, [SERIES_SETTING_KEY, seriesKey, "color"], color);
 };
 
-export const getNameForCard = (card: Card) => {
-  return card?.name || "";
+export const getNameForCard = (card?: Card) => {
+  return card?.name ?? "";
 };

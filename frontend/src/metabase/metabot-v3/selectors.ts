@@ -25,7 +25,7 @@ export const getVisualizationMetabotContext = createSelector(
         {};
       transformedSeries.forEach((series) => {
         seriesSettings[keyForSingleSeries(series)] =
-          hydratedVisualizationSettings.series(series);
+          hydratedVisualizationSettings.series?.(series) ?? {};
       });
       hydratedVisualizationSettings.series_settings = seriesSettings;
     }

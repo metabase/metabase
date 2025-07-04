@@ -17,6 +17,7 @@ import { connect } from "metabase/lib/redux";
 import { Box, Flex, Title } from "metabase/ui";
 import type {
   ActionDashboardCard,
+  ButtonVariant,
   Dashboard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -90,7 +91,7 @@ export function ActionSidebar({
               options={buttonVariantOptions}
               onChange={(e) =>
                 onUpdateVisualizationSettings({
-                  "button.variant": e.target.value,
+                  "button.variant": e.target.value as ButtonVariant,
                 })
               }
             />

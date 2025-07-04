@@ -49,7 +49,7 @@ describe("getPieChartModel", () => {
   const settings = {
     "pie.metric": "count",
     column_settings: {},
-    "pie.dimension": ["birth_year"],
+    "pie.dimension": ["birth_year"] as const,
     "pie.sort_rows": false,
     "pie.slice_threshold": 2.5,
     "pie.rows": [

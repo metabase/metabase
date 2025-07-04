@@ -5,6 +5,7 @@ import {
   isImplicitUpdateAction,
 } from "metabase/actions/utils";
 import { formatValue, singularize } from "metabase/lib/formatting";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import { canRunAction } from "metabase-lib/v1/actions/utils";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -18,7 +19,6 @@ import type {
   DatasetColumn,
   DatasetData,
   TableId,
-  VisualizationSettings,
   WritebackAction,
 } from "metabase-types/api";
 
@@ -58,7 +58,7 @@ export interface GetDisplayIdArgs {
   cols: DatasetColumn[];
   zoomedRow: unknown[] | undefined;
   tableId?: TableId;
-  settings: VisualizationSettings;
+  settings: ComputedVisualizationSettings;
 }
 
 export const getDisplayId = ({

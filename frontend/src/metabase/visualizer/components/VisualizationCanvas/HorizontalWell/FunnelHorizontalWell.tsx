@@ -84,6 +84,9 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
   };
 
   const handleRemove = () => {
+    if (settings["funnel.dimension"] == null) {
+      return;
+    }
     dispatch(removeColumn({ name: settings["funnel.dimension"] }));
   };
 
