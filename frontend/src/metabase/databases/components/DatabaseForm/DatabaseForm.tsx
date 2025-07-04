@@ -21,7 +21,7 @@ import {
   getVisibleFields,
 } from "../../utils/schema";
 import DatabaseDetailField from "../DatabaseDetailField";
-import DatabaseEngineField from "../DatabaseEngineField";
+import { DatabaseEngineField } from "../DatabaseEngineField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
 import DatabaseNameField from "../DatabaseNameField";
 
