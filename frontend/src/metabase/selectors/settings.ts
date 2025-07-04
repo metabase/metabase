@@ -34,14 +34,16 @@ export const isSsoEnabled = (state: State) =>
   getSetting(state, "other-sso-enabled?");
 
 type StorePaths =
-  /* store main page */
+  /** store main page */
   | ""
-  /* checkout page */
+  /** checkout page */
   | "checkout"
-  /* plans management page */
+  /** plans management page */
   | "account/manage/plans"
-  /* development instance specific upsell */
-  | "account/new-dev-instance";
+  /** development instance specific upsell */
+  | "account/new-dev-instance"
+  /** redirects to the specific instance storage management page */
+  | "account/storage";
 
 export const getStoreUrl = (path: StorePaths = "") => {
   return `https://store.metabase.com/${path}`;
