@@ -40,7 +40,7 @@ type UpsellBannerPropsBase = {
   title: string;
   buttonText: string;
   campaign: string;
-  source: string;
+  location: string;
   large?: boolean;
   children: React.ReactNode;
   style?: React.CSSProperties;
@@ -56,7 +56,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   buttonLink,
   internalLink,
   campaign,
-  source: location,
+  location,
   large,
   children,
   ...props

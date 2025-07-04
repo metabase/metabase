@@ -37,7 +37,7 @@ export type UpsellCardProps = {
   title: string;
   buttonText: string;
   campaign: string;
-  source: string;
+  location: string;
   illustrationSrc?: string;
   children: React.ReactNode;
   large?: boolean;
@@ -50,7 +50,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   buttonText,
   buttonLink,
   campaign,
-  source: location,
+  location,
   illustrationSrc,
   internalLink,
   children,
