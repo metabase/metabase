@@ -436,7 +436,7 @@ describe("issue 41785, issue 46756", () => {
   });
 });
 
-describe.skip("issue 40635", () => {
+describe("issue 40635", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -507,7 +507,7 @@ describe.skip("issue 40635", () => {
       .icon("close")
       .click();
 
-    assertSettingsSidebar();
+    assertSettingsSidebarNestedQuery();
     assertVisualizationColumns();
 
     H.openNotebook();
@@ -515,14 +515,14 @@ describe.skip("issue 40635", () => {
     H.popover().within(() => {
       cy.findAllByText("ID").should("have.length", 1);
       cy.findAllByText("Products → ID").should("have.length", 1);
-      cy.findAllByText("Products_2 → ID").should("have.length", 1);
+      cy.findAllByText("Products - User → ID").should("have.length", 1);
     });
   });
 
   function assertVisualizationColumns() {
     assertTableHeader(0, "ID");
     assertTableHeader(1, "Products → ID");
-    assertTableHeader(2, "Products_2 → ID");
+    assertTableHeader(2, "Products - User → ID");
   }
 
   function assertTableHeader(index: number, name: string) {
@@ -536,12 +536,29 @@ describe.skip("issue 40635", () => {
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findAllByText("ID").should("have.length", 1);
       cy.findAllByText("Products → ID").should("have.length", 1);
-      cy.findAllByText("Products_2 → ID").should("have.length", 1);
+      cy.findAllByText("Products - User → ID").should("have.length", 1);
 
       cy.findByRole("button", { name: "Add or remove columns" }).click();
       cy.findAllByText("ID").should("have.length", 4);
       cy.findAllByText("Products").should("have.length", 1);
       cy.findAllByText("Products 2").should("have.length", 1);
+    });
+
+    cy.button("Done").click();
+  }
+
+  function assertSettingsSidebarNestedQuery() {
+    H.openVizSettingsSidebar();
+
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Products → ID").should("have.length", 1);
+      cy.findAllByText("Products - User → ID").should("have.length", 1);
+
+      cy.findByRole("button", { name: "Add or remove columns" }).click();
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Products → ID").should("have.length", 1);
+      cy.findAllByText("Products - User → ID").should("have.length", 1);
     });
 
     cy.button("Done").click();
