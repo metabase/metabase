@@ -155,6 +155,8 @@
   metabase.lib.test-util.macros/mbql-query                                               [[:inner 0]]
   metabase.lib.util.match/match                                                          [[:inner 0]]
   metabase.lib.util.match/match-one                                                      [[:inner 0]]
+  metabase.lib.util.match/match-lite                                                     [[:inner 0]]
+  metabase.lib.util.match/match-lite-recursive                                           [[:inner 0]]
   metabase.lib.util.match/replace                                                        [[:inner 0]]
   metabase.lib.util.match/replace-in                                                     [[:inner 0]]
   metabase.models.interface/define-batched-hydration-method                              [[:inner 0]]
