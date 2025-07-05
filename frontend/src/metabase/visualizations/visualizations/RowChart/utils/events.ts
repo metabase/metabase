@@ -103,10 +103,20 @@ const getColumnsData = (
   let metricDatum: MetricDatum;
 
   if ("breakout" in chartColumns && datum.breakout) {
-    data.push({
-      key: chartColumns.breakout.column.display_name,
-      value: series.seriesKey,
-      col: chartColumns.breakout.column,
+    const breakoutDims = chartColumns.breakout.breakoutDimensions;
+    const breakoutValues =
+      typeof series.seriesKey === "string"
+        ? series.seriesKey.split(" - ")
+        : Array.isArray(series.seriesKey)
+          ? series.seriesKey
+          : [series.seriesKey];
+
+    breakoutDims.forEach((dim, i) => {
+      data.push({
+        key: dim.column.display_name,
+        value: breakoutValues[i],
+        col: dim.column,
+      });
     });
 
     metricDatum = datum.breakout[series.seriesKey].metrics;
@@ -157,7 +167,7 @@ export const getClickData = (
 
   if ("breakout" in chartColumns) {
     dimensions.push({
-      column: chartColumns.breakout.column,
+      column: chartColumns.breakout.breakoutDimensions[0].column,
       value: series.seriesInfo?.breakoutValue ?? null,
     });
   }
@@ -183,7 +193,7 @@ export const getLegendClickData = (
     "breakout" in chartColumns
       ? [
           {
-            column: chartColumns.breakout.column,
+            column: chartColumns.breakout.breakoutDimensions[0].column,
             value: currentSeries.seriesInfo?.breakoutValue ?? null,
           },
         ]
