@@ -23,9 +23,10 @@
       (testing "the card is in a dashboard we don't have permission to see"
         (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
         (is (= [{:card_id card-id
-                 :dashboards [{:name dash-name :id dash-id}
-                              {:error "unreadable-dashboard"}]}]
-               (mt/user-http-request :rasta :post 200 "cards/dashboards" {:card_ids [card-id]}))))
+                 :dashboards #{{:name dash-name :id dash-id}
+                               {:error "unreadable-dashboard"}}}]
+               (->> (mt/user-http-request :rasta :post 200 "cards/dashboards" {:card_ids [card-id]})
+                    (map #(update % :dashboards set))))))
       (testing "the card is in a dashboard we don't have permission to *write*, but we can see it"
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
         (is (= [{:card_id card-id
