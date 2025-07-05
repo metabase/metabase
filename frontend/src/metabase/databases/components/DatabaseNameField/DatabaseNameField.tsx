@@ -10,12 +10,14 @@ export interface DatabaseNameFieldProps {
   engine: Engine;
   config: DatabaseFormConfig;
   autoFocus?: boolean;
+  onPaste?: (event: React.ClipboardEvent<HTMLInputElement>) => void;
 }
 
 const DatabaseNameField = ({
   engine,
   autoFocus,
   config,
+  onPaste,
   ...props
 }: DatabaseNameFieldProps): JSX.Element => {
   const name = engine["driver-name"] ?? t`Database`;
@@ -26,6 +28,7 @@ const DatabaseNameField = ({
   return (
     <FormInput
       name="name"
+      onPaste={onPaste}
       title={t`Display name`}
       placeholder={t`Our ${name}`}
       {...PLUGIN_DB_ROUTING.getDatabaseNameFieldProps(
