@@ -2,6 +2,7 @@
   (:require
    [metabase.analytics.core :as analytics]
    [metabase.channel.settings :as channel.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -54,6 +55,14 @@
                        :recipients     (count recipients)
                        :max-recipients throttle-threshold})))))))
 
+(defn- add-mail-args
+  "Adds any additionally needed mail properties needed for sending mail to the given map of args."
+  [args]
+  (let [trust (System/getProperty "mail.smtps.ssl.trust")]
+    (if trust
+      (assoc args :ssl.trust trust)
+      args)))
+
 ;; ## PUBLIC INTERFACE
 
 (defn send-email!
@@ -63,7 +72,7 @@
   If email-rate-limit-per-second is set, this function will throttle the email sending based on the total number of recipients."
   [smtp-credentials email-details]
   (check-email-throttle email-details)
-  (postal/send-message smtp-credentials email-details))
+  (postal/send-message (add-mail-args smtp-credentials) email-details))
 
 (defn- add-ssl-settings [m ssl-setting]
   (merge
@@ -76,11 +85,21 @@
      {})))
 
 (defn- smtp-settings []
-  (-> {:host (channel.settings/email-smtp-host)
-       :user (channel.settings/email-smtp-username)
-       :pass (channel.settings/email-smtp-password)
-       :port (channel.settings/email-smtp-port)}
-      (add-ssl-settings (channel.settings/email-smtp-security))))
+  (merge (if (and (channel.settings/smtp-override-enabled) (premium-features/is-hosted?))
+           (-> {:host         (channel.settings/email-smtp-host-override)
+                :user         (channel.settings/email-smtp-username-override)
+                :pass         (channel.settings/email-smtp-password-override)
+                :port         (channel.settings/email-smtp-port-override)
+                :from-address (channel.settings/email-from-address-override)}
+               (add-ssl-settings (channel.settings/email-smtp-security-override)))
+           (-> {:host         (channel.settings/email-smtp-host)
+                :user         (channel.settings/email-smtp-username)
+                :pass         (channel.settings/email-smtp-password)
+                :port         (channel.settings/email-smtp-port)
+                :from-address (channel.settings/email-from-address)}
+               (add-ssl-settings (channel.settings/email-smtp-security))))
+         {:reply-to  (channel.settings/email-reply-to)
+          :from-name (channel.settings/email-from-name)}))
 
 (def ^:private EmailMessage
   [:and
@@ -106,12 +125,13 @@
     (when-not (channel.settings/email-smtp-host)
       (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
     ;; Now send the email
-    (let [to-type (if bcc? :bcc :to)]
-      (send-email! (smtp-settings)
+    (let [to-type (if bcc? :bcc :to)
+          smtp-settings (smtp-settings)]
+      (send-email! smtp-settings
                    (merge
-                    {:from    (if-let [from-name (channel.settings/email-from-name)]
-                                (str from-name " <" (channel.settings/email-from-address) ">")
-                                (channel.settings/email-from-address))
+                    {:from    (if-let [from-name (:from-name smtp-settings)]
+                                (str from-name " <" (:from-address smtp-settings) ">")
+                                (:from-address smtp-settings))
                      ;; FIXME: postal doesn't accept recipients if it's a set, need to fix this from upstream
                      to-type  (seq recipients)
                      :subject subject
@@ -120,7 +140,7 @@
                                 :text        message
                                 :html        [{:type    "text/html; charset=utf-8"
                                                :content message}])}
-                    (when-let [reply-to (channel.settings/email-reply-to)]
+                    (when-let [reply-to (:reply-to smtp-settings)]
                       {:reply-to reply-to}))))
     (catch Throwable e
       (analytics/inc! :metabase-email/message-errors)
@@ -184,7 +204,7 @@
                              :connectiontimeout "1000"
                              :timeout "4000")
                       (add-ssl-settings security))
-          session (doto (Session/getInstance (make-props sender details))
+          session (doto (Session/getInstance (make-props sender (add-mail-args details)))
                     (.setDebug false))]
       (with-open [transport (.getTransport session proto)]
         (.connect transport host port user pass)))

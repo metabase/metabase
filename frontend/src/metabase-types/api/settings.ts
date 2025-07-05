@@ -222,6 +222,7 @@ export const tokenFeatures = [
   "advanced_permissions",
   "audit_app",
   "cache_granular_controls",
+  "cloud-custom-smtp",
   "content_translation",
   "content_verification",
   "disable_password_login",
@@ -312,6 +313,13 @@ export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
 
 interface InstanceSettings {
   "admin-email": string;
+  "email-from-address-override": string | null;
+  "email-smtp-host-override": string | null;
+  "email-smtp-port-override": 465 | 587 | 2525 | null;
+  "email-smtp-security-override": "ssl" | "tls" | "starttls";
+  "email-smtp-username-override": string | null;
+  "email-smtp-password-override": string | null;
+  "smtp-override-enabled": boolean;
   "email-from-name": string | null;
   "email-from-address": string | null;
   "email-reply-to": string[] | null;

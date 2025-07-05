@@ -8,6 +8,8 @@
    [metabase.channel.email :as email]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u :refer [prog1]]
@@ -260,7 +262,7 @@
                                      email-smtp-security :none]
     (testing "basic sending"
       (is (=
-           [{:from     (str (channel.settings/email-from-name) " <" (channel.settings/email-from-address) ">")
+           [{:from     "Lucky <lucky@metabase.com>"
              :to       ["test@test.com"]
              :subject  "101 Reasons to use Metabase"
              :reply-to (channel.settings/email-reply-to)
@@ -362,6 +364,47 @@
               (is (re-find
                    #"(?s)Content-Disposition: attachment.+filename=.+this-is-quite-[\-\s?=0-9a-zA-Z]+-characters.csv"
                    (m/mapply email/send-message! params-with-problematic-file))))))))))
+
+(deftest send-message!-cloud-test
+  (premium-features.test-util/with-premium-features [:cloud-custom-smtp]
+    (with-redefs [premium-features/is-hosted? (constantly true)]
+      (tu/with-temporary-setting-values [email-from-address "standard@metabase.com"
+                                         email-from-name "From Name"
+                                         email-reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
+                                         override-email-smtp-host "cloud.metabase.com"
+                                         override-email-from-address "cloud@metabase.com"
+                                         override-smtp-enabled true]
+        (testing "Sends to cloud email settings when enabled"
+          (is (=
+               [{:from     "From Name <cloud@metabase.com>"
+                 :to       ["test@test.com"]
+                 :subject  "101 Reasons to use Metabase"
+                 :reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
+                 :body     [{:type    "text/html; charset=utf-8"
+                             :content "101. Metabase will make you a better person"}]}]
+               (with-fake-inbox
+                 (email/send-message!
+                  :subject "101 Reasons to use Metabase"
+                  :recipients ["test@test.com"]
+                  :message-type :html
+                  :message "101. Metabase will make you a better person")
+                 (@inbox "test@test.com")))))
+        (testing "Sends to standard email settings when disabled, even if cloud settings are set"
+          (tu/with-temporary-setting-values [override-smtp-enabled false]
+            (is (=
+                 [{:from     "From Name <standard@metabase.com>"
+                   :to       ["test@test.com"]
+                   :subject  "101 Reasons to use Metabase"
+                   :reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
+                   :body     [{:type    "text/html; charset=utf-8"
+                               :content "101. Metabase will make you a better person"}]}]
+                 (with-fake-inbox
+                   (email/send-message!
+                    :subject "101 Reasons to use Metabase"
+                    :recipients ["test@test.com"]
+                    :message-type :html
+                    :message "101. Metabase will make you a better person")
+                   (@inbox "test@test.com"))))))))))
 
 (deftest throttle-test
   (let [send-email (fn [recipients]

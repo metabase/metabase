@@ -8,7 +8,7 @@ inputs:
     description: DockerHub password/token
     required: true
   maildev:
-    description: Maildev container
+    description: Maildev containers
     required: true
     default: false
   openldap:
@@ -58,6 +58,7 @@ runs:
           $([ ${{ inputs.mysql }} = true ] && echo "mysql-sample") \
           $([ ${{ inputs.mongo }} = true ] && echo "mongo-sample") \
           $([ ${{ inputs.maildev }} = true ] && echo "maildev") \
+          $([ ${{ inputs.maildev }} = true ] && echo "maildev-ssl") \
           $([ ${{ inputs.openldap }} = true ] && echo "ldap") \
           $([ ${{ inputs.webhook }} = true ] && echo "webhook-tester") \
           $([ ${{ inputs.snowplow }} = true ] && echo "snowplow-micro") \
@@ -68,6 +69,11 @@ runs:
           while ! nc -z localhost 1080; do sleep 1; done &&
           while ! nc -z localhost 1025; do sleep 1; done &&
           echo -e "${G}Maildev is up and running!"
+
+          echo -e "${Y}checking maildev-ssl container..." &&
+          while ! nc -z localhost 1081; do sleep 1; done &&
+          while ! nc -z localhost 465; do sleep 1; done &&
+          echo -e "${G}Maildev-ssl is up and running!"
         fi
 
         if ${{ inputs.openldap }}; then
