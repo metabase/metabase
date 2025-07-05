@@ -1,4 +1,4 @@
-name: E2E Embedding SDK Compatibility tests
+name: "[NOT REQUIRED] SDK Compatibility tests"
 
 on:
   push:
@@ -322,7 +322,7 @@ jobs:
   # The job is not required, though if it's failing better to be sure that it's not caused by a breaking change.
   # For more details see `Embedding SDK integration tests with Host Apps` in `enterprise/frontend/src/embedding-sdk/dev.md`
   e2e-host-apps-tests:
-    needs: [ get-build-requirements, build ]
+    needs: [get-build-requirements, build]
     strategy:
       matrix:
         test_suite: [
