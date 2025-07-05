@@ -415,7 +415,12 @@
                       (m/update-existing :lib/original-ref lib.join/with-join-alias join-alias))))
               ;; join does not exist at this stage of the query, try looking in previous stages.
               (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-                (resolve-in-join query previous-stage-number field-ref))))
+                (when-some [resolved (resolve-in-join query previous-stage-number field-ref)]
+                  (-> resolved
+                      ;; Do not propagate join alias in metadata for busted field refs that incorrectly use
+                      ;; it (QUE-1496)
+                      (assoc :lib/original-join-alias (lib.join.util/current-join-alias field-ref))
+                      (dissoc :metabase.lib.join/join-alias))))))
           (cond-> *debug* (update ::debug.origin conj (list 'resolve-in-join stage-number field-ref)))))
 
 (defn- resolve-field-ref*
