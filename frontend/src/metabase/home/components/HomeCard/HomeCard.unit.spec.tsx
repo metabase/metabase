@@ -3,7 +3,7 @@ import { render, screen } from "__support__/ui";
 import { HomeCard } from "./HomeCard";
 
 const setup = () => {
-  render(<HomeCard>A look at table</HomeCard>);
+  render(<HomeCard to="/table/1">A look at table</HomeCard>);
 };
 
 describe("HomeCard", () => {

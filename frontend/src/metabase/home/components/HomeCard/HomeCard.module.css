@@ -1,0 +1,22 @@
+.Root {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  background-color: var(--mb-color-bg-white);
+  box-shadow: 0 7px 20px var(--mb-color-shadow);
+  max-width: 100%;
+
+  @media screen and (--breakpoint-min-sm) {
+    max-width: 50%;
+  }
+
+  @media screen and (--breakpoint-min-lg) {
+    padding: 1.5rem;
+  }
+
+  &:hover {
+    box-shadow: 0 10px 22px var(--mb-color-shadow);
+  }
+}

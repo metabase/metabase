@@ -19,7 +19,7 @@ export const HomeXrayCard = ({
   message,
 }: HomeXrayCardProps): JSX.Element => {
   return (
-    <HomeCard url={url}>
+    <HomeCard to={url}>
       <CardIcon name="bolt_filled" />
       <CardTitle>
         <CardTitleSecondary>{message}</CardTitleSecondary>{" "}
