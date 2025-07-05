@@ -1,5 +1,6 @@
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { isNotNull } from "metabase/lib/types";
+import { isCartesianChart } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getDefaultDimensionFilter,
@@ -72,11 +73,21 @@ function pickColumnsFromTableToBarChart(
 function pickColumns(
   display: VisualizationDisplay,
   originalColumns: DatasetColumn[],
+  settings: ComputedVisualizationSettings,
 ) {
   if (display === "table" || display === "pivot") {
     // if the original card is a table, let's only use two columns
     // in the resulting bar chart
     return pickColumnsFromTableToBarChart(originalColumns);
+  }
+
+  if (isCartesianChart(display)) {
+    return originalColumns.filter((col) => {
+      return (
+        settings["graph.metrics"]?.includes(col.name) ||
+        settings["graph.dimensions"]?.includes(col.name)
+      );
+    });
   }
 
   return originalColumns;
@@ -137,8 +148,19 @@ export function getInitialStateForCardDataSource(
     }
   }
 
+  const computedSettings: ComputedVisualizationSettings =
+    getComputedSettingsForSeries([
+      {
+        ...dataset,
+        // Using state.display to get viz settings
+        // relevant to a new visualization vs. original card
+        // (e.g. if a card is a smartscalar, it won't have any relevant viz settings)
+        card: { ...card, display: state.display },
+      },
+    ]);
+
   const columnsToRefs: Record<string, string> = {};
-  const columns = pickColumns(card.display, originalColumns);
+  const columns = pickColumns(card.display, originalColumns, computedSettings);
 
   columns.forEach((column) => {
     const columnRef = createVisualizerColumnReference(
@@ -152,17 +174,6 @@ export function getInitialStateForCardDataSource(
     state.columnValuesMapping[columnRef.name] = [columnRef];
     columnsToRefs[column.name] = columnRef.name;
   });
-
-  const computedSettings: ComputedVisualizationSettings =
-    getComputedSettingsForSeries([
-      {
-        ...dataset,
-        // Using state.display to get viz settings
-        // relevant to a new visualization vs. original card
-        // (e.g. if a card is a smartscalar, it won't have any relevant viz settings)
-        card: { ...card, display: state.display },
-      },
-    ]);
 
   const entries = getColumnVizSettings(state.display!)
     .map((setting) => {
