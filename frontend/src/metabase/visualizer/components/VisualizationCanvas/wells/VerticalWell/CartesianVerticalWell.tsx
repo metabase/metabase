@@ -6,6 +6,7 @@ import { isNotNull } from "metabase/lib/types";
 import { Flex, Text } from "metabase/ui";
 import { getDefaultMetricFilter } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
+import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
 import {
   getIsMultiseriesCartesianChart,
   getVisualizationType,
@@ -13,7 +14,6 @@ import {
   getVisualizerDatasetColumns,
   getVisualizerRawSettings,
 } from "metabase/visualizer/selectors";
-import { isDraggedColumnItem } from "metabase/visualizer/utils";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
 import type { DatasetColumn } from "metabase-types/api";
 
@@ -41,16 +41,14 @@ export function CartesianVerticalWell() {
       .filter(isNotNull);
   }, [columns, computedSettings, rawSettings, isMultiseries]);
 
-  const canHandleActiveItem = useMemo(() => {
-    if (!display || !active || !isDraggedColumnItem(active)) {
-      return false;
-    }
-    const { column } = active.data.current;
-    const isSuitableColumn = getDefaultMetricFilter(display);
-    const a = isSuitableColumn(column);
+  const isSuitableColumn = useMemo(() => {
+    return display ? getDefaultMetricFilter(display) : () => false;
+  }, [display]);
 
-    return a;
-  }, [active, display]);
+  const canHandleActiveItem = useCanHandleActiveItem({
+    active,
+    isSuitableColumn,
+  });
 
   const handleRemoveMetric = (metric: DatasetColumn) => {
     dispatch(removeColumn({ name: metric.name }));

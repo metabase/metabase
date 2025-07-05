@@ -82,6 +82,9 @@ export const getIsLoading = createSelector(
 export const getDraggedItem = (state: State) =>
   getCurrentHistoryItem(state).draggedItem;
 
+export const getHoveredItems = (state: State) =>
+  getCurrentHistoryItem(state).hoveredItems;
+
 export const getCanUndo = (state: State) => state.visualizer.past.length > 0;
 export const getCanRedo = (state: State) => state.visualizer.future.length > 0;
 

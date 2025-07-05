@@ -1,23 +1,23 @@
 import { useDroppable } from "@dnd-kit/core";
-import { useMemo } from "react";
+import cx from "classnames";
+import { type ReactNode, forwardRef } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Stack, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
+import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
 import {
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
-import { isDraggedColumnItem } from "metabase/visualizer/utils";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
-
-import { WellBox } from "./WellBox";
+import S from "../well.module.css";
 
 export function PieVerticalWell() {
   return (
@@ -39,13 +39,10 @@ function PieMetricWell() {
 
   const metric = columns.find((col) => col.name === settings["pie.metric"]);
 
-  const isHighlighted = useMemo(() => {
-    if (!active || !isDraggedColumnItem(active)) {
-      return false;
-    }
-    const { column } = active.data.current;
-    return isMetric(column);
-  }, [active]);
+  const canHandleActiveItem = useCanHandleActiveItem({
+    active,
+    isSuitableColumn: isMetric,
+  });
 
   const handleRemoveMetric = () => {
     if (metric) {
@@ -57,7 +54,7 @@ function PieMetricWell() {
     <Box mt="lg">
       <Text>{t`Metric`}</Text>
       <WellBox
-        isHighlighted={isHighlighted}
+        isHighlighted={canHandleActiveItem}
         isOver={isOver}
         ref={setNodeRef}
         data-testid="pie-metric-well"
@@ -85,13 +82,10 @@ function PieDimensionWell() {
     id: DROPPABLE_ID.PIE_DIMENSION,
   });
 
-  const isHighlighted = useMemo(() => {
-    if (!active || !isDraggedColumnItem(active)) {
-      return false;
-    }
-    const { column } = active.data.current;
-    return isDimension(column);
-  }, [active]);
+  const canHandleActiveItem = useCanHandleActiveItem({
+    active,
+    isSuitableColumn: isDimension,
+  });
 
   const dimensions = columns.filter((col) =>
     (settings["pie.dimension"] ?? []).includes(col.name),
@@ -105,7 +99,7 @@ function PieDimensionWell() {
     <Box mt="lg">
       <Text>{t`Dimensions`}</Text>
       <WellBox
-        isHighlighted={isHighlighted}
+        isHighlighted={canHandleActiveItem}
         isOver={isOver}
         ref={setNodeRef}
         data-testid="pie-dimension-well"
@@ -126,3 +120,28 @@ function PieDimensionWell() {
     </Box>
   );
 }
+
+interface WellBoxProps {
+  isHighlighted: boolean;
+  isOver: boolean;
+  children: ReactNode;
+}
+
+export const WellBox = forwardRef<HTMLDivElement, WellBoxProps>(
+  function WellBox({ children, isHighlighted, isOver, ...props }, ref) {
+    return (
+      <Box
+        {...props}
+        className={cx(S.Well, S.defaultBorderRadius, {
+          [S.isOver]: isOver,
+          [S.isActive]: isHighlighted,
+        })}
+        mih="120px"
+        w="150px"
+        ref={ref}
+      >
+        {children}
+      </Box>
+    );
+  },
+);

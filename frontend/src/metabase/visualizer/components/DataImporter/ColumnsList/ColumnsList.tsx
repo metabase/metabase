@@ -18,12 +18,17 @@ import {
 } from "metabase/visualizer/selectors";
 import { isReferenceToColumn } from "metabase/visualizer/utils";
 import { findSlotForColumn } from "metabase/visualizer/visualizations/compat";
-import { addColumn, removeColumn } from "metabase/visualizer/visualizer.slice";
+import {
+  addColumn,
+  removeColumn,
+  setHoveredItems,
+} from "metabase/visualizer/visualizer.slice";
 import type {
   DatasetColumn,
   VisualizerDataSource,
   VisualizerDataSourceId,
 } from "metabase-types/api";
+import type { DraggedColumn } from "metabase-types/store/visualizer";
 
 import S from "./ColumnsList.module.css";
 import { ColumnsListItem, type ColumnsListItemProps } from "./ColumnsListItem";
@@ -187,6 +192,8 @@ function DraggableColumnListItem({
   isSelected,
   ...props
 }: DraggableColumnListItemProps) {
+  const dispatch = useDispatch();
+
   const { attributes, listeners, isDragging, setNodeRef } = useDraggable({
     id: `${DRAGGABLE_ID.COLUMN}:${dataSource.id}:${column.name}`,
     data: {
@@ -195,6 +202,26 @@ function DraggableColumnListItem({
       dataSource,
     },
   });
+
+  const onMouseEnter = () => {
+    dispatch(
+      setHoveredItems([
+        {
+          id: column.name,
+          data: {
+            current: {
+              type: "COLUMN",
+              column,
+              dataSource,
+            },
+          },
+        },
+      ] as DraggedColumn[]),
+    );
+  };
+  const onMouseLeave = () => {
+    dispatch(setHoveredItems(null));
+  };
 
   return (
     <ColumnsListItem
@@ -207,6 +234,8 @@ function DraggableColumnListItem({
       aria-selected={isSelected}
       data-testid="column-list-item"
       ref={setNodeRef}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     />
   );
 }
