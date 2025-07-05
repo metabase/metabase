@@ -1,11 +1,15 @@
 import * as Lib from "metabase-lib";
 
+import { columnsForExpressionMode } from "./mode";
 import { resolver as makeResolver } from "./resolver";
 import {
   expressions,
   fields,
+  findDimensions,
+  findField,
   metrics,
   query,
+  queryWithAggregation,
   segments,
   stageIndex,
 } from "./test/shared";
@@ -215,7 +219,7 @@ describe("resolver", () => {
 
         it("should not resolve fields", () => {
           expect(() => aggregation("Unknown")).toThrow(
-            "Unknown Metric: Unknown",
+            "Unknown Aggregation or Metric: Unknown",
           );
           expect(() => aggregation("Created At")).toThrow(
             "No aggregation found in: Created At. Use functions like Sum() or custom Metrics",
@@ -230,13 +234,13 @@ describe("resolver", () => {
 
         it("should not resolve unknown fields", () => {
           expect(() => aggregation("Unknown")).toThrow(
-            "Unknown Metric: Unknown",
+            "Unknown Aggregation or Metric: Unknown",
           );
         });
 
         it("should not resolve segments", () => {
           expect(() => aggregation("Expensive Things")).toThrow(
-            "Unknown Metric: Expensive Things",
+            "Unknown Aggregation or Metric: Expensive Things",
           );
         });
 
@@ -250,15 +254,49 @@ describe("resolver", () => {
         expect(resolve("number", "BAR")).toEqual(expressions.BAR_UPPER);
         expect(resolve("number", "bar")).toEqual(expressions.BAR_LOWER);
       });
+
+      describe("should never resolve aggregations", () => {
+        const query = queryWithAggregation;
+
+        const resolve = makeResolver({
+          query,
+          stageIndex,
+          expressionMode,
+          availableColumns: columnsForExpressionMode({
+            query,
+            stageIndex,
+            expressionMode,
+          }),
+        });
+
+        it.each(["number", "datetime", "string", "boolean"] as const)(
+          "type = %s",
+          (type) => {
+            expect(() => resolve(type, "Bar Aggregation")).toThrow(
+              type === "boolean"
+                ? "Unknown Segment or boolean column: Bar Aggregation"
+                : "Unknown column: Bar Aggregation",
+            );
+          },
+        );
+      });
     },
   );
 
   describe("expressionMode = aggregation", () => {
+    const query = queryWithAggregation;
+    const { fields, expressions, segments, metrics, aggregations } =
+      findDimensions(query);
+
     const resolve = makeResolver({
       query,
       stageIndex,
       expressionMode: "aggregation",
-      availableColumns: Lib.expressionableColumns(query, stageIndex),
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "aggregation",
+      }),
     });
 
     describe("type = boolean", () => {
@@ -292,6 +330,12 @@ describe("resolver", () => {
           "Unknown Segment or boolean column: Foo Metric",
         );
       });
+
+      it("should not resolve aggregations", () => {
+        expect(() => boolean("Bar Aggregation")).toThrow(
+          "Unknown Segment or boolean column: Bar Aggregation",
+        );
+      });
     });
 
     describe("type = string", () => {
@@ -311,18 +355,22 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => string("Unknown")).toThrow(
-          "Unknown column or Metric: Unknown",
+          "Unknown column, Aggregation or Metric: Unknown",
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => string("Expensive Things")).toThrow(
-          "Unknown column or Metric: Expensive Things",
+          "Unknown column, Aggregation or Metric: Expensive Things",
         );
       });
 
       it("should resolve metrics", () => {
         expect(string("Foo Metric")).toEqual(metrics.FOO);
+      });
+
+      it("should resolve aggregations", () => {
+        expect(string("Bar Aggregation")).toEqual(aggregations.BAR_AGGREGATION);
       });
     });
 
@@ -339,18 +387,22 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => number("Unknown")).toThrow(
-          "Unknown column or Metric: Unknown",
+          "Unknown column, Aggregation or Metric: Unknown",
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => number("Expensive Things")).toThrow(
-          "Unknown column or Metric: Expensive Things",
+          "Unknown column, Aggregation or Metric: Expensive Things",
         );
       });
 
       it("should resolve metrics", () => {
         expect(number("Foo Metric")).toEqual(metrics.FOO);
+      });
+
+      it("should resolve aggregations", () => {
+        expect(number("Bar Aggregation")).toEqual(aggregations.BAR_AGGREGATION);
       });
     });
 
@@ -363,18 +415,24 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => datetime("Unknown")).toThrow(
-          "Unknown column or Metric: Unknown",
+          "Unknown column, Aggregation or Metric: Unknown",
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => datetime("Expensive Things")).toThrow(
-          "Unknown column or Metric: Expensive Things",
+          "Unknown column, Aggregation or Metric: Expensive Things",
         );
       });
 
       it("should resolve metrics", () => {
         expect(datetime("Foo Metric")).toEqual(metrics.FOO);
+      });
+
+      it("should resolve aggregations", () => {
+        expect(datetime("Bar Aggregation")).toEqual(
+          aggregations.BAR_AGGREGATION,
+        );
       });
     });
 
@@ -390,7 +448,7 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => any("Unknown")).toThrow(
-          "Unknown column or Metric: Unknown",
+          "Unknown column, Aggregation or Metric: Unknown",
         );
       });
 
@@ -398,12 +456,16 @@ describe("resolver", () => {
         // We do not resolve segments here since any is only used in offset
         // and offset only works in aggregations.
         expect(() => any("Expensive Things")).toThrow(
-          "Unknown column or Metric: Expensive Things",
+          "Unknown column, Aggregation or Metric: Expensive Things",
         );
       });
 
       it("should resolve metrics", () => {
         expect(any("Foo Metric")).toEqual(metrics.FOO);
+      });
+
+      it("should resolve aggregations", () => {
+        expect(any("Bar Aggregation")).toEqual(aggregations.BAR_AGGREGATION);
       });
     });
 
@@ -419,18 +481,24 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => expression("Unknown")).toThrow(
-          "Unknown column or Metric: Unknown",
+          "Unknown column, Aggregation or Metric: Unknown",
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => expression("Expensive Things")).toThrow(
-          "Unknown column or Metric: Expensive Things",
+          "Unknown column, Aggregation or Metric: Expensive Things",
         );
       });
 
       it("should resolve metrics", () => {
         expect(expression("Foo Metric")).toEqual(metrics.FOO);
+      });
+
+      it("should resolve aggregations", () => {
+        expect(expression("Bar Aggregation")).toEqual(
+          aggregations.BAR_AGGREGATION,
+        );
       });
     });
 
@@ -438,7 +506,9 @@ describe("resolver", () => {
       const aggregation = (name: string) => resolve("aggregation", name);
 
       it("should not resolve fields", () => {
-        expect(() => aggregation("Unknown")).toThrow("Unknown Metric: Unknown");
+        expect(() => aggregation("Unknown")).toThrow(
+          "Unknown Aggregation or Metric: Unknown",
+        );
         expect(() => aggregation("Created At")).toThrow(
           "No aggregation found in: Created At. Use functions like Sum() or custom Metrics",
         );
@@ -451,23 +521,113 @@ describe("resolver", () => {
       });
 
       it("should not resolve unknown fields", () => {
-        expect(() => aggregation("Unknown")).toThrow("Unknown Metric: Unknown");
+        expect(() => aggregation("Unknown")).toThrow(
+          "Unknown Aggregation or Metric: Unknown",
+        );
       });
 
       it("should not resolve segments", () => {
         expect(() => aggregation("Expensive Things")).toThrow(
-          "Unknown Metric: Expensive Things",
+          "Unknown Aggregation or Metric: Expensive Things",
         );
       });
 
       it("should resolve metrics", () => {
         expect(aggregation("Foo Metric")).toEqual(metrics.FOO);
       });
+
+      it("should resolve aggregations", () => {
+        expect(aggregation("Bar Aggregation")).toEqual(
+          aggregations.BAR_AGGREGATION,
+        );
+      });
     });
 
     it("should allow resolving field with exact case matches first", () => {
       expect(resolve("number", "BAR")).toEqual(expressions.BAR_UPPER);
       expect(resolve("number", "bar")).toEqual(expressions.BAR_LOWER);
+    });
+  });
+
+  describe("query with aggregation in first stage > later stages", () => {
+    const query = Lib.appendStage(queryWithAggregation);
+    const aggregations = {
+      BAR_AGGREGATION: findField(query, "Bar Aggregation"),
+    };
+
+    const resolve = makeResolver({
+      query,
+      stageIndex,
+      expressionMode: "expression",
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "expression",
+      }),
+    });
+
+    describe("type = boolean", () => {
+      const boolean = (name: string) => resolve("boolean", name);
+
+      it("should not resolve non-boolean aggregations", () => {
+        expect(() => boolean("Bar Aggregation")).toThrow(
+          "Unknown Segment or boolean column: Bar Aggregation",
+        );
+      });
+    });
+
+    describe("type = string", () => {
+      const string = (name: string) => resolve("string", name);
+
+      it("should resolve aggregations", () => {
+        expect(string("Bar Aggregation")).toEqual(aggregations.BAR_AGGREGATION);
+      });
+    });
+
+    describe("type = number", () => {
+      const number = (name: string) => resolve("number", name);
+
+      it("should resolve aggregations", () => {
+        expect(number("Bar Aggregation")).toEqual(aggregations.BAR_AGGREGATION);
+      });
+    });
+
+    describe("type = datetime", () => {
+      const datetime = (name: string) => resolve("datetime", name);
+
+      it("should resolve aggregations", () => {
+        expect(datetime("Bar Aggregation")).toEqual(
+          aggregations.BAR_AGGREGATION,
+        );
+      });
+    });
+
+    describe("type = any", () => {
+      const any = (name: string) => resolve("any", name);
+
+      it("should resolve aggregations", () => {
+        expect(any("Bar Aggregation")).toEqual(aggregations.BAR_AGGREGATION);
+      });
+    });
+
+    describe("type = expression", () => {
+      const expression = (name: string) => resolve("expression", name);
+
+      it("should resolve aggregations", () => {
+        expect(expression("Bar Aggregation")).toEqual(
+          aggregations.BAR_AGGREGATION,
+        );
+      });
+    });
+
+    describe("type = aggregation", () => {
+      const aggregation = (name: string) => resolve("aggregation", name);
+
+      it("should not resolve aggregation as it is now just a field", () => {
+        expect(() => aggregation("Bar Aggregation")).toThrow(
+          "No aggregation found in: Bar Aggregation. Use functions like Sum() or custom Metrics",
+        );
+      });
     });
   });
 });

@@ -170,8 +170,8 @@ export function AggregationPicker({
   ]);
 
   const availableColumns = useMemo(
-    () => Lib.expressionableColumns(query, stageIndex),
-    [query, stageIndex],
+    () => Lib.aggregableColumns(query, stageIndex, clauseIndex),
+    [query, stageIndex, clauseIndex],
   );
 
   const checkIsItemSelected = useCallback(
@@ -256,6 +256,7 @@ export function AggregationPicker({
         clause={clause}
         withName
         expressionMode="aggregation"
+        expressionIndex={clauseIndex}
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}

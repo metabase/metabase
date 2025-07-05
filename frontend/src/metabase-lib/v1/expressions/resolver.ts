@@ -35,7 +35,7 @@ export function resolver(options: Options): Resolver {
       // Return metrics
       const dimension = findByName([...metrics(), ...availableColumns]);
       if (!dimension) {
-        throw new CompileError(t`Unknown Metric: ${name}`, node);
+        throw new CompileError(t`Unknown Aggregation or Metric: ${name}`, node);
       } else if (!Lib.isMetricMetadata(dimension)) {
         // If no metric was found, but there is a matching column,
         // show a more sophisticated error message
@@ -72,7 +72,10 @@ export function resolver(options: Options): Resolver {
     ]);
     if (!dimension) {
       if (expressionMode === "aggregation") {
-        throw new CompileError(t`Unknown column or Metric: ${name}`, node);
+        throw new CompileError(
+          t`Unknown column, Aggregation or Metric: ${name}`,
+          node,
+        );
       }
       throw new CompileError(t`Unknown column: ${name}`, node);
     }
