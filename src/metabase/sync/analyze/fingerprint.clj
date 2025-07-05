@@ -59,11 +59,14 @@
   1234)
 
 (mu/defn- fingerprint-fields!
-  [table  :- i/TableInstance
+  [{table-id :id :as table}  :- i/TableInstance
    fields :- [:maybe [:sequential i/FieldInstance]]]
-  (let [rff (fn [_metadata]
+  (let [exists-name (some (fn [{semantic-type :semantic_type}]
+                            (= semantic-type :type/Name))
+                          fields)
+        rff (fn [_metadata]
               (redux/post-complete
-               (analyze/fingerprint-fields fields)
+               (analyze/fingerprint-fields fields :exists-name-by-table-id {table-id exists-name})
                (fn [fingerprints]
                  (reduce (fn [count-info [field fingerprint]]
                            (cond
