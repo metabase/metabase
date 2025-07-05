@@ -41,6 +41,7 @@ import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
   trackAutoApplyFiltersDisabled,
+  trackFilterCreated,
   trackFilterRequired,
 } from "../analytics";
 import {
@@ -188,6 +189,12 @@ export const addParameter = createThunkAction(
             },
           }),
         );
+      }
+
+      const dashboardId = getDashboardId(getState());
+      if (dashboardId) {
+        const dashcardDisplay = dashcard?.card?.display;
+        trackFilterCreated(dashboardId, dashcardDisplay ?? null);
       }
 
       dispatch(
