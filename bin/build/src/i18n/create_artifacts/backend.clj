@@ -40,7 +40,6 @@
 (defn- messages->edn
   [messages]
   (eduction
-   (filter backend-message?)
    (map fix-unescaped-apostrophes)
    i18n/print-message-count-xform
    messages))
