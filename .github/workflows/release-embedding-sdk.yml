@@ -298,16 +298,10 @@ jobs:
           yarn embedding-sdk:generate-changelog -o changelog-diff
 
       - name: Build SDK bundle
-        run: yarn run build-embedding-sdk
-
-      - name: Generate SDK package.json in the build directory
-        run: yarn run embedding-sdk:generate-package
-
-      - name: Upload built SDK package as artifact
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/build-embedding-sdk
         with:
-          name: metabase-sdk
-          path: ./resources/embedding-sdk
+          m2-cache-key: "release-sdk"
+          artifact-name: metabase-sdk
 
       - name: Upload changelog diff
         uses: actions/upload-artifact@v4

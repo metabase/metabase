@@ -2,7 +2,10 @@ import { useEffect, useRef } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
-import { getEmbeddingSdkVersion } from "embedding-sdk/config";
+import {
+  embeddingSdkBundleFormat,
+  embeddingSdkVersion,
+} from "embedding-sdk/env";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { initAuth } from "embedding-sdk/store/auth";
 import { setFetchRefreshTokenFn } from "embedding-sdk/store/reducer";
@@ -61,7 +64,9 @@ export const useInitData = ({
       dispatch(initAuth(authConfig));
     }
 
-    const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
+    const EMBEDDING_SDK_VERSION = embeddingSdkVersion;
+    const BUNDLE_FORMAT = embeddingSdkBundleFormat;
+
     api.requestClient = {
       name: "embedding-sdk-react",
       version: EMBEDDING_SDK_VERSION,
@@ -71,7 +76,7 @@ export const useInitData = ({
       // eslint-disable-next-line no-console
       console.log(
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-        `Using Metabase Embedding SDK, version ${EMBEDDING_SDK_VERSION}`,
+        `Using Metabase Embedding SDK, version ${EMBEDDING_SDK_VERSION}, ${BUNDLE_FORMAT} bundle`,
       );
     }
   });

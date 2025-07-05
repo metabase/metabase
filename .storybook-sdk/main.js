@@ -1,10 +1,19 @@
 const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
-const getAppConfig = require("../webpack.embedding-sdk.config");
 const fs = require("fs");
 const path = require("path");
-
-const appConfig = getAppConfig();
+const {
+  ALIAS,
+} = require("../frontend/build/embedding-sdk/constants/alias.mjs");
+const {
+  RESOLVE_EXTENSIONS,
+} = require("../frontend/build/embedding-sdk/constants/resolve-extensions.mjs");
+const {
+  getCssLoader,
+} = require("../frontend/build/embedding-sdk/webpack-shared/get-css-loader");
+const {
+  getAssetLoaders,
+} = require("../frontend/build/embedding-sdk/webpack-shared/get-asset-loaders");
 
 const {
   isEmbeddingSdkPackageInstalled,
@@ -48,21 +57,21 @@ module.exports = {
         ...storybookConfig.module.rules.filter(
           (rule) => !isCSSRule(rule) && !isSvgRule(rule),
         ),
-        ...appConfig.module.rules.filter(
-          (rule) => isCSSRule(rule) || isSvgRule(rule),
-        ),
+        ...getAssetLoaders(),
+        getCssLoader({ isDevMode: true }),
       ],
     },
     resolve: {
       ...storybookConfig.resolve,
       alias: {
-        ...appConfig.resolve.alias,
+        icepick: __dirname + "/../node_modules/icepick/icepick.min",
+        ...ALIAS,
         ...(isEmbeddingSdkPackageInstalled && {
           // $ means that only exact "embedding-sdk" imports will be rerouted, all nested embedding-sdk/* will still be resolved locally
           "embedding-sdk$": require.resolve("@metabase/embedding-sdk-react"),
         }),
       },
-      extensions: appConfig.resolve.extensions,
+      extensions: RESOLVE_EXTENSIONS,
     },
   }),
 };

@@ -1,6 +1,7 @@
 import { BACKEND_PORT } from "../../../constants/backend-port.js";
 
 const BASE_ENV = {
+  BUNDLE_FORMAT: process.env.HOST_APP_BUNDLE_FORMAT || "esm",
   WATCH: process.env.HOST_APP_ENVIRONMENT === "development" ? "true" : "false",
   MB_PORT: BACKEND_PORT,
   CLIENT_PORT: 4400,
