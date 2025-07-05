@@ -17,7 +17,7 @@
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events.core :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
@@ -29,7 +29,6 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -457,16 +456,6 @@
   [_ collection options]
   (card-query :question collection options))
 
-(defmethod post-process-collection-children :dataset
-  [_ options collection rows]
-  (let [queries-before (map :dataset_query rows)
-        queries-parsed (map (comp mbql.normalize/normalize json/decode) queries-before)]
-    ;; We need to normalize the dataset queries for hydration, but reset the field to avoid leaking that transform.
-    (->> (map #(assoc %2 :dataset_query %1) queries-parsed rows)
-         upload/model-hydrate-based-on-upload
-         (map #(assoc %2 :dataset_query %1) queries-before)
-         (post-process-collection-children :card options collection))))
-
 (defn- fully-parameterized-text?
   "Decide if `text`, usually (a part of) a query, is fully parameterized given the parameter types
   described by `template-tags` (usually the template tags of a native query).
@@ -504,17 +493,15 @@
 (defn fully-parameterized-query?
   "Given a Card, returns `true` if its query is fully parameterized."
   [row]
-  (let [parsed-query (cond-> (:dataset_query row)
-                       (string? (:dataset_query row)) json/decode)
-        ;; TODO TB handle pMBQL native queries
-        native-query (when (contains? parsed-query "native")
-                       (-> parsed-query mbql.normalize/normalize :native))]
+;; TODO TB handle pMBQL native queries
+  (let [native-query (-> row :dataset_query :native)]
     (if-let [template-tags (:template-tags native-query)]
       (fully-parameterized-text? (:query native-query) template-tags)
       true)))
 
 (defn- post-process-card-row [row]
   (-> (t2/instance :model/Card row)
+      (update :dataset_query (:out mi/transform-metabase-query))
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)))
@@ -524,22 +511,32 @@
       (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
-(defn- post-process-card-like [rows]
-  (map post-process-card-row-after-hydrate
-       (t2/hydrate (map post-process-card-row rows)
-                   :can_write
-                   :can_restore
-                   :can_delete
-                   :dashboard_count
-                   [:dashboard :moderation_status])))
+(defn- post-process-card-like
+  [{:keys [include-can-run-adhoc-query hydrate-based-on-upload]} rows]
+  (let [hydration (cond-> [:can_write
+                           :can_restore
+                           :can_delete
+                           :dashboard_count
+                           [:dashboard :moderation_status]]
+                    include-can-run-adhoc-query (conj :can_run_adhoc_query))]
+    (lib.metadata.jvm/with-metadata-provider-cache
+      (as-> (map post-process-card-row rows) $
+        (apply t2/hydrate $ hydration)
+        (cond-> $
+          hydrate-based-on-upload upload/model-hydrate-based-on-upload)
+        (map post-process-card-row-after-hydrate $)))))
 
 (defmethod post-process-collection-children :card
-  [_ _options _ rows]
-  (post-process-card-like rows))
+  [_ options _ rows]
+  (post-process-card-like options rows))
 
 (defmethod post-process-collection-children :metric
-  [_ _options _ rows]
-  (post-process-card-like rows))
+  [_ options _ rows]
+  (post-process-card-like options rows))
+
+(defmethod post-process-collection-children :dataset
+  [_ options _ rows]
+  (post-process-card-like (assoc options :hydrate-based-on-upload true) rows))
 
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
@@ -999,34 +996,38 @@
   *  `pinned_state` - when `is_pinned`, return pinned objects only.
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything.
+  *  `include_can_run_adhoc_query` - when this is true hydrates the `can_run_adhoc_query` flag on card models
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first
+           include_can_run_adhoc_query
            show_dashboard_questions]} :- [:map
-                                          [:models                     {:optional true} [:maybe Models]]
-                                          [:archived                   {:default false} [:maybe ms/BooleanValue]]
-                                          [:pinned_state               {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                          [:sort_column                {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                          [:sort_direction             {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                          [:official_collections_first {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                          [:show_dashboard_questions   {:default false} [:maybe ms/BooleanValue]]]]
+                                          [:models                      {:optional true} [:maybe Models]]
+                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
+                                          [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                          [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                          [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                          [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]]]
   (let [model-kwds (set (map keyword (u/one-or-many models)))
         collection (api/read-check :model/Collection id)]
     (u/prog1 (collection-children collection
-                                  {:show-dashboard-questions? show_dashboard_questions
-                                   :models                    model-kwds
-                                   :archived?                 (or archived (:archived collection) (collection/is-trash? collection))
-                                   :pinned-state              (keyword pinned_state)
-                                   :sort-info                 {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
-                                                               :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
-                                                               ;; default to sorting official collections first, except for the trash.
-                                                               :official-collections-first? (if (and (nil? official_collections_first)
-                                                                                                     (not (collection/is-trash? collection)))
-                                                                                              true
-                                                                                              (boolean official_collections_first))}})
+                                  {:show-dashboard-questions?   show_dashboard_questions
+                                   :models                      model-kwds
+                                   :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
+                                   :pinned-state                (keyword pinned_state)
+                                   :include-can-run-adhoc-query include_can_run_adhoc_query
+                                   :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
+                                                                 :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
+                                                                 ;; default to sorting official collections first, except for the trash.
+                                                                 :official-collections-first? (if (and (nil? official_collections_first)
+                                                                                                       (not (collection/is-trash? collection)))
+                                                                                                true
+                                                                                                (boolean official_collections_first))}})
       (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
 
 (mr/def ::DashboardQuestionCandidate
@@ -1181,15 +1182,17 @@
   changed, that should too."
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
+           include_can_run_adhoc_query
            show_dashboard_questions]} :- [:map
-                                          [:models                     {:optional true} [:maybe Models]]
-                                          [:archived                   {:default false} [:maybe ms/BooleanValue]]
-                                          [:namespace                  {:optional true} [:maybe ms/NonBlankString]]
-                                          [:pinned_state               {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                          [:sort_column                {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                          [:sort_direction             {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                          [:official_collections_first {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                          [:show_dashboard_questions   {:optional true} [:maybe ms/MaybeBooleanValue]]]]
+                                          [:models                      {:optional true} [:maybe Models]]
+                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
+                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                          [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
+                                          [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                          [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                          [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                          [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -1197,15 +1200,16 @@
         model-kwds      (visible-model-kwds root-collection model-set)]
     (collection-children
      root-collection
-     {:archived?                 (boolean archived)
-      :show-dashboard-questions? (boolean show_dashboard_questions)
-      :models                    model-kwds
-      :pinned-state              (keyword pinned_state)
-      :sort-info                 {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
-                                  :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
-                                  ;; default to sorting official collections first, but provide the option not to
-                                  :official-collections-first? (or (nil? official_collections_first)
-                                                                   (boolean official_collections_first))}})))
+     {:archived?                   (boolean archived)
+      :include-can-run-adhoc-query include_can_run_adhoc_query
+      :show-dashboard-questions?   (boolean show_dashboard_questions)
+      :models                      model-kwds
+      :pinned-state                (keyword pinned_state)
+      :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
+                                    :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
+                                    ;; default to sorting official collections first, but provide the option not to
+                                    :official-collections-first? (or (nil? official_collections_first)
+                                                                     (boolean official_collections_first))}})))
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
