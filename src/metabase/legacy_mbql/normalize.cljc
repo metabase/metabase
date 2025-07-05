@@ -38,6 +38,7 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -196,7 +197,7 @@
   [[_ field mode]]
   (if (nil? mode)
     [:datetime (normalize-tokens field :ignore-path)]
-    [:datetime (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]))
+    [:datetime (normalize-tokens field :ignore-path) (lib.schema.expression.temporal/normalize-datetime-mode mode)]))
 
 (defmethod normalize-mbql-clause-tokens :get-week
   [[_ field mode]]

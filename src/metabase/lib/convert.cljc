@@ -472,7 +472,7 @@
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract :date :datetime
              :concat :substring :replace :regex-match-first :split-part
-             :length :trim :ltrim :rtrim :upper :lower :text :integer]]
+             :length :trim :ltrim :rtrim :upper :lower :text :integer :today]]
   (lib.hierarchy/derive tag ::expression))
 
 (defmethod ->legacy-MBQL ::aggregation-or-expression

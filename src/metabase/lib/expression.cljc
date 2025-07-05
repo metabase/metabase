@@ -351,6 +351,7 @@
 (lib.common/defop get-day-of-week [t] [t mode])
 (lib.common/defop datetime-add [t i unit])
 (lib.common/defop date [s])
+(lib.common/defop today [])
 (lib.common/defop datetime [value] [value mode])
 (lib.common/defop datetime-subtract [t i unit])
 (lib.common/defop concat [s1 s2 & more])
