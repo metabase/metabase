@@ -21,12 +21,13 @@
 (mr/def ::pivot-types
   [:enum :category :location :time])
 
-(mr/def ::drill-thru.type
-  [:fn
-   {:error/message "valid drill-thru :type keyword"}
-   (fn [k]
-     (and (qualified-keyword? k)
-          (= (namespace k) "drill-thru")))])
+(letfn [(drill-thru-type [k]
+          (and (qualified-keyword? k)
+               (= (namespace k) "drill-thru")))]
+  (mr/def ::drill-thru.type
+    [:fn
+     {:error/message "valid drill-thru :type keyword"}
+     drill-thru-type]))
 
 (mr/def ::drill-thru.common
   [:map

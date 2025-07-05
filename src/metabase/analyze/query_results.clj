@@ -28,11 +28,12 @@
     {:error/message "Valid field datetime unit keyword or string"}
     #(mbql.preds/DateTimeUnit? (keyword %))]])
 
-(mr/def ::MaybeUnnormalizedReference
-  [:fn
-   {:error/message "Field or aggregation reference as it comes in to the API"}
-   (fn [x]
-     (mr/validate mbql.s/Reference (mbql.normalize/normalize-tokens x)))])
+(letfn [(maybe-unnormalized-ref [x]
+          (mr/validate mbql.s/Reference (mbql.normalize/normalize-tokens x)))]
+  (mr/def ::MaybeUnnormalizedReference
+    [:fn
+     {:error/message "Field or aggregation reference as it comes in to the API"}
+     maybe-unnormalized-ref]))
 
 (mr/def ::ResultColumnMetadata
   [:map

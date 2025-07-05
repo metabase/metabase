@@ -163,13 +163,14 @@
     ;; :number, :text, :date
     [::mc/default [:ref ::raw-value]]]])
 
-(mr/def ::template-tag-map
-  [:and
-   [:map-of ::name ::template-tag]
-   ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
-   [:fn
-    {:error/message "keys in template tag map must match the :name of their values"}
-    (fn [m]
-      (every? (fn [[tag-name tag-definition]]
-                (= tag-name (:name tag-definition)))
-              m))]])
+(letfn [(f [m]
+          (every? (fn [[tag-name tag-definition]]
+                    (= tag-name (:name tag-definition)))
+                  m))]
+  (mr/def ::template-tag-map
+    [:and
+     [:map-of ::name ::template-tag]
+     ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
+     [:fn
+      {:error/message "keys in template tag map must match the :name of their values"}
+      f]]))

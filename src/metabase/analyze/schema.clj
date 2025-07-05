@@ -20,15 +20,16 @@
 ;; TODO (Cam 6/26/25) -- this is duplicated with
 ;; `:metabase.query-processor.middleware.annotate/qp-results-cased-col` but I didn't use that to avoid circular
 ;; references between modules. Deduplicate these
-(mr/def ::qp-results-cased-map
-  [:fn
-   {:error/message "Map where all simple keywords are snake_case; namespaced keywords can be any case."}
-   (fn [m]
-     (and (map? m)
-          (every? (fn [k]
-                    (or (qualified-keyword? k)
-                        (not (str/includes? (name k) "-"))))
-                  (keys m))))])
+(letfn [(qp-results-cased-map-fn [m]
+          (and (map? m)
+               (every? (fn [k]
+                         (or (qualified-keyword? k)
+                             (not (str/includes? (name k) "-"))))
+                       (keys m))))]
+  (mr/def ::qp-results-cased-map
+    [:fn
+     {:error/message "Map where all simple keywords are snake_case; namespaced keywords can be any case."}
+     qp-results-cased-map-fn]))
 
 (mr/def ::Field
   [:and
