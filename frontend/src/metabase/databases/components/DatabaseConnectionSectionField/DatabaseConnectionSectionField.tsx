@@ -9,7 +9,7 @@ export interface DatabaseConnectionSectionFieldProps {
   name: string;
 }
 
-const DatabaseConnectionSectionField = ({
+export const DatabaseConnectionSectionField = ({
   name,
 }: DatabaseConnectionSectionFieldProps): JSX.Element => {
   const [{ value }, , { setValue }] = useField(name);
@@ -44,6 +44,3 @@ const DatabaseConnectionSectionField = ({
     </FormField>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseConnectionSectionField;
