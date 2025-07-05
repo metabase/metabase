@@ -15,7 +15,7 @@ export function EmbeddingSettingsPage() {
       title={t`Embedding`}
       description={t`Embed dashboards, questions, or the entire Metabase app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations.`}
     >
-      <UpsellDevInstances source="embedding-page" />
+      <UpsellDevInstances location="embedding-page" />
       <StaticEmbeddingOptionCard />
       <InteractiveEmbeddingOptionCard />
       <EmbeddingSdkOptionCard />

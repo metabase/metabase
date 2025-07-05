@@ -11,11 +11,11 @@ import { useUpsellLink } from "./use-upsell-link";
 type TestComponentProps = {
   url: string;
   campaign: string;
-  source: string;
+  location: string;
 };
 
-const TestComponent = ({ url, campaign, source }: TestComponentProps) => {
-  const link = useUpsellLink({ url, campaign, source });
+const TestComponent = ({ url, campaign, location }: TestComponentProps) => {
+  const link = useUpsellLink({ url, campaign, location });
 
   return (
     <div>
@@ -35,7 +35,7 @@ const EEFeatures = Object.fromEntries(
 const setup = ({
   url,
   campaign,
-  source,
+  location,
   oss = true,
 }: TestComponentProps & { oss?: boolean }) => {
   const state = createMockState({
@@ -45,7 +45,7 @@ const setup = ({
   });
 
   return renderWithProviders(
-    <TestComponent url={url} campaign={campaign} source={source} />,
+    <TestComponent url={url} campaign={campaign} location={location} />,
     { storeInitialState: state },
   );
 };
@@ -55,14 +55,14 @@ describe("Upsells > useUpsellLink", () => {
     const props = {
       url: "https://www.metabase.com/",
       campaign: "test-campaign",
-      source: "test-source",
+      location: "test-location",
     };
     setup(props);
 
     const link = screen.getByText("Link");
     expect(link).toHaveAttribute(
       "href",
-      `${props.url}?utm_source=product&utm_medium=upsell&utm_campaign=${props.campaign}&utm_content=${props.source}&source_plan=oss`,
+      `${props.url}?utm_source=product&utm_medium=upsell&utm_campaign=${props.campaign}&utm_content=${props.location}&source_plan=oss`,
     );
   });
 
@@ -70,7 +70,7 @@ describe("Upsells > useUpsellLink", () => {
     const props = {
       url: "https://www.metabase.com",
       campaign: "test-campaign",
-      source: "test-source",
+      location: "test-location",
       oss: true,
     };
     setup(props);
@@ -86,7 +86,7 @@ describe("Upsells > useUpsellLink", () => {
     const props = {
       url: "https://www.metabase.com",
       campaign: "test-campaign",
-      source: "test-source",
+      location: "test-location",
       oss: false,
     };
     setup(props);

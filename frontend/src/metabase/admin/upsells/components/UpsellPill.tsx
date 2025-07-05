@@ -11,7 +11,7 @@ export function _UpsellPill({
   children,
   link,
   campaign,
-  source,
+  source: location,
 }: {
   children: React.ReactNode;
   link: string;
@@ -21,17 +21,17 @@ export function _UpsellPill({
   const url = useUpsellLink({
     url: link,
     campaign,
-    source,
+    location,
   });
 
   useMount(() => {
-    trackUpsellViewed({ source, campaign });
+    trackUpsellViewed({ location, campaign });
   });
 
   return (
     <ExternalLink
       href={url}
-      onClickCapture={() => trackUpsellClicked({ source, campaign })}
+      onClickCapture={() => trackUpsellClicked({ location, campaign })}
       data-testid="upsell-pill"
       className={S.UpsellPillComponent}
     >

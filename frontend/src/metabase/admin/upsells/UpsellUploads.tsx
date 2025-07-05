@@ -7,7 +7,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { UpsellCard } from "./components";
 import { UPGRADE_URL } from "./constants";
 
-export const UpsellUploads = ({ source }: { source: string }) => {
+export const UpsellUploads = ({ location }: { location: string }) => {
   const plan = useSelector((state) =>
     getPlan(getSetting(state, "token-features")),
   );
@@ -24,7 +24,7 @@ export const UpsellUploads = ({ source }: { source: string }) => {
       campaign="manage-uploads"
       buttonText={t`Try for free`}
       buttonLink={UPGRADE_URL}
-      source={source}
+      location={location}
     >
       {c("{0} is the string 'Upgrade to Metabase Pro'").jt`${(
         <strong key="upgrade">{t`Upgrade to Metabase Pro`}</strong>
