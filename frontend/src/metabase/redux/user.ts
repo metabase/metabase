@@ -2,7 +2,7 @@ import { createAction, createReducer } from "@reduxjs/toolkit";
 
 import Dashboards from "metabase/entities/dashboards";
 import { createAsyncThunk } from "metabase/lib/redux";
-import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions/ui";
+import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions/modal";
 import { UserApi } from "metabase/services";
 import type { User } from "metabase-types/api";
 
