@@ -40,6 +40,7 @@ export const LocaleButton = styled.span<LocaleContainerProps>`
   background-color: ${(props) =>
     props.checked ? color("brand") : color("bg-white")};
   font-weight: 700;
+  border: 2px solid var(--mb-base-color-white);
 
   &:hover {
     color: var(--mb-color-text-white);
@@ -47,7 +48,7 @@ export const LocaleButton = styled.span<LocaleContainerProps>`
   }
 
   ${LocaleInput}:focus + & {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-brand);
   }
 
   ${LocaleInput}:focus:not(:focus-visible) + & {
