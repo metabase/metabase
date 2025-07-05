@@ -14,8 +14,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { ClientSortableTable } from "metabase/common/components/Table/ClientSortableTable";
 import type { ColumnItem } from "metabase/common/components/Table/types";
-import { Center, Flex, Skeleton, Stack } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
+import { Center, Flex, Repeat, Skeleton, Stack } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 import { SortDirection } from "metabase-types/api/sorting";

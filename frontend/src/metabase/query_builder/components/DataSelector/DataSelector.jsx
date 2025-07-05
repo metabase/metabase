@@ -394,6 +394,7 @@ export class UnconnectedDataSelector extends Component {
     const invalidSchema =
       selectedDatabase &&
       selectedSchema &&
+      selectedSchema.database &&
       selectedSchema.database.id !== selectedDatabase.id &&
       selectedSchema.database.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID;
 

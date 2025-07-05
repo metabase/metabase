@@ -76,8 +76,32 @@ export const REVIEWS = {
 // Field values are not included in the field object in the API response
 // Please use `setupFieldValuesEndpoints` utility from `__support__/server-mocks`
 
+export const ORDER_ID_VALUES: GetFieldValuesResponse = {
+  field_id: ORDERS.ID,
+  values: [],
+  has_more_values: false,
+};
+
+export const ORDER_PRODUCT_ID_VALUES: GetFieldValuesResponse = {
+  field_id: ORDERS.PRODUCT_ID,
+  values: [],
+  has_more_values: false,
+};
+
+export const ORDER_USER_ID_VALUES: GetFieldValuesResponse = {
+  field_id: ORDERS.USER_ID,
+  values: [],
+  has_more_values: false,
+};
+
 export const ORDER_QUANTITY_VALUES: GetFieldValuesResponse = {
   field_id: ORDERS.QUANTITY,
+  values: Array.from({ length: 101 }, (_, i) => [i]),
+  has_more_values: false,
+};
+
+export const ORDER_DISCOUNT_VALUES: GetFieldValuesResponse = {
+  field_id: ORDERS.DISCOUNT,
   values: Array.from({ length: 101 }, (_, i) => [i]),
   has_more_values: false,
 };
@@ -212,7 +236,11 @@ export const PEOPLE_STATE_VALUES: GetFieldValuesResponse = {
 };
 
 export const SAMPLE_DB_FIELD_VALUES = [
+  ORDER_ID_VALUES,
+  ORDER_PRODUCT_ID_VALUES,
+  ORDER_USER_ID_VALUES,
   ORDER_QUANTITY_VALUES,
+  ORDER_DISCOUNT_VALUES,
   PRODUCT_TITLE_VALUES,
   PRODUCT_EAT_VALUES,
   PRODUCT_CATEGORY_VALUES,

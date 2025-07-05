@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { type IconName, isValidIconName } from "metabase/ui";
+// eslint-disable-next-line no-restricted-imports
 import type Field from "metabase-lib/v1/metadata/Field";
 
 interface Item {
@@ -9,6 +10,7 @@ interface Item {
   icon: IconName;
   label: string;
   position: number;
+  field: Field;
 }
 
 export function getId(item: Item): Item["id"] {
@@ -24,6 +26,7 @@ export function getItems(fields: Field[] = []): Item[] {
       icon: isValidIconName(icon) ? icon : "empty",
       label: field.displayName() || NULL_DISPLAY_VALUE,
       position: field.position,
+      field,
     };
   });
 }
