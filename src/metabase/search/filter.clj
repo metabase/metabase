@@ -1,5 +1,6 @@
 (ns metabase.search.filter
   (:require
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.premium-features.core :as premium-features]
@@ -84,6 +85,18 @@
 (defmethod where-clause* ::date-range [_ k v] (date-range-filter-clause k v))
 
 (defmethod where-clause* ::list [_ k v] [:in k v])
+
+(defmethod where-clause* ::single-value-exclude [_ k v] [:not= k v])
+
+(defmethod where-clause* ::field-id-list [_ k v]
+  "Filter for checking if all required field IDs are contained in a JSON array column.
+  Uses JSON path query for maximum compatibility across JSON types."
+  (when (seq v)
+    (let [ids-str (str/join "," v)]
+      ;; Use JSON containment with explicit casting
+      [:raw (format "COALESCE((%s)::jsonb, '[]'::jsonb) @> '[%s]'::jsonb"
+                    (name k)
+                    ids-str)])))
 
 (defn personal-collections-where-clause
   "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.

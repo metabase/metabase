@@ -267,7 +267,10 @@
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
-   [:include-metadata?                   {:optional true} [:maybe boolean?]]])
+   [:include-metadata?                   {:optional true} [:maybe boolean?]]
+   [:has-temporal-dimensions?            {:optional true} [:maybe boolean?]]
+   [:required-non-temporal-dimension-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -278,6 +281,9 @@
            created-by
            current-user-id
            current-user-perms
+           display-type
+           has-temporal-dimensions?
+           required-non-temporal-dimension-ids
            filter-items-in-personal-collection
            ids
            is-impersonated-user?
@@ -331,7 +337,10 @@
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
-                 (seq ids)                                   (assoc :ids ids))]
+                 (seq ids)                                   (assoc :ids ids)
+                 (seq display-type)                          (assoc :display-type display-type)
+                 (some? has-temporal-dimensions?)            (assoc :has-temporal-dimensions? has-temporal-dimensions?)
+                 (seq required-non-temporal-dimension-ids)   (assoc :required-non-temporal-dimension-ids required-non-temporal-dimension-ids))]
     (when (and (seq ids)
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))
@@ -362,6 +371,7 @@
         (update :bookmark bit->boolean)
         (update :archived bit->boolean)
         (update :archived_directly bit->boolean)
+        (update :has_temporal_dimensions bit->boolean)
         ;; Collections require some transformation before being scored and returned by search.
         (cond-> (t2/instance-of? :model/Collection instance) map-collection))))
 
