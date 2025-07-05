@@ -258,6 +258,7 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.app_db.custom_migrations.MoveExistingAtSymbolUserAttributes"
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
