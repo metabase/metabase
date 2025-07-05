@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
@@ -34,7 +34,7 @@ const EXPECTED_OPERATORS = [
   "Is",
   "Is not",
   "Inside",
-  "Between",
+  "Range",
   "Greater than",
   "Greater than or equal to",
   "Less than",
@@ -117,9 +117,9 @@ describe("CoordinateFilterPicker", () => {
       setup();
 
       expect(screen.getByText("User → Latitude")).toBeInTheDocument();
-      expect(screen.getByText("Between")).toBeInTheDocument();
-      expect(screen.getByPlaceholderText("Min")).toHaveValue("");
-      expect(screen.getByPlaceholderText("Max")).toHaveValue("");
+      expect(screen.getByText("Range")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Start of range")).toHaveValue("");
+      expect(screen.getByPlaceholderText("End of range")).toHaveValue("");
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
     });
 
@@ -188,9 +188,9 @@ describe("CoordinateFilterPicker", () => {
             name: "Add filter",
           });
 
-          await setOperator("Between");
-          const leftInput = screen.getByPlaceholderText("Min");
-          const rightInput = screen.getByPlaceholderText("Max");
+          await setOperator("Range");
+          const leftInput = screen.getByPlaceholderText("Start of range");
+          const rightInput = screen.getByPlaceholderText("End of range");
           await userEvent.type(leftInput, String(leftValue));
           await userEvent.type(rightInput, String(rightValue));
           await userEvent.click(addFilterButton);
@@ -211,9 +211,9 @@ describe("CoordinateFilterPicker", () => {
           name: "Add filter",
         });
 
-        await setOperator("Between");
-        const leftInput = screen.getByPlaceholderText("Min");
-        const rightInput = screen.getByPlaceholderText("Max");
+        await setOperator("Range");
+        const leftInput = screen.getByPlaceholderText("Start of range");
+        const rightInput = screen.getByPlaceholderText("End of range");
         await userEvent.type(leftInput, "5");
         await userEvent.type(rightInput, "-10.5");
         await userEvent.click(addFilterButton);
@@ -231,9 +231,9 @@ describe("CoordinateFilterPicker", () => {
         const { onChange, getNextFilterParts, getNextFilterColumnNames } =
           setup();
 
-        await setOperator("Between");
-        const leftInput = screen.getByPlaceholderText("Min");
-        const rightInput = screen.getByPlaceholderText("Max");
+        await setOperator("Range");
+        const leftInput = screen.getByPlaceholderText("Start of range");
+        const rightInput = screen.getByPlaceholderText("End of range");
         await userEvent.type(leftInput, "5");
         await userEvent.type(rightInput, "-10.5{enter}");
 
@@ -333,7 +333,7 @@ describe("CoordinateFilterPicker", () => {
       it("should add a filter with many values", async () => {
         const { getNextFilterParts, getNextFilterColumnNames } = setup();
 
-        await userEvent.click(screen.getByText("Between"));
+        await userEvent.click(screen.getByText("Range"));
         await userEvent.click(screen.getByText("Is"));
         const input = screen.getByPlaceholderText("Enter a number");
         await userEvent.type(input, "5");
@@ -353,7 +353,7 @@ describe("CoordinateFilterPicker", () => {
 
     it("should handle invalid input", async () => {
       setup();
-      await userEvent.click(screen.getByText("Between"));
+      await userEvent.click(screen.getByText("Range"));
       await userEvent.click(screen.getByText("Is"));
       await userEvent.type(
         screen.getByPlaceholderText("Enter a number"),
@@ -443,7 +443,7 @@ describe("CoordinateFilterPicker", () => {
           setup(opts);
 
           expect(screen.getByText("User → Latitude")).toBeInTheDocument();
-          expect(screen.getByText("Between")).toBeInTheDocument();
+          expect(screen.getByText("Range")).toBeInTheDocument();
           expect(
             screen.getByDisplayValue(String(leftValue)),
           ).toBeInTheDocument();
@@ -466,9 +466,9 @@ describe("CoordinateFilterPicker", () => {
             name: "Update filter",
           });
 
-          await setOperator("Between");
-          const leftInput = screen.getByPlaceholderText("Min");
-          const rightInput = screen.getByPlaceholderText("Max");
+          await setOperator("Range");
+          const leftInput = screen.getByPlaceholderText("Start of range");
+          const rightInput = screen.getByPlaceholderText("End of range");
           await userEvent.clear(leftInput);
           await userEvent.type(leftInput, `${leftValue}`);
           expect(updateButton).toBeEnabled();
@@ -615,7 +615,7 @@ describe("CoordinateFilterPicker", () => {
       expect(screen.getByText("200")).toBeInTheDocument();
       expect(updateButton).toBeEnabled();
 
-      await setOperator("Between");
+      await setOperator("Range");
 
       expect(screen.getByDisplayValue("-100")).toBeInTheDocument();
       expect(screen.getByDisplayValue("200")).toBeInTheDocument();
@@ -639,6 +639,40 @@ describe("CoordinateFilterPicker", () => {
       await userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("between filter", () => {
+    it("should change inclusiveness on click and keypress", async () => {
+      setup(createQueryWithCoordinateFilter({ operator: "between" }));
+
+      const greaterButton = screen.getByRole("button", {
+        name: /toggle greater inclusiveness/,
+      });
+      const lessButton = screen.getByRole("button", {
+        name: /toggle less inclusiveness/,
+      });
+
+      expect(greaterButton).toBeInTheDocument();
+      expect(lessButton).toBeInTheDocument();
+
+      expect(getIcon("greater_than_or_equal")).toBeInTheDocument();
+
+      await userEvent.click(greaterButton);
+
+      expect(getIcon("greater_than")).toBeInTheDocument();
+
+      expect(getIcon("less_than_or_equal")).toBeInTheDocument();
+
+      await userEvent.click(lessButton);
+
+      expect(getIcon("less_than")).toBeInTheDocument();
+
+      await userEvent.click(lessButton);
+      await userEvent.click(greaterButton);
+
+      expect(getIcon("greater_than_or_equal")).toBeInTheDocument();
+      expect(getIcon("less_than_or_equal")).toBeInTheDocument();
     });
   });
 });
