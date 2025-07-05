@@ -605,10 +605,15 @@
   (assert (even? (count options)))
   (let [{:as options}         options
         relax-fk-requirement? (:relax-fk-requirement? options)
-        options               (dissoc options :relax-fk-requirement?)
+        remapping-field (:remapping-field options)
+        options (dissoc options :relax-fk-requirement? :remapping-field)
         v->human-readable     (schema.metadata-queries/human-readable-remapping-map field-id)
         remapping             (delay (remapping field-id))]
     (cond
+      ;; NEW: If explicit remapping field provided, use it for Field->Field remapping
+      (some? remapping-field)
+      (unremapped-chain-filter remapping-field constraints (assoc options :original-field-id field-id))
+
      ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
      ;; value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
      ;; database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`).
