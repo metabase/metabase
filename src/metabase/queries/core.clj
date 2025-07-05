@@ -6,6 +6,7 @@
    [metabase.queries.models.card.metadata]
    [metabase.queries.models.parameter-card]
    [metabase.queries.models.query]
+   [metabase.queries.models.transform]
    [potemkin :as p]))
 
 (comment metabase.queries.card/keep-me
