@@ -1,4 +1,5 @@
 import type * as Lib from "metabase-lib";
+import type { DefinedClauseName } from "metabase-lib/v1/expressions";
 
 export type FilterPickerWidgetProps = {
   query: Lib.Query;
@@ -21,6 +22,7 @@ export type ColumnListItem = {
   column: Lib.ColumnMetadata;
   stageIndex: number;
   filterPositions?: number[];
+  combinedDisplayName: string;
 };
 
 export type SegmentListItem = Lib.SegmentDisplayInfo & {
@@ -28,4 +30,10 @@ export type SegmentListItem = Lib.SegmentDisplayInfo & {
   displayName: string;
   segment: Lib.SegmentMetadata;
   stageIndex: number;
+};
+
+export type ExpressionClauseItem = {
+  type: "expression-clause";
+  clause: DefinedClauseName;
+  displayName: string;
 };

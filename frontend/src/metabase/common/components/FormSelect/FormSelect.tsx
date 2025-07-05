@@ -11,8 +11,10 @@ import type {
 import Select from "metabase/common/components/Select";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 
-export interface FormSelectProps<TValue, TOption = SelectOption<TValue>>
-  extends Omit<SelectProps<TValue, TOption>, "value"> {
+export interface FormSelectProps<
+  TValue,
+  TOption extends object = SelectOption<TValue>,
+> extends Omit<SelectProps<TValue, TOption>, "value"> {
   name: string;
   title?: string;
   actions?: ReactNode;
@@ -25,7 +27,7 @@ export interface FormSelectProps<TValue, TOption = SelectOption<TValue>>
  */
 const FormSelect = forwardRef(function FormSelect<
   TValue,
-  TOption = SelectOption<TValue>,
+  TOption extends object = SelectOption<TValue>,
 >(
   {
     name,

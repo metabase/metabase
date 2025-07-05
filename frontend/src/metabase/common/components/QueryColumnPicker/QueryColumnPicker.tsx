@@ -2,30 +2,27 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
 import {
+  AccordionList,
+  type Section as BaseSection,
+} from "metabase/common/components/AccordionList";
+import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
+import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName } from "metabase/ui";
 import { DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
 import S from "./QueryColumnPicker.module.css";
-import { StyledAccordionList } from "./QueryColumnPicker.styled";
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
 };
 
-export type QueryColumnPickerSection = {
-  key?: string;
-  type?: "action";
-  name: string;
-  items: ColumnListItem[];
-  icon?: IconName;
-};
+export type QueryColumnPickerSection = BaseSection<ColumnListItem>;
 
 export interface QueryColumnPickerProps {
   className?: string;
@@ -60,7 +57,7 @@ export function QueryColumnPicker({
   hasTemporalBucketing = false,
   withDefaultBucketing = true,
   withInfoIcons = false,
-  color = "brand",
+  color: colorProp = "brand",
   checkIsColumnSelected,
   onSelect,
   onSelectSection,
@@ -177,7 +174,7 @@ export function QueryColumnPicker({
             hasBinning={hasBinning}
             hasTemporalBucketing={hasTemporalBucketing}
             hasChevronDown={withInfoIcons}
-            color={color}
+            color={colorProp}
             onSelect={handleSelect}
           />
         )
@@ -190,7 +187,7 @@ export function QueryColumnPicker({
       hasBinning,
       hasTemporalBucketing,
       withInfoIcons,
-      color,
+      colorProp,
       handleSelect,
     ],
   );
@@ -209,7 +206,7 @@ export function QueryColumnPicker({
 
   return (
     <DelayGroup>
-      <StyledAccordionList
+      <AccordionList<ColumnListItem, QueryColumnPickerSection>
         className={className}
         sections={sections}
         alwaysExpanded={alwaysExpanded}
@@ -221,10 +218,12 @@ export function QueryColumnPicker({
         renderItemExtra={renderItemExtra}
         renderItemDescription={omitItemDescription}
         renderItemIcon={renderItemIcon}
-        color={color}
+        style={{
+          color: color(colorProp),
+        }}
         maxHeight={Infinity}
         data-testid={dataTestId}
-        searchProp={["name", "displayName"]}
+        searchProp={["name", "displayName", "longDisplayName"]}
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
@@ -233,6 +232,7 @@ export function QueryColumnPicker({
         width={width}
         globalSearch={!disableSearch}
         searchable={!disableSearch}
+        fuzzySearch
       />
     </DelayGroup>
   );

@@ -1,9 +1,14 @@
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
 import { fireEvent, render, screen } from "__support__/ui";
 import TippyPopover from "metabase/common/components/Popover/TippyPopover";
 
-import AccordionList from "./AccordionList";
+import { AccordionList } from "./AccordionList";
+
+type Item = {
+  name: string;
+};
 
 const SECTIONS = [
   {
@@ -83,13 +88,58 @@ describe("AccordionList", () => {
     assertAbsence(["Foo", "Bar", "Baz"]);
   });
 
+  it("should filter items when searched with fuzzySearch", () => {
+    render(
+      <AccordionList<Item>
+        sections={SECTIONS}
+        searchable
+        fuzzySearch
+        searchProp={["name"]}
+      />,
+    );
+    const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
+
+    fireEvent.change(SEARCH_FIELD, { target: { value: "Fob" } });
+    assertPresence(["Foo"]);
+    assertAbsence(["Bar", "Baz"]);
+
+    fireEvent.change(SEARCH_FIELD, { target: { value: "Something Else" } });
+    assertAbsence(["Foo", "Bar", "Baz"]);
+  });
+
+  it("should correctly select items when searching", () => {
+    render(
+      <AccordionList<Item>
+        sections={SECTIONS}
+        globalSearch
+        searchable
+        searchProp={["name"]}
+      />,
+    );
+    const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
+    const CONTAINER = screen.getAllByRole("grid")[0];
+
+    fireEvent.change(SEARCH_FIELD, { target: { value: "Ba" } });
+    assertPresence(["Bar", "Baz"]);
+    assertAbsence(["Foo"]);
+
+    fireEvent.keyDown(CONTAINER, { key: "ArrowDown" });
+    expect(screen.getByLabelText("Bar").dataset.hascursor).toBe("true");
+
+    fireEvent.keyDown(CONTAINER, { key: "ArrowDown" });
+    expect(screen.getByLabelText("Baz").dataset.hascursor).toBe("true");
+
+    fireEvent.keyDown(CONTAINER, { key: "ArrowUp" });
+    expect(screen.getByLabelText("Bar").dataset.hascursor).toBe("true");
+  });
+
   it("should render with the search bar on top if globalSearch is set", () => {
     render(<AccordionList sections={SECTIONS} globalSearch searchable />);
     const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
     const sections = ["Widgets", "Doohickeys"];
 
     sections.forEach((name) => {
-      const SECTION = screen.queryByText(name);
+      const SECTION = screen.getByText(name);
       expect(SEARCH_FIELD.compareDocumentPosition(SECTION)).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,
       );
@@ -127,10 +177,10 @@ describe("AccordionList", () => {
 
   describe("with the `renderItemWrapper` prop", () => {
     it("should be able to wrap the list items in components like popovers", async () => {
-      const renderItemWrapper = (itemContent, item) => {
+      const renderItemWrapper = (itemContent: ReactNode) => {
         return (
           <TippyPopover content={<div>popover</div>}>
-            {itemContent}
+            <div>{itemContent}</div>
           </TippyPopover>
         );
       };
@@ -148,13 +198,13 @@ describe("AccordionList", () => {
   });
 });
 
-function assertAbsence(array) {
+function assertAbsence(array: string[]) {
   array.forEach((item) => {
     expect(screen.queryByText(item)).not.toBeInTheDocument();
   });
 }
 
-function assertPresence(array) {
+function assertPresence(array: string[]) {
   array.forEach((item) => {
     expect(screen.getByText(item)).toBeInTheDocument();
   });

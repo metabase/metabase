@@ -1,6 +1,5 @@
-import type { EditorState } from "@codemirror/state";
+import { EditorSelection, type EditorState } from "@codemirror/state";
 import { useDisclosure } from "@mantine/hooks";
-import { EditorSelection } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
@@ -16,6 +15,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import {
+  type DefinedClauseName,
   type ExpressionError,
   diagnoseAndCompile,
   format,
@@ -37,6 +37,7 @@ import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
+import { useInitialClause } from "./utils";
 
 type EditorProps = {
   id?: string;
@@ -51,6 +52,7 @@ type EditorProps = {
   error?: ExpressionError | Error | null;
   hasHeader?: boolean;
   onCloseEditor?: () => void;
+  initialExpressionClause?: DefinedClauseName | null;
 
   onChange: (
     clause: Lib.ExpressionClause | null,
@@ -76,6 +78,7 @@ export function Editor(props: EditorProps) {
     shortcuts,
     hasHeader,
     onCloseEditor,
+    initialExpressionClause,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -120,7 +123,6 @@ export function Editor(props: EditorProps) {
     query,
     stageIndex,
     availableColumns,
-    reportTimezone,
     metadata,
     extensions: [customTooltip],
   });
@@ -147,6 +149,10 @@ export function Editor(props: EditorProps) {
     );
   }, []);
 
+  const applyInitialSnippet = useInitialClause({
+    initialExpressionClause,
+  });
+
   return (
     <>
       <LayoutMain className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
@@ -165,6 +171,7 @@ export function Editor(props: EditorProps) {
           width="100%"
           indentWithTab={false}
           autoFocus
+          onCreateEditor={applyInitialSnippet}
           autoCorrect="off"
           tabIndex={0}
           onFormat={

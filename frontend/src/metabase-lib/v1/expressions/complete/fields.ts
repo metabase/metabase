@@ -2,6 +2,7 @@ import type { CompletionContext } from "@codemirror/autocomplete";
 
 // eslint-disable-next-line no-restricted-imports
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
 import { formatIdentifier } from "../identifier";
@@ -26,6 +27,12 @@ export function suggestFields({
       type: "field",
       label: formatIdentifier(displayInfo.longDisplayName),
       displayLabel: displayInfo.longDisplayName,
+      displayLabelWithTable: [
+        displayInfo.table?.displayName,
+        displayInfo.displayName,
+      ]
+        .filter(isNotNull)
+        .join(" "),
       icon: getColumnIcon(column),
       column,
     };
@@ -35,7 +42,10 @@ export function suggestFields({
     return null;
   }
 
-  const matcher = fuzzyMatcher(columns);
+  const matcher = fuzzyMatcher({
+    options: columns,
+    keys: ["displayLabel", { name: "displayLabelWithTable", weight: 0.25 }],
+  });
 
   return function (context: CompletionContext): CompletionResult | null {
     const source = context.state.doc.toString();
@@ -61,6 +71,7 @@ export function suggestFields({
       from: token.start,
       to: token.end,
       options,
+      filter: false,
     };
   };
 }

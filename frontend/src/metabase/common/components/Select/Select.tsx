@@ -10,6 +10,10 @@ import type {
 import { Children, Component, createRef } from "react";
 import _ from "underscore";
 
+import {
+  AccordionList,
+  type SearchProps,
+} from "metabase/common/components/AccordionList";
 import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
 import type { SelectButtonProps } from "metabase/common/components/SelectButton";
 import SelectButton from "metabase/common/components/SelectButton";
@@ -20,11 +24,12 @@ import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
-import { SelectAccordionList } from "./Select.styled";
-
 const MIN_ICON_WIDTH = 20;
 
-export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
+export interface SelectProps<
+  TValue,
+  TOption extends object = SelectOption<TValue>,
+> {
   className?: string;
   containerClassName?: string;
 
@@ -51,12 +56,9 @@ export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
   buttonText?: string; // will override selected options text
 
   // AccordionList props
-  searchProp?: string;
-  searchCaseInsensitive?: boolean;
+  searchProp?: SearchProps<TOption>;
   searchPlaceholder?: string;
-  searchFuzzy?: boolean;
   globalSearch?: boolean;
-  hideEmptySectionsInSearch?: boolean;
   width?: number;
 
   optionNameFn?: (option: TOption) => string | undefined;
@@ -98,9 +100,10 @@ export interface SelectChangeTarget<TValue> {
   value: TValue;
 }
 
-class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
-  SelectProps<TValue, TOption>
-> {
+class BaseSelect<
+  TValue,
+  TOption extends object = SelectOption<TValue>,
+> extends Component<SelectProps<TValue, TOption>> {
   _popover?: any;
   selectButtonRef: RefObject<any>;
   _getValues: () => TValue[];
@@ -240,10 +243,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
       containerClassName,
       placeholder,
       searchProp,
-      searchCaseInsensitive,
       searchPlaceholder,
-      searchFuzzy,
-      hideEmptySectionsInSearch,
       isInitiallyOpen,
       onClose,
       disabled,
@@ -298,7 +298,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
         // this can happen when filtering items via search
         pinInitialAttachment
       >
-        <SelectAccordionList
+        <AccordionList<TOption>
           hasInitialFocus
           sections={sections}
           className="MB-Select"
@@ -315,12 +315,13 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
           onChange={this.handleChange}
           searchable={!!searchProp}
           searchProp={searchProp}
-          searchCaseInsensitive={searchCaseInsensitive}
-          searchFuzzy={searchFuzzy}
           searchPlaceholder={searchPlaceholder}
           globalSearch={this.props.globalSearch}
-          hideEmptySectionsInSearch={hideEmptySectionsInSearch}
           data-testid={testId ? `${testId}-list` : null}
+          style={{
+            color: "var(--mb-color-brand)",
+            outline: "none",
+          }}
         />
         {footer}
       </PopoverWithTrigger>

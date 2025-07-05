@@ -8,3 +8,4 @@ export * from "./errors";
 export * from "./clause";
 export * from "./mode";
 export * from "./help-text";
+export * from "./complete";
