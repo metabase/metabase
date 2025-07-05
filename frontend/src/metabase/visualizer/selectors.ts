@@ -38,13 +38,13 @@ type State = {
 const getCurrentHistoryItem = (state: State) => state.visualizer.present;
 const getFirstHistoryItem = (state: State) => state.visualizer.past[0];
 
-const getVisualizationColumns = (state: State) =>
+// Public selectors
+
+export const getVisualizationColumns = (state: State) =>
   getCurrentHistoryItem(state).columns;
 
-const getVisualizerColumnValuesMapping = (state: State) =>
+export const getVisualizerColumnValuesMapping = (state: State) =>
   getCurrentHistoryItem(state).columnValuesMapping;
-
-// Public selectors
 
 export const getVisualizerRawSettings = (state: State) =>
   getCurrentHistoryItem(state).settings;
