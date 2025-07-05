@@ -9,7 +9,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.ident :as lib.ident]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
@@ -59,7 +58,7 @@
 
 (defn- values-from-card-query
   [card value-field-ref opts]
-  (let [query-string (:query-string opts)
+  (let [query-string    (:query-string opts)
         value-base-type (:base_type (qp.util/field->field-info value-field-ref (:result_metadata card)))
         new-filter      [:and
                          [(if (isa? value-base-type :type/Text)
@@ -70,32 +69,30 @@
                            (if-not (isa? value-base-type :type/Text)
                              [:= value-field-ref query-string]
                              [:contains [:lower value-field-ref] (u/lower-case-en query-string)]))]]
-    {:database (:database_id card)
-     :type     :query
-     :query    (if-let [inner-mbql (and (not= (:type card) :model)
-                                        (-> card :dataset_query :query))]
-                 ;; MBQL query - hijack the final stage, drop its aggregation and breakout (if any).
-                 (let [target-stage (:stage-number opts)
-                       last-stage   (mbql.u/legacy-last-stage-number inner-mbql)
-                       inner-mbql   (if (and target-stage last-stage
-                                             (= (inc last-stage) target-stage))
-                                      {:source-query inner-mbql}
-                                      inner-mbql)]
-                   (-> inner-mbql
-                       (dissoc :aggregation :order-by :fields)
-                       (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins)))
-                       (assoc :breakout        [value-field-ref]
-                              :breakout-idents (lib.ident/indexed-idents 1))
-                       (update :limit (fnil min *max-rows*) *max-rows*)
-                       (update :filter (fn [old]
-                                         (cond->> new-filter
-                                           old (conj [:and old]))))))
-                 ;; Model or Native query - wrap it with a new MBQL stage.
-                 {:source-table    (format "card__%d" (:id card))
-                  :breakout        [value-field-ref]
-                  :breakout-idents (lib.ident/indexed-idents 1)
-                  :limit           *max-rows*
-                  :filter          new-filter})
+    {:database   (:database_id card)
+     :type       :query
+     :query      (if-let [inner-mbql (and (not= (:type card) :model)
+                                          (-> card :dataset_query :query))]
+                   ;; MBQL query - hijack the final stage, drop its aggregation and breakout (if any).
+                   (let [target-stage (:stage-number opts)
+                         last-stage   (mbql.u/legacy-last-stage-number inner-mbql)
+                         inner-mbql   (if (and target-stage last-stage
+                                               (= (inc last-stage) target-stage))
+                                        {:source-query inner-mbql}
+                                        inner-mbql)]
+                     (-> inner-mbql
+                         (dissoc :aggregation :order-by :fields)
+                         (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins)))
+                         (assoc :breakout [value-field-ref])
+                         (update :limit (fnil min *max-rows*) *max-rows*)
+                         (update :filter (fn [old]
+                                           (cond->> new-filter
+                                             old (conj [:and old]))))))
+                   ;; Model or Native query - wrap it with a new MBQL stage.
+                   {:source-table (format "card__%d" (:id card))
+                    :breakout     [value-field-ref]
+                    :limit        *max-rows*
+                    :filter       new-filter})
      :middleware {:disable-remaps? true}}))
 
 (mu/defn values-from-card

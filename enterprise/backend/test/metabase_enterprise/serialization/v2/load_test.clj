@@ -229,8 +229,7 @@
             (is (=? {:type  :query
                      :query {:source-table ["my-db" nil "customers"]
                              :filter       [:>= [:field ["my-db" nil "customers" "age"] nil] 18]
-                             :aggregation  [[:count]]
-                             :aggregation-idents {0 string?}}
+                             :aggregation  [[:count]]}
                      :database "my-db"}
                     (:dataset_query card)))))
 
@@ -262,8 +261,7 @@
               (is (=? {:type     :query
                        :query    {:source-table (:id @table1d)
                                   :filter       [:>= [:field (:id @field1d) nil] 18]
-                                  :aggregation  [[:count]]
-                                  :aggregation-idents {0 string?}}
+                                  :aggregation  [[:count]]}
                        :database (:id @db1d)}
                       (:dataset_query @card1d))))))))))
 

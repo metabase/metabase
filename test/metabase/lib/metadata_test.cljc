@@ -68,10 +68,3 @@
         query-without-feature (assoc query :lib/metadata provider-without-feature)]
     (is (lib.metadata/database-supports? query-with-feature ::special-feature))
     (is (not (lib.metadata/database-supports? query-without-feature ::special-feature)))))
-
-(deftest ^:parallel idents-test
-  (doseq [table-key (meta/tables)
-          field-key (meta/fields table-key)]
-    (let [field (meta/field-metadata table-key field-key)]
-      (is (= (:ident field)
-             (:ident (lib.metadata/field meta/metadata-provider (:id field))))))))

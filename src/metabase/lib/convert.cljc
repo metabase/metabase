@@ -62,12 +62,6 @@
                                      ;; if `error-type` is missing, which seems to happen sometimes,
                                      ;; fall back to humanizing the entire error.
                                      (me/humanize (mr/explain ::lib.schema/stage.mbql almost-stage))))]
-          ;; TODO: Bring this back, for all the idents. We can't enforce this strictly when they're not being added
-          ;; by the BE for pre-existing queries.
-          #_(when (= (last error-location) :ident)
-              (throw (ex-info "Ident error" {:loc error-location
-                                             :error-desc error-desc
-                                             :diff (first (data/diff almost-stage new-stage))})))
           #?(:cljs (js/console.warn "Clean: Removing bad clause due to error!" error-location error-desc
                                     (u/pprint-to-str (first (data/diff almost-stage new-stage))))
              :clj  (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
@@ -197,46 +191,27 @@
      [aggregations & body]
      `(do-with-aggregation-list ~aggregations (fn [] ~@body))))
 
-(defn- from-indexed-idents [stage list-key idents-key]
-  (let [idents (get stage idents-key)]
-    (->> (get stage list-key)
-         ->pMBQL
-         (map-indexed (fn [i x]
-                        (if-let [ident (or (get idents i)
-                                           ;; Conversion from JSON keywordizes all keys, including these numbers!
-                                           (get idents (keyword (str i))))]
-                          (lib.options/update-options x assoc :ident ident)
-                          x)))
-         vec
-         not-empty)))
-
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
-  (let [aggregations (from-indexed-idents stage :aggregation :aggregation-idents)
-        expr-idents  (:expression-idents stage)
+  (let [aggregations (->pMBQL (:aggregation stage))
         expressions  (->> stage
                           :expressions
                           (mapv (fn [[k v]]
-                                  (let [expr (-> v
-                                                 ->pMBQL
-                                                 (lib.util/top-level-expression-clause k))]
-                                    (if-let [ident (get expr-idents k)]
-                                      (lib.options/update-options expr assoc :ident ident)
-                                      expr))))
+                                  (-> v
+                                      ->pMBQL
+                                      (lib.util/top-level-expression-clause k))))
                           not-empty)]
     (metabase.lib.convert/with-aggregation-list aggregations
       (let [stage (-> stage
                       stage-source-card-id->pMBQL
-                      (m/assoc-some :expressions expressions
-                                    :aggregation aggregations
-                                    :breakout    (from-indexed-idents stage :breakout :breakout-idents)))
+                      (m/assoc-some :aggregation aggregations :expressions expressions))
             stage (reduce
                    (fn [stage k]
                      (if-not (get stage k)
                        stage
                        (update stage k ->pMBQL)))
-                   (dissoc stage :aggregation-idents :breakout-idents :expression-idents)
-                   (disj stage-keys :aggregation :breakout :expressions))]
+                   stage
+                   (disj stage-keys :aggregation :expressions))]
         (cond-> stage
           (:joins stage) (update :joins deduplicate-join-aliases))))))
 
@@ -612,12 +587,6 @@
              (second legacy-clause)
              legacy-clause)])))
 
-(defn- idents-by-index [clause-list]
-  (when (seq clause-list)
-    (into {} (map-indexed (fn [i clause]
-                            [i (lib.options/ident clause)]))
-          clause-list)))
-
 (defmethod ->legacy-MBQL :mbql.stage/mbql
   [stage]
   (metabase.lib.convert/with-aggregation-list (:aggregation stage)
@@ -625,16 +594,8 @@
             (-> stage
                 disqualify
                 source-card->legacy-source-table
-
-                (m/assoc-some :aggregation-idents (idents-by-index (:aggregation stage)))
                 (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
-                (m/assoc-some :breakout-idents (idents-by-index (:breakout stage)))
                 (m/update-existing :breakout #(mapv ->legacy-MBQL %))
-
-                (m/assoc-some :expression-idents (->> (:expressions stage)
-                                                      (into {} (map (juxt lib.util/expression-name
-                                                                          lib.options/ident)))
-                                                      not-empty))
                 (m/update-existing :expressions stage-expressions->legacy-MBQL)
                 (update-list->legacy-boolean-expression :filters :filter))
             (disj stage-keys :aggregation :breakout :filters :expressions))))

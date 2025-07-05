@@ -16,7 +16,6 @@
    [metabase.driver.test-util :as driver.tu]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -464,28 +463,13 @@
 
   Prefer [[metadata-provider-with-card-with-metadata-for-query]] instead of using this going forward."
   [query]
-  (let [entity-id (u/generate-nano-id)]
-    {:dataset_query   query
-     :entity_id       entity-id
-     :result_metadata (-> query
-                          (assoc-in [:info :card-entity-id] entity-id)
-                          actual-query-results)}))
-
-(defn- as-model [result-metadata entity-id]
-  (for [col result-metadata]
-    (cond-> col
-      (not (lib/valid-model-ident? col entity-id)) (lib/add-model-ident entity-id))))
+  {:dataset_query   query
+   :result_metadata (actual-query-results query)})
 
 (defn card-with-metadata
   "Given a (partial) Card, such as might be passed to `with-temp`, fill in its `:result_metadata` based on the query."
-  [{:keys [dataset_query] :as card}]
-  (let [entity-id (or (:entity_id card) (u/generate-nano-id))]
-    (assoc card
-           :entity_id       entity-id
-           :result_metadata (-> dataset_query
-                                (assoc-in [:info :card-entity-id] entity-id)
-                                actual-query-results
-                                (cond-> (= (:type card) :model) (as-model entity-id))))))
+  [{query :dataset_query, :as card}]
+  (assoc card :result_metadata (actual-query-results query)))
 
 (defn card-with-updated-metadata
   "Like [[card-with-metadata]] but takes an extra argument: a function `(f column-metadata card) => column-metadata`.
@@ -527,11 +511,10 @@
                                          database-id)
                                        (u/the-id (lib.metadata/database parent-metadata-provider)))
                     :name          (format "Card %d" (inc i))
-                    :entity-id     (u/generate-nano-id)
                     :dataset-query query}))
     (completing
-     (fn [metadata-provider {query :dataset-query, eid :entity-id, :as card}]
-       (let [query (assoc-in query [:info :card-entity-id] eid)]
+     (fn [metadata-provider {query :dataset-query, :as card}]
+       (let [query query]
          (qp.store/with-metadata-provider metadata-provider
            (let [result-metadata (if (= (:type query) :query)
                                    (qp.preprocess/query->expected-cols query)
@@ -637,7 +620,5 @@
 
   If the optional `entity_id` is provided, it will be used for the `:ident`s. If missing, a placeholder ident will
   be used instead, as is done for ad-hoc native queries."
-  ([metadata]
-   (metadata->native-form metadata (lib/placeholder-card-entity-id-for-adhoc-query)))
-  ([metadata _card-entity-id]
-   (mapv #(dissoc % :id :ident :source) metadata)))
+  [metadata]
+  (mapv #(dissoc % :id :source) metadata))

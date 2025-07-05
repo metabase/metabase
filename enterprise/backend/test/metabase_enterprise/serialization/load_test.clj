@@ -56,7 +56,6 @@
     (binding [qp.perms/*card-id* nil]
       (-> query
           (assoc-in [:info :card-id] (:id card))
-          (assoc-in [:info :card-entity-id] (:entity_id card))
           qp/process-query))))
 
 (defn- query-res-match

@@ -9,7 +9,6 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -132,45 +131,44 @@
 (defn- remove-replace-location
   [query stage-number unmodified-query-for-stage location target-clause remove-replace-fn]
   ;; We may see missing idents during the remove/replace process, so disable the assertions.
-  (binding [lib.metadata.ident/*enforce-idents-present* false]
-    (let [result (lib.util/update-query-stage query stage-number
-                                              remove-replace-fn location target-clause)
-          target-uuid (lib.options/uuid target-clause)]
-      (if (not= query result)
-        (lib.util.match/match-one location
-          [:expressions]
-          (-> result
-              (remove-local-references
-               stage-number
-               unmodified-query-for-stage
-               :expression
-               {}
-               (lib.util/expression-name target-clause))
-              (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
-              (update-stale-references stage-number unmodified-query-for-stage))
+  (let [result (lib.util/update-query-stage query stage-number
+                                            remove-replace-fn location target-clause)
+        target-uuid (lib.options/uuid target-clause)]
+    (if (not= query result)
+      (lib.util.match/match-one location
+        [:expressions]
+        (-> result
+            (remove-local-references
+             stage-number
+             unmodified-query-for-stage
+             :expression
+             {}
+             (lib.util/expression-name target-clause))
+            (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
+            (update-stale-references stage-number unmodified-query-for-stage))
 
-          [:aggregation]
-          (-> result
-              (remove-local-references
-               stage-number
-               unmodified-query-for-stage
-               :aggregation
-               {}
-               target-uuid)
-              (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
-              (update-stale-references stage-number unmodified-query-for-stage))
+        [:aggregation]
+        (-> result
+            (remove-local-references
+             stage-number
+             unmodified-query-for-stage
+             :aggregation
+             {}
+             target-uuid)
+            (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
+            (update-stale-references stage-number unmodified-query-for-stage))
 
-          #_{:clj-kondo/ignore [:invalid-arity]}
-          (:or
-           [:breakout]
-           [:fields]
-           [:joins _ :fields])
-          (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
-              (update-stale-references stage-number unmodified-query-for-stage))
+        #_{:clj-kondo/ignore [:invalid-arity]}
+        (:or
+         [:breakout]
+         [:fields]
+         [:joins _ :fields])
+        (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
+            (update-stale-references stage-number unmodified-query-for-stage))
 
-          _
-          result)
-        result))))
+        _
+        result)
+      result)))
 
 (defn- remove-local-references [query stage-number unmodified-query-for-stage target-op target-opts target-ref-id]
   (let [stage (lib.util/query-stage query stage-number)
@@ -234,9 +232,7 @@
           location (find-location query stage-number target-clause)
           replace? (= :replace remove-or-replace)
           replacement-clause (when replace?
-                               (cond-> (lib.common/->op-arg replacement)
-                                 (lib.options/ident target-clause) (lib.common/preserve-ident-of target-clause)
-                                 (:ident target-clause)            (assoc :ident (:ident target-clause))))
+                               (lib.common/->op-arg replacement))
           remove-replace-fn (if replace?
                               #(lib.util/replace-clause %1 %2 %3 replacement-clause)
                               #(lib.util/remove-clause %1 %2 %3 stage-number))
@@ -292,8 +288,7 @@
                                 (lib.util.match/replace stage
                                   [:expression _ target-ref-id]
                                   (-> replacement-ref
-                                      fresh-ref
-                                      (lib.common/preserve-ident-of &match))))]
+                                      fresh-ref)))]
     (replace-embedded-refs stage)))
 
 (defn- local-replace-expression
@@ -302,9 +297,7 @@
                              (-> replacement lib.options/options :name))
         top-level-replacement (-> replacement
                                   (lib.util/top-level-expression-clause replacement-name)
-                                  fresh-ref
-                                  ;; Preserve the `:ident` of the target; the expression's identity is unchanged.
-                                  (lib.common/preserve-ident-of target))
+                                  fresh-ref)
         replaced (update stage :expressions (fn [exprs] (mapv #(if (= % target) top-level-replacement %) exprs)))
         target-name (lib.util/expression-name target)
         replacement-type (-> replacement lib.options/options :effective-type)
@@ -313,11 +306,10 @@
 
 (defn- local-replace
   [stage target replacement]
-  (let [replacement (lib.common/preserve-ident-of replacement target)]
-    (->> (if (lib.util/expression-name target)
-           (local-replace-expression stage target replacement)
-           (walk/postwalk #(if (= % target) replacement %) stage))
-         (walk/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %)))))
+  (->> (if (lib.util/expression-name target)
+         (local-replace-expression stage target replacement)
+         (walk/postwalk #(if (= % target) replacement %) stage))
+       (walk/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %))))
 
 (defn- returned-columns-at-stage
   [query stage-number]
@@ -468,9 +460,7 @@
           (if (and (not= new-name (:alias join))
                    (conditions-changed-for-aliases? (:alias join) (:conditions join)
                                                     (:alias old-join) (:conditions old-join)))
-            ;; TODO: This is pretty ugly and specific; this is an example of how hopelessly coupled and intricate
-            ;; this namespace is.
-            (rename-join query stage-number (assoc join :ident (:ident old-join)) new-name)
+            (rename-join query stage-number join new-name)
             query))
         query))))
 
@@ -682,10 +672,7 @@
                                                              (:source-card %)))]
                                 (cond-> new-join
                                   ;; We need to tag the join so that add-default-alias knows to replace this alias
-                                  should-rename? (assoc ::lib.join/replace-alias true)
-                                  ;; TODO: Maybe join idents *should* change under the same conditions as aliases?
-                                  ;; All the column idents are going to change anyway, so it doesn't matter that much.
-                                  (:ident %)     (assoc :ident (:ident %))))
+                                  should-rename? (assoc ::lib.join/replace-alias true)))
                               %)
                            joins))))))
 

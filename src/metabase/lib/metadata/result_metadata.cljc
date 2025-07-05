@@ -8,7 +8,6 @@
   used today."
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -22,6 +21,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -48,13 +48,7 @@
 (mr/def ::kebab-cased-map
   [:and
    ::col
-   [:fn
-    {:error/message "column with all kebab-cased keys"}
-    (fn [m]
-      (every? (fn [k]
-                (and (keyword? k)
-                     (not (str/includes? k "_"))))
-              (keys m)))]])
+   ::lib.schema.common/kebab-cased-map])
 
 (mr/def ::cols
   [:maybe [:sequential ::col]])
@@ -64,7 +58,7 @@
   from the driver to values calculated by MLv2."
   [driver-col :- [:maybe ::col]
    lib-col    :- [:maybe ::col]]
-  (let [driver-col (update-keys driver-col u/->kebab-case-en)]
+  (let [driver-col (lib.schema.common/normalize-map driver-col)] ; convert to kebab case (optimized impl)
     (merge lib-col
            (m/filter-vals some? driver-col)
            ;; Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
@@ -111,22 +105,15 @@
                       {:initial-cols (map select-relevant-keys initial-cols)
                        :lib-cols     (map select-relevant-keys lib-cols)})))))
 
-(mu/defn- source->legacy-source :- ::legacy-source
-  [source :- [:maybe ::lib.schema.metadata/column-source]]
-  (case source
-    :source/card                :fields
-    :source/native              :native
-    :source/previous-stage      :fields
-    :source/table-defaults      :fields
-    :source/fields              :fields
-    :source/aggregations        :aggregation
-    :source/breakouts           :breakout
-    :source/joins               :fields
-    :source/expressions         :fields
-    :source/implicitly-joinable :fields
-    ;; TODO (Cam 6/26/25) -- ???? Not clear why some columns don't have a `:lib/source` at all. But in that case just
-    ;; fall back to `:fields`
-    :fields))
+(mu/defn- legacy-source :- ::legacy-source
+  [{source :lib/source, breakout? :lib/breakout?, :as _col} :- [:maybe ::lib.schema.metadata/column]]
+  (if breakout?
+    :breakout
+    (case source
+      :source/native       :native
+      :source/aggregations :aggregation
+      ;; everything else gets mapped to `:fields`.
+      :fields)))
 
 (mu/defn- basic-native-col :- ::kebab-cased-map
   "Generate basic column metadata for a column coming back from a native query for which we have only barebones metadata
@@ -210,7 +197,7 @@
   https://metaboat.slack.com/archives/C0645JP1W81/p1749064861598669?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [cols :- [:sequential ::kebab-cased-map]]
   (mapv (fn [col]
-          (assoc col :source (source->legacy-source (:lib/source col))))
+          (assoc col :source (legacy-source col)))
         cols))
 
 (mu/defn- fe-friendly-expression-ref :- ::super-broken-legacy-field-ref

@@ -69,26 +69,11 @@
    card-id              :- ::lib.schema.id/card]
   (lib.metadata.protocols/metadatas-for-card (->metadata-provider metadata-providerable) metadata-type card-id))
 
-(def ^:dynamic *enforce-idents*
-  "Dynamic variable to control whether errors are thrown when we return a `:metadata/column` with no ident.
-
-  Generally that is an error and we should throw, but there are a few tests explicitly checking broken fields that
-  don't want to get hung up on this error."
-  ;; TODO: Fix the metadata APIs to include `:ident` or `:entity_id` so the JS side has proper idents.
-  #?(:clj true :cljs false))
-
 (mu/defn field :- [:maybe ::lib.schema.metadata/column]
   "Get metadata about a specific Field in the Database we're querying."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    field-id              :- ::lib.schema.id/field]
-  (let [fieldd (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id)]
-    (when (and fieldd
-               (not (:ident fieldd))
-               *enforce-idents*)
-      (throw (ex-info "Returning a field with no :ident" {:metadata-providerable (pr-str metadata-providerable)
-                                                          :id                    field-id
-                                                          :field                 fieldd})))
-    fieldd))
+  (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id))
 
 (mu/defn remapped-field :- [:maybe ::lib.schema.metadata/column]
   "Given a metadata source and a column's metadata, return the metadata for the field it's being remapped to, if any."
@@ -203,14 +188,6 @@
     (let [provider   (->metadata-provider metadata-providerable)
           results    (lib.metadata.protocols/metadatas provider metadata-type ids)
           id->result (into {} (map (juxt :id identity)) results)]
-      (when (= metadata-type :metadata/column)
-        (when-let [missing (and *enforce-idents*
-                                (not-empty (remove :ident results)))]
-          (throw (ex-info "Bulk metadata request returned some columns without idents"
-                          {:provider      metadata-providerable
-                           :type          metadata-type
-                           :ids           ids
-                           :missing-ident missing}))))
       (into []
             (comp (map id->result)
                   (filter some?))

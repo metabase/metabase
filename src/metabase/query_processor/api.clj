@@ -73,9 +73,6 @@
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}
-                           (:entity_id source-card)
-                           (assoc :card-entity-id (:entity_id source-card))
-
                            (= (:type source-card) :model)
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (qp.streaming/streaming-response [rff export-format]

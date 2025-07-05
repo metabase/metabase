@@ -1,7 +1,6 @@
 (ns metabase.lib.schema.util
   (:refer-clojure :exclude [ref])
   (:require
-   [clojure.walk :as walk]
    [metabase.lib.options :as lib.options]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
@@ -73,16 +72,6 @@
                          acc))
                      options options)))))))
 
-(defn remove-randomized-idents
-  "Recursively remove all uuids, `:ident`s and `:entity_id`s from x."
-  [x]
-  (walk/postwalk
-   (fn [x]
-     (if (map? x)
-       (dissoc x :lib/uuid :ident :entity_id :entity-id)
-       x))
-   x))
-
 (defn- indexed-order-bys-for-stage
   "Convert all order-bys in a stage to refer to aggregations by index instead of uuid"
   [{:keys [aggregation order-by] :as stage}]
@@ -111,8 +100,8 @@
   [:fn
    {:error/message "values must be distinct ignoring uuids"
     :error/fn      (fn [{:keys [value]} _]
-                     (str "Duplicate values ignoring uuids in: " (pr-str (remove-randomized-idents value))))}
-   (comp u/empty-or-distinct? remove-randomized-idents)])
+                     (str "Duplicate values ignoring uuids in: " (pr-str value)))}
+   u/empty-or-distinct?])
 
 (defn distinct-ignoring-uuids
   "Add an additional constraint to `schema` that requires all elements to be distinct after removing uuids."

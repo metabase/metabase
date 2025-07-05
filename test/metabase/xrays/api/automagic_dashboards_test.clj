@@ -195,7 +195,6 @@
                                                             :dataset_query (mt/mbql-query orders
                                                                              {:joins        [{:source-table $$reviews
                                                                                               :alias        "Reviews"
-                                                                                              :ident        "HfWxcPle1nlw1XR_JRkCS"
                                                                                               :condition    [:=
                                                                                                              $product_id
                                                                                                              [:field %reviews.id {:join-alias "Reviews"}]]

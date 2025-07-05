@@ -13,7 +13,6 @@
               :joins        [{:fields       :all
                               :source-table (meta/id :products)
                               :alias        "Products"
-                              :ident        "sLMFVLAFxuPQp1Q387KOv"
                               :condition    [:=
                                              [:field (meta/id :orders :product-id) nil]
                                              [:field (meta/id :products :id) {:join-alias "Products"}]]}]}})

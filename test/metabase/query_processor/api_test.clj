@@ -255,7 +255,6 @@
           metadata-card     (lib.metadata/card metadata-provider 1)]
       (mt/with-temp
         [:model/Card card {:dataset_query native-query
-                           :entity_id       (:entity-id metadata-card)
                            :result_metadata (:result-metadata metadata-card)}]
         (let [card-query {:database (mt/id)
                           :type     "query"

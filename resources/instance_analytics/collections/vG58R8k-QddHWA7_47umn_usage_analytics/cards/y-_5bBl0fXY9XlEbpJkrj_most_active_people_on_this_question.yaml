@@ -25,8 +25,6 @@ dataset_query:
   query:
     aggregation:
     - - count
-    aggregation-idents:
-      0: aggregation_y-_5bBl0fXY9XlEbpJkrj@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -41,9 +39,6 @@ dataset_query:
         - full_name
       - base-type: type/Text
         join-alias: People - Creator
-    breakout-idents:
-      0: breakout_y-_5bBl0fXY9XlEbpJkrj@0__0
-      1: breakout_y-_5bBl0fXY9XlEbpJkrj@0__1
     filter:
     - =
     - - field

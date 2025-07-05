@@ -11,7 +11,6 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -46,21 +45,18 @@
                      :name         "grandparent"
                      :display-name "Grandparent"
                      :id           (grandparent-parent-child-id :grandparent)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}
         parent      {:lib/type     :metadata/column
                      :name         "parent"
                      :display-name "Parent"
                      :parent-id    (grandparent-parent-child-id :grandparent)
                      :id           (grandparent-parent-child-id :parent)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}
         child       {:lib/type     :metadata/column
                      :name         "child"
                      :display-name "Child"
                      :parent-id    (grandparent-parent-child-id :parent)
                      :id           (grandparent-parent-child-id :child)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}]
     (lib.tu/mock-metadata-provider
      {:database meta/database
@@ -440,7 +436,6 @@
                                                  :condition    [:=
                                                                 [:field (meta/id :venues :category-id) nil]
                                                                 [:field (meta/id :categories :id) {:join-alias "Cat"}]]
-                                                 :ident        "khQz-1AxQ4MVUfynQFnUw"
                                                  :alias        "Cat"}]}}
         query        (lib/query meta/metadata-provider legacy-query)]
     (is (=? [{:lib/desired-column-alias "ID"}
@@ -1266,7 +1261,9 @@
             :let [col-ref (lib/ref col)]]
       (testing (str "ref " col-ref " of " (symbol query-var))
         (is (= (dissoc col :lib/source-uuid)
-               (dissoc (lib/find-visible-column-for-ref query col-ref) :lib/source-uuid))))))
+               (dissoc (lib/find-visible-column-for-ref query col-ref) :lib/source-uuid)))))))
+
+(deftest ^:parallel find-visible-column-for-ref-test-2
   (testing "reference by ID instead of name"
     (let [query (lib.tu/query-with-source-card)
           col-ref [:field
@@ -1307,14 +1304,14 @@
                         :semantic-type            :type/PK
                         :table-id                 (meta/id :orders)
                         :id                       (meta/id :orders :id)
-                        :lib/source               :source/fields
+                        :lib/source               :source/table-defaults
                         :lib/desired-column-alias "ID"
                         :display-name             "ID"}
           exp-src-tax  {:lib/type                 :metadata/column
                         :lib/source-column-alias  "TAX"
                         :table-id                 (meta/id :orders)
                         :id                       (meta/id :orders :tax)
-                        :lib/source               :source/fields
+                        :lib/source               :source/table-defaults
                         :lib/desired-column-alias "TAX"
                         :display-name             "Tax"}
           exp-join-id  {:lib/type                     :metadata/column
@@ -1388,11 +1385,10 @@
                 vis-price))
         (testing "can have that dropped field added back"
           (let [added (lib/add-field query -1 vis-price)]
-            (is (=? columns #_(map #(assoc % :lib/source :source/fields) columns)
+            (is (=? columns
                     (lib.metadata.calculation/returned-columns added)))
             (testing "and removed again"
-              (is (=? (map #(-> (m/filter-vals some? %)
-                                (assoc :lib/source :source/fields))
+              (is (=? (map #(m/filter-vals some? %)
                            no-price)
                       (-> added
                           (lib/remove-field -1 vis-price)
@@ -1449,11 +1445,9 @@
           join-cols      [(-> (meta/field-metadata :products :category)
                               (assoc :lib/source :source/card
                                      :source-alias "Products")
-                              (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join))
                               (dissoc :id :table-id))]
           implicit-cols  (for [col (meta/fields :people)]
                            (-> (meta/field-metadata :people col)
-                               (update :ident lib.metadata.ident/implicitly-joined-ident (meta/ident :orders :user-id))
                                (assoc :lib/source :source/implicitly-joinable)))
           sorted         #(sort-by (juxt :name :join-alias :id :table-id) %)]
       (is (=? (map #(dissoc % :ident)
@@ -1494,24 +1488,21 @@
                   (get-state (mark-selected joined)))))))))
 
 (deftest ^:parallel expression-ref-when-metadata-has-expression-name-test
-  (testing (str "column metadata with :expression-name should generate :expression refs regardless of :lib/source. "
-                "Prefer :expression-name over :name (#34957)")
+  (testing "column metadata with :expression-name should generate :expression refs. Prefer :expression-name over :name (#34957)"
     (let [metadata (-> (meta/field-metadata :venues :name)
-                       (assoc :lib/source :source/fields
-                              :lib/expression-name "Custom Venue Name"))]
+                       (assoc :lib/expression-name "Custom Venue Name", :lib/source :source/expressions))]
       (is (=? [:expression {} "Custom Venue Name"]
               (lib/ref metadata))))))
 
 (deftest ^:parallel resolve-field-metadata-test
   (testing "Make sure fallback name for a Field ref makes sense"
     (mu/disable-enforcement
-      (binding [lib.metadata.ident/*enforce-idents-present* false]
-        (is (=? {:lib/type        :metadata/column
-                 :lib/source-uuid string?
-                 :name            "Unknown Field"
-                 :display-name    "Unknown Field"}
-                (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
-                                                   [:field {:lib/uuid (str (random-uuid))} 12345])))))))
+      (is (=? {:lib/type        :metadata/column
+               :lib/source-uuid string?
+               :name            "Unknown Field"
+               :display-name    "Unknown Field"}
+              (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
+                                                 [:field {:lib/uuid (str (random-uuid))} 12345]))))))
 
 (deftest ^:parallel field-values-search-info-test
   (testing "type/PK field remapped to a type/Name field within the same table"
@@ -1621,7 +1612,9 @@
                   (:venues/native (lib.tu/mock-cards)))
                  lib/append-stage
                  lib/visible-columns
-                 (m/find-first (comp #{"NAME"} :name)))))))
+                 (m/find-first (comp #{"NAME"} :name))))))))
+
+(deftest ^:parallel field-values-search-info-native-test-2
   (testing "field-id with custom metadata (#37100)"
     (is (=? {:field-id 1
              :search-field-id 1
@@ -1634,7 +1627,6 @@
                             {:lib/type :metadata/column
                              :id 1
                              :name "search"
-                             :ident "pu_Pfm-Oe2cnFTsRgmYM3"
                              :display-name "Search"
                              :base-type :type/Text})
                  lib/visible-columns
@@ -1649,7 +1641,6 @@
                            {:lib/type :metadata/column
                             :id 1
                             :name "num"
-                            :ident "pu_Pfm-Oe2cnFTsRgmYM3"
                             :display-name "Random number"
                             :base-type :type/Integer})
                 lib/visible-columns
@@ -2004,7 +1995,7 @@
     (testing "display name should be correct; inherited column status has to be detected correctly for this to work"
       (is (= [["Name"     true]         ; they're both inherited!
               ["c → Name" true]]
-             (map (juxt :display-name #(boolean (lib.field.util/FIXED-inherited-column? agg-query -1 %)))
+             (map (juxt :display-name #(boolean (lib.field.util/inherited-column? %)))
                   (lib/returned-columns agg-query)))))
     (testing "recalculating display names should work correctly"
       (is (= ["Name"
