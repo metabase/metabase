@@ -285,11 +285,6 @@ export type SettingDefinitionMap<
 
 export type UpdateChannel = "latest" | "beta" | "nightly";
 
-export interface OpenAiModel {
-  id: string;
-  owned_by: string;
-}
-
 export type HelpLinkSetting = "metabase" | "hidden" | "custom";
 
 export type AutocompleteMatchStyle = "off" | "prefix" | "substring";
@@ -377,11 +372,6 @@ interface AdminSettings {
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
-  "ee-openai-api-key"?: string;
-  "openai-api-key": string | null;
-  "openai-available-models"?: OpenAiModel[];
-  "openai-model": string | null;
-  "openai-organization": string | null;
   "session-cookie-samesite": SessionCookieSameSite;
   "slack-app-token": string | null;
   "slack-bug-report-channel": string | null;
@@ -544,9 +534,6 @@ export interface EnterpriseSettings extends Settings {
   "no-object-illustration"?: IllustrationSettingValue;
   "no-object-illustration-custom"?: string;
   "landing-page"?: string;
-  "ee-ai-features-enabled"?: boolean;
-  "ee-openai-api-key"?: string;
-  "ee-openai-model"?: string;
   "session-timeout": TimeoutValue | null;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
