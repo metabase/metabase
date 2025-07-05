@@ -21,6 +21,7 @@
    [metabase-enterprise.metabot-v3.api]
    [metabase-enterprise.metabot-v3.tools.api]
    [metabase-enterprise.permission-debug.api]
+   [metabase-enterprise.pg-replication.api :as pg-replication.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
    [metabase-enterprise.serialization.api]
@@ -43,6 +44,7 @@
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
    :etl-connections            (deferred-tru "ETL Connections")
+   :etl-connections-pg         (deferred-tru "ETL Connections PG replication")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
    :scim                       (deferred-tru "SCIM configuration")
@@ -85,6 +87,10 @@
    "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
    "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
+   "/pg-replication"               (-> pg-replication.api/routes ;; pg-replication requires all these features.
+                                       (premium-handler :attached-dwh)
+                                       (premium-handler :etl-connections)
+                                       (premium-handler :etl-connections-pg))
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
