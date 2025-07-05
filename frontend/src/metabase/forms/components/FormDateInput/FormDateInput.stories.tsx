@@ -2,7 +2,7 @@ import type { StoryFn } from "@storybook/react";
 
 import { Form, FormProvider } from "metabase/forms";
 
-import FormDateInput from "./FormDateInput";
+import { FormDateInput } from "./FormDateInput";
 
 export default {
   title: "Components/Ask Before Using/FormDateInput",
