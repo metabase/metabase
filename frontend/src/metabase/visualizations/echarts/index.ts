@@ -2,6 +2,7 @@ import {
   BarChart,
   CustomChart,
   LineChart,
+  RadarChart,
   SankeyChart,
   ScatterChart,
   SunburstChart,
@@ -13,6 +14,7 @@ import {
   GraphicComponent,
   GridComponent,
   MarkLineComponent,
+  RadarComponent,
   ToolboxComponent,
   TooltipComponent,
 } from "echarts/components";
@@ -37,6 +39,8 @@ export const registerEChartsModules = () => {
     BrushComponent,
     DatasetComponent,
     SankeyChart,
+    RadarChart,
+    RadarComponent,
     LabelLayout,
     TooltipComponent,
   ]);

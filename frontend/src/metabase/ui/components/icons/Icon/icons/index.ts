@@ -327,6 +327,8 @@ import rocket_component from "./rocket.svg?component";
 import rocket_source from "./rocket.svg?source";
 import ruler_component from "./ruler.svg?component";
 import ruler_source from "./ruler.svg?source";
+import radar_component from "./radar.svg?component";
+import radar_source from "./radar.svg?source";
 import sankey_component from "./sankey.svg?component";
 import sankey_source from "./sankey.svg?source";
 import search_component from "./search.svg?component";
@@ -1048,6 +1050,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: revert_component,
       source: revert_source,
     },
+    radar: {
+      component: radar_component,
+      source: radar_source,
+    },
     sankey: {
       component: sankey_component,
       source: sankey_source,
@@ -1478,6 +1484,7 @@ export type IconName =
   | "pulse"
   | "recents"
   | "revert"
+  | "radar"
   | "sankey"
   | "share"
   | "split"

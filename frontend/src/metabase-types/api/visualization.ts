@@ -33,6 +33,7 @@ export const cardDisplayTypes = [
   "map",
   "scatter",
   "waterfall",
+  "radar",
   "sankey",
 ] as const;
 
