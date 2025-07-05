@@ -54,7 +54,7 @@ export const MetabotThinking = ({
   hideLoader: boolean;
 }) => {
   return (
-    <Stack gap="xs">
+    <Stack gap="xs" mt="md">
       <ThoughtProcess toolCalls={toolCalls} />
       {!hideLoader && (
         <Loader
