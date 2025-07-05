@@ -9,6 +9,7 @@ import { parser } from "metabase-lib/v1/expressions/tokenizer/parser";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
+import { hasActiveSnippet } from "./utils";
 
 const expressionLanguage = LRLanguage.define({
   parser,
@@ -26,6 +27,10 @@ type LintOptions = {
 const lint = (options: LintOptions) =>
   linter(
     (view: EditorView): Diagnostic[] => {
+      if (hasActiveSnippet(view.state)) {
+        return [];
+      }
+
       const source = view.state.doc.toString();
       if (source === "") {
         return [];
