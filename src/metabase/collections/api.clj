@@ -16,6 +16,7 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
@@ -980,12 +981,6 @@
                   :can_restore
                   :can_delete)))
 
-(api.macros/defendpoint :get "/:id"
-  "Fetch a specific Collection with standard details added"
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (collection-detail (api/read-check :model/Collection id)))
-
 (api.macros/defendpoint :get "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
   []
@@ -1003,7 +998,7 @@
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id [:or ms/PositiveInt :string]]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first
            show_dashboard_questions]} :- [:map
                                           [:models                     {:optional true} [:maybe Models]]
@@ -1014,7 +1009,8 @@
                                           [:official_collections_first {:optional true} [:maybe ms/MaybeBooleanValue]]
                                           [:show_dashboard_questions   {:default false} [:maybe ms/BooleanValue]]]]
   (let [model-kwds (set (map keyword (u/one-or-many models)))
-        collection (api/read-check :model/Collection id)]
+        resolved-id (eid-translation/->id :collection id)
+        collection (api/read-check :model/Collection resolved-id)]
     (u/prog1 (collection-children collection
                                   {:show-dashboard-questions? show_dashboard_questions
                                    :models                    model-kwds
@@ -1206,6 +1202,15 @@
                                   ;; default to sorting official collections first, but provide the option not to
                                   :official-collections-first? (or (nil? official_collections_first)
                                                                    (boolean official_collections_first))}})))
+
+;;; ------------------------------------------ Fetching a single Collection -------------------------------------------
+
+(api.macros/defendpoint :get "/:id"
+  "Fetch a specific Collection with standard details added"
+  [{:keys [id]} :- [:map
+                    [:id [:or ms/PositiveInt :string]]]]
+  (let [resolved-id (eid-translation/->id :collection id)]
+    (collection-detail (api/read-check :model/Collection resolved-id)))))
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 

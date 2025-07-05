@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -205,11 +206,12 @@
 (api.macros/defendpoint :get "/:id"
   "Get `Card` with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {ignore-view? :ignore_view, :keys [context]} :- [:map
                                                     [:ignore_view {:optional true} [:maybe :boolean]]
                                                     [:context     {:optional true} [:maybe [:enum :collection]]]]]
-  (let [card (get-card id)]
+  (let [resolved-id (eid-translation/->id :card id)
+        card (get-card resolved-id)]
     (u/prog1 card
       (when-not ignore-view?
         (events/publish-event! :event/card-read
@@ -651,8 +653,9 @@
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (queries.metadata/batch-fetch-card-metadata [(get-card id)]))
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (let [resolved-id (eid-translation/->id :card id)]
+    (queries.metadata/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
@@ -753,7 +756,7 @@
 (api.macros/defendpoint :post "/:card-id/query"
   "Run the query associated with a Card."
   [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]
+                         [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
    {:keys [parameters ignore_cache dashboard_id collection_preview]}
    :- [:map
@@ -765,13 +768,14 @@
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
-  (qp.card/process-query-for-card
-   card-id :api
-   :parameters   parameters
-   :ignore-cache ignore_cache
-   :dashboard-id dashboard_id
-   :context      (if collection_preview :collection :question)
-   :middleware   {:process-viz-settings? false}))
+  (let [resolved-card-id (eid-translation/->id :card card-id)]
+    (qp.card/process-query-for-card
+     resolved-card-id :api
+     :parameters   parameters
+     :ignore-cache ignore_cache
+     :dashboard-id dashboard_id
+     :context      (if collection_preview :collection :question)
+     :middleware   {:process-viz-settings? false})))
 
 (api.macros/defendpoint :post "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
