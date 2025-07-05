@@ -225,10 +225,10 @@
    columns                           :- [:sequential ::lib.schema.metadata/column]
    generous?                         :- [:maybe :boolean]]
   (or (not-empty (filter #(and (clojure.core/= (:id %) ref-id)
-                               ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
-                               ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
+                               ;; TODO: If the target ref has no join-alias, AND the source is card, the join alias on
+                               ;; the column can be ignored. QP can set it when it shouldn't. See #33972.
                                (or (and (not (:join-alias opts))
-                                        (#{:source/fields :source/card} (:lib/source %)))
+                                        (= (:lib/source %) :source/card))
                                    (matching-join? a-ref %)))
                          columns))
       (when generous?
@@ -300,9 +300,9 @@
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential ::lib.schema.metadata/column]]
   ;; a-ref without :join-alias - if exactly one column has no :source-alias, that's the match.
-  ;; ignore the source alias on columns with :source/card or :source/fields
+  ;; ignore the source alias on columns with :source/card
   (if-let [no-alias (not-empty (remove #(and (column-join-alias %)
-                                             (not (#{:source/card} (:lib/source %))))
+                                             (not= (:lib/source %) :source/card))
                                        columns))]
     ;; At least 1 matching column with no :source-alias.
     (if-not (next no-alias)

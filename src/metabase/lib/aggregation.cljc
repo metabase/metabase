@@ -281,7 +281,7 @@
     stage-number :- :int]
    (not-empty (:aggregation (lib.util/query-stage query stage-number)))))
 
-(mu/defn aggregations-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
+(mu/defn aggregations-metadata :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
   "Get metadata about the aggregations in a given stage of a query."
   ([query]
    (aggregations-metadata query -1))
@@ -294,8 +294,7 @@
                               (-> metadata
                                   (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
                                   (assoc :lib/source      :source/aggregations
-                                         :lib/source-uuid (lib.options/uuid  aggregation)
-                                         :ident           (lib.options/ident aggregation))))))))))
+                                         :lib/source-uuid (lib.options/uuid  aggregation))))))))))
 
 (def ^:private OperatorWithColumns
   [:merge

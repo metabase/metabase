@@ -420,7 +420,7 @@
                            :table-id           (meta/id :orders)
                            :id                 (meta/id :orders :id)
                            :name               "ID"
-                           :lib/source         :source/fields
+                           :lib/source         :source/table-defaults
                            :fk-target-field-id nil
                            :parent-id          nil
                            :display-name       "ID"
@@ -433,7 +433,7 @@
                            :table-id           (meta/id :orders)
                            :id                 (meta/id :orders :tax)
                            :name               "TAX"
-                           :lib/source         :source/fields
+                           :lib/source         :source/table-defaults
                            :fk-target-field-id nil
                            :parent-id          nil
                            :display-name       "Tax"
@@ -447,7 +447,7 @@
                            :id                 (meta/id :orders :id)
                            :name               "ID_2"
                            :source-alias       "Orders"
-                           :lib/source         :source/fields
+                           :lib/source         :source/joins
                            :fk-target-field-id nil
                            :parent-id          nil
                            :display-name       "Orders → ID"
@@ -461,12 +461,11 @@
                            :id                 (meta/id :orders :tax)
                            :name               "TAX_2"
                            :source-alias       "Orders"
-                           :lib/source         :source/fields
+                           :lib/source         :source/joins
                            :fk-target-field-id nil
                            :parent-id          nil
                            :display-name       "Orders → Tax"
                            :position           4}
-
               ret-4 [hr-own-id hr-own-tax hr-join-id hr-join-tax]
               ret-3 [hr-own-id hr-own-tax hr-join-id]
               refs  (for [join-alias       [nil "Orders"]
