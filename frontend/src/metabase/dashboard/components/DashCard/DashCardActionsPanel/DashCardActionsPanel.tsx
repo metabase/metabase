@@ -183,11 +183,15 @@ function DashCardActionsPanelInner({
       isVisualizerDashboardCard(dashcard) ||
       isVisualizerSupportedVisualization(dashcard?.card.display)
     ) {
+      const label = isVisualizerDashboardCard(dashcard)
+        ? t`Edit visualization`
+        : t`Visualize another way`;
+
       buttons.push(
         <DashCardActionButton
           key="visualizer-button"
-          tooltip={t`Edit visualization`}
-          aria-label={t`Edit visualization`}
+          tooltip={label}
+          aria-label={label}
           onClick={onEditVisualization}
         >
           <DashCardActionButton.Icon name="lineandbar" />
