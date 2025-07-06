@@ -2,8 +2,10 @@
   (:require
    [metabase.api.common
     :as api
-    :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
+    :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *current-permissions-document*]]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.parse-token-authz :as pta]
+   [metabase.permissions.user :as puser]
    [metabase.settings.core :as setting]
    [metabase.users.models.user :as user]
    [metabase.util.i18n :as i18n]
@@ -29,13 +31,14 @@
 
 (defn do-with-current-user
   "Impl for [[with-current-user]]."
-  [{:keys [metabase-user-id is-superuser? permissions-set user-locale settings is-group-manager?]} thunk]
+  [{:keys [metabase-user-id is-superuser? permissions-set user-locale settings is-group-manager?] :as request} thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
             *is-group-manager?*            (boolean is-group-manager?)
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
-            *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id perms/user-permissions-set)))]
+            *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id perms/user-permissions-set)))
+            *current-permissions-document* (delay (or (pta/parse-from-request request) (some-> metabase-user-id puser/user-permissions-doc)))]
     ;; As mentioned above, do not rebind user-local values to something new, because changes to its value will not be
     ;; propagated to frames further up the stack.
     (letfn [(do-with-user-local-values [thunk]

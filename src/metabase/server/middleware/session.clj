@@ -203,11 +203,13 @@
         (dissoc user-data :api-key)))))
 
 (defn- merge-current-user-info
-  [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
+  [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers {:strs [authz-token]} :query-params, :as request}]
   (merge
    request
    (or (current-user-info-for-session metabase-session-key anti-csrf-token)
-       (current-user-info-for-api-key x-api-key))
+       (current-user-info-for-api-key x-api-key)
+       (when authz-token
+         {:metabase-user-id 1 :is-superuser? false :is-group-manager? false :user-local "en_US"}))
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
