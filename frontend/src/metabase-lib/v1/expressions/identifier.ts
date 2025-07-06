@@ -1,7 +1,6 @@
-import { FK_SYMBOL } from "metabase/lib/formatting";
-
 import { quoteString } from "./string";
 
+const FK_SYMBOL = "→";
 const IDENTIFIER_QUOTE = "[";
 
 export const EDITOR_FK_SYMBOLS = {

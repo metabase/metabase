@@ -1,4 +1,4 @@
-import { humanize, titleize } from "metabase/lib/formatting";
+import { humanize, titleize } from "metabase/lib/formatting/strings";
 import type { NormalizedSchema } from "metabase-types/api";
 
 import type Database from "./Database";
