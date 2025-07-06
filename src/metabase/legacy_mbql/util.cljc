@@ -40,11 +40,11 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- combine-compound-filters-of-type [compound-type subclauses]
-  (mapcat #(lib.util.match/match-one %
-             [(_ :guard (partial = compound-type)) & args]
+  (mapcat #(lib.util.match/match-lite %
+             [(t :guard (= t compound-type)) & args]
              args
              _
-             [&match])
+             [%])
           subclauses))
 
 (declare simplify-compound-filter)
@@ -378,7 +378,8 @@
   [m]
   (lib.util.match/replace m
     [clause field & (args :guard (partial some (partial = [:relative-datetime :current])))]
-    (let [temporal-unit (or (lib.util.match/match-one field [:field _ {:temporal-unit temporal-unit}] temporal-unit)
+    (let [temporal-unit (or (lib.util.match/match-lite-recursive field
+                              [:field _ {:temporal-unit temporal-unit}] temporal-unit)
                             :default)]
       (into [clause field] (lib.util.match/replace args
                              [:relative-datetime :current]
@@ -944,11 +945,11 @@
   [field-form]
   (if (integer? field-form)
     [:field field-form nil]
-    (lib.util.match/match-one field-form :field)))
+    (lib.util.match/match-lite-recursive field-form :field field-form)))
 
 (mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
   "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
   legacy compatibility."
   [field-or-ref-form]
   (or (unwrap-field-clause field-or-ref-form)
-      (lib.util.match/match-one field-or-ref-form :expression)))
+      (lib.util.match/match-lite-recursive field-or-ref-form :expression field-or-ref-form)))
