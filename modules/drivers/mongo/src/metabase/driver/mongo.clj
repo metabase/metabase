@@ -202,7 +202,7 @@
   transformed by [[dbfields->ftree]] and [[ftree->nested-fields]] to be returned as :fields
   of [[driver/describe-table]]. `sample-size` represents number of documents taken from start and end of a collection.
   `document-sample-depth` conveys how deep the documents are sampled, ie. number of repetitions of [[unwind-stages]]."
-  [& {:keys [collection-name sample-size document-sample-depth leaf-limit]}]
+  [{:keys [collection-name sample-size document-sample-depth leaf-limit]}]
   (into []
         cat
         [;; 1. Fetch.
