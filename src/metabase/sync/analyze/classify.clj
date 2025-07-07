@@ -115,16 +115,19 @@
                                           :active true
                                           :visibility_type [:not-in ["sensitive" "retired"]]
                                           :semantic_type :type/Name)
-            found-name (atom (pos? existing-name-field))]
+            {:keys [fields-failed]}
+            (reduce (fn [state field]
+                      (let [result (classify! field state)]
+                        (cond-> state
+                          (instance? Exception result)
+                          (update :fields-failed inc)
+
+                          (= :type/Name (:semantic_type result))
+                          (assoc :exists-name true))))
+                    {:fields-failed 0 :exists-name (pos? existing-name-field)}
+                    fields)]
         {:fields-classified (count fields)
-         :fields-failed     (->> fields
-                                 (map (fn [field]
-                                        (let [result (classify! field {:exists-name @found-name})]
-                                          (when (= :type/Name (:semantic_type result))
-                                            (reset! found-name true))
-                                          result)))
-                                 (filter (partial instance? Exception))
-                                 count)}))))
+         :fields-failed fields-failed}))))
 
 (mu/defn ^:always-validate classify-table!
   "Run various classifiers on the `table`. These do things like inferring (and setting) entitiy type of `table`."
