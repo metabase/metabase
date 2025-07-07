@@ -241,7 +241,7 @@
            (if condition (str " WHERE " condition) ""))))
 
 (defn- field-definition-sql
-  [driver {:keys [field-name base-type field-comment not-null? unique?], :as field-definition}]
+  [driver {:keys [field-name base-type field-comment not-null? unique? default], :as field-definition}]
   (let [field-name (format-and-quote-field-name driver field-name)
         field-type (or (cond
                          (and (map? base-type) (contains? base-type :native))
@@ -260,8 +260,10 @@
                          "NOT NULL")
         unique         (when unique?
                          "UNIQUE")
+        default        (when default
+                         (format "DEFAULT (%s)" default))
         inline-comment (inline-column-comment-sql driver field-comment)]
-    (str/join " " (filter some? [field-name field-type not-null unique inline-comment]))))
+    (str/join " " (filter some? [field-name field-type not-null default unique inline-comment]))))
 
 (defn fielddefs->pk-field-names
   "Find the pk field names in fieldefs"
