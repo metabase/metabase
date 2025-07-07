@@ -1,6 +1,3 @@
-DROP VIEW IF EXISTS v_users;
-
-
 CREATE OR REPLACE VIEW v_users AS
 SELECT id AS user_id,
        concat('user_', id) AS entity_qualified_id,
