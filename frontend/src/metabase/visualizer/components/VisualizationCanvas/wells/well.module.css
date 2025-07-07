@@ -1,7 +1,6 @@
 .Well {
   flex-wrap: nowrap;
   background-color: var(--mb-color-bg-light);
-  /* bg={canHandleActiveItem ? "var(--mb-color-brand-light)" : "bg-light"} */
   padding: var(--mantine-spacing-sm);
   gap: var(--mantine-spacing-sm);
   border-radius: var(--border-radius-xl);
