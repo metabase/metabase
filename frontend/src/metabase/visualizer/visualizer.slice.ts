@@ -132,7 +132,7 @@ const initializeFromState = async (
       .map((sourceId) => {
         const [, cardId] = sourceId.split(":");
         return [
-          dispatch(fetchCard({ cardId: Number(cardId) })),
+          dispatch(fetchCard(Number(cardId))),
           dispatch(fetchCardQuery(Number(cardId))),
         ];
       })
@@ -147,7 +147,7 @@ export const initializeFromCard = async (
   getState: GetState,
 ) => {
   await Promise.all([
-    dispatch(fetchCard({ cardId })),
+    dispatch(fetchCard(cardId)),
     dispatch(fetchCardQuery(cardId)),
   ]);
   const { cards, datasets } = getState().visualizer.present;
@@ -161,11 +161,7 @@ export const initializeFromCard = async (
 
 export const addDataSource = createAsyncThunk(
   "visualizer/dataImporter/addDataSource",
-  async (
-    payload: { id: VisualizerDataSourceId; index?: number },
-    { dispatch, getState },
-  ) => {
-    const { id, index } = payload;
+  async (id: VisualizerDataSourceId, { dispatch, getState }) => {
     const { type, sourceId } = parseDataSourceId(id);
 
     const state = getCurrentVisualizerState(getState());
@@ -175,12 +171,10 @@ export const addDataSource = createAsyncThunk(
 
     if (type === "card") {
       // TODO handle rejected requests
-      const cardAction = await dispatch(
-        fetchCard({ cardId: sourceId, indexToAddTo: index }),
-      );
+      const cardAction = await dispatch(fetchCard(sourceId));
       const cardQueryAction = await dispatch(fetchCardQuery(sourceId));
 
-      const { card } = cardAction.payload as FetchCardResult;
+      const card = cardAction.payload as Card;
       dataset = cardQueryAction.payload as Dataset;
 
       if (
@@ -257,25 +251,18 @@ export const handleDrop = createAsyncThunk(
   },
 );
 
-interface FetchCardResult {
-  card: Card;
-  indexToAddTo?: number;
-}
-
-const fetchCard = createAsyncThunk<
-  FetchCardResult,
-  { cardId: CardId; indexToAddTo?: number }
->("visualizer/fetchCard", async (payload, { dispatch }) => {
-  const { cardId, indexToAddTo } = payload;
-
-  const result = await dispatch(
-    cardApi.endpoints.getCard.initiate({ id: cardId }),
-  );
-  if (result.data != null) {
-    return { card: result.data, indexToAddTo };
-  }
-  throw new Error("Failed to fetch card");
-});
+const fetchCard = createAsyncThunk<Card, CardId>(
+  "visualizer/fetchCard",
+  async (cardId, { dispatch }) => {
+    const result = await dispatch(
+      cardApi.endpoints.getCard.initiate({ id: cardId }),
+    );
+    if (result.data != null) {
+      return result.data;
+    }
+    throw new Error("Failed to fetch card");
+  },
+);
 
 const fetchCardQuery = createAsyncThunk<Dataset, CardId>(
   "visualizer/fetchCardQuery",
@@ -576,20 +563,17 @@ const visualizerSlice = createSlice({
         }
       })
       .addCase(fetchCard.pending, (state, action) => {
-        const { cardId } = action.meta.arg;
+        const cardId = action.meta.arg;
         state.loadingDataSources[`card:${cardId}`] = true;
         state.error = null;
       })
-      .addCase(fetchCard.fulfilled, (state, action) => {
-        const { card, indexToAddTo } = action.payload;
-        const existingIndex = state.cards.findIndex((c) => c.id === card.id);
+      .addCase(fetchCard.fulfilled, (state, action: PayloadAction<Card>) => {
+        const card = action.payload;
+        const index = state.cards.findIndex((c) => c.id === card.id);
 
         // `any` prevents the "Type instantiation is excessively deep" error
-        if (existingIndex !== -1) {
-          state.cards[existingIndex] = card as any;
-        } else if (indexToAddTo !== undefined) {
-          // If indexToAddTo is provided, insert the card at that index
-          state.cards.splice(indexToAddTo, 0, card as any);
+        if (index !== -1) {
+          state.cards[index] = card as any;
         } else {
           state.cards.push(card as any);
         }
@@ -597,7 +581,7 @@ const visualizerSlice = createSlice({
         state.loadingDataSources[`card:${card.id}`] = false;
       })
       .addCase(fetchCard.rejected, (state, action) => {
-        const { cardId } = action.meta.arg;
+        const cardId = action.meta.arg;
         if (cardId) {
           state.loadingDataSources[`card:${cardId}`] = false;
         }
