@@ -409,6 +409,7 @@ export function DashCardVisualization({
             parameters={inlineParameters}
             isSortable={false}
             widgetsVariant="subtle"
+            widgetsPopoverPosition="bottom-end"
           />
         )}
         {!isEditing && (

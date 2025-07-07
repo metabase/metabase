@@ -79,7 +79,7 @@ const PinnedQuestionCard = ({
     <CardRoot
       to={item.getUrl()}
       isPreview={isPreview}
-      className={cx(CS.hoverParent, CS.hoverVisibility)}
+      className={cx(CS.hoverChild, CS.hoverVisibility)}
     >
       <Flex h="100%" direction="column">
         {isPreview ? (

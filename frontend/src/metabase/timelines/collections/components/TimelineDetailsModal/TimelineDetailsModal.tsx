@@ -97,6 +97,7 @@ const TimelineDetailsModal = ({
             <ModalToolbarLink
               className={ButtonsS.Button}
               to={Urls.newEventInCollection(timeline)}
+              role="button"
             >{t`Create event`}</ModalToolbarLink>
           )}
         </ModalToolbar>
