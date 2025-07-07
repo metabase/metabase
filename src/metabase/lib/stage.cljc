@@ -182,7 +182,7 @@
           ;; Only include "late" expressions when required.
           ;; "Late" expressions those like :offset which can't be used within the same query stage, like aggregations.
          :when (or include-late-exprs?
-                   (not (lib.util.match/match-one clause :offset)))]
+                   (not (lib.util.match/match-lite-recursive clause :offset clause)))]
      (let [base-type (:base-type metadata)]
        (-> (assoc metadata
                   :lib/source               :source/expressions

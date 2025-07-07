@@ -2107,7 +2107,7 @@
                                                                 {:name "PRODUCT_ID"})
                                                       rhs      (lib.tu.notebook/find-col-with-spec
                                                                 query
-                                                                (lib.join/join-condition-rhs-columns query joinable lhs nil)
+                                                                (lib.join/join-condition-rhs-columns query joinable (lib/ref lhs) nil)
                                                                 {:name "question b"}
                                                                 {:name "ID"})]
                                                   (lib/join-clause joinable [(lib/= lhs rhs)])))))

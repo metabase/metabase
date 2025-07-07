@@ -78,6 +78,54 @@ describe("updateSettingsForDisplay", () => {
     expect(result).toBeUndefined();
   });
 
+  it("should preserve otherSettings such as goal line (VIZ-1206)", () => {
+    const settings = {
+      "graph.metrics": ["COLUMN_3"],
+      "graph.dimensions": ["COLUMN_1", "COLUMN_2"],
+      "card.title": "My viz",
+      "goal.line": 100,
+    };
+    const lineToPieResult = getUpdatedSettingsForDisplay(
+      columnValuesMapping,
+      columns,
+      settings,
+      "line",
+      "pie",
+    );
+
+    expect(lineToPieResult).toEqual({
+      columnValuesMapping,
+      columns,
+      settings: {
+        "card.title": "My viz",
+        "goal.line": 100,
+        "pie.metric": "COLUMN_3",
+        "pie.dimension": ["COLUMN_1", "COLUMN_2"],
+      },
+    });
+
+    const lineToFunnelResult = getUpdatedSettingsForDisplay(
+      columnValuesMapping,
+      columns,
+      settings,
+      "line",
+      "funnel",
+    );
+
+    expect(lineToFunnelResult).toEqual({
+      columnValuesMapping,
+      columns,
+      settings: {
+        "card.title": "My viz",
+        "funnel.dimension": "COLUMN_1",
+        "funnel.metric": "COLUMN_3",
+        "goal.line": 100,
+        "graph.dimensions": ["COLUMN_1", "COLUMN_2"],
+        "graph.metrics": ["COLUMN_3"],
+      },
+    });
+  });
+
   describe("cartesian → cartesian", () => {
     it("should keep current state", () => {
       const result = getUpdatedSettingsForDisplay(

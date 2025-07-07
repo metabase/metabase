@@ -90,7 +90,7 @@
                            :source-card (:id (:orders (lib.tu/mock-cards)))}]}
           product-card (:products (lib.tu/mock-cards))
           [_ orders-product-id] (lib/join-condition-lhs-columns query product-card nil nil)
-          [products-id] (lib/join-condition-rhs-columns query product-card orders-product-id nil)]
+          [products-id] (lib/join-condition-rhs-columns query product-card (lib/ref orders-product-id) nil)]
       (is (=? {:stages [{:joins [{:stages [{:source-card (:id product-card)}]}]}]}
               (lib/join query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))))))
   (testing "source-table"
@@ -101,9 +101,43 @@
                            :source-card (:id (:orders (lib.tu/mock-cards)))}]}
           product-table (meta/table-metadata :products)
           [_ orders-product-id] (lib/join-condition-lhs-columns query product-table nil nil)
-          [products-id] (lib/join-condition-rhs-columns query product-table orders-product-id nil)]
+          [products-id] (lib/join-condition-rhs-columns query product-table (lib/ref orders-product-id) nil)]
       (is (=? {:stages [{:joins [{:stages [{:source-table (:id product-table)}]}]}]}
               (lib/join query (lib/join-clause product-table [(lib/= orders-product-id products-id)])))))))
+
+(deftest ^:parallel join-clause-custom-expression-test
+  (testing "Should not add a column name to the join alias if LHS or RHS is a custom expression"
+    (let [query             (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          products          (meta/table-metadata :products)
+          lhs-columns       (lib/join-condition-lhs-columns query products nil nil)
+          lhs-order-tax     (m/find-first (comp #{"TAX"} :name) lhs-columns)
+          rhs-columns       (lib/join-condition-rhs-columns query products nil nil)
+          rhs-product-price (m/find-first (comp #{"PRICE"} :name) rhs-columns)]
+      (are [lhs rhs] (=? {:stages [{:joins [{:alias      "Products"}]}]}
+                         (lib/join query (lib/join-clause products [(lib/= lhs rhs)])))
+        (lib/ref lhs-order-tax) (lib/+ rhs-product-price rhs-product-price)
+        (lib/+ lhs-order-tax lhs-order-tax) (lib/ref rhs-product-price)
+        (lib/+ lhs-order-tax lhs-order-tax) (lib/+ rhs-product-price rhs-product-price))))
+  (testing "Should set join-alias for all fields in a RHS expression"
+    (let [query          (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          products       (meta/table-metadata :products)
+          lhs-columns    (lib/join-condition-lhs-columns query products nil nil)
+          lhs-order-id   (m/find-first (comp #{"ID"} :name) lhs-columns)
+          rhs-columns    (lib/join-condition-rhs-columns query products nil nil)
+          rhs-product-id (m/find-first (comp #{"ID"} :name) rhs-columns)]
+      (is (=? {:stages [{:joins [{:alias      "Products"
+                                  :conditions [[:=
+                                                {}
+                                                [:+
+                                                 {}
+                                                 [:field {:join-alias absent-key-marker} (meta/id :orders :id)]
+                                                 [:field {:join-alias absent-key-marker} (meta/id :orders :id)]]
+                                                [:-
+                                                 {}
+                                                 [:field {:join-alias "Products"} (meta/id :products :id)]
+                                                 [:field {:join-alias "Products"} (meta/id :products :id)]]]]}]}]}
+              (lib/join query (lib/join-clause products [(lib/= (lib/+ lhs-order-id lhs-order-id)
+                                                                (lib/- rhs-product-id rhs-product-id))])))))))
 
 (deftest ^:parallel join-saved-question-test
   (is (=? {:lib/type :mbql/query
@@ -659,7 +693,9 @@
 
 (deftest ^:parallel join-condition-lhs-columns-test
   (let [query (lib.tu/venues-query)]
-    (doseq [rhs [nil (lib/with-join-alias (lib.metadata/field query (meta/id :venues :category-id)) "Cat")]]
+    (doseq [rhs [nil (-> (lib.metadata/field query (meta/id :venues :category-id))
+                         (lib/with-join-alias "Cat")
+                         lib/ref)]]
       (testing (str "rhs = " (pr-str rhs))
         ;; sort PKs then FKs then everything else
         (is (=? [{:lib/desired-column-alias "ID"}
@@ -670,10 +706,24 @@
                  {:lib/desired-column-alias "PRICE"}]
                 (lib/join-condition-lhs-columns query nil nil rhs)))))))
 
+(deftest ^:parallel join-condition-lhs-columns-expression-test
+  (testing "Should not include expressions in LHS columns"
+    (let [query (-> (lib.tu/venues-query)
+                    (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2)))]
+      (is (=? [{:lib/desired-column-alias "ID"}
+               {:lib/desired-column-alias "CATEGORY_ID"}
+               {:lib/desired-column-alias "NAME"}
+               {:lib/desired-column-alias "LATITUDE"}
+               {:lib/desired-column-alias "LONGITUDE"}
+               {:lib/desired-column-alias "PRICE"}]
+              (lib/join-condition-lhs-columns query nil nil nil))))))
+
 (deftest ^:parallel join-condition-lhs-columns-with-previous-join-test
   (testing "Include columns from previous join(s)"
     (let [query (lib.tu/query-with-join-with-explicit-fields)]
-      (doseq [rhs [nil (lib/with-join-alias (lib.metadata/field query (meta/id :users :id)) "User")]]
+      (doseq [rhs [nil (-> (lib.metadata/field query (meta/id :users :id))
+                           (lib/with-join-alias "User")
+                           lib/ref)]]
         (testing (str "rhs = " (pr-str rhs))
           (is (=? [{:lib/desired-column-alias "ID"}
                    {:lib/desired-column-alias "Cat__ID"}
@@ -750,7 +800,20 @@
                    (lib/join-condition-lhs-columns query
                                                    join-for-query-with-join
                                                    lhs-for-query-with-join
-                                                   rhs-for-query-with-join)))))))
+                                                   rhs-for-query-with-join))))))
+  (testing "should ignore non-standard join conditions when marking LHS columns as selected"
+    (let [query (lib.tu/query-with-join)]
+      (is (=? [{:long-display-name "ID"}
+               {:long-display-name "Category ID"}
+               {:long-display-name "Name"}
+               {:long-display-name "Latitude"}
+               {:long-display-name "Longitude"}
+               {:long-display-name "Price"}]
+              (map (partial lib/display-info query)
+                   (lib/join-condition-lhs-columns query
+                                                   join-for-query-with-join
+                                                   (lib/+ (meta/field-metadata :venues :id) 1)
+                                                   (lib/+ (meta/field-metadata :categories :id) 1))))))))
 
 (deftest ^:parallel join-condition-rhs-columns-join-table-test
   (testing "RHS columns when building a join against a Table"
@@ -796,7 +859,7 @@
 
 (deftest ^:parallel join-condition-rhs-columns-test-2
   (let [query (lib.tu/venues-query)]
-    (doseq [lhs          [nil (lib.metadata/field query (meta/id :venues :id))]
+    (doseq [lhs          [nil (lib/ref (lib.metadata/field query (meta/id :venues :id)))]
             joined-thing [(meta/table-metadata :venues)
                           (:venues (lib.tu/mock-cards))]]
       (testing (str "lhs = " (pr-str lhs)
@@ -818,41 +881,28 @@
                    (lib/join-condition-rhs-columns query
                                                    join-for-query-with-join
                                                    lhs-for-query-with-join
-                                                   rhs-for-query-with-join)))))))
+                                                   rhs-for-query-with-join))))))
+  (testing "should ignore non-standard join conditions when marking RHS columns as selected"
+    (let [query (lib.tu/query-with-join)]
+      (is (=? [{:display-name "ID"}
+               {:display-name "Name"}]
+              (map (partial lib/display-info query)
+                   (lib/join-condition-rhs-columns query
+                                                   join-for-query-with-join
+                                                   (lib/+ (meta/field-metadata :venues :id) 1)
+                                                   (lib/+ (meta/field-metadata :categories :id) 1))))))))
 
 (deftest ^:parallel join-condition-operators-test
   ;; just make sure that this doesn't barf and returns the expected output given any combination of LHS or RHS fields
   ;; for now until we actually implement filtering there
   (let [query (lib.tu/venues-query)]
-    (doseq [lhs [nil (lib.metadata/field query (meta/id :categories :id))]
-            rhs [nil (lib.metadata/field query (meta/id :venues :category-id))]]
+    (doseq [lhs [nil (lib/ref (lib.metadata/field query (meta/id :categories :id)))]
+            rhs [nil (lib/ref (lib.metadata/field query (meta/id :venues :category-id)))]]
       (testing (pr-str (list `lib/join-condition-operators `(lib.tu/venues-query) lhs rhs))
-        (is (=? [{:short :=, :default true}
-                 {:short :>}
-                 {:short :<}
-                 {:short :>=}
-                 {:short :<=}
-                 {:short :!=}]
-                (lib/join-condition-operators query lhs rhs)))
-        (is (=? [{:short-name "=", :display-name "=", :long-display-name "Is"}
-                 {:short-name ">", :display-name ">", :long-display-name "Greater than"}
-                 {:short-name "<", :display-name "<", :long-display-name "Less than"}
-                 {:short-name ">=", :display-name "≥", :long-display-name "Greater than or equal to"}
-                 {:short-name "<=", :display-name "≤", :long-display-name "Less than or equal to"}
-                 {:short-name "!=", :display-name "≠", :long-display-name "Is not"}]
-                (map (partial lib/display-info query)
-                     (lib/join-condition-operators query lhs rhs))))
+        (is (= [:= :> :< :>= :<= :!=]
+               (lib/join-condition-operators query lhs rhs)))
         (is (= (lib/join-condition-operators query lhs rhs)
-               (lib/join-condition-operators query -1 lhs rhs))))
-      (testing `lib/display-info
-        (is (=? [{:short-name "=", :default true}
-                 {:short-name ">"}
-                 {:short-name "<"}
-                 {:short-name ">="}
-                 {:short-name "<="}
-                 {:short-name "!="}]
-                (map (partial lib/display-info query)
-                     (lib/join-condition-operators query lhs rhs))))))))
+               (lib/join-condition-operators query -1 lhs rhs)))))))
 
 (deftest ^:parallel join-alias-single-table-multiple-times-test
   (testing "joining the same table twice results in different join aliases"
@@ -1314,15 +1364,13 @@
                        products-created-at)
                 :year)
                nil))))
-    (is (thrown-with-msg?
-         #?(:clj AssertionError :cljs :default)
-         #"Non-standard join condition."
-         (lib/join-condition-update-temporal-bucketing
-          query
-          -1
-          (lib/= (lib/+ (meta/field-metadata :orders :id) 1)
-                 products-created-at)
-          :year)))))
+    (testing "ignores non-standard join conditions"
+      (let [join-condition (lib/= (lib/+ (meta/field-metadata :orders :id) 1) products-created-at)]
+        (is (= join-condition (lib/join-condition-update-temporal-bucketing
+                               query
+                               -1
+                               join-condition
+                               :year)))))))
 
 (deftest ^:parallel default-join-alias-test
   (testing "default join-alias set without overwriting other aliases (#32897)"
@@ -1767,7 +1815,7 @@
                     {:display-name "18512#1"}
                     {:display-name "Products → Created At: Month"}))]
       (testing "RHS columns"
-        (let [cols (lib.join/join-condition-rhs-columns q2 card-2 lhs nil)]
+        (let [cols (lib.join/join-condition-rhs-columns q2 card-2 (lib/ref lhs) nil)]
           (is (=? [{:name                         "CREATED_AT"
                     :display-name                 "Created At: Month"
                     :lib/card-id                  2
