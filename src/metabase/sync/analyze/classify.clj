@@ -144,16 +144,14 @@
   [database :- i/DatabaseInstance
    log-progress-fn]
   (let [tables (sync-util/reducible-sync-tables database)]
-    (transduce (map (fn [table]
-                      (let [result (classify-table! table)]
-                        (log-progress-fn "classify-tables" table)
-                        {:tables-classified (if result
-                                              1
-                                              0)
-                         :total-tables      1})))
-               (partial merge-with +)
-               {:tables-classified 0, :total-tables 0}
-               tables)))
+    (reduce (fn [acc table]
+              (let [result (classify-table! table)]
+                (log-progress-fn "classify-tables" table)
+                (-> acc
+                    (update :total-tables inc)
+                    (cond-> result (update :tables-classified inc)))))
+            {:tables-classified 0, :total-tables 0}
+            tables)))
 
 (mu/defn classify-fields-for-db!
   "Classify all fields found in a given database"
