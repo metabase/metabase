@@ -27,7 +27,8 @@
                                      [:= :name n]]}))
 
 (doto :model/Tenant
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/timestamped?))
 
 (methodical/defmethod t2/batched-hydrate [:model/Tenant :member_count]
   [_model k tenants]
