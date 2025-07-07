@@ -21,7 +21,7 @@ export function useHideParameter() {
   const isParameterHidden = (parameterName: string) => {
     // Only dashboards support hiding parameters
     if (!settings.dashboardId) {
-      return false;
+      return true;
     }
 
     return (settings.hiddenParameters ?? []).includes(parameterName);
