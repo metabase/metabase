@@ -82,7 +82,7 @@ export const TenantForm = ({
             name="slug"
             title={t`Slug`}
             label={t`Slug`}
-            description={t`A unique name for the tenant. Should match the field in the JWT `}
+            description={t`A unique identifier for the tenant. Cannot be changed later`}
             disabled={!!initialValues.slug}
             mb="xl"
           />

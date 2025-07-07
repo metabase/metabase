@@ -117,13 +117,13 @@ export const TenantsListing = ({
 
         {((tenants.length !== 0 && filteredTenants.length === 0) ||
           (tenants.length === 0 && status === ACTIVE_STATUS.deactivated)) && (
-          <Text size="lg" fw="700" ta="center" mt="4rem">
+          <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-light">
             {t`No matching tenants found.`}
           </Text>
         )}
 
         {tenants.length === 0 && status === ACTIVE_STATUS.active && (
-          <Text size="lg" fw="700" ta="center" mt="4rem">
+          <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-light">
             {t`Add your first tenant to get started.`}
           </Text>
         )}
