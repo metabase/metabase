@@ -159,7 +159,7 @@
   ;;  > If people have problems with that, I think we can make it configurable.
   7)
 
-(def ^:private ^:dynamic *leaf-fields-limit*
+(def ^:private leaf-fields-limit
   "Consider at most 1K leaf paths to sync. That combined with [[describe-table-query-depth]] (= 7) gives at most 
   7K app-db fields per collection."
   1000)
@@ -362,8 +362,8 @@
   Reason for doing this in 2 steps is that for adding database-position the structure has to be fully constructed
   first.
 
-  The resulting structure will hold at most [[*leaf-fields-limit*]] leaf fields. That translates to at most
-  [[*leaf-fields-limit]] * [[describe-table-query-depth]]. That is 7K fields at the time of writing hence safe
+  The resulting structure will hold at most [[leaf-fields-limit]] leaf fields. That translates to at most
+  [[leaf-fields-limit]] * [[describe-table-query-depth]]. That is 7K fields at the time of writing hence safe
   to reside in memory for further operation."
   [dbfields]
   (-> dbfields dbfields->ftree* ftree-reconcile-nodes))
@@ -401,7 +401,7 @@
   (let [pipeline (describe-table-pipeline {:collection-name (:name table)
                                            :sample-size (* table-rows-sample/nested-field-sample-limit 2)
                                            :document-sample-depth describe-table-query-depth
-                                           :leaf-limit *leaf-fields-limit*})
+                                           :leaf-limit leaf-fields-limit})
         query {:database (:id database)
                :type     "native"
                :native   {:collection (:name table)
