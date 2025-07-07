@@ -171,7 +171,7 @@ export const PeopleList = ({
 
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-      <Box component="section" pb="xl">
+      <Box component="section">
         <table
           data-testid="admin-people-list-table"
           className={cx(AdminS.ContentTable, CS.borderBottom)}
