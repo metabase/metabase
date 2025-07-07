@@ -3,10 +3,13 @@ const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type { NativeQuestionDetails } from "e2e/support/helpers";
+import type {
+  NativeQuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("issue 39487", () => {
   const CREATED_AT_FIELD: LocalFieldReference = [
@@ -645,5 +648,57 @@ describe("issue 55631", () => {
       // before the dialog closes.
       cy.findByDisplayValue("Orders", { timeout: 10 }).should("not.exist");
     });
+  });
+});
+
+describe("issue 56416", () => {
+  const question1Name = "1".repeat(254);
+  const question2Name = "2".repeat(254);
+
+  const question1Details: StructuredQuestionDetails = {
+    name: question1Name,
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  };
+
+  const question2Details: StructuredQuestionDetails = {
+    name: question2Name,
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to use a column from a joined question with a long name (metabase#56416)", () => {
+    H.createQuestion(question1Details);
+    H.createQuestion(question2Details);
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(question1Name).click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(question2Name).click();
+    });
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().findByText("Count of rows").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().within(() => {
+      cy.findByText(question2Name).click();
+      cy.findByText(/ → Category/).click();
+    });
+    H.visualize();
+    H.assertQueryBuilderRowCount(4);
   });
 });
