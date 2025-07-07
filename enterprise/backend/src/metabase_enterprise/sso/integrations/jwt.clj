@@ -12,14 +12,36 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
+   [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru trs]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
    [toucan2.core :as t2])
   (:import
    (java.net URLEncoder)))
 
 (set! *warn-on-reflection* true)
+
+(mu/defn- fetch-or-create-tenant! :- [:maybe ms/PositiveInt]
+  [tenant-slug :- [:maybe :string]]
+  ;; `use-tenants` is a feature flag: if disabled, we should *never* assign tenants.
+  (when (and tenant-slug (setting/get :use-tenants))
+    (let [existing-tenant (t2/select-one :model/Tenant :slug tenant-slug)]
+      (cond
+        (:is_active existing-tenant) (u/the-id existing-tenant)
+
+        (and (nil? existing-tenant)
+             (sso-settings/jwt-user-provisioning-enabled?))
+        (t2/insert-returning-pk! :model/Tenant {:slug tenant-slug :name tenant-slug})
+
+        ;; possibilities here:
+        ;; - we have an existing, active tenant - return its id
+        ;; - no tenant exists, user provisioning is on - create it and return its id
+        ;; - an inactive tenant exists - throw an exception.
+        :else (throw (ex-info (trs "An error occurred - please contact your administrator.") {:status-code 400}))))))
 
 (defn fetch-or-create-user!
   "Returns a session map for the given `email`. Will create the user if needed."
@@ -33,10 +55,7 @@
               :email            email
               :sso_source       :jwt
               :login_attributes user-attributes
-              :tenant_id        (when tenant-slug
-                                  (or (t2/select-one-pk :model/Tenant :slug tenant-slug :is_active true)
-                                      (throw (ex-info (tru "Cannot find tenant with slug {0}" tenant-slug)
-                                                      {:status-code 400}))))}]
+              :tenant_id        (fetch-or-create-tenant! tenant-slug)}]
     (or (sso-utils/fetch-and-update-login-attributes! user (sso-settings/jwt-user-provisioning-enabled?))
         (sso-utils/check-user-provisioning :jwt)
         (sso-utils/create-new-sso-user! user))))
@@ -61,13 +80,14 @@
   [:iss :iat :sub :aud :exp :nbf :jti])
 
 (defn- jwt-data->login-attributes [jwt-data]
-  (apply dissoc
-         jwt-data
-         (jwt-attribute-email)
-         (jwt-attribute-firstname)
-         (jwt-attribute-lastname)
-         (jwt-attribute-tenant)
-         registered-claims))
+  (let [use-tenants? (setting/get :use-tenants)
+        to-dissoc (remove nil? (concat
+                                [(jwt-attribute-email)
+                                 (jwt-attribute-firstname)
+                                 (jwt-attribute-lastname)
+                                 (when use-tenants? (jwt-attribute-tenant))]
+                                registered-claims))]
+    (apply dissoc jwt-data to-dissoc)))
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time. 3 minutes is the time
 ;; used by Zendesk for their JWT SSO, so it seemed like a good place for us to start
