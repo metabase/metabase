@@ -13,7 +13,7 @@ import {
   getHasModelActionsEnabled,
   getIsEditing,
 } from "metabase/dashboard/selectors";
-import { isEmbeddingSdk } from "metabase/env";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
 import {
@@ -72,7 +72,7 @@ export const DashboardHeaderButtonRow = ({
             formInput,
             isAdmin,
             isPublic,
-            isEmbeddingSdk,
+            isEmbeddingSdk: isEmbeddingSdk(),
             openSettingsSidebar,
             ...props,
           };
