@@ -1214,7 +1214,7 @@
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt :string]]]]
   (let [resolved-id (eid-translation/->id :collection id)]
-    (collection-detail (api/read-check :model/Collection resolved-id)))))
+    (collection-detail (api/read-check :model/Collection resolved-id))))
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
