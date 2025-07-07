@@ -223,11 +223,7 @@ const DefaultViewSaveModal = ({
     targetCollection,
   } = useSdkQuestionContext();
 
-  const { id, isLoading } = useTranslatedCollectionId({
-    id: targetCollection,
-  });
-
-  if (!isSaveEnabled || !isOpen || !question || isLoading) {
+  if (!isSaveEnabled || !isOpen || !question) {
     return null;
   }
 
@@ -243,7 +239,7 @@ const DefaultViewSaveModal = ({
         await onSave(question);
         close();
       }}
-      targetCollection={id}
+      targetCollection={targetCollection}
     />
   );
 };
