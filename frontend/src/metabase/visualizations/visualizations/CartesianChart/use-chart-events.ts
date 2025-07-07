@@ -108,7 +108,7 @@ export const useChartEvents = (
         return;
       }
 
-      let yAxisShowOption;
+      let yAxisShowOption: ReturnType<typeof createAxisVisibilityOption>[];
 
       const noSeriesHovered = hoveredSeriesDataKey == null;
       const leftAxisSeriesHovered =
