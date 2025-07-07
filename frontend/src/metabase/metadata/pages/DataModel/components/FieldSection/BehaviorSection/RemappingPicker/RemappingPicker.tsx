@@ -60,9 +60,8 @@ export const RemappingPicker = ({
   const [isChoosingInitialFkTarget, setIsChoosingInitialFkTarget] =
     useState(false);
   const id = getRawTableFieldId(field);
-  const { error: fieldValuesError } = useGetFieldValuesQuery(
-    getRawTableFieldId(field),
-  );
+  const { data: fieldValues, error: fieldValuesError } =
+    useGetFieldValuesQuery(id);
   const { data: fkTargetField } = useGetFieldQuery(
     field.fk_target_field_id == null
       ? skipToken
@@ -85,7 +84,6 @@ export const RemappingPicker = ({
     [fkTargetTableData],
   );
   const tables = useMemo(() => [fkTargetTable], [fkTargetTable]);
-  const { data: fieldValues } = useGetFieldValuesQuery(id);
 
   const value = useMemo(() => getValue(field), [field]);
   const options = useMemo(() => {
