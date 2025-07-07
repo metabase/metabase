@@ -100,6 +100,7 @@
   [table :- i/TableInstance]
   (seq (apply t2/select :model/Field
               :table_id (u/the-id table)
+              :active true
               (reduce concat [] (sync.fingerprint/incomplete-analysis-kvs)))))
 
 (mu/defn classify-fields!
@@ -110,6 +111,7 @@
     (let [table-id (:id table)
           existing-name-field (t2/count :model/Field
                                         :table_id table-id
+                                        :active true
                                         :semantic_type :type/Name)
           found-name (atom (pos? existing-name-field))]
       {:fields-classified (count fields)
