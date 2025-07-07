@@ -1314,35 +1314,6 @@
     :parent_id (move-collection! collection-before-update collection-updates)
     :no-op))
 
-(api.macros/defendpoint :put "/:id"
-  "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   {authority-level :authority_level, :as collection-updates} :- [:map
-                                                                  [:name            {:optional true} [:maybe ms/NonBlankString]]
-                                                                  [:description     {:optional true} [:maybe ms/NonBlankString]]
-                                                                  [:archived        {:default false} [:maybe ms/BooleanValue]]
-                                                                  [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
-                                                                  [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
-  ;; do we have perms to edit this Collection?
-  (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
-    ;; if authority_level is changing, make sure we're allowed to do that
-    (when (and (contains? collection-updates :authority_level)
-               (not= (keyword authority-level) (:authority_level collection-before-update)))
-      (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
-      (api/check-403 api/*is-superuser?*))
-    ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
-    ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
-      (when (seq updates)
-        (t2/update! :model/Collection id updates)))
-    ;; if we're trying to move or archive the Collection, go ahead and do that
-    (move-or-archive-collection-if-needed! collection-before-update collection-updates)
-    (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
-  ;; finally, return the updated object
-  (collection-detail (t2/select-one :model/Collection :id id)))
-
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
 (api.macros/defendpoint :get "/graph"
@@ -1427,3 +1398,32 @@
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
     (collection-detail (api/read-check :model/Collection resolved-id))))
+
+(api.macros/defendpoint :put "/:id"
+  "Modify an existing Collection, including archiving or unarchiving it, or moving it."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {authority-level :authority_level, :as collection-updates} :- [:map
+                                                                  [:name            {:optional true} [:maybe ms/NonBlankString]]
+                                                                  [:description     {:optional true} [:maybe ms/NonBlankString]]
+                                                                  [:archived        {:default false} [:maybe ms/BooleanValue]]
+                                                                  [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
+                                                                  [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
+  ;; do we have perms to edit this Collection?
+  (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
+    ;; if authority_level is changing, make sure we're allowed to do that
+    (when (and (contains? collection-updates :authority_level)
+               (not= (keyword authority-level) (:authority_level collection-before-update)))
+      (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
+      (api/check-403 api/*is-superuser?*))
+    ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
+    ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
+    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
+      (when (seq updates)
+        (t2/update! :model/Collection id updates)))
+    ;; if we're trying to move or archive the Collection, go ahead and do that
+    (move-or-archive-collection-if-needed! collection-before-update collection-updates)
+    (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
+  ;; finally, return the updated object
+  (collection-detail (t2/select-one :model/Collection :id id)))
