@@ -649,6 +649,7 @@ describe("issue 55631", () => {
 });
 
 describe("issue 56416", () => {
+  // name should be longer than the default 60-character limit; this has 71
   const joinedQuestionName =
     "Orders + Products, Count, Grouped by Products → Category and Product ID";
 
