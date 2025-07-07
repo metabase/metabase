@@ -2,6 +2,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { Draft } from "immer";
 import _ from "underscore";
 
+import { isNotNull } from "metabase/lib/types";
 import { isCartesianChart } from "metabase/visualizations";
 import {
   getDefaultDimensionFilter,
@@ -236,8 +237,8 @@ export function findColumnSlotForCartesianChart(
   column: DatasetColumn,
 ) {
   if (state.display === "scatter") {
-    const metrics = settings["graph.metrics"] ?? [];
-    const dimensions = settings["graph.dimensions"] ?? [];
+    const metrics = settings["graph.metrics"]?.filter(isNotNull) ?? [];
+    const dimensions = settings["graph.dimensions"]?.filter(isNotNull) ?? [];
     const bubble = settings["scatter.bubble"];
 
     const couldBeMetric = getDefaultMetricFilter("scatter")(column);
