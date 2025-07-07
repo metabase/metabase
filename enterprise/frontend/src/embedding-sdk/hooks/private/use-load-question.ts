@@ -94,7 +94,7 @@ export function useLoadQuestion({
         loadQuestionSdk({
           options,
           deserializedCard,
-          questionId: questionId,
+          questionId,
           initialSqlParameters,
         }),
       );

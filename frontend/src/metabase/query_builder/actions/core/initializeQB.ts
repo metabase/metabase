@@ -110,7 +110,7 @@ export function deserializeCard(serializedCard: string) {
 }
 
 async function fetchAndPrepareSavedQuestionCards(
-  cardId: number,
+  cardId: string | number,
   dispatch: Dispatch,
   getState: GetState,
 ) {
@@ -164,7 +164,7 @@ export async function resolveCards({
   dispatch,
   getState,
 }: {
-  cardId?: number;
+  cardId?: string | number;
   deserializedCard?: Card;
   options: BlankQueryOptions;
   dispatch: Dispatch;
