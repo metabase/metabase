@@ -260,19 +260,16 @@
       ftree
       (let [ftree-paths (raw-path->ftree-paths raw-path)
             parents-paths (butlast ftree-paths)
-            leaf-path (last ftree-paths)]
-        (recur dbfields* (-> (reduce #(-> %1
-                                          (ftree-set-type %2 "object")
-                                          (assoc-in (conj %2 :visibility-type) :details-only))
-                                     ftree parents-paths)
-                             (ftree-set-type leaf-path leaf-type)
-                             ;; Zip paths of nested object with indices and adjust ftree
-                             ((fn [ftree*]
-                                (reduce #(assoc-in %1 (conj (vec (%2 0)) :index) (%2 1))
-                                        ftree*
-                                        (map vector
-                                             ftree-paths
-                                             (:indices dbfield)))))))))))
+            leaf-path (last ftree-paths)
+            ftree* (reduce #(-> %1
+                                (ftree-set-type %2 "object")
+                                (assoc-in (conj %2 :visibility-type) :details-only))
+                           ftree parents-paths)
+            ftree* (ftree-set-type ftree* leaf-path leaf-type)
+            ftree* (reduce #(assoc-in %1 (conj (vec (%2 0)) :index) (%2 1))
+                           ftree*
+                           (map vector ftree-paths (:indices dbfield)))]
+        (recur dbfields* ftree*)))))
 
 (defn- ftree-prewalk
   "Walk the `ftree` and apply (f ftree path) to each node prior descending to its children. Nodes are walked according
