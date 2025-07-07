@@ -148,10 +148,11 @@
   "Check if ALL field-ids have identical remappings to the same display field.
    Returns the common target field-id if ALL fields have the same remapping, nil otherwise."
   [field-ids]
-  (let [remappings (map chain-filter/remapping field-ids)
-        target-field-ids (map :id remappings)]
-    (when (and (every? some? remappings) ; All fields must have remappings
-               (= 1 (count (set target-field-ids)))) ; All remappings must point to same target
+  (let [target-field-ids (into #{}
+                               (map (comp :id chain-filter/remapping))
+                               field-ids)]
+    (when (and (not (target-field-ids nil))
+               (= 1 (count target-field-ids)))
       (first target-field-ids))))
 
 (defn dashboard-param-remapped-value

@@ -149,6 +149,8 @@
   `(do-with-perm-for-group-and-table! ~group-or-id ~table-or-id ~perm-type ~value (fn [] ~@body)))
 
 (defmacro with-perms-for-group-and-tables!
+  "Sets the data permission for the test dataset and specified tables to the given values for the given permission
+  groups, running `body` in that context."
   [group-or-id table-or-id->perm-type->value & body]
   `(do-with-perms-for-group-and-tables! ~group-or-id ~table-or-id->perm-type->value (fn [] ~@body)))
 

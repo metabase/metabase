@@ -610,7 +610,7 @@
         v->human-readable     (schema.metadata-queries/human-readable-remapping-map field-id)
         remapping             (delay (remapping field-id))]
     (cond
-      ;; NEW: If explicit remapping field provided, use it for Field->Field remapping
+      ;; If explicit remapping field provided, use it for Field->Field remapping
       (some? remapping-field)
       (unremapped-chain-filter remapping-field constraints (assoc options :original-field-id field-id))
 
