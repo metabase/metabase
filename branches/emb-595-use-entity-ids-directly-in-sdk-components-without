@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-590-accept-entity-ids-in-all-sdk-related-endpoints-and-handle-it",
     "hash": "5f87a9cac06a7ea7c58db15d9fb35aa6dbf55113"
+  },
+  "upstream": {
+    "branch": "emb-595-use-entity-ids-directly-in-sdk-components-without"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 60555,
+        "gqlID": "PR_kwDOAczgH86dxKnm"
+      }
+    }
   }
 }
