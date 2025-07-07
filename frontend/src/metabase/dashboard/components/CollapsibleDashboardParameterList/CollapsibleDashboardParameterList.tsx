@@ -90,12 +90,16 @@ export const CollapsibleDashboardParameterList = forwardRef<
   return (
     <>
       {/* Invisible expanded parameter list for measurements */}
-      <DashboardParameterList
-        {...parametersListCommonProps}
-        className={cx(CS.absolute, CS.hidden, CS.pointerEventsNone)}
-        hasTestIdProps={false}
-        ref={ref}
-      />
+      <div
+        className={cx(CS.fixed, CS.hidden, CS.pointerEventsNone, CS.fullWidth)}
+      >
+        <DashboardParameterList
+          {...parametersListCommonProps}
+          className={CS.absolute}
+          hasTestIdProps={false}
+          ref={ref}
+        />
+      </div>
       {renderContent()}
     </>
   );
