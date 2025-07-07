@@ -1,5 +1,6 @@
 import { EditorSelection, type EditorState } from "@codemirror/state";
 import { useDisclosure } from "@mantine/hooks";
+import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
@@ -38,6 +39,7 @@ import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
 import { useInitialClause } from "./utils";
+import { hasActiveSnippet } from "./utils";
 
 type EditorProps = {
   id?: string;
@@ -153,6 +155,11 @@ export function Editor(props: EditorProps) {
     initialExpressionClause,
   });
 
+  const [isSnippetActive, setIsSnippetActive] = useState(false);
+  const handleUpdate = useCallback((update: ViewUpdate) => {
+    setIsSnippetActive(hasActiveSnippet(update.state));
+  }, []);
+
   return (
     <>
       <LayoutMain className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
@@ -172,13 +179,16 @@ export function Editor(props: EditorProps) {
           indentWithTab={false}
           autoFocus
           onCreateEditor={applyInitialSnippet}
+          onUpdate={handleUpdate}
           autoCorrect="off"
           tabIndex={0}
           onFormat={
-            error === null && isValidated ? formatExpression : undefined
+            error === null && isValidated && !isSnippetActive
+              ? formatExpression
+              : undefined
           }
         />
-        <Errors error={error} />
+        <Errors error={isSnippetActive ? null : error} />
 
         {source.trim() === "" && !isFormatting && error == null && (
           <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />

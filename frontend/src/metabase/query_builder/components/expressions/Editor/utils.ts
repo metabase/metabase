@@ -1,4 +1,8 @@
-import { snippet } from "@codemirror/autocomplete";
+import { hasNextSnippetField ,
+  hasPrevSnippetField,
+  snippet,
+} from "@codemirror/autocomplete";
+import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { useCallback } from "react";
 
@@ -33,4 +37,8 @@ export function useInitialClause({
     },
     [initialExpressionClause],
   );
+}
+
+export function hasActiveSnippet(state: EditorState) {
+  return hasNextSnippetField(state) || hasPrevSnippetField(state);
 }
