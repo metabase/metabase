@@ -20,3 +20,10 @@
   (if (setting/get :use-tenants)
     #{"@tenant.slug"}
     #{}))
+
+(defenterprise tenant-is-active?
+  "Whether the tenant with this ID is active or not."
+  :feature :tenants
+  [tenant-id]
+  (or (nil? tenant-id)
+      (t2/exists? :model/Tenant :id tenant-id :is_active true)))

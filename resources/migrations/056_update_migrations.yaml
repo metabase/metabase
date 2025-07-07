@@ -302,6 +302,27 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.app_db.custom_migrations.MoveExistingAtSymbolUserAttributes"
+
+
+  - changeSet:
+      id: v56.2025-07-07T07:13:58
+      author: johnswanson
+      comment: Mark users with `deactivated_with_tenant`
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: deactivated_with_tenant
+                  remarks: |
+                    if this user and its tenant are both deactivated, represents whether the user was deactivated
+                    *with* the tenant (in which case it should be reactivated when the tenant is reactivated)
+                    or was deactivated independently.
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: true
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

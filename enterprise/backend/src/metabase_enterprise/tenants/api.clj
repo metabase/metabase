@@ -45,17 +45,30 @@
                                                           "active" [:= :is_active true]
                                                           "deactivated" [:= :is_active false])))))})
 
+(def ^:private UpdateTenantArguments
+  [:map {:closed true}
+   [:name {:optional true} [:maybe ms/NonBlankString]]
+   [:is_active {:optional true} [:maybe ms/BooleanValue]]])
+
+(mu/defn- update-tenant! [tenant-id :- ms/PositiveInt
+                          {:keys [is_active] :as tenant} :- UpdateTenantArguments]
+  (when (false? is_active)
+    (t2/update! :model/User {:is_active true :tenant_id tenant-id}
+                {:is_active false :deactivated_with_tenant true}))
+  (when (true? is_active)
+    (t2/update! :model/User {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
+                {:is_active true :deactivated_with_tenant nil}))
+  (t2/update! :model/Tenant :id tenant-id tenant))
+
 (api.macros/defendpoint :put ["/:id" :id #"[^/]+"]
   "Update a tenant (right now, only name)"
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   tenant :- [:map {:closed true}
-              [:name {:optional true} [:maybe ms/NonBlankString]]
-              [:is_active {:optional true} [:maybe ms/BooleanValue]]]]
+   tenant :- UpdateTenantArguments]
   (when (:name tenant)
     (api/check-400 (not (t2/exists? :model/Tenant :name (:name tenant)))
                    "This name is already taken."))
-  (t2/update! :model/Tenant {:id id} tenant)
+  (update-tenant! id tenant)
   (present-tenant (t2/select-one :model/Tenant :id id)))
 
 (api.macros/defendpoint :get "/:id"
