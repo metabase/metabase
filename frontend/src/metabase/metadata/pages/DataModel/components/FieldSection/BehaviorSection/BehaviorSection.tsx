@@ -6,7 +6,6 @@ import { useToast } from "metabase/common/hooks";
 import {
   FieldValuesTypePicker,
   FieldVisibilityPicker,
-  RemappingPicker,
   UnfoldJsonPicker,
 } from "metabase/metadata/components";
 import {
@@ -17,7 +16,9 @@ import {
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DatabaseId, Field } from "metabase-types/api";
 
-import { TitledSection } from "../TitledSection";
+import { TitledSection } from "../../TitledSection";
+
+import { RemappingPicker } from "./RemappingPicker";
 
 interface Props {
   databaseId: DatabaseId;
