@@ -1,10 +1,10 @@
 # Before changing this file, make sure you have read how we use it:
 # https://www.notion.so/metabase/Pull-Request-Code-Review-Guide-374f05df889748b69d67af753f9bc9b8?pvs=4#36550c04ceab40b5a8b8bee6264b090c
 
-enterprise/frontend/src/embedding-sdk @metabase/embedding
-frontend/src/metabase/embedding-sdk @metabase/embedding
-frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion @metabase/embedding
-frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard @metabase/embedding
+# enterprise/frontend/src/embedding-sdk @metabase/embedding // disabled in release branch to avoid getting asked for a review on automatic backport
+# frontend/src/metabase/embedding-sdk @metabase/embedding // disabled in release branch to avoid getting asked for a review on automatic backport
+# frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion @metabase/embedding // disabled in release branch to avoid getting asked for a review on automatic backport
+# frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard @metabase/embedding // disabled in release branch to avoid getting asked for a review on automatic backport
 frontend/src/metabase/ui @metabase/core-frontend-admin-webapp
 # snowplow/* @metabase/data
 src/metabase/analytics/prometheus.clj @metabase/cloud-ops
@@ -144,8 +144,8 @@ docs/developers-guide # exclude from tech-writer ownership
 # src/metabase/eid_translation @metabase/core-backend-admin-webapp
 # test/metabase/eid_translation @metabase/core-backend-admin-webapp
 
-# src/metabase/embed @metabase/embedding
-# test/metabase/embed @metabase/embedding
+src/metabase/embed @metabase/embedding // disabled in release branch to avoid getting asked for a review on automatic backport
+test/metabase/embed @metabase/embedding // disabled in release branch to avoid getting asked for a review on automatic backport
 
 # src/metabase/events @metabase/devexp
 # test/metabase/events @metabase/devexp
