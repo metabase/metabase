@@ -225,14 +225,20 @@ const funnelToCartesian = (
   const metrics = [metric].filter(isNotNull);
   const dimensions = [dimension].filter(isNotNull);
 
+  const isInRefs = (ref: string) =>
+    columnValuesMapping[ref] && columnValuesMapping[ref].length > 0;
+
   return {
     columns,
     columnValuesMapping,
     settings: {
       ...otherSettings,
-      "graph.metrics": metrics.length > 0 ? metrics : preservedMetrics,
+      "graph.metrics":
+        metrics.length > 0 ? metrics : preservedMetrics.filter(isInRefs),
       "graph.dimensions":
-        dimensions.length > 0 ? dimensions : preservedDimensions,
+        dimensions.length > 0
+          ? dimensions
+          : preservedDimensions.filter(isInRefs),
     },
   };
 };
