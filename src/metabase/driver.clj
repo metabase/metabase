@@ -722,7 +722,13 @@
     :database-routing
 
     ;; Does this driver support replication?
-    :database-replication})
+    :database-replication
+
+    ;; Does this driver provide :database-is-nullable on (describe-fields) or (describe-table)
+    :describe-is-nullable
+
+    ;; Does this driver provide :database-default on (describe-fields) or (describe-table)
+    :describe-default-expr})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

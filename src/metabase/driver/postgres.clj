@@ -76,7 +76,9 @@
                               :expressions/integer      true
                               :expressions/float        true
                               :expressions/date         true
-                              :database-routing         true}]
+                              :database-routing         true
+                              :describe-is-nullable     true
+                              :describe-default-expr    true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]

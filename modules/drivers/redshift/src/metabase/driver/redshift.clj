@@ -42,7 +42,9 @@
                               :uuid-type                 false
                               :nested-field-columns      false
                               :test/jvm-timezone-setting false
-                              :database-routing          false}]
+                              :database-routing          false
+                              :describe-is-nullable      false
+                              :describe-default-expr     false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
