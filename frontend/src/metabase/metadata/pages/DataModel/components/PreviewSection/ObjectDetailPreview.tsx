@@ -18,7 +18,7 @@ import type {
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { Error } from "./Error";
-import { getErrorMessage } from "./utils";
+import { getErrorMessage, is403Error } from "./utils";
 
 interface Props {
   databaseId: DatabaseId;
@@ -90,7 +90,7 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
 
   const base = { ...rest, error: undefined, rawSeries: undefined };
 
-  if (rest?.status === "rejected") {
+  if (rest?.status === "rejected" && is403Error(rest.error)) {
     return {
       ...base,
       isError: true,
