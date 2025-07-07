@@ -5,10 +5,10 @@ import { t } from "ttag";
 
 import { Stack, Text, TextInput } from "metabase/ui";
 
-import { useSdkIframeEmbedSetupContext } from "../context";
-import { useHideParameter } from "../hooks";
+import { useSdkIframeEmbedSetupContext } from "../../context";
 
 import { ParameterVisibilityToggle } from "./ParameterVisibilityToggle";
+import { useHideParameter } from "./hooks/use-hide-parameter";
 
 export const ParameterSettings = () => {
   const {

@@ -1,4 +1,4 @@
-import { useSdkIframeEmbedSetupContext } from "../context";
+import { useSdkIframeEmbedSetupContext } from "../../../context";
 
 export function useHideParameter() {
   const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
