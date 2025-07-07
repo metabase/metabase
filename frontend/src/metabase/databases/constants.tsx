@@ -6,7 +6,7 @@ import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescriptio
 import DatabaseAuthProviderSectionField from "./components/DatabaseAuthProviderSectionField";
 import DatabaseCacheScheduleField from "./components/DatabaseCacheScheduleField";
 import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
-import DatabaseConnectionSectionField from "./components/DatabaseConnectionSectionField";
+import { DatabaseConnectionSectionField } from "./components/DatabaseConnectionSectionField";
 import DatabaseHostnameSectionField from "./components/DatabaseHostnameSectionField";
 import DatabaseScheduleToggleField from "./components/DatabaseScheduleToggleField";
 import DatabaseSshDescription from "./components/DatabaseSshDescription";

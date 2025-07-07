@@ -3,11 +3,8 @@ import { t } from "ttag";
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
-  AGGREGATION_FUNCTIONS,
-  EXPRESSION_FUNCTIONS,
   type HelpText,
-  type MBQLClauseFunctionConfig,
-  getClauseDefinition,
+  clausesForMode,
   getHelpText,
 } from "metabase-lib/v1/expressions";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -20,22 +17,6 @@ export function getSearchPlaceholder(expressionMode: Lib.ExpressionMode) {
   if (expressionMode === "aggregation") {
     return t`Search aggregations…`;
   }
-}
-
-function getClauses(
-  expressionMode: Lib.ExpressionMode,
-): MBQLClauseFunctionConfig[] {
-  if (expressionMode === "expression" || expressionMode === "filter") {
-    return Object.keys(EXPRESSION_FUNCTIONS)
-      .map(getClauseDefinition)
-      .filter(isNotNull);
-  }
-  if (expressionMode === "aggregation") {
-    return Object.keys(AGGREGATION_FUNCTIONS)
-      .map(getClauseDefinition)
-      .filter(isNotNull);
-  }
-  return [];
 }
 
 function getCategoryName(category: string) {
@@ -68,7 +49,7 @@ export function getFilteredClauses({
   database: Database | null;
   reportTimezone?: string;
 }) {
-  const clauses = getClauses(expressionMode);
+  const clauses = clausesForMode(expressionMode);
   const filteredClauses = clauses
     .filter(
       (clause) =>
