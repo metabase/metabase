@@ -121,17 +121,20 @@ const pieToFunnel = (
 ) => {
   const {
     "pie.metric": metric,
-    "pie.dimension": dimension,
+    "pie.dimension": pieDimension,
     "card.title": cardTitle,
     ...otherSettings
   } = settings;
+
+  const dimension = Array.isArray(pieDimension)
+    ? pieDimension[0]
+    : pieDimension;
 
   return {
     columns,
     columnValuesMapping,
     settings: {
       ...otherSettings,
-      "card.title": cardTitle,
       "funnel.metric": metric,
       "funnel.dimension": dimension,
       "graph.metrics": [metric].filter(isNotNull) as string[],

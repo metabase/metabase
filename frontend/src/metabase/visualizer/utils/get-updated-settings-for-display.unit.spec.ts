@@ -305,6 +305,31 @@ describe("updateSettingsForDisplay", () => {
     });
   });
 
+  describe("pie → funnel", () => {
+    it("should work when a pie has an array of dimensions (VIZ-1205)", () => {
+      const result = getUpdatedSettingsForDisplay(
+        columnValuesMapping,
+        columns,
+        {
+          "pie.metric": "COLUMN_3",
+          "pie.dimension": ["COLUMN_2"],
+        },
+        "pie",
+        "funnel",
+      );
+      expect(result).toEqual({
+        columnValuesMapping,
+        columns,
+        settings: {
+          "funnel.metric": "COLUMN_3",
+          "funnel.dimension": "COLUMN_2",
+          "graph.metrics": ["COLUMN_3"],
+          "graph.dimensions": ["COLUMN_2"],
+        },
+      });
+    });
+  });
+
   describe("funnel made of scalars", () => {
     it("should reset state when changing to any other display type", () => {
       const cleanState = {
