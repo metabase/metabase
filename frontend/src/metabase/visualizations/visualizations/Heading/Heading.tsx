@@ -290,6 +290,7 @@ const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
     const parametersListCommonProps = {
       ...rest,
       isSortable: false,
+      widgetsPopoverPosition: "bottom-end" as const,
     };
 
     const renderContent = () => {

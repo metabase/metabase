@@ -42,6 +42,7 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
       enableParameterRequiredBehavior,
       widgetsVariant = "default",
       widgetsWithinPortal,
+      widgetsPopoverPosition,
 
       hasTestIdProps = true,
     },
@@ -74,6 +75,7 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
         variant={widgetsVariant}
         fullWidth={vertical}
         withinPortal={widgetsWithinPortal}
+        popoverPosition={widgetsPopoverPosition}
         className={cx({ [CS.mb2]: vertical })}
         isEditing={isEditing}
         isFullscreen={isFullscreen}

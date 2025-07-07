@@ -4,6 +4,7 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, screen } from "__support__/ui";
+import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 
 function setup(opts: SetupOpts = {}) {
   return baseSetup({
@@ -33,6 +34,10 @@ describe("DataStep", () => {
 
   describe("link to data source", () => {
     describe("embedding SDK context", () => {
+      beforeEach(async () => {
+        await mockIsEmbeddingSdk();
+      });
+
       it("should not show the tooltip", async () => {
         setup({ isEmbeddingSdk: true });
 

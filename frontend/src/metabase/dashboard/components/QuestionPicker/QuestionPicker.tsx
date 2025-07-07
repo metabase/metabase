@@ -11,8 +11,8 @@ import type { BaseSelectListItemProps } from "metabase/common/components/SelectL
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
-import { isEmbeddingSdk } from "metabase/env";
 import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
@@ -96,7 +96,7 @@ function QuestionPickerInner({
               {t`New Question`}
             </Button>
           )}
-          {hasNativeWrite && !isEmbeddingSdk && (
+          {hasNativeWrite && !isEmbeddingSdk() && (
             <Button
               variant="outline"
               className={S.newButton}

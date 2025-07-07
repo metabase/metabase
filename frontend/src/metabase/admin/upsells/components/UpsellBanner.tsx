@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -40,6 +41,7 @@ type UpsellBannerPropsBase = {
   buttonText: string;
   campaign: string;
   source: string;
+  large?: boolean;
   children: React.ReactNode;
   style?: React.CSSProperties;
 };
@@ -55,6 +57,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   internalLink,
   campaign,
   source,
+  large,
   children,
   ...props
 }: UpsellBannerProps) => {
@@ -72,16 +75,18 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
     "dismissible" in props
       ? props
       : { dismissible: false, onDismiss: () => {} };
+  const gemSize = large ? 24 : undefined;
+  const contentAlignment = large ? "flex-start" : "center";
 
   return (
     <Box
-      className={S.UpsellBannerComponent}
+      className={cx(S.UpsellBannerComponent, large && S.Large)}
       data-testid="upsell-banner"
       bg="bg-white"
       {...domProps}
     >
-      <Flex align="center" gap="md" wrap="nowrap">
-        <UpsellGem />
+      <Flex align={contentAlignment} gap="md" wrap="nowrap">
+        <UpsellGem size={gemSize} />
         <Stack gap="xs">
           <Title lh={1.25} order={3} size="md">
             {title}
