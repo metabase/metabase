@@ -5,30 +5,30 @@ import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { PEOPLE_ID } from "metabase-types/api/mocks/presets";
 
-import type { NumberOrEmptyValue } from "./types";
+import type { NumberOrEmptyValue, UiFilterOperator } from "./types";
 import { useCoordinateFilter } from "./use-coordinate-filter";
 
 interface CreateFilterCase {
-  operator: Lib.CoordinateFilterOperator;
+  operator: UiFilterOperator;
   values: number[];
   expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
-  operator: Lib.CoordinateFilterOperator;
+  operator: UiFilterOperator;
   expression: Lib.ExpressionClause;
   values: number[];
   expectedDisplayName: string;
 }
 
 interface CoerceFilterCase {
-  operator: Lib.CoordinateFilterOperator;
+  operator: UiFilterOperator;
   values: NumberOrEmptyValue[];
   expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
-  operator: Lib.CoordinateFilterOperator;
+  operator: UiFilterOperator;
   values: NumberOrEmptyValue[];
 }
 
@@ -57,7 +57,7 @@ describe("useCoordinateFilter", () => {
       expectedDisplayName: "Latitude is not equal to 10",
     },
     {
-      operator: ">",
+      operator: "between",
       values: [10],
       expectedDisplayName: "Latitude is greater than 10",
     },
@@ -183,7 +183,7 @@ describe("useCoordinateFilter", () => {
       values: [],
     },
     {
-      operator: ">",
+      operator: "!=",
       values: [null],
     },
     {
