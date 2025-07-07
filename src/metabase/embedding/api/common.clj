@@ -286,7 +286,7 @@
   [unsigned-token & {:keys [embedding-params constraints]}]
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
   (let [pre-card-id  (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-        card-id      (eid-translation/->id-or-404 :model/Card pre-card-id)
+        card-id      (eid-translation/->id :model/Card pre-card-id)
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-card :id card-id, constraints)
         api.public/combine-parameters-and-template-tags
@@ -346,7 +346,7 @@
   [unsigned-token & {:keys [embedding-params constraints]}]
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
   (let [pre-dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard-id (eid-translation/->id-or-404 :model/Dashboard pre-dashboard-id)
+        dashboard-id (eid-translation/->id :model/Dashboard pre-dashboard-id)
         embedding-params (or embedding-params
                              (t2/select-one-fn :embedding_params :model/Dashboard, :id dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
@@ -478,7 +478,7 @@
 (defn- unsigned-token->dashboard-id
   [unsigned-token]
   (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-       (eid-translation/->id-or-404 :model/Dashboard)))
+       (eid-translation/->id :model/Dashboard)))
 
 (defn dashboard-param-values
   "Common implementation for fetching parameter values for embedding and preview-embedding.
