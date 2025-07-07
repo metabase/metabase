@@ -45,9 +45,14 @@ interface PreviewQueryButtonOpts {
 PreviewQueryButton.shouldRender = ({ question }: PreviewQueryButtonOpts) => {
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
-  return (
-    isNative &&
-    question.canRun() &&
-    (question.legacyNativeQuery() as NativeQuery).hasVariableTemplateTags()
-  );
+  if (!isNative) {
+    return false;
+  }
+
+  const nativeQuestion = question.legacyNativeQuery() as NativeQuery;
+
+  const hasVariableTemplateTags = nativeQuestion.hasVariableTemplateTags();
+  const hasSnippets = nativeQuestion.hasSnippets();
+
+  return question.canRun() && (hasVariableTemplateTags || hasSnippets);
 };
