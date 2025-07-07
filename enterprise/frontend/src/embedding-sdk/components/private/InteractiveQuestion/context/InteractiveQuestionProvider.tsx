@@ -47,6 +47,7 @@ export const InteractiveQuestionProvider = ({
   initialSqlParameters,
   withDownloads,
   variant,
+  targetDashboardId,
 }: InteractiveQuestionProviderProps) => {
   const handleCreateQuestion = useCreateQuestion();
   const handleSaveQuestion = useSaveQuestion();
@@ -71,7 +72,7 @@ export const InteractiveQuestionProvider = ({
       await onBeforeSave?.(sdkQuestion, saveContext);
 
       const createdQuestion = await handleCreateQuestion(question);
-      onSave?.(sdkQuestion, saveContext);
+      onSave?.(transformSdkQuestion(createdQuestion), saveContext);
 
       // Set the latest saved question object to update the question title.
       replaceQuestion(createdQuestion);
@@ -100,6 +101,7 @@ export const InteractiveQuestionProvider = ({
     options,
     deserializedCard,
     initialSqlParameters,
+    targetDashboardId,
   });
 
   const globalPlugins = useSdkSelector(getPlugins);

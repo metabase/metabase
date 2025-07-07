@@ -200,4 +200,50 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
       cy.findByText("New SQL query").should("not.exist");
     });
   });
+
+  describe("create new question from dashboards", () => {
+    it("should allow creating a new question from the dashboard", () => {
+      cy.get("@dashboardId").then((dashboardId) => {
+        mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
+      });
+
+      getSdkRoot().within(() => {
+        cy.button("Edit dashboard").should("be.visible").click();
+        cy.button("Add questions").should("be.visible").click();
+        cy.button("New Question").should("be.visible").click();
+
+        cy.log("building the query");
+        H.popover().findByRole("link", { name: "Orders" }).click();
+        /**
+         * We need to visualize before we can save the question.
+         * This will be addressed in EMB-584
+         */
+        cy.button("Visualize").click();
+        cy.button("Save").click();
+
+        H.modal().within(() => {
+          cy.findByRole("heading", { name: "Save new question" }).should(
+            "be.visible",
+          );
+          cy.findByLabelText("Name").clear().type("Orders in a dashboard");
+          cy.button("Save").click();
+        });
+
+        /**
+         * I was supposed to test the dashcard auto-scroll here, but for some reason,
+         * the test always fails on CI, but not locally. So I didn't test it here.
+         */
+        cy.log("Now we should be back on the dashboard in the edit mode");
+        cy.findByText("You're editing this dashboard.").should("be.visible");
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        const NEW_DASHCARD_INDEX = 0;
+        H.getDashboardCard(NEW_DASHCARD_INDEX)
+          .findByText("Orders in a dashboard")
+          .should("be.visible");
+
+        cy.button("Save").click();
+        cy.findByText("You're editing this dashboard.").should("not.exist");
+      });
+    });
+  });
 });

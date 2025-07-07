@@ -3,6 +3,8 @@ import {
   type PropsWithChildren,
   type ReactNode,
   useEffect,
+  useMemo,
+  useRef,
   useState,
 } from "react";
 import { match } from "ts-pattern";
@@ -22,6 +24,7 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import type { MetabaseQuestion } from "embedding-sdk/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import { useLocale } from "metabase/common/hooks/use-locale";
@@ -45,13 +48,19 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   type DashboardContextProps,
   DashboardContextProvider,
+  type DashboardContextProviderHandle,
+  useDashboardContext,
 } from "metabase/dashboard/context";
-import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
+import {
+  getDashboardComplete,
+  getDashboardHeaderValuePopulatedParameters,
+} from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
+import type { DashboardId } from "metabase-types/api";
 
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion";
 
@@ -164,6 +173,21 @@ const SdkDashboardInner = ({
     ? "question"
     : renderModeState;
 
+  // Now only used when rerendering the dashboard after creating a new question from the dashboard.
+  const dashboardContextProviderRef = useRef<DashboardContextProviderHandle>();
+
+  const [newDashboardQuestionId, setNewDashboardQuestionId] =
+    useState<number>();
+
+  const dashboard = useSelector(getDashboardComplete);
+  const autoScrollToDashcardId = useMemo(
+    () =>
+      dashboard?.dashcards.find(
+        (dashcard) => dashcard.card_id === newDashboardQuestionId,
+      )?.id,
+    [dashboard?.dashcards, newDashboardQuestionId],
+  );
+
   const errorPage = useSdkSelector(getErrorPage);
   const dispatch = useSdkDispatch();
   useEffect(() => {
@@ -200,6 +224,7 @@ const SdkDashboardInner = ({
 
   return (
     <DashboardContextProvider
+      ref={dashboardContextProviderRef}
       dashboardId={dashboardId}
       parameterQueryParams={initialParameters}
       navigateToNewCardFromDashboard={
@@ -227,6 +252,7 @@ const SdkDashboardInner = ({
         dispatch(setEditingDashboard(dashboard));
         dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
       }}
+      autoScrollToDashcardId={autoScrollToDashcardId}
     >
       {match(finalRenderMode)
         .with("question", () => (
@@ -257,12 +283,14 @@ const SdkDashboardInner = ({
           </SdkDashboardProvider>
         ))
         .with("queryBuilder", () => (
-          <InteractiveQuestionProvider questionId="new">
-            <InteractiveQuestionDefaultView
-              withResetButton
-              withChartTypeSelector
-            />
-          </InteractiveQuestionProvider>
+          <DashboardQueryBuilder
+            targetDashboardId={dashboardId}
+            onCreate={(question) => {
+              setNewDashboardQuestionId(question.id);
+              setRenderMode("dashboard");
+              dashboardContextProviderRef.current?.refetchDashboard();
+            }}
+          />
         ))
         .exhaustive()}
     </DashboardContextProvider>
@@ -291,4 +319,34 @@ function SdkDashboardParameterList(
   const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
 
   return <DashboardParameterList parameters={parameters} {...props} />;
+}
+
+type DashboardQueryBuilderProps = {
+  targetDashboardId: DashboardId;
+  onCreate: (question: MetabaseQuestion) => void;
+};
+
+/**
+ * The sole reason this is extracted into a separate component is to access the dashboard context
+ */
+function DashboardQueryBuilder({
+  targetDashboardId,
+  onCreate,
+}: DashboardQueryBuilderProps) {
+  const dispatch = useSdkDispatch();
+  const { dashboard } = useDashboardContext();
+  return (
+    <InteractiveQuestionProvider
+      questionId="new"
+      targetDashboardId={targetDashboardId}
+      onSave={(question, { isNewQuestion }) => {
+        if (isNewQuestion) {
+          onCreate(question);
+          dispatch(setEditingDashboard(dashboard));
+        }
+      }}
+    >
+      <InteractiveQuestionDefaultView withResetButton withChartTypeSelector />
+    </InteractiveQuestionProvider>
+  );
 }
