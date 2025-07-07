@@ -1,6 +1,8 @@
 import Humanize from "humanize-plus";
 import type { ReactNode } from "react";
 
+import MetabaseSettings from "metabase/lib/settings";
+
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
@@ -33,6 +35,7 @@ type FormatNumberOptions = {
   number_style?: string;
   scale?: number;
   type?: string;
+  useInstanceSettings?: boolean;
 };
 
 type FormatNumberJsxOptions = FormatNumberOptions & {
@@ -69,6 +72,13 @@ function getDefaultNumberOptions(options: { decimals?: string | number }) {
   return defaults;
 }
 
+export function getInstanceSettings(options?: FormatNumberOptions) {
+  if (options?.useInstanceSettings) {
+    return MetabaseSettings.get("custom-formatting")?.["type/Number"] ?? {};
+  }
+  return {};
+}
+
 export function formatNumber(
   number: number | bigint,
   options?: FormatNumberOptions,
@@ -77,7 +87,11 @@ export function formatNumber(
   number: number | bigint,
   options: FormatNumberJsxOptions = {},
 ): string | ReactNode {
-  options = { ...getDefaultNumberOptions(options), ...options };
+  options = {
+    ...getDefaultNumberOptions(options),
+    ...getInstanceSettings(options),
+    ...options,
+  };
 
   if (typeof options.scale === "number" && !isNaN(options.scale)) {
     number = multiply(number, options.scale);
@@ -178,7 +192,11 @@ export function formatChangeWithSign(
 }
 
 export function numberFormatterForOptions(options: FormatNumberOptions) {
-  options = { ...getDefaultNumberOptions(options), ...options };
+  options = {
+    ...getDefaultNumberOptions(options),
+    ...getInstanceSettings(options),
+    ...options,
+  };
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
   return new Intl.NumberFormat("en", {
