@@ -1,10 +1,9 @@
-// eslint-disable-next-line import/order -- We need to import this one first, as it mocks some modules, and importing other deps before that would break the tests
-import { type SetupOpts, setup as baseSetup } from "./setup";
-
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, screen } from "__support__/ui";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
+
+import { type SetupOpts, setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts = {}) {
   return baseSetup({
