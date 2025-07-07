@@ -93,7 +93,9 @@
                               :database-routing                       true
                               :metadata/table-existence-check         true
                               :transforms/python                      true
-                              :transforms/table                       true}]
+                              :transforms/table                       true
+                              :describe-is-nullable                   true
+                              :describe-default-expr                  true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.

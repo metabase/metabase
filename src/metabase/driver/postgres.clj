@@ -80,6 +80,8 @@
                               :expressions/float        true
                               :expressions/date         true
                               :database-routing         true
+                              :describe-is-nullable     true
+                              :describe-default-expr    true
                               :transforms/table         true
                               :transforms/python        true
                               :metadata/table-existence-check true}]

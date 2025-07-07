@@ -73,6 +73,8 @@
                               :uuid-type                 true
                               :uploads                   true
                               :database-routing          true
+                              :describe-is-nullable      true
+                              :describe-default-expr     true
                               :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]

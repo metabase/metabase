@@ -315,7 +315,11 @@
               [a b c] (->> ["a" "b" "c"]
                            (map #(ddl.i/format-name driver/*driver* %))
                            (map (u/index-by :name fields)))]
-          (is (= [false true false] (mapv :database-is-nullable [a b c]))))))))
+          (if (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
+            (testing ":database-is-nullable should be provided"
+              (is (= [false true false] (mapv :database-is-nullable [a b c]))))
+            (testing ":database-is-nullable should remain unspecified"
+              (is (= [nil nil nil] (mapv :database-is-nullable [a b c]))))))))))
 
 (deftest ^:parallel describe-fields-returns-default-expr-test
   (mt/test-drivers (mt/normal-drivers)
@@ -335,7 +339,11 @@
               [a b c] (->> ["a" "b" "c"]
                            (map #(ddl.i/format-name driver/*driver* %))
                            (map (u/index-by :name fields)))]
-          (is (= [nil "42" nil] (mapv :database-default [a b c]))))))))
+          (if (driver/database-supports? driver/*driver* :describe-default-expr (mt/db))
+            (testing ":database-default should be provided"
+              (is (= [nil "42" nil] (mapv :database-default [a b c]))))
+            (testing ":database-default should remain unspecified"
+              (is (= [nil nil nil] (mapv :database-default [a b c]))))))))))
 
 (deftest ^:parallel describe-table-fks-test
   (testing "`describe-table-fks` should work for drivers that do not support `describe-fks`"
