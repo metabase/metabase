@@ -14,7 +14,8 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 
 import DashboardS from "../Dashboard/Dashboard.module.css";
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
-import { DashboardParameterList } from "../DashboardParameterList";
+// import { DashboardParameterList } from "../DashboardParameterList";
+import { EnhancedParameterList } from "../EnhancedParameterList";
 
 import S from "./DashboardParameterPanel.module.css";
 
@@ -61,7 +62,7 @@ export function DashboardParameterPanel() {
             isFixedWidth={dashboard?.width === "fixed"}
             data-testid="fixed-width-filters"
           >
-            <DashboardParameterList parameters={parameters} />
+            <EnhancedParameterList parameters={parameters} />
           </FixedWidthContainer>
         </FullWidthContainer>
       </span>
@@ -86,7 +87,7 @@ export function DashboardParameterPanel() {
           isFixedWidth={dashboard?.width === "fixed"}
           data-testid="fixed-width-filters"
         >
-          <DashboardParameterList parameters={parameters} />
+          <EnhancedParameterList parameters={parameters} />
         </FixedWidthContainer>
       </FullWidthContainer>
     </span>
