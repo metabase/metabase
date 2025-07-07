@@ -543,7 +543,7 @@
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id}]
   (with-dashboard-load-id dashboard-load-id
-    (let [resolved-id (eid-translation/->id :dashboard id)
+    (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
           dashboard (get-dashboard resolved-id)]
       (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
@@ -1028,7 +1028,7 @@
    {dashboard-load-id :dashboard_load_id}]
   (with-dashboard-load-id dashboard-load-id
     (perms/with-relevant-permissions-for-user api/*current-user-id*
-      (let [resolved-id (eid-translation/->id :dashboard id)
+      (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
             dashboard (get-dashboard resolved-id)]
         (queries/batch-fetch-dashboard-metadata [dashboard])))))
 

@@ -210,7 +210,7 @@
    {ignore-view? :ignore_view, :keys [context]} :- [:map
                                                     [:ignore_view {:optional true} [:maybe :boolean]]
                                                     [:context     {:optional true} [:maybe [:enum :collection]]]]]
-  (let [resolved-id (eid-translation/->id :card id)
+  (let [resolved-id (eid-translation/->id-or-404 :card id)
         card (get-card resolved-id)]
     (u/prog1 card
       (when-not ignore-view?
@@ -654,7 +654,7 @@
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [resolved-id (eid-translation/->id :card id)]
+  (let [resolved-id (eid-translation/->id-or-404 :card id)]
     (queries.metadata/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
@@ -768,7 +768,7 @@
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
-  (let [resolved-card-id (eid-translation/->id :card card-id)]
+  (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
     (qp.card/process-query-for-card
      resolved-card-id :api
      :parameters   parameters
