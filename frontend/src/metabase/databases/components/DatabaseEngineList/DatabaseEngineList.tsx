@@ -25,15 +25,23 @@ import {
 
 import S from "./DatabaseEngineList.module.css";
 
+type DatabaseEngineListProps =
+  | {
+      isSetupStep: true;
+      engineKey?: string;
+      onSelect: (engineKey?: string) => void;
+    }
+  | {
+      isSetupStep?: never;
+      engineKey?: never;
+      onSelect: (engineKey: string) => void;
+    };
+
 export const DatabaseEngineList = ({
   onSelect,
   isSetupStep,
   engineKey,
-}: {
-  onSelect: (engineKey?: string) => void;
-  isSetupStep?: boolean;
-  engineKey?: string;
-}) => {
+}: DatabaseEngineListProps) => {
   const combobox = useCombobox();
   const [search, setSearch] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
@@ -51,8 +59,10 @@ export const DatabaseEngineList = ({
   const shouldShowSampleDatabaseIndicator = isSetupStep && !engineKey;
 
   const clearSelectedItem = useCallback(() => {
-    onSelect(undefined);
-  }, [onSelect]);
+    if (isSetupStep) {
+      (onSelect as (engineKey?: string) => void)(undefined);
+    }
+  }, [onSelect, isSetupStep]);
 
   // This is just a temporary way to show a selected item. The plan is to redesign
   // this particular bit, and it will live outside this component.
