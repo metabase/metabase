@@ -124,6 +124,9 @@
         ;; Should be the first name field encountered
         (is (= "fullName" (:name (first name-fields))))))))
 
+;; we either already incorrectly inferred multiple fields on a previous sync, or the user incorrectly set multiple fields.
+;; let them sort it out rather than risk overriding their preferences
+
 (deftest preserve-existing-name-fields-test
   (testing "On an existing table with 2 type/Name fields, they stay unchanged and adding more eligible  is a no-op"
     (mt/with-temp [:model/Database db {:engine :h2 :name "test-db"}
