@@ -96,3 +96,102 @@
       (is (nil? (:semantic_type (t2/select-one :model/Field :id (u/the-id field)))))
       (classify/classify-fields-for-db! db (constantly nil))
       (is (= :type/Income (:semantic_type (t2/select-one :model/Field :id (u/the-id field))))))))
+
+(deftest single-name-field-per-table-test
+  (testing "On a new table with multiple eligible fields, only 1 field gets type/Name semantic type"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:name "users" :db_id (u/the-id db)}
+                   :model/Field _ {:name "id" :base_type :type/Integer :table_id (u/the-id table)}
+                   :model/Field _ {:name "fullName" :base_type :type/Text :table_id (u/the-id table)
+                                   :semantic_type       nil
+                                   :fingerprint_version i/*latest-fingerprint-version*
+                                   :last_analyzed       nil}
+                   :model/Field _ {:name "firstName" :base_type :type/Text :table_id (u/the-id table)
+                                   :semantic_type       nil
+                                   :fingerprint_version i/*latest-fingerprint-version*
+                                   :last_analyzed       nil}
+                   :model/Field _ {:name "lastName" :base_type :type/Text :table_id (u/the-id table)
+                                   :semantic_type       nil
+                                   :fingerprint_version i/*latest-fingerprint-version*
+                                   :last_analyzed       nil}]
+
+      (classify/classify-fields-for-db! db (constantly nil))
+
+      (let [name-fields (t2/select :model/Field
+                                   :table_id (:id table)
+                                   :semantic_type :type/Name)]
+        (is (= 1 (count name-fields)))
+        ;; Should be the first name field encountered
+        (is (= "fullName" (:name (first name-fields))))))))
+
+(deftest preserve-existing-name-fields-test
+  (testing "On an existing table with 2 type/Name fields, they stay unchanged and adding more eligible  is a no-op"
+    (mt/with-temp [:model/Database db {:engine :h2 :name "test-db"}
+                   :model/Table table {:name "contacts" :db_id (:id db)}
+                   :model/Field _ {:name "id" :base_type :type/Integer :table_id (:id table)}
+                   :model/Field _ {:name "firstName"
+                                   :base_type :type/Text
+                                   :table_id (:id table)
+                                   :semantic_type :type/Name
+                                   :last_analyzed :%now}
+                   :model/Field _ {:name "lastName"
+                                   :base_type :type/Text
+                                   :table_id (:id table)
+                                   :semantic_type :type/Name
+                                   :last_analyzed :%now}
+
+                   :model/Field field {:name "middleName" :base_type :type/Text :table_id (u/the-id table)
+                                       :semantic_type       nil
+                                       :fingerprint_version i/*latest-fingerprint-version*
+                                       :last_analyzed       nil}]
+      (classify/classify-fields! table)
+
+      (let [name-fields (t2/select :model/Field
+                                   :table_id (:id table)
+                                   :semantic_type :type/Name)]
+        (is (= 2 (count name-fields)))
+        ;; The original fields should keep their type/Name
+        (is (some #(= "firstName" (:name %)) name-fields))
+        (is (some #(= "lastName" (:name %)) name-fields))
+
+        (is (not= :type/Name (:semantic_type (t2/select-one :model/Field :id (u/the-id field)))))))))
+
+(deftest no-name-field-candidates-test
+  (testing "Table with no eligible name fields should not crash during classification"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:name "metrics" :db_id (u/the-id db)}
+                   :model/Field _ {:name "id" :base_type :type/Integer :table_id (u/the-id table)}
+                   :model/Field _ {:name "value" :base_type :type/Float :table_id (u/the-id table)}
+                   :model/Field _ {:name "timestamp" :base_type :type/DateTime :table_id (u/the-id table)}]
+
+      (is (not= ::thrown (try (classify/classify-fields! table) (catch Throwable _ ::thrown))))
+      (let [name-fields (t2/select :model/Field
+                                   :table_id (:id table)
+                                   :semantic_type :type/Name)]
+        (is (= 0 (count name-fields)))))))
+
+(deftest reclassification-preserves-name-field-test
+  (testing "Re-running classification on table with existing name field preserves it"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:name "users" :db_id (u/the-id db)}
+                   :model/Field _ {:name "userName"
+                                   :base_type :type/Text
+                                   :table_id (u/the-id table)
+                                   :semantic_type :type/Name
+                                   :last_analyzed :%now}
+                   :model/Field _ {:name "displayName"
+                                   :base_type :type/Text
+                                   :table_id (u/the-id table)
+                                   :semantic_type nil
+                                   :fingerprint_version i/*latest-fingerprint-version*
+                                   :last_analyzed nil}]
+
+      ;; Run classification twice
+      (classify/classify-fields! table)
+      (classify/classify-fields! table)
+
+      (let [name-fields (t2/select :model/Field
+                                   :table_id (:id table)
+                                   :semantic_type :type/Name)]
+        (is (= 1 (count name-fields)))
+        (is (= "userName" (:name (first name-fields))))))))
