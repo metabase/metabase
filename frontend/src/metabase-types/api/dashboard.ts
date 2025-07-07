@@ -147,7 +147,7 @@ export type VirtualCard = Partial<
   Omit<Card, "name" | "dataset_query" | "visualization_settings" | "display">
 > & {
   name: null;
-  dataset_query: Record<string, never>;
+  dataset_query?: Record<string, never>; // Some old virtual cards have dataset_query equal to {}
   display: VirtualCardDisplay;
   visualization_settings: VisualizationSettings;
 };
