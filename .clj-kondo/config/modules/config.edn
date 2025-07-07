@@ -1218,7 +1218,8 @@
   tenants
   {:team "Admin Webapp"
    :api #{metabase.tenants.core}
-   :uses #{premium-features}}
+   :uses #{premium-features
+           util}}
 
   testing-api
   {:team "DevEx"
@@ -1826,6 +1827,7 @@
            premium-features
            request
            settings
+           tenants
            util}}
 
   enterprise/upload-management
