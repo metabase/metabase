@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-595-use-entity-ids-directly-in-sdk-components-without",
     "hash": "ee863bae309df633c4ef7cdcbb484e091639f925"
+  },
+  "upstream": {
+    "branch": "emb-596-use-entity-ids-directly-in-sdk-collection-pickers-and"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 60562,
+        "gqlID": "PR_kwDOAczgH86dyB4d"
+      }
+    }
   }
 }
