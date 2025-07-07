@@ -117,11 +117,14 @@
       [:expression expression-name])
 
     [:aggregation index opts]
-    (if-let [opts (-> opts
-                      (dissoc :base-type)
-                      (remove-namespaced-options))]
-      [:aggregation index opts]
-      [:aggregation index])
+    (do
+      (when (:base-type opts)
+        (throw (ex-info "agg-ref with type" {:clause [:aggregation index opts]})))
+      (if-let [opts (-> opts
+                        (dissoc :base-type)
+                        (remove-namespaced-options))]
+        [:aggregation index opts]
+        [:aggregation index]))
 
     _
     &match))
