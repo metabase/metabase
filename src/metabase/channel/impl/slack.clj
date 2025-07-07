@@ -188,7 +188,7 @@
 
 (def metabase-branding-copy
   "Human visible Markdown content that we use for branding purposes in Slack links"
-  "Made with Metabase :blue_heart:")
+  "Made with :blue_heart: at")
 
 (defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
@@ -208,9 +208,9 @@
                                    (include-branding?)
                                    (conj
                                     {:type "mrkdwn"
-                                     :text (mkdwn-link-text
-                                            metabase-branding-link
-                                            metabase-branding-copy)}))}
+                                     :text (str metabase-branding-copy (mkdwn-link-text
+                                                                        metabase-branding-link
+                                                                        "metabase.com"))}))}
         filter-fields   (for [parameter top-level-params]
                           {:type "mrkdwn"
                            :text (parameter-markdown parameter)})
