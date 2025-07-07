@@ -388,7 +388,9 @@
         unique-name-fn     (lib.util/unique-name-generator)
         returned-columns   (->> (lib/returned-columns query)
                                 (mapv #(update % :name unique-name-fn)))
-        {:source/keys [aggregations breakouts]} (group-by :lib/source returned-columns)
+        aggregations       (filter #(= (:lib/source %) :source/aggregations)
+                                   returned-columns)
+        breakouts          (filter :lib/breakout? returned-columns)
         column-alias->index (into {}
                                   (map-indexed (fn [i column] [(:lib/desired-column-alias column) i]))
                                   (concat breakouts aggregations))
