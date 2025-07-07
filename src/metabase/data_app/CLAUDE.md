@@ -8,6 +8,9 @@ This directory contains the core functionality for Metabase Data Apps - a featur
 
 - **core.clj** - Public API for the data apps module (all external interactions should go through this namespace)
 - **models.clj** - Internal database models and schema definitions for Apps, AppDefinitions, and AppRelease
+- **api/data-app.clj** - Admin/CRUD API endpoints under `/api/data-apps/` for managing data apps
+- **api/app.clj** - Consumer API endpoints under `/api/app/` for using published data apps
+- **enterprise/backend/src/metabase_enterprise/data_apps/** - Enterprise-specific features and extensions for data apps
 
 ## Data Model
 
@@ -35,7 +38,7 @@ data_app_release
 ├── id (PK)
 ├── app_id (FK -> data_app.id, cascade delete)
 ├── app_definition_id (FK -> data_app_definition.id, cascade delete)
-├── published_at
+├── released_at
 └── retracted (boolean, default false)
 ```
 
@@ -82,7 +85,31 @@ These functions form the public interface for the data apps module. All external
 - Validation occurs before insert/update operations
 - Retracted flag allows marking releases as unavailable when needed
 
-### Common Patterns
+## API Endpoints
+
+The data apps feature exposes two distinct sets of API endpoints:
+
+### Admin/Management APIs (`/api/data-app/`)
+
+Located in `api/data-apps.clj`, these endpoints are used for creating, updating, and managing data apps:
+
+These endpoints require appropriate permissions (create/update/delete checks) and are intended for app authors and administrators.
+
+### Consumer APIs (`/api/app/`)
+
+Located in `api/app.clj`, these endpoints are used by end-users to interact with published data apps:
+
+These endpoints only expose published versions of apps and enforce read permissions. They are designed for app consumers and end-users.
+
+### API Design Principles
+
+1. **Separation of Concerns**: Admin operations are clearly separated from consumer operations
+2. **Published-Only Access**: Consumer endpoints only return published app versions
+3. **Permission Enforcement**: All endpoints check appropriate permissions (read/create/update/delete)
+4. **Version Control**: Admin APIs handle versioning, while consumer APIs only see published versions
+5. **Resource Safety**: Consumer endpoints cannot modify app definitions, only interact with them
+
+## Common Patterns
 
 1. Always validate app definition configs before saving
 2. Use transactions when updating multiple related records
@@ -102,6 +129,7 @@ Please update this CLAUDE.md file when:
 4. **Changing validation rules** - Document in the appropriate section
 5. **Introducing new patterns** - Add to Common Patterns
 6. **Adding new files** - Update the Key Components section
+7. **Adding or modifying API endpoints** - Update the API Endpoints section
 
 ### Files to Check for Updates
 

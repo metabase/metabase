@@ -1,4 +1,4 @@
-(ns metabase.data-apps.models
+(ns metabase.data-app.models
   (:require
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
@@ -8,9 +8,9 @@
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/DataApp           [_model] :data_app)
+(methodical/defmethod t2/table-name :model/DataApp [_model] :data_app)
 (methodical/defmethod t2/table-name :model/DataAppDefinition [_model] :data_app_definition)
-(methodical/defmethod t2/table-name :model/DataAppRelease    [_model] :data_app_release)
+(methodical/defmethod t2/table-name :model/DataAppRelease [_model] :data_app_release)
 
 (doseq [model [:model/DataApp
                :model/DataAppDefinition
@@ -25,7 +25,7 @@
 ;;                                       :model/DataApp                                           ;;
 ;;------------------------------------------------------------------------------------------------;;
 
-(def ^:private data-app-statuses #{:private :published :archived})
+(def ^:private data-app-statuses #{:private :released :archived})
 
 (t2/deftransforms :model/DataApp
   {:status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum data-app-statuses))})
@@ -55,7 +55,7 @@
   [instance]
   (throw (ex-info "AppDefinition is append-only and cannot be updated"
                   {:status-code 400
-                   :changes     (t2/changes instance)})))
+                   :changes (t2/changes instance)})))
 
 (defn- next-revision-number
   "Get the next revision number for a given app."
@@ -96,22 +96,54 @@
   [app-id definition]
   (t2/insert-returning-instance! :model/DataAppDefinition
                                  (merge definition
-                                        {:app_id          app-id
+                                        {:app_id app-id
                                          :revision_number (next-revision-number app-id)})))
 
 (defn create-app!
   "Create a new App with an initial definition."
   [app-data]
   (t2/with-transaction [_conn]
-    (let [app            (t2/insert-returning-instance! :model/DataApp (dissoc app-data :definition))
-          app-definition (new-definition! (:id app) (:definition app-data))]
+    (let [app (t2/insert-returning-instance! :model/DataApp (dissoc app-data :definition))
+          app-definition (when-let [definition (:definition app-data)]
+                           (new-definition! (:id app) definition))]
       (assoc app :definition app-definition))))
 
-(defn publish!
+(defn release!
   "Publish a new definition of an app."
   [app-id app-definition-id]
   (t2/with-transaction [_conn]
+    (t2/update! :model/DataApp app-id {:status :released})
     (t2/insert-returning-instance! :model/DataAppRelease
                                    {:app_id            app-id
                                     :app_definition_id app-definition-id
                                     :retracted         false})))
+
+(defn released-definition
+  "Get the latest released definition for a data app."
+  [app-id]
+  (when-let [release-definition-id (t2/select-one-fn :app_definition_id
+                                                     :model/DataAppRelease
+                                                     :app_id app-id
+                                                     :retracted false
+                                                     {:order-by [[:published_at :desc]]})]
+    (t2/select-one :model/DataAppDefinition :id release-definition-id)))
+
+(defn latest-definition
+  "Get the latest definition (released or not) for a data app."
+  [app-id]
+  (t2/select-one :model/DataAppDefinition
+                 :app_id app-id
+                 {:order-by [[:revision_number :desc]]}))
+
+(defn latest-release
+  "Get the latest release info for a data app."
+  [app-id]
+  (t2/select-one :model/DataAppRelease
+                 :app_id app-id
+                 :retracted false
+                 {:order-by [[:published_at :desc]]}))
+
+(defn latest-released-definition
+  "Get the latest released definition for a data app."
+  [app-id]
+  (released-definition app-id))

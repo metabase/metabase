@@ -207,7 +207,7 @@ databaseChangeLog:
                     unique: true
               - column:
                   name: status
-                  remarks: Status of the app (private, published, archived)
+                  remarks: Status of the app (private, released, archived)
                   type: varchar(32)
                   constraints:
                     nullable: false
@@ -373,7 +373,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: data_app_release
-            remarks: App publishing records
+            remarks: App releasing records
             columns:
               - column:
                   name: id
@@ -404,8 +404,8 @@ databaseChangeLog:
                     foreignKeyName: fk_data_app_release_app_definition_id
                     deleteCascade: true
               - column:
-                  remarks: The timestamp of when the app was published
-                  name: published_at
+                  remarks: The timestamp of when the app was released
+                  name: released_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
