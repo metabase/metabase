@@ -45,26 +45,26 @@ jobs:
       id: check_changes
       run: |
         if git diff --quiet; then
-          echo "has_changes=false" >> $GITHUB_OUTPUT
+          echo "has_changes=false" >> "$GITHUB_OUTPUT"
           echo "No changes detected after optimization"
         else
-          echo "has_changes=true" >> $GITHUB_OUTPUT
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
           echo "Changes detected after optimization"
         fi
 
     - name: Commit optimized images
       if: steps.changed-files.outputs.any_changed == 'true' && steps.check_changes.outputs.has_changes == 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
+        git config --global user.email "metabase-bot@metabase.com"
+        git config --global user.name "Metabase bot"
         git add docs/**/*.png
         git commit -m "Auto-optimize PNG images with ImageMagick"
-
-        Files optimized:
-        ${{ steps.changed-files.outputs.all_changed_files }}
-
-        Applied: mogrify -quality 100"
         git push
+        echo 'Files optimized:'
+        echo ${{ steps.changed-files.outputs.all_changed_files }}
+        echo 'Applied: mogrify -quality 100"'
 
     - name: Output summary
       if: steps.changed-files.outputs.any_changed == 'true'
