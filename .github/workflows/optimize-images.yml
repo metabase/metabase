@@ -36,7 +36,7 @@ jobs:
         echo "Optimizing PNG files..."
         for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
           echo "Processing: $file"
-          mogrify -quality 100 "$file"
+          mogrify -strip -quality 95 "$file"
         done
         echo "Optimization complete"
 
