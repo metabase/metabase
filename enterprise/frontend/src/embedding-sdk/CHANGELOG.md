@@ -1,3 +1,16 @@
+## [0.55.4](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.3...embedding-sdk-0.55.4) (2025-07-07)
+
+
+### Bug Fixes
+
+* **sdk:** crash when changing questionId from new to native question ([#60161](https://github.com/metabase/metabase/issues/60161)) ([#60297](https://github.com/metabase/metabase/issues/60297)) ([d0ec6d2](https://github.com/metabase/metabase/commit/d0ec6d2349a1b9aee4b51e09dcd15be4a430b6d3))
+* **sdk:** Fix flickered "Question new not found error" ([#59696](https://github.com/metabase/metabase/issues/59696)) ([#59783](https://github.com/metabase/metabase/issues/59783)) ([535a5a0](https://github.com/metabase/metabase/commit/535a5a08104303b989aaf2a8f457d237166f9023))
+* **sdk:** fix popovers can't be rendered inside modals ([#60431](https://github.com/metabase/metabase/issues/60431)) ([#60481](https://github.com/metabase/metabase/issues/60481)) ([a04bf71](https://github.com/metabase/metabase/commit/a04bf71189158a69abf8909f025d37d08edb76ec))
+* **sdk:** switching from existing to new question should keep query builder open ([#60077](https://github.com/metabase/metabase/issues/60077)) ([#60113](https://github.com/metabase/metabase/issues/60113)) ([01616ea](https://github.com/metabase/metabase/commit/01616eaa61199139424d24c0a67de8bf6322092f))
+* **sdk:** use supbath for `/auth/sso` http call ([#60488](https://github.com/metabase/metabase/issues/60488)) ([#60541](https://github.com/metabase/metabase/issues/60541)) ([e2be097](https://github.com/metabase/metabase/commit/e2be097e9a41be642aeea8b71541f3a2f73c32c4))
+
+
+
 ## [0.55.3](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.2...embedding-sdk-0.55.3) (2025-06-16)
 
 
