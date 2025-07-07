@@ -1,58 +1,20 @@
 import type { Active } from "@dnd-kit/core";
-import { renderHook } from "@testing-library/react";
-import type { PropsWithChildren } from "react";
 
-import { MetabaseReduxProvider } from "metabase/lib/redux";
-import { mainReducers } from "metabase/reducers-main";
-import { getStore } from "metabase/store";
-import {
-  getHoveredItems,
-  getReferencedColumns,
-} from "metabase/visualizer/selectors";
-import { isDraggedColumnItem } from "metabase/visualizer/utils";
-import type { DatasetColumn, VisualizerDataSource } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  VisualizerColumnReference,
+  VisualizerDataSource,
+} from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
+import type { DraggedColumn } from "metabase-types/store/visualizer";
 
-import { useCanHandleActiveItem } from "./use-can-handle-active-item";
+import { canHandleActiveItem } from "./use-can-handle-active-item";
 
-// Mock the selectors
-jest.mock("metabase/visualizer/selectors", () => ({
-  getHoveredItems: jest.fn(),
-  getReferencedColumns: jest.fn(),
-}));
-
-jest.mock("metabase/visualizer/utils", () => ({
-  isDraggedColumnItem: jest.fn(),
-}));
-
-const mockGetHoveredItems = getHoveredItems as jest.MockedFunction<
-  typeof getHoveredItems
->;
-const mockGetReferencedColumns = getReferencedColumns as jest.MockedFunction<
-  typeof getReferencedColumns
->;
-const mockIsDraggedColumnItem = isDraggedColumnItem as jest.MockedFunction<
-  typeof isDraggedColumnItem
->;
-
-const renderHookWithProvider = (
-  params: Parameters<typeof useCanHandleActiveItem>[0],
-) => {
-  const store = getStore(mainReducers, undefined, createMockState());
-
-  const Wrapper = ({ children }: PropsWithChildren) => (
-    <MetabaseReduxProvider store={store}>{children}</MetabaseReduxProvider>
-  );
-  return renderHook(() => useCanHandleActiveItem(params), {
-    wrapper: Wrapper,
-  });
-};
-
-const createMockActive = (column: DatasetColumn): Active => ({
+const createMockActive = (column: DatasetColumn, type = "COLUMN"): Active => ({
   id: "test-id",
   data: {
     current: {
+      type,
       column,
     },
   },
@@ -66,222 +28,198 @@ const createMockActive = (column: DatasetColumn): Active => ({
 
 const createMockHoveredItem = (
   column: DatasetColumn,
-  dataSourceId: string,
-) => ({
+  dataSource: VisualizerDataSource,
+): DraggedColumn => ({
   id: column.name!,
   data: {
     current: {
       type: "COLUMN" as const,
       column,
-      dataSource: { id: dataSourceId } as VisualizerDataSource,
+      dataSource,
     },
   },
 });
 
-describe("useCanHandleActiveItem", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockGetHoveredItems.mockReturnValue(null);
-    mockGetReferencedColumns.mockReturnValue([]);
-    mockIsDraggedColumnItem.mockReturnValue(false);
-  });
-
+describe("canHandleActiveItem", () => {
   describe("when no active item or hovered items", () => {
     it("returns false", () => {
-      const { result } = renderHookWithProvider({
-        active: null,
-        isSuitableColumn: () => true,
-      });
-
-      expect(result.current).toBe(false);
+      const result = canHandleActiveItem(null, null, () => true, []);
+      expect(result).toBe(false);
     });
   });
 
   describe("when there are hovered items", () => {
+    let column1: DatasetColumn;
+    let column2: DatasetColumn;
+    let hoveredItems: DraggedColumn[];
+    let dataSource1: VisualizerDataSource;
+    let dataSource2: VisualizerDataSource;
+
+    beforeEach(() => {
+      column1 = createMockColumn({ name: "avg" });
+      column2 = createMockColumn({ name: "sum" });
+      dataSource1 = {
+        id: "card:1",
+        sourceId: 1,
+        name: "Source 1",
+        type: "card",
+      };
+      dataSource2 = {
+        id: "card:2",
+        sourceId: 2,
+        name: "Source 2",
+        type: "card",
+      };
+      hoveredItems = [
+        createMockHoveredItem(column1, dataSource1),
+        createMockHoveredItem(column2, dataSource2),
+      ];
+    });
+
     it("returns true when all hovered items are not selected and suitable", () => {
-      const column1 = createMockColumn({ name: "avg" });
-      const column2 = createMockColumn({ name: "sum" });
-
-      mockGetHoveredItems.mockReturnValue([
-        createMockHoveredItem(column1, "card:1"),
-        createMockHoveredItem(column2, "card:2"),
-      ]);
-
-      const { result } = renderHookWithProvider({
-        active: null,
-        isSuitableColumn: () => true,
-      });
-
-      expect(result.current).toBe(true);
+      const result = canHandleActiveItem(null, hoveredItems, () => true, []);
+      expect(result).toBe(true);
     });
 
     it("returns false when any hovered item is already selected", () => {
-      const column1 = createMockColumn({
-        name: "avg",
-      });
-      const column2 = createMockColumn({
-        name: "sum",
-      });
-
-      mockGetHoveredItems.mockReturnValue([
-        createMockHoveredItem(column1, "card:1"),
-        createMockHoveredItem(column2, "card:2"),
-      ]);
-
-      // Mock COLUMN_1 as already selected
-      mockGetReferencedColumns.mockReturnValue([
+      const referencedColumns: VisualizerColumnReference[] = [
         { sourceId: "card:1", originalName: "avg", name: "COLUMN_1" },
-      ]);
+      ];
 
-      const { result } = renderHookWithProvider({
-        active: null,
-        isSuitableColumn: () => true,
-      });
-
-      expect(result.current).toBe(false);
+      const result = canHandleActiveItem(
+        null,
+        hoveredItems,
+        () => true,
+        referencedColumns,
+      );
+      expect(result).toBe(false);
     });
 
     it("returns false when any hovered item is not suitable", () => {
-      const column1 = createMockColumn({ name: "avg" });
-      const column2 = createMockColumn({ name: "sum" });
-
-      mockGetHoveredItems.mockReturnValue([
-        createMockHoveredItem(column1, "card:1"),
-        createMockHoveredItem(column2, "card:2"),
-      ]);
-
-      const { result } = renderHookWithProvider({
-        active: null,
-        isSuitableColumn: (column) => column.name !== "sum",
-      });
-
-      expect(result.current).toBe(false);
+      const result = canHandleActiveItem(
+        null,
+        hoveredItems,
+        (column) => column.name !== "sum",
+        [],
+      );
+      expect(result).toBe(false);
     });
 
     it("returns false when hovered items are both selected and unsuitable", () => {
-      const column1 = createMockColumn({ name: "avg" });
-
-      mockGetHoveredItems.mockReturnValue([
-        createMockHoveredItem(column1, "card:1"),
-      ]);
-
-      mockGetReferencedColumns.mockReturnValue([
+      const singleHoveredItem = [createMockHoveredItem(column1, dataSource1)];
+      const referencedColumns: VisualizerColumnReference[] = [
         { sourceId: "card:1", originalName: "avg", name: "COLUMN_1" },
-      ]);
+      ];
 
-      const { result } = renderHookWithProvider({
-        active: null,
-        isSuitableColumn: () => false,
-      });
-
-      expect(result.current).toBe(false);
+      const result = canHandleActiveItem(
+        null,
+        singleHoveredItem,
+        () => false,
+        referencedColumns,
+      );
+      expect(result).toBe(false);
     });
   });
 
   describe("when there is an active dragged item", () => {
+    let column: DatasetColumn;
+    let active: Active;
+
+    beforeEach(() => {
+      column = createMockColumn({ name: "activeColumn" });
+      active = createMockActive(column);
+    });
+
     it("returns true when active item is a dragged column and is suitable", () => {
-      const column = createMockColumn({ name: "activeColumn" });
-      const active = createMockActive(column);
-
-      mockIsDraggedColumnItem.mockReturnValue(true);
-
-      const { result } = renderHookWithProvider({
-        active,
-        isSuitableColumn: () => true,
-      });
-
-      expect(result.current).toBe(true);
+      const result = canHandleActiveItem(active, null, () => true, []);
+      expect(result).toBe(true);
     });
 
     it("returns false when active item is a dragged column but not suitable", () => {
-      const column = createMockColumn({ name: "activeColumn" });
-      const active = createMockActive(column);
-
-      mockIsDraggedColumnItem.mockReturnValue(true);
-
-      const { result } = renderHookWithProvider({
-        active,
-        isSuitableColumn: () => false,
-      });
-
-      expect(result.current).toBe(false);
+      const result = canHandleActiveItem(active, null, () => false, []);
+      expect(result).toBe(false);
     });
 
     it("returns false when active item is not a dragged column", () => {
-      const column = createMockColumn({ name: "activeColumn" });
-      const active = createMockActive(column);
-
-      mockIsDraggedColumnItem.mockReturnValue(false);
-
-      const { result } = renderHookWithProvider({
-        active,
-        isSuitableColumn: () => true,
-      });
-
-      expect(result.current).toBe(false);
+      const nonColumnActive = createMockActive(column, "WELL_ITEM");
+      const result = canHandleActiveItem(nonColumnActive, null, () => true, []);
+      expect(result).toBe(false);
     });
   });
 
   describe("precedence rules", () => {
+    let hoveredColumn: DatasetColumn;
+    let activeColumn: DatasetColumn;
+    let active: Active;
+    let hoveredItems: DraggedColumn[];
+
+    beforeEach(() => {
+      hoveredColumn = createMockColumn({ name: "hoveredColumn" });
+      activeColumn = createMockColumn({ name: "activeColumn" });
+      active = createMockActive(activeColumn);
+      hoveredItems = [
+        createMockHoveredItem(hoveredColumn, {
+          id: "card:1",
+          sourceId: 1,
+          name: "Source 1",
+          type: "card",
+        }),
+      ];
+    });
+
     it("prioritizes hovered items over active item", () => {
-      const hoveredColumn = createMockColumn({ name: "hoveredColumn" });
-      const activeColumn = createMockColumn({ name: "activeColumn" });
-      const active = createMockActive(activeColumn);
-
-      mockGetHoveredItems.mockReturnValue([
-        createMockHoveredItem(hoveredColumn, "card:1"),
-      ]);
-      mockIsDraggedColumnItem.mockReturnValue(true);
-
-      const { result } = renderHookWithProvider({
+      const result = canHandleActiveItem(
         active,
-        isSuitableColumn: (column) => column.name === "hoveredColumn",
-      });
-
-      // Should return true based on hovered item, not active item
-      expect(result.current).toBe(true);
+        hoveredItems,
+        (column) => column.name === "hoveredColumn",
+        [],
+      );
+      expect(result).toBe(true);
     });
   });
 
   describe("column selection detection", () => {
+    let column: DatasetColumn;
+    let hoveredItems: DraggedColumn[];
+
+    beforeEach(() => {
+      column = createMockColumn({ name: "avg" });
+      hoveredItems = [
+        createMockHoveredItem(column, {
+          id: "card:1",
+          sourceId: 1,
+          name: "Source 1",
+          type: "card",
+        }),
+      ];
+    });
+
     it("correctly identifies selected columns across different data sources", () => {
-      const column = createMockColumn({ name: "avg" });
-
-      mockGetHoveredItems.mockReturnValue([
-        createMockHoveredItem(column, "card:1"),
-      ]);
-
-      // Same column name but different data source - should not be considered selected
-      mockGetReferencedColumns.mockReturnValue([
+      const referencedColumns: VisualizerColumnReference[] = [
         { sourceId: "card:2", originalName: "avg", name: "COLUMN_1" },
-      ]);
+      ];
 
-      const { result } = renderHookWithProvider({
-        active: null,
-        isSuitableColumn: () => true,
-      });
-
-      expect(result.current).toBe(true);
+      const result = canHandleActiveItem(
+        null,
+        hoveredItems,
+        () => true,
+        referencedColumns,
+      );
+      expect(result).toBe(true);
     });
 
     it("correctly identifies selected columns with same data source", () => {
-      const column = createMockColumn({ name: "avg" });
-
-      mockGetHoveredItems.mockReturnValue([
-        createMockHoveredItem(column, "card:1"),
-      ]);
-
-      // Same column name and same data source - should be considered selected
-      mockGetReferencedColumns.mockReturnValue([
+      const referencedColumns: VisualizerColumnReference[] = [
         { sourceId: "card:1", originalName: "avg", name: "COLUMN_1" },
-      ]);
+      ];
 
-      const { result } = renderHookWithProvider({
-        active: null,
-        isSuitableColumn: () => true,
-      });
-
-      expect(result.current).toBe(false);
+      const result = canHandleActiveItem(
+        null,
+        hoveredItems,
+        () => true,
+        referencedColumns,
+      );
+      expect(result).toBe(false);
     });
   });
 });
