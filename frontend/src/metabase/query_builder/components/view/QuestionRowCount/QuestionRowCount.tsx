@@ -160,7 +160,7 @@ function RowCountLabel({
 }
 
 const formatRowCount = (count: number) => {
-  const countString = formatNumber(count);
+  const countString = formatNumber(count, { useInstanceSettings: true });
   return ngettext(msgid`${countString} row`, `${countString} rows`, count);
 };
 
@@ -182,7 +182,7 @@ function getLimitMessage(question: Question, result: Dataset): string {
     return t`Showing ${formatRowCount(result.row_count)}`;
   }
 
-  return t`Showing first ${HARD_ROW_LIMIT} rows`;
+  return t`Showing first ${formatRowCount(HARD_ROW_LIMIT)} rows`;
 }
 
 function getRowCountMessage(result: Dataset): string {
@@ -190,7 +190,7 @@ function getRowCountMessage(result: Dataset): string {
     return t`Showing first ${formatRowCount(result.row_count)}`;
   }
   if (result.row_count === HARD_ROW_LIMIT) {
-    return t`Showing first ${HARD_ROW_LIMIT} rows`;
+    return t`Showing first ${formatRowCount(HARD_ROW_LIMIT)} rows`;
   }
   return t`Showing ${formatRowCount(result.row_count)}`;
 }
