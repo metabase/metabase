@@ -535,6 +535,24 @@
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))
 
+;;; --------------------------------------------- List public and embeddable dashboards ------------------------------
+
+(api.macros/defendpoint :get "/public"
+  "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
+  enabled."
+  []
+  (perms/check-has-application-permission :setting)
+  (public-sharing.validation/check-public-sharing-enabled)
+  (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+
+(api.macros/defendpoint :get "/embeddable"
+  "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
+  endpoints and a signed JWT."
+  []
+  (perms/check-has-application-permission :setting)
+  (embedding.validation/check-embedding-enabled)
+  (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
+
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
 (api.macros/defendpoint :get "/:id"
@@ -1060,22 +1078,6 @@
               {:public_uuid       nil
                :made_public_by_id nil})
   {:status 204, :body nil})
-
-(api.macros/defendpoint :get "/public"
-  "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
-  enabled."
-  []
-  (perms/check-has-application-permission :setting)
-  (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
-
-(api.macros/defendpoint :get "/embeddable"
-  "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
-  endpoints and a signed JWT."
-  []
-  (perms/check-has-application-permission :setting)
-  (embedding.validation/check-embedding-enabled)
-  (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
 
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
