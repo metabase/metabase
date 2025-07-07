@@ -62,11 +62,16 @@ describe("suggestFields", () => {
         },
       },
     });
-
+    const stageIndex = 0;
+    const expressionIndex = 0;
     const source = suggestFields({
       query,
-      stageIndex: 0,
-      expressionIndex: 0,
+      stageIndex,
+      availableColumns: Lib.expressionableColumns(
+        query,
+        stageIndex,
+        expressionIndex,
+      ),
     });
 
     return function (doc: string) {
@@ -175,10 +180,12 @@ describe("suggestFields", () => {
   });
 
   it("should suggest foreign fields", () => {
+    const query = createQuery();
+    const stageIndex = -1;
     const source = suggestFields({
-      query: createQuery(),
-      stageIndex: -1,
-      expressionIndex: undefined,
+      query,
+      stageIndex,
+      availableColumns: Lib.expressionableColumns(query, stageIndex),
     });
 
     const result = complete(source, "[Use|");
@@ -327,11 +334,11 @@ describe("suggestFields", () => {
       metadata: sharedMetadata,
       query: queryWithJoins,
     });
-
+    const stageIndex = -1;
     const source = suggestFields({
       query,
-      stageIndex: -1,
-      expressionIndex: undefined,
+      stageIndex,
+      availableColumns: Lib.expressionableColumns(query, stageIndex),
     });
 
     complete(source, "Foo|");
@@ -384,7 +391,10 @@ describe("suggestFields", () => {
     const source = suggestFields({
       query,
       stageIndex: stageIndexAfterNesting,
-      expressionIndex: undefined,
+      availableColumns: Lib.expressionableColumns(
+        query,
+        stageIndexAfterNesting,
+      ),
     });
 
     const result = complete(source, "T|");

@@ -26,12 +26,13 @@ export type ExpressionWidgetProps = {
 
   query: Lib.Query;
   stageIndex: number;
+  expressionIndex?: number;
   clause?: Lib.Expressionable | undefined;
   name?: string;
   withName?: boolean;
   reportTimezone?: string;
   header?: ReactNode;
-  expressionIndex?: number;
+  availableColumns: Lib.ColumnMetadata[];
 
   onChangeClause?: (name: string, clause: Lib.ExpressionClause) => void;
   onClose?: () => void;
@@ -41,13 +42,14 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
   const {
     query,
     stageIndex,
+    expressionIndex,
     name: initialName,
     clause: initialClause,
     withName = false,
     expressionMode = "expression",
     reportTimezone,
     header,
-    expressionIndex,
+    availableColumns,
     onChangeClause,
     onClose,
   } = props;
@@ -104,19 +106,19 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
     () =>
       [
         expressionMode === "expression" &&
-          hasCombinations(query, stageIndex) && {
+          hasCombinations(availableColumns) && {
             name: t`Combine columns`,
             icon: "combine",
             action: () => setIsCombiningColumns(true),
           },
         expressionMode === "expression" &&
-          hasExtractions(query, stageIndex) && {
+          hasExtractions(query, availableColumns) && {
             name: t`Extract columns`,
             icon: "arrow_split",
             action: () => setIsExtractingColumn(true),
           },
       ].filter((x): x is Shortcut => Boolean(x)),
-    [expressionMode, query, stageIndex],
+    [expressionMode, query, availableColumns],
   );
 
   const handleCombineColumnsSubmit = useCallback(
@@ -154,6 +156,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         <CombineColumns
           query={query}
           stageIndex={stageIndex}
+          availableColumns={availableColumns}
           onCancel={handleCancel}
           onSubmit={handleCombineColumnsSubmit}
           withTitle
@@ -168,6 +171,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         <ExtractColumn
           query={query}
           stageIndex={stageIndex}
+          availableColumns={availableColumns}
           onCancel={handleCancel}
           onSubmit={handleExtractColumnSubmit}
         />
@@ -187,6 +191,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         query={query}
         stageIndex={stageIndex}
         expressionIndex={expressionIndex}
+        availableColumns={availableColumns}
         reportTimezone={reportTimezone}
         shortcuts={shortcuts}
         error={error}

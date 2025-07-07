@@ -3,20 +3,13 @@ import { t } from "ttag";
 import { getErrorMessage } from "metabase/api/utils";
 import { Box, Flex, Icon, Menu, Text } from "metabase/ui";
 
-export function GdriveErrorMenuItem({
-  error,
-  hasDivider = true,
-}: {
-  error: any;
-  hasDivider?: boolean;
-}) {
+export function GdriveErrorMenuItem({ error }: { error: any }) {
   if (!error) {
     return null;
   }
 
   return (
     <>
-      {hasDivider && <Menu.Divider />}
       <Menu.Label>
         <Flex>
           <Icon name="warning" c="error" mt="xs" mr="sm" />

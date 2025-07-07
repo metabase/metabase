@@ -143,12 +143,12 @@ function DashCardActionsPanelInner({
   }
 
   const canAddFilter = useMemo(() => {
-    if (!dashcard || question == null || !supportsInlineParameters(dashcard)) {
+    if (!dashcard || !supportsInlineParameters(dashcard)) {
       return false;
     }
 
     return isQuestionDashCard(dashcard)
-      ? canEditQuestion(question)
+      ? question != null && canEditQuestion(question)
       : isHeadingDashCard(dashcard);
   }, [dashcard, question]);
 
