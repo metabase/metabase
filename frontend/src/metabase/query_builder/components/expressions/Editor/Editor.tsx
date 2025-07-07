@@ -38,8 +38,7 @@ import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
-import { useInitialClause } from "./utils";
-import { hasActiveSnippet } from "./utils";
+import { hasActiveSnippet, useInitialClause } from "./utils";
 
 type EditorProps = {
   id?: string;
