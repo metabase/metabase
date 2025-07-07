@@ -1018,7 +1018,7 @@
     :mongo
     (testing "Ensure _id is present in results"
       ;; Gist: Limit is set to 2 and there, other fields' names that precede the _id when sorted
-      (binding [mongo/*leaf-fields-limit* 2]
+      (with-redefs [mongo/leaf-fields-limit 2]
         (with-describe-table-for-sample
           [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
             "__a" 1
@@ -1111,7 +1111,7 @@
                                   {:path "a.b.c.d.e.f.g", :type "array", :indices [1 0 0 0 0 0 0]}
                                   {:path "a.b.c.d.e.f.i", :type "int", :indices [1 0 0 0 0 0 1]}
                                   {:path "a.b.c.d.e.f.h", :type "null", :indices [1 0 0 0 0 0 0]}]]]]
-      (binding [mongo/*leaf-fields-limit* limit]
+      (with-redefs [mongo/leaf-fields-limit limit]
         (with-describe-table-for-sample
           [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
             "a" {"b" {"c" {"d" {"e" {"f" {"g" [3 2 1]}}}}}}}
