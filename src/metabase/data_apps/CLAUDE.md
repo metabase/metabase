@@ -14,78 +14,81 @@ This directory contains the core functionality for Metabase Data Apps - a featur
 ### Tables and Relationships
 
 ```
-app
+data_app
 ├── id (PK)
 ├── name
 ├── url (unique)
-├── status
+├── status (private, published, archived)
 ├── entity_id
 ├── created_at
 └── updated_at
 
-app_definition
+data_app_definition
 ├── id (PK)
-├── app_id (FK -> app.id, cascade delete)
-├── version (incrementing number)
+├── app_id (FK -> data_app.id, cascade delete)
+├── revision_number (incrementing number, calculated atomically)
 ├── config (JSON)
-├── entity_id (SHA hash)
+├── entity_id (char(21))
 └── created_at
 
-app_release
+data_app_release
 ├── id (PK)
-├── app_id (FK -> app.id, cascade delete)
-├── app_definition_id (FK -> app_definition.id, cascade delete)
+├── app_id (FK -> data_app.id, cascade delete)
+├── app_definition_id (FK -> data_app_definition.id, cascade delete)
 ├── published_at
-└── active (boolean, default false)
+└── retracted (boolean, default false)
 ```
 
 ### Key Relationships
 
-1. **App → AppDefinition** (1:N)
+1. **DataApp → DataAppDefinition** (1:N)
    - Each app can have multiple versioned definitions
    - Definitions are append-only (immutable once created)
    - Indexed on `app_id` for efficient queries
+   - `revision_number` is calculated atomically to prevent race conditions
 
-2. **App → AppRelease** (1:N)
+2. **DataApp → DataAppRelease** (1:N)
    - Each app can have multiple publishing records
-   - Only one can be `active` at a time
-   - Composite index on `(app_id, active)` for fast lookups
+   - Multiple releases can exist without being retracted
+   - Retracted status allows for simpler publishing and rollback
 
-3. **AppDefinition → AppRelease** (1:N)
+3. **DataAppDefinition → DataAppRelease** (1:N)
    - Each definition can be published multiple times
-   - Release records track when a definition was made active
+   - Release records track when a definition was published
 
 ## Development Guidelines
 
 ### Model Structure
 
 The data apps feature uses three main models:
-- `:model/App` - The main app entity with unique URL
-- `:model/AppDefinition` - Immutable versioned app configurations
-- `:model/AppRelease` - Release records tracking active versions
+- `:model/DataApp` - The main app entity with unique URL (table: `data_app`)
+- `:model/DataAppDefinition` - Immutable versioned app configurations (table: `data_app_definition`)
+- `:model/DataAppRelease` - Release records tracking active versions (table: `data_app_release`)
 
 ### Public API (core.clj)
 
 These functions form the public interface for the data apps module. All external code should use these functions rather than directly accessing the models:
 
 - `create-app!` - Creates a new app with its initial definition
-- `new-definition!` - Creates a new version of an app definition
-- `release!` - Releases a specific app definition version
+- `new-definition!` - Creates a new version of an app definition (revision_number calculated atomically)
+- `publish!` - Publishes a specific app definition version
 
 **Important:** Do not import or use functions from `models.clj` directly outside of this module. Always use the public API in `core.clj`.
 
 ### Database Considerations
 
-- App definitions are versioned automatically
-- Only one definition can be released at a time
+- App definitions use `revision_number` (not version) that increments atomically
+- Multiple definitions can be published without needing to deactivate others
 - Validation occurs before insert/update operations
+- Retracted flag allows marking releases as unavailable when needed
 
 ### Common Patterns
 
 1. Always validate app definition configs before saving
 2. Use transactions when updating multiple related records
-3. Ensure version numbers increment properly
-4. Handle publication state transitions atomically
+3. Revision numbers are calculated atomically using SQL (no race conditions)
+4. Handle publication state transitions explicitly in transactions
+5. Use `data_app` prefix for all table names for clarity
 
 ## Maintenance
 

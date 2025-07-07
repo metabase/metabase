@@ -20,10 +20,12 @@
    "Timeline"])
 
 (def to-implement-models
-  "The list of exported models but are pending for implementation."
-  ["App"
-   "AppDefinition"
-   "AppPublishing"])
+  "The list of exported models but are pending for implementation.
+  
+  TODO: Create Linear issue to track implementation of these models."
+  ["DataApp"
+   "DataAppDefinition"
+   "DataAppRelease"])
 
 (def exported-models
   "The list of all models exported by serialization by default. Used for production code and by tests."

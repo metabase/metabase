@@ -173,15 +173,15 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-07-03T16:00:00
       author: qnkhuat
-      comment: Create app table for data apps functionality
+      comment: Create data_app table for data apps functionality
       preConditions:
         - onFail: MARK_RAN
         - not:
             - tableExists:
-                tableName: app
+                tableName: data_app
       changes:
         - createTable:
-            tableName: app
+            tableName: data_app
             remarks: Applications
             columns:
               - column:
@@ -207,7 +207,7 @@ databaseChangeLog:
                     unique: true
               - column:
                   name: status
-                  remarks: Status of the app (draft, published, archived)
+                  remarks: Status of the app (private, published, archived)
                   type: varchar(32)
                   constraints:
                     nullable: false
@@ -233,20 +233,20 @@ databaseChangeLog:
                     nullable: false
       rollback:
         - dropTable:
-            tableName: app
+            tableName: data_app
 
   - changeSet:
       id: v56.2025-07-03T16:01:00
       author: qnkhuat
-      comment: Create app_definition table for data apps functionality
+      comment: Create data_app_definition table for data apps functionality
       preConditions:
         - onFail: MARK_RAN
         - not:
             - tableExists:
-                tableName: app_definition
+                tableName: data_app_definition
       changes:
         - createTable:
-            tableName: app_definition
+            tableName: data_app_definition
             remarks: App definitions (append only)
             columns:
               - column:
@@ -263,13 +263,13 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    referencedTableName: app
+                    referencedTableName: data_app
                     referencedColumnNames: id
-                    foreignKeyName: fk_app_definition_app_id
+                    foreignKeyName: fk_data_app_definition_app_id
                     deleteCascade: true
               - column:
-                  name: version
-                  remarks: Version number for ordering
+                  name: revision_number
+                  remarks: Revision number for ordering
                   type: int
                   constraints:
                     nullable: false
@@ -282,7 +282,7 @@ databaseChangeLog:
               - column:
                   name: entity_id
                   remarks: SHA hash for the entity
-                  type: ${text.type}
+                  type: char(21)
                   constraints:
                     nullable: false
               - column:
@@ -294,44 +294,87 @@ databaseChangeLog:
                     nullable: false
       rollback:
         - dropTable:
-            tableName: app_definition
+            tableName: data_app_definition
 
   - changeSet:
       id: v56.2025-07-03T16:02:00
       author: qnkhuat
-      comment: Add index on app_definition.app_id
+      comment: Add index on data_app_definition.app_id
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
-            tableName: app_definition
+            tableName: data_app_definition
         - not:
             - indexExists:
-                tableName: app_definition
-                indexName: idx_app_definition_app_id
+                tableName: data_app_definition
+                indexName: idx_data_app_definition_app_id
       changes:
         - createIndex:
-            tableName: app_definition
-            indexName: idx_app_definition_app_id
+            tableName: data_app_definition
+            indexName: idx_data_app_definition_app_id
             columns:
               - column:
                   name: app_id
       rollback:
         - dropIndex:
-            tableName: app_definition
-            indexName: idx_app_definition_app_id
+            tableName: data_app_definition
+            indexName: idx_data_app_definition_app_id
+
+  - changeSet:
+      id: v56.2025-07-03T16:02:10
+      author: qnkhuat
+      comment: index data_app_definition.app_id and revision_number
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: data_app_definition
+                indexName: idx_data_app_definition_app_id_revision_number
+      changes:
+        - createIndex:
+            tableName: data_app_definition
+            indexName: idx_data_data_app_definition_id_revision_number
+            columns:
+              - column:
+                  name: app_id
+              - column:
+                  name: revision_number
+                  descending: true
+
+  - changeSet:
+      id: v56.2025-07-03T16:02:20
+      author: qnkhuat
+      comment: Add unique constraint on data_app_definition (revision_number, app_id)
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: data_app_definition
+        - not:
+            - uniqueConstraintExists:
+                tableName: data_app_definition
+                constraintName: idx_data_app_definition_revision_number_app_id
+      changes:
+        - addUniqueConstraint:
+            tableName: data_app_definition
+            constraintName: idx_data_app_definition_revision_number_app_id
+            columnNames: revision_number, app_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: data_app_definition
+            constraintName: idx_data_app_definition_revision_number_app_id
 
   - changeSet:
       id: v56.2025-07-03T16:03:00
       author: qnkhuat
-      comment: Create app_release table for data apps functionality
+      comment: Create data_app_release table for data apps functionality
       preConditions:
         - onFail: MARK_RAN
         - not:
             - tableExists:
-                tableName: app_release
+                tableName: data_app_release
       changes:
         - createTable:
-            tableName: app_release
+            tableName: data_app_release
             remarks: App publishing records
             columns:
               - column:
@@ -348,9 +391,9 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    referencedTableName: app
+                    referencedTableName: data_app
                     referencedColumnNames: id
-                    foreignKeyName: fk_app_release_app_id
+                    foreignKeyName: fk_data_app_release_app_id
                     deleteCascade: true
               - column:
                   name: app_definition_id
@@ -358,9 +401,9 @@ databaseChangeLog:
                   type: int
                   constraints:
                     nullable: false
-                    referencedTableName: app_definition
+                    referencedTableName: data_app_definition
                     referencedColumnNames: id
-                    foreignKeyName: fk_app_release_app_definition_id
+                    foreignKeyName: fk_data_app_release_app_definition_id
                     deleteCascade: true
               - column:
                   remarks: The timestamp of when the app was published
@@ -370,30 +413,30 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: active
-                  remarks: Whether this version is active
+                  name: retracted
+                  remarks: Whether this version is retracted
                   type: ${boolean.type}
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
       rollback:
         - dropTable:
-            tableName: app_release
+            tableName: data_app_release
 
   - changeSet:
       id: v56.2025-07-03T16:04:00
       author: qnkhuat
-      comment: index app_release.app_definition_id
+      comment: index data_app_release.app_definition_id
       preConditions:
         - onFail: MARK_RAN
         - not:
             - indexExists:
-                tableName: app_release
-                indexName: idx_app_release_app_definition_id
+                tableName: data_app_release
+                indexName: idx_data_app_release_app_definition_id
       changes:
         - createIndex:
-            tableName: app_release
-            indexName: idx_app_release_app_definition_id
+            tableName: data_app_release
+            indexName: idx_data_app_release_app_definition_id
             columns:
               - column:
                   name: app_definition_id
@@ -401,20 +444,42 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-07-03T16:05:00
       author: qnkhuat
-      comment: index app_release.app_id
+      comment: index data_app_release.app_id
       preConditions:
         - onFail: MARK_RAN
         - not:
             - indexExists:
-                tableName: app_release
-                indexName: idx_app_release_app_id
+                tableName: data_app_release
+                indexName: idx_data_app_release_app_id
       changes:
         - createIndex:
-            tableName: app_release
-            indexName: idx_app_release_app_id
+            tableName: data_app_release
+            indexName: idx_data_app_release_app_id
             columns:
               - column:
                   name: app_id
+
+  - changeSet:
+      id: v56.2025-07-03T16:07:00
+      author: qnkhuat
+      comment: index data_app_release.app_id and retracted
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: data_app_release
+                indexName: idx_data_app_release_app_id_retracted
+      changes:
+        - createIndex:
+            tableName: data_app_release
+            indexName: idx_data_app_release_app_id_retracted
+            columns:
+              - column:
+                  name: app_id
+                  descending: true
+              - column:
+                  name: retracted
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

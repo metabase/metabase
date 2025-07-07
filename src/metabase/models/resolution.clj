@@ -14,9 +14,9 @@
   Tests will check to make sure new models get included in this map."
   '{:model/Action                            metabase.actions.models
     :model/ApiKey                            metabase.api-keys.models.api-key
-    :model/App                               metabase.data-apps.models
-    :model/AppDefinition                     metabase.data-apps.models
-    :model/AppRelease                        metabase.data-apps.models
+    :model/DataApp                               metabase.data-apps.models
+    :model/DataAppDefinition                     metabase.data-apps.models
+    :model/DataAppRelease                        metabase.data-apps.models
     :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision
     :model/AuditLog                          metabase.audit-app.models.audit-log
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark

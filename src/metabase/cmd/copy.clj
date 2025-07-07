@@ -53,9 +53,9 @@
   "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load
   instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
   (concat
-   [:model/App
-    :model/AppDefinition
-    :model/AppRelease
+   [:model/DataApp
+    :model/DataAppDefinition
+    :model/DataAppRelease
     :model/Channel
     :model/ChannelTemplate
     :model/Database
