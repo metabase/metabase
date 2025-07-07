@@ -87,7 +87,6 @@ export const FkTargetPicker = ({
         ...comboboxProps,
       }}
       data={data}
-      data-testid="fk-target-select"
       disabled={!hasIdFields}
       filter={({ options, search }) => {
         const query = search.toLowerCase().trim();
@@ -180,7 +179,7 @@ function getFkFieldPlaceholder(field: ApiField, idFields: Field[]) {
   return hasIdFields ? t`Select a target` : t`No key available`;
 }
 
-function hasMultipleSchemas(field: Field[]) {
-  const schemas = new Set(field.map((field) => field.table?.schema));
+function hasMultipleSchemas(fields: Field[]) {
+  const schemas = new Set(fields.map((field) => field.table?.schema));
   return schemas.size > 1;
 }
