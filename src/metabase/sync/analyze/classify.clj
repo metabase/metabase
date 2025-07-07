@@ -108,23 +108,23 @@
   "Run various classifiers on the appropriate `fields` in a `table` that have not been previously analyzed. These do
   things like inferring (and setting) the semantic types and preview display status for Fields belonging to `table`."
   [table :- i/TableInstance]
-  (when-let [fields (fields-to-classify table)]
-    (let [table-id (:id table)
-          existing-name-field (t2/count :model/Field
-                                        :table_id table-id
-                                        :active true
-                                        :visibility_type [:not-in ["sensitive" "retired"]]
-                                        :semantic_type :type/Name)
-          found-name (atom (pos? existing-name-field))]
-      {:fields-classified (count fields)
-       :fields-failed     (->> fields
-                               (map (fn [field]
-                                      (let [result (classify! field {:exists-name @found-name})]
-                                        (when (= :type/Name (:semantic_type result))
-                                          (reset! found-name true))
-                                        result)))
-                               (filter (partial instance? Exception))
-                               count)})))
+  (let [table-id (:id table)]
+    (when-let [fields (fields-to-classify table)]
+      (let [existing-name-field (t2/count :model/Field
+                                          :table_id table-id
+                                          :active true
+                                          :visibility_type [:not-in ["sensitive" "retired"]]
+                                          :semantic_type :type/Name)
+            found-name (atom (pos? existing-name-field))]
+        {:fields-classified (count fields)
+         :fields-failed     (->> fields
+                                 (map (fn [field]
+                                        (let [result (classify! field {:exists-name @found-name})]
+                                          (when (= :type/Name (:semantic_type result))
+                                            (reset! found-name true))
+                                          result)))
+                                 (filter (partial instance? Exception))
+                                 count)}))))
 
 (mu/defn ^:always-validate classify-table!
   "Run various classifiers on the `table`. These do things like inferring (and setting) entitiy type of `table`."
