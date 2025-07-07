@@ -374,10 +374,9 @@
   [ftree]
   (letfn [(ftree->nested-fields*
             [ftree*]
-            (-> (if (not (contains? ftree* :children))
-                  ftree*
-                  (-> ftree*
-                      (update :children #(set (map ftree->nested-fields* (vals %))))
+            (-> ftree*
+                (cond-> (contains? ftree* :children)
+                  (-> (update :children #(set (map ftree->nested-fields* (vals %))))
                       (set/rename-keys {:children :nested-fields})))
                 (dissoc :index)))]
     (:nested-fields (ftree->nested-fields* ftree))))
