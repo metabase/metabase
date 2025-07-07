@@ -84,7 +84,7 @@
            would-be-name? (= (:semantic_type classified) :type/Name)
            ;; if it would be name and table already has a name field, don't classify as name (SEM-414)
            updated-field (if (and would-be-name? exists-name)
-                           field
+                           (assoc classified :semantic_type (:semantic_type field))
                            classified)]
        (when-not (= field updated-field)
          (save-model-updates! field updated-field))
