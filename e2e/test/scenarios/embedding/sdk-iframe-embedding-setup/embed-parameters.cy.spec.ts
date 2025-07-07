@@ -93,6 +93,7 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
       getEmbedSidebar().within(() => {
         cy.findByText("Get Code").click();
         codeBlock().should("contain", '"initialParameters"');
+        codeBlock().should("not.contain", '"hiddenParameters"');
         codeBlock().should("contain", '"id": "123"');
         codeBlock().should("contain", '"product_id": "456"');
       });
@@ -119,6 +120,7 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
       getEmbedSidebar().within(() => {
         cy.findByText("Get Code").click();
         codeBlock().should("contain", '"hiddenParameters"');
+        codeBlock().should("not.contain", '"initialParameters"');
         codeBlock().should("contain", '"id"');
         codeBlock().should("contain", '"product_id"');
       });
@@ -197,6 +199,7 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
     getEmbedSidebar().within(() => {
       cy.findByText("Get Code").click();
       codeBlock().should("contain", '"initialSqlParameters"');
+      codeBlock().should("not.contain", '"hiddenParameters"'); // not supported for questions yet
       codeBlock().should("contain", '"id": "123"');
     });
   });
