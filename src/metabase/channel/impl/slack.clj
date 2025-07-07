@@ -208,9 +208,9 @@
                                    (include-branding?)
                                    (conj
                                     {:type "mrkdwn"
-                                     :text (str metabase-branding-copy (mkdwn-link-text
-                                                                        metabase-branding-link
-                                                                        "metabase.com"))}))}
+                                     :text (str metabase-branding-copy " " (mkdwn-link-text
+                                                                            metabase-branding-link
+                                                                            "metabase.com"))}))}
         filter-fields   (for [parameter top-level-params]
                           {:type "mrkdwn"
                            :text (parameter-markdown parameter)})
