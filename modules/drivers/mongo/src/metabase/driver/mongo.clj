@@ -225,12 +225,10 @@
   "Construct sequence of ftree paths from `path`. `path` is string of form eg. `c1.c2...`. The result
   for the example looks as '([:children 'c1'] [:children 'c1' :children 'c2']."
   [path]
-  (letfn [(zip [coll1 coll2]
-            (vec (mapcat vector coll1 coll2)))]
-    (->> (str/split path #"\.")
-         (reductions conj [])
-         (drop 1)
-         (map (partial zip (repeat :children))))))
+(->> (str/split path #"\.")
+     (reductions conj [])
+     rest
+     (map #(vec (interleave (repeat :children) %))))
 
 (defn- ftree-path->raw-path
   [ftree-path]
