@@ -1,4 +1,4 @@
-import { useWindowEvent } from "@mantine/hooks";
+import { useDisclosure, useWindowEvent } from "@mantine/hooks";
 import type { Location } from "history";
 import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -35,9 +35,14 @@ interface Props {
 export const DataModel = ({ children, location, params }: Props) => {
   const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
-  const [isFieldValuesModalOpen, setIsFieldValuesModalOpen] = useState(false);
+  const [isPreviewOpen, { close: closePreview, open: openPreview }] =
+    useDisclosure();
+  const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
+    useDisclosure();
+  const [
+    isFieldValuesModalOpen,
+    { close: closeFieldValuesModal, open: openFieldValuesModal },
+  ] = useDisclosure();
   const isEmptyStateShown =
     databaseId == null || tableId == null || fieldId == null;
   const {
@@ -53,10 +58,6 @@ export const DataModel = ({ children, location, params }: Props) => {
   const parentField = fieldsByName[parentName];
   const [previewType, setPreviewType] = useState<PreviewType>("table");
 
-  const handlePreviewClick = () => {
-    setIsPreviewOpen(true);
-  };
-
   useWindowEvent(
     "keydown",
     (event) => {
@@ -69,7 +70,7 @@ export const DataModel = ({ children, location, params }: Props) => {
 
       if (event.key === "Escape" && !isInputFocused && !isModalOpen) {
         event.stopPropagation();
-        setIsPreviewOpen(false);
+        closePreview();
       }
     },
     {
@@ -122,7 +123,7 @@ export const DataModel = ({ children, location, params }: Props) => {
                     key={table.id}
                     params={params}
                     table={table}
-                    onSyncOptionsClick={() => setIsSyncModalOpen(true)}
+                    onSyncOptionsClick={openSyncModal}
                   />
                 )}
               </LoadingAndErrorWrapper>
@@ -151,10 +152,8 @@ export const DataModel = ({ children, location, params }: Props) => {
                          * This is to avoid state mix-up with optimistic updates.
                          */
                         key={getRawTableFieldId(field)}
-                        onFieldValuesClick={() =>
-                          setIsFieldValuesModalOpen(true)
-                        }
-                        onPreviewClick={handlePreviewClick}
+                        onFieldValuesClick={openFieldValuesModal}
+                        onPreviewClick={openPreview}
                       />
                     </Box>
                   )}
@@ -179,7 +178,7 @@ export const DataModel = ({ children, location, params }: Props) => {
                 previewType={previewType}
                 table={table}
                 tableId={tableId}
-                onClose={() => setIsPreviewOpen(false)}
+                onClose={closePreview}
                 onPreviewTypeChange={setPreviewType}
               />
             </Box>
@@ -216,7 +215,7 @@ export const DataModel = ({ children, location, params }: Props) => {
         <SyncOptionsModal
           isOpen={isSyncModalOpen}
           tableId={table.id}
-          onClose={() => setIsSyncModalOpen(false)}
+          onClose={closeSyncModal}
         />
       )}
 
@@ -224,7 +223,7 @@ export const DataModel = ({ children, location, params }: Props) => {
         <FieldValuesModal
           fieldId={fieldId}
           isOpen={isFieldValuesModalOpen}
-          onClose={() => setIsFieldValuesModalOpen(false)}
+          onClose={closeFieldValuesModal}
         />
       )}
     </Flex>
