@@ -356,10 +356,11 @@ databaseChangeLog:
       id: v56.2025-07-07T08:59:40
       author: edpaget
       comment: add column for tenant attributes
+      preConditions: # not needed
       changes:
-        addColumn:
-          table: tenant
-          columns:
+        - addColumn:
+            tableName: tenant
+            columns:
               - column:
                   name: attributes
                   type: ${text.type}
