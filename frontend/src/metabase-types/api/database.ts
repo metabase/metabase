@@ -29,6 +29,7 @@ export type DatabaseFeature =
   | "expressions/integer"
   | "expressions/float"
   | "expressions/text"
+  | "expressions/today"
   | "native-parameters"
   | "nested-queries"
   | "standard-deviation-aggregations"

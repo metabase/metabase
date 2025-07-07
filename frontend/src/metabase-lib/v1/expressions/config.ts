@@ -365,6 +365,13 @@ const CONVERSION = defineClauses(
         },
       ],
     },
+    today: {
+      displayName: "today",
+      type: "datetime",
+      requiresFeature: "expressions/today",
+      description: () => t`Returns the current date.`,
+      args: () => [],
+    },
     float: {
       displayName: "float",
       type: "number",
