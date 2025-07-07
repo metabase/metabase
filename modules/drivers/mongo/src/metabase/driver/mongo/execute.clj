@@ -143,7 +143,6 @@
     (.batchSize 100)
     (.maxTime timeout-ms TimeUnit/MILLISECONDS)))
 
-#_:clj-kondo/ignore
 (defn aggregate-database
   "Used in testing to enable aggregate on pipelines sourced with $documents stage."
   [^MongoDatabase db
