@@ -20,10 +20,9 @@
    "Timeline"])
 
 (def to-implement-models
-  "The list of exported models but are pending for implementation.
-  
-  TODO: Create Linear issue to track implementation of these models."
-  ["DataApp"
+  "The list of exported models but are pending for implementation."
+  [#_;; see https://linear.app/metabase/issue/WRK-579
+     "DataApp"
    "DataAppDefinition"
    "DataAppRelease"])
 

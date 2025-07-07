@@ -25,16 +25,21 @@
 ;;                                       :model/DataApp                                           ;;
 ;;------------------------------------------------------------------------------------------------;;
 
+(def ^:private data-app-statuses #{:private :published :archived})
+
 (t2/deftransforms :model/DataApp
-  {:config mi/transform-json})
+  {:status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum data-app-statuses))})
 
 ;;------------------------------------------------------------------------------------------------;;
 ;;                                   :model/DataAppDefinition                                     ;;
 ;;------------------------------------------------------------------------------------------------;;
 
+(t2/deftransforms :model/DataAppDefinition
+  {:config mi/transform-json})
+
 (mr/def ::AppDefinitionConfig
   [:maybe [:map {:closed true}
-           [:revision_number pos-int?]]])
+           [:version pos-int?]]])
 
 (defn- validate-app-definition
   "Validate an AppDefinition."
@@ -51,6 +56,12 @@
   (throw (ex-info "AppDefinition is append-only and cannot be updated"
                   {:status-code 400
                    :changes     (t2/changes instance)})))
+
+(defn- next-revision-number
+  "Get the next revision number for a given app."
+  [app-id]
+  (inc (or (:max (t2/select-one [:model/DataAppDefinition [:%max.revision_number :max]] :app_id app-id))
+           0)))
 
 ;;------------------------------------------------------------------------------------------------;;
 ;;                                    :model/DataAppRelease                                       ;;
@@ -80,24 +91,21 @@
 ;;                                        Public APIs                                             ;;
 ;;------------------------------------------------------------------------------------------------;;
 
-(declare new-definition!)
+(defn new-definition!
+  "Create a new definition for an existing app."
+  [app-id definition]
+  (t2/insert-returning-instance! :model/DataAppDefinition
+                                 (merge definition
+                                        {:app_id          app-id
+                                         :revision_number (next-revision-number app-id)})))
 
 (defn create-app!
   "Create a new App with an initial definition."
   [app-data]
   (t2/with-transaction [_conn]
-    (let [app (t2/insert-returning-instance! :model/DataApp (dissoc app-data :config))
-          app-definition (new-definition! (:id app) (:config app-data))]
+    (let [app            (t2/insert-returning-instance! :model/DataApp (dissoc app-data :definition))
+          app-definition (new-definition! (:id app) (:definition app-data))]
       (assoc app :definition app-definition))))
-
-(defn new-definition!
-  "Create a new definition for an existing app."
-  [app-id config]
-  (t2/insert-returning-instance! :model/DataAppDefinition {:app_id app-id
-                                                           :config config
-                                                           :revision_number {:select [:%coalesce.max.revision_number.+.1 1]
-                                                                             :from :data_app_definition
-                                                                             :where [:= :app_id app-id]}}))
 
 (defn publish!
   "Publish a new definition of an app."
