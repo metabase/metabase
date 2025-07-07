@@ -336,7 +336,7 @@ describe("scenarios > home > custom homepage", () => {
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
       );
 
-      // Do a page refresh and test dashboard header
+      cy.log("Do a page refresh and test dashboard header");
       cy.visit("/");
       cy.location("pathname").should(
         "equal",

@@ -367,7 +367,7 @@ describe("scenarios > visualizations > pie chart", () => {
     it(`should handle hover and drill throughs correctly - development ${devMode}`, () => {
       cy.intercept("/api/session/properties", (req) => {
         req.continue((res) => {
-          res.body["token-features"]["development-mode"] = devMode;
+          res.body["token-features"].development_mode = devMode;
         });
       });
 

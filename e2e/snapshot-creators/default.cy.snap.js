@@ -110,13 +110,6 @@ describe("snapshots", () => {
     updateSetting("enable-embedding-static", true).then(() => {
       updateSetting("embedding-secret-key", METABASE_SECRET_KEY);
     });
-
-    // update the Sample db connection string so it is valid in both CI and locally
-    cy.request("GET", `/api/database/${SAMPLE_DB_ID}`).then((response) => {
-      response.body.details.db =
-        "./plugins/sample-database.db;USER=GUEST;PASSWORD=guest";
-      cy.request("PUT", `/api/database/${SAMPLE_DB_ID}`, response.body);
-    });
   }
 
   function addUsersAndGroups() {
