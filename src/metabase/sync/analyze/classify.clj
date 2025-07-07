@@ -108,10 +108,10 @@
   [table :- i/TableInstance]
   (when-let [fields (fields-to-classify table)]
     (let [table-id (:id table)
-          existing-name-field (t2/select :model/Field
-                                         :table_id table-id
-                                         :semantic_type :type/Name)
-          found-name (atom (seq existing-name-field))]
+          existing-name-field (t2/count :model/Field
+                                        :table_id table-id
+                                        :semantic_type :type/Name)
+          found-name (atom (pos? existing-name-field))]
       {:fields-classified (count fields)
        :fields-failed     (->> fields
                                (map (fn [field]
