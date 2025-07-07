@@ -96,28 +96,26 @@
                     {(mt/id :reviews) {:perms/create-queries :no}
                      (mt/id :orders) {:perms/view-data :blocked}
                      products-table-id {:perms/create-queries :no}}
-                    ;; Clears the cache:
-                    (data-perms/with-relevant-permissions-for-user (mt/user->id :rasta)
-                      ;; Mimicks the API endpoint:
-                      (binding [qp.perms/*param-values-query* true]
-                        (let [remapped-values (params.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
+                    (data-perms/disable-perms-cache
+                     ;; Mimicks the API endpoint:
+                     (binding [qp.perms/*param-values-query* true]
+                       (let [remapped-values (params.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
 
-                          (testing "Should get only raw value with restricted permissions (reproducing bug)"
-                            (is (= [1 "Rustic Paper Wallet"]
-                                   remapped-values)
-                                "Even with no query-creating permissions, we still get the remapped value."))))))
+                         (testing "Should get only raw value with restricted permissions (reproducing bug)"
+                           (is (= [1 "Rustic Paper Wallet"]
+                                  remapped-values)
+                               "Even with no query-creating permissions, we still get the remapped value."))))))
                   (perms.test-util/with-perm-for-group-and-table! (perms-group/all-users) products-table-id
                     :perms/view-data :blocked
                     (binding [api/*current-user-id* (mt/user->id :rasta)]
-                      ;; Necessary to prevent regular permissions caching:
-                      (data-perms/with-relevant-permissions-for-user (mt/user->id :rasta)
-                        (binding [;; Mimicking the API endpoint:
-                                  qp.perms/*param-values-query* true]
-                          (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
-                                parameter (first (:parameters dashboard))]
-                            (is (thrown-with-msg?
-                                 Exception #"Error executing"
-                                 (params.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)))))))))))))))))
+                      (data-perms/disable-perms-cache
+                       (binding [;; Mimicking the API endpoint:
+                                 qp.perms/*param-values-query* true]
+                         (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                               parameter (first (:parameters dashboard))]
+                           (is (thrown-with-msg?
+                                Exception #"Error executing"
+                                (params.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)))))))))))))))))
 
 (deftest ^:sequential dashboard-remapping-conflict-scenarios-test
   "Test various scenarios where FK1, FK2, and PK have different remapping configurations.

@@ -191,9 +191,9 @@
      ~@body))
 
 (defn- get-permissions [user-id perm-type db-id]
-  (if (or (= user-id api/*current-user-id*)
-          (not *use-perms-cache?*))
-    ;; Use the cache if we can; if not, add perms to the cache for this DB
+  (if (and (= user-id api/*current-user-id*)
+           *use-perms-cache?*)
+    ;; Use the cache if we can
     (do
       (prime-db-cache [db-id])
       (get-in (:perms @*permissions-for-user*) [user-id perm-type db-id]))
