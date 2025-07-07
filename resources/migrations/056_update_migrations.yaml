@@ -216,7 +216,7 @@ databaseChangeLog:
                   remarks: Entity id
                   type: char(21)
                   constraints:
-                    nullable: false
+                    nullable: true
               - column:
                   remarks: The timestamp of when the app was created
                   name: created_at
@@ -397,6 +397,24 @@ databaseChangeLog:
             columns:
               - column:
                   name: app_definition_id
+
+  - changeSet:
+      id: v56.2025-07-03T16:05:00
+      author: qnkhuat
+      comment: index app_release.app_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: app_release
+                indexName: idx_app_release_app_id
+      changes:
+        - createIndex:
+            tableName: app_release
+            indexName: idx_app_release_app_id
+            columns:
+              - column:
+                  name: app_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

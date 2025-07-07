@@ -16,7 +16,7 @@
     :model/ApiKey                            metabase.api-keys.models.api-key
     :model/App                               metabase.data-apps.models
     :model/AppDefinition                     metabase.data-apps.models
-    :model/AppPublishing                     metabase.data-apps.models
+    :model/AppRelease                        metabase.data-apps.models
     :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision
     :model/AuditLog                          metabase.audit-app.models.audit-log
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark

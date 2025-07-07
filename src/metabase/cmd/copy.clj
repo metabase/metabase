@@ -55,7 +55,7 @@
   (concat
    [:model/App
     :model/AppDefinition
-    :model/AppPublishing
+    :model/AppRelease
     :model/Channel
     :model/ChannelTemplate
     :model/Database
