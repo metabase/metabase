@@ -119,7 +119,7 @@
       (classify/classify-fields! table)
 
       (let [name-fields (t2/select :model/Field
-                                   :table_id (:id table)
+                                   :table_id (u/the-id table)
                                    :semantic_type :type/Name)]
         (is (= 1 (count name-fields)))
         ;; Should be the first name field encountered
@@ -131,16 +131,16 @@
 (deftest preserve-existing-name-fields-test
   (testing "On an existing table with 2 type/Name fields, they stay unchanged and adding more eligible  is a no-op"
     (mt/with-temp [:model/Database db {:engine :h2 :name "test-db"}
-                   :model/Table table {:name "contacts" :db_id (:id db)}
-                   :model/Field _ {:name "id" :base_type :type/Integer :table_id (:id table)}
+                   :model/Table table {:name "contacts" :db_id (u/the-id db)}
+                   :model/Field _ {:name "id" :base_type :type/Integer :table_id (u/the-id table)}
                    :model/Field _ {:name "firstName"
                                    :base_type :type/Text
-                                   :table_id (:id table)
+                                   :table_id (u/the-id table)
                                    :semantic_type :type/Name
                                    :last_analyzed :%now}
                    :model/Field _ {:name "lastName"
                                    :base_type :type/Text
-                                   :table_id (:id table)
+                                   :table_id (u/the-id table)
                                    :semantic_type :type/Name
                                    :last_analyzed :%now}
                    :model/Field field {:name "name"
@@ -152,7 +152,7 @@
       (classify/classify-fields! table)
 
       (let [name-fields (t2/select :model/Field
-                                   :table_id (:id table)
+                                   :table_id (u/the-id table)
                                    :semantic_type :type/Name)]
         (is (= 2 (count name-fields)))
         ;; The original fields should keep their type/Name
@@ -171,7 +171,7 @@
 
       (is (not= ::thrown (try (classify/classify-fields! table) (catch Throwable _ ::thrown))))
       (let [name-fields (t2/select :model/Field
-                                   :table_id (:id table)
+                                   :table_id (u/the-id table)
                                    :semantic_type :type/Name)]
         (is (= 0 (count name-fields)))))))
 
@@ -196,7 +196,7 @@
       (classify/classify-fields! table)
 
       (let [name-fields (t2/select :model/Field
-                                   :table_id (:id table)
+                                   :table_id (u/the-id table)
                                    :semantic_type :type/Name)]
         (is (= 1 (count name-fields)))
         (is (= "userName" (:name (first name-fields))))))))
@@ -220,6 +220,46 @@
                     (fn [field _] (assoc field :preview_display false))]
         (classify/classify-fields! table))
 
-      (let [updated-field (t2/select-one :model/Field :id (:id field))]
+      (let [updated-field (t2/select-one :model/Field :id (u/the-id field))]
         (is (not= :type/Name (:semantic_type updated-field)))
         (is (false? (:preview_display updated-field)))))))
+
+(deftest deactivated-name-field-does-not-block-new-name-classification-test
+  (testing "Deactivated :type/Name field should not prevent new field from being classified as :type/Name"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:name "users" :db_id (u/the-id db)}
+                   :model/Field _ {:name "old_name" :base_type :type/Text :table_id (u/the-id table)
+                                   :semantic_type :type/Name
+                                   :active false}
+                   :model/Field new-name-field {:name "full_name" :base_type :type/Text :table_id (u/the-id table)
+                                                :semantic_type nil
+                                                :fingerprint_version i/*latest-fingerprint-version*
+                                                :last_analyzed nil}]
+
+      (classify/classify-fields! table)
+
+      (let [updated-field (t2/select-one :model/Field :id (u/the-id new-name-field))]
+        (is (= :type/Name (:semantic_type updated-field)))))))
+
+(deftest mixed-active-inactive-name-fields-test
+  (testing "Mix of active and inactive :type/Name fields - active one should block new classification"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:name "employees" :db_id (u/the-id db)}
+                   :model/Field _ {:name "old_employee_name" :base_type :type/Text :table_id (u/the-id table)
+                                   :semantic_type :type/Name
+                                   :active false}
+                   :model/Field active-field {:name "current_name" :base_type :type/Text :table_id (u/the-id table)
+                                              :semantic_type :type/Name
+                                              :active true}
+                   :model/Field potential-name {:name "display_name" :base_type :type/Text :table_id (u/the-id table)
+                                                :semantic_type nil
+                                                :active true
+                                                :fingerprint_version i/*latest-fingerprint-version*
+                                                :last_analyzed nil}]
+
+      (classify/classify-fields! table)
+
+      (let [updated-field (t2/select-one :model/Field :id (u/the-id potential-name))
+            existing-field (t2/select-one :model/Field :id (u/the-id active-field))]
+        (is (not= :type/Name (:semantic_type updated-field)))
+        (is (= :type/Name (:semantic_type existing-field)))))))
