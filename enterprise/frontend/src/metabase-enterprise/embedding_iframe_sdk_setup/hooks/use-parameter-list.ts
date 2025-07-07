@@ -30,7 +30,9 @@ export const useParameterList = ({
 
   const metadata = useSelector(getMetadata);
 
-  // We cannot use `metadata` directly, otherwise hooks will re-run on every metadata change.
+  // This prevents `availableParameters` from being updated on every metadata change,
+  // which would cause unnecessary re-renders in the component using this hook.
+  // See [PublicOrEmbeddedQuestion.tsx] for reference.
   const metadataRef = useLatest(metadata);
 
   // Extract parameters from the loaded dashboard/card
