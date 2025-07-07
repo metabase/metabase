@@ -1,7 +1,7 @@
 import { updateIn } from "icepick";
 import { c, t } from "ttag";
 
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
@@ -42,8 +42,6 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const handleEngineChange = (engine?: string) => {
     dispatch(updateDatabaseEngine(engine));
   };
-
-  const hasSampleDatabase = useSetting("has-sample-database?");
 
   const handleDatabaseSubmit = async (database: DatabaseData) => {
     try {
@@ -89,7 +87,6 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
         onSubmit={handleDatabaseSubmit}
         onEngineChange={handleEngineChange}
         onCancel={handleStepCancel}
-        hasSampleDatabase={hasSampleDatabase}
       />
       {isEmailConfigured && (
         <SetupSection

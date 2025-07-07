@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import LogoIcon from "metabase/common/components/LogoIcon";
+import { useSetting } from "metabase/common/hooks";
 import { MAX_INITIAL_ENGINES_SHOWN } from "metabase/databases/constants";
 import { getEngines } from "metabase/databases/selectors";
 import {
@@ -12,6 +14,7 @@ import {
   Button,
   Center,
   Combobox,
+  Flex,
   Group,
   Icon,
   ScrollArea,
@@ -44,6 +47,8 @@ export const DatabaseEngineList = ({
   );
 
   const databasesList = isExpanded ? searchResults : elevatedEngines;
+
+  const shouldShowSampleDatabaseIndicator = isSetupStep && !engineKey;
 
   const clearSelectedItem = useCallback(() => {
     onSelect(undefined);
@@ -91,6 +96,7 @@ export const DatabaseEngineList = ({
 
         {databasesList.length > 0 ? (
           <ScrollArea type="hover" scrollHideDelay={300}>
+            {shouldShowSampleDatabaseIndicator && <SampleDatabaseIndicator />}
             <Combobox.Options>
               {databasesList.map(({ value: engineKey, name }) => {
                 return (
@@ -180,5 +186,34 @@ const ListToggle = ({
     >
       {isExpanded ? t`Hide` : t`Show more`}
     </Button>
+  );
+};
+
+const SampleDatabaseIndicator = () => {
+  const hasSampleDatabase = useSetting("has-sample-database?");
+
+  if (!hasSampleDatabase) {
+    return;
+  }
+
+  return (
+    <Flex
+      align="center"
+      justify="space-between"
+      className={S.sampleDbIndicator}
+    >
+      <Flex align="center">
+        <LogoIcon height={20} width={24} />
+        <Text ml="sm" mr="xs">
+          {t`Sample Database for testing`}
+        </Text>
+        {/* eslint-disable-next-line no-literal-metabase-strings -- only shown to admins during setup */}
+        <Text inline c="text-light">{t`(by Metabase)`}</Text>
+      </Flex>
+      <Group gap="xs">
+        <Icon name="check_filled" c="success" />
+        {t`Included`}
+      </Group>
+    </Flex>
   );
 };

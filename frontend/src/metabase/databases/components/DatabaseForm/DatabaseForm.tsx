@@ -47,7 +47,6 @@ interface DatabaseFormProps {
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
   config?: DatabaseFormConfig;
-  hasSampleDatabase?: boolean;
 }
 
 export const DatabaseForm = ({
@@ -271,7 +270,7 @@ const DatabaseFormFooter = ({
   }
 
   return (
-    <Button variant="subtle" mt="lg" onClick={onCancel}>
+    <Button variant="filled" mt="lg" onClick={onCancel}>
       {t`I'll add my data later`}
     </Button>
   );
