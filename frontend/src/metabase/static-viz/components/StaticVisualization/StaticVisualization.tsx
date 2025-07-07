@@ -6,6 +6,7 @@ import type { StaticVisualizationProps } from "metabase/visualizations/types";
 import { ComboChart } from "../ComboChart";
 import { FunnelBarChart } from "../FunnelBarChart";
 import { PieChart } from "../PieChart/PieChart";
+import { RadarChart } from "../RadarChart";
 import { SankeyChart } from "../SankeyChart";
 import { ScalarChart } from "../ScalarChart";
 import { ScatterPlot } from "../ScatterPlot/ScatterPlot";
@@ -49,6 +50,8 @@ export const StaticVisualization = ({
       return <SmartScalar {...props} />;
     case "pie":
       return <PieChart {...props} />;
+    case "radar":
+      return <RadarChart {...props} />;
     case "sankey":
       return <SankeyChart {...props} />;
   }
