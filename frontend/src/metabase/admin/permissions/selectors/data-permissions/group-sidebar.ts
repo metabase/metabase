@@ -47,9 +47,15 @@ export const getGroupsSidebar = createSelector(
       icon: "globe",
     }));
 
+    const entityGroups = [
+      pinnedGroupItems,
+      internalGroupItems,
+      externalGroupItems,
+    ].filter((groups) => groups.length > 0);
+
     return {
       selectedId: groupId,
-      entityGroups: [pinnedGroupItems, internalGroupItems, externalGroupItems],
+      entityGroups,
       entityViewFocus: "group",
       filterPlaceholder: t`Search for a group`,
     };

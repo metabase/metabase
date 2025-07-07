@@ -64,7 +64,7 @@ export const TenantForm = ({
             name="name"
             title={t`Display name`}
             label={t`Display name`}
-            description={t`How to refer to this tenant`}
+            description={t`Visible to admins and people assigned to the tenant. You can change the name at any time.`}
             mb="md"
             onChange={(e) => {
               const value = e.target.value;
@@ -82,7 +82,7 @@ export const TenantForm = ({
             name="slug"
             title={t`Slug`}
             label={t`Slug`}
-            description={t`A unique identifier for the tenant. Cannot be changed later`}
+            description={t`A unique identifier for the tenant. Cannot be changed later.`}
             disabled={!!initialValues.slug}
             mb="xl"
           />

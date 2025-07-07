@@ -7,6 +7,7 @@ const {
   COLLECTION_GROUP_ID,
   ALL_EXTERNAL_USERS_GROUP_ID,
 } = require("e2e/support/cypress_sample_instance_data");
+const { getPermissionRowPermissions } = require("e2e/support/helpers");
 
 const { STATIC_ORDERS_ID, STATIC_PRODUCTS_ID } = SAMPLE_DB_TABLES;
 
@@ -263,6 +264,61 @@ describe("Tenants - management", () => {
       .should("exist");
   });
 
+  it("should allow you to manage external user permissions once multi tenancy is enabled", () => {
+    const EXTERNAL_USER_GROUP_NAME = "External Users";
+    cy.visit("/admin/permissions");
+    cy.findByRole("menuitem", { name: "Administrators" }).should("exist");
+    cy.findByRole("menuitem", { name: EXTERNAL_USER_GROUP_NAME }).should(
+      "not.exist",
+    );
+
+    cy.request("PUT", "/api/setting", {
+      "use-tenants": true,
+    });
+
+    cy.reload();
+    cy.findByRole("menuitem", { name: "Administrators" }).should("exist");
+    cy.findByRole("menuitem", { name: EXTERNAL_USER_GROUP_NAME }).click();
+
+    assertPermissionTableColumnsExist([
+      "exist",
+      "exist",
+      "exist",
+      "not.exist",
+      "not.exist",
+    ]);
+
+    cy.findByRole("menuitem", { name: "Administrators" }).click();
+
+    assertPermissionTableColumnsExist([
+      "exist",
+      "exist",
+      "exist",
+      "exist",
+      "exist",
+    ]);
+
+    cy.findByRole("radio", { name: "Databases" }).click({ force: true });
+    cy.findByRole("menuitem", { name: "Sample Database" }).click();
+
+    assertPermissionTableColumnsExist([
+      "exist",
+      "exist",
+      "exist",
+      "exist",
+      "exist",
+    ]);
+
+    getPermissionRowPermissions("All External Users")
+      .eq(3)
+      .parent()
+      .should("have.attr", "aria-disabled", "true");
+    getPermissionRowPermissions("All External Users")
+      .eq(4)
+      .parent()
+      .should("have.attr", "aria-disabled", "true");
+  });
+
   it("should not show send email modal when creating tenant users when SMTP is configured", () => {
     H.setupSMTP();
     cy.request("PUT", "/api/setting", {
@@ -482,3 +538,19 @@ describe("tenant users", () => {
       .should("not.exist");
   });
 });
+
+const assertPermissionTableColumnsExist = (assertions) => {
+  cy.findByRole("columnheader", { name: "View data" }).should(assertions[0]);
+  cy.findByRole("columnheader", { name: "Create queries" }).should(
+    assertions[1],
+  );
+  cy.findByRole("columnheader", { name: /Download results/ }).should(
+    assertions[2],
+  );
+  cy.findByRole("columnheader", { name: "Manage table metadata" }).should(
+    assertions[3],
+  );
+  cy.findByRole("columnheader", { name: "Manage database" }).should(
+    assertions[4],
+  );
+};

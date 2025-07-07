@@ -126,10 +126,12 @@ export const normalizedMetadata = {
     "1": createMockGroup({
       id: 1,
       name: "Group starting with full access",
+      magic_group_type: null,
     }),
     "2": createMockGroup({
       id: 2,
       name: "Group starting with no access at all",
+      magic_group_type: null,
     }),
     "3": createMockGroup({
       id: 3,
