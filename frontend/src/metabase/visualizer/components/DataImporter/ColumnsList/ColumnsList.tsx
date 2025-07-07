@@ -28,7 +28,6 @@ import type {
   VisualizerDataSource,
   VisualizerDataSourceId,
 } from "metabase-types/api";
-import type { DraggedColumn } from "metabase-types/store/visualizer";
 
 import S from "./ColumnsList.module.css";
 import { ColumnsListItem, type ColumnsListItemProps } from "./ColumnsListItem";
@@ -216,7 +215,7 @@ function DraggableColumnListItem({
             },
           },
         },
-      ] as DraggedColumn[]),
+      ]),
     );
   };
   const onMouseLeave = () => {
