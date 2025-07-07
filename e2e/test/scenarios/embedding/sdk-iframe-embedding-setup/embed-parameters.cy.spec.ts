@@ -1,6 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-import { getEmbedSidebar, navigateToEntitySelectionStep } from "./helpers";
+import {
+  getEmbedSidebar,
+  navigateToEmbedOptionsStep,
+  navigateToEntitySelectionStep,
+} from "./helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -227,20 +231,6 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
     });
   });
 });
-
-const navigateToEmbedOptionsStep = ({
-  experience,
-  resourceName,
-}: {
-  experience: "dashboard" | "chart" | "exploration";
-  resourceName?: string;
-}) => {
-  navigateToEntitySelectionStep({ experience, resourceName });
-
-  getEmbedSidebar().within(() => {
-    cy.findByText("Next").click(); // Embed options step
-  });
-};
 
 const parameterVisibilityToggle = (slug: string) =>
   cy
