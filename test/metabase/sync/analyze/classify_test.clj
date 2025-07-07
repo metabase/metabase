@@ -1,6 +1,7 @@
 (ns metabase.sync.analyze.classify-test
   (:require
    [clojure.test :refer :all]
+   [metabase.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
    [metabase.sync.analyze.classify :as classify]
    [metabase.sync.interface :as i]
    [metabase.test :as mt]
@@ -199,3 +200,26 @@
                                    :semantic_type :type/Name)]
         (is (= 1 (count name-fields)))
         (is (= "userName" (:name (first name-fields))))))))
+
+(deftest non-semantic-type-classifiers-still-run-when-skipping-name-test
+  (testing "Other field properties are still classified when skipping :type/Name classification"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:name "users" :db_id (u/the-id db)}
+                   :model/Field _ {:name "full_name" :base_type :type/Text :table_id (u/the-id table)
+                                   :semantic_type :type/Name}
+                   :model/Field field
+                   {:name "name"
+                    :base_type :type/Text
+                    :table_id (u/the-id table)
+                    :semantic_type nil
+                    :preview_display true
+                    :fingerprint_version i/*latest-fingerprint-version*
+                    :last_analyzed nil}]
+
+      (with-redefs [classifiers.no-preview-display/infer-no-preview-display
+                    (fn [field _] (assoc field :preview_display false))]
+        (classify/classify-fields! table))
+
+      (let [updated-field (t2/select-one :model/Field :id (:id field))]
+        (is (not= :type/Name (:semantic_type updated-field)))
+        (is (false? (:preview_display updated-field)))))))
