@@ -25,5 +25,4 @@ export interface InteractiveEmbeddingOptions {
 type EmptyObject = Record<string, never>;
 export interface EmbedState {
   options: InteractiveEmbeddingOptions | EmptyObject;
-  isEmbeddingSdk?: boolean;
 }

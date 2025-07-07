@@ -1804,9 +1804,11 @@ describe("scenarios > dashboard > parameters", () => {
 
       // Verify filtering works
       H.getDashboardCard(0).within(() => {
+        cy.findByText("Gadget").should("be.visible"); // wait for query
         H.filterWidget().contains("Category").click();
       });
       H.dashboardParametersPopover().within(() => {
+        cy.findByLabelText("Gadget").should("exist");
         cy.findByLabelText("Gadget").click();
         cy.button("Add filter").click();
       });

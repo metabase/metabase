@@ -858,9 +858,14 @@ function(bin) {
 (defmethod compile-filter :starts-with [[_ field v opts]] {$expr (str-match-pattern field opts "^" v nil)})
 (defmethod compile-filter :ends-with   [[_ field v opts]] {$expr (str-match-pattern field opts nil v "$")})
 
+(defn- rvalue-is-variable? [rvalue]
+  (and (string? rvalue)
+       (str/starts-with? rvalue "$$")))
+
 (defn- rvalue-is-field? [rvalue]
   (and (string? rvalue)
-       (str/starts-with? rvalue "$")))
+       (str/starts-with? rvalue "$")
+       (not (rvalue-is-variable? rvalue))))
 
 (defn- rvalue-can-be-compared-directly?
   "Whether `rvalue` is something simple that can be compared directly e.g.
@@ -873,6 +878,7 @@ function(bin) {
   [rvalue]
   (or (rvalue-is-field? rvalue)
       (and (not (map? rvalue))
+           (not (rvalue-is-variable? rvalue))
            (not (instance? java.util.regex.Pattern rvalue)))))
 
 (defn- filter-expr [operator field value]

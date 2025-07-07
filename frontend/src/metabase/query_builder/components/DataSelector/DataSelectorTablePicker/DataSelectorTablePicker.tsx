@@ -2,7 +2,10 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import AccordionList from "metabase/common/components/AccordionList";
+import {
+  AccordionList,
+  type Section,
+} from "metabase/common/components/AccordionList";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import {
   HoverParent,
@@ -41,6 +44,12 @@ type HeaderProps = Pick<
   "schemas" | "selectedSchema" | "selectedDatabase" | "onBack"
 >;
 
+type Item = {
+  name: string;
+  table: Table;
+  database: Database;
+};
+
 const DataSelectorTablePicker = ({
   schemas,
   tables,
@@ -75,7 +84,7 @@ const DataSelectorTablePicker = ({
   );
 
   if (tables.length > 0 || isLoading) {
-    const sections = [
+    const sections: Section<Item>[] = [
       {
         name: header,
         items: tables.filter(isNotNull).map((table) => ({
@@ -101,8 +110,8 @@ const DataSelectorTablePicker = ({
       <HoverParent>{content}</HoverParent>
     );
 
-    const showSpinner = ({ table }: { table: Table }) =>
-      Boolean(table && !isSyncCompleted(table));
+    const showSpinner = (itemOrSection: Item | Section<Item>) =>
+      "table" in itemOrSection && !isSyncCompleted(itemOrSection.table);
 
     const handleChange = ({ table }: { table: Table }) => onChangeTable(table);
 
@@ -111,7 +120,7 @@ const DataSelectorTablePicker = ({
     return (
       <DelayGroup>
         <Box w={rem(300)} style={{ overflowY: "auto" }}>
-          <AccordionList
+          <AccordionList<Item>
             id="TablePicker"
             key="tablePicker"
             className={CS.textBrand}
