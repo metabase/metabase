@@ -9,7 +9,6 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
@@ -221,11 +220,7 @@ const DefaultViewSaveModal = ({
     targetCollection,
   } = useInteractiveQuestionContext();
 
-  const { id, isLoading } = useTranslatedCollectionId({
-    id: targetCollection,
-  });
-
-  if (!isSaveEnabled || !isOpen || !question || isLoading) {
+  if (!isSaveEnabled || !isOpen || !question) {
     return null;
   }
 
@@ -241,7 +236,7 @@ const DefaultViewSaveModal = ({
         await onSave(question);
         close();
       }}
-      targetCollection={id}
+      targetCollection={targetCollection}
     />
   );
 };

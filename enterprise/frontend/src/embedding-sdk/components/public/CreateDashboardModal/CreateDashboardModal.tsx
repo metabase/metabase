@@ -1,5 +1,4 @@
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
 import type { MetabaseDashboard } from "embedding-sdk/types/dashboard";
 import { useCollectionQuery, useLocale } from "metabase/common/hooks";
@@ -38,27 +37,21 @@ const CreateDashboardModalInner = ({
   onClose,
 }: CreateDashboardModalProps) => {
   const { isLocaleLoading } = useLocale();
-  const { id, isLoading: isTranslateCollectionLoading } =
-    useTranslatedCollectionId({
-      id: initialCollectionId,
-    });
 
   const { isLoading: isCollectionQueryLoading } = useCollectionQuery({
-    id,
+    id: initialCollectionId,
   });
 
-  const isLoading = isTranslateCollectionLoading && isCollectionQueryLoading;
-
-  if (isLocaleLoading || isLoading) {
+  if (isLocaleLoading || isCollectionQueryLoading) {
     return null;
   }
 
   return (
     <CreateDashboardModalCore
-      opened={!isLoading && isOpen}
+      opened={!isCollectionQueryLoading && isOpen}
       onCreate={onCreate}
       onClose={() => onClose?.()}
-      collectionId={id}
+      collectionId={initialCollectionId}
     />
   );
 };
