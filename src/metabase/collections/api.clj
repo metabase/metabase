@@ -1207,15 +1207,6 @@
                                     :official-collections-first? (or (nil? official_collections_first)
                                                                      (boolean official_collections_first))}})))
 
-;;; ------------------------------------------ Fetching a single Collection -------------------------------------------
-
-(api.macros/defendpoint :get "/:id"
-  "Fetch a specific Collection with standard details added"
-  [{:keys [id]} :- [:map
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :collection id)]
-    (collection-detail (api/read-check :model/Collection resolved-id))))
-
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
 (defn- write-check-collection-or-root-collection
@@ -1427,3 +1418,12 @@
                  (decode-graph {:revision revision :groups groups})
                  skip-graph
                  force))
+
+;;; ------------------------------------------ Fetching a single Collection -------------------------------------------
+
+(api.macros/defendpoint :get "/:id"
+  "Fetch a specific Collection with standard details added"
+  [{:keys [id]} :- [:map
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (let [resolved-id (eid-translation/->id-or-404 :collection id)]
+    (collection-detail (api/read-check :model/Collection resolved-id))))
