@@ -8,10 +8,14 @@ import type {
 export const DataModel = {
   visit,
   TablePicker: {
+    get: getTablePicker,
     getDatabase: getTablePickerDatabase,
+    getDatabases: getTablePickerDatabases,
+    getSchemas: getTablePickerSchemas,
     getSchema: getTablePickerSchema,
-    getTable: getTablePickerTable,
     getTables: getTablePickerTables,
+    getTable: getTablePickerTable,
+    getSearchInput: getTablePickerSearchInput,
   },
   TableSection: {
     get: getTableSection,
@@ -19,6 +23,7 @@ export const DataModel = {
     getDescriptionInput: getTableDescriptionInput,
     getSortButton: getTableSortButton,
     getSortOrderInput: getTableSortOrderInput,
+    getSyncOptionsButton: getTableSyncOptionsButton,
     getField: getTableSectionField,
     getFieldNameInput: getTableSectionFieldNameInput,
     getFieldDescriptionInput: getTableSectionFieldDescriptionInput,
@@ -29,7 +34,10 @@ export const DataModel = {
   FieldSection: {
     get: getFieldSection,
     getNameInput: getFieldNameInput,
+    getRawName: getRawFieldName,
     getDescriptionInput: getFieldDescriptionInput,
+    getPreviewButton: getFieldPreviewButton,
+    getFieldValuesButton: getFieldValuesButton,
     getDataType: getFieldDataType,
     getCoercionToggle: getFieldCoercionToggle,
     getCoercionInput: getFieldCoercionInput,
@@ -40,9 +48,14 @@ export const DataModel = {
     getFilteringInput: getFieldFilteringInput,
     getDisplayValuesInput: getFieldDisplayValuesInput,
     getDisplayValuesFkTargetInput: getFieldDisplayValuesFkTargetInput,
+    getUnfoldJsonInput: getFieldUnfoldJsonInput,
     getStyleInput: getFieldStyleInput,
     getPrefixInput: getFieldPrefixInput,
     getSuffixInput: getFieldSuffixInput,
+  },
+  PreviewSection: {
+    get: getPreviewSection,
+    getPreviewTypeInput: getPreviewTabsInput,
   },
 };
 
@@ -128,11 +141,19 @@ function visit({
 
 /** table picker helpers */
 
+function getTablePicker() {
+  return cy.findByTestId("table-picker");
+}
+
 function getTablePickerDatabase(name: string) {
   return cy
     .findAllByTestId("tree-item")
     .filter('[data-type="database"]')
     .filter(`:contains("${name}")`);
+}
+
+function getTablePickerDatabases() {
+  return cy.findAllByTestId("tree-item").filter('[data-type="database"]');
 }
 
 function getTablePickerSchema(name: string) {
@@ -142,11 +163,19 @@ function getTablePickerSchema(name: string) {
     .filter(`:contains("${name}")`);
 }
 
+function getTablePickerSchemas() {
+  return cy.findAllByTestId("tree-item").filter('[data-type="schema"]');
+}
+
 function getTablePickerTable(name: string) {
   return cy
     .findAllByTestId("tree-item")
     .filter('[data-type="table"]')
     .filter(`:contains("${name}")`);
+}
+
+function getTablePickerSearchInput() {
+  return cy.findByPlaceholderText("Search tables");
 }
 
 function getTablePickerTables() {
@@ -175,6 +204,10 @@ function getTableSortButton() {
 
 function getTableSortOrderInput() {
   return getTableSection().findByLabelText("Column order");
+}
+
+function getTableSyncOptionsButton() {
+  return getTableSection().button(/Sync options/);
 }
 
 function getTableSectionField(name: string) {
@@ -220,6 +253,18 @@ function getFieldDescriptionInput() {
   );
 }
 
+function getFieldPreviewButton() {
+  return getFieldSection().button(/Preview/);
+}
+
+function getFieldValuesButton() {
+  return getFieldSection().button(/Field values/);
+}
+
+function getRawFieldName() {
+  return getFieldSection().findByLabelText("Field name");
+}
+
 function getFieldDataType() {
   return getFieldSection().findByLabelText("Data type");
 }
@@ -260,6 +305,12 @@ function getFieldDisplayValuesFkTargetInput() {
   return getFieldSection().findByPlaceholderText("Choose a field");
 }
 
+function getFieldUnfoldJsonInput() {
+  return getFieldSection().findByPlaceholderText(
+    "Select whether to unfold JSON",
+  );
+}
+
 function getFieldStyleInput() {
   return getFieldSection().findByLabelText("Style");
 }
@@ -270,4 +321,14 @@ function getFieldPrefixInput() {
 
 function getFieldSuffixInput() {
   return getFieldSection().findByTestId("suffix");
+}
+
+/** preview section helpers */
+
+function getPreviewSection() {
+  return cy.findByTestId("preview-section");
+}
+
+function getPreviewTabsInput() {
+  return getPreviewSection().findByLabelText("Preview type");
 }

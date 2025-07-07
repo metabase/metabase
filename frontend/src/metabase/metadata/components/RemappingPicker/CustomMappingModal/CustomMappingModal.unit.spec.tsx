@@ -178,6 +178,7 @@ describe("CustomMappingModal", () => {
           [1, "1"],
           [null, "null"],
         ]),
+        { isAutomatic: true },
       );
     });
     expect(screen.getByDisplayValue("1")).toBeInTheDocument();

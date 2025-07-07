@@ -1,7 +1,9 @@
 import { memo } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Repeat, Skeleton, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type {
@@ -17,7 +19,7 @@ import type {
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { Error } from "./Error";
-import { getErrorMessage } from "./utils";
+import { getErrorMessage, is403Error } from "./utils";
 
 const PREVIEW_ROW_COUNT = 5;
 
@@ -25,6 +27,7 @@ interface Props {
   databaseId: DatabaseId;
   field: Field;
   fieldId: FieldId;
+  pkFields: Field[];
   tableId: TableId;
 }
 
@@ -57,15 +60,32 @@ const TablePreviewBase = (props: Props) => {
   );
 };
 
-function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
-  const datasetQuery = getPreviewQuery(databaseId, tableId, fieldId);
+function useDataSample({
+  databaseId,
+  field,
+  fieldId,
+  pkFields,
+  tableId,
+}: Props) {
+  const datasetQuery = getPreviewQuery(databaseId, tableId, fieldId, pkFields);
 
-  const { data, refetch, ...rest } = useGetAdhocQueryQuery({
-    ...datasetQuery,
-    _refetchDeps: field,
-  });
-
+  const { data, refetch, ...rest } = useGetAdhocQueryQuery(
+    {
+      ...datasetQuery,
+      ignore_error: true,
+      _refetchDeps: field,
+    },
+    {},
+  );
   const base = { ...rest, error: undefined, rawSeries: undefined };
+
+  if (rest?.status === "rejected" && is403Error(rest.error)) {
+    return {
+      ...base,
+      isError: true,
+      error: t`Sorry, you don’t have permission to see that.`,
+    };
+  }
 
   if (data?.status === "failed") {
     return { ...base, isError: true, error: getErrorMessage(data) };
@@ -96,8 +116,12 @@ function getPreviewQuery(
   databaseId: DatabaseId,
   tableId: TableId,
   fieldId: FieldId,
+  pkFields: Field[],
 ): DatasetQuery {
   const fieldRef: FieldReference = ["field", fieldId, null];
+  const pkFieldRefs: FieldReference[] = pkFields.map((pkField) => {
+    return ["field", getRawTableFieldId(pkField), null];
+  });
   const filter: FieldFilter = ["not-null", fieldRef];
 
   return {
@@ -107,7 +131,10 @@ function getPreviewQuery(
       "source-table": tableId,
       filter,
       fields: [fieldRef],
-      limit: 50, // fetch more rows to increase probability of getting at least 5 unique values
+      // fetch more rows to increase probability of getting at least 5 unique values
+      limit: 50,
+      // order by PKs when possible to prevent SQL returning non-deterministically ordered values
+      "order-by": pkFieldRefs.map((pkFieldRef) => ["asc", pkFieldRef]),
     },
   };
 }

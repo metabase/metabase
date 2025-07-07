@@ -1,4 +1,4 @@
-import { useWindowEvent } from "@mantine/hooks";
+import { useDisclosure, useWindowEvent } from "@mantine/hooks";
 import type { Location } from "history";
 import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -14,10 +14,12 @@ import { Box, Flex, Stack, rem } from "metabase/ui";
 import S from "./DataModel.module.css";
 import {
   FieldSection,
+  FieldValuesModal,
   PreviewSection,
   type PreviewType,
   RouterTablePicker,
   SegmentsLink,
+  SyncOptionsModal,
   TableSection,
 } from "./components";
 import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
@@ -33,7 +35,14 @@ interface Props {
 export const DataModel = ({ children, location, params }: Props) => {
   const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isPreviewOpen, { close: closePreview, open: openPreview }] =
+    useDisclosure();
+  const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
+    useDisclosure();
+  const [
+    isFieldValuesModalOpen,
+    { close: closeFieldValuesModal, open: openFieldValuesModal },
+  ] = useDisclosure();
   const isEmptyStateShown =
     databaseId == null || tableId == null || fieldId == null;
   const {
@@ -41,30 +50,34 @@ export const DataModel = ({ children, location, params }: Props) => {
     error,
     isLoading,
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(tableId));
-  const fieldsById = useMemo(() => {
-    return _.indexBy(table?.fields ?? [], (field) => getRawTableFieldId(field));
+  const fieldsByName = useMemo(() => {
+    return _.indexBy(table?.fields ?? [], (field) => field.name);
   }, [table]);
   const field = table?.fields?.find((field) => field.id === fieldId);
-  const parentField =
-    field?.parent_id != null ? fieldsById[field.parent_id] : undefined;
+  const parentName = field?.nfc_path?.[0] ?? "";
+  const parentField = fieldsByName[parentName];
   const [previewType, setPreviewType] = useState<PreviewType>("table");
 
-  const handlePreviewClick = () => {
-    setIsPreviewOpen(true);
-  };
+  useWindowEvent(
+    "keydown",
+    (event) => {
+      const activeElement = document.activeElement;
+      const isInputFocused =
+        activeElement instanceof HTMLElement &&
+        (["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
+          activeElement.isContentEditable);
+      const isModalOpen = isSyncModalOpen || isFieldValuesModalOpen;
 
-  useWindowEvent("keydown", (event) => {
-    const activeElement = document.activeElement;
-    const isInputFocused =
-      activeElement instanceof HTMLElement &&
-      (["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
-        activeElement.isContentEditable);
-
-    if (event.key === "Escape" && isPreviewOpen && !isInputFocused) {
-      event.stopPropagation();
-      setIsPreviewOpen(false);
-    }
-  });
+      if (event.key === "Escape" && !isInputFocused && !isModalOpen) {
+        event.stopPropagation();
+        closePreview();
+      }
+    },
+    {
+      // otherwise modals get closed ealier and isModalOpen evaluates to false in the handler
+      capture: true,
+    },
+  );
 
   return (
     <Flex bg="accent-gray-light" h="100%">
@@ -110,6 +123,7 @@ export const DataModel = ({ children, location, params }: Props) => {
                     key={table.id}
                     params={params}
                     table={table}
+                    onSyncOptionsClick={openSyncModal}
                   />
                 )}
               </LoadingAndErrorWrapper>
@@ -138,7 +152,8 @@ export const DataModel = ({ children, location, params }: Props) => {
                          * This is to avoid state mix-up with optimistic updates.
                          */
                         key={getRawTableFieldId(field)}
-                        onPreviewClick={handlePreviewClick}
+                        onFieldValuesClick={openFieldValuesModal}
+                        onPreviewClick={openPreview}
                       />
                     </Box>
                   )}
@@ -163,7 +178,7 @@ export const DataModel = ({ children, location, params }: Props) => {
                 previewType={previewType}
                 table={table}
                 tableId={tableId}
-                onClose={() => setIsPreviewOpen(false)}
+                onClose={closePreview}
                 onPreviewTypeChange={setPreviewType}
               />
             </Box>
@@ -194,6 +209,22 @@ export const DataModel = ({ children, location, params }: Props) => {
             </Flex>
           )}
         </>
+      )}
+
+      {table && (
+        <SyncOptionsModal
+          isOpen={isSyncModalOpen}
+          tableId={table.id}
+          onClose={closeSyncModal}
+        />
+      )}
+
+      {fieldId && (
+        <FieldValuesModal
+          fieldId={fieldId}
+          isOpen={isFieldValuesModalOpen}
+          onClose={closeFieldValuesModal}
+        />
       )}
     </Flex>
   );

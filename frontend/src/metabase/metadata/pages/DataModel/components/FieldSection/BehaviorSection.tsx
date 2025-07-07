@@ -97,8 +97,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
               sendToast({
                 icon: "check",
                 message: jsonUnfolding
-                  ? t`JSON unfloding for ${field.display_name} enabled`
-                  : t`JSON unfloding for ${field.display_name} disabled`,
+                  ? t`JSON unfolding for ${field.display_name} enabled`
+                  : t`JSON unfolding for ${field.display_name} disabled`,
               });
             }
           }}

@@ -18,7 +18,7 @@ import type {
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { Error } from "./Error";
-import { getErrorMessage } from "./utils";
+import { getErrorMessage, is403Error } from "./utils";
 
 interface Props {
   databaseId: DatabaseId;
@@ -84,10 +84,19 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
 
   const { data, ...rest } = useGetAdhocQueryQuery({
     ...datasetQuery,
+    ignore_error: true,
     _refetchDeps: field,
   });
 
   const base = { ...rest, error: undefined, rawSeries: undefined };
+
+  if (rest?.status === "rejected" && is403Error(rest.error)) {
+    return {
+      ...base,
+      isError: true,
+      error: t`Sorry, you don’t have permission to see that.`,
+    };
+  }
 
   if (data?.status === "failed") {
     return {

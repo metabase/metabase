@@ -55,6 +55,10 @@ export function getFieldCurrency(field: Field): string {
   return "USD";
 }
 
+export const getFieldRawName = (field: Field) => {
+  return field.nfc_path ? field.nfc_path.join(".") : field.name;
+};
+
 export function getFieldDisplayName(
   field: Field,
   table?: Table | undefined,
@@ -63,7 +67,7 @@ export function getFieldDisplayName(
   const fieldDisplayName =
     field.dimensions?.[0]?.name ||
     field.display_name ||
-    field.name ||
+    getFieldRawName(field) ||
     NULL_DISPLAY_VALUE;
 
   if (table) {
