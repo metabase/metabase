@@ -115,7 +115,7 @@
                                    :fingerprint_version i/*latest-fingerprint-version*
                                    :last_analyzed       nil}]
 
-      (classify/classify-fields-for-db! db (constantly nil))
+      (classify/classify-fields! table)
 
       (let [name-fields (t2/select :model/Field
                                    :table_id (:id table)
@@ -139,8 +139,9 @@
                                    :table_id (:id table)
                                    :semantic_type :type/Name
                                    :last_analyzed :%now}
-
-                   :model/Field field {:name "middleName" :base_type :type/Text :table_id (u/the-id table)
+                   :model/Field field {:name "name"
+                                       :base_type :type/Text
+                                       :table_id (u/the-id table)
                                        :semantic_type       nil
                                        :fingerprint_version i/*latest-fingerprint-version*
                                        :last_analyzed       nil}]
@@ -179,7 +180,7 @@
                                    :table_id (u/the-id table)
                                    :semantic_type :type/Name
                                    :last_analyzed :%now}
-                   :model/Field _ {:name "displayName"
+                   :model/Field _ {:name "lastName"
                                    :base_type :type/Text
                                    :table_id (u/the-id table)
                                    :semantic_type nil
