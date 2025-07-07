@@ -263,3 +263,47 @@
             existing-field (t2/select-one :model/Field :id (u/the-id active-field))]
         (is (not= :type/Name (:semantic_type updated-field)))
         (is (= :type/Name (:semantic_type existing-field)))))))
+
+(deftest retired-name-fields-dont-block-new-classification-test
+  (testing "Retired :type/Name fields should not prevent new name classification"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:name "users" :db_id (u/the-id db)}
+                   :model/Field _ {:name "old_username" :base_type :type/Text :table_id (u/the-id table)
+                                   :semantic_type :type/Name
+                                   :visibility_type "retired"}
+                   :model/Field new-name {:name "name" :base_type :type/Text :table_id (u/the-id table)
+                                          :semantic_type nil
+                                          :active true
+                                          :visibility_type "normal"
+                                          :fingerprint_version i/*latest-fingerprint-version*
+                                          :last_analyzed nil}]
+
+      (classify/classify-fields! table)
+
+      (let [updated-field (t2/select-one :model/Field :id (u/the-id new-name))]
+        (is (= :type/Name (:semantic_type updated-field)))))))
+
+(deftest multiple-retired-and-deactivated-name-fields-test
+  (testing "Mix of retired and deactivated :type/Name fields should not prevent new name classification"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:name "products" :db_id (u/the-id db)}
+
+                   :model/Field _ {:name "legacy_name" :base_type :type/Text :table_id (u/the-id table)
+                                   :semantic_type :type/Name
+                                   :active true
+                                   :visibility_type "retired"}
+                   :model/Field _ {:name "old_name" :base_type :type/Text :table_id (u/the-id table)
+                                   :semantic_type :type/Name
+                                   :active false
+                                   :visibility_type "normal"}
+                   :model/Field new-name {:name "name" :base_type :type/Text :table_id (u/the-id table)
+                                          :semantic_type nil
+                                          :active true
+                                          :visibility_type "normal"
+                                          :fingerprint_version i/*latest-fingerprint-version*
+                                          :last_analyzed nil}]
+
+      (classify/classify-fields! table)
+
+      (let [updated-field (t2/select-one :model/Field :id (u/the-id new-name))]
+        (is (= :type/Name (:semantic_type updated-field)))))))
