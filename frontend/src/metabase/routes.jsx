@@ -249,7 +249,7 @@ export const getRoutes = (store) => {
                 component={PLUGIN_DATA_APPS.APP_PAGE_COMPONENT}
               />
               <Route
-                path=":appId"
+                path="edit/:appId"
                 component={PLUGIN_DATA_APPS.APP_PAGE_COMPONENT}
               />
             </Route>

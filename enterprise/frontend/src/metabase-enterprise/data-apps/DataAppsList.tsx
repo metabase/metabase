@@ -13,18 +13,13 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Flex, Group, Icon, Stack, Title } from "metabase/ui";
 
-const DataAppsListMock = [
-  {
-    id: 1,
-    slug: "super-app",
-    name: "Super App",
-  },
-];
+import type { DataApp } from "./types";
+import { DataAppsListMock } from "./utils";
 
 export const DataAppsList = () => {
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const dataApps = DataAppsListMock;
+  const dataApps: DataApp[] | undefined = DataAppsListMock;
   const isLoading = false;
 
   if (!dataApps && isLoading) {
@@ -75,7 +70,7 @@ export const DataAppsList = () => {
               dataApps.length > 0 &&
               dataApps.map((app) => (
                 <BrowseCard
-                  to={`/data-apps/${app.slug}`}
+                  to={`/data-apps/edit/${app.id}`}
                   key={app.id}
                   title={app.name}
                   icon="format_code"
