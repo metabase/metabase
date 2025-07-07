@@ -11,16 +11,19 @@ const {
 } = SAMPLE_DB_TABLES;
 
 export function adhocQuestionHash(question) {
-  if (question.display) {
+  const questionWithDisplay = {
+    display: "table",
     // without "locking" the display, the QB will run its picking logic and override the setting
-    question = Object.assign({}, question, { displayIsLocked: true });
-  }
-  return btoa(decodeURIComponent(encodeURIComponent(JSON.stringify(question))));
+    displayIsLocked: question.display != null,
+    ...question,
+  };
+  return btoa(
+    decodeURIComponent(encodeURIComponent(JSON.stringify(questionWithDisplay))),
+  );
 }
 
 function newCardHash(type) {
   const card = {
-    display: "table",
     type,
     creationType: "custom_question",
     dataset_query: {
