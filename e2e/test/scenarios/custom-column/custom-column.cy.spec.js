@@ -1925,4 +1925,40 @@ describe("scenarios > question > custom column > aggregation", () => {
       columns: ["Custom Sum", "Derived"],
     });
   });
+
+  it("should not be possible to create cycles in custom aggregations", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "aggregation-options",
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              {
+                name: "Custom Sum",
+                "display-name": "Custom Sum",
+              },
+            ],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openNotebook();
+
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+    H.CustomExpressionEditor.type("[Custom Sum] + 1");
+    H.CustomExpressionEditor.nameInput().type("Custom Sum 2");
+    H.popover().button("Done").click();
+
+    H.getNotebookStep("summarize").findByText("Custom Sum").click();
+    H.CustomExpressionEditor.clear().type("[Custom Sum 2]");
+
+    H.popover()
+      .findByText("Cycle detected: Custom Sum → Custom Sum 2 → Custom Sum")
+      .should("be.visible");
+  });
 });
