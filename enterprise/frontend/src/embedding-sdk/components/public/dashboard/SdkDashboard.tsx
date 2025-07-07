@@ -103,7 +103,7 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
   >;
 
 const SdkDashboardInner = ({
-  dashboardId: dashboardIdProp,
+  dashboardId,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -133,8 +133,8 @@ const SdkDashboardInner = ({
   });
 
   const { isLocaleLoading } = useLocale();
-  const { displayOptions, isLoading, dashboardId } = useSdkDashboardParams({
-    dashboardId: dashboardIdProp,
+  const { displayOptions } = useSdkDashboardParams({
+    dashboardId,
     withDownloads,
     withTitle,
     withCardTitle,
@@ -159,7 +159,7 @@ const SdkDashboardInner = ({
     }
   }, [dispatch, dashboardId]);
 
-  if (isLocaleLoading || isLoading) {
+  if (isLocaleLoading) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
         <SdkLoader />
@@ -170,7 +170,7 @@ const SdkDashboardInner = ({
   if (!dashboardId || errorPage?.status === 404) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
-        <DashboardNotFoundError id={dashboardIdProp} />
+        <DashboardNotFoundError id={dashboardId} />
       </SdkDashboardStyledWrapper>
     );
   }
