@@ -138,19 +138,20 @@
 
 (defn- field->clickhouse-column
   [field]
-  (let [{:keys [field-name base-type pk?]} field
+  (let [{:keys [field-name base-type pk? not-null? default]} field
         ch-type  (if (map? base-type)
                    (:native base-type)
                    (sql.tx/field-base-type->sql-type :clickhouse base-type))
         col-name (quote-name field-name)
         ch-col   (cond
-                   (or pk? (disallowed-as-nullable? ch-type) (map? base-type))
+                   (or pk? (disallowed-as-nullable? ch-type) (map? base-type) not-null?)
                    (format "%s %s" col-name ch-type)
 
                    (= ch-type "Time")
                    (format "%s Nullable(DateTime64) COMMENT 'time'" col-name)
 
-                   :else (format "%s Nullable(%s)" col-name ch-type))]
+                   :else (format "%s Nullable(%s)" col-name ch-type))
+        ch-col  (if default (str ch-col " DEFAULT " default) ch-col)]
     ch-col))
 
 (defn- ->comma-separated-str
