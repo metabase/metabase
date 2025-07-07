@@ -11,7 +11,7 @@ import { useEntityQuery } from "../use-entity-query";
  * @deprecated use "metabase/api" instead
  */
 export const useCollectionQuery = (
-  props: UseEntityQueryProps<CollectionId, unknown>,
+  props: UseEntityQueryProps<CollectionId | string, unknown>,
 ): UseEntityQueryResult<Collection> => {
   return useEntityQuery(props, {
     fetch: Collections.actions.fetch,

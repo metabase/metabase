@@ -1,4 +1,7 @@
+<<<<<<< HEAD:enterprise/frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/SdkSaveQuestionForm.tsx
 import { useTranslatedCollectionId } from "embedding-sdk-bundle/hooks/private/use-translated-collection-id";
+=======
+>>>>>>> 6a72cab5e38 (remove resolving collections):enterprise/frontend/src/embedding-sdk/components/private/SdkQuestion/components/SdkSaveQuestionForm.tsx
 import {
   SaveQuestionForm,
   SaveQuestionTitle,
@@ -35,11 +38,7 @@ export const SdkSaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
   const { question, originalQuestion, onSave, onCreate, targetCollection } =
     useSdkQuestionContext();
 
-  const { id, isLoading } = useTranslatedCollectionId({
-    id: targetCollection,
-  });
-
-  if (!question || isLoading) {
+  if (!question) {
     return null;
   }
 
@@ -50,7 +49,7 @@ export const SdkSaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
       onCreate={onCreate}
       onSave={onSave}
       multiStep={false}
-      targetCollection={id}
+      targetCollection={targetCollection ?? undefined}
     >
       <Stack p="md">
         <Title order={2}>

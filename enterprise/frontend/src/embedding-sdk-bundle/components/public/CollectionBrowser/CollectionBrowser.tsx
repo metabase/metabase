@@ -4,11 +4,17 @@ import {
   CollectionNotFoundError,
   SdkLoader,
   withPublicComponentWrapper,
+<<<<<<< HEAD:enterprise/frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { useTranslatedCollectionId } from "embedding-sdk-bundle/hooks/private/use-translated-collection-id";
 import { getCollectionIdSlugFromReference } from "embedding-sdk-bundle/store/collections";
 import { useSdkSelector } from "embedding-sdk-bundle/store/use-sdk-selector";
+=======
+} from "embedding-sdk/components/private/PublicComponentWrapper";
+import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
+import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
+>>>>>>> 6a72cab5e38 (remove resolving collections):enterprise/frontend/src/embedding-sdk/components/public/CollectionBrowser/CollectionBrowser.tsx
 import type {
   MetabaseCollectionItem,
   SdkCollectionId,
@@ -100,9 +106,7 @@ export const CollectionBrowserInner = ({
   visibleColumns = COLLECTION_BROWSER_LIST_COLUMNS,
   className,
   style,
-}: Omit<CollectionBrowserProps, "collectionId"> & {
-  collectionId: CollectionId;
-}) => {
+}: CollectionBrowserProps) => {
   const baseCollectionId = useSdkSelector((state) =>
     getCollectionIdSlugFromReference(state, collectionId),
   );
@@ -191,19 +195,16 @@ const CollectionBrowserWrapper = ({
   ...restProps
 }: CollectionBrowserProps) => {
   const { isLocaleLoading } = useLocale();
-  const { id, isLoading } = useTranslatedCollectionId({
-    id: collectionId,
-  });
 
-  if (isLocaleLoading || isLoading) {
+  if (isLocaleLoading) {
     return <SdkLoader />;
   }
 
-  if (!id) {
+  if (!collectionId) {
     return <CollectionNotFoundError id={collectionId} />;
   }
 
-  return <CollectionBrowserInner collectionId={id} {...restProps} />;
+  return <CollectionBrowserInner collectionId={collectionId} {...restProps} />;
 };
 
 export const CollectionBrowser = withPublicComponentWrapper(

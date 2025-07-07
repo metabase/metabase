@@ -5,7 +5,7 @@ import type {
   DashboardTabId,
 } from "metabase-types/api";
 
-export type SaveQuestionProps<C = CollectionId> = {
+export type SaveQuestionProps<C = CollectionId | string> = {
   question: Question;
   originalQuestion: Question | null;
   onCreate: (
