@@ -1,6 +1,5 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
-import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Stack, Text, TextInput } from "metabase/ui";
@@ -10,6 +9,7 @@ import { useSdkIframeEmbedSetupContext } from "../../context";
 
 import { ParameterVisibilityToggle } from "./ParameterVisibilityToggle";
 import { useHideParameter } from "./hooks/use-hide-parameter";
+import { getParameterPlaceholder } from "./utils/parameter-placeholder";
 
 export const ParameterSettings = () => {
   const {
@@ -76,18 +76,13 @@ export const ParameterSettings = () => {
     return (
       <Stack>
         {availableParameters.map((param) => {
-          const placeholder = match(param.default)
-            .with(P.array(), (arr) => arr.join(", "))
-            .with(P.nullish, () => param.name.toLowerCase())
-            .otherwise((val) => val.toString());
-
           const defaultValue = parameterValues?.[param.slug] ?? undefined;
 
           return (
             <TextInput
               key={param.id}
               label={param.name}
-              placeholder={placeholder}
+              placeholder={getParameterPlaceholder(param)}
               defaultValue={defaultValue}
               onChange={(e) =>
                 updateInitialParameterValue(param.slug, e.target.value)
