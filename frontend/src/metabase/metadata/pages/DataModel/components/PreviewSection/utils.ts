@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import type { Dataset } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 export function getPreviewTypeData() {
   return [
@@ -22,4 +23,8 @@ export function getErrorMessage(data: Dataset): string {
   }
 
   return error ?? t`Something went wrong`;
+}
+
+export function is403Error(error: unknown): boolean {
+  return isObject(error) && error.status === 403;
 }
