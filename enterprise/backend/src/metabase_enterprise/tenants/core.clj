@@ -8,7 +8,7 @@
 
 (defenterprise login-attributes
   "EE version of `login-attributes` - a map of tenant attributes that should be merged into the user's login
-  attributes. Currently overrides any existing user attributes."
+  attributes."
   :feature :tenants
   [{:keys [tenant_id] :as _user}]
   (or (when (and (setting/get :use-tenants) tenant_id)
@@ -17,7 +17,7 @@
       {}))
 
 (defenterprise login-attribute-keys
-  "The set of tenant attribute keys that will be merged into tenant users' attributes"
+  "The set of tenant attribute keys that attempt to be merged into tenant users' attributes"
   :feature :tenants
   []
   (if (setting/get :use-tenants)
