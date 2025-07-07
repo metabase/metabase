@@ -1,6 +1,7 @@
 import type { BarSeriesOption, LineSeriesOption } from "echarts/charts";
 import type { CallbackDataParams } from "echarts/types/dist/shared";
 import type {
+  LabelLayoutOptionCallbackParams,
   LabelOption,
   SeriesLabelOption,
 } from "echarts/types/src/util/types";
@@ -61,7 +62,6 @@ import { getSeriesYAxisIndex } from "./utils";
 
 const CARTESIAN_LABEL_DENSITY_SCALE_FACTOR = 1.2;
 const WATERFALL_LABEL_DENSITY_SCALE_FACTOR = 0.6;
-const DISTANCE = 5; // https://echarts.apache.org/en/option.html#series-line.label.distance
 
 const getBlurLabelStyle = (
   settings: ComputedVisualizationSettings,
@@ -72,29 +72,30 @@ const getBlurLabelStyle = (
 });
 
 export const getBarLabelLayout =
-  (
-    dataset: ChartDataset,
-    settings: ComputedVisualizationSettings,
-    seriesDataKey: DataKey,
-  ): BarSeriesOption["labelLayout"] =>
+  ({
+    settings,
+    getBarDirection,
+    getNegativeBarYOffset,
+  }: {
+    settings: ComputedVisualizationSettings;
+    getBarDirection: (p: LabelLayoutOptionCallbackParams) => RowValue;
+    getNegativeBarYOffset: (p: LabelLayoutOptionCallbackParams) => number;
+  }): BarSeriesOption["labelLayout"] =>
   (params) => {
-    const { dataIndex, rect } = params;
-    if (dataIndex == null) {
+    const barDirection = getBarDirection(params);
+    if (typeof barDirection !== "number") {
       return {};
     }
 
-    const labelValue = dataset[dataIndex][seriesDataKey];
-    if (typeof labelValue !== "number") {
-      return {};
-    }
+    const distance = 5; // https://echarts.apache.org/en/option.html#series-line.label.distance
 
     return {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
       align: "center",
       dy:
-        labelValue >= 0
-          ? -CHART_STYLE.seriesLabels.size - DISTANCE
-          : rect.height + DISTANCE,
+        barDirection >= 0
+          ? -CHART_STYLE.seriesLabels.size - distance
+          : getNegativeBarYOffset(params) + distance,
     };
   };
 
@@ -515,7 +516,16 @@ const buildEChartsBarSeries = (
           seriesModel.dataKey,
           chartMeasurements.stackedBarTicksRotation,
         )
-      : getBarLabelLayout(dataset, settings, seriesModel.dataKey),
+      : getBarLabelLayout({
+          settings,
+          getNegativeBarYOffset: ({ rect }) => rect.height,
+          getBarDirection: ({ dataIndex }) => {
+            if (dataIndex == null) {
+              return null;
+            }
+            return dataset[dataIndex][seriesModel.dataKey];
+          },
+        }),
     itemStyle: {
       color: seriesModel.color,
     },
@@ -554,11 +564,11 @@ const buildEChartsBarSeries = (
           renderingContext,
           false,
         ),
-        labelLayout: {
-          align: "center",
-          dy:
-            sign === "+" ? -CHART_STYLE.seriesLabels.size - DISTANCE : DISTANCE,
-        },
+        labelLayout: getBarLabelLayout({
+          settings,
+          getBarDirection: () => (sign === "+" ? 1 : -1),
+          getNegativeBarYOffset: () => 0,
+        }),
         type: "bar", // ensure type is bar for typescript
       };
     },
