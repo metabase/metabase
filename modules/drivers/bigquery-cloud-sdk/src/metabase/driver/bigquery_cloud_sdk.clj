@@ -647,8 +647,6 @@
   ;; Kicking off two async jobs:
   ;; - Waiting for the cancel-chan to get either a cancel message or to be closed.
   ;; - Running the BigQuery execution in another thread, since it's blocking.
-  (tap> {:details database-details})
-  (tap> {:sql sql})
   (let [^BigQuery client (database-details->client database-details)
         result-promise (promise)
         request (build-bigquery-request sql parameters)

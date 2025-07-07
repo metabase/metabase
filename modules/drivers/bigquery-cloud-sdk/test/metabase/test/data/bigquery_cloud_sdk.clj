@@ -63,8 +63,7 @@
     (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (def ^:dynamic *use-routing-project*
-  "Data warehouse JDBC Connection to use for doing CRUD Actions. Bind this to reuse the same Connection/transaction
-  throughout a single bulk Action."
+  "Used to decide which BigQuery project should be used for a db."
   false)
 
 (defn- test-db-details []

@@ -4,7 +4,6 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.test :as met]
    [metabase.app-db.core :as mdb]
-   [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor :as qp]
