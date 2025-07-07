@@ -178,7 +178,8 @@ export type AddDataModalTabEvent = ValidateEvent<{
 export type DashboardFilterCreatedEvent = ValidateEvent<{
   event: "dashboard_filter_created";
   target_id: number | null;
-  event_detail: VisualizationDisplay | null;
+  triggered_from: VisualizationDisplay | null;
+  event_detail: string | null;
 }>;
 
 export type SimpleEvent =

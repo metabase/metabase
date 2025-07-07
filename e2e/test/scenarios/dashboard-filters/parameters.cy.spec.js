@@ -2438,7 +2438,8 @@ H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "dashboard_filter_created",
-      event_detail: "table",
+      triggered_from: "table",
+      event_detail: "string",
       target_id: ORDERS_DASHBOARD_ID,
     });
 
@@ -2450,7 +2451,8 @@ H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "dashboard_filter_created",
-      event_detail: "heading",
+      triggered_from: "heading",
+      event_detail: "string",
       target_id: ORDERS_DASHBOARD_ID,
     });
 
@@ -2461,7 +2463,8 @@ H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "dashboard_filter_created",
-      event_detail: null,
+      triggered_from: null,
+      event_detail: "id",
       target_id: ORDERS_DASHBOARD_ID,
     });
   });

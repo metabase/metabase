@@ -194,7 +194,11 @@ export const addParameter = createThunkAction(
       const dashboardId = getDashboardId(getState());
       if (dashboardId) {
         const dashcardDisplay = dashcard?.card?.display;
-        trackFilterCreated(dashboardId, dashcardDisplay ?? null);
+        trackFilterCreated(
+          dashboardId,
+          dashcardDisplay ?? null,
+          parameter.sectionId,
+        );
       }
 
       dispatch(

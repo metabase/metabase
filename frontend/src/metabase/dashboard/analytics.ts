@@ -158,10 +158,12 @@ export const trackFilterRequired = (dashboardId: DashboardId) => {
 export const trackFilterCreated = (
   dashboardId: DashboardId,
   display: VisualizationDisplay | null,
+  filterType?: string,
 ) => {
   trackSimpleEvent({
     event: "dashboard_filter_created",
     target_id: getDashboardId(dashboardId),
-    event_detail: display,
+    triggered_from: display,
+    event_detail: filterType ?? null,
   });
 };
