@@ -2416,6 +2416,60 @@ describe("scenarios > dashboard > parameters", () => {
   });
 });
 
+H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
+  beforeEach(() => {
+    H.resetSnowplow();
+    H.restore();
+    cy.signInAsAdmin();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  it("should track dashboard_filter_created event when adding a filter", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+
+    // Ensure tracking is triggered for question dashcard parameters
+    H.setDashCardFilter(0, "Text or Category", null, "Category");
+    H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "dashboard_filter_created",
+      triggered_from: "table",
+      event_detail: "string",
+      target_id: ORDERS_DASHBOARD_ID,
+    });
+
+    H.dashboardParameterSidebar().button("Done").click();
+
+    // Ensure tracking is triggered for heading dashcard parameters
+    H.addHeadingWhileEditing("Heading Text");
+    H.setDashCardFilter(1, "Text or Category", null, "Category 2");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "dashboard_filter_created",
+      triggered_from: "heading",
+      event_detail: "string",
+      target_id: ORDERS_DASHBOARD_ID,
+    });
+
+    H.dashboardParameterSidebar().button("Done").click();
+
+    // Ensure tracking is triggered for dashboard parameters
+    H.setFilter("ID");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "dashboard_filter_created",
+      triggered_from: null,
+      event_detail: "id",
+      target_id: ORDERS_DASHBOARD_ID,
+    });
+  });
+});
+
 function isFilterSelected(filter, bool) {
   cy.findByLabelText(filter).should(
     `${bool === false ? "not." : ""}be.checked`,
