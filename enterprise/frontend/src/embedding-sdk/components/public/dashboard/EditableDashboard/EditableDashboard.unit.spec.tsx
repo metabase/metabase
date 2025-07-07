@@ -120,7 +120,9 @@ describe("EditableDashboard", () => {
   });
 
   it("should allow to go back to the dashboard after seeing the query builder", async () => {
-    await setup();
+    await setup({
+      dashboardName: "Test dashboard",
+    });
     setupSimpleDataPickerEndpoints();
 
     expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
