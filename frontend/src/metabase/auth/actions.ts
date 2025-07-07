@@ -97,6 +97,34 @@ export const loginGoogle = createAsyncThunk(
   },
 );
 
+interface LoginSSOPayload {
+  redirectUrl?: string;
+  remember?: boolean;
+}
+
+export const LOGIN_SSO = "metabase/auth/LOGIN_SSO";
+export const loginSSO = createAsyncThunk(
+  LOGIN_SSO,
+  async (
+    { redirectUrl }: LoginSSOPayload,
+    { dispatch, rejectWithValue },
+  ) => {
+    try {
+      // Redirect to SSO login endpoint
+      const response = await fetch("/api/sso/login");
+      const data = await response.json();
+      
+      if (response.ok && data.auth_url) {
+        window.location.href = data.auth_url;
+      } else {
+        return rejectWithValue(new Error("Failed to initiate SSO login"));
+      }
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  },
+);
+
 export const LOGOUT = "metabase/auth/LOGOUT";
 export const logout = createAsyncThunk(
   LOGOUT,

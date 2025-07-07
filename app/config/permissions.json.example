@@ -1,0 +1,26 @@
+{
+  "groups": {
+    "Analysts": {
+      "view": ["Sales Dashboard", "Product Dashboard"],
+      "edit": ["Product Dashboard"]
+    },
+    "Executives": {
+      "view": ["Sales Dashboard", "Executive Summary"],
+      "edit": []
+    },
+    "Admins": {
+      "view": ["All"],
+      "edit": ["All"]
+    }
+  },
+  "users": {
+    "vip@company.com": {
+      "view": ["All"],
+      "edit": ["All"]
+    },
+    "readonly@company.com": {
+      "view": ["Sales Dashboard"],
+      "edit": []
+    }
+  }
+}

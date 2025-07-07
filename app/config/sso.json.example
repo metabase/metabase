@@ -1,0 +1,10 @@
+{
+  "provider": "okta",
+  "client_id": "your-client-id",
+  "client_secret": "your-client-secret",
+  "auth_url": "https://your-domain.okta.com/oauth2/v1/authorize",
+  "token_url": "https://your-domain.okta.com/oauth2/v1/token",
+  "userinfo_url": "https://your-domain.okta.com/oauth2/v1/userinfo",
+  "scopes": ["openid", "email", "profile"],
+  "default_group": "Viewers"
+}

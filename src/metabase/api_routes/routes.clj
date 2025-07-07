@@ -133,6 +133,7 @@
    "/api-key"              (+auth 'metabase.api-keys.api)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
+   "/branding"             'metabase.branding.api
    "/bug-reporting"        (+auth 'metabase.bug-reporting.api)
    "/cache"                (+auth 'metabase.cache.api)
    "/card"                 (+auth metabase.queries.api/card-routes)
@@ -170,6 +171,7 @@
    "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.settings.api)
    "/setup"                'metabase.setup.api
+   "/sso"                  metabase.sso.api/sso-routes
    "/slack"                (+auth metabase.channel.api/slack-routes)
    "/table"                (+auth metabase.warehouse-schema.api/table-routes)
    "/task"                 (+auth 'metabase.task-history.api)

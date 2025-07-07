@@ -1,0 +1,20 @@
+# Extended Metabase with SSO, Branding, and Permissions
+FROM metabase/metabase:latest
+
+# Create config directory
+RUN mkdir -p /app/config
+
+# Copy example configurations (optional - mount real configs at runtime)
+COPY app/config/*.example /app/config/
+
+# Ensure proper permissions on config directory
+RUN chmod -R 644 /app/config/
+
+# Label the image
+LABEL org.opencontainers.image.title="Metabase Extended"
+LABEL org.opencontainers.image.description="Metabase with SSO, Branding, and Fine-grained Permissions"
+LABEL org.opencontainers.image.documentation="https://github.com/your-org/metabase-extended/blob/main/METABASE_EXTENSIONS.md"
+
+# Default command (inherited from base image)
+# To use with custom configs, mount them:
+# docker run -v ./config:/app/config:ro -p 3000:3000 metabase-extended
