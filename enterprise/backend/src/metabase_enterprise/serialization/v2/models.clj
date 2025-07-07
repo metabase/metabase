@@ -21,8 +21,8 @@
 
 (def to-implement-models
   "The list of exported models but are pending for implementation."
-  [#_;; see https://linear.app/metabase/issue/WRK-579
-     "DataApp"
+  [;; see https://linear.app/metabase/issue/WRK-579
+   "DataApp"
    "DataAppDefinition"
    "DataAppRelease"])
 

@@ -284,7 +284,7 @@ databaseChangeLog:
                   remarks: SHA hash for the entity
                   type: char(21)
                   constraints:
-                    nullable: false
+                    nullable: true
               - column:
                   remarks: The timestamp of when the definition was created
                   name: created_at
@@ -315,10 +315,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: app_id
-      rollback:
-        - dropIndex:
-            tableName: data_app_definition
-            indexName: idx_data_app_definition_app_id
+      rollback: #no op, will be deleted with the table
 
   - changeSet:
       id: v56.2025-07-03T16:02:10
@@ -340,6 +337,7 @@ databaseChangeLog:
               - column:
                   name: revision_number
                   descending: true
+      rollback: #no op, will be deleted with the table
 
   - changeSet:
       id: v56.2025-07-03T16:02:20
@@ -440,6 +438,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: app_definition_id
+      rollback: #no op, will be deleted with the table
 
   - changeSet:
       id: v56.2025-07-03T16:05:00
@@ -458,6 +457,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: app_id
+      rollback: #no op, will be deleted with the table
 
   - changeSet:
       id: v56.2025-07-03T16:07:00
@@ -479,6 +479,7 @@ databaseChangeLog:
                   descending: true
               - column:
                   name: retracted
+      rollback: #no op, will be deleted with the table
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
