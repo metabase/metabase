@@ -63,7 +63,7 @@ export const SemanticTypeAndTargetPicker = ({
   };
 
   return (
-    <Stack data-testid="semantic-type-target-picker" gap={0}>
+    <Stack gap={0}>
       <SemanticTypePicker
         {...selectProps}
         className={className}
