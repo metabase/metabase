@@ -10,7 +10,6 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk/components/private/SdkQuestion/components/Visualization";
-import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk/lib/sdk-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
