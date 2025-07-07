@@ -6,11 +6,9 @@ import AdminApp from "metabase/admin/app/components/AdminApp";
 import { DatabaseConnectionModal } from "metabase/admin/databases/containers/DatabaseConnectionModal";
 import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
 import { DatabaseListApp } from "metabase/admin/databases/containers/DatabaseListApp";
-import { DataModelApp } from "metabase/admin/datamodel/containers/DataModelApp";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
-import { getMetadataRoutes } from "metabase/admin/datamodel/metadata/routes";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { GroupDetailApp } from "metabase/admin/people/containers/GroupDetailApp";
@@ -70,20 +68,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         <Route path=":databaseId" component={DatabaseEditApp}>
           <ModalRoute path="edit" modal={DatabaseConnectionModal} noWrap />
           {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
-        </Route>
-      </Route>
-      {/* TODO: remove this at the end of Milestone 1 */}
-      {/* https://linear.app/metabase/project/up-level-admin-metadata-editing-0399213bee40 */}
-      <Route
-        path="datamodel-v1"
-        component={createAdminRouteGuard("data-model")}
-      >
-        <Route title={t`Table Metadata`} component={DataModelApp}>
-          {getMetadataRoutes()}
-          <Route path="segments" component={SegmentListApp} />
-          <Route path="segment/create" component={SegmentApp} />
-          <Route path="segment/:id" component={SegmentApp} />
-          <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
         </Route>
       </Route>
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
