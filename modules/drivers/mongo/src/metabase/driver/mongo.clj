@@ -200,8 +200,9 @@
 (defn- describe-table-pipeline
   "Construct mongo aggregation pipeline to fetch at most `leaf-limit` number of _leaf fields_. _Leaf fields_ are later
   transformed by [[dbfields->ftree]] and [[ftree->nested-fields]] to be returned as :fields
-  of [[driver/describe-table]]."
-  [& {:keys [collection-name sample-size dive-depth leaf-limit]}]
+  of [[driver/describe-table]]. `sample-size` represents number of documents taken from start and end of a collection.
+  `document-sample-depth` conveys how deep the documents are sampled, ie. number of repetitions of [[unwind-stages]]."
+  [& {:keys [collection-name sample-size document-sample-depth leaf-limit]}]
   (into []
         cat
         [;; 1. Fetch.
@@ -211,7 +212,7 @@
                        "indices" {"$literal" []}
                        "val"     "$$ROOT"}}]
          ;; 3. Search
-         (apply concat (repeat dive-depth unwind-stages))
+         (apply concat (repeat document-sample-depth unwind-stages))
          ;; 4. Group results
          [{"$group" {"_id"     {"path"   "$path"
                                 "type"   {"$type" "$val"}
@@ -398,10 +399,10 @@
   Each row represents leaf in sampled documents, its type and indices of keys present in the path of mongo of nested
   object."
   [database table]
-  (let [pipeline (describe-table-pipeline {:collection-name  (:name table)
-                                           :sample-size      (* table-rows-sample/nested-field-sample-limit 2)
-                                           :dive-depth       describe-table-query-depth
-                                           :leaf-limit       *leaf-fields-limit*})
+  (let [pipeline (describe-table-pipeline {:collection-name (:name table)
+                                           :sample-size (* table-rows-sample/nested-field-sample-limit 2)
+                                           :document-sample-depth describe-table-query-depth
+                                           :leaf-limit *leaf-fields-limit*})
         query {:database (:id database)
                :type     "native"
                :native   {:collection (:name table)
