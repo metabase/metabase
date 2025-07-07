@@ -202,7 +202,10 @@ const ListToggle = ({
 const SampleDatabaseIndicator = () => {
   const hasSampleDatabase = useSetting("has-sample-database?");
 
-  if (!hasSampleDatabase) {
+  // This only ever applies to the setup step where we don't have the info about databases yet.
+  // Unless someone explicitly starts Metabase with env  MB_LOAD_SAMPLE_CONTENTset to false,
+  // we will include the Sample Database.
+  if (hasSampleDatabase === false) {
     return;
   }
 

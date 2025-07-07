@@ -253,7 +253,11 @@ const DatabaseFormFooter = ({
     );
   }
 
-  if (hasSampleDatabase) {
+  // This check happens only during setup where we cannot fetch databases.
+  // Unless someone explicitly set the environment variable MB_LOAD_SAMPLE_CONTENT
+  // to false, we can assume that the instance loads with the Sample Database.
+  // https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_load_sample_content
+  if (hasSampleDatabase !== false) {
     return (
       <>
         <Button variant="filled" mb="md" mt="lg" onClick={onCancel}>

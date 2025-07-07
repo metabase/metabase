@@ -100,7 +100,7 @@ describe("scenarios > setup", () => {
 
           // remove sqlite database
           cy.findByLabelText("Remove database").click();
-          cy.findByText("I'll add my data later").click();
+          cy.findByText("Continue with sample data").click();
 
           // test database setup help card is hidden on the next step
           cy.findByText("Need help connecting?").should("not.be.visible");
@@ -166,7 +166,7 @@ describe("scenarios > setup", () => {
 
       // Database
       cy.findByText("Add your data");
-      cy.findByText("I'll add my data later").click();
+      cy.findByText("Continue with sample data").click();
 
       skipLicenseStepOnEE();
 
@@ -483,7 +483,7 @@ describe("scenarios > setup (EE)", () => {
 
       cy.button("Next").click();
 
-      cy.findByText("I'll add my data later").click();
+      cy.findByText("Continue with sample data").click();
 
       cy.findByText("Activate your commercial license").should("exist");
 
@@ -564,7 +564,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
         step_number: 4,
         step: "db_connection",
       });
-      cy.findByText("I'll add my data later").click();
+      cy.findByText("Continue with sample data").click();
 
       H.expectUnstructuredSnowplowEvent({
         event: "add_data_later_clicked",

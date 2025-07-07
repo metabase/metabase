@@ -107,7 +107,7 @@ export function setupInstance({ version, majorVersion }) {
     cy.button("Next").click();
   }
 
-  cy.findByText("I'll add my data later").click();
+  cy.findByText("Continue with sample data").click();
   cy.findByText("I'll add my own data later");
 
   // Collection defaults to on and describes data collection
