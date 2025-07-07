@@ -1,12 +1,15 @@
 (ns metabase.queries.api.card
   "/api/card endpoints."
   (:require
+   #_[metabase.sync.sync-metadata :as sync-metadata]
+   [clojure.java.jdbc :as jdbc]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -25,11 +28,13 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
+   [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.json :as json]
@@ -38,7 +43,8 @@
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -536,6 +542,7 @@
 
 (def ^:private CardUpdateSchema
   [:map
+   [:transform              {:optional true} [:maybe :boolean]]
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
    [:dataset_query          {:optional true} [:maybe ms/Map]]
@@ -567,6 +574,78 @@
           (api/column-will-change? :collection_id card-before-update card-updates))
       (assoc :collection_id collection-id))))
 
+;; TODO: will need to make sure it is unique, else we risk overriding
+;; existing view that are not equal. if uniqueness can't be guaranteed by
+;; hashing, we may need to store view definitions (we'll most likely need
+;; that anyway) and compare
+(defn- generate-view-name
+  ([]
+   (generate-view-name (System/currentTimeMillis)))
+  ([x]
+   (str "mb_view_" x)))
+
+;; TODO: we likely don't want CREATE OR REPLACE, and always generate a new name
+
+(defn- generate-view-definition [name query]
+  (format "CREATE OR REPLACE VIEW \"%s\" AS\n\t(%s)" name query))
+
+(defn- insert-transform
+  [{card-id :id original-dataset-query :dataset_query :as _card}]
+  (t2/insert-returning-instance! :model/Transform {:card_id card-id
+                                                   :original_dataset_query original-dataset-query}))
+
+;; TODO: We should avoid creating view from query that is view based already. Instead create view from modification
+;;       of its definition that resides in report_card_transform or :model/Transform.
+(defn create-view-for-card
+  "create view for card"
+  [driver db {:keys [dataset_query] :as card}]
+  (t2/with-transaction [_conn]
+    (let [{transform-id :id :as _transform} (insert-transform card)
+          {:keys [query]} (qp.compile/compile dataset_query)
+          view-name (generate-view-name transform-id)
+          view-definition (generate-view-definition view-name query)]
+      (log/fatalf "Transform view:\n\n%s\n"
+                  view-definition)
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver db {:write? true}
+       (fn [^Connection conn]
+         #_(throw (Exception. "verif transact Transform model"))
+         (jdbc/execute! {:connection conn} view-definition)
+         view-name)))))
+
+(defn- transform-updates [{:keys [database_id] :as card}]
+  (assert (empty? (:parameters card)))
+  (let [db (t2/select-one :model/Database :id database_id)
+        driver (:engine db)
+        new-table-name (create-view-for-card driver db card)
+        ;; ?analysis
+        ;; _ (sync-metadata/sync-db-metadata! db)
+        _ (sync/sync-database! db)
+        table (t2/select-one :model/Table :name new-table-name)]
+    ;; the FE doesn't know what to do with :type :transform, so we just pretend it's still a question for the purposes of this demo
+    {;; :type :transform
+     :type :question
+     :table_id (:id table)
+     :dataset_query
+     {:database (:id db),
+      :type :query,
+      :query {:source-table (:id table)}}}))
+
+;;; (def card (t2/select-one :model/Card 115))
+;;; (turn-card-into-transform card)
+
+#_(comment
+
+    (def cu (toucan2.core/select-one :model/Card :name "q3 orders"))
+
+    (metabase.request.session/with-current-user 1
+      (update-card! 114 {:type :transform} false))
+
+    (metabase.request.session/with-current-user 1
+      (update-card! 116 {:type :transform} false))
+
+    (toucan2.core/update! :model/Card :id 116 {:type "question"}))
+
 (mu/defn update-card!
   "Updates a card - impl"
   [id :- ms/PositiveInt
@@ -574,6 +653,7 @@
            result_metadata
            type] :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
+  ;; if type is transform, then let's compile it into a view
   (check-if-card-can-be-saved dataset_query type)
   (when-some [query (dataset-query->query dataset_query)]
     (try
@@ -587,7 +667,8 @@
                                 (api/updates-with-archived-directly card-before-update card-updates))
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
-                                 (card/model? card-updates))]
+                                 (card/model? card-updates))
+        is-transform-after-update? (:transform card-updates)]
     ;; Do various permissions checks
     (doseq [f [check-allowed-to-move
                check-allowed-to-modify-query
@@ -617,6 +698,11 @@
                                                metadata
                                                (assoc :result_metadata           metadata
                                                       :verified-result-metadata? true))
+
+          card-updates                       (cond-> card-updates
+                                               is-transform-after-update?
+                                               (merge (transform-updates card-before-update)))
+
           card                               (-> (card/update-card! {:card-before-update    card-before-update
                                                                      :card-updates          card-updates
                                                                      :actor                 @api/*current-user*

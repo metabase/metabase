@@ -244,6 +244,7 @@ const Questions = createEntity({
     "name",
     "cache_ttl",
     "type",
+    "transform",
     "dataset_query",
     "display",
     "description",

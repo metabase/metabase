@@ -25,7 +25,8 @@ import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 
-export type CardType = "model" | "question" | "metric";
+// wip
+export type CardType = "model" | "question" | "metric" ;
 
 type CreatorInfo = Pick<
   UserInfo,
@@ -42,6 +43,8 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   description: string | null;
   type: CardType;
   public_uuid: string | null;
+
+  transform: bool | null;
 
   /* Indicates whether static embedding for this card has been published */
   enable_embedding: boolean;
@@ -380,6 +383,7 @@ export interface CreateCardRequest {
   collection_position?: number;
   result_metadata?: Field[];
   cache_ttl?: number;
+  transform?: bool;
 }
 
 export interface CreateCardFromCsvRequest {
@@ -404,6 +408,7 @@ export interface UpdateCardRequest {
   collection_position?: number;
   result_metadata?: Field[];
   cache_ttl?: number;
+  transform?: bool;
   collection_preview?: boolean;
   delete_old_dashcards?: boolean;
 }
