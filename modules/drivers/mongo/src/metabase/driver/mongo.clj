@@ -277,7 +277,7 @@
                                 (assoc-in (conj %2 :visibility-type) :details-only))
                            ftree parents-paths)
             ftree* (ftree-set-type ftree* leaf-path leaf-type)
-            ftree* (reduce #(assoc-in %1 (conj (vec (%2 0)) :index) (%2 1))
+            ftree* (reduce #(assoc-in %1 (conj (vec (first %2)) :index) (second %2))
                            ftree*
                            (map vector ftree-paths (:indices dbfield)))]
         (recur dbfields* ftree*)))))
