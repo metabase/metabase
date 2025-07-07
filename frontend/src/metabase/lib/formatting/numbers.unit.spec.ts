@@ -1,3 +1,5 @@
+import MetabaseSettings from "metabase/lib/settings";
+
 import { formatNumber, numberFormatterForOptions } from "./numbers";
 
 describe("formatNumber", () => {
@@ -60,5 +62,17 @@ describe("formatNumber", () => {
         number_style: "scientific",
       }),
     ).toEqual("1.000015e+0");
+  });
+
+  it("should work with instance settings", () => {
+    expect(formatNumber(2000, { useInstanceSettings: true })).toEqual("2,000");
+
+    MetabaseSettings.set("custom-formatting", {
+      ["type/Number"]: {
+        number_separators: ",.",
+      },
+    });
+
+    expect(formatNumber(2000, { useInstanceSettings: true })).toEqual("2.000");
   });
 });
