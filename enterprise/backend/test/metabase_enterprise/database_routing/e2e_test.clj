@@ -13,6 +13,7 @@
    [metabase.test.data.bigquery-cloud-sdk :as bigquery-cloud-sdk]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.test.data.redshift :as redshift]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -243,3 +244,91 @@
                                    crowberto))
                             (is (= [[1 "routed-foo"] [2 "routed-bar"]]
                                    rasta))))))))))))))))
+
+(comment
+
+  (mt/test-driver :redshift
+    (letfn [(wire-routing [{:keys [parent children]}]
+              (t2/update! :model/Database :id [:in (map :id children)]
+                          {:router_database_id (:id parent)})
+              (doseq [child children]
+                (t2/update! :model/Database :id (:id child)
+                            {:details (assoc (:details child) :destination-database true)})))]
+      (mt/with-premium-features #{:database-routing}
+        (with-redefs [bigquery-cloud-sdk/test-dataset-id (constantly "metabase_routing_dataset")]
+          (binding [bigquery-cloud-sdk/*use-routing-project* true
+                    redshift/*use-routing-db* true]
+            (mt/dataset routed-data
+              (let [routed (mt/db)]
+                (tap> {:routed-details (:details routed)})
+                (binding [bigquery-cloud-sdk/*use-routing-project* false
+                          redshift/*use-routing-db* false]
+                  (mt/dataset original-data
+                    (let [router (mt/db)]
+                      (tap> {:router-details (:details router)})
+                      (wire-routing {:parent router :children [routed]})
+                      (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
+                                                              :user_attribute "db_name"}]
+                        (met/with-user-attributes! :rasta {"db_name" (:name routed)}
+                          (let [crowberto (mt/with-current-user (mt/user->id :crowberto)
+                                            (mt/rows (mt/process-query (mt/query t))))
+                                rasta (mt/with-current-user (mt/user->id :rasta)
+                                        (mt/rows (mt/process-query (mt/query t))))]
+                            (is (not= crowberto rasta) "rows were identical meaning it did not route")
+                            (is (= [[1 "original-foo"] [2 "original-bar"]]
+                                   crowberto))
+                            (is (= [[1 "routed-foo"] [2 "routed-bar"]]
+                                   rasta)))))))))))))))
+
+  (mt/test-driver :redshift
+    (letfn [(wire-routing [{:keys [parent children]}]
+              (t2/update! :model/Database :id [:in (map :id children)]
+                          {:router_database_id (:id parent)})
+              (doseq [child children]
+                (t2/update! :model/Database :id (:id child)
+                            {:details (assoc (:details child) :destination-database true)})))]
+      (mt/with-premium-features #{:database-routing}
+        (with-redefs [bigquery-cloud-sdk/test-dataset-id (constantly "metabase_routing_dataset")]
+          (binding [bigquery-cloud-sdk/*use-routing-project* true
+                    redshift/*use-routing-db* true]
+            (mt/dataset routed-data
+              (let [routed (mt/db)]
+                (tap> {:routed-details (:details routed)})
+                (binding [bigquery-cloud-sdk/*use-routing-project* false
+                          redshift/*use-routing-db* false]
+                  (mt/dataset original-data
+                    (let [router (mt/db)]
+                      (tap> {:router-details (:details router)})
+                      (wire-routing {:parent router :children [routed]})
+                      (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
+                                                              :user_attribute "db_name"}]
+                        (met/with-user-attributes! :rasta {"db_name" (:name routed)}
+                          (let [crowberto (mt/with-current-user (mt/user->id :crowberto)
+                                            (mt/rows (mt/process-query (mt/query t))))
+                                rasta (mt/with-current-user (mt/user->id :rasta)
+                                        (mt/rows (mt/process-query (mt/query t))))]
+                            (is (not= crowberto rasta) "rows were identical meaning it did not route")
+                            (is (= [[1 "original-foo"] [2 "original-bar"]]
+                                   crowberto))
+                            (is (= [[1 "routed-foo"] [2 "routed-bar"]]
+                                   rasta)))))))))))))))
+
+  (tx/defdataset original-data-0
+    [["t"
+      [{:field-name "f", :base-type :type/Text}]
+      [["original-foo-massive"]
+       ["original-bar-massive"]]]])
+
+  (mt/test-driver :redshift
+    (mt/dataset original-data-0
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/rows (mt/process-query (mt/query t))))))
+
+  (let [db (t2/select-one :model/Database :id 400)
+        massive-db (-> db
+                       (assoc-in [:details :db] "massive")
+                       (assoc-in [:name] "routed-db")
+                       (dissoc :id))]
+    (t2/insert! :model/Database massive-db))
+
+  (tap> 1))

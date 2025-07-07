@@ -42,7 +42,7 @@
                               :uuid-type                 false
                               :nested-field-columns      false
                               :test/jvm-timezone-setting false
-                              :database-routing          false}]
+                              :database-routing          true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -458,6 +458,7 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
   [_ {:keys [host port db], :as opts}]
+  (tap> {:connection-details->spec {:host host, :port port, :db db}})
   (sql-jdbc.common/handle-additional-options
    (merge
     {:classname                     "com.amazon.redshift.jdbc42.Driver"

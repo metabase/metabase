@@ -191,6 +191,7 @@
                              driver
                              id
                              details-with-tunnel)
+        _ (tap> {:create-pool! details})
         spec                (connection-details->spec driver details-with-auth)
         properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
@@ -218,6 +219,7 @@
   "Computes a hash value for the JDBC connection spec based on `database`'s `:details` map, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated."
   [{driver :engine, :keys [details], :as database} :- [:maybe :map]]
+  (tap> {:jdbc-spec-hash details})
   (when (some? database)
     (hash (connection-details->spec driver details))))
 
@@ -349,6 +351,7 @@
       (let [details-with-auth (driver.u/fetch-and-incorporate-auth-provider-details
                                driver
                                details-with-tunnel)
+            _ (tap> {:testing-connection-details details-with-auth})
             spec (connection-details->spec driver details-with-auth)]
         (f spec)))))
 
