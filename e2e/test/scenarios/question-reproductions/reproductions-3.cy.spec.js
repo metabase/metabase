@@ -2731,3 +2731,188 @@ describe("issue 12679", () => {
       .should("exist");
   });
 });
+
+describe("issue 51856", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  const q1Details = {
+    name: "Issue 51856 Q1",
+    type: "question",
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          fields: "all",
+          strategy: "left-join",
+          alias: "Products",
+          condition: [
+            "=",
+            [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+            [
+              "field",
+              PRODUCTS.ID,
+              {
+                "base-type": "type/BigInteger",
+                "join-alias": "Products",
+              },
+            ],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+      ],
+    },
+  };
+
+  const q2Details = {
+    name: "Issue 51856 Q2",
+    query: {
+      "source-table": SAMPLE_DATABASE.REVIEWS_ID,
+      joins: [
+        {
+          fields: "all",
+          strategy: "left-join",
+          alias: "Products",
+          condition: [
+            "=",
+            [
+              "field",
+              SAMPLE_DATABASE.REVIEWS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+            [
+              "field",
+              PRODUCTS.ID,
+              {
+                "base-type": "type/BigInteger",
+                "join-alias": "Products",
+              },
+            ],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+      ],
+    },
+  };
+
+  it("join alias deduplication should not break queries with multiple nesting levels with joins (metabase#51856)", () => {
+    H.createQuestion(q1Details, { wrapId: true, idAlias: "q1id" });
+    cy.get("@q1id").then((_q1id) => {
+      H.createQuestion(q2Details, { wrapId: true, idAlias: "q2id" });
+      cy.get("@q2id").then((_q2id) => {
+        H.startNewQuestion();
+
+        H.selectSavedQuestionsToJoin(q1Details.name, q2Details.name);
+        cy.findByTestId("join-condition-0").findByText(q1Details.name).click();
+        H.popover().findByText("Products → Category").click();
+        cy.findByTestId("join-condition-0").findByText(q2Details.name).click();
+        H.popover().findByText("Issue 51856 Q2 → Category").click();
+
+        H.visualize();
+
+        H.tableInteractiveScrollContainer().scrollTo("right");
+        cy.findByTestId("table-header").within(() => {
+          cy.findByText("Products → Category").should("exist");
+          cy.findByText(
+            "Issue 51856 Q2 - Products → Category → Category",
+          ).should("exist");
+        });
+        cy.findByTestId("question-row-count")
+          .findByText("Showing first 2,000 rows")
+          .should("exist");
+      });
+    });
+  });
+});
+
+describe("issue 33972", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  const queryDetails = {
+    name: "Issue 33972",
+    type: "question",
+    query: {
+      "source-table": ORDERS_ID,
+      fields: [
+        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+        ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
+      ],
+      joins: [
+        {
+          fields: [
+            [
+              "field",
+              PRODUCTS.CATEGORY,
+              { "base-type": "type/Text", "join-alias": "Products" },
+            ],
+          ],
+          strategy: "left-join",
+          alias: "Products",
+          condition: [
+            "=",
+            [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+            [
+              "field",
+              PRODUCTS.ID,
+              {
+                "base-type": "type/BigInteger",
+                "join-alias": "Products",
+              },
+            ],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+      ],
+    },
+  };
+
+  it("should be able to distinguish explicitly and implicitly joined fields (metabase#33972)", () => {
+    H.createQuestion(queryDetails, { wrapId: true });
+    cy.get("@questionId").then((questionId) => {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": "card__" + questionId,
+          },
+          type: "query",
+        },
+      });
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-list-container")
+        .findByText("Add or remove columns")
+        .click();
+      cy.findByTestId("product-table-columns").findByText("Category").click();
+      cy.findByTestId("product-table-columns").findByText("Ean").click();
+      cy.findByTestId("table-header").within(() => {
+        cy.findByText("ID").should("exist");
+        cy.findByText("Product ID").should("exist");
+        cy.findByText("Products → Category").should("exist");
+        cy.findByText("Product → Category").should("exist");
+        cy.findByText("Product → Ean").should("exist");
+      });
+      cy.findByTestId("question-row-count")
+        .findByText("Showing first 2,000 rows")
+        .should("exist");
+    });
+  });
+});

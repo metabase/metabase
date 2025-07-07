@@ -16,7 +16,11 @@ import type { Parameter } from "metabase-types/api";
 export interface DashboardParameterListProps
   extends Pick<
     ComponentProps<typeof ParametersList>,
-    "widgetsVariant" | "widgetsWithinPortal" | "vertical" | "hasTestIdProps"
+    | "widgetsVariant"
+    | "widgetsWithinPortal"
+    | "widgetsPopoverPosition"
+    | "vertical"
+    | "hasTestIdProps"
   > {
   className?: string;
   parameters: Array<Parameter & { value: unknown }>;
@@ -33,6 +37,7 @@ export const DashboardParameterList = forwardRef<
     isSortable = true,
     widgetsVariant = "subtle",
     widgetsWithinPortal,
+    widgetsPopoverPosition,
     vertical,
     hasTestIdProps = true,
   },
@@ -51,6 +56,7 @@ export const DashboardParameterList = forwardRef<
 
   return (
     <ParametersList
+      ref={ref}
       className={cx(DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME, className)}
       parameters={parameters}
       editingParameter={editingParameter}
@@ -69,9 +75,9 @@ export const DashboardParameterList = forwardRef<
       enableParameterRequiredBehavior
       widgetsVariant={widgetsVariant}
       widgetsWithinPortal={widgetsWithinPortal}
+      widgetsPopoverPosition={widgetsPopoverPosition}
       vertical={vertical}
       hasTestIdProps={hasTestIdProps}
-      ref={ref}
     />
   );
 });

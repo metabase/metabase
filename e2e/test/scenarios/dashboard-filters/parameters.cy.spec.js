@@ -1787,7 +1787,7 @@ describe("scenarios > dashboard > parameters", () => {
       },
     };
 
-    it("should be able to add and use filters", { tags: "@flaky" }, () => {
+    it("should be able to add and use filters", () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
       }).then(({ body: { dashboard_id } }) => {
@@ -1804,9 +1804,11 @@ describe("scenarios > dashboard > parameters", () => {
 
       // Verify filtering works
       H.getDashboardCard(0).within(() => {
+        cy.findByText("Gadget").should("be.visible"); // wait for query
         H.filterWidget().contains("Category").click();
       });
       H.dashboardParametersPopover().within(() => {
+        cy.findByLabelText("Gadget").should("exist");
         cy.findByLabelText("Gadget").click();
         cy.button("Add filter").click();
       });
