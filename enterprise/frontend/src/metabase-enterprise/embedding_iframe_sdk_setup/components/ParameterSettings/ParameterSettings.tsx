@@ -4,6 +4,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Stack, Text, TextInput } from "metabase/ui";
+import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
 
 import { useSdkIframeEmbedSetupContext } from "../../context";
 
@@ -45,7 +46,7 @@ export const ParameterSettings = () => {
       },
       [settings, updateSettings],
     ),
-    500,
+    SET_INITIAL_PARAMETER_DEBOUNCE_MS,
   );
 
   const parameterValues = useMemo(() => {
