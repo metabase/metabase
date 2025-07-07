@@ -14,6 +14,7 @@ import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import CS from "metabase/css/core/index.css";
 import {
   Box,
   Button,
@@ -198,7 +199,11 @@ export const InteractiveQuestionDefaultView = ({
               {/* Vertical padding matches the visualization header above */}
               {/* If we don't conditionally render this button, it will be shown twice after visualizing the query once. */}
               {!queryResults && (
-                <Box px={{ base: "1rem", sm: "2rem" }} pt="md">
+                <Box
+                  px={{ base: "1rem", sm: "2rem" }}
+                  pt="md"
+                  className={CS.hideEmpty}
+                >
                   <InteractiveQuestion.BackButton />
                 </Box>
               )}
