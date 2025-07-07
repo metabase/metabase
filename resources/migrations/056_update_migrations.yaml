@@ -256,6 +256,18 @@ databaseChangeLog:
                   defaultValueBoolean: true
                   constraints:
                     nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the tenant was updated
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the tenant was created
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v56.2025-07-07T06:58:40
