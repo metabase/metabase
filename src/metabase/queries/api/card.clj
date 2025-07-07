@@ -123,6 +123,23 @@
   (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))
       (t2/hydrate :creator :collection)))
 
+;;; -------------------------------------------- List of public or embeddable cards -----------------------------------
+
+(api.macros/defendpoint :get "/public"
+  "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
+  []
+  (perms/check-has-application-permission :setting)
+  (public-sharing.validation/check-public-sharing-enabled)
+  (t2/select [:model/Card :name :id :public_uuid :card_schema], :public_uuid [:not= nil], :archived false))
+
+(api.macros/defendpoint :get "/embeddable"
+  "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
+  and a signed JWT."
+  []
+  (perms/check-has-application-permission :setting)
+  (embedding.validation/check-embedding-enabled)
+  (t2/select [:model/Card :name :id :card_schema], :enable_embedding true, :archived false))
+
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
 (def ^:private card-filter-options
   "a valid card filter option."
@@ -846,21 +863,6 @@
               {:public_uuid       nil
                :made_public_by_id nil})
   {:status 204, :body nil})
-
-(api.macros/defendpoint :get "/public"
-  "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
-  []
-  (perms/check-has-application-permission :setting)
-  (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Card :name :id :public_uuid :card_schema], :public_uuid [:not= nil], :archived false))
-
-(api.macros/defendpoint :get "/embeddable"
-  "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
-  and a signed JWT."
-  []
-  (perms/check-has-application-permission :setting)
-  (embedding.validation/check-embedding-enabled)
-  (t2/select [:model/Card :name :id :card_schema], :enable_embedding true, :archived false))
 
 (api.macros/defendpoint :post "/pivot/:card-id/query"
   "Run the query associated with a Card."
