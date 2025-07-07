@@ -30,7 +30,7 @@ export const DatabaseConnectionSectionField = ({
         <Radio.Group
           value={radioValue}
           onChange={toggleValue}
-          name="favoriteFramework"
+          name="connectionMethod"
           label={t`Connection method`}
         >
           <Radio
