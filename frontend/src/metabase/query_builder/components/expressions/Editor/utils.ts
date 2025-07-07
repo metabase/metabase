@@ -1,4 +1,5 @@
-import { hasNextSnippetField ,
+import {
+  hasNextSnippetField,
   hasPrevSnippetField,
   snippet,
 } from "@codemirror/autocomplete";
