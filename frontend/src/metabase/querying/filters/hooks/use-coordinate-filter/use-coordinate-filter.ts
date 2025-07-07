@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
-import type { NumberOrEmptyValue } from "./types";
+import type { NumberOrEmptyValue, UiFilterOperator } from "./types";
 import {
   canPickColumns,
   getAvailableColumns,
@@ -45,7 +45,9 @@ export function useCoordinateFilter({
   );
 
   const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : getDefaultOperator(availableOptions),
+    filterParts
+      ? (filterParts.operator as UiFilterOperator)
+      : getDefaultOperator(availableOptions),
   );
   const [values, setValues] = useState(
     getDefaultValues(operator, filterParts ? filterParts.values : []),
@@ -69,7 +71,7 @@ export function useCoordinateFilter({
     isValid,
     getDefaultValues,
     getFilterClause: (
-      operator: Lib.CoordinateFilterOperator,
+      operator: UiFilterOperator,
       secondColumn: Lib.ColumnMetadata | undefined,
       values: NumberOrEmptyValue[],
     ) => getFilterClause(operator, column, secondColumn, values),

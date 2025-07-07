@@ -18,3 +18,8 @@ export interface OperatorOption
 }
 
 export type NumberOrEmptyValue = Lib.NumberFilterValue | null;
+
+export type UiFilterOperator = Exclude<
+  Lib.CoordinateFilterOperator,
+  ">" | "<" | "<=" | ">="
+>;

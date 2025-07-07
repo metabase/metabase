@@ -6,7 +6,11 @@ import {
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
-import type { NumberOrEmptyValue, OperatorOption } from "./types";
+import type {
+  NumberOrEmptyValue,
+  OperatorOption,
+  UiFilterOperator,
+} from "./types";
 
 export function getAvailableOptions(
   query: Lib.Query,
@@ -21,14 +25,17 @@ export function getAvailableOptions(
   );
 }
 
-export function getOptionByOperator(operator: Lib.CoordinateFilterOperator) {
+export function getOptionByOperator(operator: UiFilterOperator) {
   return OPERATOR_OPTIONS[operator];
 }
 
 export function getDefaultOperator(
   availableOptions: OperatorOption[],
-): Lib.CoordinateFilterOperator {
-  return getDefaultAvailableOperator(availableOptions, "between");
+): UiFilterOperator {
+  return getDefaultAvailableOperator(
+    availableOptions,
+    "between",
+  ) as UiFilterOperator;
 }
 
 export function getAvailableColumns(
@@ -60,7 +67,7 @@ export function canPickColumns(
 }
 
 export function getDefaultValues(
-  operator: Lib.CoordinateFilterOperator,
+  operator: UiFilterOperator,
   values: NumberOrEmptyValue[],
 ): NumberOrEmptyValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
@@ -74,7 +81,7 @@ export function getDefaultValues(
 }
 
 export function isValidFilter(
-  operator: Lib.CoordinateFilterOperator,
+  operator: UiFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberOrEmptyValue[],
@@ -83,7 +90,7 @@ export function isValidFilter(
 }
 
 export function getFilterClause(
-  operator: Lib.CoordinateFilterOperator,
+  operator: UiFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberOrEmptyValue[],
@@ -95,7 +102,7 @@ export function getFilterClause(
 }
 
 function getFilterParts(
-  operator: Lib.CoordinateFilterOperator,
+  operator: UiFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberOrEmptyValue[],
@@ -111,7 +118,7 @@ function getFilterParts(
 }
 
 function getSimpleFilterParts(
-  operator: Lib.CoordinateFilterOperator,
+  operator: UiFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {

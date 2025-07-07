@@ -1,11 +1,6 @@
-import type * as Lib from "metabase-lib";
+import type { OperatorOption, UiFilterOperator } from "./types";
 
-import type { OperatorOption } from "./types";
-
-export const OPERATOR_OPTIONS: Record<
-  Lib.NumberFilterOperator,
-  OperatorOption
-> = {
+export const OPERATOR_OPTIONS: Record<UiFilterOperator, OperatorOption> = {
   "=": {
     operator: "=",
     valueCount: 1,
@@ -16,26 +11,10 @@ export const OPERATOR_OPTIONS: Record<
     valueCount: 1,
     hasMultipleValues: true,
   },
-  ">": {
-    operator: ">",
-    valueCount: 1,
-  },
-  "<": {
-    operator: "<",
-    valueCount: 1,
-  },
   between: {
     operator: "between",
     valueCount: 2,
     name: "Range",
-  },
-  ">=": {
-    operator: ">=",
-    valueCount: 1,
-  },
-  "<=": {
-    operator: "<=",
-    valueCount: 1,
   },
   "is-null": {
     operator: "is-null",

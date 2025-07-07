@@ -1,10 +1,14 @@
 import type { FilterOperatorOption } from "metabase/querying/filters/types";
 import type * as Lib from "metabase-lib";
 
-export interface OperatorOption
-  extends FilterOperatorOption<Lib.NumberFilterOperator> {
+export interface OperatorOption extends FilterOperatorOption<UiFilterOperator> {
   valueCount: number;
   hasMultipleValues?: boolean;
 }
 
 export type NumberOrEmptyValue = Lib.NumberFilterValue | null;
+
+export type UiFilterOperator = Exclude<
+  Lib.NumberFilterOperator,
+  ">" | "<" | "<=" | ">="
+>;
