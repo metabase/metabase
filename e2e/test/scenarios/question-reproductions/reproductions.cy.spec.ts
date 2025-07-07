@@ -3,13 +3,10 @@ const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type {
-  NativeQuestionDetails,
-  StructuredQuestionDetails,
-} from "e2e/support/helpers";
+import type { NativeQuestionDetails } from "e2e/support/helpers";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 39487", () => {
   const CREATED_AT_FIELD: LocalFieldReference = [
@@ -652,22 +649,8 @@ describe("issue 55631", () => {
 });
 
 describe("issue 56416", () => {
-  const question1Name = "1".repeat(254);
-  const question2Name = "2".repeat(254);
-
-  const question1Details: StructuredQuestionDetails = {
-    name: question1Name,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  };
-
-  const question2Details: StructuredQuestionDetails = {
-    name: question2Name,
-    query: {
-      "source-table": PRODUCTS_ID,
-    },
-  };
+  const joinedQuestionName =
+    "Orders + Products, Count, Grouped by Products → Category and Product ID";
 
   beforeEach(() => {
     H.restore();
@@ -675,17 +658,16 @@ describe("issue 56416", () => {
   });
 
   it("should be able to use a column from a joined question with a long name (metabase#56416)", () => {
-    H.createQuestion(question1Details);
-    H.createQuestion(question2Details);
+    cy.log("create the joined question");
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
-      cy.findByText(question1Name).click();
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
     });
     H.join();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
-      cy.findByText(question2Name).click();
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
     });
     H.getNotebookStep("summarize")
       .findByText("Pick a function or metric")
@@ -695,10 +677,49 @@ describe("issue 56416", () => {
       .findByText("Pick a column to group by")
       .click();
     H.popover().within(() => {
-      cy.findByText(question2Name).click();
-      cy.findByText(/ → Category/).click();
+      cy.findByText("Products").click();
+      cy.findByText("Category").click();
     });
+    H.getNotebookStep("summarize")
+      .findByTestId("breakout-step")
+      .icon("add")
+      .click();
+    H.popover().findByText("Product ID").click();
+    H.saveQuestion(joinedQuestionName);
+
+    cy.log("create the main question");
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(joinedQuestionName).click();
+    });
+    H.popover().findByText("Product ID").click();
+    H.popover().findByText("Product ID").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().findByText("Count of rows").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().within(() => {
+      cy.findByText(joinedQuestionName).click();
+      cy.findByText(/→ Category$/).click();
+    });
+    H.getNotebookStep("summarize").icon("filter").click();
+    H.popover().within(() => {
+      cy.findByText(/→ Category$/).click();
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+
+    cy.log("assert that the query can be run");
     H.visualize();
-    H.assertQueryBuilderRowCount(4);
+    H.assertQueryBuilderRowCount(1);
   });
 });

@@ -20,6 +20,7 @@ export function adhocQuestionHash(question) {
 
 function newCardHash(type) {
   const card = {
+    display: "table",
     type,
     creationType: "custom_question",
     dataset_query: {
