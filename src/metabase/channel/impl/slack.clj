@@ -9,7 +9,6 @@
    [metabase.channel.slack :as slack]
    [metabase.channel.urls :as urls]
    [metabase.parameters.shared :as shared.params]
-   [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
    [metabase.util.malli :as mu]
    [metabase.util.markdown :as markdown]))
@@ -177,19 +176,6 @@
 ;;                                    Dashboard Subscriptions                                      ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn- include-branding?
-  "Branding in exports is included only for instances that do not have a whitelabel feature flag."
-  []
-  (not (premium-features/enable-whitelabeling?)))
-
-(def metabase-branding-link
-  "Metabase link with UTM params related to the branding exports campaign"
-  "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=slack")
-
-(def metabase-branding-copy
-  "Human visible Markdown content that we use for branding purposes in Slack links"
-  "Made with Metabase :blue_heart:")
-
 (defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
   Slack dashboard subscription"
@@ -199,18 +185,12 @@
                                 :text (truncate (:name dashboard) header-text-limit)
                                 :emoji true}}
         link-section    {:type "section"
-                         :fields (cond-> [{:type "mrkdwn"
-                                           :text (mkdwn-link-text
-                                                  (urls/dashboard-url (:id dashboard) all-params)
-                                                  (format "*Sent from %s by %s*"
-                                                          (appearance/site-name)
-                                                          creator-name))}]
-                                   (include-branding?)
-                                   (conj
-                                    {:type "mrkdwn"
-                                     :text (mkdwn-link-text
-                                            metabase-branding-link
-                                            metabase-branding-copy)}))}
+                         :fields [{:type "mrkdwn"
+                                   :text (mkdwn-link-text
+                                          (urls/dashboard-url (:id dashboard) all-params)
+                                          (format "*Sent from %s by %s*"
+                                                  (appearance/site-name)
+                                                  creator-name))}]}
         filter-fields   (for [parameter top-level-params]
                           {:type "mrkdwn"
                            :text (parameter-markdown parameter)})
