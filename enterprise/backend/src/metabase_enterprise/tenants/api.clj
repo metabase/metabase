@@ -26,7 +26,7 @@
 
 (defn- present-tenants [tenants]
   (->> (t2/hydrate tenants :member_count)
-       (map #(select-keys % [:id :name :slug :is_active :member_count]))))
+       (map #(select-keys % [:id :name :slug :is_active :member_count :attributes]))))
 
 (defn- present-tenant [tenant]
   (first (present-tenants [tenant])))
@@ -61,12 +61,12 @@
   (t2/update! :model/Tenant :id tenant-id tenant))
 
 (api.macros/defendpoint :put ["/:id" :id #"[^/]+"]
-  "Update a tenant (right now, only name)"
+  "Update a tenant, can set name, attributes, or whether this tenant is active."
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    tenant :- UpdateTenantArguments]
   (when (:name tenant)
-    (api/check-400 (not (t2/exists? :model/Tenant :name (:name tenant)))
+    (api/check-400 (not (t2/exists? :model/Tenant :name (:name tenant) :id [:not= id]))
                    "This name is already taken."))
   (update-tenant! id tenant)
   (present-tenant (t2/select-one :model/Tenant :id id)))
