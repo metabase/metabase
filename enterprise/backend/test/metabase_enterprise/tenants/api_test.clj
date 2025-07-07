@@ -34,13 +34,14 @@
                            :slug "FOOBAR"})))
 
 (deftest can-get-tenant-info
-  (mt/with-temp [:model/Tenant {id1 :id} {:name "Tenant Name" :slug "sluggy"}
+  (mt/with-temp [:model/Tenant {id1 :id} {:name "Tenant Name" :slug "sluggy" :attributes {"env" "test"}}
                  :model/User _ {:tenant_id id1}]
     (is (= {:id id1
             :name "Tenant Name"
             :is_active true
             :slug "sluggy"
-            :member_count 1}
+            :member_count 1
+            :attributes {:env "test"}}
            (mt/user-http-request :crowberto :get 200 (str "ee/tenant/" id1))))))
 
 (deftest can-update-tenant-name
@@ -50,10 +51,19 @@
             :name "New Name"
             :slug "sluggy"
             :is_active true
-            :member_count 0}
+            :member_count 0
+            :attributes nil}
            (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:name "New Name"})))
     (is (= "This name is already taken."
-           (mt/user-http-request :crowberto :put 400 (str "ee/tenant/" id) {:name "Other Name"})))))
+           (mt/user-http-request :crowberto :put 400 (str "ee/tenant/" id) {:name "Other Name"})))
+    (testing "Can send current name without error"
+      (is (= {:id id
+              :name "New Name"
+              :slug "sluggy"
+              :is_active true
+              :member_count 0
+              :attributes nil}
+             (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:name "New Name"}))))))
 
 (deftest can-mark-tenant-as-active-or-inactive
   (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Name" :slug "sluggy"}]
@@ -61,37 +71,38 @@
             :name "Tenant Name"
             :slug "sluggy"
             :is_active false
+            :attributes nil
             :member_count 0}
            (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:is_active false})))))
 
 (deftest can-list-tenants
   (testing "I can list tenants"
-    (mt/with-temp [:model/Tenant {id1 :id} {:name "Name 1" :slug "slug-1"}
+    (mt/with-temp [:model/Tenant {id1 :id} {:name "Name 1" :slug "slug-1" :attributes {"env" "prod"}}
                    :model/User {} {:tenant_id id1}
-                   :model/Tenant {id2 :id} {:name "Name 2" :slug "slug-2"}]
-      (is (=? {:data [{:id id1 :member_count 1}
-                      {:id id2 :member_count 0}]}
+                   :model/Tenant {id2 :id} {:name "Name 2" :slug "slug-2" :attributes {"env" "dev"}}]
+      (is (=? {:data [{:id id1 :member_count 1 :attributes {:env "prod"}}
+                      {:id id2 :member_count 0 :attributes {:env "dev"}}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenant/")))
-      (is (=? {:data [{:id id1 :name "Name 1" :slug "slug-1"}]}
+      (is (=? {:data [{:id id1 :name "Name 1" :slug "slug-1" :attributes {:env "prod"}}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenant/?limit=1")))
-      (is (=? {:data [{:id id2}]}
+      (is (=? {:data [{:id id2 :attributes {:env "dev"}}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenant/?offset=1"))))))
 
 (deftest can-list-deactivated-tenants
   (testing "I can list deactivated tenants only"
-    (mt/with-temp [:model/Tenant {id1 :id} {:name "Name 1" :slug "slug-1"}
+    (mt/with-temp [:model/Tenant {id1 :id} {:name "Name 1" :slug "slug-1" :attributes {"status" "active"}}
                    :model/User {} {:tenant_id id1}
-                   :model/Tenant {id2 :id} {:name "Name 2" :slug "slug-2" :is_active false}
+                   :model/Tenant {id2 :id} {:name "Name 2" :slug "slug-2" :is_active false :attributes {"status" "inactive"}}
                    :model/User {} {:tenant_id id2}]
-      (is (=? {:data [{:id id1 :member_count 1}
-                      {:id id2 :member_count 1}]}
+      (is (=? {:data [{:id id1 :member_count 1 :attributes {:status "active"}}
+                      {:id id2 :member_count 1 :attributes {:status "inactive"}}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenant/")))
-      (is (=? {:data [{:id id1 :member_count 1}
-                      {:id id2 :member_count 1}]}
+      (is (=? {:data [{:id id1 :member_count 1 :attributes {:status "active"}}
+                      {:id id2 :member_count 1 :attributes {:status "inactive"}}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenant/?status=all")))
-      (is (=? {:data [{:id id1 :member_count 1}]}
+      (is (=? {:data [{:id id1 :member_count 1 :attributes {:status "active"}}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenant/?status=active")))
-      (is (=? {:data [{:id id2 :member_count 1}]}
+      (is (=? {:data [{:id id2 :member_count 1 :attributes {:status "inactive"}}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenant/?status=deactivated"))))))
 
 (deftest tenant-users-can-only-list-tenant-recipients
@@ -190,7 +201,7 @@
                          :attributes {"key1" "value1"
                                       "key2" "value2"
                                       "environment" "production"}}]
-        (mt/user-http-request :crowberto :post 200 "ee/tenants/" tenant-data)
+        (mt/user-http-request :crowberto :post 200 "ee/tenant/" tenant-data)
         (let [created-tenant (t2/select-one :model/Tenant :name "Tenant with Attributes")]
           (is (some? created-tenant))
           (is (= {"key1" "value1"
@@ -204,7 +215,7 @@
                          :slug "tenant-kw-attrs"
                          :attributes {:region "us-east"
                                       :tier "premium"}}]
-        (mt/user-http-request :crowberto :post 200 "ee/tenants/" tenant-data)
+        (mt/user-http-request :crowberto :post 200 "ee/tenant/" tenant-data)
         (let [created-tenant (t2/select-one :model/Tenant :name "Tenant with Keyword Attrs")]
           (is (some? created-tenant))
           ;; Keywords are converted to strings in the JSON storage
@@ -218,7 +229,7 @@
                          :slug "invalid-tenant"
                          :attributes {"@system" "value"
                                       "valid-key" "value"}}
-            response (mt/user-http-request :crowberto :post 400 "ee/tenants/" tenant-data)]
+            response (mt/user-http-request :crowberto :post 400 "ee/tenant/" tenant-data)]
         (is (contains? (:errors response) :attributes))
         (is (contains? (:specific-errors response) :attributes))
         (is (contains? (get-in response [:specific-errors :attributes]) (keyword "@system")))))))
@@ -230,7 +241,7 @@
                                            :attributes {"initial" "value"}}]
       (let [updated-attrs {"updated" "new-value"
                            "environment" "staging"}
-            response (mt/user-http-request :crowberto :put 200 (str "ee/tenants/" id)
+            response (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id)
                                            {:attributes updated-attrs})]
         (is (= updated-attrs (:attributes (t2/select-one :model/Tenant :id id))))
         (is (= {:id id
@@ -246,7 +257,7 @@
                                            :attributes {"existing" "value"}}]
       (let [new-attrs {"existing" "value2"
                        "new-key" "new-value"}]
-        (mt/user-http-request :crowberto :put 200 (str "ee/tenants/" id)
+        (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id)
                               {:attributes new-attrs})
         (is (= new-attrs (:attributes (t2/select-one :model/Tenant :id id)))))))
 
@@ -254,7 +265,7 @@
     (mt/with-temp [:model/Tenant {id :id} {:name "Test Tenant 3"
                                            :slug "test-tenant-3"
                                            :attributes {"to-be" "cleared"}}]
-      (mt/user-http-request :crowberto :put 200 (str "ee/tenants/" id)
+      (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id)
                             {:attributes {}})
       (is (= {} (:attributes (t2/select-one :model/Tenant :id id))))))
 
@@ -264,7 +275,7 @@
                                            :attributes {"valid" "value"}}]
       (let [invalid-attrs {"@system" "value"
                            "valid-key" "value"}
-            response (mt/user-http-request :crowberto :put 400 (str "ee/tenants/" id)
+            response (mt/user-http-request :crowberto :put 400 (str "ee/tenant/" id)
                                            {:attributes invalid-attrs})]
         (is (contains? (:errors response) :attributes))
         (is (contains? (:specific-errors response) :attributes))
