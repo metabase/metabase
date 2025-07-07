@@ -1281,17 +1281,8 @@
      [[1 "Red Medicine" "Dim Sum"]
       [2 "Stout Burgers & Beers" "Dim Sum"]])))
 
-;; FIXME QUE-1500 Fix join condition compilation on mongo and remove this feature
-(defmethod driver/database-supports? [::driver/driver ::join-expressions-lhs-cols-rhs-literal]
-  [_driver _feature _database]
-  true)
-
-(defmethod driver/database-supports? [:mongo ::join-expressions-lhs-col-rhs-literal]
-  [_driver _feature _database]
-  false)
-
 (deftest ^:parallel join-expressions-lhs-col-rhs-literal-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions ::join-expressions-lhs-col-rhs-literal)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
     (check-venues+categories-on-condition
      [:=
       (mt/$ids venues $name)
