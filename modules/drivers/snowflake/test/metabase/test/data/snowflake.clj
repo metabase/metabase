@@ -329,6 +329,30 @@
                      [(format "DROP ROLE IF EXISTS %s;" role-name)]
                      {:transaction? false}))))
 
+(defn set-user-public-key [details pk-user pub-key]
+  (let [spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+    (jdbc/execute! spec (format "ALTER USER %s SET RSA_PUBLIC_KEY = '%s'"
+                                pk-user
+                                pub-key))))
+
+(defmethod tx/drop-user-if-exists! :snowflake
+  [driver details db-user]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (jdbc/execute! spec [(format "DROP USER IF EXISTS \"%s\"" db-user)])))
+
+(defmethod tx/create-user-with-pk! :snowflake
+  [driver details pk-user pub-key]
+  (tx/drop-user-if-exists! driver details pk-user)
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (jdbc/execute! spec (format "CREATE USER %s
+                                 DEFAULT_ROLE = 'ACCOUNTADMIN'
+                                 DEFAULT_WAREHOUSE = '%s'
+                                 MUST_CHANGE_PASSWORD = FALSE;"
+                                pk-user
+                                (tx/db-test-env-var-or-throw driver :warehouse)))
+    (jdbc/execute! spec (format "GRANT ROLE %s TO USER %s" (tx/db-test-env-var-or-throw driver :required-role) pk-user))
+    (set-user-public-key details pk-user pub-key)))
+
 (comment
   (old-dataset-names)
   (into [] (jdbc/reducible-query (no-db-connection-spec) ["select * from metabase_test_tracking.PUBLIC.datasets"]))

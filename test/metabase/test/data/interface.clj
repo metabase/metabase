@@ -440,6 +440,45 @@
      ~default-role
      (fn [] ~@body)))
 
+(defmulti create-user-with-pk!
+  "Creates a database user with the given public key"
+  {:added "0.55.0" :arglists '([driver details pk-user pub-key])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-user-with-pk! ::test-extensions
+  [_driver _details _pk-user _pub-key]
+  nil)
+
+(defmulti drop-user-if-exists!
+  "Drops the database user if it exists"
+  {:added "0.55.0" :arglists '([driver details db-user])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-user-if-exists! ::test-extensions
+  [_driver _details _db-user]
+  nil)
+
+(defn with-temp-pk-user-fn!
+  "Creates the given user with the default public key and drops it after execution."
+  [driver details pk-user pub-key f]
+  (try
+    (create-user-with-pk! driver details pk-user pub-key)
+    (f)
+    (finally
+      (drop-user-if-exists! driver details pk-user))))
+
+(defmacro with-temp-pk-user!
+  "Creates the given user with the default public key and drops it after execution."
+  [driver details pk-user pub-key & body]
+  `(with-temp-pk-user-fn!
+     ~driver
+     ~details
+     ~pk-user
+     ~pub-key
+     (fn [] ~@body)))
+
 (defmulti dbdef->connection-details
   "Return the connection details map that should be used to connect to the Database we will create for
   `database-definition`.
