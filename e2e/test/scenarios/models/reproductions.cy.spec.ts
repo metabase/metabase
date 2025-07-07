@@ -1077,6 +1077,45 @@ describe("issue 35840", () => {
   });
 });
 
+describe("issue 36161", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should allow to override metadata for custom columns (metabase#36161)", () => {
+    H.visitModel(ORDERS_MODEL_ID);
+    cy.wait("@dataset");
+
+    H.openQuestionActions("Edit query definition");
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.popover().findByText("Select all").click();
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({ formula: "[ID]", name: "ID2" });
+    H.popover().button("Done").click();
+    H.getNotebookStep("expression").icon("add").click();
+    H.enterCustomColumnDetails({ formula: "[ID]", name: "ID3" });
+    H.popover().button("Done").click();
+    H.runButtonOverlay().click();
+    cy.wait("@dataset");
+    cy.findByTestId("editor-tabs-metadata-name").click();
+    H.openColumnOptions("ID2");
+    H.renameColumn("ID2", "ID2 custom");
+    H.openColumnOptions("ID3");
+    H.renameColumn("ID3", "ID3 custom");
+    H.saveMetadataChanges();
+
+    H.openNotebook();
+    H.getNotebookStep("data").button("Filter").click();
+    H.popover().within(() => {
+      cy.findByText("ID").should("be.visible");
+      cy.findByText("ID2 custom").should("be.visible");
+      cy.findByText("ID3 custom").should("be.visible");
+    });
+  });
+});
+
 describe("issue 34514", () => {
   beforeEach(() => {
     H.restore();
