@@ -67,19 +67,28 @@
       true)))
 
 (mu/defn- classify!
-  "Run various classifiers on `field` and its `fingerprint`, and save any detected changes."
-  ([field :- i/FieldInstance]
-   (classify! field (or (:fingerprint field)
-                        (when (qp.store/initialized?)
-                          (:fingerprint (lib.metadata/field (qp.store/metadata-provider) (u/the-id field))))
-                        (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field)))))
+  "Run various classifiers on `field` and its `fingerprint`, and save any detected changes.
+   Returns updated `field`"
+  ([field :- i/FieldInstance opts]
+   (classify! field opts
+              (or (:fingerprint field)
+                  (when (qp.store/initialized?)
+                    (:fingerprint (lib.metadata/field (qp.store/metadata-provider) (u/the-id field))))
+                  (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field)))))
 
   ([field       :- i/FieldInstance
+    {:keys [exists-name]}
     fingerprint :- [:maybe analyze/Fingerprint]]
    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
-     (let [updated-field (analyze/run-classifiers field fingerprint)]
+     (let [classified (analyze/run-classifiers field fingerprint)
+           would-be-name? (= (:semantic_type classified) :type/Name)
+           ;; if it would be name and table already has a name field, don't classify as name (SEM-414)
+           updated-field (if (and would-be-name? exists-name)
+                           field
+                           classified)]
        (when-not (= field updated-field)
-         (save-model-updates! field updated-field))))))
+         (save-model-updates! field updated-field))
+       updated-field))))
 
 ;;; +------------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CLASSIFYING ALL FIELDS IN A TABLE                                         |
@@ -98,11 +107,20 @@
   things like inferring (and setting) the semantic types and preview display status for Fields belonging to `table`."
   [table :- i/TableInstance]
   (when-let [fields (fields-to-classify table)]
-    {:fields-classified (count fields)
-     :fields-failed     (->> fields
-                             (map classify!)
-                             (filter (partial instance? Exception))
-                             count)}))
+    (let [table-id (:id table)
+          existing-name-field (t2/select :model/Field
+                                         :table_id table-id
+                                         :semantic_type :type/Name)
+          found-name (atom (seq existing-name-field))]
+      {:fields-classified (count fields)
+       :fields-failed     (->> fields
+                               (map (fn [field]
+                                      (let [result (classify! field {:exists-name @found-name})]
+                                        (when (= :type/Name (:semantic_type result))
+                                          (reset! found-name true))
+                                        result)))
+                               (filter (partial instance? Exception))
+                               count)})))
 
 (mu/defn ^:always-validate classify-table!
   "Run various classifiers on the `table`. These do things like inferring (and setting) entitiy type of `table`."
