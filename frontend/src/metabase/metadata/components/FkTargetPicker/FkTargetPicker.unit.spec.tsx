@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field, FieldId } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
@@ -53,7 +54,7 @@ function setup({
 }: SetupOpts = {}) {
   const onChange = jest.fn();
 
-  render(
+  const { rerender } = render(
     <FkTargetPicker
       field={field}
       idFields={idFields}
@@ -62,7 +63,7 @@ function setup({
     />,
   );
 
-  return { field, idFields, value, onChange };
+  return { rerender, onChange };
 }
 
 describe("FkTargetPicker", () => {
@@ -82,7 +83,25 @@ describe("FkTargetPicker", () => {
 
     expect(screen.getByText("Public.Table 1 → Field A")).toBeInTheDocument();
     expect(screen.getByText("Description A")).toBeInTheDocument();
+    expect(screen.getByText("Other.Table 2 → Field B")).toBeInTheDocument();
+    expect(screen.getByText("Description B")).toBeInTheDocument();
     expect(screen.getAllByRole("img").length).toBeGreaterThan(0);
+  });
+
+  it("calls onChange when a different field is selected", async () => {
+    const { onChange } = setup({ value: getRawTableFieldId(ID_FIELD_1) });
+
+    await userEvent.click(screen.getByPlaceholderText("Select a target"));
+    await userEvent.click(screen.getByText("Other.Table 2 → Field B"));
+    expect(onChange).toHaveBeenCalledWith(getRawTableFieldId(ID_FIELD_2));
+  });
+
+  it("does not call onChange when the same field is selected", async () => {
+    const { onChange } = setup({ value: getRawTableFieldId(ID_FIELD_1) });
+
+    await userEvent.click(screen.getByPlaceholderText("Select a target"));
+    await userEvent.click(screen.getByText("Public.Table 1 → Field A"));
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("should filter options using based on label and description", async () => {
