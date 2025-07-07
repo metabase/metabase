@@ -2,6 +2,8 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [medley.core :as m]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -9,7 +11,9 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.lib.util :as lib.util]))
+   [metabase.lib.util :as lib.util]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -272,3 +276,31 @@
       (let [query (lib/query metadata-provider-with-cards (card-key (lib.tu/mock-cards)))]
         (is (not (lib/uses-metric? query metric-id)))
         (is (nil? (lib.metric/available-metrics (lib/append-stage query))))))))
+
+(deftest with-fields-repro-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (mt/with-temp
+      [:model/Card
+       {id :id}
+       {:dataset_query (lib.convert/->legacy-MBQL
+                        (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                            (lib/aggregate
+                             (lib/avg (lib.metadata/field mp (mt/id :products :price))))))}
+       :model/Card
+       {id2 :id}
+       {:dataset_query (lib.convert/->legacy-MBQL
+                        (as-> (lib/query mp (lib.metadata/table mp (mt/id :products))) $
+                          (lib/join $ (lib/with-join-alias (lib/join-clause (lib.metadata/card mp id)
+                                                                            [(lib/= (lib/+ 1 1) 2)]
+                                                                            :left-join)
+                                                           "A"))
+                          (lib/breakout $ (m/find-first :metabase.lib.join/join-alias (lib/breakoutable-columns $)))))}]
+      (let [q (as-> (lib/query mp (lib.metadata/table mp (mt/id :products))) $
+                (lib/join $ (lib/with-join-alias (lib/join-clause (lib.metadata/card mp id2)
+                                                                  [(lib/= (lib/+ 1 1) 2)]
+                                                                  :left-join)
+                                                 "B"))
+                (lib/append-stage $)
+                (lib/with-fields $ [(m/find-first (comp #{"avg"} :name) (lib/visible-columns $))]))]
+        (is (= [55.7464M]
+               (first (mt/rows (qp/process-query q)))))))))
