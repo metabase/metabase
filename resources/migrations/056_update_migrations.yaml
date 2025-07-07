@@ -202,7 +202,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v56.2025-07-07T11:26:31
+      id: v56.2025-07-07T06:58:32
       author: johnswanson
       rollback:
         - sql:
@@ -217,7 +217,7 @@ databaseChangeLog:
               ('All External Users', 'all-external-users', true);
 
   - changeSet:
-      id: v56.2025-07-07T11:28:59
+      id: v56.2025-07-07T06:58:36
       author: johnswanson
       comment: Create `tenant` table
       preConditions: # not needed
@@ -258,7 +258,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v56.2025-07-07T11:34:30
+      id: v56.2025-07-07T06:58:40
       author: johnswanson
       comment: add an index for `core_user.tenant_id`
       changes:
@@ -270,7 +270,7 @@ databaseChangeLog:
                   name: tenant_id
 
   - changeSet:
-      id: v56.2025-07-07T11:34:34
+      id: v56.2025-07-07T06:58:42
       author: johnswanson
       comment: Add foreign key for `core_user.tenant_id`
       preConditions: # not needed
@@ -284,7 +284,7 @@ databaseChangeLog:
             onDelete: RESTRICT
 
   - changeSet:
-      id: v56.2025-07-07T12:59:31
+      id: v56.2025-07-07T06:58:44
       author: johnswanson
       comment: Rename any existing `@.+` user attributes to add a preceding underscore
       changes:

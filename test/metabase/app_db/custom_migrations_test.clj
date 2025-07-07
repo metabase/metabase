@@ -2625,8 +2625,8 @@
             (is (zero? (t2/count :notification :payload_type "notification/card")))))))))
 
 (deftest escape-existing-at-symbol-user-attributes-test
-  (testing "v56.2025-06-16T10:59:31: rename any existing `@.+` user attrs to add a preceding underscore"
-    (impl/test-migrations ["v56.2025-06-16T10:59:31"] [migrate!]
+  (testing "v56.2025-07-07T06:58:44 : rename any existing `@.+` user attrs to add a preceding underscore"
+    (impl/test-migrations ["v56.2025-07-07T06:58:44"] [migrate!]
       (let [user-id (:id (new-instance-with-default :core_user {:login_attributes "{\"@foo\": \"bar\"}"}))
             other-user-id (:id (new-instance-with-default :core_user {:login_attributes "{\"@foo\": \"bang\"}"}))
             database-id (:id (new-instance-with-default :metabase_database))
