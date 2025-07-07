@@ -9,6 +9,8 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- api-model?
   [model]
   (isa? (t2/resolve-model model) :hook/entity-id))
