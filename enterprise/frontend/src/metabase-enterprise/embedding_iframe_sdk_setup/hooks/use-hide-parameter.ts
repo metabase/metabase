@@ -4,7 +4,8 @@ export function useHideParameter() {
   const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
 
   const toggleParameterVisibility = (parameterName: string) => {
-    // Only dashboards supports hiding parameters
+    // Dashboard parameters are shown by default and can be hidden,
+    // while question parameters are always hidden in the SDK and cannot be shown.
     if (!settings.dashboardId) {
       return;
     }
@@ -19,7 +20,8 @@ export function useHideParameter() {
   };
 
   const isParameterHidden = (parameterName: string) => {
-    // Only dashboards support hiding parameters
+    // Dashboard parameters are shown by default and can be hidden,
+    // while question parameters are always hidden in the SDK and cannot be shown.
     if (!settings.dashboardId) {
       return true;
     }
