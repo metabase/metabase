@@ -190,11 +190,14 @@
   `(binding [*use-perms-cache?* false]
      ~@body))
 
+(defn- use-cache?
+  [user-id]
+  (and *use-perms-cache?*
+       (= user-id api/*current-user-id*)))
+
 (defn- get-permissions [user-id perm-type db-id]
-  (if (and (= user-id api/*current-user-id*)
-           *use-perms-cache?*)
-    ;; Use the cache if we can
-    (do
+  (if (use-cache? user-id)
+    (do ; Use the cache if we can
       (prime-db-cache [db-id])
       (get-in (:perms @*permissions-for-user*) [user-id perm-type db-id]))
     ;; If we're checking permissions for a *different* user than ourselves, fetch it straight from the DB
