@@ -1,7 +1,9 @@
 (ns metabase.lib.fe-util
   (:require
    [inflections.core :as inflections]
+   [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
@@ -162,11 +164,16 @@
 
 (defmethod expression-parts-method :expression
   [query stage-number expression-ref]
-  ; Set the expression name as used in the ref as the expression might
-  ; have other aliases set on it which might be wrong.
+  ;; Set the expression name as used in the ref as the expression might
+  ;; have other aliases set on it which might be wrong.
   (lib.options/with-options
     (column-metadata-from-ref query stage-number expression-ref)
     {:lib/expression-name (last expression-ref)}))
+
+(defmethod expression-parts-method :aggregation
+  [query stage-number [_tag _opts aggregation-ref]]
+  (let [aggregation-columns (lib.aggregation/aggregations-metadata query stage-number)]
+    (m/find-first (comp #{aggregation-ref} :lib/source-uuid) aggregation-columns)))
 
 (mu/defn expression-parts :- [:or ExpressionArg ExpressionParts]
   "Return the parts of the filter clause `arg` in query `query` at stage `stage-number`."

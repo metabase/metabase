@@ -182,10 +182,7 @@
                             (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
                                            [idx ag-uuid]))
                             aggregations)
-        pMBQL->legacy (into {}
-                            (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
-                                           [ag-uuid idx]))
-                            aggregations)]
+        pMBQL->legacy (set/map-invert legacy->pMBQL)]
     (binding [*legacy-index->pMBQL-uuid* legacy->pMBQL
               *pMBQL-uuid->legacy-index* pMBQL->legacy]
       (thunk))))
@@ -197,10 +194,35 @@
      [aggregations & body]
      `(do-with-aggregation-list ~aggregations (fn [] ~@body))))
 
+(defn- index-ref-clauses->pMBQL [clauses]
+  (letfn [(pass [state]
+            (reduce (fn [{:keys [index index->uuid converted] :as state} clause]
+                      (-> (if (get converted index)
+                            state
+                            (try
+                              (let [pMBQL (binding [*legacy-index->pMBQL-uuid* index->uuid]
+                                            (->pMBQL clause))]
+                                (-> state
+                                    (update :index->uuid assoc index (lib.options/uuid pMBQL))
+                                    (update :converted assoc index pMBQL)))
+                              (catch #?(:cljs js/Error :clj clojure.lang.ExceptionInfo) e
+                                (if (= (-> e ex-data :error) ::legacy-index->pMBQL-uuid-missing)
+                                  state
+                                  (throw e)))))
+                          (update :index inc)))
+                    (assoc state :index 0)
+                    clauses))]
+    (loop [state {:index->uuid {}, :converted (vec (repeat (count clauses) nil))}]
+      (let [{:keys [index->uuid converted] :as state'} (pass state)]
+        (cond
+          (= (count index->uuid) (count clauses)) converted
+          (= converted (:converted state))        (throw (ex-info "Couldn't index clauses" {:clauses clauses}))
+          :else                                   (recur state'))))))
+
 (defn- from-indexed-idents [stage list-key idents-key]
-  (let [idents (get stage idents-key)]
-    (->> (get stage list-key)
-         ->pMBQL
+  (let [idents (get stage idents-key)
+        clauses (get stage list-key)]
+    (->> (index-ref-clauses->pMBQL clauses)
          (map-indexed (fn [i x]
                         (if-let [ident (or (get idents i)
                                            ;; Conversion from JSON keywordizes all keys, including these numbers!
@@ -327,7 +349,8 @@
    [tag opts (or (get *legacy-index->pMBQL-uuid* aggregation-index)
                  (throw (ex-info (str "Error converting :aggregation reference: no aggregation at index "
                                       aggregation-index)
-                                 {:clause clause})))]))
+                                 {:clause clause
+                                  :error ::legacy-index->pMBQL-uuid-missing})))]))
 
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
@@ -433,6 +456,10 @@
     (if-let [aggregation-opts (not-empty (options->legacy-MBQL options))]
       [:aggregation-options inner aggregation-opts]
       inner)))
+
+(defmethod aggregation->legacy-MBQL :aggregation
+  [clause]
+  (->legacy-MBQL clause))
 
 (defmethod aggregation->legacy-MBQL :offset
   [clause]

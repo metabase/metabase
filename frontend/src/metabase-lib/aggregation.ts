@@ -73,3 +73,11 @@ export function aggregationColumn(
 ): ColumnMetadata | null {
   return ML.aggregation_column(query, stageIndex, aggregation);
 }
+
+export function aggregableColumns(
+  query: Query,
+  stageIndex?: number,
+  expressionIndex?: number,
+): ColumnMetadata[] {
+  return ML.aggregable_columns(query, stageIndex, expressionIndex);
+}

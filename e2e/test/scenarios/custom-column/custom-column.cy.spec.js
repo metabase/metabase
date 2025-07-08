@@ -1799,3 +1799,166 @@ describe("scenarios > question > custom column > splitPart", () => {
     H.popover().should("contain", "Expected positive integer but found 0");
   });
 });
+
+describe("scenarios > question > custom column > aggregation", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should be possible to resolve aggregations from the question", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "aggregation-options",
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              {
+                name: "Custom Sum",
+                "display-name": "Custom Sum",
+              },
+            ],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+    H.openNotebook();
+
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+
+    H.CustomExpressionEditor.type("[Custom");
+    H.CustomExpressionEditor.completion("Custom Sum")
+      .should("be.visible")
+      .click();
+    H.CustomExpressionEditor.value().should("eq", "[Custom Sum]");
+    H.CustomExpressionEditor.type("+ 1");
+    H.CustomExpressionEditor.format();
+
+    H.CustomExpressionEditor.nameInput().type("Derived");
+    H.popover().button("Done").click();
+
+    H.visualize();
+    H.assertTableData({
+      columns: ["Custom Sum", "Derived"],
+    });
+  });
+
+  it("should be possible to resolve aggregations from the question directly", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "aggregation-options",
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              {
+                name: "Custom Sum",
+                "display-name": "Custom Sum",
+              },
+            ],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+    H.openNotebook();
+
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+
+    H.CustomExpressionEditor.type("[Custom");
+    H.CustomExpressionEditor.completion("Custom Sum")
+      .should("be.visible")
+      .click();
+    H.CustomExpressionEditor.value().should("eq", "[Custom Sum]");
+    H.CustomExpressionEditor.format();
+
+    H.CustomExpressionEditor.nameInput().type("Derived");
+    H.popover().button("Done").click();
+
+    H.visualize();
+    H.assertTableData({
+      columns: ["Custom Sum", "Derived"],
+    });
+  });
+
+  it("should be possible to resolve aggregations from the previous stage", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "aggregation-options",
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              {
+                name: "Custom Sum",
+                "display-name": "Custom Sum",
+              },
+            ],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+    H.openNotebook();
+
+    cy.findAllByLabelText("Custom column").eq(1).click();
+    H.CustomExpressionEditor.type("[Custom S");
+    H.CustomExpressionEditor.completion("Custom Sum")
+      .should("be.visible")
+      .click();
+    H.CustomExpressionEditor.value().should("eq", "[Custom Sum]");
+    H.CustomExpressionEditor.format();
+
+    H.CustomExpressionEditor.nameInput().type("Derived");
+    H.popover().button("Done").click();
+
+    H.visualize();
+    H.assertTableData({
+      columns: ["Custom Sum", "Derived"],
+    });
+  });
+
+  it("should not be possible to create cycles in custom aggregations", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "aggregation-options",
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              {
+                name: "Custom Sum",
+                "display-name": "Custom Sum",
+              },
+            ],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openNotebook();
+
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+    H.CustomExpressionEditor.type("[Custom Sum] + 1");
+    H.CustomExpressionEditor.nameInput().type("Custom Sum 2");
+    H.popover().button("Done").click();
+
+    H.getNotebookStep("summarize").findByText("Custom Sum").click();
+    H.CustomExpressionEditor.clear().type("[Custom Sum 2]");
+
+    H.popover()
+      .findByText("Cycle detected: Custom Sum → Custom Sum 2 → Custom Sum")
+      .should("be.visible");
+  });
+});
