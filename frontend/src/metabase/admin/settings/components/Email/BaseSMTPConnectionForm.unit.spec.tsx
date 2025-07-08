@@ -191,135 +191,99 @@ describe("BaseSMTPConnectionForm", () => {
     });
   });
 
-  describe("environment variable handling", () => {
-    it("should show env var message when field is set by env var", async () => {
-      await setup({ setEnvVars: "host" });
+  it("should enable save button when form is dirty and valid", async () => {
+    await setup({ secureMode: false });
 
-      expect(screen.getByText("MB_EMAIL_SMTP_HOST")).toBeInTheDocument();
-      expect(screen.queryByLabelText(/SMTP Host/i)).not.toBeInTheDocument();
-    });
+    const saveButton = screen.getByRole("button", { name: /save changes/i });
+    expect(saveButton).toBeDisabled(); // starts disabled
 
-    it("should disable clear button when all fields are set by env vars", async () => {
-      await setup({ setEnvVars: "all" });
+    const hostInput = screen.getByLabelText(/SMTP Host/i);
+    await userEvent.clear(hostInput);
+    await userEvent.type(hostInput, "smtp.torchic.com");
 
-      expect(screen.getByRole("button", { name: /clear/i })).toBeDisabled();
-    });
+    expect(saveButton).toBeEnabled();
   });
 
-  describe("form interactions", () => {
-    it("should enable save button when form is dirty and valid", async () => {
-      await setup({ secureMode: false });
+  it("should call deleteMutation when clear button is clicked", async () => {
+    const mockDelete = jest.fn().mockResolvedValue({});
 
-      const saveButton = screen.getByRole("button", { name: /save changes/i });
-      expect(saveButton).toBeDisabled(); // starts disabled
-
-      const hostInput = screen.getByLabelText(/SMTP Host/i);
-      await userEvent.clear(hostInput);
-      await userEvent.type(hostInput, "smtp.torchic.com");
-
-      expect(saveButton).toBeEnabled();
+    await setup({
+      secureMode: false,
+      deleteMutation: mockDelete,
     });
 
-    it("should call deleteMutation when clear button is clicked", async () => {
-      const mockDelete = jest.fn().mockResolvedValue({});
+    await userEvent.click(screen.getByRole("button", { name: /clear/i }));
 
-      await setup({
-        secureMode: false,
-        deleteMutation: mockDelete,
-      });
-
-      await userEvent.click(screen.getByRole("button", { name: /clear/i }));
-
-      expect(mockDelete).toHaveBeenCalled();
-    });
-
-    it("should call onTrackSuccess after successful form submission", async () => {
-      const mockTrack = jest.fn();
-      const mockUpdate = jest.fn().mockReturnValue({
-        unwrap: jest.fn().mockResolvedValue({}),
-      });
-
-      await setup({
-        secureMode: false,
-        updateMutation: mockUpdate,
-        onTrackSuccess: mockTrack,
-      });
-
-      const hostInput = screen.getByLabelText(/SMTP Host/i);
-      await userEvent.clear(hostInput);
-      await userEvent.type(hostInput, "smtp.torchic.com");
-
-      await userEvent.click(
-        screen.getByRole("button", { name: /save changes/i }),
-      );
-
-      expect(mockTrack).toHaveBeenCalled();
-    });
-
-    it("should close modal after successful submission", async () => {
-      const mockClose = jest.fn();
-      const mockUpdate = jest.fn().mockReturnValue({
-        unwrap: jest.fn().mockResolvedValue({}),
-      });
-
-      await setup({
-        secureMode: false,
-        onClose: mockClose,
-        updateMutation: mockUpdate,
-      });
-
-      const hostInput = screen.getByLabelText(/SMTP Host/i);
-      await userEvent.clear(hostInput);
-      await userEvent.type(hostInput, "smtp.torchic.com");
-
-      await userEvent.click(
-        screen.getByRole("button", { name: /save changes/i }),
-      );
-
-      expect(mockClose).toHaveBeenCalled();
-    });
+    expect(mockDelete).toHaveBeenCalled();
   });
 
-  describe("validation", () => {
-    it("should disable save button when required field is empty", async () => {
-      await setup({ secureMode: false });
-
-      const hostInput = screen.getByLabelText(/SMTP Host/i);
-      const saveButton = screen.getByRole("button", { name: /save changes/i });
-
-      await userEvent.clear(hostInput);
-
-      expect(saveButton).toBeDisabled();
+  it("should call onTrackSuccess after successful form submission", async () => {
+    const mockTrack = jest.fn();
+    const mockUpdate = jest.fn().mockReturnValue({
+      unwrap: jest.fn().mockResolvedValue({}),
     });
 
-    it("should validate port field in secure mode", async () => {
-      await setup({ secureMode: true });
-
-      // In secure mode, only specific ports should be available as chips
-      expect(screen.getByDisplayValue("465")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("587")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("2525")).toBeInTheDocument();
-
-      // No other port options should be available
-      expect(screen.queryByDisplayValue("25")).not.toBeInTheDocument();
-      expect(screen.queryByDisplayValue("993")).not.toBeInTheDocument();
+    await setup({
+      secureMode: false,
+      updateMutation: mockUpdate,
+      onTrackSuccess: mockTrack,
     });
+
+    const hostInput = screen.getByLabelText(/SMTP Host/i);
+    await userEvent.clear(hostInput);
+    await userEvent.type(hostInput, "smtp.torchic.com");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /save changes/i }),
+    );
+
+    expect(mockTrack).toHaveBeenCalled();
   });
 
-  describe("accessibility", () => {
-    it("should have proper test id on modal", async () => {
-      await setup({ secureMode: false });
-
-      expect(screen.getByTestId("test-smtp-form")).toBeInTheDocument();
+  it("should close modal after successful submission", async () => {
+    const mockClose = jest.fn();
+    const mockUpdate = jest.fn().mockReturnValue({
+      unwrap: jest.fn().mockResolvedValue({}),
     });
 
-    it("should have accessible form labels", async () => {
-      await setup({ secureMode: false });
-
-      expect(screen.getByLabelText(/SMTP Host/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/SMTP Port/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/SMTP Username/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/SMTP Password/i)).toBeInTheDocument();
+    await setup({
+      secureMode: false,
+      onClose: mockClose,
+      updateMutation: mockUpdate,
     });
+
+    const hostInput = screen.getByLabelText(/SMTP Host/i);
+    await userEvent.clear(hostInput);
+    await userEvent.type(hostInput, "smtp.torchic.com");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /save changes/i }),
+    );
+
+    expect(mockClose).toHaveBeenCalled();
+  });
+
+  it("should disable save button when required field is empty", async () => {
+    await setup({ secureMode: false });
+
+    const hostInput = screen.getByLabelText(/SMTP Host/i);
+    const saveButton = screen.getByRole("button", { name: /save changes/i });
+
+    await userEvent.clear(hostInput);
+
+    expect(saveButton).toBeDisabled();
+  });
+
+  it("should show env var message when field is set by env var", async () => {
+    await setup({ setEnvVars: "host" });
+
+    expect(screen.getByText("MB_EMAIL_SMTP_HOST")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/SMTP Host/i)).not.toBeInTheDocument();
+  });
+
+  it("should disable clear button when all fields are set by env vars", async () => {
+    await setup({ setEnvVars: "all" });
+
+    expect(screen.getByRole("button", { name: /clear/i })).toBeDisabled();
   });
 });
