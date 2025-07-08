@@ -308,6 +308,57 @@ describe("issue 47793", () => {
   );
 });
 
+describe("issue 48752", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should reference the correct aggregation after one of the aggregations with the same operator is removed (metabase#48752)", () => {
+    H.openOrdersTable({ mode: "notebook" });
+
+    cy.log("first stage - aggregations and a breakout");
+    H.summarize({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText(/Sum of/).click();
+      cy.findByText("Total").click();
+    });
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().within(() => {
+      cy.findByText(/Sum of/).click();
+      cy.findByText("Subtotal").click();
+    });
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().within(() => {
+      cy.findByText(/Sum of/).click();
+      cy.findByText("Tax").click();
+    });
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByText("User ID").click();
+
+    cy.log("second stage - a filter");
+    H.getNotebookStep("summarize").button("Filter").click();
+    H.popover().within(() => {
+      cy.findByText("Sum of Subtotal").click();
+      cy.findByPlaceholderText("Min").type("10");
+      cy.findByText("Add filter").click();
+    });
+
+    cy.log('remove the first "sum" aggregation from the first stage');
+    H.getNotebookStep("summarize")
+      .findByText("Sum of Total")
+      .icon("close")
+      .click();
+
+    cy.log("assert that the filter references the correct column");
+    H.getNotebookStep("filter", { stage: 1 })
+      .findByText("Sum of Subtotal is greater than or equal to 10")
+      .should("be.visible");
+  });
+});
+
 describe("issue 49270", () => {
   beforeEach(() => {
     H.restore();
