@@ -12,6 +12,51 @@ import type { Filter, LocalFieldReference } from "metabase-types/api";
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
 
+describe("issue 48754", () => {
+  const questionDetails: StructuredQuestionDetails = {
+    name: "Q1",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should (metabase#48754)", () => {
+    H.createQuestion(questionDetails);
+    H.openReviewsTable({ mode: "notebook" });
+    H.getNotebookStep("data").button("Summarize").click();
+    H.popover().findByText("Count of rows").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Product").click();
+      cy.findByText("Category").click();
+    });
+    H.getNotebookStep("summarize").button("Join data").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText("Q1").click();
+    });
+    H.popover()
+      .findByText(/Category/)
+      .click();
+    H.popover()
+      .findByText(/Category/)
+      .click();
+    H.visualize();
+    H.assertQueryBuilderRowCount(4);
+  });
+});
+
 describe("issue 39487", () => {
   const CREATED_AT_FIELD: LocalFieldReference = [
     "field",
