@@ -147,7 +147,6 @@ export function useMultiAutocomplete({
   const handleFieldKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (
       event.key === "Enter" &&
-      !event.nativeEvent.isComposing &&
       combobox.selectedOptionIndex < 0 &&
       fieldSelection.length > 0
     ) {
