@@ -5,8 +5,19 @@ import type {
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type { Engine, VisualizationDisplay } from "metabase-types/api";
 
-import type { EmbedWizardEvent } from "./sdk-iframe-embed-setup-flow";
-import type { ValidateSimpleEvent as ValidateEvent } from "./simple-event";
+type SimpleEventSchema = {
+  event: string;
+  target_id?: number | null;
+  triggered_from?: string | null;
+  duration_ms?: number | null;
+  result?: string | null;
+  event_detail?: string | null;
+};
+
+type ValidateEvent<
+  T extends SimpleEventSchema &
+    Record<Exclude<keyof T, keyof SimpleEventSchema>, never>,
+> = T;
 
 type CSVUploadClickedEvent = ValidateEvent<{
   event: "csv_upload_clicked";
@@ -172,6 +183,43 @@ export type DashboardFilterCreatedEvent = ValidateEvent<{
   event_detail: string | null;
 }>;
 
+export type SdkIframeEmbedSetupExperience =
+  | "dashboard"
+  | "chart"
+  | "exploration";
+
+export type EmbedWizardExperienceSelectedEvent = ValidateEvent<{
+  event: "embed_wizard_experience_selected";
+  event_detail: SdkIframeEmbedSetupExperience;
+}>;
+
+export type EmbedWizardResourceSelectedEvent = ValidateEvent<{
+  event: "embed_wizard_resource_selected";
+  event_detail: SdkIframeEmbedSetupExperience;
+  target_id: number;
+}>;
+
+export type EmbedWizardOptionChangedEvent = ValidateEvent<{
+  event: "embed_wizard_option_changed";
+  event_detail: string;
+}>;
+
+export type EmbedWizardAuthSelectedEvent = ValidateEvent<{
+  event: "embed_wizard_auth_selected";
+  event_detail: "sso" | "user-session";
+}>;
+
+export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
+  event: "embed_wizard_code_copied";
+}>;
+
+export type EmbedWizardEvent =
+  | EmbedWizardExperienceSelectedEvent
+  | EmbedWizardResourceSelectedEvent
+  | EmbedWizardOptionChangedEvent
+  | EmbedWizardAuthSelectedEvent
+  | EmbedWizardCodeCopiedEvent;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -196,5 +244,5 @@ export type SimpleEvent =
   | EventsClickedEvent
   | AddDataModalOpenedEvent
   | AddDataModalTabEvent
-  | DashboardFilterCreatedEvent;
+  | DashboardFilterCreatedEvent
   | EmbedWizardEvent;
