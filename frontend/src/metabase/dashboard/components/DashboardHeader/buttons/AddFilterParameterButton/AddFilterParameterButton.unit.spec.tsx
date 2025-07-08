@@ -42,15 +42,22 @@ const SECTIONS = [
   },
 ];
 
+const DASHBOARD_ID = 1;
+
 const setup = ({ isAddParameterPopoverOpen = false } = {}) => {
+  const dashboardState = createMockDashboardState({
+    dashboardId: DASHBOARD_ID,
+    isAddParameterPopoverOpen,
+  });
   const state = createMockState({
-    dashboard: createMockDashboardState({
-      isAddParameterPopoverOpen,
-    }),
+    dashboard: dashboardState,
   });
 
   return renderWithProviders(
-    <MockDashboardContext>
+    <MockDashboardContext
+      dashboardId={DASHBOARD_ID}
+      navigateToNewCardFromDashboard={null}
+    >
       <AddFilterParameterButton />
     </MockDashboardContext>,
     {
