@@ -10,7 +10,7 @@ export const InsightsUpsellTab = ({
 }) => {
   return (
     <Flex justify="center">
-      <UpsellUsageAnalytics source={`${model}-sidesheet`} maxWidth={480} />
+      <UpsellUsageAnalytics location={`${model}-sidesheet`} maxWidth={480} />
     </Flex>
   );
 };
