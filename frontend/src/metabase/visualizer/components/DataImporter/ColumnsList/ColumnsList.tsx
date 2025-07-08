@@ -108,7 +108,6 @@ export const ColumnsList = (props: ColumnListProps) => {
                       event: "visualizer_data_changed",
                       event_detail: "visualizer_datasource_removed",
                       triggered_from: "visualizer-modal",
-                      event_data: source.id,
                     });
                     onRemoveDataSource(source);
                   }}
@@ -148,7 +147,6 @@ export const ColumnsList = (props: ColumnListProps) => {
                             event: "visualizer_data_changed",
                             event_detail: "visualizer_column_added",
                             triggered_from: "visualizer-modal",
-                            event_data: `source: ${source.id}, column: ${column.name}`,
                           });
 
                           handleAddColumn(source, column);
@@ -161,7 +159,6 @@ export const ColumnsList = (props: ColumnListProps) => {
                                 event: "visualizer_data_changed",
                                 event_detail: "visualizer_column_removed",
                                 triggered_from: "visualizer-modal",
-                                event_data: `source: ${source.id}, column: ${column.name}`,
                               });
 
                               handleRemoveColumn(columnReference.name);
