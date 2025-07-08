@@ -44,18 +44,27 @@ describe("scenarios > admin > datamodel", () => {
     cy.intercept("PUT", "/api/table/*").as("updateTable");
   });
 
-  // https://linear.app/metabase/issue/SEM-423/data-loading-error-handling
-  it.skip("should show 404 if database does not exist (metabase#14652)", () => {
-    H.DataModel.visit({ databaseId: 54321 });
+  it("should show 404 if database does not exist (metabase#14652)", () => {
+    H.DataModel.visit({ databaseId: 54321, skipWaiting: true });
 
-    cy.findAllByTestId("tree-item")
-      .filter('[data-type="table"]')
-      .should("have.length", 0);
+    TablePicker.getDatabases().should("have.length", 1);
+    TablePicker.getTables().should("have.length", 0);
+    H.DataModel.get().findByText("Not found.").should("be.visible");
+  });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Not found.");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select a database");
+  // TODO: infinitiy loading loop
+  // TODO: dbid + schemaid
+  // TODO: dbid + schemaid + tableid + fieldId
+  it("should show 404 if database does not exist 2 (metabase#14652)", () => {
+    H.DataModel.visit({
+      databaseId: 54321,
+      schemaId: "54321:public",
+      tableId: 54321,
+    });
+
+    TablePicker.getDatabases().should("have.length", 1);
+    TablePicker.getTables().should("have.length", 0);
+    H.DataModel.get().findByText("Not found.").should("be.visible");
   });
 
   it("should allow to navigate to a table when on a segments page (SEM-484)", () => {

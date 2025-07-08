@@ -73,7 +73,10 @@ export function useTableLoader(path: TreePath) {
   const [tree, setTree] = useState<TreeNode>(rootNode());
 
   const getDatabases = useCallback(async () => {
-    const res = await fetchDatabases({}, true);
+    const res = await fetchDatabases(
+      { include_editable_data_model: true },
+      true,
+    );
     return (
       res.data?.data.map((database) =>
         node<DatabaseNode>({

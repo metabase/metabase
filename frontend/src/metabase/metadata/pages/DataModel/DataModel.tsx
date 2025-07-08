@@ -5,7 +5,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
-import { useGetTableQueryMetadataQuery } from "metabase/api";
+import {
+  useGetTableQueryMetadataQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -34,6 +37,11 @@ interface Props {
 
 export const DataModel = ({ children, location, params }: Props) => {
   const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
+  const { data: databasesData, isLoading: isLoadingDatabases } =
+    useListDatabasesQuery({ include_editable_data_model: true });
+  const databaseExists = databasesData?.data?.some(
+    (database) => database.id === databaseId,
+  );
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
   const [isPreviewOpen, { close: closePreview, open: openPreview }] =
     useDisclosure();
@@ -48,7 +56,7 @@ export const DataModel = ({ children, location, params }: Props) => {
   const {
     data: table,
     error,
-    isLoading,
+    isLoading: isLoadingTables,
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(tableId));
   const fieldsByName = useMemo(() => {
     return _.indexBy(table?.fields ?? [], (field) => field.name);
@@ -57,6 +65,7 @@ export const DataModel = ({ children, location, params }: Props) => {
   const parentName = field?.nfc_path?.[0] ?? "";
   const parentField = fieldsByName[parentName];
   const [previewType, setPreviewType] = useState<PreviewType>("table");
+  const isLoading = isLoadingTables || isLoadingDatabases;
 
   useWindowEvent(
     "keydown",
@@ -80,7 +89,7 @@ export const DataModel = ({ children, location, params }: Props) => {
   );
 
   return (
-    <Flex bg="accent-gray-light" h="100%">
+    <Flex bg="accent-gray-light" data-testid="data-model" h="100%">
       <Stack
         bg="bg-white"
         className={S.column}
@@ -105,11 +114,24 @@ export const DataModel = ({ children, location, params }: Props) => {
 
       {!isSegments && (
         <>
+          {tableId == null && databaseExists === false && (
+            <Stack
+              className={S.column}
+              h="100%"
+              justify="center"
+              miw={rem(400)}
+              p="xl"
+            >
+              <LoadingAndErrorWrapper error={t`Not found.`} />
+            </Stack>
+          )}
+
           {tableId && (
-            <Box
+            <Stack
               className={S.column}
               flex={COLUMN_CONFIG.table.flex}
               h="100%"
+              justify={error ? "center" : undefined}
               maw={COLUMN_CONFIG.table.max}
               miw={COLUMN_CONFIG.table.min}
             >
@@ -127,7 +149,7 @@ export const DataModel = ({ children, location, params }: Props) => {
                   />
                 )}
               </LoadingAndErrorWrapper>
-            </Box>
+            </Stack>
           )}
 
           {!isEmptyStateShown && (
