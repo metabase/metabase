@@ -135,6 +135,7 @@ export type VisualizerModalEvent = ValidateEvent<
         | "visualizer_datasource_removed"
         | "visualizer_datasource_added"
         | "visualizer_datasource_replaced"
+        | "visualizer_datasource_reset"
         | "visualizer_column_removed"
         | "visualizer_column_added";
       event_data: string | null;
