@@ -16,6 +16,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import {
+  type DefinedClauseName,
   type ExpressionError,
   diagnoseAndCompile,
   format,
@@ -37,7 +38,7 @@ import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
-import { hasActiveSnippet } from "./utils";
+import { hasActiveSnippet, useInitialClause } from "./utils";
 
 type EditorProps = {
   id?: string;
@@ -52,6 +53,7 @@ type EditorProps = {
   error?: ExpressionError | Error | null;
   hasHeader?: boolean;
   onCloseEditor?: () => void;
+  initialExpressionClause?: DefinedClauseName | null;
 
   onChange: (
     clause: Lib.ExpressionClause | null,
@@ -77,6 +79,7 @@ export function Editor(props: EditorProps) {
     shortcuts,
     hasHeader,
     onCloseEditor,
+    initialExpressionClause,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -121,7 +124,6 @@ export function Editor(props: EditorProps) {
     query,
     stageIndex,
     availableColumns,
-    reportTimezone,
     metadata,
     extensions: [customTooltip],
   });
@@ -148,6 +150,10 @@ export function Editor(props: EditorProps) {
     );
   }, []);
 
+  const applyInitialSnippet = useInitialClause({
+    initialExpressionClause,
+  });
+
   const [isSnippetActive, setIsSnippetActive] = useState(false);
   const handleUpdate = useCallback((update: ViewUpdate) => {
     setIsSnippetActive(hasActiveSnippet(update.state));
@@ -171,6 +177,7 @@ export function Editor(props: EditorProps) {
           width="100%"
           indentWithTab={false}
           autoFocus
+          onCreateEditor={applyInitialSnippet}
           onUpdate={handleUpdate}
           autoCorrect="off"
           tabIndex={0}
