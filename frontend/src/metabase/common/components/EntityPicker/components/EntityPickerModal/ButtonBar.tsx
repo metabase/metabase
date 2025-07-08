@@ -21,14 +21,17 @@ export const ButtonBar = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleEnter = (e: KeyboardEvent) => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.isComposing) {
+        return;
+      }
       if (canConfirm && e.key === "Enter") {
         onConfirm();
       }
     };
-    document.addEventListener("keypress", handleEnter);
+    document.addEventListener("keypress", handleKeyPress);
     return () => {
-      document.removeEventListener("keypress", handleEnter);
+      document.removeEventListener("keypress", handleKeyPress);
     };
   }, [canConfirm, onConfirm]);
 

@@ -18,7 +18,10 @@ import {
 } from "metabase/ui";
 import { useBooleanMap } from "metabase/visualizer/hooks/use-boolean-map";
 import { getDataSources } from "metabase/visualizer/selectors";
-import { removeDataSource } from "metabase/visualizer/visualizer.slice";
+import {
+  initializeVisualizer,
+  removeDataSource,
+} from "metabase/visualizer/visualizer.slice";
 import type { VisualizerDataSource } from "metabase-types/api";
 
 import { ColumnsList } from "./ColumnsList/ColumnsList";
@@ -41,6 +44,13 @@ export const DataImporter = ({ className }: { className?: string }) => {
       dispatch(removeDataSource({ source }));
     },
     [dataSources.length, handlers, dispatch],
+  );
+
+  const onResetDataSource = useCallback(
+    (source: VisualizerDataSource) => {
+      dispatch(initializeVisualizer({ cardId: source.sourceId }));
+    },
+    [dispatch],
   );
 
   const {
@@ -122,15 +132,52 @@ export const DataImporter = ({ className }: { className?: string }) => {
         }}
       >
         {dataSources.length > 0 ? (
-          <ColumnsList
-            collapsedDataSources={collapsedDataSources}
-            toggleDataSource={toggleDataSource}
-            onRemoveDataSource={onRemoveDataSource}
-          />
+          <>
+            <ColumnsList
+              collapsedDataSources={collapsedDataSources}
+              toggleDataSource={toggleDataSource}
+              onRemoveDataSource={onRemoveDataSource}
+              onResetDataSource={onResetDataSource}
+            />
+            <Flex
+              direction="column"
+              pt="sm"
+              px="sm"
+              style={{
+                overflowY: "auto",
+                flex: 1,
+              }}
+            >
+              <DatasetsList
+                search={debouncedSearch}
+                setDataSourceCollapsed={setDataSourceCollapsed}
+              />
+            </Flex>
+          </>
         ) : (
-          <Center h="100%" w="100%" mx="auto">
-            <Text>{t`Pick a dataset first`}</Text>
-          </Center>
+          <Flex
+            direction="column"
+            className={S.Content}
+            bg="white"
+            style={{
+              borderRadius: "var(--default-border-radius)",
+              height: "100%",
+              border: `1px solid var(--mb-color-border)`,
+            }}
+          >
+            {dataSources.length > 0 ? (
+              <ColumnsList
+                collapsedDataSources={collapsedDataSources}
+                toggleDataSource={toggleDataSource}
+                onRemoveDataSource={onRemoveDataSource}
+                onResetDataSource={onResetDataSource}
+              />
+            ) : (
+              <Center h="100%" w="100%" mx="auto">
+                <Text>{t`Pick a dataset first`}</Text>
+              </Center>
+            )}
+          </Flex>
         )}
       </Flex>
     </Box>

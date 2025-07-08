@@ -54,9 +54,7 @@ export const setupSdkState = ({
     settings: mockSettings(settingValuesWithToken),
     currentUser,
     sdk: sdkState,
-    embed: createMockEmbedState({
-      isEmbeddingSdk: true,
-    }),
+    embed: createMockEmbedState(),
     ...stateOpts,
   });
 

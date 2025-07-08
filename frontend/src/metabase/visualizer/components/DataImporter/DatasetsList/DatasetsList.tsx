@@ -85,7 +85,6 @@ export function DatasetsList({
         event: "visualizer_data_changed",
         event_detail: "visualizer_datasource_added",
         triggered_from: "visualizer-modal",
-        event_data: source.id,
       });
 
       dispatch(addDataSource(source.id));
@@ -100,7 +99,6 @@ export function DatasetsList({
         event: "visualizer_data_changed",
         event_detail: "visualizer_datasource_removed",
         triggered_from: "visualizer-modal",
-        event_data: source.id,
       });
 
       dispatch(removeDataSource({ source, forget }));
@@ -157,7 +155,6 @@ export function DatasetsList({
         event: "visualizer_data_changed",
         event_detail: "visualizer_datasource_replaced",
         triggered_from: "visualizer-modal",
-        event_data: item.id,
       });
 
       dataSources.forEach((dataSource) => {
