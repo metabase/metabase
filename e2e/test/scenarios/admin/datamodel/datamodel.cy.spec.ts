@@ -170,6 +170,30 @@ describe("scenarios > admin > datamodel", () => {
           );
         });
       });
+
+      it.only("should restore previously selected table when expanding the tree (SEM-435)", () => {
+        H.restore("mysql-8");
+        H.DataModel.visit({
+          databaseId: MYSQL_DB_ID,
+          schemaId: MYSQL_DB_SCHEMA_ID,
+        });
+
+        TablePicker.getDatabase("QA MySQL8").click();
+        cy.location("pathname").should(
+          "eq",
+          `/admin/datamodel/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+        );
+
+        TablePicker.getDatabase("QA MySQL8").click();
+        cy.location("pathname").should(
+          "eq",
+          `/admin/datamodel/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+        );
+
+        cy.log("ensure navigation to another db works");
+        TablePicker.getDatabase("Sample Database").click();
+        TablePicker.getTables().should("have.length", 12);
+      });
     });
 
     describe("1 database, 1 schema", () => {
@@ -228,6 +252,26 @@ describe("scenarios > admin > datamodel", () => {
         TablePicker.getDatabases().should("have.length", 1);
         TablePicker.getSchemas().should("have.length", 0);
         TablePicker.getTables().should("have.length", 8);
+      });
+
+      it("should restore previously selected table when expanding the tree (SEM-435)", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+
+        TablePicker.getDatabase("Sample Database").click();
+        cy.location("pathname").should(
+          "eq",
+          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+        );
+
+        TablePicker.getDatabase("Sample Database").click();
+        cy.location("pathname").should(
+          "eq",
+          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+        );
       });
     });
 
