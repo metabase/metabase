@@ -647,3 +647,80 @@ describe("issue 55631", () => {
     });
   });
 });
+
+describe("issue 56416", () => {
+  // name should be longer than the default 60-character limit; this has 71
+  const joinedQuestionName =
+    "Orders + Products, Count, Grouped by Products → Category and Product ID";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to use a column from a joined question with a long name (metabase#56416)", () => {
+    cy.log("create the joined question");
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().findByText("Count of rows").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Products").click();
+      cy.findByText("Category").click();
+    });
+    H.getNotebookStep("summarize")
+      .findByTestId("breakout-step")
+      .icon("add")
+      .click();
+    H.popover().findByText("Product ID").click();
+    H.saveQuestion(joinedQuestionName);
+
+    cy.log("create the main question");
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(joinedQuestionName).click();
+    });
+    H.popover().findByText("Product ID").click();
+    H.popover().findByText("Product ID").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().findByText("Count of rows").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().within(() => {
+      cy.findByText(joinedQuestionName).click();
+      cy.findByText(/→ Category$/).click();
+    });
+    H.getNotebookStep("summarize").icon("filter").click();
+    H.popover().within(() => {
+      cy.findByText(/→ Category$/).click();
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+
+    cy.log("assert that the query can be run");
+    H.visualize();
+    H.assertQueryBuilderRowCount(1);
+  });
+});
