@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
@@ -14,18 +14,28 @@ import {
   getVirtualCardType,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
+import { duration } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import {
+  Box,
+  Button,
   Flex,
   Group,
+  HoverCard,
+  Icon,
   type IconName,
   type IconProps,
   Menu,
+  Text,
   Title,
+  Transition,
 } from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { LoadingViewProps } from "metabase/visualizations/components/Visualization/LoadingView/LoadingView";
+import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -41,6 +51,7 @@ import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
+  CardDisplayType,
   CardId,
   DashCardId,
   DashboardCard,
@@ -68,6 +79,61 @@ import {
   getMissingColumnsFromVisualizationSettings,
   shouldShowParameterMapper,
 } from "./utils";
+
+const DashCardLoadingView = ({
+  isSlow,
+  expectedDuration,
+  display,
+}: LoadingViewProps & { display?: CardDisplayType }) => {
+  return (
+    <div
+      data-testid="loading-indicator"
+      className={cx(CS.px2, CS.pb2, CS.fullHeight)}
+    >
+      <ChartSkeleton display={display} />
+      <Transition
+        mounted={!!isSlow}
+        transition={{
+          in: { opacity: 1, transform: "scale(1)" },
+          out: { opacity: 0, transform: "scale(0.8)" },
+          transitionProperty: "transform, opacity",
+        }}
+        duration={80}
+      >
+        {(styles) => (
+          <Box style={styles} className={CS.absolute} left={12} bottom={12}>
+            <HoverCard width={288} offset={4} position="bottom-start">
+              <HoverCard.Target>
+                <Button
+                  w={24}
+                  h={24}
+                  p={0}
+                  classNames={{ root: S.invertInNightMode, label: cx(CS.flex) }}
+                >
+                  <Icon name="snail" size={12} d="flex" />
+                </Button>
+              </HoverCard.Target>
+              <HoverCard.Dropdown ml={-8} className={EmbedFrameS.dropdown}>
+                <div className={cx(CS.p2, CS.textCentered)}>
+                  <Text fw="bold">{t`Waiting for your data`}</Text>
+                  <Text lh="1.5">
+                    {isSlow === "usually-slow"
+                      ? jt`This usually takes an average of ${(
+                          <span className={CS.textNoWrap}>
+                            {duration(expectedDuration ?? 0)}
+                          </span>
+                        )}, but is currently taking longer.`
+                      : t`This usually loads immediately, but is currently taking longer.`}
+                  </Text>
+                </div>
+              </HoverCard.Dropdown>
+            </HoverCard>
+          </Box>
+        )}
+      </Transition>
+    </div>
+  );
+};
 
 interface DashCardVisualizationProps {
   dashcard: DashboardCard;
@@ -442,9 +508,14 @@ export function DashCardVisualization({
     dashcardId: dashcard.id,
   });
 
+  const renderLoadingView = (loadingViewProps: LoadingViewProps) => (
+    <DashCardLoadingView {...loadingViewProps} display={question?.display()} />
+  );
+
   return (
     <Visualization
       className={cx(CS.flexFull, {
+        [S.isNightMode]: shouldRenderAsNightMode,
         [CS.overflowAuto]: visualizationOverlay,
         [CS.overflowHidden]: !visualizationOverlay,
         [CS.pointerEventsNone]: isEditingDashboardLayout,
@@ -482,6 +553,7 @@ export function DashCardVisualization({
       onTogglePreviewing={onTogglePreviewing}
       onChangeCardAndRun={onChangeCardAndRun}
       onChangeLocation={onChangeLocation}
+      renderLoadingView={renderLoadingView}
       token={token}
       uuid={uuid}
       titleMenuItems={titleMenuItems}

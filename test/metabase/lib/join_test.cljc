@@ -3,7 +3,6 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
@@ -214,15 +213,14 @@
                 "info about the source Field")
     (let [query (lib/query
                  meta/metadata-provider
-                 (lib.convert/->pMBQL
-                  {:database (meta/id)
-                   :type     :query
-                   :query    {:source-table (meta/id :venues)
-                              :fields       [[:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]]}}))]
+                 {:database (meta/id)
+                  :type     :query
+                  :query    {:source-table (meta/id :venues)
+                             :fields       [[:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]]}})]
       (is (=? [{:name        "NAME"
                 :id          (meta/id :categories :name)
                 :fk-field-id (meta/id :venues :category-id)
-                :lib/source  :source/fields}]
+                :lib/source  :source/table-defaults}]
               (lib/returned-columns query -1 query))))))
 
 (deftest ^:parallel col-info-explicit-join-test
@@ -254,7 +252,7 @@
       (is (=? [(merge (-> (m/filter-vals some? (meta/field-metadata :categories :name))
                           (dissoc :ident))
                       {:display-name         "Name"
-                       :lib/source           :source/fields
+                       :lib/source           :source/joins
                        ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
               metadata))
       (is (=? "CATEGORIES__via__CATEGORY_ID"
@@ -320,12 +318,12 @@
     (is (=? [{:name                     "ID"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "ID"
-              :lib/source               :source/fields}
+              :lib/source               :source/table-defaults}
              {:name                     "ID_2"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "Cat__ID"
               ::lib.join/join-alias     "Cat"
-              :lib/source               :source/fields}
+              :lib/source               :source/joins}
              {:name                     "NAME"
               :lib/source-column-alias  "NAME"
               :lib/desired-column-alias "Cat__NAME"
