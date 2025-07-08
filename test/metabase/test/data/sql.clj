@@ -240,30 +240,43 @@
            (str/join ", " (map #(format-and-quote-field-name driver %) field-names))
            (if condition (str " WHERE " condition) ""))))
 
+(defmulti generated-column-sql
+  "Return the equivalent of 'GENERATED ALWAYS $expr' to be appended to a column definition.
+  The expression should be given as a string."
+  {:arglists '([driver expr])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod generated-column-sql :default
+  [_ expr]
+  (format "GENERATED ALWAYS AS (%s)" expr))
+
 (defn- field-definition-sql
-  [driver {:keys [field-name base-type field-comment not-null? unique? default], :as field-definition}]
-  (let [field-name (format-and-quote-field-name driver field-name)
-        field-type (or (cond
-                         (and (map? base-type) (contains? base-type :native))
-                         (:native base-type)
+  [driver {:keys [field-name base-type field-comment not-null? unique? default-expr generated-expr], :as field-definition}]
+  (let [field-name      (format-and-quote-field-name driver field-name)
+        field-type      (or (cond
+                              (and (map? base-type) (contains? base-type :native))
+                              (:native base-type)
 
-                         (and (map? base-type) (contains? base-type :natives))
-                         (get-in base-type [:natives driver])
+                              (and (map? base-type) (contains? base-type :natives))
+                              (get-in base-type [:natives driver])
 
-                         base-type
-                         (field-base-type->sql-type driver base-type))
-                       (throw (ex-info (format "Missing datatype for field %s for driver: %s"
-                                               field-name driver)
-                                       {:field  field-definition
-                                        :driver driver})))
+                              base-type
+                              (field-base-type->sql-type driver base-type))
+                            (throw (ex-info (format "Missing datatype for field %s for driver: %s"
+                                                    field-name driver)
+                                            {:field  field-definition
+                                             :driver driver})))
         not-null       (when not-null?
                          "NOT NULL")
         unique         (when unique?
                          "UNIQUE")
-        default        (when default
-                         (format "DEFAULT (%s)" default))
+        default        (when default-expr
+                         (format "DEFAULT (%s)" default-expr))
+        generated      (when generated-expr
+                         (generated-column-sql driver generated-expr))
         inline-comment (inline-column-comment-sql driver field-comment)]
-    (str/join " " (filter some? [field-name field-type not-null default unique inline-comment]))))
+    (str/join " " (filter some? [field-name field-type not-null default generated unique inline-comment]))))
 
 (defn fielddefs->pk-field-names
   "Find the pk field names in fieldefs"

@@ -58,6 +58,7 @@
                               :database-routing                true
                               :transforms/python               true
                               :transforms/table                true
+                              :describe-is-generated           true
                               :describe-is-nullable            true
                               :describe-default-expr           true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))

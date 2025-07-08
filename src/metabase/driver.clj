@@ -780,11 +780,14 @@
     ;; Does this driver support creating a java.sql.Statement via a Connection?
     :jdbc/statements
 
+    ;; Does this driver provide :database-default on (describe-fields) or (describe-table)
+    :describe-default-expr
+
     ;; Does this driver provide :database-is-nullable on (describe-fields) or (describe-table)
     :describe-is-nullable
 
-    ;; Does this driver provide :database-default on (describe-fields) or (describe-table)
-    :describe-default-expr})
+    ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
+    :describe-is-generated})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
