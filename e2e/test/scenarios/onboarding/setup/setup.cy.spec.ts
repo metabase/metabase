@@ -241,6 +241,39 @@ describe("scenarios > setup", () => {
     });
   });
 
+  it("should not show 'Sample Database' if env var is explicitly set to false during setup", () => {
+    H.mockSessionProperty("has-sample-database?", false);
+
+    cy.visit(
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
+    );
+
+    skipWelcomePage();
+    selectPreferredLanguageAndContinue();
+
+    cy.findByTestId("setup-forms").within(() => {
+      const password = "12341234";
+      cy.findByLabelText("Create a password").should("be.empty").type(password);
+      cy.findByLabelText("Confirm your password").type(password);
+      cy.button("Next").click();
+
+      cy.log("Just go through the usage questionaire");
+      cy.findByLabelText("What will you use Metabase for?").should(
+        "be.visible",
+      );
+      cy.button("Next").click();
+    });
+
+    cy.log("We are now on the database step");
+    cy.findByLabelText("Add your data").within(() => {
+      cy.button("Continue with sample data").should("not.exist");
+      cy.button("I'll add my data later").click();
+    });
+
+    cy.log("We're done with the database step");
+    cy.findByLabelText("I'll add my own data later").should("be.visible");
+  });
+
   it("should allow a quick setup for the 'embedding' use case", () => {
     cy.visit(
       "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
