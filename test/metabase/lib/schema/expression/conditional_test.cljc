@@ -182,17 +182,12 @@
                  (mr/validate :mbql.clause/coalesce
                               (into [:coalesce {:lib/uuid (str (random-uuid))}] args)))
       [1]
-
       [1 "A"]
-
       ["A"]
-
       ["A"
        (value-expr :type/Date "2023-03-08")]
-
       ["A"
        (value-expr :type/DateTime "2023-03-08T15:03:55")]
-
       ["A"
        (value-expr :type/DateTimeWithTZ "2023-03-08T15:03:55Z")])))
 
