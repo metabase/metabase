@@ -31,7 +31,7 @@ function setup({
       campaign={campaign}
       title={title}
       buttonText="Test button text"
-      source="test-source"
+      location="test-location"
       internalLink="test-internal-link"
       dismissible={dismissible}
     >
