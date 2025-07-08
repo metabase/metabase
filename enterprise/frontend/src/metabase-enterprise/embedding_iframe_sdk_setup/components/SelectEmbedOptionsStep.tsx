@@ -10,6 +10,8 @@ import { Card, Checkbox, Divider, Group, Stack, Text } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
+import { ParameterSettings } from "./ParameterSettings";
+
 export const SelectEmbedOptionsStep = () => {
   const { experience, settings, updateSettings } =
     useSdkIframeEmbedSetupContext();
@@ -74,6 +76,20 @@ export const SelectEmbedOptionsStep = () => {
           )}
         </Stack>
       </Card>
+
+      {isQuestionOrDashboardEmbed && (
+        <Card p="md">
+          <Text size="lg" fw="bold" mb="xs">
+            {t`Parameters`}
+          </Text>
+
+          <Text size="sm" c="text-medium" mb="lg">
+            {t`Set default values and control visibility`}
+          </Text>
+
+          <ParameterSettings />
+        </Card>
+      )}
 
       <Card p="md">
         <Text size="lg" fw="bold" mb="lg">

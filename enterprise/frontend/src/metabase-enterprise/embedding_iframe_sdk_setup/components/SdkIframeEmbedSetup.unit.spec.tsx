@@ -1,12 +1,17 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
+import {
+  setupDashboardEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { SdkIframeEmbedSetup } from "./SdkIframeEmbedSetup";
 
 const setup = () => {
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
+  setupDashboardEndpoints(createMockDashboard());
 
   renderWithProviders(<SdkIframeEmbedSetup />);
 };

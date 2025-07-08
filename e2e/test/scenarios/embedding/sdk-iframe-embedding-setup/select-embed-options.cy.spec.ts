@@ -1,10 +1,13 @@
 import {
   codeBlock,
   getEmbedSidebar,
-  navigateToEntitySelectionStep,
+  navigateToEmbedOptionsStep,
 } from "./helpers";
 
 const { H } = cy;
+
+const DASHBOARD_NAME = "Orders in a dashboard";
+const QUESTION_NAME = "Orders, Count";
 
 describe("scenarios > embedding > sdk iframe embed setup > select embed options", () => {
   beforeEach(() => {
@@ -17,7 +20,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
   });
 
   it("toggles drill-throughs for dashboards", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
 
     getEmbedSidebar()
       .findByLabelText("Allow users to drill through on data points")
@@ -47,7 +53,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
   });
 
   it("toggles downloads for dashboard", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
 
     getEmbedSidebar()
       .findByLabelText("Allow downloads")
@@ -69,7 +78,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
   });
 
   it("toggles dashboard title for dashboards", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
 
     getEmbedSidebar()
       .findByLabelText("Show dashboard title")
@@ -91,7 +103,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
   });
 
   it("toggles drill-through for charts", () => {
-    navigateToEmbedOptionsStep({ experience: "chart" });
+    navigateToEmbedOptionsStep({
+      experience: "chart",
+      resourceName: QUESTION_NAME,
+    });
 
     getEmbedSidebar()
       .findByLabelText("Allow users to drill through on data points")
@@ -121,7 +136,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
   });
 
   it("toggles downloads for charts", () => {
-    navigateToEmbedOptionsStep({ experience: "chart" });
+    navigateToEmbedOptionsStep({
+      experience: "chart",
+      resourceName: QUESTION_NAME,
+    });
 
     getEmbedSidebar()
       .findByLabelText("Allow downloads")
@@ -147,7 +165,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
   });
 
   it("toggles chart title for charts", () => {
-    navigateToEmbedOptionsStep({ experience: "chart" });
+    navigateToEmbedOptionsStep({
+      experience: "chart",
+      resourceName: QUESTION_NAME,
+    });
 
     cy.log("chart title should be visible by default");
     getEmbedSidebar().findByLabelText("Show chart title").should("be.checked");
@@ -195,7 +216,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
   });
 
   it("can change brand color", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
 
     cy.log("brand color should be visible");
     getEmbedSidebar().within(() => {
@@ -224,15 +248,3 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
     codeBlock().should("contain", '"brand": "#FF0000"');
   });
 });
-
-const navigateToEmbedOptionsStep = ({
-  experience,
-}: {
-  experience: "dashboard" | "chart" | "exploration";
-}) => {
-  navigateToEntitySelectionStep({ experience });
-
-  getEmbedSidebar().within(() => {
-    cy.findByText("Next").click(); // Embed options step
-  });
-};
