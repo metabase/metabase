@@ -1,17 +1,18 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { trackSMTPSetupClick } from "metabase/admin/settings/components/Email/analytics";
 import { useAdminSetting } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { Box, Button, Divider, Group, Icon, Radio, Text } from "metabase/ui";
 
 import S from "./CloudSMTPConnectionCard.module.css";
+import { SMTPOverrideConnectionForm } from "./SMTPOverrideConnectionForm";
 
-export const CloudSMTPConnectionCard = ({
-  onOpenCloudSMTPModal,
-}: {
-  onOpenCloudSMTPModal: () => void;
-}) => {
+export const CloudSMTPConnectionCard = () => {
+  const [showModal, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
   const isSMTPOverrideConfigured = Boolean(
     useSetting("email-smtp-host-override"),
   );
@@ -34,6 +35,11 @@ export const CloudSMTPConnectionCard = ({
       key: "smtp-override-enabled",
       value: newIsCloudSMTPEnabled,
     });
+  };
+
+  const handleOpenModal = () => {
+    openModal();
+    trackSMTPSetupClick({ eventDetail: "cloud" });
   };
 
   return (
@@ -79,7 +85,7 @@ export const CloudSMTPConnectionCard = ({
                 <Button
                   variant="subtle"
                   onClick={(e) => {
-                    onOpenCloudSMTPModal();
+                    handleOpenModal();
                     e.stopPropagation();
                   }}
                 >{t`Edit settings`}</Button>
@@ -91,11 +97,12 @@ export const CloudSMTPConnectionCard = ({
           <Box p="sm">
             <Button
               variant="subtle"
-              onClick={onOpenCloudSMTPModal}
+              onClick={handleOpenModal}
             >{t`Set up a custom SMTP server`}</Button>
           </Box>
         )}
       </Radio.Group>
+      {showModal && <SMTPOverrideConnectionForm onClose={closeModal} />}
     </div>
   );
 };
