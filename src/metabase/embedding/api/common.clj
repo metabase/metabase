@@ -515,9 +515,18 @@
       ;; ok, at this point we can run the query
       (let [merged-id-params (param-values-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
-          (binding [api/*current-user-permissions-set* (atom #{"/"})
-                    api/*is-superuser?*                true]
-            (parameters.dashboard/param-values (t2/select-one :model/Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
+          (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                dashboard (t2/hydrate dashboard :resolved-params)
+                searched-param (get-in dashboard [:resolved-params searched-param-id])
+            ;; Apply type-based default options for embedding context
+                searched-param (if-let [default-options (parameters.dashboard/param-type->default-options (:type searched-param))]
+                                 (update searched-param :options #(merge default-options %))
+                                 searched-param)
+            ;; Update the dashboard with the modified parameter
+                dashboard (assoc-in dashboard [:resolved-params searched-param-id] searched-param)]
+            (binding [api/*current-user-permissions-set* (atom #{"/"})
+                      api/*is-superuser?*                true]
+              (parameters.dashboard/param-values dashboard searched-param-id merged-id-params prefix)))
           (catch Throwable e
             (throw (ex-info (.getMessage e)
                             {:merged-id-params merged-id-params}
