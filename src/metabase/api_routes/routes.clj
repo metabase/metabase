@@ -48,6 +48,7 @@
    [metabase.testing-api.core]
    [metabase.tiles.api]
    [metabase.timeline.api]
+   [metabase.transform.api]
    [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.users.api]
@@ -177,6 +178,7 @@
    "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
+   "/transform"            (+auth metabase.transform.api/routes)
    "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.users.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)

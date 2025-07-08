@@ -14,3 +14,6 @@
   {:dataset_query mi/transform-metabase-query
    :dataset_query_type mi/transform-keyword
    :status mi/transform-keyword})
+
+(defn insert-returning-instance! [& args]
+  {:status 204, :body {:feels "good"}})
