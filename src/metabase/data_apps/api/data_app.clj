@@ -1,10 +1,10 @@
-(ns metabase.data-app.api.data-app
+(ns metabase.data-apps.api.data-app
   "/api/data-app endpoints for data apps CRUD operations"
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.data-app.models :as data-app.models]
+   [metabase.data-apps.models :as data-apps.models]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
@@ -17,9 +17,9 @@
   [id]
   (let [data-app (api/read-check (t2/select-one :model/DataApp id))]
     (assoc data-app
-           :latest_definition (data-app.models/latest-definition id)
-           :released_definition (data-app.models/released-definition id)
-           :latest_release (data-app.models/latest-release id))))
+           :latest_definition (data-apps.models/latest-definition id)
+           :released_definition (data-apps.models/released-definition id)
+           :latest_release (data-apps.models/latest-release id))))
 
 (defn- data-app-clauses
   "Honeysql clauses for filtering data apps with status and pagination"
@@ -64,7 +64,7 @@
                           [:description {:optional true} [:maybe :string]]
                           [:definition {:optional true} [:maybe :map]]]]
   (api/create-check :model/DataApp body)
-  (data-app.models/create-app! (assoc body :creator_id api/*current-user-id*)))
+  (data-apps.models/create-app! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id"
   "Update an existing data app."
@@ -92,7 +92,7 @@
    body]
   (let [data-app (get-data-app id)]
     (api/update-check data-app {})
-    (data-app.models/new-definition! id body)))
+    (data-apps.models/new-definition! id body)))
 
 (api.macros/defendpoint :post "/:id/release"
   "Release a specific definition version of a data app."
@@ -105,4 +105,4 @@
         definition-id (:definition_id body)]
     (api/update-check data-app {})
     (api/check-404 (t2/select-one :model/DataAppDefinition :id definition-id :app_id id))
-    (data-app.models/release! id definition-id)))
+    (data-apps.models/release! id definition-id)))

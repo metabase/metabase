@@ -1,10 +1,10 @@
-(ns metabase.data-app.api.app
+(ns metabase.data-apps.api.app
   "/api/app endpoints for data app consumers"
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.data-app.models :as data-app.models]
+   [metabase.data-apps.models :as data-apps.models]
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -15,7 +15,7 @@
   "Get the published version of a data app by id."
   [id]
   (let [app                 (api/check-404 (t2/select-one :model/DataApp id))
-        released-definition (data-app.models/released-definition id)]
+        released-definition (data-apps.models/released-definition id)]
     (when-not released-definition
       (throw (ex-info "Data app is not released"
                       {:status-code 404})))

@@ -1,4 +1,4 @@
-(ns metabase.data-app.models
+(ns metabase.data-apps.models
   (:require
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
