@@ -43,6 +43,9 @@ const CollapseSection = ({
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
+      if (e.nativeEvent.isComposing) {
+        return;
+      }
       if (e.key === "Enter") {
         toggle();
       }
