@@ -86,7 +86,7 @@ export const SdkIframeEmbedSetupProvider = ({
       }
 
       if (settings) {
-        setSettings(settings);
+        setSettings({ ...settings, instanceUrl });
       } else {
         // Apply the default settings if the user settings are empty.
         const defaults = getDefaultSdkIframeEmbedSettings(
@@ -95,13 +95,14 @@ export const SdkIframeEmbedSetupProvider = ({
         );
 
         setSettings(
-          (prev) => ({ ...prev, ...defaults }) as SdkIframeEmbedSettings,
+          (prev) =>
+            ({ ...prev, ...defaults, instanceUrl }) as SdkIframeEmbedSettings,
         );
       }
 
       setEmbedSettingsLoaded(true);
     },
-    [fallbackDashboardId, isEmbedSettingsLoaded],
+    [fallbackDashboardId, isEmbedSettingsLoaded, instanceUrl],
   );
 
   const { storeSetting } = usePersistJsonViaUserSetting({

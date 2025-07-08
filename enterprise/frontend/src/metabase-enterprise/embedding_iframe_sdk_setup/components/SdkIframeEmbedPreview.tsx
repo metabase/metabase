@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParam } from "react-use";
 import _ from "underscore";
 
-import { useSetting } from "metabase/common/hooks";
 import { Box } from "metabase/ui";
 import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
 
@@ -25,14 +24,12 @@ export const SdkIframeEmbedPreview = () => {
   const localeOverride = useSearchParam("locale");
   const scriptRef = useRef<HTMLScriptElement | null>(null);
 
-  const instanceUrl = useSetting("site-url");
-
   useEffect(
     () => {
       if (isEmbedSettingsLoaded) {
         const script = document.createElement("script");
 
-        script.src = `${instanceUrl}/app/embed.js`;
+        script.src = `${settings.instanceUrl}/app/embed.js`;
         document.body.appendChild(script);
 
         script.onload = () => {
@@ -47,7 +44,6 @@ export const SdkIframeEmbedPreview = () => {
 
           embedJsRef.current = new MetabaseEmbed({
             ...cleanedSettings,
-            instanceUrl,
             target: "#iframe-embed-container",
             iframeClassName: S.EmbedPreviewIframe,
             useExistingUserSession: true,

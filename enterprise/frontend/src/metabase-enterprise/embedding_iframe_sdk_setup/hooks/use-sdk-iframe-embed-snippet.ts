@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
-import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedTagSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -9,20 +8,17 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 export function useSdkIframeEmbedSnippet() {
   const { settings } = useSdkIframeEmbedSetupContext();
 
-  const instanceUrl = useSetting("site-url");
-
   return useMemo(() => {
     return getSnippet({
       target: "#metabase-embed",
       ..._.omit(settings, ["useExistingUserSession"]),
-      instanceUrl,
 
       // Only include useExistingUserSession if it is true.
       ...(settings.useExistingUserSession
         ? { useExistingUserSession: true }
         : {}),
     });
-  }, [settings, instanceUrl]);
+  }, [settings]);
 }
 
 function getSnippet(settings: SdkIframeEmbedTagSettings): string {
