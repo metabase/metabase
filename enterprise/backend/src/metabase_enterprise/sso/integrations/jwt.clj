@@ -14,6 +14,7 @@
    [metabase.session.models.session :as session]
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
+   [metabase.tenants.core :as tenants]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru trs]]
    [metabase.util.malli :as mu]
@@ -35,7 +36,7 @@
 
         (and (nil? existing-tenant)
              (sso-settings/jwt-user-provisioning-enabled?))
-        (t2/insert-returning-pk! :model/Tenant {:slug tenant-slug :name tenant-slug})
+        (u/the-id (tenants/create-tenant! {:slug tenant-slug :name tenant-slug}))
 
         ;; possibilities here:
         ;; - we have an existing, active tenant - return its id

@@ -1301,6 +1301,7 @@
            config
            events
            models
+           notification
            permissions
            premium-features
            request
@@ -1791,6 +1792,7 @@
            settings
            sso
            system
+           tenants
            users
            util
            enterprise/scim}}
@@ -1813,6 +1815,8 @@
   {:team "Admin Webapp"
    :api #{}
    :uses #{api
+           audit-app
+           events
            models
            premium-features
            request

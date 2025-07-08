@@ -1,5 +1,6 @@
 (ns metabase-enterprise.tenants.core
   (:require
+   [metabase-enterprise.tenants.api :as api]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
    [toucan2.core :as t2]))
@@ -27,3 +28,9 @@
   [tenant-id]
   (or (nil? tenant-id)
       (t2/exists? :model/Tenant :id tenant-id :is_active true)))
+
+(defenterprise create-tenant!
+  "Creates a tenant"
+  :feature :tenants
+  [tenant]
+  (api/create-tenant! tenant))

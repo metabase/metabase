@@ -1,5 +1,6 @@
 (ns metabase-enterprise.tenants.model
   (:require
+   [metabase.audit-app.core :as audit-app]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -7,6 +8,10 @@
    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/Tenant [_model] :tenant)
+
+(defmethod audit-app/model-details :model/Tenant
+  [entity _event-type]
+  (select-keys entity [:name :slug :is_active]))
 
 (def Slug
   "The malli schema for a tenant's slug"

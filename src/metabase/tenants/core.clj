@@ -21,3 +21,9 @@
   metabase-enterprise.tenants.core
   [tenant-id]
   (nil? tenant-id))
+
+(defenterprise create-tenant!
+  "Throws an exception in OSS because we can't create tenants there."
+  metabase-enterprise.tenants.core
+  [_tenant]
+  (throw (ex-info "Cannot create tenant in OSS." {})))
