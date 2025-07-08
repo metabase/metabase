@@ -77,10 +77,7 @@ databaseChangeLog:
             tableName: transform_view
             columnNames: database_id, view_schema, view_name
             constraintName: unique_transform_view_database_id_view_schema_view_name
-      rollback:
-        - dropUniqueConstraint:
-            tableName: transform_view
-            constraintName: unique_transform_view_database_id_view_schema_view_name
+      rollback: # Handled in rollback of previous changeset
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
