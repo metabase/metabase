@@ -666,7 +666,10 @@
                 :personal_owner_id
                 :location
                 :archived_directly
+                ;; selected as `type` for compatibility with collection fns that expect it
                 :type
+                ;; selected as `collection_type` for fast sorting on "when it's a collection, type"
+                [:type :collection_type]
                 [(h2x/literal "collection") :model]
                 :authority_level])
       ;; the nil indicates that collections are never pinned.
@@ -769,7 +772,7 @@
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
 (defn- remove-unwanted-keys [row]
-  (dissoc row :model_ranking :archived_directly :total_count :type))
+  (dissoc row :model_ranking :archived_directly :total_count :type :collection_type))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
@@ -821,7 +824,7 @@
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
-   :type [:archived :boolean] [:last_used_at :timestamp]
+   :collection_type :type [:archived :boolean] [:last_used_at :timestamp]
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
@@ -860,11 +863,6 @@
   (when official-collections-first?
     [:authority_level :asc :nulls-last]))
 
-(def ^:private normal-collections-first-sort-clause
-  [[:case
-    [:not= :model [:inline "collection"]] nil :else :type]
-   :asc :nulls-first])
-
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
   treatment of nulls in the different app db types."
@@ -873,7 +871,7 @@
         (comp cat
               (remove nil?))
         [[(official-collections-first-sort-clause sort-info)]
-         [normal-collections-first-sort-clause]
+         [[:collection_type :asc :nulls-first]]
          (case ((juxt :sort-column :sort-direction) sort-info)
            [nil nil]               [[:%lower.name :asc]]
            [:name :asc]            [[:%lower.name :asc]]

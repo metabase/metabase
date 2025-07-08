@@ -1118,16 +1118,12 @@
                     :data
                     (map #(select-keys % [:here :id])))))))))
 
-(def collection-type-clause
-  [:case
-   [:not= :model [:inline "collection"]] nil :else :type])
-
 (deftest ^:parallel children-sort-clause-test
   ;; we always place "special" collection types (i.e. "Metabase Analytics") last
   (testing "Default sort"
     (doseq [app-db [:mysql :h2 :postgres]]
       (is (= [[:authority_level :asc :nulls-last]
-              [collection-type-clause :asc :nulls-first]
+              [:collection_type :asc :nulls-first]
               [:%lower.name :asc]
               [:id :asc]]
              (api.collection/children-sort-clause {:official-collections-first? true} app-db))))))
@@ -1135,7 +1131,7 @@
 (deftest ^:parallel children-sort-clause-test-2
   (testing "Sorting by last-edited-at"
     (is (= [[:authority_level :asc :nulls-last]
-            [collection-type-clause :asc :nulls-first]
+            [:collection_type :asc :nulls-first]
             [:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
@@ -1147,7 +1143,7 @@
 (deftest ^:parallel children-sort-clause-test-2b
   (testing "Sorting by last-edited-at"
     (is (= [[:authority_level :asc :nulls-last]
-            [collection-type-clause :asc :nulls-first]
+            [:collection_type :asc :nulls-first]
             [:last_edit_timestamp :nulls-last]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
@@ -1159,7 +1155,7 @@
 (deftest ^:parallel children-sort-clause-test-2c
   (testing "Sorting by last-edited-by"
     (is (= [[:authority_level :asc :nulls-last]
-            [collection-type-clause :asc :nulls-first]
+            [:collection_type :asc :nulls-first]
             [:last_edit_last_name :nulls-last]
             [:last_edit_last_name :asc]
             [:last_edit_first_name :nulls-last]
@@ -1173,7 +1169,7 @@
 (deftest ^:parallel children-sort-clause-test-2d
   (testing "Sorting by last-edited-by"
     (is (= [[:authority_level :asc :nulls-last]
-            [collection-type-clause :asc :nulls-first]
+            [:collection_type :asc :nulls-first]
             [:%isnull.last_edit_last_name]
             [:last_edit_last_name :asc]
             [:%isnull.last_edit_first_name]
@@ -1187,7 +1183,7 @@
 (deftest ^:parallel children-sort-clause-test-3
   (testing "Sorting by model"
     (is (= [[:authority_level :asc :nulls-last]
-            [collection-type-clause :asc :nulls-first]
+            [:collection_type :asc :nulls-first]
             [:model_ranking :asc]
             [:%lower.name :asc]
             [:id :asc]]
@@ -1198,7 +1194,7 @@
 (deftest ^:parallel children-sort-clause-test-3b
   (testing "Sorting by model"
     (is (= [[:authority_level :asc :nulls-last]
-            [collection-type-clause :asc :nulls-first]
+            [:collection_type :asc :nulls-first]
             [:model_ranking :desc]
             [:%lower.name :asc]
             [:id :asc]]
