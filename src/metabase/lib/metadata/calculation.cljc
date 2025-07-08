@@ -333,8 +333,10 @@
    [:is-source-table {:optional true} [:maybe :boolean]]
    ;; if this is a Card, is it the source card of the query?
    [:is-source-card {:optional true} [:maybe :boolean]]
+   ;; does this column come from the `:aggregation`s in this stage of the query?
+   [:is-aggregation {:optional true} [:maybe :boolean]]
    ;; does this column occur in the breakout clause?
-   [:is-breakout-column {:optional true} [:maybe :boolean]]
+   [:is-breakout {:optional true} [:maybe :boolean]]
    ;; does this column occur in the order-by clause?
    [:is-order-by-column {:optional true} [:maybe :boolean]]
    ;; for joins
@@ -374,10 +376,13 @@
                        {:query query, :stage-number stage-number, :x x}
                        e))))))
 
-(defn default-display-info
+(mu/defn default-display-info :- ::display-info
   "Default implementation of [[display-info-method]], available in case you want to use this in a different
   implementation and add additional information to it."
-  [query stage-number x options]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   x
+   options]
   (let [x-metadata (metadata query stage-number x options)]
     (merge
      ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display-name`
@@ -407,7 +412,7 @@
         :is-calculated          (= source :source/expressions)
         :is-implicitly-joinable (= source :source/implicitly-joinable)
         :is-aggregation         (= source :source/aggregations)
-        :is-breakout            (= source :source/breakouts)})
+        :is-breakout            (boolean (:lib/breakout? x-metadata))})
      (when-some [selected (:selected? x-metadata)]
        {:selected selected})
      (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :temporal-unit) x-metadata)]
@@ -427,12 +432,12 @@
           :schema          (:schema table)
           :visibility-type (:visibility-type table)}))
 
-(mr/def ::column-with-source
+(mr/def ::column-metadata-with-source
   "Schema for the column metadata that should be returned by [[metadata]]."
   [:merge
    [:ref ::lib.schema.metadata/column]
    [:map
-    [:lib/source ::lib.schema.metadata/column-source]]])
+    [:lib/source ::lib.schema.metadata/column.source]]])
 
 (mr/def ::returned-columns
   "Schema for column metadata that should be returned by [[returned-columns]] and implementations
@@ -440,7 +445,7 @@
   [:and
    [:sequential
     [:merge
-     [:ref ::column-with-source]
+     [:ref ::column-metadata-with-source]
      [:map
       [:lib/source-column-alias  ::lib.schema.metadata/source-column-alias]
       [:lib/desired-column-alias ::lib.schema.metadata/desired-column-alias]]]]
@@ -519,7 +524,7 @@
 
 (mr/def ::visible-column
   [:merge
-   [:ref ::column-with-source]
+   [:ref ::column-metadata-with-source]
    [:map
     [:lib/source-column-alias ::lib.schema.metadata/source-column-alias]]])
 

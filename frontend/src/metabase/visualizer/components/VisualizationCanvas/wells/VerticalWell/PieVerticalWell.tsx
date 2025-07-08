@@ -137,7 +137,7 @@ export const WellBox = forwardRef<HTMLDivElement, WellBoxProps>(
           [S.isActive]: isHighlighted,
         })}
         mih="120px"
-        w="150px"
+        w="250px"
         ref={ref}
       >
         {children}

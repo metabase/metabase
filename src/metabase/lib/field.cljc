@@ -20,6 +20,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -206,7 +207,7 @@
   ;;
   ;; See https://metaboat.slack.com/archives/C0645JP1W81/p1750805177651009
   (let [style (if (or
-                   (lib.field.util/FIXED-inherited-column? query stage-number col)
+                   (lib.field.util/inherited-column? col)
                    ;; TODO (Cam 6/26/25) -- not really sure whether a column that comes from a join in the current
                    ;; stage AGAINST ANOTHER CARD is 'inherited' or not... on the one hand it does come from another
                    ;; Card but on the other hand it was introduced in this stage. Either way, we do always want to use
@@ -442,20 +443,12 @@
                               ((some-fn :id :lib/deduplicated-name :lib/original-name :name) col))]
     [:field options id-or-name]))
 
-(defmethod lib.ref/ref-method :metadata/column
-  [{source :lib/source, :as metadata} options]
+(mu/defmethod lib.ref/ref-method :metadata/column :- ::lib.schema.ref/ref
+  [{source :lib/source, :as metadata} :- ::lib.schema.metadata/column
+   options]
   (case source
     :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
     :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
-    ;; `:source/fields`/`:source/breakouts` can hide the true origin of the column. Since it's impossible to break out
-    ;; by aggregation references at the current stage, we only have to check if we break out by an expression
-    ;; reference. `:lib/expression-name` is only set for expression references, so if it's set, we have to generate an
-    ;; expression ref, otherwise we generate a normal field ref.
-    (:source/fields :source/breakouts)
-    (if (:lib/expression-name metadata)
-      (lib.expression/column-metadata->expression-ref metadata)
-      (column-metadata->field-ref metadata options))
-    #_else
     (column-metadata->field-ref metadata options)))
 
 (defn- expression-columns
@@ -597,7 +590,7 @@
   - Explicit join: add it to that join's `:fields` list."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   column       :- ::lib.metadata.calculation/column-with-source]
+   column       :- ::lib.metadata.calculation/column-metadata-with-source]
   (let [stage  (lib.util/query-stage query stage-number)
         source (:lib/source column)]
     (when (and (empty? (:fields stage))
@@ -606,12 +599,10 @@
                  (pr-str ((some-fn :display-name :name) column))))
     (-> (case source
           (:source/table-defaults
-           :source/fields
            :source/card
            :source/previous-stage
            :source/expressions
-           :source/aggregations
-           :source/breakouts)         (cond-> query
+           :source/aggregations)      (cond-> query
                                         (contains? stage :fields) (include-field stage-number column))
           :source/joins               (add-field-to-join query stage-number column)
           :source/implicitly-joinable (include-field query stage-number column)
@@ -673,11 +664,12 @@
   - Explicit join: remove it from that join's `:fields` list (handle `:fields :all` like for source tables)."
   [query      :- ::lib.schema/query
    stage-number :- :int
-   column       :- ::lib.metadata.calculation/column-with-source]
-  (let [source (:lib/source column)]
+   column       :- ::lib.metadata.calculation/column-metadata-with-source]
+  (let [source (if (:lib/breakout? column)
+                 ::breakouts
+                 (:lib/source column))]
     (-> (case source
           (:source/table-defaults
-           :source/fields
            :source/card
            :source/previous-stage
            :source/expressions
@@ -686,7 +678,7 @@
           :source/native                (throw (ex-info (native-query-fields-edit-error)
                                                         {:query query :stage stage-number}))
 
-          (:source/breakouts
+          (::breakouts
            :source/aggregations)        (throw (ex-info (source-clauses-only-fields-edit-error)
                                                         {:query  query
                                                          :stage  stage-number

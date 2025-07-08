@@ -187,8 +187,9 @@
                     (lib/aggregate (lib/avg (lib/with-join-alias (lib/ref (get cols "count")) "checkins_by_user"))))]
       (is (=? [{:id                       (meta/id :users :last-login)
                 :name                     "LAST_LOGIN"
-                :lib/source               :source/breakouts
-                :lib/source-column-alias  "LAST_LOGIN"
+                :lib/source               :source/table-defaults
+                :lib/breakout?            true
+                :lib/source-column-alias "LAST_LOGIN"
                 :lib/desired-column-alias "LAST_LOGIN"}
                {:name                     "avg"
                 :lib/source               :source/aggregations
@@ -426,7 +427,7 @@
                      ;; this key is DEPRECATED (see description in column metadata schema) but still used (FOR
                      ;; NOW) (QUE-1403)
                      :source-alias                  "Products"
-                     :lib/source                    :source/card ; or is it supposed to be `:source/breakouts`?
+                     :lib/source                    :source/card ; or is it supposed to be `:source/table-defaults`
                      :lib/source-uuid               (lib.options/uuid breakout-ref)
                      :lib/type                      :metadata/column
                      :name                          "CATEGORY"
@@ -496,7 +497,7 @@
 
 (deftest ^:parallel legacy-query-with-broken-breakout-breakouts-test
   (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
-    (let [query (metabase.lib.breakout-test/legacy-query-with-broken-breakout)
+    (let [query        (metabase.lib.breakout-test/legacy-query-with-broken-breakout)
           breakout-ref (first (lib/breakouts query))]
       (is (=? [:field {:lib/uuid string?} (meta/id :products :category)]
               breakout-ref))
@@ -510,7 +511,7 @@
                :lib/original-display-name     "Category"
                :lib/original-join-alias       "Products"
                :lib/original-name             "CATEGORY"
-               :lib/source                    :source/breakouts
+               :lib/source                    :source/card
                :lib/source-uuid               (lib.options/uuid breakout-ref)
                :lib/type                      :metadata/column
                :metabase.lib.join/join-alias  (symbol "nil #_\"key is not present.\"")

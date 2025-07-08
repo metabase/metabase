@@ -21,7 +21,8 @@
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/card
   [_query _stage-number card-metadata _style]
@@ -120,12 +121,13 @@
               ;; accordingly.
               (not= (:semantic-type source-metadata-col) :type/FK)
               (assoc :fk-target-field-id nil))]
-    (as-> col col
-      ;; :effective-type is required, but not always set, see e.g.,
-      ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
-      (u/assoc-default col :effective-type (:base-type col))
-      ;; add original display name IF not already present AND we have a value
-      (lib.normalize/normalize ::lib.schema.metadata/column col))))
+    (-> col
+        lib.field.util/update-keys-for-col-from-previous-stage
+        ;; :effective-type is required, but not always set, see e.g.,
+        ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
+        (u/assoc-default :effective-type (:base-type col))
+        ;; add original display name IF not already present AND we have a value
+        (->> (lib.normalize/normalize ::lib.schema.metadata/column)))))
 
 (mu/defn ->card-metadata-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata."
@@ -150,14 +152,14 @@
            field-id->field   (m/index-by :id fields)]
        (mapv #(->card-metadata-column metadata-provider % card-id (get field-id->field (:id %))) cols)))))
 
-(def ^:private CardColumnMetadata
+(mr/def ::column
   [:merge
    ::lib.schema.metadata/column
    [:map
     [:lib/source [:= :source/card]]]])
 
-(def ^:private CardColumns
-  [:maybe [:sequential {:min 1} CardColumnMetadata]])
+(mr/def ::maybe-columns
+  [:maybe [:sequential {:min 1} ::column]])
 
 (def ^:private ^:dynamic *card-metadata-columns-card-ids*
   "Used to track the ID of Cards we're resolving columns for, to avoid inifinte recursion for Cards that have circular
@@ -246,7 +248,7 @@
                 (cond-> result-cols
                   (seq model-cols) (merge-model-metadata model-cols)))))))))
 
-(mu/defn saved-question-metadata :- CardColumns
+(mu/defn saved-question-metadata :- ::maybe-columns
   "Metadata associated with a Saved Question with `card-id`."
   ([metadata-providerable card-id]
    (saved-question-metadata metadata-providerable card-id nil))

@@ -923,7 +923,8 @@
                 :lib/hack-original-name                     "CREATED_AT"
                 :lib/original-display-name                  "Created At"
                 :lib/original-name                          "CREATED_AT"
-                :lib/source                                 :source/breakouts
+                :lib/source                                 :source/previous-stage
+                :lib/breakout?                              true
                 :lib/source-column-alias                    "CREATED_AT"
                 :lib/type                                   :metadata/column
                 :metabase.lib.field/original-effective-type :type/DateTimeWithLocalTZ

@@ -159,7 +159,11 @@
     (lib.options/update-options field-or-join u/assoc-dissoc :join-alias join-alias)
 
     :metadata/column
-    (u/assoc-dissoc field-or-join ::join-alias join-alias)
+    (if join-alias
+      (assoc field-or-join ::join-alias join-alias, :lib/source :source/joins)
+      (-> field-or-join
+          (dissoc ::join-alias)
+          (cond-> (= (:lib/source field-or-join) :source/joins) (dissoc :lib/source))))
 
     :mbql/join
     (with-join-alias-update-join field-or-join join-alias)
@@ -231,7 +235,7 @@
   (throw (ex-info "You can't calculate a metadata map for a join! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
 
-(mu/defn- column-from-join :- ::lib.metadata.calculation/column-with-source
+(mu/defn- column-from-join :- ::lib.metadata.calculation/column-metadata-with-source
   "For a column that comes from a join, add or update metadata as needed, e.g. include join name in the display name."
   [query           :- ::lib.schema/query
    stage-number    :- :int

@@ -29,7 +29,7 @@
                  :lib/metadata meta/metadata-provider}]
       (is (mr/validate ::lib.schema/query query))
       (is (=? [(merge (m/filter-vals some? (meta/field-metadata :venues :price))
-                      {:lib/source :source/fields})]
+                      {:lib/source :source/table-defaults})]
               (lib/returned-columns query))))))
 
 (deftest ^:parallel deduplicate-expression-names-in-aggregations-test

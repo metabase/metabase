@@ -41,7 +41,7 @@ export const CSVPanel = ({
           text: t`Enable uploads`,
           to: Urls.uploadsSettings(),
         }}
-        upsell={<UpsellStorage source="add-data-modal-csv" />}
+        upsell={<UpsellStorage location="add-data-modal-csv" />}
       />
     );
   }
