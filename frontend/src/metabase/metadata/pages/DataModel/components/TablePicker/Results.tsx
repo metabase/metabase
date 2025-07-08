@@ -120,23 +120,27 @@ export function Results({
               return;
             }
 
-            match({ type, isExpanded })
-              .with({ type: "database", isExpanded: false }, () => {
-                const leaf = getExpandedDatabaseLeaf(tree, isExpandedFn, key);
+            match(type)
+              .with("database", () => {
+                if (!isExpanded) {
+                  const leaf = getExpandedDatabaseLeaf(tree, isExpandedFn, key);
 
-                onItemClick?.(leaf?.value ?? value);
+                  onItemClick?.(leaf?.value ?? value);
+                }
               })
-              .with({ type: "schema", isExpanded: false }, () => {
-                const leaf = getExpandedSchemaLeaf(
-                  tree,
-                  isExpandedFn,
-                  parent,
-                  key,
-                );
+              .with("schema", () => {
+                if (!isExpanded) {
+                  const leaf = getExpandedSchemaLeaf(
+                    tree,
+                    isExpandedFn,
+                    parent,
+                    key,
+                  );
 
-                onItemClick?.(leaf?.value ?? value);
+                  onItemClick?.(leaf?.value ?? value);
+                }
               })
-              .with({ type: "table" }, () => {
+              .with("table", () => {
                 onItemClick?.(value);
               });
           };
