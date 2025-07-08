@@ -1,6 +1,7 @@
 import {
   categorizeIssues,
   generateReleaseNotes,
+  getChangelogUrl,
   getReleaseTitle,
   getWebsiteChangelog,
   markdownIssueLinks,
@@ -72,25 +73,21 @@ describe("Release Notes", () => {
     it("should generate release notes", () => {
       const notes = generateReleaseNotes({
         version: "v1.2.3",
-        template: githubReleaseTemplate,
+        template: websiteChangelogTemplate,
         issues,
       });
 
       expect(notes).toContain(
-        "Get the most out of Metabase"
-      );
-
-      expect(notes).toContain(
-        "### Enhancements\n\n**Querying**\n\n- Feature Issue (#2)",
+        "### Enhancements | 2.3\n\n**Querying**\n\n- Feature Issue (#2)",
       );
       expect(notes).toContain(
-        "### Bug fixes\n\n**Embedding**\n\n- Bug Issue (#1)",
+        "### Bug fixes | 2.3\n\n**Embedding**\n\n- Bug Issue (#1)",
       );
       expect(notes).toContain(
-        "### Already Fixed\n\nIssues confirmed to have been fixed in a previous release.\n\n**Embedding**\n\n- Issue Already Fixed (#3)",
+        "### Already Fixed | 2.3\n\nIssues confirmed to have been fixed in a previous release.\n\n**Embedding**\n\n- Issue Already Fixed (#3)",
       );
       expect(notes).toContain(
-        "### Under the Hood\n\n**Administration**\n\n- Issue That Users Don't Care About (#4)",
+        "### Under the Hood | 2.3\n\n**Administration**\n\n- Issue That Users Don't Care About (#4)",
       );
 
       expect(notes).toContain("metabase/metabase-enterprise:v1.2.3.x");
@@ -106,21 +103,12 @@ describe("Release Notes", () => {
     it("should generate release notes from alternative templates", () => {
       const notes = generateReleaseNotes({
         version: "v1.2.3",
-        template: websiteChangelogTemplate,
+        template: githubReleaseTemplate,
         issues,
       });
 
       expect(notes).toContain(
-        "### Enhancements\n\n**Querying**\n\n- Feature Issue (#2)",
-      );
-      expect(notes).toContain(
-        "### Bug fixes\n\n**Embedding**\n\n- Bug Issue (#1)",
-      );
-      expect(notes).toContain(
-        "### Already Fixed\n\nIssues confirmed to have been fixed in a previous release.\n\n**Embedding**\n\n- Issue Already Fixed (#3)",
-      );
-      expect(notes).toContain(
-        "### Under the Hood\n\n**Administration**\n\n- Issue That Users Don't Care About (#4)",
+        "https://www.metabase.com/changelog/"
       );
 
       expect(notes).toContain("metabase/metabase-enterprise:v1.2.3.x");
@@ -497,5 +485,18 @@ describe("Release Notes", () => {
       expect(notes).toContain("- Issue That Users Don't Care About ([#4](https://github.com/metabase/metabase/issues/4))");
     });
 
+  });
+
+  it.each([
+    ["v0.53.2", "53#metabase-532"],
+    ["v1.53.0", "53#metabase-530"],
+    ["v1.57.16", "57#metabase-5716"],
+    ["v1.59.0.4-beta", "59#metabase-590"],
+    ["v1.60.0", "60#metabase-600"],
+    ["v0.32.0", "32#metabase-320"],
+    ["v0.444.1", "444#metabase-4441"],
+
+  ])("getChangelogUrl: %s -> %s", (input, expected)=> {
+    expect(getChangelogUrl(input)).toEqual(`https://www.metabase.com/changelog/${expected}`);
   });
 });
