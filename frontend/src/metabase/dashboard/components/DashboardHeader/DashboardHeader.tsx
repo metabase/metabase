@@ -119,12 +119,7 @@ export const DashboardHeaderInner = ({
         key="cancel-edit-button"
         onClick={() => onRequestCancel()}
       />,
-      <SaveEditButton
-        key="save-edit-button"
-        onDoneEditing={() => {
-          onRefreshPeriodChange(null);
-        }}
-      />,
+      <SaveEditButton key="save-edit-button" />,
     ];
   };
 
