@@ -2075,7 +2075,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       });
     });
 
-    it("should be possible to use nested aggregations in custom columns", () => {
+    it("should be possible to use nested aggregations in custom columns of a new question", () => {
       H.addCustomColumn();
       H.CustomExpressionEditor.type("[Foo] + [Bar]");
       H.CustomExpressionEditor.nameInput().type("Sum");
@@ -2089,7 +2089,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       });
     });
 
-    it("should be possible to use nested aggregations in filter clause", () => {
+    it("should be possible to use nested aggregations in filter clause of a new question", () => {
       H.filter({ mode: "notebook" });
       H.popover().within(() => {
         cy.findByText("Bar").click();
@@ -2104,7 +2104,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       });
     });
 
-    it("should be possible to use nested aggregations in join clause", () => {
+    it("should be possible to use nested aggregations in join clause of a new question", () => {
       H.join();
       H.joinTable("Products");
       H.popover().findByText("Foo").click();
@@ -2123,7 +2123,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       });
     });
 
-    it("should be possible to use nested aggregations in order by clause", () => {
+    it("should be possible to use nested aggregations in order by clause of a new question", () => {
       H.sort();
       H.popover().findByText("Bar").click();
 
@@ -2134,7 +2134,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       });
     });
 
-    it("should be possible to use nested aggregations in breakout", () => {
+    it("should be possible to use nested aggregations in breakout of a new question", () => {
       H.summarize({ mode: "notebook" });
       H.getNotebookStep("summarize")
         .findByText("Pick a column to group by")
@@ -2143,6 +2143,109 @@ describe("scenarios > question > custom column > aggregation", () => {
 
       H.visualize();
       cy.findByTestId("scalar-value").should("have.text", "19.55");
+    });
+  });
+
+  describe("scenarios > question > custom column > aggregation > in a follow up stage", () => {
+    beforeEach(() => {
+      H.createQuestion(
+        {
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              [
+                "aggregation-options",
+                [
+                  "min",
+                  [
+                    "field",
+                    ORDERS.SUBTOTAL,
+                    {
+                      "base-type": "type/Float",
+                    },
+                  ],
+                ],
+                {
+                  name: "Foo",
+                  "display-name": "Foo",
+                },
+              ],
+              [
+                "aggregation-options",
+                [
+                  "+",
+                  [
+                    "aggregation",
+                    0,
+                    {
+                      "base-type": "type/Float",
+                    },
+                  ],
+                  [
+                    "avg",
+                    [
+                      "field",
+                      ORDERS.TAX,
+                      {
+                        "base-type": "type/Float",
+                      },
+                    ],
+                  ],
+                ],
+                {
+                  name: "Bar",
+                  "display-name": "Bar",
+                },
+              ],
+            ],
+            "aggregation-idents": {
+              0: "S9C0DETiO434MYRP83IwM",
+              1: "EHbjfRmmyZ8Xd2WNrh4wq",
+            },
+          },
+        },
+        { visitQuestion: true },
+      );
+      H.openNotebook();
+    });
+
+    it("should be possible to use nested aggregations in custom columns of a follow up stage", () => {
+      H.getNotebookStep("summarize").within(() => {
+        H.addCustomColumn();
+      });
+
+      H.CustomExpressionEditor.type("[Foo] + [Bar]");
+      H.CustomExpressionEditor.nameInput().type("Sum");
+      H.popover().button("Done").click();
+
+      H.visualize();
+
+      H.assertTableData({
+        columns: ["Foo", "Bar", "Sum"],
+        firstRows: [["15.69", "19.55", "35.24"]],
+      });
+    });
+
+    it("should be possible to use nested aggregations in join clause of a follow up stage", () => {
+      H.getNotebookStep("summarize").within(() => {
+        H.join();
+      });
+
+      H.joinTable("Products");
+      H.popover().findByText("Foo").click();
+      H.popover().findByText("Price").click();
+
+      H.getNotebookStep("join", { stage: 1 }).button("Pick columns").click();
+      H.popover().within(() => {
+        cy.findByText("Select all").click();
+        cy.findByText("ID").click();
+      });
+
+      H.visualize();
+      H.assertTableData({
+        columns: ["Foo", "Bar", "Products - Foo → ID"],
+        firstRows: [["15.69", "19.55", "61"]],
+      });
     });
   });
 });
