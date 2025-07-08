@@ -22,6 +22,10 @@ export function addCustomColumn() {
   initiateAction("CustomColumn", "notebook");
 }
 
+export function sort() {
+  cy.button("Sort").click();
+}
+
 /**
  * Initiate a certain action such as filtering or summarizing taking the question's mode into account.
  *
