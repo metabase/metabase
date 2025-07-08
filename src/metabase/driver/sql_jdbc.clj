@@ -132,6 +132,26 @@
   [_driver _semantic_type expr]
   (h2x/->timestamp expr))
 
+(defn- create-view!-sql [driver view-name view-definition & {:keys [replace?]}]
+  (with-quoting driver
+    (first (sql/format {(if replace? :create-or-replace-view :create-view) (quote-table view-name)
+                        :raw view-definition}
+                       :quoted true
+                       :dialect (sql.qp/quote-style driver)))))
+
+(defmethod driver/create-view! :sql-jdbc
+  [driver database-id view-name view-definition & {:keys [replace?] :or {replace? false}}]
+  (let [sql (create-view!-sql driver view-name view-definition :replace? replace?)]
+
+    (driver-api/execute-write-sql! database-id sql)))
+
+(defmethod driver/drop-view! :sql-jdbc
+  [driver db-id view-name]
+  (let [sql (first (sql/format {:drop-view [:if-exists (keyword view-name)]}
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver)))]
+    (driver-api/execute-write-sql! db-id sql)))
+
 (defn- create-table!-sql
   [driver table-name column-definitions & {:keys [primary-key]}]
   (with-quoting driver
