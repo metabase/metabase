@@ -163,7 +163,7 @@ export const GdriveAddDataPanel = ({
   if (!hasStorage) {
     return (
       <PanelWrapper subtitle={NO_STORAGE_SUBTITLE}>
-        <UpsellStorage source="add-data-modal-sheets" />
+        <UpsellStorage location="add-data-modal-sheets" />
       </PanelWrapper>
     );
   }

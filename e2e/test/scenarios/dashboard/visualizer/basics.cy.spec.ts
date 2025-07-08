@@ -821,4 +821,51 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByText("No results").should("exist");
     });
   });
+
+  it("should reset a dataset", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
+
+    H.modal().within(() => {
+      cy.findByText("Add to dashboard").click();
+    });
+
+    cy.wait("@cardQuery");
+
+    H.getDashboardCard(1).within(() => {
+      cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
+      cy.findByText("Created At: Month").should("exist");
+    });
+
+    H.showDashcardVisualizerModal(1);
+    H.modal().within(() => {
+      H.selectVisualization("pie");
+      H.assertWellItems({
+        pieMetric: ["Count"],
+        pieDimensions: ["Created At: Month"],
+      });
+    });
+    H.saveDashcardVisualizerModal();
+    H.saveDashboard();
+
+    H.editDashboard();
+    H.showDashcardVisualizerModal(1);
+
+    H.modal().within(() => {
+      H.resetDataSourceButton(ORDERS_COUNT_BY_CREATED_AT.name)
+        .should("be.enabled")
+        .click();
+
+      H.assertWellItems({
+        vertical: ["Count"],
+        horizontal: ["Created At: Month"],
+      });
+
+      H.resetDataSourceButton(ORDERS_COUNT_BY_CREATED_AT.name).should(
+        "be.disabled",
+      );
+    });
+  });
 });

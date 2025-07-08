@@ -95,7 +95,7 @@ describe("issue 45255", () => {
   });
 });
 
-describe("issue 49874", () => {
+describe("issue 49874, 48847", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -127,12 +127,15 @@ describe("issue 49874", () => {
       cy.findByText("Sum of Total").should("be.visible");
     });
 
+    H.chartGridLines().should("exist");
+
     H.chartPathWithFillColor("#88BF4D").first().realHover();
 
     H.echartsContainer().within(() => {
       cy.findByText("Sum of Quantity").should("be.visible");
       cy.findByText("Sum of Total").should("not.exist");
     });
+    H.chartGridLines().should("exist");
 
     H.chartPathWithFillColor("#98D9D9").first().realHover();
 
@@ -140,6 +143,7 @@ describe("issue 49874", () => {
       cy.findByText("Sum of Quantity").should("not.exist");
       cy.findByText("Sum of Total").should("be.visible");
     });
+    H.chartGridLines().should("exist");
   });
 });
 
