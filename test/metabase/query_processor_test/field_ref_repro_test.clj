@@ -41,3 +41,22 @@
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Column \"j\.ID\" not found"
                                     (mt/rows+column-names
                                      (qp/process-query query)))))))))))
+
+(deftest ^:parallel long-column-name-in-card-test
+  (testing "Should be able to handle long column names in saved questions (#35252)"
+    (mt/with-driver :h2
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            card-data (-> {:dataset_query {:native   {:query "SELECT ID AS \"ID\", CATEGORY as \"This is a very very long column title that makes my saved question break when I want to use it elsewhere\" FROM PRODUCTS"}
+                                           :database (mt/id)
+                                           :type     :native}}
+                          mt/card-with-metadata)]
+        (mt/with-temp [:model/Card card card-data]
+          (let [card-meta (lib.metadata/card mp (:id card))
+                base (lib/query mp card-meta)
+                long-name-col (second (lib/filterable-columns base))
+                query (lib/filter base (lib/contains long-name-col "a"))]
+            (mt/with-native-query-testing-context query
+              ;; should return 53 rows with two columns, but fails instead
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Column \".*very very long column title.*\" not found"
+                                    (mt/rows+column-names
+                                     (qp/process-query query)))))))))))
