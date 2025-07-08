@@ -5,8 +5,7 @@
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
-   [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
