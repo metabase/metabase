@@ -1,5 +1,5 @@
 export type DataApp = {
-  id?: string;
+  id: string;
   name: string;
   url: string;
   status: string; // private, published, archived

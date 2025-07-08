@@ -728,6 +728,11 @@ export const PLUGIN_DATA_APPS = {
       appId: string;
     };
   }>,
+  PUBLIC_APP_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      appUrl: string;
+    };
+  }>,
 };
 
 export const PLUGIN_CONTENT_TRANSLATION = {

@@ -10,6 +10,7 @@ import {
 import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Flex, Group, Icon, Stack, Title } from "metabase/ui";
 
@@ -70,7 +71,7 @@ export const DataAppsList = () => {
               dataApps.length > 0 &&
               dataApps.map((app) => (
                 <BrowseCard
-                  to={`/data-apps/edit/${app.id}`}
+                  to={Urls.dataAppEdit(app.id)}
                   key={app.id}
                   title={app.name}
                   icon="format_code"
@@ -87,7 +88,7 @@ export const DataAppsList = () => {
 };
 
 const AddAppCard = () => (
-  <Link to="/data-apps/new">
+  <Link to={Urls.dataAppCreate()}>
     <Button
       variant="outline"
       style={{

@@ -9,20 +9,19 @@ import { closeNavbar } from "metabase/redux/app";
 import {
   ActionIcon,
   Box,
+  Button,
   Group,
   Icon,
   Stack,
   Title,
   Tooltip,
 } from "metabase/ui";
-import {
-  createMockDataApp,
-  getDataAppById,
-} from "metabase-enterprise/data-apps/utils";
 
 import { DataAppsComponentsList } from "./DataAppsComponentsList";
 import { DataAppEditSettingsModal } from "./modals/DataAppEditSettingsModal";
+import { DataAppPublishModal } from "./modals/DataAppPublishModal";
 import type { DataApp, DataAppEditSettings } from "./types";
+import { createMockDataApp, getDataAppById } from "./utils";
 
 type SettingsSectionKey = "components";
 
@@ -51,9 +50,16 @@ export const DataAppContainer = ({
     return createMockDataApp();
   });
 
+  const hasPublishButton = dataApp?.status !== "published";
+
   const [
     isOpenEditTitleModal,
     { open: openEditTitleModal, close: closeEditTitleModal },
+  ] = useDisclosure(false);
+
+  const [
+    isOpenPublishModal,
+    { open: openPublishModal, close: closePublishModal },
   ] = useDisclosure(false);
 
   useMount(() => {
@@ -110,6 +116,18 @@ export const DataAppContainer = ({
               isActive={activeSettingsSection === "components"}
               onClick={() => setActiveSettingsSection("components")}
             />
+
+            {hasPublishButton && (
+              <Button
+                data-testid="data-app-publish-button"
+                px="md"
+                py="sm"
+                variant="subtle"
+                onClick={openPublishModal}
+              >
+                {t`Share`}
+              </Button>
+            )}
           </Group>
         </Group>
         <Group
@@ -145,6 +163,12 @@ export const DataAppContainer = ({
         dataApp={dataApp}
         onSubmit={handleEditSettingsSubmit}
         onClose={closeEditTitleModal}
+      />
+
+      <DataAppPublishModal
+        opened={isOpenPublishModal}
+        dataApp={dataApp}
+        onClose={closePublishModal}
       />
     </>
   );
