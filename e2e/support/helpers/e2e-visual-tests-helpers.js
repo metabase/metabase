@@ -67,6 +67,12 @@ export function echartsIcon(name, isSelected = false) {
   return echartsContainer().find(`image[href="${dataUri}"]`);
 }
 
+export function chartGridLines() {
+  return echartsContainer().find(
+    "path[stroke='#EEECEC'][fill='transparent'][stroke-dasharray='5']",
+  );
+}
+
 export function chartPathWithFillColor(color) {
   return echartsContainer().find(`path[fill="${color}"]`);
 }
