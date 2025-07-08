@@ -6,7 +6,7 @@ import type { Tenant } from "metabase-types/api";
 
 export const TenantDisplayName = ({ id }: { id: Tenant["id"] }) => {
   const { data: tenants, isLoading } = useListTenantsQuery({
-    status: "active",
+    status: "all",
   });
 
   if (isLoading || !tenants) {

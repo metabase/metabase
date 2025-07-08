@@ -26,7 +26,7 @@ export const tenantsApi = EnterpriseApi.injectEndpoints({
     }),
     listTenants: builder.query<
       { data: Tenant[] },
-      { status: "active" | "deactivated" }
+      { status: "active" | "deactivated" | "all" }
     >({
       query: (params) => ({
         method: "GET",
@@ -42,7 +42,11 @@ export const tenantsApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("tenant"), idTag("tenant", id)]),
+        invalidateTags(error, [
+          listTag("tenant"),
+          idTag("tenant", id),
+          listTag("user"),
+        ]),
     }),
   }),
 });
