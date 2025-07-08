@@ -189,7 +189,7 @@ describe("QuestionRowCount", () => {
 
           await waitFor(() =>
             expect(rowCount).toHaveTextContent(
-              `Showing first ${formatNumber(HARD_ROW_LIMIT, { useInstanceSettings: true })} rows`,
+              `Showing first ${formatNumber(HARD_ROW_LIMIT)} rows`,
             ),
           );
         });
@@ -238,7 +238,7 @@ describe("QuestionRowCount", () => {
           const { rowCount } = await setup({ question: getCard(), result });
 
           expect(rowCount).toHaveTextContent(
-            `Showing first ${formatNumber(HARD_ROW_LIMIT, { useInstanceSettings: true })} rows`,
+            `Showing first ${formatNumber(HARD_ROW_LIMIT)} rows`,
           );
         });
 
