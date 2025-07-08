@@ -6,6 +6,7 @@ import styled from "@emotion/styled";
 import type {
   ChangeEventHandler,
   HTMLAttributes,
+  KeyboardEvent,
   KeyboardEventHandler,
   MouseEventHandler,
   Ref,
@@ -107,7 +108,10 @@ const _TabButton = forwardRef(function TabButton(
 
   const handleInputKeyPress: KeyboardEventHandler<HTMLInputElement> =
     useCallback(
-      (event: React.KeyboardEvent) => {
+      (event: KeyboardEvent) => {
+        if (event.nativeEvent.isComposing) {
+          return;
+        }
         if (event.key === "Enter" && typeof inputRef === "object") {
           inputRef?.current?.blur();
         }

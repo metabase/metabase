@@ -25,6 +25,7 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 import type {
+  DraggedColumn,
   DraggedItem,
   VisualizerState,
   VisualizerVizDefinitionWithColumns,
@@ -88,6 +89,7 @@ function getInitialState(): VisualizerState {
     loadingDatasets: {},
     error: null,
     draggedItem: null,
+    hoveredItems: null,
   };
 }
 
@@ -141,7 +143,7 @@ const initializeFromState = async (
   return copy(initialState);
 };
 
-const initializeFromCard = async (
+export const initializeFromCard = async (
   cardId: number,
   dispatch: Dispatch,
   getState: GetState,
@@ -537,6 +539,9 @@ const visualizerSlice = createSlice({
     setDraggedItem: (state, action: PayloadAction<DraggedItem | null>) => {
       state.draggedItem = action.payload;
     },
+    setHoveredItems: (state, action: PayloadAction<DraggedColumn[] | null>) => {
+      state.hoveredItems = action.payload;
+    },
     _resetVisualizer: (state) => {
       Object.assign(state, getInitialState());
     },
@@ -649,6 +654,7 @@ export const {
   removeDataSource,
   setDisplay,
   setDraggedItem,
+  setHoveredItems,
 } = visualizerSlice.actions;
 
 export const reducer = undoable(visualizerSlice.reducer, {
@@ -672,7 +678,11 @@ export const reducer = undoable(visualizerSlice.reducer, {
         return true;
       }
       // Prevents history items from being added when dropping an item has no effect on the rest of the visualizer state
-      const keysToIgnore: (keyof VisualizerState)[] = ["draggedItem"];
+      // or when hovered items change — because we don't want to add history items when hovering over items
+      const keysToIgnore: (keyof VisualizerState)[] = [
+        "draggedItem",
+        "hoveredItems",
+      ];
       return !shallowEqual(
         _.omit(nextState, keysToIgnore),
         _.omit(present, keysToIgnore),

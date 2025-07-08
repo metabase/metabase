@@ -29,6 +29,9 @@ export const DatabaseConnectionModalInner = ({
 }) => {
   const dispatch = useDispatch();
 
+  const queryParams = new URLSearchParams(location.search);
+  const preselectedEngine = queryParams.get("engine") ?? undefined;
+
   const addingNewDatabase = params.databaseId === undefined;
 
   const databaseReq = useGetDatabaseQuery(
@@ -38,6 +41,7 @@ export const DatabaseConnectionModalInner = ({
     id: undefined,
     is_attached_dwh: false,
     router_user_attribute: undefined,
+    engine: preselectedEngine,
   };
 
   const handleCloseModal = () => {

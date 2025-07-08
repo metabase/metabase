@@ -10,7 +10,6 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -108,7 +107,7 @@
           (isa? base-type orderable-base-type))
         lib.schema.expression/orderable-types))
 
-(mu/defn orderable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+(mu/defn orderable-columns :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
   "Get column metadata for all the columns you can order by in a given `stage-number` of a `query`. Rules are as
   follows:
 

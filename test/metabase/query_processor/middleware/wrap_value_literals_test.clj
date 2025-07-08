@@ -341,8 +341,7 @@
              {:filter
               [:=
                [:field "CATEGORY" {:base-type :type/Text}]
-               [:value "Doohickey" {:base_type :type/Text,
-                                    :effective_type :type/Text,
+               [:value "Doohickey" {:base_type :type/Text
                                     :database_type "CHARACTER VARYING"}]]}}
             (wrap-value-literals
              (qp.preprocess/preprocess

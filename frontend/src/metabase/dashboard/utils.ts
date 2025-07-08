@@ -83,7 +83,10 @@ export function expandInlineCard(card?: Card | VirtualCard) {
 }
 
 export function isQuestionCard(card: Card | VirtualCard) {
-  return card.dataset_query != null;
+  // Some old virtual cards have dataset_query equal to {} so we need to check for null and empty object
+  return (
+    card.dataset_query != null && Object.keys(card.dataset_query).length > 0
+  );
 }
 
 export function isQuestionDashCard(
@@ -133,17 +136,20 @@ export function isIFrameDashCard(
 
 export function supportsInlineParameters(
   dashcard: BaseDashboardCard,
-): dashcard is VirtualDashboardCard {
-  return isHeadingDashCard(dashcard);
+): dashcard is QuestionDashboardCard | VirtualDashboardCard {
+  return isQuestionDashCard(dashcard) || isHeadingDashCard(dashcard);
 }
 
-type VirtualDashboardCardWithInlineFilters = VirtualDashboardCard & {
+type DashboardCardWithInlineFilters = (
+  | VirtualDashboardCard
+  | QuestionDashboardCard
+) & {
   inline_parameters: ParameterId[];
 };
 
 export function hasInlineParameters(
   dashcard: BaseDashboardCard,
-): dashcard is VirtualDashboardCardWithInlineFilters {
+): dashcard is DashboardCardWithInlineFilters {
   return (
     supportsInlineParameters(dashcard) &&
     Array.isArray(dashcard.inline_parameters) &&
@@ -153,13 +159,13 @@ export function hasInlineParameters(
 
 export function findDashCardForInlineParameter(
   parameterId: ParameterId,
-  dashcards: DashboardCard[],
-): VirtualDashboardCardWithInlineFilters | undefined {
+  dashcards: BaseDashboardCard[],
+): DashboardCardWithInlineFilters | undefined {
   return dashcards.find((dashcard) => {
     if (hasInlineParameters(dashcard)) {
       return dashcard.inline_parameters.some((id) => id === parameterId);
     }
-  }) as VirtualDashboardCardWithInlineFilters | undefined;
+  }) as DashboardCardWithInlineFilters | undefined;
 }
 
 export function isDashcardInlineParameter(
@@ -167,6 +173,25 @@ export function isDashcardInlineParameter(
   dashcards: DashboardCard[],
 ) {
   return !!findDashCardForInlineParameter(parameterId, dashcards);
+}
+
+export function getInlineParameterTabMap(dashboard: Dashboard) {
+  const { dashcards = [] } = dashboard;
+  const parameters = dashboard.parameters ?? [];
+
+  const result: Record<ParameterId, SelectedTabId> = {};
+
+  parameters.forEach((parameter) => {
+    const parentDashcard = findDashCardForInlineParameter(
+      parameter.id,
+      dashcards,
+    );
+    if (parentDashcard) {
+      result[parameter.id] = parentDashcard.dashboard_tab_id ?? null;
+    }
+  });
+
+  return result;
 }
 
 export function isNativeDashCard(dashcard: QuestionDashboardCard) {
@@ -396,7 +421,6 @@ export function createDashCard(
 export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
   return {
     name: null,
-    dataset_query: {},
     display,
     visualization_settings: {},
     archived: false,

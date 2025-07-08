@@ -30,7 +30,7 @@ export function PeopleNav() {
           icon="group"
         />
       </Stack>
-      {shouldNudge && <UpsellSSO source="people-groups-settings" />}
+      {shouldNudge && <UpsellSSO location="people-groups-settings" />}
     </AdminNavWrapper>
   );
 }

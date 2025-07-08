@@ -17,7 +17,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.time
     LocalDate
@@ -264,7 +265,11 @@
   :hierarchy #'driver/hierarchy)
 
 (defn- sqlize-value [x]
-  (if driver/*driver*
+  ;; TODO (Cam 6/20/25) only do this when we're inside a QP context! Don't do this inside of Toucan query compilation!
+  ;; This is a hack to attempt to not do it, but I don't think it works everywhere!
+  (if (and driver/*driver*
+           (not (or t2.pipeline/*resolved-query*
+                    t2.pipeline/*parsed-args*)))
     (inline-value driver/*driver* x)
     (honey.sql.protocols/sqlize x)))
 
@@ -580,6 +585,10 @@
 
 (defmethod inline-value :default
   [driver object]
+  ;; if we're seeing this, we need to fix [[sqlize-value]] better so it doesn't do its thing inside of Toucan 2 queries.
+  ;; If [[driver/*driver*]] is bound we should NOT be using that to compile app DB queries.
+  (when (= driver :mongo)
+    (log/errorf "%s is being called inside Toucan query compilation! This is an error and can lead to broken app DB queries." `sqlize-value))
   ;; default implementation of [[honey.sql.protocols/sqlize]] is just [[clojure.core/str]], that is almost certainly not
   ;; what we want to do, so log a warning
   (log/warnf "No implementation of %s for [%s %s], falling back to default implementation of %s"
@@ -774,7 +783,10 @@
         coercion-strategy (case (or mode :iso)
                             ;; String
                             :iso              :Coercion/ISO8601->DateTime
-                            :simple           :Coercion/YYYYMMDDHHMMSSString->DateTime
+                            :simple           :Coercion/YYYYMMDDHHMMSSString->Temporal
+                            ;; Binary
+                            :isobytes         :Coercion/ISO8601Bytes->Temporal
+                            :simplebytes      :Coercion/YYYYMMDDHHMMSSBytes->Temporal
                             ;; Number
                             :unixmilliseconds :Coercion/UNIXMilliSeconds->DateTime
                             :unixseconds      :Coercion/UNIXSeconds->DateTime
@@ -788,6 +800,9 @@
 
       (isa? coercion-strategy :Coercion/String->Temporal)
       (cast-temporal-string driver coercion-strategy honeysql-form)
+
+      (isa? coercion-strategy :Coercion/Bytes->Temporal)
+      (cast-temporal-byte driver coercion-strategy honeysql-form)
 
       :else
       (throw (ex-info "Don't know how to convert the value to datetime."
@@ -1668,16 +1683,17 @@
       [:= field-honeysql (->honeysql driver value)])))
 
 (defn- correct-null-behaviour
-  [driver [op & args :as clause]]
-  (if-let [field-arg (driver-api/match-one args
-                       :field          &match
-                       :expression     &match)]
-    ;; We must not transform the head again else we'll have an infinite loop
-    ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
-    [:or
-     (into [op] (map (partial ->honeysql driver)) args)
-     [:= (->honeysql driver field-arg) nil]]
-    clause))
+  [driver [op & args :as _clause]]
+  ;; We must not transform the head again else we'll have an infinite loop
+  ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
+  (let [honeysql-clause (into [op] (map (partial ->honeysql driver)) args)]
+    (if-let [field-arg (driver-api/match-one args
+                         :field          &match
+                         :expression     &match)]
+      [:or
+       honeysql-clause
+       [:= (->honeysql driver field-arg) nil]]
+      honeysql-clause)))
 
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]
@@ -1751,12 +1767,13 @@
    [:sequential :any]])
 
 (mu/defmethod join->honeysql :sql :- HoneySQLJoin
-  [driver {:keys [condition], join-alias :alias, :as join} :- driver-api/Join]
-  {:pre [(string? join-alias)]}
-  [[(join-source driver join)
-    (let [table-alias (->honeysql driver (h2x/identifier :table-alias join-alias))]
-      [table-alias])]
-   (->honeysql driver condition)])
+  [driver {:keys [condition], :as join} :- driver-api/Join]
+  (let [join-alias ((some-fn driver-api/qp.add.alias :alias) join)]
+    (assert (string? join-alias))
+    [[(join-source driver join)
+      (let [table-alias (->honeysql driver (h2x/identifier :table-alias join-alias))]
+        [table-alias])]
+     (->honeysql driver condition)]))
 
 (defn- apply-joins-honey-sql-2
   "Use Honey SQL 2's `:join-by` so the joins are in the same order they are specified in MBQL (#15342).

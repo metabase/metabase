@@ -1,6 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryContext, StoryFn } from "@storybook/react";
+import { HttpResponse, http } from "msw";
 import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
@@ -9,6 +10,7 @@ import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
+import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import {
   MockDashboardContext,
@@ -27,6 +29,7 @@ import {
   createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDatabase,
   createMockDataset,
   createMockDatasetData,
   createMockParameter,
@@ -54,6 +57,13 @@ export default {
   ],
   parameters: {
     layout: "fullscreen",
+    msw: {
+      handlers: [
+        http.get("*/api/database", () =>
+          HttpResponse.json(createMockDatabase()),
+        ),
+      ],
+    },
   },
 };
 
@@ -165,8 +175,14 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<MockDashboardContextProps> = (args) => (
-  <MockDashboardContext {...args}>
+const Template: StoryFn<MockDashboardContextProps> = (
+  args: MockDashboardContextProps,
+) => (
+  <MockDashboardContext
+    {...args}
+    dashboardId={args.dashboardId ?? args.dashboard?.id}
+    dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
+  >
     <PublicOrEmbeddedDashboardView />
   </MockDashboardContext>
 );
@@ -184,6 +200,14 @@ const defaultArgs: Partial<MockDashboardContextProps> = {
 export const LightThemeDefault = {
   render: Template,
   args: defaultArgs,
+};
+
+export const LightThemeNoResults = {
+  render: Template,
+  args: {
+    ...defaultArgs,
+    dashboard: createDashboard({ dashcards: [] }),
+  },
 };
 
 export const LightThemeScroll = {
