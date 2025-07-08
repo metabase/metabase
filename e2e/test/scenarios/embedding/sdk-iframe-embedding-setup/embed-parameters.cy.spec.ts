@@ -152,101 +152,107 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
   });
 
-  it("shows no parameters message for dashboards without parameters", () => {
-    navigateToEmbedOptionsStep({
-      experience: "dashboard",
-      resourceName: "Orders in a dashboard",
-    });
-
-    getEmbedSidebar().within(() => {
-      cy.findByText("Parameters are not available for this dashboard.").should(
-        "be.visible",
-      );
-    });
-  });
-
-  it("shows no parameters message for questions without parameters", () => {
-    navigateToEmbedOptionsStep({
-      experience: "chart",
-      resourceName: "Orders, Count",
-    });
-
-    getEmbedSidebar().within(() => {
-      cy.findByText("Parameters are not available for this chart.").should(
-        "be.visible",
-      );
-    });
-  });
-
-  it("can set default parameters for SQL questions", () => {
-    H.createNativeQuestion({
-      name: "Question with Parameters",
-      native: {
-        query: "SELECT * FROM orders WHERE id = {{id}}",
-        "template-tags": {
-          id: {
-            id: "11111111",
-            name: "id",
-            "display-name": "ID",
-            type: "number",
-            default: null,
+  describe("questions with parameters", () => {
+    beforeEach(() => {
+      H.createNativeQuestion({
+        name: "Question with Parameters",
+        native: {
+          query: "SELECT * FROM orders WHERE id = {{id}}",
+          "template-tags": {
+            id: {
+              id: "11111111",
+              name: "id",
+              "display-name": "ID",
+              type: "number",
+              default: null,
+            },
           },
         },
-      },
+      });
     });
 
-    navigateToEmbedOptionsStep({
-      experience: "chart",
-      resourceName: "Question with Parameters",
-    });
+    it("can set default parameters for SQL questions", () => {
+      navigateToEmbedOptionsStep({
+        experience: "chart",
+        resourceName: "Question with Parameters",
+      });
 
-    getEmbedSidebar().within(() => {
-      cy.findByText("Parameters").should("be.visible");
-      cy.findByLabelText("ID").should("be.visible");
-    });
+      getEmbedSidebar().within(() => {
+        cy.findByText("Parameters").should("be.visible");
+        cy.findByLabelText("ID").should("be.visible");
+      });
 
-    H.getIframeBody()
-      .findByText(/missing required parameters/)
-      .should("exist");
+      H.getIframeBody()
+        .findByText(/missing required parameters/)
+        .should("exist");
 
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("ID").type("123").blur();
-    });
+      getEmbedSidebar().within(() => {
+        cy.findByLabelText("ID").type("123").blur();
+      });
 
-    H.getIframeBody().within(() => {
-      cy.findByText(/missing required parameters/).should("not.exist");
-      cy.findByText("123").should("be.visible");
+      H.getIframeBody().within(() => {
+        cy.findByText(/missing required parameters/).should("not.exist");
+        cy.findByText("123").should("be.visible");
 
-      // value in a subtotal field
-      cy.findAllByText("75.41").first().should("be.visible");
-    });
+        // value in a subtotal field
+        cy.findAllByText("75.41").first().should("be.visible");
+      });
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "initialSqlParameters",
-    });
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_option_changed",
+        event_detail: "initialSqlParameters",
+      });
 
-    getEmbedSidebar().within(() => {
-      cy.findByText("Get Code").click();
-      codeBlock().should("contain", '"initialSqlParameters"');
-      codeBlock().should("not.contain", '"hiddenParameters"'); // not supported for questions yet
-      codeBlock().should("contain", '"id": "123"');
+      getEmbedSidebar().within(() => {
+        cy.findByText("Get Code").click();
+        codeBlock().should("contain", '"initialSqlParameters"');
+        codeBlock().should("not.contain", '"hiddenParameters"'); // not supported for questions yet
+        codeBlock().should("contain", '"id": "123"');
+      });
     });
   });
 
-  it("should not show parameter settings for exploration template", () => {
-    navigateToEntitySelectionStep({ experience: "exploration" });
+  describe("resources without parameters", () => {
+    it("shows no parameters message for dashboards without parameters", () => {
+      navigateToEmbedOptionsStep({
+        experience: "dashboard",
+        resourceName: "Orders in a dashboard",
+      });
 
-    getEmbedSidebar().within(() => {
-      cy.log("go to embed options step");
-      cy.findByText("Next").click();
+      getEmbedSidebar().within(() => {
+        cy.findByText(
+          "Parameters are not available for this dashboard.",
+        ).should("be.visible");
+      });
+    });
 
-      cy.log("should still contain appearance and behavior");
-      cy.findByText("Appearance").should("be.visible");
-      cy.findByText("Behavior").should("be.visible");
+    it("shows no parameters message for questions without parameters", () => {
+      navigateToEmbedOptionsStep({
+        experience: "chart",
+        resourceName: "Orders, Count",
+      });
 
-      cy.log("should not contain parameters");
-      cy.findByText("Parameters").should("not.exist");
+      getEmbedSidebar().within(() => {
+        cy.findByText("Parameters are not available for this chart.").should(
+          "be.visible",
+        );
+      });
+    });
+
+    it("should not show parameter settings for exploration template", () => {
+      navigateToEntitySelectionStep({ experience: "exploration" });
+
+      getEmbedSidebar().within(() => {
+        cy.log("go to embed options step");
+        cy.findByText("Next").click();
+
+        cy.log("should still contain appearance and behavior");
+        cy.findByText("Appearance").should("be.visible");
+        cy.findByText("Behavior").should("be.visible");
+
+        cy.log("should not contain parameters");
+        cy.findByText("Parameters").should("not.exist");
+      });
     });
   });
 });
