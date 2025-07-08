@@ -171,7 +171,7 @@ describe("scenarios > admin > datamodel", () => {
         });
       });
 
-      it.only("should restore previously selected table when expanding the tree (SEM-435)", () => {
+      it("should restore previously selected table when expanding the tree (SEM-435)", () => {
         H.restore("mysql-8");
         H.DataModel.visit({
           databaseId: MYSQL_DB_ID,
@@ -390,6 +390,21 @@ describe("scenarios > admin > datamodel", () => {
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 2);
           TablePicker.getTables().should("have.length", 2);
+        });
+
+        it.only("should restore previously selected table when expanding the tree (SEM-435)", () => {
+          H.DataModel.visit();
+
+          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getSchema("Domestic").click();
+          TablePicker.getTable("Animals").click();
+          TablePicker.getSchema("Wild").click();
+          TablePicker.getTable("Birds").click();
+
+          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getDatabase("Writable Postgres12").click();
+
+          TableSection.getNameInput().should("have.value", "Birds");
         });
       },
     );
