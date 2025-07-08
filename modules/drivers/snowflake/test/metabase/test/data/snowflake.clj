@@ -344,13 +344,14 @@
   [driver details pk-user pub-key]
   (tx/drop-user-if-exists! driver details pk-user)
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (jdbc/execute! spec "USE ROLE ACCOUNTADMIN")
     (jdbc/execute! spec (format "CREATE USER %s
                                  DEFAULT_ROLE = 'ACCOUNTADMIN'
                                  DEFAULT_WAREHOUSE = '%s'
                                  MUST_CHANGE_PASSWORD = FALSE;"
                                 pk-user
                                 (tx/db-test-env-var-or-throw driver :warehouse)))
-    (jdbc/execute! spec (format "GRANT ROLE %s TO USER %s" "SYSADMIN" pk-user))
+    (jdbc/execute! spec (format "GRANT ROLE %s TO USER %s" "ACCOUNTADMIN" pk-user))
     (set-user-public-key details pk-user pub-key)))
 
 (comment
