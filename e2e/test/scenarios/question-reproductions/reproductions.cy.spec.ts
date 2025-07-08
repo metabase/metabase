@@ -619,6 +619,24 @@ describe("issue 46845", () => {
   });
 });
 
+describe("issue 44567", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to name the aggregation expression the same as the column it is aggregating (metabase#44567)", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.getNotebookStep("data").button("Summarize").click();
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({ formula: "Sum([Total])", name: "Total" });
+    H.popover().button("Done").click();
+    H.getNotebookStep("summarize").findByText("Total").click();
+    H.enterCustomColumnDetails({ formula: "Sum([Total]) + 1" });
+    H.popover().button("Update").should("be.enabled");
+  });
+});
+
 describe("issue 58829", () => {
   beforeEach(() => {
     H.restore();
