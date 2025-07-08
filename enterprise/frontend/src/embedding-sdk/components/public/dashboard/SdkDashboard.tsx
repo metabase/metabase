@@ -104,7 +104,8 @@ export type SdkDashboardProps = PropsWithChildren<
      */
     drillThroughQuestionProps?: DrillThroughQuestionProps;
   } & SdkDashboardDisplayProps &
-    DashboardEventHandlersProps
+    DashboardEventHandlersProps &
+    EditableDashboardOwnProps
 >;
 
 type RenderMode = "dashboard" | "question" | "queryBuilder";
@@ -128,8 +129,7 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
       | "dashcardMenu"
       | "navigateToNewCardFromDashboard"
     >
-  > &
-  EditableDashboardOwnProps;
+  >;
 
 const SdkDashboardInner = ({
   dashboardId: dashboardIdProp,
