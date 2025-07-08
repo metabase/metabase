@@ -48,11 +48,14 @@ export const assertDashboard = ({ id, name }: { id: number; name: string }) => {
   });
 };
 
+type NavigateToStepOptions =
+  | { experience: "dashboard" | "chart"; resourceName: string }
+  | { experience: "exploration"; resourceName?: never };
+
 export const navigateToEntitySelectionStep = ({
   experience,
-}: {
-  experience: "dashboard" | "chart" | "exploration";
-}) => {
+  resourceName,
+}: NavigateToStepOptions) => {
   visitNewEmbedPage();
 
   cy.log("select an experience");
@@ -67,11 +70,6 @@ export const navigateToEntitySelectionStep = ({
 
   // exploration template does not have the entity selection step
   if (experience !== "exploration") {
-    const defaultResourceName = match(experience)
-      .with("dashboard", () => "Orders in a dashboard")
-      .with("chart", () => "Orders, Count")
-      .otherwise(() => "");
-
     const resourceType = match(experience)
       .with("dashboard", () => "Dashboards")
       .with("chart", () => "Questions")
@@ -84,14 +82,32 @@ export const navigateToEntitySelectionStep = ({
 
     entityPickerModal().within(() => {
       cy.findByText(resourceType).click();
-      cy.findAllByText(defaultResourceName).first().click();
+      cy.findAllByText(resourceName).first().click();
     });
 
     cy.log("resource title should be visible by default");
     getEmbedSidebar().within(() => {
-      cy.findByText(defaultResourceName).should("be.visible");
+      cy.findByText(resourceName).should("be.visible");
     });
   }
+};
+
+export const navigateToEmbedOptionsStep = (options: NavigateToStepOptions) => {
+  navigateToEntitySelectionStep(options);
+
+  cy.log("navigate to embed options step");
+  getEmbedSidebar().within(() => {
+    cy.findByText("Next").click(); // Embed options step
+  });
+};
+
+export const navigateToGetCodeStep = (options: NavigateToStepOptions) => {
+  navigateToEmbedOptionsStep(options);
+
+  cy.log("navigate to get code step");
+  getEmbedSidebar().within(() => {
+    cy.findByText("Get Code").click(); // Get code step
+  });
 };
 
 export const codeBlock = () => cy.get(".cm-content");
