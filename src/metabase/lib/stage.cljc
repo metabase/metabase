@@ -314,7 +314,7 @@
          ;; ... then calculate metadata for this stage
          cols         (cond
                         summary-cols
-                        (into summary-cols field-cols)
+                        (concat summary-cols field-cols)
 
                         field-cols
                         (reduce

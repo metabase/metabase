@@ -795,20 +795,21 @@
                (map :display-name (lib/returned-columns query))))))))
 
 (deftest ^:parallel expressions-with-aggregations-and-breakouts-returned-columns-test
-  (let [query (lib/query
-               meta/metadata-provider
-               (lib.tu.macros/mbql-query orders
-                 {:aggregation [[:count] [:sum $orders.quantity]]
-                  :breakout    [$orders.user-id->people.state
-                                $orders.user-id->people.source
-                                $orders.product-id->products.category]
-                  :expressions {:test-expr [:ltrim "wheeee"]}
-                  :fields      [[:expression "test-expr"]]}))]
-    (is (= ["User → State"              ; from breakouts
-            "User → Source"             ; from breakouts
-            "Product → Category"        ; from breakouts
-            "Count"                     ; from aggregations
-            "Sum of Quantity"           ; from aggregations
-            "test-expr"]                ; from expressions/fields ???
-           (binding [lib.metadata.calculation/*display-name-style* :long]
-             (mapv :display-name (lib/returned-columns query)))))))
+  (testing "expressions in :fields should be returned AFTER breakouts and aggregations"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query orders
+                   {:aggregation [[:count] [:sum $orders.quantity]]
+                    :breakout    [$orders.user-id->people.state
+                                  $orders.user-id->people.source
+                                  $orders.product-id->products.category]
+                    :expressions {:test-expr [:ltrim "wheeee"]}
+                    :fields      [[:expression "test-expr"]]}))]
+      (is (= ["User → State"              ; from breakouts
+              "User → Source"             ; from breakouts
+              "Product → Category"        ; from breakouts
+              "Count"                     ; from aggregations
+              "Sum of Quantity"           ; from aggregations
+              "test-expr"]                ; from expressions/fields ???
+             (binding [lib.metadata.calculation/*display-name-style* :long]
+               (mapv :display-name (lib/returned-columns query))))))))
