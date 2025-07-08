@@ -282,7 +282,7 @@ const H2PersistenceWarning = ({ isHosted }: { isHosted: boolean }) => (
   <Stack my="md" maw={620}>
     <Alert icon="warning" variant="warning">
       <Text>
-        {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database.`}
+        {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL, MySQL, Redshift or Clickhouse database.`}
       </Text>
       {isHosted && (
         <Tooltip
