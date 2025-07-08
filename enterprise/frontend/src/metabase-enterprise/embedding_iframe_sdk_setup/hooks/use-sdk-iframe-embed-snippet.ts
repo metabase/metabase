@@ -26,18 +26,22 @@ function getSnippet({
   settings: SdkIframeEmbedSetupSettings;
   instanceUrl: string;
 }): string {
-  // Only include useExistingUserSession if it is true.
-  const omittedSettings = {
+  const cleanedSettings = {
+    // Only include useExistingUserSession if it is true.
     ..._.omit(settings, ["useExistingUserSession"]),
     ...(settings.useExistingUserSession
       ? { useExistingUserSession: true }
       : {}),
+
+    // Append these settings that can't be controlled by users.
+    instanceUrl,
+    target: `#${SNIPPET_EMBED_TARGET}`,
   };
 
   // filter out empty arrays, strings, objects, null and undefined.
   // this keeps the embed settings readable.
   const filteredSettings = Object.fromEntries(
-    Object.entries(omittedSettings).filter(([, value]) => {
+    Object.entries(cleanedSettings).filter(([, value]) => {
       if (Array.isArray(value)) {
         return value.length > 0;
       }
@@ -50,14 +54,8 @@ function getSnippet({
     }),
   );
 
-  const injectedSettings = {
-    ...filteredSettings,
-    instanceUrl,
-    target: `#${SNIPPET_EMBED_TARGET}`,
-  };
-
   // format the json settings with proper indentation
-  const formattedSettings = JSON.stringify(injectedSettings, null, 2)
+  const formattedSettings = JSON.stringify(filteredSettings, null, 2)
     .replace(/^{/, "")
     .replace(/}$/, "")
     .split("\n")

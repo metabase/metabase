@@ -42,15 +42,14 @@ export const SdkIframeEmbedSetupProvider = ({
   // steps, therefore we load recent items once in the provider.
   const { recentDashboards, recentQuestions, addRecentItem } = useRecentItems();
 
-  const fallbackDashboardId =
-    recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID;
-
-  const settings = useMemo(() => {
-    return (
-      rawSettings ??
-      getDefaultSdkIframeEmbedSettings("dashboard", fallbackDashboardId)
+  const defaultSettings = useMemo(() => {
+    return getDefaultSdkIframeEmbedSettings(
+      "dashboard",
+      recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
     );
-  }, [rawSettings, fallbackDashboardId]);
+  }, [recentDashboards]);
+
+  const settings = rawSettings ?? defaultSettings;
 
   const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
     "select-embed-experience",
@@ -77,15 +76,17 @@ export const SdkIframeEmbedSetupProvider = ({
       dashboardId: settings.dashboardId as number,
     }),
 
-    ...(settings.questionId && { questionId: Number(settings.questionId) }),
+    ...(settings.questionId && {
+      questionId: Number(settings.questionId),
+    }),
   });
 
   const updateSettings = useCallback(
     (nextSettings: Partial<SdkIframeEmbedSetupSettings>) =>
       setSettings((prev) => {
-        // Merging with a partial setting requires us to cast the typeuse-sdk-iframe-embed-snippet.
+        // Merging with a partial setting requires us to cast the type
         const mergedSettings = {
-          ...prev,
+          ...(prev ?? defaultSettings),
           ...nextSettings,
         } as SdkIframeEmbedSetupSettings;
 
@@ -93,7 +94,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
         return mergedSettings;
       }),
-    [persistSetting],
+    [defaultSettings, persistSetting],
   );
 
   const replaceSettings = useCallback(
