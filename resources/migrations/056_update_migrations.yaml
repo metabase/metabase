@@ -199,6 +199,12 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: description
+                  remarks: App description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
                   name: url
                   remarks: unique url of an app
                   type: varchar(254)
@@ -217,6 +223,15 @@ databaseChangeLog:
                   type: char(21)
                   constraints:
                     nullable: true
+              - column:
+                  name: creator_id
+                  remarks: the creator
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_data_app_creator_id
+                    deleteCascade: true
               - column:
                   remarks: The timestamp of when the app was created
                   name: created_at

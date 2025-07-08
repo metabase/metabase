@@ -6,7 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.data-apps.models :as data-apps.models]
    [metabase.request.core :as request]
-   [metabase.util :as u]
+
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -32,15 +32,15 @@
 
   Takes `limit`, `offset` for pagination."
   [_route-params]
-  (let [limit   (request/limit)
-        offset  (request/offset)
+  (let [limit (request/limit)
+        offset (request/offset)
         clauses (data-app-clauses limit offset)]
-    {:data   (t2/select :model/DataApp
-                        (sql.helpers/order-by clauses
-                                              [:created_at :desc]
-                                              [:id :asc]))
-     :total  (t2/count :model/DataApp (dissoc clauses :order-by :limit :offset))
-     :limit  limit
+    {:data (t2/select :model/DataApp
+                      (sql.helpers/order-by clauses
+                                            [:created_at :desc]
+                                            [:id :asc]))
+     :total (t2/count :model/DataApp (dissoc clauses :order-by :limit :offset))
+     :limit limit
      :offset offset}))
 
 (api.macros/defendpoint :get "/:id"
@@ -52,7 +52,7 @@
   "Create a new data app with optional initial definition."
   [_route _query body :- [:map
                           [:name ms/NonBlankString]
-                          [:url  ms/NonBlankString]
+                          [:url ms/NonBlankString]
                           [:description {:optional true} [:maybe :string]]
                           [:definition {:optional true} [:maybe :map]]]]
   (api/create-check :model/DataApp body)
@@ -74,8 +74,9 @@
 (api.macros/defendpoint :delete "/:id"
   "Soft delete a data app."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (get-data-app id)
-  (t2/update! :model/DataApp id {:status :archived})
+  (let [existing-data-app (get-data-app id)]
+    (api/update-check existing-data-app {})
+    (t2/update! :model/DataApp id {:status :archived}))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :put "/:id/definition"
@@ -83,15 +84,17 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    body]
-  (api/read-check (t2/select-one :model/DataApp id))
-  (data-apps.models/new-definition! id body))
+  (let [existing-data-app (api/read-check (t2/select-one :model/DataApp id))]
+    (api/update-check existing-data-app {})
+    (data-apps.models/set-latest-definition! id body)))
 
 (api.macros/defendpoint :post "/:id/release"
   "Release the latest definition version of a data app. Always releases the latest definition, ignoring any provided definition_id."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    _body]
-  (api/read-check (t2/select-one :model/DataApp id))
-  (let [latest-definition (data-apps.models/latest-definition id)]
-    (api/check-404 latest-definition)
-    (data-apps.models/release! id (:id latest-definition))))
+  (let [existing-data-app (api/read-check (t2/select-one :model/DataApp id))]
+    (api/update-check existing-data-app {})
+    (let [latest-definition (data-apps.models/latest-definition id)]
+      (api/check-404 latest-definition)
+      (data-apps.models/release! id (:id latest-definition)))))

@@ -30,6 +30,25 @@
 (t2/deftransforms :model/DataApp
   {:status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum data-app-statuses))})
 
+;; TODO: revisit permissions model
+(defmethod mi/can-read? :model/DataApp
+  ([_data-app]
+   true)
+  ([_ _pk]
+   true))
+
+(defmethod mi/can-create? :model/DataApp
+  ([_data-app]
+   (mi/superuser?))
+  ([_ _pk]
+   (mi/superuser?)))
+
+(defmethod mi/can-update? :model/DataApp
+  ([_data-app]
+   (mi/superuser?))
+  ([_ _pk]
+   (mi/superuser?)))
+
 ;;------------------------------------------------------------------------------------------------;;
 ;;                                   :model/DataAppDefinition                                     ;;
 ;;------------------------------------------------------------------------------------------------;;
@@ -107,7 +126,9 @@
   "Create a new App with an initial definition."
   [app-data]
   (t2/with-transaction [_conn]
-    (let [app            (t2/insert-returning-instance! :model/DataApp (dissoc app-data :definition))
+    (let [app            (t2/insert-returning-instance! :model/DataApp (merge
+                                                                        {:status :private}
+                                                                        (dissoc app-data :definition)))
           app-definition (when-let [definition (:definition app-data)]
                            (set-latest-definition! (:id app) definition))]
       (assoc app :definition app-definition))))
@@ -142,7 +163,7 @@
 (defn latest-release
   "Get the latest release info for a data app."
   [app-id]
-  (t2/select-one [:model/DataAppRelease :id :retracted :released_at]
+  (t2/select-one [:model/DataAppRelease :id :retracted :released_at :app_definition_id]
                  :app_id app-id
                  :retracted false
-                 {:order-by [[:published_at :desc]]}))
+                 {:order-by [[:released_at :desc]]}))

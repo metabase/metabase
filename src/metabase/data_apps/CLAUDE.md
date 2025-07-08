@@ -105,6 +105,22 @@ Located in `api/app.clj`, these endpoints are used to run Data Apps for Consumer
 4. **Version Control**: Admin APIs handle versioning, while consumer APIs only see published versions
 5. **Resource Safety**: Consumer endpoints cannot modify app definitions, only interact with them
 
+## Testing Guidelines
+
+### Test Utilities
+
+Use the testing utilities in `test/metabase/data_apps/test_util.clj`:
+
+- **`with-data-app-cleanup`** - Wraps tests that create data apps to prevent resource leakage
+- **`with-data-app`** - Creates temporary data app models using `with-temp` pattern
+
+### Testing Patterns
+
+1. **Flow tests** for CRUD operations (create → read → update → delete in one test)
+2. **Focused tests** for edge cases (validation errors, permissions, 404s)
+3. **Always use cleanup macros** to prevent test data leakage between runs
+4. **Use `=?` for response validation** instead of checking individual fields - more idiomatic and concise
+
 ## Common Patterns
 
 1. Always validate app definition configs before saving
