@@ -1,4 +1,13 @@
-import { MBQL_CLAUSES } from "./config";
+import _ from "underscore";
+
+import { isNotNull } from "metabase/lib/types";
+import type * as Lib from "metabase-lib";
+
+import {
+  AGGREGATION_FUNCTIONS,
+  EXPRESSION_FUNCTIONS,
+  MBQL_CLAUSES,
+} from "./config";
 import type { MBQLClauseDefinition, MBQLClauseFunctionConfig } from "./types";
 
 export type DefinedClauseName = keyof typeof MBQL_CLAUSES;
@@ -49,3 +58,23 @@ export function getMBQLName(
   // case-insensitive
   return EXPRESSION_TO_MBQL_NAME.get(expressionName.trim().toLowerCase());
 }
+
+export const clausesForMode = _.memoize(
+  (expressionMode: Lib.ExpressionMode) => {
+    const base =
+      expressionMode === "aggregation"
+        ? AGGREGATION_FUNCTIONS
+        : EXPRESSION_FUNCTIONS;
+
+    return Object.keys(base)
+      .map(getClauseDefinition)
+      .filter(isNotNull)
+      .filter(function excludeOffsetInFilterExpressions(clause) {
+        const isOffset = clause.name === "offset";
+        const isFilterExpression = expressionMode === "filter";
+        return !isOffset || !isFilterExpression;
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  },
+  (expressionMode) => expressionMode,
+);

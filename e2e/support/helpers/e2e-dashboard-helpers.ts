@@ -8,7 +8,13 @@ import type {
 } from "metabase-types/api";
 
 import { visitDashboard } from "./e2e-misc-helpers";
-import { menu, popover, sidebar, sidesheet } from "./e2e-ui-elements-helpers";
+import {
+  filterWidget,
+  menu,
+  popover,
+  sidebar,
+  sidesheet,
+} from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(
@@ -110,9 +116,8 @@ export function saveDashboard({
 }
 
 export function checkFilterLabelAndValue(label: string, value: string) {
-  cy.get("fieldset").find("legend").invoke("text").should("eq", label);
-
-  cy.get("fieldset").contains(value);
+  filterWidget().findByLabelText(label, { exact: false }).should("exist");
+  filterWidget().contains(value);
 }
 
 function _setFilter(type: string, subType?: string, name?: string) {
@@ -617,4 +622,16 @@ export function assertDashboardFullWidth() {
     "max-width",
     MAX_WIDTH,
   );
+}
+
+export function clickBehaviorSidebar(
+  dashcardIndex = 0,
+): Cypress.Chainable<JQuery<HTMLElement>> {
+  showDashboardCardActions(dashcardIndex);
+
+  getDashboardCard(dashcardIndex)
+    .findByLabelText("Click behavior")
+    .click({ force: true });
+
+  return cy.findByTestId("click-behavior-sidebar");
 }

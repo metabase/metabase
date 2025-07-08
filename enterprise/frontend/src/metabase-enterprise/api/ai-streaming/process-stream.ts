@@ -127,11 +127,19 @@ function accumulateStreamParts(streamParts: ParsedStreamPart[]) {
     history: [],
   };
 
-  return streamParts.reduce((acc, streamPart) => {
+  return streamParts.reduce((acc, streamPart, index) => {
     if (streamPart.name === "text") {
+      const lastStreamPart = streamParts[index - 1];
       acc.text = `${acc.text ?? ""}${streamPart.value}`;
-      // NOTE: "navigate-to" omitted... not sure how much it matters
-      acc.history.push({ role: "assistant", content: streamPart.value });
+      if (lastStreamPart?.name === "text") {
+        const historyEntry = acc.history.pop();
+        acc.history.push({
+          ...historyEntry,
+          content: historyEntry.content + streamPart.value,
+        });
+      } else {
+        acc.history.push({ role: "assistant", content: streamPart.value });
+      }
     }
     if (streamPart.name === "data") {
       acc.data = acc.data.concat(streamPart.value);
@@ -186,9 +194,6 @@ export type AIStreamingConfig = {
   onDataPart?: (part: KnownDataPart) => void;
   onToolCallPart?: (part: StreamPartValue<"tool_call">) => void;
   onToolResultPart?: (part: StreamPartValue<"tool_result">) => void;
-  onStreamStateUpdate?: (
-    state: ReturnType<typeof accumulateStreamParts>,
-  ) => void;
   onError?: (error: StreamPartValue<"error">) => void;
 };
 
@@ -251,9 +256,6 @@ export async function processChatResponse(
         config.onError?.(streamPart.value);
       }
     }
-
-    const accumulated = accumulateStreamParts(parsedStreamParts);
-    config.onStreamStateUpdate?.(accumulated);
   }
 
   return accumulateStreamParts(parsedStreamParts);

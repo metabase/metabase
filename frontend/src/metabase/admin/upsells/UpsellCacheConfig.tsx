@@ -6,7 +6,7 @@ import { Box } from "metabase/ui";
 import { UpsellCard } from "./components";
 import { UPGRADE_URL } from "./constants";
 
-export const UpsellCacheConfig = ({ source }: { source: string }) => {
+export const UpsellCacheConfig = ({ location }: { location: string }) => {
   const hasCache = useHasTokenFeature("cache_granular_controls");
 
   if (hasCache) {
@@ -20,7 +20,7 @@ export const UpsellCacheConfig = ({ source }: { source: string }) => {
         campaign="cache-granular-controls"
         buttonText={t`Try Metabase Pro`}
         buttonLink={UPGRADE_URL}
-        source={source}
+        location={location}
       >
         {jt`Get granular caching controls for each database, dashboard, and query with ${(
           <strong key="label">{t`Metabase Pro.`}</strong>

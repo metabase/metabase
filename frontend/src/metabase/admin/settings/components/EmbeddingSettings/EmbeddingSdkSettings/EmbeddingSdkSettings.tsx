@@ -5,6 +5,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { UpsellDevInstances } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
@@ -105,6 +106,7 @@ export function EmbeddingSdkSettings() {
 
   return (
     <SettingsPageWrapper title={t`Embedding SDK`}>
+      <UpsellDevInstances location="embedding-page" />
       <SettingsSection>
         <EmbeddingToggle
           label={t`Enable Embedded analytics SDK for React`}

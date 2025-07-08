@@ -195,6 +195,7 @@ export function ClickBehaviorSidebar({
 
   return (
     <Sidebar
+      data-testid="click-behavior-sidebar"
       onClose={hideClickBehaviorSidebar}
       onCancel={handleCancel}
       isCloseDisabled={isCloseDisabled}
