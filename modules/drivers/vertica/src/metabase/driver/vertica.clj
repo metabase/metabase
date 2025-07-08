@@ -5,6 +5,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -15,7 +16,6 @@
    [metabase.driver.sql.query-processor.empty-string-is-null
     :as sql.qp.empty-string-is-null]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -35,7 +35,8 @@
                               :now                       true
                               :identifiers-with-spaces   true
                               :percentile-aggregations   false
-                              :test/jvm-timezone-setting false}]
+                              :test/jvm-timezone-setting false
+                              :database-routing          false}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :vertica
@@ -81,6 +82,10 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_driver _seconds-or-milliseconds honeysql-expr]
   (h2x/with-database-type-info [:to_timestamp honeysql-expr] "timestamp"))
+
+(defmethod sql.qp/cast-temporal-string [:vertica :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")])
 
 ;; TODO - not sure if needed or not
 (defn- cast-timestamp
@@ -136,7 +141,7 @@
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           expr
-          (h2x/at-time-zone expr (or source-timezone (qp.timezone/results-timezone-id))))
+          (h2x/at-time-zone expr (or source-timezone (driver-api/results-timezone-id))))
         (h2x/at-time-zone target-timezone)
         (h2x/with-database-type-info "timestamp"))))
 

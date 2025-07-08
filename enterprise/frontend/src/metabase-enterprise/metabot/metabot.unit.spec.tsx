@@ -2,15 +2,21 @@ import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { P, isMatching } from "ts-pattern";
+import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
-import { uuid } from "metabase/lib/uuid";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import type { User } from "metabase-types/api";
+import type { SuggestedMetabotPrompt, User } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -18,12 +24,18 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "./components/Metabot";
-import { MetabotProvider } from "./context";
 import {
+  FIXED_METABOT_IDS,
   LONG_CONVO_MSG_LENGTH_THRESHOLD,
+  METABOT_ERR_MSG,
+} from "./constants";
+import { MetabotProvider } from "./context";
+import { useMetabotAgent } from "./hooks";
+import {
   type MetabotState,
   addUserMessage,
-  metabotInitialState,
+  getMetabotConversationId,
+  getMetabotInitialState,
   metabotReducer,
   setVisible,
 } from "./state";
@@ -33,7 +45,7 @@ function setup(
     ui?: React.ReactElement;
     metabotPluginInitialState?: MetabotState;
     currentUser?: User | null | undefined;
-    promptSuggestions?: { prompt: string }[];
+    promptSuggestions?: SuggestedMetabotPrompt[];
   } | void,
 ) {
   const settings = mockSettings({
@@ -48,16 +60,17 @@ function setup(
     ui = <Metabot />,
     currentUser = createMockUser(),
     metabotPluginInitialState = {
-      ...metabotInitialState,
-      conversationId: uuid(),
+      ...getMetabotInitialState(),
       visible: true,
+      useStreaming: false,
     },
     promptSuggestions = [],
   } = options || {};
 
-  fetchMock.get("path:/api/ee/metabot-v3/v2/prompt-suggestions", {
-    prompts: promptSuggestions,
-  });
+  fetchMock.get(
+    `path:/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
+    { prompts: promptSuggestions, offset: 0, limit: 3, total: 3 },
+  );
 
   return renderWithProviders(<MetabotProvider>{ui}</MetabotProvider>, {
     storeInitialState: createMockState({
@@ -76,6 +89,8 @@ function setup(
 }
 
 const chat = () => screen.findByTestId("metabot-chat");
+const chatMessages = () => screen.findAllByTestId("metabot-chat-message");
+const lastChatMessage = async () => (await chatMessages()).at(-1);
 const input = () => screen.findByTestId("metabot-chat-input");
 const enterChatMessage = async (message: string, send = true) =>
   userEvent.type(await input(), `${message}${send ? "{Enter}" : ""}`);
@@ -193,7 +208,7 @@ describe("metabot", () => {
 
       try {
         const { store } = setup({
-          metabotPluginInitialState: metabotInitialState,
+          metabotPluginInitialState: getMetabotInitialState(),
           currentUser: null,
         });
         await assertNotVisible();
@@ -237,10 +252,39 @@ describe("metabot", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should provide prompt suggestions if avaiable", async () => {
+    it("should provide prompt suggestions if available", async () => {
       const prompts = [
-        { prompt: "Sales totals by week" },
-        { prompt: "Who is your favorite?" },
+        {
+          id: 1,
+          metabot_id: 1,
+          prompt: "What is the total revenue for this quarter?",
+          model: "metric" as const,
+          model_id: 1,
+          model_name: "Quarterly Revenue Calculator",
+          created_at: "2025-05-15T10:30:00Z",
+          updated_at: "2025-05-15T10:30:00Z",
+        },
+        {
+          id: 2,
+          metabot_id: 1,
+          prompt:
+            "Show me the customer acquisition trends over the last 6 months",
+          model: "model" as const,
+          model_id: 2,
+          model_name: "Customer Acquisition Trend Analyzer",
+          created_at: "2025-05-15T11:15:00Z",
+          updated_at: "2025-05-15T11:15:00Z",
+        },
+        {
+          id: 3,
+          metabot_id: 1,
+          prompt: "What are our top performing products by sales volume?",
+          model: "metric" as const,
+          model_id: 3,
+          model_name: "Product Performance Ranking",
+          created_at: "2025-05-15T14:22:00Z",
+          updated_at: "2025-05-16T09:45:00Z",
+        },
       ];
       setup({ promptSuggestions: prompts });
       fetchMock.post(
@@ -271,9 +315,76 @@ describe("metabot", () => {
         screen.queryByTestId("metabot-prompt-suggestions"),
       ).not.toBeInTheDocument();
     });
+
+    it("should make a request for new suggested prompts when the conversation is reset", async () => {
+      setup({ promptSuggestions: [] });
+      await waitFor(async () => {
+        expect(
+          fetchMock.calls(
+            `path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`,
+          ),
+        ).toHaveLength(1);
+      });
+
+      await userEvent.click(await resetChatButton());
+
+      await waitFor(async () => {
+        expect(
+          fetchMock.calls(
+            `path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`,
+          ),
+        ).toHaveLength(2);
+      });
+    });
+
+    it("should be able to set the prompt input's value from anywhere in the app", async () => {
+      const AnotherComponent = () => {
+        const { setPrompt } = useMetabotAgent();
+
+        return (
+          <button onClick={() => setPrompt("TEST VAL")}>CLICK HERE</button>
+        );
+      };
+
+      setup({
+        ui: (
+          <div>
+            <AnotherComponent />
+            <Metabot />
+          </div>
+        ),
+      });
+
+      expect(await input()).toHaveValue("");
+      await userEvent.click(await screen.findByText("CLICK HERE"));
+      expect(await input()).toHaveValue("TEST VAL");
+    });
+
+    it("should not present the user an option to retry a prompt (not yet supported)", async () => {
+      setup();
+      fetchMock.post(
+        `path:/api/ee/metabot-v3/v2/agent`,
+        whoIsYourFavoriteResponse,
+      );
+
+      await enterChatMessage("Who is your favorite?");
+      const lastMessage = await lastChatMessage();
+      expect(lastMessage).toHaveTextContent(
+        /You are... but don't tell anyone!/,
+      );
+      expect(
+        within(lastMessage!).queryByTestId("metabot-chat-message-retry"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("message", () => {
+    it("should have a conversation id before sending any messages", async () => {
+      const { store } = setup();
+      const state = store.getState() as any;
+      expect(getMetabotConversationId(state)).not.toBeUndefined();
+    });
+
     it("should properly send chat messages", async () => {
       setup();
       fetchMock.post(
@@ -294,6 +405,52 @@ describe("metabot", () => {
       // should auto-clear input + refocus
       expect(await input()).toHaveValue("");
       expect(await input()).toHaveFocus();
+    });
+  });
+
+  describe("errors", () => {
+    it("should handle service error response", async () => {
+      setup();
+      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent`, 500);
+
+      await enterChatMessage("Who is your favorite?");
+
+      expect(await lastChatMessage()).toHaveTextContent(
+        METABOT_ERR_MSG.agentOffline,
+      );
+      expect(await input()).toHaveValue("Who is your favorite?");
+    });
+
+    it("should handle non-successful responses", async () => {
+      setup();
+      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent`, 400);
+
+      await enterChatMessage("Who is your favorite?");
+
+      expect(await lastChatMessage()).toHaveTextContent(
+        METABOT_ERR_MSG.default,
+      );
+      expect(await input()).toHaveValue("Who is your favorite?");
+    });
+
+    it("should not show a user error when an AbortError is triggered", async () => {
+      setup();
+      fetchMock.post(
+        `path:/api/ee/metabot-v3/v2/agent`,
+        whoIsYourFavoriteResponse,
+        { delay: 50 }, // small delay to cause loading state
+      );
+
+      await enterChatMessage("Who is your favorite?");
+
+      expect(await chatMessages()).toHaveLength(1);
+      await userEvent.click(await resetChatButton());
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("metabot-chat-message"),
+        ).not.toBeInTheDocument();
+      });
+      expect(await input()).toHaveValue("");
     });
   });
 
@@ -323,7 +480,10 @@ describe("metabot", () => {
 
       const TestComponent = () => {
         useRegisterMetabotContextProvider(
-          () => ({ user_is_viewing: [{ type: "question", id: 1 }] }),
+          () =>
+            Promise.resolve({
+              user_is_viewing: [{ type: "dashboard", id: 1 }],
+            }),
           [],
         );
         return null;
@@ -344,7 +504,7 @@ describe("metabot", () => {
         isMatching(
           {
             current_time_with_timezone: P.string,
-            user_is_viewing: [{ type: "question", id: 1 }],
+            user_is_viewing: [{ type: "dashboard", id: 1 }],
           },
           (await lastReqBody())?.context,
         ),
@@ -418,14 +578,15 @@ describe("metabot", () => {
 
       const beforeResetState = getMetabotState(store);
       expect(beforeResetState.conversationId).not.toBe(null);
-      expect(beforeResetState.messages).toStrictEqual([
-        { actor: "user", message: "Who is your favorite?" },
-        {
-          actor: "agent",
-          message: "You are... but don't tell anyone!",
-          type: "reply",
-        },
-      ]);
+      expect(beforeResetState.messages).toHaveLength(2);
+      expect(_.omit(beforeResetState.messages[0], "id")).toStrictEqual({
+        role: "user",
+        message: "Who is your favorite?",
+      });
+      expect(_.omit(beforeResetState.messages[1], "id")).toStrictEqual({
+        role: "agent",
+        message: "You are... but don't tell anyone!",
+      });
 
       await userEvent.click(await resetChatButton());
 
@@ -442,7 +603,7 @@ describe("metabot", () => {
 
       // adding messages this long via the ui's input makes the test hang
       act(() => {
-        store.dispatch(addUserMessage(longMsg));
+        store.dispatch(addUserMessage({ id: "1", message: longMsg }));
       });
       expect(await screen.findByText(/xxxxxxx/)).toBeInTheDocument();
       expect(
@@ -450,7 +611,7 @@ describe("metabot", () => {
       ).not.toBeInTheDocument();
 
       act(() => {
-        store.dispatch(addUserMessage(longMsg));
+        store.dispatch(addUserMessage({ id: "2", message: longMsg }));
       });
       expect(
         await screen.findByText(/This chat is getting long/),

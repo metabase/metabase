@@ -1,10 +1,12 @@
+import cx from "classnames";
 import type { MouseEvent } from "react";
 import { useCallback, useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Menu, Stack, Text, rem } from "metabase/ui";
 import type {
   DatasetColumn,
@@ -150,6 +152,10 @@ export function ComparisonPicker({
       position="bottom-start"
       shadow="sm"
       closeOnItemClick={false}
+      {...(isEmbeddingSdk() && {
+        withinPortal: false,
+        floatingStrategy: "fixed",
+      })}
     >
       <Menu.Target>
         <ComparisonPickerButton
@@ -174,11 +180,15 @@ export function ComparisonPicker({
           }}
         >
           <DisplayName value={editedValue} option={selectedOption} />
-          <ExpandIcon className={CS.inline} name="chevrondown" size={14} />
+          <ExpandIcon
+            className={cx(CS.inline, CS.verticalAlignMiddle)}
+            name="chevrondown"
+            size={14}
+          />
         </ComparisonPickerButton>
       </Menu.Target>
 
-      <Menu.Dropdown miw={rem(344)}>
+      <Menu.Dropdown miw={rem(344)} data-testid="comparison-picker-dropdown">
         {renderMenuDropdownContent()}
       </Menu.Dropdown>
     </Menu>

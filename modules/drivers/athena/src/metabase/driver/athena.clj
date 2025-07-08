@@ -8,20 +8,26 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.athena.schema-parser :as athena.schema-parser]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
-   (java.sql Connection DatabaseMetaData Date ResultSet Time Timestamp Types)
+   (java.sql
+    Connection
+    DatabaseMetaData
+    Date
+    ResultSet
+    Time
+    Timestamp
+    Types)
    (java.time OffsetDateTime ZonedDateTime)
    [java.util UUID]))
 
@@ -40,7 +46,8 @@
                               :expression-literals           true
                               :identifiers-with-spaces       false
                               :metadata/key-constraints      false
-                              :test/jvm-timezone-setting     false}]
+                              :test/jvm-timezone-setting     false
+                              :database-routing              false}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -67,7 +74,7 @@
         :OutputLocation s3_staging_dir
         :WorkGroup      workgroup
         :Region      region}
-       (when (and (not (premium-features/is-hosted?)) (str/blank? access_key))
+       (when (and (not (driver-api/is-hosted?)) (str/blank? access_key))
          {:CredentialsProvider "DefaultChain"})
        (when-not (str/blank? catalog)
          {:MetadataRetrievalMethod "ProxyAPI"
@@ -148,7 +155,7 @@
     ;; Using ZonedDateTime if available to conform tests first. OffsetDateTime if former is not available.
     (when-some [^Timestamp timestamp (.getObject rs i Timestamp)]
       (let [timestamp-instant (.toInstant timestamp)
-            results-timezone (qp.timezone/results-timezone-id)]
+            results-timezone (driver-api/results-timezone-id)]
         (try
           (t/zoned-date-time timestamp-instant (t/zone-id results-timezone))
           (catch Throwable _
@@ -302,6 +309,10 @@
 (defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->Time]
   [_driver _semantic-type expr]
   (h2x/->time expr))
+
+(defmethod sql.qp/cast-temporal-string [:athena :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  [:date_parse expr (h2x/literal "%Y%m%d%H%i%S")])
 
 (defmethod sql.qp/->honeysql [:athena :datetime-diff]
   [driver [_ x y unit]]

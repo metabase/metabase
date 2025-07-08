@@ -1,4 +1,5 @@
 const { H } = cy;
+
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -366,7 +367,7 @@ describe("issue 22230", () => {
 
     H.clauseStepPopover().within(() => {
       cy.findByText("Max of Name").click();
-      cy.findByText("Is").click();
+      cy.findByText("Contains").click();
     });
     cy.findByRole("menu").findByText("Starts with").click();
 
@@ -1623,6 +1624,30 @@ describe("issue 58923", () => {
               cy.wrap(top - bottom).should("be.gt", 16);
             });
         });
+      });
+  });
+});
+
+describe("issue QUE-1359", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should render an outline on the custom expression item in the filter popover (QUE-1359)", () => {
+    H.openReviewsTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+
+    Cypress._.times(10, () => cy.realPress("ArrowDown"));
+
+    H.popover()
+      .findByText("Custom Expression")
+      .parent()
+      .then((el) => {
+        cy.wrap(window.getComputedStyle(el[0]).outline).should(
+          "contain",
+          "solid",
+        );
       });
   });
 });

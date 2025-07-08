@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -18,7 +18,10 @@ import {
 } from "metabase/ui";
 import { useBooleanMap } from "metabase/visualizer/hooks/use-boolean-map";
 import { getDataSources } from "metabase/visualizer/selectors";
-import { removeDataSource } from "metabase/visualizer/visualizer.slice";
+import {
+  initializeVisualizer,
+  removeDataSource,
+} from "metabase/visualizer/visualizer.slice";
 import type { VisualizerDataSource } from "metabase-types/api";
 
 import { ColumnsList } from "./ColumnsList/ColumnsList";
@@ -41,6 +44,13 @@ export const DataImporter = ({ className }: { className?: string }) => {
       dispatch(removeDataSource({ source }));
     },
     [dataSources.length, handlers, dispatch],
+  );
+
+  const onResetDataSource = useCallback(
+    (source: VisualizerDataSource) => {
+      dispatch(initializeVisualizer({ cardId: source.sourceId }));
+    },
+    [dispatch],
   );
 
   const {
@@ -135,6 +145,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
               collapsedDataSources={collapsedDataSources}
               toggleDataSource={toggleDataSource}
               onRemoveDataSource={onRemoveDataSource}
+              onResetDataSource={onResetDataSource}
             />
           ) : (
             <Center h="100%" w="100%" mx="auto">

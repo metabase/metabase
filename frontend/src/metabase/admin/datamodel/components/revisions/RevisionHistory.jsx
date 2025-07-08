@@ -4,8 +4,8 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
 

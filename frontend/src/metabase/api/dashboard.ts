@@ -5,12 +5,14 @@ import type {
   Dashboard,
   DashboardId,
   DashboardQueryMetadata,
+  FieldId,
   FieldValue,
   GetDashboardQueryMetadataRequest,
   GetDashboardRequest,
   GetEmbeddableDashboard,
   GetPublicDashboard,
   GetRemappedDashboardParameterValueRequest,
+  GetValidDashboardFilterFieldsRequest,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListDashboardsRequest,
@@ -29,6 +31,7 @@ import {
   provideDashboardQueryMetadataTags,
   provideDashboardTags,
   provideParameterValuesTags,
+  provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
 
@@ -105,6 +108,18 @@ export const dashboardApi = Api.injectEndpoints({
           url: `/api/dashboard/${id}/items`,
           body,
         }),
+      }),
+      getValidDashboardFilterFields: builder.query<
+        Record<FieldId, FieldId[]>,
+        GetValidDashboardFilterFieldsRequest
+      >({
+        query: (params) => ({
+          method: "GET",
+          url: `/api/dashboard/params/valid-filter-fields`,
+          params,
+        }),
+        providesTags: (_response, _error, { filtered, filtering }) =>
+          provideValidDashboardFilterFieldTags(filtered, filtering),
       }),
       createDashboard: builder.mutation<Dashboard, CreateDashboardRequest>({
         query: (body) => ({
@@ -234,6 +249,7 @@ export const {
   useListDashboardsQuery,
   useListDashboardItemsQuery,
   useGetRemappedDashboardParameterValueQuery,
+  useGetValidDashboardFilterFieldsQuery,
   useCreateDashboardMutation,
   useUpdateDashboardMutation,
   useSaveDashboardMutation,

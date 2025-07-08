@@ -9,15 +9,18 @@ import {
   type Ref,
   forwardRef,
 } from "react";
+import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { SmallGenericError } from "metabase/components/ErrorPages";
-import ExplicitSize from "metabase/components/ExplicitSize";
+import { SmallGenericError } from "metabase/common/components/ErrorPages";
+import ExplicitSize from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
@@ -25,7 +28,6 @@ import {
   getIsShowingRawTable,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconName, IconProps } from "metabase/ui";
@@ -61,7 +63,6 @@ import {
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/v1/utils";
 import type {
@@ -146,7 +147,6 @@ type VisualizationOwnProps = {
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   onEditSummary?: () => void;
-  query?: NativeQuery;
   rawSeries?: (
     | SingleSeries
     | {
@@ -161,6 +161,7 @@ type VisualizationOwnProps = {
   showWarnings?: boolean;
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
+  tc?: ContentTranslationFunction;
   uuid?: string;
   token?: string;
   onOpenChartSettings?: (data: {
@@ -195,13 +196,14 @@ type VisualizationState = {
   visualization: VisualizationDefinition | null;
   warnings: string[];
   _lastProps?: VisualizationProps;
+  isNativeView: boolean;
 };
 
 const mapStateToProps = (state: State): StateProps => ({
-  hasDevWatermark: getTokenFeature(state, "development-mode"),
+  hasDevWatermark: getTokenFeature(state, "development_mode"),
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
-  isEmbeddingSdk: getIsEmbeddingSdk(state),
+  isEmbeddingSdk: isEmbeddingSdk(),
   scrollToLastColumn: getUiControls(state)?.scrollToLastColumn,
 });
 
@@ -219,6 +221,11 @@ const isLoading = (series: Series | null) => {
 };
 
 const deriveStateFromProps = (props: VisualizationProps) => {
+  const rawSeriesArray = props.rawSeries || [];
+  const firstCard = rawSeriesArray[0]?.card;
+  const isNative = firstCard?.dataset_query?.type === "native";
+  const isNativeView = isNative && props.queryBuilderMode === "view";
+
   const transformed = props.rawSeries
     ? getVisualizationTransformed(
         extractRemappings(props.rawSeries as RawSeries),
@@ -235,6 +242,7 @@ const deriveStateFromProps = (props: VisualizationProps) => {
     series,
     computedSettings,
     visualization: transformed?.visualization,
+    isNativeView,
   };
 };
 
@@ -276,6 +284,7 @@ class Visualization extends PureComponent<
       series: null,
       visualization: null,
       warnings: [],
+      isNativeView: false,
     };
   }
 
@@ -592,7 +601,6 @@ class Visualization extends PureComponent<
       metadata,
       mode,
       onEditSummary,
-      query,
       queryBuilderMode,
       rawSeries = [],
       visualizerRawSeries,
@@ -622,7 +630,7 @@ class Visualization extends PureComponent<
     } = this.props;
     const { width, height } = this.getNormalizedSizes();
 
-    const { genericError, visualization } = this.state;
+    const { genericError, visualization, isNativeView } = this.state;
     const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 
     // these may be overridden below
@@ -630,6 +638,7 @@ class Visualization extends PureComponent<
 
     const clickActions = this.getClickActions(clicked);
     const regularClickActions = clickActions.filter(isRegularClickAction);
+
     // disable hover when click action is active
     if (clickActions.length > 0) {
       hovered = null;
@@ -649,7 +658,7 @@ class Visualization extends PureComponent<
       } else {
         try {
           if (visualization.checkRenderable && series) {
-            visualization.checkRenderable(series, settings, query);
+            visualization.checkRenderable(series, settings);
           }
         } catch (e: unknown) {
           error =
@@ -735,7 +744,9 @@ class Visualization extends PureComponent<
     // We can't navigate a user to a particular card from a visualizer viz,
     // so title selection is disabled in this case
     const canSelectTitle =
-      this.props.onChangeCardAndRun && !replacementContent && !isVisualizerViz;
+      this.props.onChangeCardAndRun &&
+      !replacementContent &&
+      (!isVisualizerViz || React.Children.count(titleMenuItems) === 1);
 
     return (
       <ErrorBoundary
@@ -755,6 +766,7 @@ class Visualization extends PureComponent<
             <VisualizationHeader>
               <ChartCaption
                 series={series}
+                visualizerRawSeries={visualizerRawSeries}
                 settings={settings}
                 icon={headerIcon}
                 actionButtons={extra}
@@ -791,6 +803,7 @@ class Visualization extends PureComponent<
               chartType={visualization?.identifier}
               isSummarizeSidebarOpen={isShowingSummarySidebar}
               onEditSummary={isDashboard ? undefined : onEditSummary}
+              isNativeView={isNativeView}
             />
           ) : (
             series && (

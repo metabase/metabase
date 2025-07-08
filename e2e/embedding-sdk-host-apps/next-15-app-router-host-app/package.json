@@ -9,7 +9,6 @@
     "preview": "next start"
   },
   "dependencies": {
-    "@metabase/embedding-sdk-react": "file:../../../resources/embedding-sdk",
     "next": "15.4.0",
     "react": "^18",
     "react-dom": "^18"

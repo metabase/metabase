@@ -338,9 +338,11 @@
                           {:name "mixed_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 7}
                           {:name "mixed_not_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 6}
                           {:name "nested_mixed_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 8,
-                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9}}}
+                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9}}
+                           :visibility-type :details-only}
                           {:name "nested_mixed_not_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 4,
-                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5}}}}}
+                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5}}
+                           :visibility-type :details-only}}}
                (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
 
 ;; Index sync is turned off across the application as it is not used ATM.
@@ -911,7 +913,11 @@
         (mt/with-temp [:model/Card card {:display       :table
                                          :dataset_query {:database (mt/id)
                                                          :type     :query
-                                                         :query    {:source-table (mt/id :coll)}}}]
+                                                         :query    {:source-table (mt/id :coll)
+                                                                    :fields [(mt/id :coll :id)
+                                                                             (mt/id :coll :a)
+                                                                             (mt/id :coll :b)
+                                                                             (mt/id :coll :c)]}}}]
           (let [results (downloads-test/card-download card {:export-format :csv :format-rows true})]
             (is (= [["ID" "A" "B" "C"]
                     ["1"

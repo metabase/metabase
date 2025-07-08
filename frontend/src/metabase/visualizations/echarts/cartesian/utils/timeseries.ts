@@ -88,7 +88,7 @@ export function minTimeseriesUnit(
   );
 }
 
-export function computeTimeseriesDataInverval(
+export function computeTimeseriesDataInterval(
   xValues: RowValue[],
   unit: DateTimeAbsoluteUnit | null,
 ) {

@@ -1,300 +1,195 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupEmailEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { SettingDefinition, Settings } from "metabase-types/api";
+import type {
+  EnterpriseSettingKey,
+  SettingDefinition,
+} from "metabase-types/api";
+import {
+  createMockSettingDefinition,
+  createMockSettings,
+} from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
 
-import type { SettingElement } from "../../types";
-
-import type { SMTPConnectionFormProps } from "./SMTPConnectionForm";
 import { SMTPConnectionForm } from "./SMTPConnectionForm";
 
-const defaultSettings = {
-  "email-configured": true,
-} as Partial<Settings>;
+const setup = async ({
+  setEnvVars,
+}: {
+  settingsDefinitions?: {
+    [K in EnterpriseSettingKey]?: SettingDefinition;
+  };
+  setEnvVars?: "none" | "all" | "host";
+}) => {
+  const settingsDefinitionsWithDefaults: {
+    [K in EnterpriseSettingKey]?: SettingDefinition;
+  } = {
+    "email-smtp-host": createMockSettingDefinition({
+      key: "email-smtp-host",
+      value: "smtp.rotom.com",
+      env_name: "MB_EMAIL_SMTP_HOST",
+      is_env_setting: setEnvVars === "all" || setEnvVars === "host",
+    }),
+    "email-smtp-port": createMockSettingDefinition({
+      key: "email-smtp-port",
+      value: 123,
+      env_name: "MB_EMAIL_SMTP_PORT",
+      is_env_setting: setEnvVars === "all",
+    }),
+    "email-smtp-security": createMockSettingDefinition({
+      key: "email-smtp-security",
+      value: "ssl",
+      env_name: "MB_EMAIL_SMTP_SECURITY",
+      is_env_setting: setEnvVars === "all",
+    }),
+    "email-smtp-username": createMockSettingDefinition({
+      key: "email-smtp-username",
+      value: "misty@example.com",
+      env_name: "MB_EMAIL_SMTP_USERNAME",
+      is_env_setting: setEnvVars === "all",
+    }),
 
-const defaultElements = [
-  {
-    placeholder: "smtp.yourservice.com",
-    key: "email-smtp-host",
-    value: null,
-    is_env_setting: false,
-    env_name: "MB_EMAIL_SMTP_HOST",
-    description: "The address of the SMTP server that handles your emails.",
-    default: "Using value of env var $MB_EMAIL_SMTP_HOST",
-    originalValue: null,
-    display_name: "SMTP Host",
-    type: "string",
-    required: true,
-    autoFocus: true,
-  },
-  {
-    placeholder: "587",
-    key: "email-smtp-port",
-    value: 587,
-    is_env_setting: false,
-    env_name: "MB_EMAIL_SMTP_PORT",
-    description: "The port your SMTP server uses for outgoing emails.",
-    default: null,
-    originalValue: 587,
-    display_name: "SMTP Port",
-    type: "number",
-    required: true,
-    validations: [["integer", "That's not a valid port number"]],
-  },
-  {
-    placeholder: "none",
-    key: "email-smtp-security",
-    value: null,
-    is_env_setting: false,
-    env_name: "MB_EMAIL_SMTP_SECURITY",
-    description: null,
-    default: "none",
-    originalValue: null,
-    display_name: "SMTP Security",
-    type: "radio",
-    options: [
-      { value: "none", name: "None" },
-      { value: "ssl", name: "SSL" },
-      { value: "tls", name: "TLS" },
-      { value: "starttls", name: "STARTTLS" },
-    ],
-    defaultValue: "none",
-  },
-  {
-    placeholder: "nicetoseeyou",
-    key: "email-smtp-username",
-    value: "ash@example.com",
-    is_env_setting: false,
-    env_name: "MB_EMAIL_SMTP_USERNAME",
-    description: null,
-    default: null,
-    originalValue: "ash@example.com",
-    display_name: "SMTP Username",
-    type: "string",
-  },
-  {
-    placeholder: "Shhh...",
-    key: "email-smtp-password",
-    value: "**********xy",
-    is_env_setting: false,
-    env_name: "MB_EMAIL_SMTP_PASSWORD",
-    description: null,
-    default: null,
-    originalValue: "**********xy",
-    display_name: "SMTP Password",
-    type: "password",
-  },
-] as SettingElement[];
-
-const defaultValues = {
-  "email-smtp-host": null,
-  "email-smtp-port": null,
-  "email-smtp-security": "none",
-  "email-smtp-username": null,
-} as Settings;
-
-const setup = ({ elements, settingValues }: SMTPConnectionFormProps) => {
+    "email-smtp-password": createMockSettingDefinition({
+      key: "email-smtp-password",
+      value: "*****chu",
+      env_name: "MB_EMAIL_SMTP_PASSWORD",
+      is_env_setting: setEnvVars === "all",
+    }),
+  };
   setupEmailEndpoints();
-  setupSettingsEndpoints(elements as SettingDefinition[]);
-  setupPropertiesEndpoints(settingValues);
+  setupSettingsEndpoints(Object.values(settingsDefinitionsWithDefaults));
+  const settingValues: any = {};
+  Object.entries(settingsDefinitionsWithDefaults).forEach(([key, setting]) => {
+    settingValues[key] = setting.value;
+  });
+  setupPropertiesEndpoints(createMockSettings(settingValues));
 
-  renderWithProviders(
-    <SMTPConnectionForm elements={elements} settingValues={settingValues} />,
-    {
-      storeInitialState: createMockState({
-        settings: createMockSettingsState(defaultSettings),
+  renderWithProviders(<SMTPConnectionForm onClose={() => {}} />, {
+    storeInitialState: createMockState({
+      settings: createMockSettingsState({
+        ...settingValues,
+        "email-configured": true,
       }),
-    },
-  );
+    }),
+  });
+
+  if (setEnvVars === "all") {
+    await screen.findByText("MB_EMAIL_SMTP_USERNAME");
+  } else {
+    await screen.findByDisplayValue("misty@example.com");
+  }
 };
 
 describe("SMTP connection form", () => {
   it("should render the smtp connection form", async () => {
-    setup({ elements: defaultElements, settingValues: defaultValues });
-
+    await setup({});
     expect(screen.getByText(/SMTP Host/i)).toBeInTheDocument();
     expect(screen.getByText(/SMTP Port/i)).toBeInTheDocument();
     expect(screen.getByText(/SMTP Host/i)).toBeInTheDocument();
     expect(screen.getByText(/SMTP Username/i)).toBeInTheDocument();
     expect(screen.getByText(/SMTP Password/i)).toBeInTheDocument();
-  });
-
-  it("should render all security options", () => {
-    setup({ elements: defaultElements, settingValues: defaultValues });
-
     expect(screen.getByText("None")).toBeInTheDocument();
     expect(screen.getByText("SSL")).toBeInTheDocument();
     expect(screen.getByText("TLS")).toBeInTheDocument();
     expect(screen.getByText("STARTTLS")).toBeInTheDocument();
-  });
 
-  it("should populate the host", () => {
-    const values = {
-      ...defaultValues,
-      "email-smtp-host": "smtp.rotom.com",
-    } as Settings;
-
-    setup({ elements: defaultElements, settingValues: values });
-
-    expect(screen.getByLabelText(/SMTP host/i)).toHaveDisplayValue(
+    expect(
+      await screen.findByDisplayValue("smtp.rotom.com"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/SMTP Host/i)).toHaveDisplayValue(
       "smtp.rotom.com",
     );
-  });
-
-  it("should populate the port", () => {
-    const values = {
-      ...defaultValues,
-      "email-smtp-port": 123,
-    } as Settings;
-
-    setup({ elements: defaultElements, settingValues: values });
-
     expect(screen.getByLabelText(/SMTP port/i)).toHaveDisplayValue("123");
-  });
-
-  it("should populate the passed security value", () => {
-    const values = {
-      ...defaultValues,
-      "email-smtp-security": "ssl",
-    } as Settings;
-
-    setup({ elements: defaultElements, settingValues: values });
-
-    expect(screen.getByLabelText("SSL")).toBeChecked();
-    expect(screen.getByLabelText("TLS")).not.toBeChecked();
-  });
-
-  it("should populate the username", () => {
-    const values = {
-      ...defaultValues,
-      "email-smtp-username": "misty@example.com",
-    } as Settings;
-
-    setup({ elements: defaultElements, settingValues: values });
-
     expect(screen.getByLabelText(/SMTP username/i)).toHaveDisplayValue(
       "misty@example.com",
     );
-  });
-
-  it("should populate the password", () => {
-    const values = {
-      ...defaultValues,
-      "email-smtp-password": "*****chu",
-    } as Settings;
-
-    setup({ elements: defaultElements, settingValues: values });
-
     expect(screen.getByLabelText(/SMTP password/i)).toHaveDisplayValue(
       "*****chu",
     );
+    expect(
+      await screen.findByRole("button", { name: /send test email/i }),
+    ).toBeEnabled();
   });
 
-  it("should show save button as disabled when required fields are empty", () => {
-    setup({ elements: defaultElements, settingValues: defaultValues });
+  it("disable save button correctly", async () => {
+    await setup({});
+    const saveButton = screen.getByRole("button", { name: /save changes/i });
 
-    expect(
-      screen.getByRole("button", { name: /save changes/i }),
-    ).toBeDisabled();
-  });
+    // starts disabled because there are no unsaved changes
+    expect(saveButton).toBeDisabled();
 
-  it("should show save button as enabled when required fields are filled", async () => {
-    setup({ elements: defaultElements, settingValues: defaultValues });
+    const hostInput = screen.getByLabelText(/SMTP host/i);
+    const portInput = screen.getByLabelText(/SMTP port/i);
 
-    expect(
-      screen.getByRole("button", { name: /save changes/i }),
-    ).toBeDisabled();
+    await userEvent.clear(hostInput);
+    await userEvent.clear(portInput);
 
-    await userEvent.type(screen.getByLabelText(/SMTP host/i), "smtp.rotom.com");
-    await userEvent.type(screen.getByLabelText(/SMTP port/i), "123");
+    await userEvent.type(hostInput, "smtp.treeko.com");
+    await userEvent.type(portInput, "456");
 
     expect(
       await screen.findByRole("button", { name: /save changes/i }),
     ).toBeEnabled();
 
-    await userEvent.click(screen.getByLabelText("TLS"));
-    await userEvent.type(
-      screen.getByLabelText(/SMTP username/i),
-      "misty@example.com",
-    );
-    await userEvent.type(
-      screen.getByLabelText(/SMTP password/i),
-      "iheartpikachu",
-    );
+    await userEvent.clear(hostInput);
 
     expect(
       await screen.findByRole("button", { name: /save changes/i }),
-    ).toBeEnabled();
+    ).toBeDisabled();
   });
 
   it("should submit all settings changes via api", async () => {
-    setup({ elements: defaultElements, settingValues: defaultValues });
+    await setup({});
+    const hostInput = screen.getByLabelText(/SMTP Host/i);
+    const portInput = screen.getByLabelText(/SMTP Port/i);
+    const usernameInput = screen.getByLabelText(/SMTP Username/i);
+    const passwordInput = screen.getByLabelText(/SMTP Password/i);
 
-    await userEvent.type(screen.getByLabelText(/SMTP host/i), "smtp.rotom.com");
-    await userEvent.type(screen.getByLabelText(/SMTP port/i), "123");
+    await userEvent.clear(hostInput);
+    await userEvent.clear(portInput);
+    await userEvent.clear(usernameInput);
+    await userEvent.clear(passwordInput);
+
+    await userEvent.type(hostInput, "smtp.treeko.com");
+    await userEvent.type(portInput, "456");
+    await userEvent.type(usernameInput, "ash@example.com");
+    await userEvent.type(passwordInput, "teamrocket");
     await userEvent.click(screen.getByLabelText("TLS"));
-    await userEvent.type(
-      screen.getByLabelText(/SMTP username/i),
-      "misty@example.com",
-    );
-    await userEvent.type(
-      screen.getByLabelText(/SMTP password/i),
-      "iheartpikachu",
-    );
 
     await userEvent.click(
       screen.getByRole("button", { name: /save changes/i }),
     );
 
-    const [emailApiCall] = fetchMock.calls();
-    const body = await emailApiCall?.request?.json();
+    const puts = await findRequests("PUT");
+    const { body } = puts[0];
 
     expect(body).toEqual({
-      "email-smtp-host": "smtp.rotom.com",
-      "email-smtp-port": "123",
+      "email-smtp-host": "smtp.treeko.com",
+      "email-smtp-port": "456",
       "email-smtp-security": "tls",
-      "email-smtp-username": "misty@example.com",
-      "email-smtp-password": "iheartpikachu",
+      "email-smtp-username": "ash@example.com",
+      "email-smtp-password": "teamrocket",
     });
   });
 
-  it("should hide setting fields that are set by an environment variable", () => {
-    const elements = [
-      {
-        ...defaultElements[0],
-        is_env_setting: true,
-      },
-      ...defaultElements.slice(1),
-    ];
-
-    setup({ elements, settingValues: defaultValues });
-
+  it("should hide setting fields that are set by an environment variable", async () => {
+    await setup({ setEnvVars: "host" });
     expect(screen.getByText(/this has been set by the/i)).toBeInTheDocument();
     expect(screen.getByText(/MB_EMAIL_SMTP_HOST/i)).toBeInTheDocument();
     expect(screen.getByText(/environment variable/i)).toBeInTheDocument();
   });
 
   it("should allow form submission when some fields are set by an environment variable", async () => {
-    const elements = [
-      {
-        ...defaultElements[0],
-        is_env_setting: true,
-      },
-      ...defaultElements.slice(1),
-    ];
-
-    setup({ elements, settingValues: defaultValues });
-
+    await setup({ setEnvVars: "host" });
     expect(screen.getByText(/this has been set by the/i)).toBeInTheDocument();
     expect(screen.getByText(/MB_EMAIL_SMTP_HOST/i)).toBeInTheDocument();
     expect(screen.getByText(/environment variable/i)).toBeInTheDocument();
@@ -318,36 +213,13 @@ describe("SMTP connection form", () => {
       screen.getByRole("button", { name: /save changes/i }),
     );
 
-    const [emailApiCall] = fetchMock.calls();
-    const body = await emailApiCall?.request?.json();
-
-    expect(body).toEqual({
-      "email-smtp-host": null,
-      "email-smtp-port": "123",
-      "email-smtp-security": "tls",
-      "email-smtp-username": "misty@example.com",
-      "email-smtp-password": "iheartpikachu",
-    });
-  });
-
-  it("should enable test email button when all required fields are populated", async () => {
-    const fullValues = {
-      "email-smtp-host": "smtp.rotom.com",
-      "email-smtp-port": 123,
-      "email-smtp-security": "tls",
-      "email-smtp-username": "misty@example.com",
-      "email-smtp-password": "iheartpikachu",
-    } as Settings;
-
-    setup({ elements: defaultElements, settingValues: fullValues });
-
-    expect(
-      await screen.findByRole("button", { name: /send test email/i }),
-    ).toBeEnabled();
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
   });
 
   it("should hide test email button when fields are missing", async () => {
-    setup({ elements: defaultElements, settingValues: defaultValues });
+    await setup({});
+    await userEvent.clear(screen.getByLabelText(/SMTP Host/i));
 
     expect(
       screen.queryByRole("button", { name: /send test email/i }),
@@ -355,32 +227,23 @@ describe("SMTP connection form", () => {
   });
 
   it("should hide test email button when form is dirty", async () => {
-    const fullValues = {
-      "email-smtp-host": "smtp.rotom.com",
-      "email-smtp-port": 123,
-      "email-smtp-security": "tls",
-      "email-smtp-username": "misty@example.com",
-      "email-smtp-password": "iheartpikachu",
-    } as Settings;
-
-    setup({ elements: defaultElements, settingValues: fullValues });
+    await setup({});
 
     expect(
       await screen.findByRole("button", { name: /send test email/i }),
     ).toBeEnabled();
-    await userEvent.type(screen.getByLabelText(/SMTP host/i), "smtp.rotom.com");
+    await userEvent.type(
+      screen.getByLabelText(/SMTP host/i),
+      "smtp.treeko.com",
+    );
     expect(
       screen.queryByRole("button", { name: /send test email/i }),
     ).not.toBeInTheDocument();
   });
 
   it("should enable test email button when all fields are set by environment variables (metabase#45445)", async () => {
-    const elements = defaultElements.map((el) => ({
-      ...el,
-      is_env_setting: true,
-    }));
+    await setup({ setEnvVars: "all" });
 
-    setup({ elements, settingValues: defaultValues });
     expect(
       await screen.findByRole("button", { name: /send test email/i }),
     ).toBeEnabled();

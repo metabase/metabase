@@ -1,5 +1,9 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -911,14 +915,14 @@ describe("issue 32020", () => {
     H.popover().within(() => {
       cy.findByText("Sum of ...").click();
       cy.findByText(question2Details.name).click();
-      cy.findByText("Max of Longitude").click();
+      cy.findByText("Q2 → Max of Longitude").click();
     });
 
     cy.log("visualize and check results");
     H.visualize();
     H.tableInteractive().within(() => {
       cy.findByText("Sum of Sum of Total").should("be.visible");
-      cy.findByText("Sum of Q2 → Max").should("be.visible");
+      cy.findByText("Sum of Q2 → Max of Longitude").should("be.visible");
     });
   });
 });
@@ -1202,7 +1206,7 @@ describe("issue 31960", () => {
 
     H.popover().findByText("See these Orders").click();
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Jul 10–16, 2022")
+      .findByText("Created At: Week is Jul 10–16, 2022")
       .should("be.visible");
     H.assertQueryBuilderRowCount(rowCount);
   });
@@ -1442,8 +1446,8 @@ describe("issue 19894", () => {
     H.popover().findByText("Q1").click();
     H.popover().findByText("Q2").click();
 
-    H.popover().findByText("Category").should("be.visible");
-    H.popover().findByText("Sum of Price").should("be.visible");
+    H.popover().findByText("Q2 - Category → Category").should("be.visible");
+    H.popover().findByText("Q2 - Category → Sum of Price").should("be.visible");
 
     H.popover().findByText("Q1").click();
 
@@ -1703,7 +1707,7 @@ describe("issue 39771", () => {
     H.openNotebook();
     H.getNotebookStep("summarize", { stage: 1 })
       .findByTestId("breakout-step")
-      .findByText("Created At: Month: Quarter of year")
+      .findByText("Created At: Quarter of year")
       .click();
 
     H.popover().findByText("by quarter of year").realHover();
@@ -2549,5 +2553,364 @@ describe("issue 57697", () => {
         cy.findByText("Price").should("be.visible");
         cy.findByText("Price: Auto binned").should("not.exist");
       });
+  });
+});
+
+describe("issue 32499", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("Self-join columns can be edited independently", () => {
+    H.createQuestion(
+      {
+        name: "Model",
+        type: "model",
+        query: {
+          "source-table": ORDERS_ID,
+          fields: [
+            ["field", ORDERS.ID, null],
+            ["field", ORDERS.USER_ID, null],
+          ],
+          joins: [
+            {
+              fields: [["field", ORDERS.USER_ID, { "join-alias": "Orders" }]],
+              alias: "Orders",
+              "source-table": ORDERS_ID,
+              strategy: "left-join",
+              condition: [
+                "=",
+                ["field", ORDERS.ID, null],
+                ["field", ORDERS.ID, { "join-alias": "Orders" }],
+              ],
+            },
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openQuestionActions("Edit metadata");
+
+    const columns = [
+      { original: "Orders → User ID", modified: "JOIN COLUMN" },
+      { original: "User ID", modified: "ORIGINAL COLUMN" },
+    ];
+
+    // we can click the headers and modify their names
+    for (const { original, modified } of columns) {
+      H.tableHeaderClick(original);
+      cy.findByLabelText("Display name")
+        .should("have.value", original)
+        .click()
+        .clear()
+        .type(modified);
+    }
+
+    // the modified names are now in the headers
+    for (const { modified } of columns) {
+      H.tableHeaderColumn(modified).should("exist");
+    }
+  });
+});
+
+describe("issue 23449", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  const checkTable = () => {
+    H.assertTableData({
+      columns: ["ID", "Product ID", "Reviewer", "Rating", "Created At"],
+      firstRows: [[1, 1, "christ", "E", "May 15, 2024, 8:25 PM"]],
+    });
+  };
+
+  it("Remapped fields should work in a model (metabase#23449)", () => {
+    cy.log("set the metadata for review");
+    cy.visit(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${SAMPLE_DATABASE.REVIEWS_ID}`,
+    );
+
+    cy.findByTestId("column-RATING").findByLabelText("Field settings").click();
+    cy.findAllByTestId("select-button").contains("Use original value").click();
+    cy.findByLabelText("Custom mapping").click();
+
+    cy.findByDisplayValue("1").clear().type("A");
+    cy.findByDisplayValue("2").clear().type("B");
+    cy.findByDisplayValue("3").clear().type("C");
+    cy.findByDisplayValue("4").clear().type("D");
+    cy.findByDisplayValue("5").clear().type("E");
+
+    cy.button("Save").click();
+
+    cy.log("make a model on Reviews");
+    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.navigationSidebar().findByLabelText("Browse models").click();
+    cy.findByLabelText("Create a new model").click();
+    cy.findByRole("link", { name: /Use the notebook editor/ }).click();
+    H.entityPickerModal().findByText("Reviews").click();
+
+    cy.log("Remove Body column");
+    cy.findByLabelText("Pick columns").click();
+    H.popover().findByText("Body").click();
+
+    cy.log("save model");
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+
+    cy.log("confirm save in a modal");
+    H.modal().button("Save").click();
+
+    cy.log("check that the data renders");
+    checkTable();
+
+    cy.log("reload to flush cached results and check again");
+    cy.findByTestId("qb-header").button("Refresh").click();
+    checkTable();
+  });
+});
+
+describe("issue 12679", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("removing the first aggregation should not re-target the filter (metabase#12679)", () => {
+    const questionDetails = {
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["sum", ["field", ORDERS.SUBTOTAL, null]],
+              ["sum", ["field", ORDERS.TAX, null]],
+              ["sum", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }],
+            ],
+          },
+          filter: [">", ["field", "sum_2", { "base-type": "type/Float" }], 100],
+        },
+      },
+    };
+
+    H.visitQuestionAdhoc(questionDetails, { mode: "notebook" });
+    H.getNotebookStep("filter", { stage: 1 })
+      .findByText("Sum of Tax is greater than 100")
+      .should("exist");
+
+    H.getNotebookStep("summarize").within(() => {
+      cy.findByText("Sum of Subtotal").parent().icon("close").click();
+      cy.findByText("Sum of Subtotal").should("not.exist");
+    });
+    H.getNotebookStep("filter", { stage: 1 })
+      .findByText("Sum of Tax is greater than 100")
+      .should("exist");
+
+    H.visualize();
+
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Sum of Tax is greater than 100")
+      .should("exist");
+    cy.findByTestId("table-header").within(() => {
+      cy.findByText("Sum of Subtotal").should("not.exist");
+      cy.findByText("Sum of Tax").should("exist");
+      cy.findByText("Sum of Total").should("exist");
+    });
+    cy.findByTestId("question-row-count")
+      .findByText("Showing 174 rows")
+      .should("exist");
+  });
+});
+
+describe("issue 51856", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  const q1Details = {
+    name: "Issue 51856 Q1",
+    type: "question",
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          fields: "all",
+          strategy: "left-join",
+          alias: "Products",
+          condition: [
+            "=",
+            [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+            [
+              "field",
+              PRODUCTS.ID,
+              {
+                "base-type": "type/BigInteger",
+                "join-alias": "Products",
+              },
+            ],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+      ],
+    },
+  };
+
+  const q2Details = {
+    name: "Issue 51856 Q2",
+    query: {
+      "source-table": SAMPLE_DATABASE.REVIEWS_ID,
+      joins: [
+        {
+          fields: "all",
+          strategy: "left-join",
+          alias: "Products",
+          condition: [
+            "=",
+            [
+              "field",
+              SAMPLE_DATABASE.REVIEWS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+            [
+              "field",
+              PRODUCTS.ID,
+              {
+                "base-type": "type/BigInteger",
+                "join-alias": "Products",
+              },
+            ],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+      ],
+    },
+  };
+
+  it("join alias deduplication should not break queries with multiple nesting levels with joins (metabase#51856)", () => {
+    H.createQuestion(q1Details, { wrapId: true, idAlias: "q1id" });
+    cy.get("@q1id").then((_q1id) => {
+      H.createQuestion(q2Details, { wrapId: true, idAlias: "q2id" });
+      cy.get("@q2id").then((_q2id) => {
+        H.startNewQuestion();
+
+        H.selectSavedQuestionsToJoin(q1Details.name, q2Details.name);
+        cy.findByTestId("join-condition-0").findByText(q1Details.name).click();
+        H.popover().findByText("Products → Category").click();
+        cy.findByTestId("join-condition-0").findByText(q2Details.name).click();
+        H.popover().findByText("Issue 51856 Q2 → Category").click();
+
+        H.visualize();
+
+        H.tableInteractiveScrollContainer().scrollTo("right");
+        cy.findByTestId("table-header").within(() => {
+          cy.findByText("Products → Category").should("exist");
+          cy.findByText(
+            "Issue 51856 Q2 - Products → Category → Category",
+          ).should("exist");
+        });
+        cy.findByTestId("question-row-count")
+          .findByText("Showing first 2,000 rows")
+          .should("exist");
+      });
+    });
+  });
+});
+
+describe("issue 33972", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  const queryDetails = {
+    name: "Issue 33972",
+    type: "question",
+    query: {
+      "source-table": ORDERS_ID,
+      fields: [
+        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+        ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
+      ],
+      joins: [
+        {
+          fields: [
+            [
+              "field",
+              PRODUCTS.CATEGORY,
+              { "base-type": "type/Text", "join-alias": "Products" },
+            ],
+          ],
+          strategy: "left-join",
+          alias: "Products",
+          condition: [
+            "=",
+            [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+            [
+              "field",
+              PRODUCTS.ID,
+              {
+                "base-type": "type/BigInteger",
+                "join-alias": "Products",
+              },
+            ],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+      ],
+    },
+  };
+
+  it("should be able to distinguish explicitly and implicitly joined fields (metabase#33972)", () => {
+    H.createQuestion(queryDetails, { wrapId: true });
+    cy.get("@questionId").then((questionId) => {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": "card__" + questionId,
+          },
+          type: "query",
+        },
+      });
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-list-container")
+        .findByText("Add or remove columns")
+        .click();
+      cy.findByTestId("product-table-columns").findByText("Category").click();
+      cy.findByTestId("product-table-columns").findByText("Ean").click();
+      cy.findByTestId("table-header").within(() => {
+        cy.findByText("ID").should("exist");
+        cy.findByText("Product ID").should("exist");
+        cy.findByText("Products → Category").should("exist");
+        cy.findByText("Product → Category").should("exist");
+        cy.findByText("Product → Ean").should("exist");
+      });
+      cy.findByTestId("question-row-count")
+        .findByText("Showing first 2,000 rows")
+        .should("exist");
+    });
   });
 });

@@ -1,4 +1,5 @@
 const { H } = cy;
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -6,9 +7,11 @@ import {
   ORDERS_MODEL_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import type { CardId, FieldReference } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
+  SAMPLE_DATABASE;
 
 describe("issue 29943", () => {
   function reorderTotalAndCustomColumns() {
@@ -436,7 +439,7 @@ describe("issue 41785, issue 46756", () => {
   });
 });
 
-describe.skip("issue 40635", () => {
+describe("issue 40635", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -507,7 +510,7 @@ describe.skip("issue 40635", () => {
       .icon("close")
       .click();
 
-    assertSettingsSidebar();
+    assertSettingsSidebarNestedQuery();
     assertVisualizationColumns();
 
     H.openNotebook();
@@ -515,14 +518,14 @@ describe.skip("issue 40635", () => {
     H.popover().within(() => {
       cy.findAllByText("ID").should("have.length", 1);
       cy.findAllByText("Products → ID").should("have.length", 1);
-      cy.findAllByText("Products_2 → ID").should("have.length", 1);
+      cy.findAllByText("Products - User → ID").should("have.length", 1);
     });
   });
 
   function assertVisualizationColumns() {
     assertTableHeader(0, "ID");
     assertTableHeader(1, "Products → ID");
-    assertTableHeader(2, "Products_2 → ID");
+    assertTableHeader(2, "Products - User → ID");
   }
 
   function assertTableHeader(index: number, name: string) {
@@ -536,12 +539,29 @@ describe.skip("issue 40635", () => {
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findAllByText("ID").should("have.length", 1);
       cy.findAllByText("Products → ID").should("have.length", 1);
-      cy.findAllByText("Products_2 → ID").should("have.length", 1);
+      cy.findAllByText("Products - User → ID").should("have.length", 1);
 
       cy.findByRole("button", { name: "Add or remove columns" }).click();
       cy.findAllByText("ID").should("have.length", 4);
       cy.findAllByText("Products").should("have.length", 1);
       cy.findAllByText("Products 2").should("have.length", 1);
+    });
+
+    cy.button("Done").click();
+  }
+
+  function assertSettingsSidebarNestedQuery() {
+    H.openVizSettingsSidebar();
+
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Products → ID").should("have.length", 1);
+      cy.findAllByText("Products - User → ID").should("have.length", 1);
+
+      cy.findByRole("button", { name: "Add or remove columns" }).click();
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Products → ID").should("have.length", 1);
+      cy.findAllByText("Products - User → ID").should("have.length", 1);
     });
 
     cy.button("Done").click();
@@ -849,7 +869,7 @@ describe("issue 43088", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
@@ -1057,6 +1077,45 @@ describe("issue 35840", () => {
   });
 });
 
+describe("issue 36161", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should allow to override metadata for custom columns (metabase#36161)", () => {
+    H.visitModel(ORDERS_MODEL_ID);
+    cy.wait("@dataset");
+
+    H.openQuestionActions("Edit query definition");
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.popover().findByText("Select all").click();
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({ formula: "[ID]", name: "ID2" });
+    H.popover().button("Done").click();
+    H.getNotebookStep("expression").icon("add").click();
+    H.enterCustomColumnDetails({ formula: "[ID]", name: "ID3" });
+    H.popover().button("Done").click();
+    H.runButtonOverlay().click();
+    cy.wait("@dataset");
+    cy.findByTestId("editor-tabs-metadata-name").click();
+    H.openColumnOptions("ID2");
+    H.renameColumn("ID2", "ID2 custom");
+    H.openColumnOptions("ID3");
+    H.renameColumn("ID3", "ID3 custom");
+    H.saveMetadataChanges();
+
+    H.openNotebook();
+    H.getNotebookStep("data").button("Filter").click();
+    H.popover().within(() => {
+      cy.findByText("ID").should("be.visible");
+      cy.findByText("ID2 custom").should("be.visible");
+      cy.findByText("ID3 custom").should("be.visible");
+    });
+  });
+});
+
 describe("issue 34514", () => {
   beforeEach(() => {
     H.restore();
@@ -1145,6 +1204,78 @@ describe("issue 34514", () => {
       );
     });
   }
+});
+
+describe("issue 47988", () => {
+  const model1Details: StructuredQuestionDetails = {
+    name: "M1",
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          "source-table": PRODUCTS_ID,
+          alias: "Products",
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, null],
+            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+          ],
+          fields: "all",
+        },
+      ],
+    },
+  };
+
+  const model2Details: StructuredQuestionDetails = {
+    name: "M2",
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          "source-table": PRODUCTS_ID,
+          alias: "Products",
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, null],
+            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+          ],
+          fields: "all",
+        },
+        {
+          "source-table": REVIEWS_ID,
+          alias: "Reviews",
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, null],
+            ["field", REVIEWS.PRODUCT_ID, { "join-alias": "Reviews" }],
+          ],
+          fields: "all",
+        },
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to execute a query with joins to the same table in base queries (metabase#47988)", () => {
+    H.createQuestion(model1Details);
+    H.createQuestion(model2Details);
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText("M1").click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText("M2").click();
+    });
+    H.visualize();
+    H.tableInteractive().should("be.visible");
+  });
 });
 
 describe.skip("issues 28270, 33708", () => {

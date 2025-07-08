@@ -81,10 +81,7 @@ export type JoinStrategy = unknown & { _opaque: typeof JoinStrategySymbol };
 declare const JoinConditionSymbol: unique symbol;
 export type JoinCondition = unknown & { _opaque: typeof JoinConditionSymbol };
 
-declare const JoinConditionOperatorSymbol: unique symbol;
-export type JoinConditionOperator = unknown & {
-  _opaque: typeof JoinConditionOperatorSymbol;
-};
+export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
 
 export type Clause =
   | AggregationClause
@@ -134,7 +131,8 @@ export type BucketDisplayInfo = {
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
-  isSourceTable: boolean;
+  isSourceTable?: boolean;
+  isSourceCard?: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
   schema: SchemaId;
@@ -448,16 +446,10 @@ export type DefaultFilterParts = {
   column: ColumnMetadata;
 };
 
-export type JoinConditionOperatorDisplayInfo = {
-  displayName: string;
-  shortName: string;
-  default?: boolean;
-};
-
 export type JoinConditionParts = {
   operator: JoinConditionOperator;
-  lhsColumn: ColumnMetadata;
-  rhsColumn: ColumnMetadata;
+  lhsExpression: ExpressionClause;
+  rhsExpression: ExpressionClause;
 };
 
 export type JoinStrategyDisplayInfo = {

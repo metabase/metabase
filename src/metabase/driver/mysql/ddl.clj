@@ -4,12 +4,11 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.ddl :as sql.ddl]
-   [metabase.query-processor.compile :as qp.compile]
-   [metabase.system.core :as system]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
@@ -66,7 +65,7 @@
 
 (defmethod ddl.i/refresh! :mysql
   [driver database definition dataset-query]
-  (let [{:keys [query params]} (qp.compile/compile dataset-query)
+  (let [{:keys [query params]} (driver-api/compile dataset-query)
         db-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
@@ -98,7 +97,7 @@
 
 (defmethod ddl.i/check-can-persist :mysql
   [{driver :engine, :as database}]
-  (let [schema-name (ddl.i/schema-name database (system/site-uuid))
+  (let [schema-name (ddl.i/schema-name database (driver-api/site-uuid))
         table-name (format "persistence_check_%s" (rand-int 10000))
         db-spec (sql-jdbc.conn/db->pooled-connection-spec database)
         steps [[:persist.check/create-schema

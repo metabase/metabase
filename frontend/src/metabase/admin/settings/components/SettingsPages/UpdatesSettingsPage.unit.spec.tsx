@@ -9,7 +9,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import type { SettingKey, UpdateChannel } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -93,25 +93,6 @@ describe("UpdatesSettingsPage", () => {
     ].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
-  });
-
-  it("only version update notice should be visible when hosted", async () => {
-    await act(() =>
-      setup({
-        isHosted: true,
-        versionTag: "v1.53.8",
-        updateChannel: "latest",
-      }),
-    );
-
-    ["Check for updates", "Types of releases to check for"].forEach((text) => {
-      expect(screen.queryByText(text)).not.toBeInTheDocument();
-    });
-    expect(
-      screen.getByText(
-        "Metabase Cloud keeps your instance up-to-date. You're currently on version 1.53.8. Thanks for being a customer!",
-      ),
-    ).toBeInTheDocument();
   });
 
   it("should load initial settings", async () => {

@@ -1,1 +1,0 @@
-export { SettingTextInput } from "./SettingTextInput";

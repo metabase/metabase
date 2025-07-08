@@ -5,7 +5,7 @@ import { useLatest } from "react-use";
 import { TextInput } from "metabase/ui";
 
 interface ChartSettingInputProps {
-  value: string;
+  value: string | undefined;
   placeholder: string;
   onChange: (value: string) => void;
   id?: string;
@@ -40,7 +40,7 @@ export const ChartSettingInput = ({
         onChangeDebounced(e.target.value);
       }}
       onBlur={() => {
-        if (inputValue !== (value || "")) {
+        if (inputValue != null && inputValue !== (value || "")) {
           onChangeDebounced.cancel();
           onChangeRef.current(inputValue);
         }

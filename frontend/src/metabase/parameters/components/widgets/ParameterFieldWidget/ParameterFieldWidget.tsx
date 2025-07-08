@@ -14,6 +14,7 @@ import {
 } from "metabase-lib/v1/operators/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
+import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Dashboard, RowValue } from "metabase-types/api";
 
 import { Footer } from "../Widget";
@@ -61,7 +62,14 @@ export function ParameterFieldWidget({
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!isValid || (isRequired && isEmpty)) {
+    if (!isValid) {
+      return;
+    }
+
+    if (isRequired && isEmpty) {
+      if (hasValue(parameter.default)) {
+        setValue(parameter.default);
+      }
       return;
     }
 

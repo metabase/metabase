@@ -22,8 +22,10 @@
       border-bottom: 1px solid var(--mb-color-border);
     }
 
-    &:hover {
+    &:hover,
+    &[data-combobox-selected="true"] {
       background-color: var(--mb-color-background-hover);
+      color: inherit;
     }
   }
 }

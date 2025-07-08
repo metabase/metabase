@@ -1,5 +1,5 @@
 import { color } from "metabase/lib/colors";
-import { getRelativeTime } from "metabase/lib/time";
+import { getRelativeTime } from "metabase/lib/time-dayjs";
 import { Icon, Tooltip } from "metabase/ui";
 import type { ModerationReview, User } from "metabase-types/api";
 

@@ -2,11 +2,11 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import TippyPopover from "metabase/components/Popover/TippyPopover";
-import Button from "metabase/core/components/Button";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import DeprecatedTooltip from "metabase/core/components/Tooltip";
-import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
+import Button from "metabase/common/components/Button";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import TippyPopover from "metabase/common/components/Popover/TippyPopover";
+import DeprecatedTooltip from "metabase/common/components/Tooltip";
+import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -25,6 +25,7 @@ interface DashCardCardParameterMapperButtonProps {
   selectedMappingOption: ParameterMappingOption | undefined;
   target: ParameterTarget | null | undefined;
   mappingOptions: ParameterMappingOption[];
+  compact?: boolean;
 }
 
 export const DashCardCardParameterMapperButton = ({
@@ -37,6 +38,7 @@ export const DashCardCardParameterMapperButton = ({
   selectedMappingOption,
   target,
   mappingOptions,
+  compact,
 }: DashCardCardParameterMapperButtonProps) => {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
@@ -143,7 +145,6 @@ export const DashCardCardParameterMapperButton = ({
               handleChangeTarget(target);
               setIsDropdownVisible(false);
             }}
-            target={target}
             mappingOptions={mappingOptions}
             selectedMappingOption={selectedMappingOption}
           />
@@ -161,7 +162,7 @@ export const DashCardCardParameterMapperButton = ({
           justify="space-between"
           mx="xs"
           px="sm"
-          py="xs"
+          py={compact ? undefined : "xs"}
           aria-label={buttonTooltip ?? undefined}
           aria-haspopup="listbox"
           aria-expanded={isDropdownVisible}

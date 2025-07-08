@@ -6,29 +6,15 @@ title: Embedded analytics SDK - authentication
 
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
-For using the SDK in production, you'll need to set up authentication with JWT SSO.
+For using the SDK in production, you'll need to set up authentication with SSO.
 
 If you're developing locally, you can also set up authentication with [API keys](#authenticating-locally-with-api-keys).
 
-If both SAML and JWT are enabled in your Metabase, the SDK will default to using SAML authentication unless you explicitly set the `authMethod` to `"jwt"` in your `MetabaseAuthConfig`:
-
-```javascript
-authConfig: {
-  metabaseInstanceUrl: "...",
-  authMethod: "jwt",
-  // other JWT config...
-}
-```
-
-For details on SAML authentication with the SDK, see [Authenticating with SAML SSO](#authenticating-with-saml-sso).
-
 ## Setting up JWT SSO
 
-Prerequisites:
+To set up JWT SSO, you'll need [a Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md))
 
-- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md))
-
-To set up JWT SSO with Metabase and your app, you'll need to:
+Here's a high-level overview:
 
 1. [Enable JWT SSO in your Metabase](#1-enable-jwt-sso-in-your-metabase)
 2. [Add a new endpoint to your backend to handle authentication](#2-add-a-new-endpoint-to-your-backend-to-handle-authentication)
@@ -37,7 +23,8 @@ To set up JWT SSO with Metabase and your app, you'll need to:
 ### 1. Enable JWT SSO in your Metabase
 
 1. Configure JWT by going to **Admin Settings** > **Settings** > **Authentication** and clicking on **Setup**
-2. Generate a key and copy it to your clipboard.
+2. Enter the JWT Identity Provider URI, for example `http://localhost:9090/sso/metabase`. This is a new endpoint you will add in your backend to handle authentication.
+3. Generate a key and copy it to your clipboard.
 
 ### 2. Add a new endpoint to your backend to handle authentication
 
@@ -69,7 +56,7 @@ Example using Next.js Pages Router:
 {% include_file "{{ dirname }}/snippets/next-js/pages-router-authentication-api-route.ts" %}
 ```
 
-### Handling interactive and SDK embeds with the same endpoint
+#### Handling interactive and SDK embeds with the same endpoint
 
 If you have an existing backend endpoint configured for interactive embedding and want to use the same endpoint for SDK embedding, you can differentiate between the requests by checking for the `response=json` query parameter that the SDK adds to its requests.
 
@@ -100,16 +87,6 @@ You can add some middleware in your backend to handle cross-domain requests.
 {% include_file "{{ dirname }}/snippets/authentication/express-server-cors.ts" snippet="example" %}
 ```
 
-## Getting Metabase authentication status
-
-You can query the Metabase authentication status using the `useMetabaseAuthStatus` hook. This is useful if you want to completely hide Metabase components when the user is not authenticated.
-
-This hook can only be used within components wrapped by `MetabaseProvider`.
-
-```jsx
-{% include_file "{{ dirname }}/snippets/authentication/get-auth-status.tsx" snippet="example" %}
-```
-
 ## Customizing JWT authentication
 
 You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function with the `defineMetabaseAuthConfig` function:
@@ -119,6 +96,46 @@ You can customize how the SDK fetches the refresh token by specifying the `fetch
 ```
 
 The response should be in the form of `{ jwt: "{JWT_TOKEN}" }`
+
+## Authenticating with SAML SSO
+
+{% include plans-blockquote.html feature="SAML authentication" sdk=true %}
+
+To use SAML single sign-on with the Embedded analytics SDK, you'll need to set up SAML in both your Metabase and your Identity Provider (IdP). See the docs on [SAML-based authentication](../../people-and-groups/authenticating-with-saml.md).
+
+Once SAML is configured in Metabase and your IdP, you can configure the SDK to use SAML by setting the `preferredAuthMethod` in your `MetabaseAuthConfig` to `"saml"`:
+
+```typescript
+{% include_file "{{ dirname }}/snippets/authentication/auth-config-saml.tsx" snippet="example" %}
+```
+
+Using SAML authentication with the Embedded analytics SDK will typically involve redirecting people to a popup with your Identity Provider's login page for authentication. After successful authentication, the person will be redirected back to the embedded content.
+
+Due to the nature of redirects and popups involved in the SAML flow, SAML authentication with the SDK may not work seamlessly in all embedding contexts, particularly within iframes, depending on browser security policies and your IdP's configuration. We recommend testing auth flows in your target environments.
+
+Unlike JWT authentication, you won't be able to implement a custom `fetchRequestToken` function on your backend when pairing SAML with the SDK.
+
+## If both SAML and JWT are enabled, the SDK will default to SAML
+
+You can override this default behavior to prefer the JWT authentication method by setting `preferredAuthMethod="jwt"` in your authentication config:
+
+```typescript
+authConfig: {
+  metabaseInstanceUrl: "...",
+  preferredAuthMethod: "jwt",
+  // other JWT config...
+}
+```
+
+## Getting Metabase authentication status
+
+You can query the Metabase authentication status using the `useMetabaseAuthStatus` hook. This is useful if you want to completely hide Metabase components when the user is not authenticated.
+
+This hook can only be used within components wrapped by `MetabaseProvider`.
+
+```jsx
+{% include_file "{{ dirname }}/snippets/authentication/get-auth-status.tsx" snippet="example" %}
+```
 
 ## Authenticating locally with API keys
 
@@ -134,24 +151,6 @@ Then you can then use the API key to authenticate with Metabase in your applicat
 {% include_file "{{ dirname }}/snippets/authentication/auth-config-api-key.tsx" %}
 ```
 
-## Authenticating with SAML SSO
-
-{% include plans-blockquote.html feature="SAML authentication" sdk=true %}
-
-To use SAML single sign-on with the Embedded analytics SDK, you'll need to set up SAML in both your Metabase and your Identity Provider (IdP). See the docs on [SAML-based authentication](../../people-and-groups/authenticating-with-saml.md).
-
-Once SAML is configured in Metabase and your IdP, you can configure the SDK to use SAML by setting the `authMethod` in your `MetabaseAuthConfig` to `"saml"`:
-
-```typescript
-{% include_file "{{ dirname }}/snippets/authentication/auth-config-saml.tsx" snippet="example" %}
-```
-
-Using SAML authentication with the Embedded analytics SDK will typically involve redirecting people to a popup with your Identity Provider's login page for authentication. After successful authentication, the person will be redirected back to the embedded content.
-
-Due to the nature of redirects and popups involved in the SAML flow, SAML authentication with the SDK may not work seamlessly in all embedding contexts, particularly within iframes, depending on browser security policies and your IdP's configuration. We recommend testing auth flows in your target environments.
-
-Unlike JWT authentication, you won't be able to implement a custom `fetchRequestToken` function on your backend when pairing SAML with the SDK.
-
 ## Security warning: each end-user _must_ have their own Metabase account
 
 Each end-user _must_ have their own Metabase account.
@@ -161,3 +160,118 @@ The problem with having end-users share a Metabase account is that, even if you 
 If each end-user has their own Metabase account, however, you can configure permissions in Metabase and everyone will only have access to the data they should.
 
 In addition to this, we consider shared accounts to be unfair usage. Fair usage of the SDK involves giving each end-user of the embedded analytics their own Metabase account.
+
+## Upgrade guide for JWT SSO setups on SDK version 54 or below
+
+If you're upgrading from an SDK version 1.54.x or below and you're using JWT SSO, you'll need to make the following changes.
+
+**Frontend changes**:
+
+- [Remove `authProviderUri` from all `defineMetabaseAuthConfig` calls](#remove-authprovideruri-from-your-auth-config)
+- **If using custom `fetchRequestToken`:** [Update function signature and hardcode authentication endpoint URLs](#update-the-fetchrequesttoken-function-signature)
+
+**Backend changes**:
+
+- [Update backend endpoint to return `{ jwt: "token" }` JSON response for SDK requests](#update-your-jwt-endpoint-to-handle-sdk-requests).
+
+Additionally, if you have SAML set up, but you'd prefer to use JWT SSO, you'll need to set a [preferred authentication method](#if-both-saml-and-jwt-are-enabled-the-sdk-will-default-to-saml).
+
+### Remove `authProviderUri` from your auth config
+
+`defineMetabaseAuthConfig` no longer accepts an `authProviderUri` parameter, so you'll need to remove it.
+
+**Admin setting changes in Metabase**:
+
+In **Admin Settings** > **Authentication** > **JWT SSO**, set the `JWT Identity Provider URI` to the URL of your JWT SSO endpoint, e.g., `http://localhost:9090/sso/metabase`.
+
+**Before:**
+
+```jsx
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://your-metabase.example.com",
+  authProviderUri: "http://localhost:9090/sso/metabase", // Remove this line
+});
+```
+
+**After:**
+
+```jsx
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://your-metabase.example.com",
+});
+```
+
+The SDK now uses the JWT Identity Provider URI setting configured in your Metabase admin settings (Admin > Settings > Authentication > JWT).
+
+### Update the `fetchRequestToken` function signature
+
+The `fetchRequestToken` function no longer receives a URL parameter. You must now specify your authentication endpoint directly in the function.
+
+**Before:**
+
+```jsx
+const authConfig = defineMetabaseAuthConfig({
+  fetchRequestToken: async (url) => {
+    // Remove url parameter
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${yourToken}` },
+    });
+    return await response.json();
+  },
+  metabaseInstanceUrl: "http://localhost:3000",
+  authProviderUri: "http://localhost:9090/sso/metabase", // Remove this line
+});
+```
+
+**After:**
+
+```jsx
+const authConfig = defineMetabaseAuthConfig({
+  fetchRequestToken: async () => {
+    // No parameters
+    const response = await fetch("http://localhost:9090/sso/metabase", {
+      // Hardcode your endpoint URL
+      method: "GET",
+      headers: { Authorization: `Bearer ${yourToken}` },
+    });
+    return await response.json();
+  },
+  metabaseInstanceUrl: "http://localhost:3000",
+});
+```
+
+### Update your JWT endpoint to handle SDK requests
+
+Your JWT endpoint must now handle both SDK requests and interactive embedding requests. The SDK adds a `response=json` query parameter to distinguish its requests. For SDK requests, return a JSON object with the JWT. For interactive embedding, continue redirecting as before.
+
+If you were using a custom `fetchRequestToken`, you'll need to update the endpoint to detect `req.query.response === "json"` for SDK requests.
+
+```jsx
+app.get("/sso/metabase", async (req, res) => {
+  // SDK requests include 'response=json' query parameter
+  const isSdkRequest = req.query.response === "json";
+
+  const user = getCurrentUser(req);
+
+  const token = jwt.sign(
+    {
+      email: user.email,
+      first_name: user.firstName,
+      last_name: user.lastName,
+      groups: [user.group],
+      exp: Math.round(Date.now() / 1000) + 60 * 10,
+    },
+    METABASE_JWT_SHARED_SECRET,
+  );
+
+  if (isSdkRequest) {
+    // For SDK requests, return JSON object with jwt property
+    res.status(200).json({ jwt: token });
+  } else {
+    // For interactive embedding, redirect as before
+    const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
+    res.redirect(ssoUrl);
+  }
+});
+```
