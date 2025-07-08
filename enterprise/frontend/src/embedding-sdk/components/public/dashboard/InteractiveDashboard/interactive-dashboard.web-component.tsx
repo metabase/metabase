@@ -1,5 +1,10 @@
+import { WebComponentProviders } from "embedding-sdk/components/private/WebComponentProviders/WebComponentProviders";
 import { defineWebComponent } from "embedding-sdk/lib/web-components";
 
+import {
+  type MetabaseProviderWebComponentContextProps,
+  metabaseProviderContextProps,
+} from "../../metabase-provider.web-component";
 import {
   InteractiveDashboard,
   type InteractiveDashboardProps,
@@ -15,11 +20,19 @@ export type InteractiveDashboardWebComponentProps = Pick<
   "dashboardId" | "withDownloads"
 >;
 
-defineWebComponent<InteractiveDashboardWebComponentProps>(
+defineWebComponent<
+  MetabaseProviderWebComponentContextProps &
+    InteractiveDashboardWebComponentProps
+>(
   "interactive-dashboard",
-  ({ container, slot, ...props }) => <InteractiveDashboard {...props} />,
+  ({ container, slot, metabaseProviderProps, ...props }) => (
+    <WebComponentProviders metabaseProviderProps={metabaseProviderProps}>
+      <InteractiveDashboard {...props} />
+    </WebComponentProviders>
+  ),
   {
     propTypes: {
+      ...metabaseProviderContextProps,
       dashboardId: "id",
       withDownloads: "boolean",
     },

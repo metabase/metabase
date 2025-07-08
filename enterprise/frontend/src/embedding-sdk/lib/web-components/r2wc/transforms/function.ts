@@ -13,6 +13,10 @@ function generateHash(value: string) {
 
 export const functionTransform: Transform<(...args: unknown[]) => unknown> = {
   stringify: (value: (...args: unknown[]) => void) => {
+    if (!value) {
+      return "";
+    }
+
     const hash = generateHash(value.toString());
 
     // Prefix it to avoid indexed Window property assignment

@@ -1,4 +1,10 @@
+import { WebComponentProviders } from "embedding-sdk/components/private/WebComponentProviders/WebComponentProviders";
 import { defineWebComponent } from "embedding-sdk/lib/web-components";
+
+import {
+  type MetabaseProviderWebComponentContextProps,
+  metabaseProviderContextProps,
+} from "../metabase-provider.web-component";
 
 import {
   CreateDashboardModal,
@@ -15,13 +21,28 @@ export type CreateDashboardModalWebComponentProps = Pick<
   "initialCollectionId" | "onCreate"
 >;
 
-defineWebComponent<CreateDashboardModalWebComponentProps>(
+export type CreateDashboardModalWebComponentProperties = Pick<
+  CreateDashboardModalProps,
+  "onCreate"
+>;
+
+defineWebComponent<
+  MetabaseProviderWebComponentContextProps &
+    CreateDashboardModalWebComponentProps,
+  CreateDashboardModalWebComponentProperties
+>(
   "create-dashboard-modal",
-  ({ container, slot, ...props }) => <CreateDashboardModal {...props} />,
+  ({ container, slot, metabaseProviderProps, ...props }) => (
+    <WebComponentProviders metabaseProviderProps={metabaseProviderProps}>
+      <CreateDashboardModal {...props} />
+    </WebComponentProviders>
+  ),
   {
     propTypes: {
+      ...metabaseProviderContextProps,
       initialCollectionId: "id",
       onCreate: "function",
     },
+    properties: ["onCreate"],
   },
 );

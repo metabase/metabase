@@ -23,34 +23,36 @@ export type MetabaseProviderWebComponentProps = {
   locale?: string;
 };
 
-export type MetabaseProviderWebComponentContextProps = {
+export type MetabaseProviderWebComponentProperties = {
   authConfig: MetabaseAuthConfig;
   locale: string;
   theme: MetabaseTheme;
 };
 
+export type MetabaseProviderWebComponentContextProps = {
+  metabaseProviderProps: MetabaseProviderWebComponentProperties;
+};
+
 export const metabaseProviderContextProps = {
-  // These are passed as properties only, not as attributes
-  authConfig: "json",
-  locale: "string",
-  theme: "json",
+  metabaseProviderProps: "json",
 } as const;
 
 defineWebComponent<
   MetabaseProviderWebComponentProps,
+  MetabaseProviderWebComponentProperties,
   MetabaseProviderWebComponentContextProps,
   ChildrenWebComponentElementNames
 >(
   "metabase-provider",
   ({ container, slot }) => <Slot container={container} slot={slot} />,
   {
-    withProviders: false,
     propTypes: {
       metabaseInstanceUrl: "string",
       fetchRequestToken: "function",
       apiKey: "string",
       locale: "string",
     },
+    properties: ["authConfig", "locale", "theme"],
     contextPropTypes: metabaseProviderContextProps,
     defineContext: {
       childrenComponents: [
@@ -63,18 +65,22 @@ defineWebComponent<
         "create-dashboard-modal",
         "metabot-question",
       ],
-      provider: (instance) => ({
-        authConfig: {
-          ...{
-            metabaseInstanceUrl: instance.metabaseInstanceUrl,
-            fetchRequestToken: instance.fetchRequestToken,
-            apiKey: instance.apiKey,
+      provider: (instance, props) => {
+        return {
+          metabaseProviderProps: {
+            authConfig: {
+              ...{
+                metabaseInstanceUrl: props.metabaseInstanceUrl,
+                fetchRequestToken: props.fetchRequestToken,
+                apiKey: props.apiKey,
+              },
+              ...instance.authConfig,
+            } as MetabaseAuthConfig,
+            locale: props.locale ?? instance.locale,
+            theme: instance.theme as MetabaseTheme,
           },
-          ...instance.authConfig,
-        } as MetabaseAuthConfig,
-        locale: instance.locale,
-        theme: instance.theme as MetabaseTheme,
-      }),
+        };
+      },
     },
   },
 );

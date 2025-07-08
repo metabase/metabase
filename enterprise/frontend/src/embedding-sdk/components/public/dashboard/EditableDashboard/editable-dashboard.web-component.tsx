@@ -1,5 +1,10 @@
+import { WebComponentProviders } from "embedding-sdk/components/private/WebComponentProviders/WebComponentProviders";
 import { defineWebComponent } from "embedding-sdk/lib/web-components";
 
+import {
+  type MetabaseProviderWebComponentContextProps,
+  metabaseProviderContextProps,
+} from "../../metabase-provider.web-component";
 import {
   EditableDashboard,
   type EditableDashboardProps,
@@ -14,11 +19,18 @@ export type EditableDashboardWebComponentProps = Pick<
   "dashboardId"
 >;
 
-defineWebComponent<EditableDashboardWebComponentProps>(
+defineWebComponent<
+  MetabaseProviderWebComponentContextProps & EditableDashboardWebComponentProps
+>(
   "editable-dashboard",
-  ({ container, slot, ...props }) => <EditableDashboard {...props} />,
+  ({ container, slot, metabaseProviderProps, ...props }) => (
+    <WebComponentProviders metabaseProviderProps={metabaseProviderProps}>
+      <EditableDashboard {...props} />
+    </WebComponentProviders>
+  ),
   {
     propTypes: {
+      ...metabaseProviderContextProps,
       dashboardId: "id",
     },
   },

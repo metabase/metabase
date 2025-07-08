@@ -40,13 +40,19 @@ function unmount<TProps extends object>({
 
 export function r2wc<
   TProps extends R2wcBaseProps,
+  TProperties = never,
   TContextProps = never,
   TChildrenElementNames extends string = string,
 >(
   ReactComponent: React.ComponentType<TProps>,
-  options: R2wcOptions<TProps, TContextProps, TChildrenElementNames> = {},
+  options: R2wcOptions<
+    TProps,
+    TProperties,
+    TContextProps,
+    TChildrenElementNames
+  > = {},
 ): CustomElementConstructor {
-  return r2wcCore<TProps, TContextProps>(ReactComponent, options, {
+  return r2wcCore<TProps, TProperties, TContextProps>(ReactComponent, options, {
     mount,
     update,
     unmount,

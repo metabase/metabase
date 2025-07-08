@@ -1,5 +1,6 @@
-import PropTypes from "prop-types";
 import React, { type FC } from "react";
+
+import { Slot } from "embedding-sdk/components/private/Slot";
 
 import { r2wc } from "./r2wc";
 import type { R2wcBaseProps } from "./r2wc-core";
@@ -38,7 +39,7 @@ describe("r2wc", () => {
       return <div>hello, {name}</div>;
     }
 
-    const TestElement = r2wc(TestComponent, { props: ["name"] });
+    const TestElement = r2wc(TestComponent, { propTypes: ["name"] });
 
     customElements.define("test-hello", TestElement);
 
@@ -48,30 +49,6 @@ describe("r2wc", () => {
     await flushPromises();
 
     const child = body.querySelector("test-hello");
-    const div = child?.shadowRoot?.querySelector("div");
-
-    expect(div?.textContent).toBe("hello, Bavin");
-  });
-
-  it("works with proptypes", async () => {
-    function WithProptypes({ name }: { name: string } & R2wcBaseProps) {
-      return <div>hello, {name}</div>;
-    }
-
-    WithProptypes.propTypes = {
-      name: PropTypes.string.isRequired,
-    };
-
-    const WithPropTypesElement = r2wc(WithProptypes);
-
-    customElements.define("with-proptypes", WithPropTypesElement);
-
-    const body = document.body;
-    body.innerHTML = "<with-proptypes name='Bavin'></with-proptypes>";
-
-    await flushPromises();
-
-    const child = body.querySelector("with-proptypes");
     const div = child?.shadowRoot?.querySelector("div");
 
     expect(div?.textContent).toBe("hello, Bavin");
@@ -87,7 +64,7 @@ describe("r2wc", () => {
     }
 
     class TestClassElement extends r2wc(TestClassComponent, {
-      props: ["name"],
+      propTypes: ["name"],
     }) {}
 
     customElements.define("test-class", TestClassElement);
@@ -107,7 +84,7 @@ describe("r2wc", () => {
 
   it("works with shadow DOM `options.shadow === 'open'`", async () => {
     const MyWelcome = r2wc(Greeting, {
-      props: {
+      propTypes: {
         name: "string",
       },
     });
@@ -144,7 +121,9 @@ describe("r2wc", () => {
       camelCaseName: string;
     } & R2wcBaseProps) => <h1>Hello, {camelCaseName}</h1>;
 
-    const MyGreeting = r2wc(CamelCaseGreeting, { props: ["camelCaseName"] });
+    const MyGreeting = r2wc(CamelCaseGreeting, {
+      propTypes: ["camelCaseName"],
+    });
 
     customElements.define("my-dashed-style-greeting", MyGreeting);
 
@@ -197,7 +176,7 @@ describe("r2wc", () => {
     }
 
     const WebOptionsPropsTypeCasting = r2wc(OptionsPropsTypeCasting, {
-      props: {
+      propTypes: {
         stringProp: "string",
         numProp: "number",
         floatProp: "number",
@@ -271,7 +250,7 @@ describe("r2wc", () => {
     }
 
     const WebThemeSelect = r2wc(ThemeSelect, {
-      props: {
+      propTypes: {
         handleClick: "function",
       },
     });
@@ -307,5 +286,146 @@ describe("r2wc", () => {
         button.click();
       }, 0);
     });
+  });
+
+  it("passes context properly to children components", async () => {
+    interface ParentComponentProps {
+      textProp: string;
+      numProp: number;
+      boolProp: boolean;
+      arrProp: string[];
+      objProp: { [key: string]: string };
+      funcProp: () => void;
+    }
+    interface ParentComponentContextProps extends ParentComponentProps {
+      textProperty: string;
+      numProperty: number;
+      boolProperty: boolean;
+      arrProperty: string[];
+      objProperty: { [key: string]: string };
+      funcProperty: () => void;
+    }
+
+    interface ChildComponentProps
+      extends ParentComponentProps,
+        ParentComponentContextProps {}
+
+    const ParentElement = r2wc<
+      R2wcBaseProps & ParentComponentProps,
+      ParentComponentContextProps,
+      ParentComponentContextProps
+    >(
+      ({ container, slot }) => {
+        return <Slot container={container} slot={slot} />;
+      },
+      {
+        propTypes: {
+          textProp: "string",
+          numProp: "number",
+          boolProp: "boolean",
+          arrProp: "json",
+          objProp: "json",
+          funcProp: "function",
+        },
+        contextPropTypes: {
+          textProp: "string",
+          numProp: "number",
+          boolProp: "boolean",
+          arrProp: "json",
+          objProp: "json",
+          funcProp: "function",
+          textProperty: "string",
+          numProperty: "number",
+          boolProperty: "boolean",
+          arrProperty: "json",
+          objProperty: "json",
+          funcProperty: "function",
+        },
+        defineContext: {
+          childrenComponents: ["child-element"],
+          provider: (instance, props: ParentComponentProps) => {
+            return {
+              textProp: props.textProp,
+              numProp: props.numProp,
+              boolProp: props.boolProp,
+              arrProp: props.arrProp,
+              objProp: props.objProp,
+              funcProp: props.funcProp,
+              textProperty: instance.textProperty,
+              numProperty: instance.numProperty,
+              boolProperty: instance.boolProperty,
+              arrProperty: instance.arrProperty,
+              objProperty: instance.objProperty,
+              funcProperty: instance.funcProperty,
+            };
+          },
+        },
+      },
+    );
+    const ChildElement = r2wc<R2wcBaseProps & ChildComponentProps>(
+      ({ textProp }) => {
+        return <div>{textProp}</div>;
+      },
+    );
+
+    (global as any).globalFn = function globalFn() {};
+    (global as any).newFunc = function newFunc() {};
+
+    customElements.define("parent-element", ParentElement);
+    customElements.define("child-element", ChildElement);
+
+    const body = document.body;
+    body.innerHTML = `
+      <parent-element
+        text-prop='hello'
+        obj-prop='{"greeting": "hello, world"}'
+        arr-prop='["hello", "world"]'
+        num-prop='240'
+        bool-prop='true'
+        func-prop='globalFn'
+      >
+        <child-element></child-element>
+      </test-button-element-property>
+    `;
+
+    await flushPromises();
+
+    const parentElement = body.querySelector("parent-element") as HTMLElement &
+      ParentComponentContextProps;
+    const childElement = body.querySelector("child-element") as HTMLElement;
+
+    await flushPromises();
+
+    parentElement.textProperty = "world";
+    parentElement.numProperty = 100;
+    parentElement.boolProperty = false;
+    parentElement.arrProperty = ["foo", "bar"];
+    parentElement.objProperty = { foo: "bar" };
+    parentElement.funcProperty = (global as any).newFunc;
+
+    await flushPromises();
+
+    expect(childElement).toHaveAttribute("text-prop", "hello");
+    expect(childElement).toHaveAttribute("num-prop", "240");
+    expect(childElement).toHaveAttribute("bool-prop", "true");
+    expect(childElement).toHaveAttribute("arr-prop", '["hello","world"]');
+    expect(childElement).toHaveAttribute(
+      "obj-prop",
+      '{"greeting":"hello, world"}',
+    );
+    expect(childElement).toHaveAttribute(
+      "func-prop",
+      expect.stringMatching(/^fn-globalFn-.*/),
+    );
+
+    expect(childElement).toHaveAttribute("text-property", "world");
+    expect(childElement).toHaveAttribute("num-property", "100");
+    expect(childElement).toHaveAttribute("bool-property", "false");
+    expect(childElement).toHaveAttribute("arr-property", '["foo","bar"]');
+    expect(childElement).toHaveAttribute("obj-property", '{"foo":"bar"}');
+    expect(childElement).toHaveAttribute(
+      "func-property",
+      expect.stringMatching(/^fn-newFunc-.*/),
+    );
   });
 });

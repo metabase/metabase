@@ -18,19 +18,24 @@ type PropNames<TProps> = Array<PropName<TProps>>;
 
 export interface R2wcOptions<
   TProps,
+  TProperties = never,
   TContextProps = never,
   TChildrenElementNames extends string = string,
 > {
-  props?:
+  propTypes?:
     | PropNames<TProps>
     | Partial<Record<PropName<TProps>, R2wcPropTransformType>>;
-  contextProps?: Partial<
+  properties?: ArrayOfUnion<keyof TProperties>;
+  contextPropTypes?: Partial<
     Record<PropName<TContextProps>, R2wcPropTransformType>
   >;
   events?: PropNames<TProps> | Partial<Record<PropName<TProps>, EventInit>>;
   defineContext?: {
     childrenComponents: ArrayOfUnion<TChildrenElementNames>;
-    provider: (instance: HTMLElement & TProps & TContextProps) => TContextProps;
+    provider: (
+      instance: HTMLElement & TProperties,
+      props: TProps,
+    ) => TContextProps;
   };
 }
 
@@ -67,26 +72,30 @@ const provideContextToChildrenSymbol = Symbol.for(
   "r2wc.provideContextToChildrenSymbol",
 );
 
-export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
+export function r2wcCore<
+  TProps extends R2wcBaseProps,
+  TProperties,
+  TContextProps,
+>(
   ReactComponent: ComponentType<TProps>,
-  options: R2wcOptions<TProps, TContextProps>,
+  options: R2wcOptions<TProps, TProperties, TContextProps>,
   renderer: R2wcRenderer<TProps>,
 ): CustomElementConstructor {
-  if (!options.props) {
-    options.props = ReactComponent.propTypes
-      ? (Object.keys(ReactComponent.propTypes) as PropNames<TProps>)
-      : [];
+  if (!options.propTypes) {
+    options.propTypes = [];
   }
+
+  if (!options.properties) {
+    options.properties = [] as ArrayOfUnion<keyof TProperties>;
+  }
+
   if (!options.events) {
     options.events = [];
   }
 
-  const propNames = Array.isArray(options.props)
-    ? options.props.slice()
-    : (Object.keys(options.props) as PropNames<TProps>);
-  const contextPropNames = Object.keys(
-    options.contextProps ?? {},
-  ) as PropNames<TContextProps>;
+  const propNames = Array.isArray(options.propTypes)
+    ? options.propTypes.slice()
+    : (Object.keys(options.propTypes) as PropNames<TProps>);
 
   const eventNames = Array.isArray(options.events)
     ? options.events.slice()
@@ -99,15 +108,15 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
   const mapPropAttribute = {} as Record<PropName<TProps>, string>;
   const mapAttributeProp = {} as Record<string, PropName<TProps>>;
 
-  for (const prop of propNames) {
-    propTypes[prop] = Array.isArray(options.props)
+  for (const propName of propNames) {
+    propTypes[propName] = Array.isArray(options.propTypes)
       ? "string"
-      : options.props[prop];
+      : options.propTypes[propName];
 
-    const attribute = toDashedCase(prop);
+    const attribute = toDashedCase(propName);
 
-    mapPropAttribute[prop] = attribute;
-    mapAttributeProp[attribute] = prop;
+    mapPropAttribute[propName] = attribute;
+    mapAttributeProp[attribute] = propName;
   }
 
   for (const event of eventNames) {
@@ -226,7 +235,6 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
       ) {
         // @ts-expect-error dynamic key
         this[propsSymbol][prop] = transform.parse(value, attribute, this);
-
         this[renderSymbol]();
       }
     }
@@ -283,7 +291,7 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
       const { provider } = defineContext;
 
       // @ts-expect-error `this` typecast
-      const contextProps = provider(this);
+      const contextProps = provider(this, this[propsSymbol]);
 
       if (!contextProps) {
         return;
@@ -295,7 +303,9 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
         const rawValue = contextProps[prop];
 
         const type =
-          options.contextProps?.[prop as keyof typeof options.contextProps];
+          options.contextPropTypes?.[
+            prop as keyof typeof options.contextPropTypes
+          ];
         const transform = type ? transforms[type] : null;
 
         if (transform && transform !== noopTransform) {
@@ -319,50 +329,23 @@ export function r2wcCore<TProps extends R2wcBaseProps, TContextProps>(
     }
   }
 
-  // Define getters/setters for regular props
-  for (const prop of propNames) {
-    const attribute = mapPropAttribute[prop];
-    const type = propTypes[prop];
-
-    Object.defineProperty(ReactWebComponent.prototype, prop, {
-      enumerable: true,
-      configurable: true,
-      get() {
-        return this[propsSymbol][prop];
-      },
-      set(value) {
-        this[propsSymbol][prop] = value;
-
-        const transform = type ? transforms[type] : null;
-
-        if (transform && transform !== noopTransform) {
-          // @ts-expect-error dynamic key
-          const attributeValue = transform.stringify(value);
-          const oldAttributeValue = this.getAttribute(attribute);
-
-          if (oldAttributeValue !== attributeValue) {
-            this.setAttribute(attribute, attributeValue);
-          }
-        } else {
+  // Define getters/setters for properties
+  for (const propName of options.properties) {
+    Object.defineProperty(
+      ReactWebComponent.prototype,
+      propName as keyof typeof ReactWebComponent.prototype,
+      {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return this[propsSymbol][propName];
+        },
+        set(value) {
+          this[propsSymbol][propName] = value;
           this[renderSymbol]();
-        }
+        },
       },
-    });
-  }
-
-  // Define getters/setters for context props
-  for (const contextProp of contextPropNames) {
-    Object.defineProperty(ReactWebComponent.prototype, contextProp, {
-      enumerable: true,
-      configurable: true,
-      get() {
-        return this[propsSymbol][contextProp];
-      },
-      set(value) {
-        this[propsSymbol][contextProp] = value;
-        this[renderSymbol]();
-      },
-    });
+    );
   }
 
   return ReactWebComponent;

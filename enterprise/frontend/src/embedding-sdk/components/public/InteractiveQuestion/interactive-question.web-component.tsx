@@ -1,4 +1,10 @@
+import { WebComponentProviders } from "embedding-sdk/components/private/WebComponentProviders/WebComponentProviders";
 import { defineWebComponent } from "embedding-sdk/lib/web-components";
+
+import {
+  type MetabaseProviderWebComponentContextProps,
+  metabaseProviderContextProps,
+} from "../metabase-provider.web-component";
 
 import {
   InteractiveQuestion,
@@ -14,11 +20,19 @@ export type InteractiveQuestionWebComponentProps = Pick<
   "questionId" | "plugins"
 >;
 
-defineWebComponent<InteractiveQuestionWebComponentProps>(
+defineWebComponent<
+  MetabaseProviderWebComponentContextProps &
+    InteractiveQuestionWebComponentProps
+>(
   "interactive-question",
-  ({ container, slot, ...props }) => <InteractiveQuestion {...props} />,
+  ({ container, slot, metabaseProviderProps, ...props }) => (
+    <WebComponentProviders metabaseProviderProps={metabaseProviderProps}>
+      <InteractiveQuestion {...props} />
+    </WebComponentProviders>
+  ),
   {
     propTypes: {
+      ...metabaseProviderContextProps,
       questionId: "id",
       plugins: "json",
     },
