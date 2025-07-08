@@ -136,8 +136,9 @@
             no-default?        (contains? #{nil "NULL" "null"} default)
             ;; leave room for "", or other strings to be nil (unknown)
             is-nullable        ({"YES" true, "NO" false} (.getString rs "IS_NULLABLE"))
-            is-generated       ({"YES" true, "NO" false} (.getString rs "IS_GENERATEDCOLUMN"))
-             ;; IS_AUTOINCREMENT could return nil
+            is-generated       (when (driver/database-supports? driver :describe-is-generated nil) ; if not supported, we might get an inaccurate answer from IS_GENERATEDCOLUMN (e.g clickhouse)
+                                 ({"YES" true, "NO" false} (.getString rs "IS_GENERATEDCOLUMN")))
+            ;; IS_AUTOINCREMENT could return nil
             auto-increment     (.getString rs "IS_AUTOINCREMENT")
             auto-increment?    (= "YES" auto-increment)
             no-auto-increment? (= "NO" auto-increment)
