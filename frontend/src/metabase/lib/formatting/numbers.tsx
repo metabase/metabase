@@ -1,7 +1,7 @@
 import Humanize from "humanize-plus";
-import type { ReactNode } from "react";
+import { type ReactNode, useCallback } from "react";
 
-import MetabaseSettings from "metabase/lib/settings";
+import { useSetting } from "metabase/common/hooks";
 
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
@@ -35,7 +35,6 @@ type FormatNumberOptions = {
   number_style?: string;
   scale?: number;
   type?: string;
-  useInstanceSettings?: boolean;
 };
 
 type FormatNumberJsxOptions = FormatNumberOptions & {
@@ -72,13 +71,6 @@ function getDefaultNumberOptions(options: { decimals?: string | number }) {
   return defaults;
 }
 
-export function getInstanceSettings(options?: FormatNumberOptions) {
-  if (options?.useInstanceSettings) {
-    return MetabaseSettings.get("custom-formatting")?.["type/Number"] ?? {};
-  }
-  return {};
-}
-
 export function formatNumber(
   number: number | bigint,
   options?: FormatNumberOptions,
@@ -89,7 +81,6 @@ export function formatNumber(
 ): string | ReactNode {
   options = {
     ...getDefaultNumberOptions(options),
-    ...getInstanceSettings(options),
     ...options,
   };
 
@@ -194,7 +185,6 @@ export function formatChangeWithSign(
 export function numberFormatterForOptions(options: FormatNumberOptions) {
   options = {
     ...getDefaultNumberOptions(options),
-    ...getInstanceSettings(options),
     ...options,
   };
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
@@ -351,4 +341,38 @@ function abs(a: number | bigint) {
 
 function multiply(a: number | bigint, b: number) {
   return typeof a === "bigint" ? a * BigInt(b) : a * b;
+}
+
+type UseFormatNumberOptions = FormatNumberOptions & {
+  ignoreInstanceSettings?: boolean;
+};
+
+export type NumberFormatter = (
+  number: number | bigint,
+  options?: UseFormatNumberOptions,
+) => string;
+
+/**
+ * Returns a function that formats a number using the given options,
+ * but additionally respects the Metabase instance formatting settings.
+ */
+export function useNumberFormatter(
+  options?: UseFormatNumberOptions,
+): NumberFormatter {
+  const formattingSettings = useSetting("custom-formatting");
+  const numberFormattingSettings = options?.ignoreInstanceSettings
+    ? null
+    : (formattingSettings?.["type/Number"] ?? null);
+
+  const formatter = useCallback(
+    (number: number | bigint, innerOptions: FormatNumberOptions = {}) =>
+      formatNumber(number, {
+        ...numberFormattingSettings,
+        ...options,
+        ...innerOptions,
+      }),
+    [numberFormattingSettings, options],
+  );
+
+  return formatter;
 }
