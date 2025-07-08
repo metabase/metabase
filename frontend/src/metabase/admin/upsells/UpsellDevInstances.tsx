@@ -6,9 +6,9 @@ import { Text } from "metabase/ui";
 
 import { UpsellBanner } from "./components";
 
-type SOURCE = "embedding-page" | "settings-general";
+type LOCATION = "embedding-page" | "settings-general";
 
-export function UpsellDevInstances({ source }: { source: SOURCE }) {
+export function UpsellDevInstances({ location }: { location: LOCATION }) {
   const isDevMode = useSetting("development-mode?");
 
   if (isDevMode) {
@@ -21,7 +21,7 @@ export function UpsellDevInstances({ source }: { source: SOURCE }) {
       campaign="dev_instances"
       buttonText={t`Set up`}
       buttonLink={getStoreUrl("account/new-dev-instance")}
-      source={source}
+      location={location}
       dismissible
     >
       <Text size="sm">

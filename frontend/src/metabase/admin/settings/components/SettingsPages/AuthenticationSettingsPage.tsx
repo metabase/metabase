@@ -32,7 +32,7 @@ export function AuthenticationSettingsPage({ tab }: { tab: string }) {
           <ApiKeysAuthCard />
         </Stack>
         <Box style={{ flexShrink: 0 }}>
-          <UpsellSSO source="authentication-sidebar" />
+          <UpsellSSO location="authentication-sidebar" />
         </Box>
       </Flex>
     </SettingsPageWrapper>
