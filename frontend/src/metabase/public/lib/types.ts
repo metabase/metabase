@@ -21,8 +21,8 @@ export type EmbedResourceParameter = {
 };
 
 export type EmbedResourceDownloadOptions = {
-  pdf: boolean;
-  results: boolean;
+  pdf?: boolean;
+  results?: boolean;
 };
 
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
