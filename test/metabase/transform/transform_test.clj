@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -22,4 +23,6 @@
                                            ["Baz" 30]]])
         (is (driver/create-view! driver/*driver* (u/the-id (mt/db))
                                  "young_users"
-                                 "SELECT * FROM users where age < 25"))))))
+                                 "SELECT * FROM users where age < 25"))
+        (is (= [["Foo"] ["Bar"]]
+               (mt/rows (qp/process-query (mt/native-query {:query "SELECT name FROM \"young_users\""})))))))))
