@@ -75,14 +75,13 @@ https://metabase.example.com/question/42-eg-question?cat=Gizmo&maxprice=50
 
 When you define a variable, the **Variables** side panel will appear. You can set a type for a variable, which changes the kind of filter widget that Metabase presents.
 
-There are four types of variables:
+Variable types include:
 
 - **Text**: a plain input box.
 - **Number**: a plain input box.
 - **Date**: a simple date picker. If you want a more expressive date picker, like specifying a range, you'll want to use a Field Filter.
-- **[Field Filter](#the-field-filter-variable-type)**: different filter widgets, depending on the mapped field.
-
-That last variable type, [Field Filter](#the-field-filter-variable-type), is special; it lets you create "smart" filter widgets, like a search box, or a dropdown menu of values, or a dynamic date picker that allows you to specify a date range.
+- **[Time grouping parameter](#time-grouping-parameter)**: allows people to change how the results are grouped by a date column: by month, week, day, etc. 
+- **[Field Filter](#the-field-filter-variable-type)**: create "smart" filter widgets with date pickers or dropdown menus.
 
 You can include multiple variables in the query, and Metabase will add multiple filter widgets to the question. When you have multiple filter widgets, you can click on a filter widget and drag it around to rearrange the order.
 
@@ -412,6 +411,38 @@ Or with multiple optional filters:
 ]
 {% endraw %}
 ```
+
+## Time grouping parameter
+
+You can insert a time grouping parameter like so:
+
+```sql
+{% raw %}{{mb.time_grouping("Time grouping", "created_at")}}{% endraw %}
+```
+
+The syntax for the time grouping variable: `mb.time_grouping(name, column)`:
+
+- `mb.time_grouping` is the function that handles the time grouping. It takes two arguments: `name` and `column`.
+- `name` is what you want to call the parameter. The name can be anything, but it must be wrapped in double quote marks. E.g., `"Unit"` or `"Time Grouping"`. By default, this name will change the label on the widget. You can also set a different label for the widget in the variables sidebar.
+- `column` is the name of the column you want to group by. The column name must be wrapped in double quote marks, e.g., `"created_at"` (`created_at` without the quotes won't work).
+
+Here's an an example that counts the number of orders in the `orders` table and inserts a variable to group by the `created_at` column.
+
+```sql
+{% raw %}
+SELECT
+  COUNT(*) AS "Orders",
+  {{mb.time_grouping("Time grouping", "created_at")}} AS "Created At"
+FROM
+  orders
+GROUP BY
+  {{mb.time_grouping("Time grouping", "created_at")}}
+{% endraw %}
+```
+
+Like in all SQL groupings, you need to include the variable in both the `SELECT` and and `GROUP BY` clauses.
+
+Like with all variables, you can set a default value (e.g., "month"). With this time grouping value, you're limited to the options for the [time grouping parameter](../../dashboards/filters.md#time-grouping-parameter).
 
 ## Connecting a SQL question to a dashboard filter
 
