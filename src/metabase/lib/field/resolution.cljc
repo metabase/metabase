@@ -365,7 +365,12 @@
    field-ref    :- :mbql.clause/field]
   (when-some [cols (some-> (lib.util/previous-stage query stage-number) stage-attached-metadata)]
     (let [cols (for [col cols]
-                 (assoc col :lib/source :source/previous-stage))]
+                 ;; HACK TODO (Cam 7/7/25) -- some of the functions called by [[resolve-column-in-metadata]] fail if
+                 ;; `col` doesn't have `:lib/source` for whatever reason; we probably SHOULD go fix that stuff but
+                 ;; until then just hacc this to make this work. `:source/card` seems to be the least fussy source --
+                 ;; some of the other ones trigger validation like "no `:lib/expression-name` for columns from
+                 ;; `:source/previous-stage`" or "no join alias for columns from `:source/native`"
+                 (u/assoc-default col :lib/source :source/card))]
       (when-some [col (resolve-column-in-metadata query field-ref cols)]
         (-> col
             (u/select-non-nil-keys previous-stage-propagated-keys)
