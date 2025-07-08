@@ -31,7 +31,7 @@ interface UserFormProps {
   submitText?: string;
   external?: boolean;
   edit?: boolean;
-  userId?: UserId;
+  userId?: UserId | null;
 }
 
 export const UserForm = ({

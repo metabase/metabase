@@ -6,9 +6,15 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Icon, Select, Text, Tooltip } from "metabase/ui";
 import QuestionParameterTargetWidget from "metabase-enterprise/sandboxes/containers/QuestionParameterTargetWidget";
-import type { GroupTableAccessPolicyDraft } from "metabase-enterprise/sandboxes/types";
+import type {
+  DataAttributeMap,
+  GroupTableAccessPolicyDraft,
+  MappingEditorEntry,
+} from "metabase-enterprise/sandboxes/types";
 import {
   addEntry,
+  buildEntries,
+  buildMapping,
   getRawDataQuestionForTable,
   removeEntry,
   renderUserAttributesForSelect,
@@ -16,38 +22,21 @@ import {
   replaceEntryValue,
 } from "metabase-enterprise/sandboxes/utils";
 import type {
+  DimensionRef,
   GroupTableAccessPolicy,
   Table,
   UserAttributeKey,
 } from "metabase-types/api";
 
-type MappingValue = string;
-type MappingType = Record<string, MappingValue>;
-
+type ValueType = string | DimensionRef | null;
 export interface MappingEditorProps {
-  value: MappingType;
-  onChange: (val: MappingType) => void;
+  value: DataAttributeMap<ValueType>;
+  onChange: (val: DataAttributeMap<ValueType>) => void;
   shouldUseSavedQuestion: boolean;
   attributesOptions: UserAttributeKey[];
   policyTable: Table | undefined;
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft;
 }
-
-export type MappingEditorEntry = {
-  key: string;
-  value: string;
-};
-
-const buildEntries = (mapping: MappingType): MappingEditorEntry[] =>
-  Object.entries(mapping).map(([key, value]) => ({ key, value }));
-
-const buildMapping = (entries: MappingEditorEntry[]): MappingType =>
-  entries.reduce((memo: MappingType, { key, value }) => {
-    if (key) {
-      memo[key] = value;
-    }
-    return memo;
-  }, {});
 
 export const DataAttributeMappingEditor = ({
   value: mapping,
@@ -57,11 +46,11 @@ export const DataAttributeMappingEditor = ({
   policy,
   policyTable,
 }: MappingEditorProps) => {
-  const [entries, setEntries] = useState<MappingEditorEntry[]>(
-    buildEntries({ ...mapping }),
+  const [entries, setEntries] = useState<MappingEditorEntry<ValueType>[]>(
+    buildEntries<ValueType>({ ...mapping }),
   );
 
-  const handleChange = (newEntries: MappingEditorEntry[]) => {
+  const handleChange = (newEntries: MappingEditorEntry<ValueType>[]) => {
     setEntries(newEntries);
     onChange(buildMapping(newEntries));
   };
@@ -106,7 +95,9 @@ export const DataAttributeMappingEditor = ({
                 <ColumnPicker
                   value={value}
                   onChange={(newValue) =>
-                    handleChange(replaceEntryValue(entries, index, newValue))
+                    handleChange(
+                      replaceEntryValue<ValueType>(entries, index, newValue),
+                    )
                   }
                   policyTable={policyTable}
                   policy={policy}
@@ -137,7 +128,9 @@ export const DataAttributeMappingEditor = ({
                 <Button
                   leftSection={<Icon name="close" />}
                   variant="subtle"
-                  onClick={() => handleChange(removeEntry(entries, index))}
+                  onClick={() =>
+                    handleChange(removeEntry<ValueType>(entries, index))
+                  }
                   color={"text"}
                   data-testid="remove-mapping"
                 />
@@ -152,7 +145,7 @@ export const DataAttributeMappingEditor = ({
                 <Button
                   leftSection={<Icon name="add" />}
                   variant="subtle"
-                  onClick={() => handleChange(addEntry(entries))}
+                  onClick={() => handleChange(addEntry<ValueType>(entries))}
                 >
                   {t`Add a filter`}
                 </Button>
@@ -199,7 +192,7 @@ const ColumnPicker = ({
   policy,
   shouldUseSavedQuestion,
 }: {
-  value: string;
+  value: ValueType;
   onChange?: (value: string) => void;
   policyTable?: Table;
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft;

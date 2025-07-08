@@ -21,7 +21,7 @@ export type StructuredUserAttribute = StructuredAttributeBase & {
 
 export type StructuredUserAttributes = Record<
   UserAttributeKey,
-  StructuredAttribute
+  StructuredUserAttribute
 >;
 
 export interface BaseUser {

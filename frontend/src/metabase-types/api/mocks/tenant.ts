@@ -6,5 +6,6 @@ export const createMockTenant = (opts?: Partial<Tenant>): Tenant => ({
   slug: "foo",
   member_count: 0,
   is_active: true,
+  attributes: {},
   ...opts,
 });

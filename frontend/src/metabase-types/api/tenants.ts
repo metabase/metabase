@@ -1,4 +1,4 @@
-import type { AttributeMap } from "./user";
+import type { UserAttributeMap } from "./user";
 
 export type Tenant = {
   id: number;
@@ -6,7 +6,7 @@ export type Tenant = {
   slug: string;
   member_count: number;
   is_active: boolean;
-  attributes: AttributeMap | null;
+  attributes: UserAttributeMap | null;
 };
 
 export type CreateTenantInput = Pick<Tenant, "name" | "slug">;
