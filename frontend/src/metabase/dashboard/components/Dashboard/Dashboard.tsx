@@ -7,10 +7,11 @@ import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -19,8 +20,21 @@ import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "../../constants";
+import {
+  DashboardInfoButton,
+  ExportAsPdfButton,
+  FullscreenToggle,
+  NightModeToggleButton,
+} from "../DashboardHeader/buttons";
+import {
+  DashboardParameterList,
+  type DashboardParameterListProps,
+} from "../DashboardParameterList";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
+import { DashboardTabs } from "../DashboardTabs";
+import { DashboardTitle } from "../DashboardTitle";
+import { RefreshWidget } from "../RefreshWidget";
 
 import S from "./Dashboard.module.css";
 import { Grid } from "./components/Grid";
@@ -216,4 +230,24 @@ function Dashboard({ className }: { className?: string }) {
     </Flex>
   );
 }
+
+function _DashboardParameterList(
+  props: Omit<DashboardParameterListProps, "parameters">,
+) {
+  const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
+
+  return <DashboardParameterList parameters={parameters} {...props} />;
+}
+
+Dashboard.Grid = Grid;
+Dashboard.Header = DashboardHeader;
+Dashboard.Title = DashboardTitle;
+Dashboard.Tabs = DashboardTabs;
+Dashboard.ParametersList = _DashboardParameterList;
+Dashboard.FullscreenButton = FullscreenToggle;
+Dashboard.ExportAsPdfButton = ExportAsPdfButton;
+Dashboard.InfoButton = DashboardInfoButton;
+Dashboard.NightModeButton = NightModeToggleButton;
+Dashboard.RefreshPeriod = RefreshWidget;
+
 export { Dashboard };
