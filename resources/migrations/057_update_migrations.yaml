@@ -60,14 +60,14 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-    id: v57.2025-07-08T17:13:13
-    author: lbrdnk
-    comment: Add unique constraint onto transform_view table
-    changes:
-      - addUniqueConstraint:
-          tableName: transform_view
-          column_names: database_id, view_schema, view_name
-          constraintName: unique_transform_view_database_id_view_schema_view_name
+      id: v57.2025-07-08T17:13:13
+      author: lbrdnk
+      comment: Add unique constraint onto transform_view table
+      changes:
+        - addUniqueConstraint:
+            tableName: transform_view
+            columnNames: database_id, view_schema, view_name
+            constraintName: unique_transform_view_database_id_view_schema_view_name
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
