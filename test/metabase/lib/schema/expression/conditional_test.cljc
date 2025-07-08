@@ -38,11 +38,8 @@
                  (mr/validate :mbql.clause/case
                               (into [:case {:lib/uuid (str (random-uuid))}] args)))
       [[[true 1]] 1]
-
       [[[true false]] false]
-
       [[[true true]] true]
-
       [[[true true]] true])
     (are [args] (false?
                  (mr/validate :mbql.clause/case
