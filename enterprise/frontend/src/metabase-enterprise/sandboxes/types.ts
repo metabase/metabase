@@ -31,3 +31,6 @@ export type GroupTableAccessPolicyDraft = Pick<
     [key: string]: string | null;
   };
 };
+
+export type MappingValue = string;
+export type MappingType = Record<string, MappingValue>;

@@ -4,11 +4,10 @@ import { t } from "ttag";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
 import FormField from "metabase/common/components/FormField";
-import { MappingEditor } from "metabase/common/components/MappingEditor";
-import { Accordion, Box, Loader } from "metabase/ui";
+import { Accordion, Box, Loader, Text } from "metabase/ui";
 import type { UserId } from "metabase-types/api";
 
-import { getSpecialEntries } from "../utils";
+import { LoginAttributeMappingEditor } from "./LoginAttributeMappingEditor";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   name: string;
@@ -43,20 +42,21 @@ export const LoginAttributesWidget = ({
   const { data: userData, isLoading } = useGetUserQuery(userId ?? skipToken);
   return (
     <FormField className={className} style={style} description={description}>
-      <Accordion>
+      <Accordion mt="xl">
         <Accordion.Item value="login-attributes">
-          <Accordion.Control>{title}</Accordion.Control>
+          <Accordion.Control>
+            <Text fz="lg">{title}</Text>
+          </Accordion.Control>
           <Accordion.Panel>
             <Box pt="md">
               {isLoading ? (
                 <Loader />
               ) : (
-                <MappingEditor
-                  specialEntries={getSpecialEntries(userData)}
-                  value={userId ? {} : value}
+                <LoginAttributeMappingEditor
+                  simpleAttributes={value}
+                  structuredAttributes={userData?.structured_attributes ?? {}}
                   onChange={handleChange}
                   onError={handleError}
-                  addText={t`Add an attribute`}
                 />
               )}
             </Box>
