@@ -687,22 +687,8 @@
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate (lib/count))
                     (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year))
-                    (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
-                    #_lib/append-stage
-                    #_(as-> query (let [cols                 (lib/fieldable-columns query)
-                                        created-at-month-col (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Created At: Month"})
-                                        count-col            (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Count"})]
-                                    (lib/with-fields query [created-at-month-col count-col]))))]
+                    (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)))]
       (testing "lib/returned-columns should use deduplicated names (like the QP does) for `:name`"
-        #_(is (=? [{:lib/original-name     "CREATED_AT"
-                    :lib/deduplicated-name "CREATED_AT_2"
-                    :name                  "CREATED_AT_2"
-                    :display-name          "Created At: Month"}
-                   {:lib/original-name     "count"
-                    :lib/deduplicated-name "count"
-                    :name                  "count"
-                    :display-name          "Count"}]
-                  (lib/returned-columns query)))
         (is (=? [{:lib/original-name     "CREATED_AT"
                   :lib/deduplicated-name "CREATED_AT"
                   :name                  "CREATED_AT"
@@ -807,3 +793,22 @@
                 "Q1 → Category"
                 "Q1 → Count"]
                (map :display-name (lib/returned-columns query))))))))
+
+(deftest ^:parallel expressions-with-aggregations-and-breakouts-returned-columns-test
+  (let [query (lib/query
+               meta/metadata-provider
+               (lib.tu.macros/mbql-query orders
+                 {:aggregation [[:count] [:sum $orders.quantity]]
+                  :breakout    [$orders.user-id->people.state
+                                $orders.user-id->people.source
+                                $orders.product-id->products.category]
+                  :expressions {:test-expr [:ltrim "wheeee"]}
+                  :fields      [[:expression "test-expr"]]}))]
+    (is (= ["User → State"              ; from breakouts
+            "User → Source"             ; from breakouts
+            "Product → Category"        ; from breakouts
+            "Count"                     ; from aggregations
+            "Sum of Quantity"           ; from aggregations
+            "test-expr"]                ; from expressions/fields ???
+           (binding [lib.metadata.calculation/*display-name-style* :long]
+             (mapv :display-name (lib/returned-columns query)))))))

@@ -23,7 +23,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(def DisplayNameStyle
+(mr/def ::display-name-style
   "Schema for valid values of `display-name-style` as passed to [[display-name-method]].
 
   * `:default`: normal style used for 99% of FE stuff. For example a column that comes from a joined table might return
@@ -52,7 +52,7 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (mu/defn ^:export display-name :- :string
-  "Calculate a nice human-friendly display name for something. See [[DisplayNameStyle]] for a the difference between
+  "Calculate a nice human-friendly display name for something. See [[::display-name-style]] for a the difference between
   different `style`s."
   ([query]
    (display-name query query))
@@ -66,7 +66,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     x
-    style        :- DisplayNameStyle]
+    style        :- ::display-name-style]
    (or
     ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
     ((some-fn :display-name :lib/expression-name) (lib.options/options x))
