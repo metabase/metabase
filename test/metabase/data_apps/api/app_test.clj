@@ -7,10 +7,10 @@
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
-(defn- get-app-url
-  "Helper function to construct a properly URL-encoded app endpoint."
-  [app-url]
-  (str "/app/" (codec/url-encode app-url)))
+(defn- get-app-slug
+  "Helper function to construct a properly slug-encoded app endpoint."
+  [app-slug]
+  (str "/app/" (codec/url-encode app-slug)))
 
 (defn- get-app-list
   "Helper function to fetch the list of apps."
@@ -40,9 +40,9 @@
 
   (testing "GET /api/app/ - pagination works"
     (data-apps.tu/with-released-app!
-      [app1 {:name "App 1" :url "/app1"}]
+      [app1 {:name "App 1" :slug "/app1"}]
       (data-apps.tu/with-released-app!
-        [app2 {:name "App 2" :url "/app2"}]
+        [app2 {:name "App 2" :slug "/app2"}]
         (let [response (filter-apps-by-ids (get-app-list :crowberto 200 "limit=1&offset=0")
                                            #{(:id app1) (:id app2)})]
           (is (=? {:data [{:id (:id app2)}]
@@ -51,49 +51,49 @@
                    :total (mt/malli=? pos-int?)}
                   response)))))))
 
-(deftest get-published-app-by-url-test
-  (testing "GET /api/app/:url - fetch specific published app"
+(deftest get-published-app-by-slug-test
+  (testing "GET /api/app/:slug - fetch specific published app"
     (data-apps.tu/with-released-app!
-      [app {:url "my-test-app"}]
-      (is (=? {:id (:id app)
-               :name (:name app)
-               :url (:url app)
+      [app {:slug "my-test-app"}]
+      (is (=? {:id         (:id app)
+               :name       (:name app)
+               :slug       (:slug app)
                :definition (mt/malli=? :map)}
-              (mt/user-http-request :crowberto :get 200 (get-app-url "my-test-app"))))))
+              (mt/user-http-request :crowberto :get 200 (get-app-slug "my-test-app"))))))
 
-  (testing "GET /api/app/:url - returns 404 for non-existent app"
-    (mt/user-http-request :crowberto :get 404 (get-app-url "non-existent-app")))
+  (testing "GET /api/app/:slug - returns 404 for non-existent app"
+    (mt/user-http-request :crowberto :get 404 (get-app-slug "non-existent-app")))
 
-  (testing "GET /api/app/:url - returns 404 for app private app"
-    (data-apps.tu/with-data-app [app {:status :private
-                                      :url     "unreleased-app"}]
-      (mt/user-http-request :crowberto :get 404 (get-app-url "unreleased-app"))))
+  (testing "GET /api/app/:slug - returns 404 for app private app"
+    (data-apps.tu/with-data-app! [app {:status :private
+                                       :slug   "unreleased-app"}]
+      (mt/user-http-request :crowberto :get 404 (get-app-slug "unreleased-app"))))
 
-  (testing "GET /api/app/:url - returns 404 for app archvied app"
-    (data-apps.tu/with-data-app [app {:status :archived
-                                      :url     "unreleased-app"}]
-      (mt/user-http-request :crowberto :get 404 (get-app-url "unreleased-app"))))
+  (testing "GET /api/app/:slug - returns 404 for app archvied app"
+    (data-apps.tu/with-data-app! [app {:status :archived
+                                       :slug   "unreleased-app"}]
+      (mt/user-http-request :crowberto :get 404 (get-app-slug "unreleased-app"))))
 
-  (testing "GET /api/app/:url - returns 404 for app released but archvived apps"
+  (testing "GET /api/app/:slug - returns 404 for app released but archvived apps"
     (data-apps.tu/with-released-app! [app]
       (t2/update! :model/DataApp (:id app) {:status :archived})
-      (mt/user-http-request :crowberto :get 404 (get-app-url "unreleased-app")))))
+      (mt/user-http-request :crowberto :get 404 (get-app-slug "unreleased-app")))))
 
-(deftest get-published-app-url-encoding-test
-  (testing "GET /api/app/:url - handles URL-encoded paths correctly"
+(deftest get-published-app-slug-encoding-test
+  (testing "GET /api/app/:slug - handles slug-encoded paths correctly"
     (data-apps.tu/with-released-app!
-      [app {:url "my-app/with-slash"}]
-      (let [response (mt/user-http-request :crowberto :get 200 (get-app-url "my-app/with-slash"))]
+      [app {:slug "my-app/with-slash"}]
+      (let [response (mt/user-http-request :crowberto :get 200 (get-app-slug "my-app/with-slash"))]
         (is (=? {:id (:id app)
                  :name (:name app)
-                 :url "my-app/with-slash"}
+                 :slug "my-app/with-slash"}
                 response))))
 
     (testing "with special characters"
       (data-apps.tu/with-released-app!
-        [app {:url "my app with spaces"}]
-        (let [response (mt/user-http-request :crowberto :get 200 (get-app-url "my app with spaces"))]
+        [app {:slug "my app with spaces"}]
+        (let [response (mt/user-http-request :crowberto :get 200 (get-app-slug "my app with spaces"))]
           (is (=? {:id (:id app)
                    :name (:name app)
-                   :url "my app with spaces"}
+                   :slug "my app with spaces"}
                   response)))))))

@@ -11,25 +11,25 @@
     (data-apps.tu/with-data-app-cleanup!
       (mt/with-test-user :crowberto
         (let [create-response (mt/user-http-request :crowberto :post 200 (data-apps.tu/data-app-url)
-                                                    {:name "My Data App"
-                                                     :url "/my-data-app"
+                                                    {:name        "My Data App"
+                                                     :slug        "/my-data-app"
                                                      :description "A comprehensive test app"})
               app-id (:id create-response)]
           (testing "Create returns expected fields"
-            (is (=? {:id (mt/malli=? pos-int?)
-                     :name "My Data App"
-                     :url "/my-data-app"
+            (is (=? {:id          (mt/malli=? pos-int?)
+                     :name        "My Data App"
+                     :slug        "/my-data-app"
                      :description "A comprehensive test app"
-                     :creator_id (mt/user->id :crowberto)}
+                     :creator_id  (mt/user->id :crowberto)}
                     create-response)))
 
           (testing "Update app fields"
             (let [update-response (mt/user-http-request :crowberto :put 200 (data-apps.tu/data-app-url app-id)
-                                                        {:name "Updated Data App"
-                                                         :url "/updated-data-app"
+                                                        {:name        "Updated Data App"
+                                                         :slug        "/updated-data-app"
                                                          :description "Updated description"})]
-              (is (=? {:name "Updated Data App"
-                       :url "/updated-data-app"
+              (is (=? {:name        "Updated Data App"
+                       :slug        "/updated-data-app"
                        :description "Updated description"}
                       update-response))))
 
@@ -83,7 +83,7 @@
 
 (deftest definition-validation-test
   (testing "Validation of definition fields"
-    (data-apps.tu/with-data-app
+    (data-apps.tu/with-data-app!
       [app {}]
       (testing "Backend ignores user-provided revision_number and sets it automatically"
         (let [definition-response (mt/user-http-request :crowberto :put 200 (data-apps.tu/data-app-url (:id app) "/definition")
@@ -93,10 +93,10 @@
 
 (deftest multiple-releases-retraction-test
   (testing "Multiple releases with old releases being retracted"
-    (data-apps.tu/with-data-app
-      [{app-id :id :as app} {:name "Multi Release App"
-                             :url "/multi-release-app"
-                             :description "App for testing multiple releases"}]
+    (data-apps.tu/with-data-app!
+      [{app-id :id} {:name        "Multi Release App"
+                     :slug        "/multi-release-app"
+                     :description "App for testing multiple releases"}]
       (testing "Create first definition and release"
         (mt/user-http-request :crowberto :put 200 (data-apps.tu/data-app-url app-id "/definition")
                               {:config data-apps.tu/default-app-definition-config})

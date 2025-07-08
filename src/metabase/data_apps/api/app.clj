@@ -29,8 +29,8 @@
      :limit  limit
      :offset offset}))
 
-(api.macros/defendpoint :get "/:url"
+(api.macros/defendpoint :get "/:slug"
   "Fetch the published definition of a data app."
-  [{:keys [url]} :- [:map [:url :string]]]
-  (-> (data-apps.models/get-published-data-app url)
+  [{:keys [slug]} :- [:map [:slug :string]]]
+  (-> (data-apps.models/get-published-data-app slug)
       api/read-check))

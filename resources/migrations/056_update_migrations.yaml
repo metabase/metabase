@@ -212,15 +212,6 @@ databaseChangeLog:
                     nullable: false
                     unique: true
               - column:
-                  name: creator_id
-                  remarks: the creator
-                  type: int
-                  constraints:
-                    nullable: false
-                    references: core_user(id)
-                    foreignKeyName: fk_data_app_creator_id
-                    deleteCascade: true
-              - column:
                   name: status
                   remarks: Status of the app (private, published, archived)
                   type: varchar(32)

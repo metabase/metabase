@@ -52,7 +52,7 @@
   "Create a new data app with optional initial definition."
   [_route _query body :- [:map
                           [:name ms/NonBlankString]
-                          [:url ms/NonBlankString]
+                          [:slug ms/NonBlankString]
                           [:description {:optional true} [:maybe :string]]
                           [:definition {:optional true} [:maybe :map]]]]
   (api/create-check :model/DataApp body)
@@ -64,7 +64,7 @@
    _query
    body :- [:map
             [:name ms/NonBlankString]
-            [:url ms/NonBlankString]
+            [:slug ms/NonBlankString]
             [:description {:optional true} [:maybe :string]]]]
   (let [existing-data-app (get-data-app id)]
     (api/update-check existing-data-app body)

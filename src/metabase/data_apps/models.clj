@@ -172,9 +172,8 @@
 
 (defn get-published-data-app
   "Get the published version of a data app by id."
-  [url]
-  #p url
-  (let [app                 (t2/select-one :model/DataApp :url url :status :published)
+  [slug]
+  (let [app                 (t2/select-one :model/DataApp :slug slug :status :published)
         _                   (when-not app
                               (throw (ex-info "Not found." {:status-code 404})))
         released-definition (released-definition (:id app))]

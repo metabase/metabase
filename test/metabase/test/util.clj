@@ -166,10 +166,18 @@
    :model/DataApp
    (fn [_] (default-timestamped
             {:name        (u.random/random-name)
-             :url         (str "/" (u.random/random-name))
+             :slug        (str "/" (u.random/random-name))
              :description (str "Test description for " (u.random/random-name))
              :status      :private
              :creator_id  (user-id :crowberto)}))
+
+   :model/DataAppDefinition
+   (fn [_] {:created_at :%now
+            :creator_id (user-id :crowberto)})
+
+   :model/DataAppRelease
+   (fn [_] {:released_at :%now
+            :creator_id (user-id :crowberto)})
 
    :model/Dimension
    (fn [_] (default-timestamped
