@@ -153,10 +153,11 @@ export const DataModel = ({ children, location, params }: Props) => {
           )}
 
           {!isEmptyStateShown && (
-            <Box
+            <Stack
               className={S.column}
               flex={COLUMN_CONFIG.field.flex}
               h="100%"
+              justify={error ? "center" : undefined}
               maw={COLUMN_CONFIG.field.max}
               miw={COLUMN_CONFIG.field.min}
             >
@@ -181,7 +182,7 @@ export const DataModel = ({ children, location, params }: Props) => {
                   )}
                 </Flex>
               </LoadingAndErrorWrapper>
-            </Box>
+            </Stack>
           )}
 
           {!isEmptyStateShown && field && table && isPreviewOpen && (
