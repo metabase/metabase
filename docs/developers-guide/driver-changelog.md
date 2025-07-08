@@ -20,6 +20,8 @@ title: Driver interface changelog
   replace existing keys like `:alias`, `:join-alias`, or `:name`; make sure you use `driver-api/qp.add.alias`,
   `driver-api/qp.add.source-table`, and `driver-api/qp.add.source-alias` respectively.
 
+- Extend `datetime()` to accept UTF-8 encoded binary and numbers (unix timestamps) in addition to strings.
+
 ## Metabase 0.55.0
 
 - Add the multi-method `->date` that allows the driver to control how to cast strings and temporal types to dates.
