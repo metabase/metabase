@@ -477,14 +477,16 @@ export function DashCardVisualization({
 
   return (
     <div
-      className={cx(CS.flexFull, {
-        [CS.overflowAuto]: visualizationOverlay,
-        [CS.overflowHidden]: !visualizationOverlay,
+      className={cx(CS.flexFull, CS.fullHeight, {
         [CS.pointerEventsNone]: isEditingDashboardLayout,
       })}
       ref={containerRef}
     >
       <Visualization
+        className={cx(CS.flexFull, {
+          [CS.overflowAuto]: visualizationOverlay,
+          [CS.overflowHidden]: !visualizationOverlay,
+        })}
         dashboard={dashboard ?? undefined}
         dashcard={dashcard}
         rawSeries={series}
