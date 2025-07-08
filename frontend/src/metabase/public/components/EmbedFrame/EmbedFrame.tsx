@@ -300,10 +300,9 @@ export const EmbedFrame = ({
 };
 
 function useGlobalTheme(theme: DisplayTheme | undefined) {
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   useEffect(() => {
     // We don't want to modify user application DOM when using the SDK.
-    if (isEmbeddingSdk || theme == null) {
+    if (isEmbeddingSdk() || theme == null) {
       return;
     }
 
@@ -322,7 +321,7 @@ function useGlobalTheme(theme: DisplayTheme | undefined) {
         );
       }
     };
-  }, [isEmbeddingSdk, theme]);
+  }, [theme]);
 }
 
 function isParametersWidgetContainersSticky(parameterCount: number) {
