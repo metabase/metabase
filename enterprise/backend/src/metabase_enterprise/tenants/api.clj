@@ -18,15 +18,16 @@
   [_route-params
    _query-params
    tenant :- [:map {:closed true}
-              [:name ms/NonBlankString]
-              [:slug Slug]]]
+              [:name       ms/NonBlankString]
+              [:attributes {:optional true} [:maybe tenant/Attributes]]
+              [:slug       Slug]]]
   (api/check-400 (not (tenant/tenant-exists? tenant))
                  "This tenant name or slug is already taken.")
   (t2/insert! :model/Tenant tenant))
 
 (defn- present-tenants [tenants]
   (->> (t2/hydrate tenants :member_count)
-       (map #(select-keys % [:id :name :slug :is_active :member_count]))))
+       (map #(select-keys % [:id :name :slug :is_active :member_count :attributes]))))
 
 (defn- present-tenant [tenant]
   (first (present-tenants [tenant])))
@@ -46,14 +47,15 @@
                                                           "deactivated" [:= :is_active false])))))})
 
 (api.macros/defendpoint :put ["/:id" :id #"[^/]+"]
-  "Update a tenant (right now, only name)"
+  "Update a tenant, can set name, attributes, or whether this tenant is active."
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    tenant :- [:map {:closed true}
-              [:name {:optional true} [:maybe ms/NonBlankString]]
-              [:is_active {:optional true} [:maybe ms/BooleanValue]]]]
+              [:name       {:optional true} [:maybe ms/NonBlankString]]
+              [:attributes {:optional true} [:maybe tenant/Attributes]]
+              [:is_active  {:optional true} [:maybe ms/BooleanValue]]]]
   (when (:name tenant)
-    (api/check-400 (not (t2/exists? :model/Tenant :name (:name tenant)))
+    (api/check-400 (not (t2/exists? :model/Tenant :name (:name tenant) :id [:not= id]))
                    "This name is already taken."))
   (t2/update! :model/Tenant {:id id} tenant)
   (present-tenant (t2/select-one :model/Tenant :id id)))
