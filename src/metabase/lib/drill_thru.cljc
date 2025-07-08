@@ -38,7 +38,7 @@
   lib.drill-thru.zoom/keep-me)
 
 (defmethod lib.metadata.calculation/display-info-method ::drill-thru
-  [query stage-number drill-thru]
+  [query stage-number drill-thru _options]
   (lib.drill-thru.common/drill-thru-info-method query stage-number drill-thru))
 
 ;; TODO: Different ways to apply drill-thru to a query.

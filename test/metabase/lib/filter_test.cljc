@@ -907,7 +907,7 @@
                                     {:column-type :type/Boolean :v true}
                                     {:column-type :type/Coordinate :v 1}}
           [query desired] (matrix/test-queries column-type)]
-    (let [col (matrix/find-first desired (lib/filterable-columns query))
+    (let [col (matrix/find-first query desired (lib/filterable-columns query))
           query' (lib/filter query (lib/= col v))
           parts (lib/expression-parts query' (first (lib/filters query')))]
       (is (=? (lib.filter.operator/filter-operators {:lib/type :metadata/column :name "expected" :base-type column-type})

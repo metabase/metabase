@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
    [metabase.lib.field.util :as lib.field.util]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
@@ -57,64 +58,65 @@
       [:fk-field-id [:ref ::lib.schema.id/field]]]]]])
 
 (defmethod lib.metadata.calculation/metadata-method :metadata/column-group
-  [_query _stage-number column-group]
+  [_query _stage-number column-group _options]
   column-group)
 
 (defmulti ^:private display-info-for-group-method
-  {:arglists '([query stage-number column-group])}
-  (fn [_query _stage-number column-group]
-    (::group-type column-group)))
+  {:arglists '([query stage-number column-group options])}
+  (fn [_query _stage-number column-group _options]
+    (::group-type column-group))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod display-info-for-group-method :group-type/main
-  [query stage-number _column-group]
+  [query stage-number _column-group options]
   (merge
    (let [stage (lib.util/query-stage query stage-number)]
      (or
       (when-let [table (some->> (:source-table stage) (lib.metadata/table query))]
-        (lib.metadata.calculation/display-info query stage-number table))
+        (lib.metadata.calculation/display-info query stage-number table options))
       (when-let [card (some->> (:source-card stage) (lib.metadata/card query))]
-        (lib.metadata.calculation/display-info query stage-number card))
+        (lib.metadata.calculation/display-info query stage-number card options))
       ;; multi-stage queries (#30108)
       (when (next (:stages query))
         {:display-name (i18n/tru "Summaries")})
       ;; if this is a native query or something else that doesn't have a source Table or source Card then use the
       ;; stage display name.
-      {:display-name (lib.metadata.calculation/display-name query stage-number stage)}))
+      {:display-name (lib.metadata.calculation/display-name query stage-number stage options)}))
    {:is-main-group          true
     :is-from-join           false
     :is-implicitly-joinable false}))
 
 (defmethod display-info-for-group-method :group-type/join.explicit
-  [query stage-number {:keys [join-alias table-id card-id], :as _column-group}]
+  [query stage-number {:keys [join-alias table-id card-id], :as _column-group} options]
   (merge
    (or
     (when join-alias
       (when-let [join (lib.join/maybe-resolve-join query stage-number join-alias)]
-        (lib.metadata.calculation/display-info query stage-number join)))
+        (lib.metadata.calculation/display-info query stage-number join options)))
     (when table-id
       (when-let [table (lib.metadata/table query table-id)]
-        (lib.metadata.calculation/display-info query stage-number table)))
+        (lib.metadata.calculation/display-info query stage-number table options)))
     (when card-id
       (if-let [card (lib.metadata/card query card-id)]
-        (lib.metadata.calculation/display-info query stage-number card)
+        (lib.metadata.calculation/display-info query stage-number card options)
         {:display-name (lib.card/fallback-display-name card-id)})))
    {:is-main-group          false
     :is-from-join           true
     :is-implicitly-joinable false}))
 
 (defmethod display-info-for-group-method :group-type/join.implicit
-  [query stage-number {:keys [fk-field-id fk-field-name fk-join-alias], :as _column-group}]
+  [query stage-number {:keys [fk-field-id fk-field-name fk-join-alias], :as _column-group} options]
   (merge
    (when-let [;; TODO: This is clumsy and expensive; there is likely a neater way to find the full FK column.
               ;; Note that using `lib.metadata/field` is out - we need to respect metadata overrides etc. in models, and
               ;; `lib.metadata/field` uses the field's original status.
-              fk-column (->> (lib.util/query-stage query stage-number)
-                             (lib.metadata.calculation/visible-columns query stage-number)
-                             (m/find-first #(and (= (:id %) fk-field-id)
-                                                 (= (lib.field.util/inherited-column-name %) fk-field-name)
-                                                 (= (lib.join.util/current-join-alias %) fk-join-alias)
-                                                 (:fk-target-field-id %))))]
-     (let [fk-info (lib.metadata.calculation/display-info query stage-number fk-column)]
+              fk-column (let [stage (lib.util/query-stage query stage-number)]
+                          (m/find-first #(and (= (:id %) fk-field-id)
+                                              (= (lib.field.util/inherited-column-name %) fk-field-name)
+                                              (= (lib.join.util/current-join-alias %) fk-join-alias)
+                                              (:fk-target-field-id %))
+                                        (lib.metadata.calculation/visible-columns query stage-number stage options)))]
+     (let [fk-info (lib.metadata.calculation/display-info query stage-number fk-column options)]
        ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
        ;; "ID" dropped instead.
        ;; This is very intentional: one table might have several FKs to one foreign table, each with different
@@ -126,8 +128,8 @@
     :is-implicitly-joinable true}))
 
 (defmethod lib.metadata.calculation/display-info-method :metadata/column-group
-  [query stage-number column-group]
-  (display-info-for-group-method query stage-number column-group))
+  [query stage-number column-group options]
+  (display-info-for-group-method query stage-number column-group options))
 
 (defmulti ^:private column-group-info-method
   {:arglists '([column-metadata])}
@@ -218,5 +220,5 @@
   (::columns column-group))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/column-group
-  [query stage-number column-group _display-name-style]
-  (:display-name (lib.metadata.calculation/display-info query stage-number column-group)))
+  [query stage-number column-group display-name-style]
+  (:display-name (lib.metadata.calculation/display-info query stage-number column-group {:display-name-style display-name-style})))

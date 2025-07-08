@@ -146,11 +146,17 @@
 
 (mu/defn breakout->resolved-column :- ::lib.schema.metadata/column
   "Given a breakout sourced column, return the resolved metadata for the column in this stage."
-  ([query stage-number column] (breakout->resolved-column query stage-number column nil))
+  ([query stage-number column]
+   (breakout->resolved-column query stage-number column nil))
+
   ([query        :- ::lib.schema/query
     stage-number :- :int
     column       :- ::lib.schema.metadata/column
-    {:keys [preserve-type?]}]
+    {:keys [preserve-type?], :as _options} :- [:maybe
+                                               [:merge
+                                                ::lib.metadata.calculation/metadata.options
+                                                [:map
+                                                 [:preserve-type? {:optional true} [:maybe :boolean]]]]]]
    ;; TODO: This is a hack to workaround field refs confusion that should be fixed by the field refs overhaul. Remove
    ;; this function and possible-model-mapped-breakout-column?, above, once the field refs overhaul lands.
    ;;

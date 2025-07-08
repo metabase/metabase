@@ -59,7 +59,7 @@
                                     ;; permissions enforcement
                                     (assoc stage :qp/stage-is-from-source-card card-id))
                     card-metadata (into [] (remove :remapped-from)
-                                        (lib.card/card-metadata-columns metadata-providerable card))
+                                        (lib.card/card-metadata-columns metadata-providerable card nil))
                     last-stage    (cond-> (last stages)
                                     (seq card-metadata) (assoc :lib/stage-metadata {:lib/type :metadata/results, :columns card-metadata})
                                     ;; This will be applied, if still appropriate, by

@@ -6,6 +6,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cache :as lib.metadata.cache]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -27,13 +28,13 @@
   ((some-fn :display-name :name) card-metadata))
 
 (defmethod lib.metadata.calculation/metadata-method :metadata/card
-  [_query _stage-number {card-name :name, :keys [display-name], :as card-metadata}]
+  [_query _stage-number {card-name :name, :keys [display-name], :as card-metadata} _options]
   (cond-> card-metadata
     (not display-name) (assoc :display-name (u.humanization/name->human-readable-name :simple card-name))))
 
 (defmethod lib.metadata.calculation/display-info-method :metadata/card
-  [query stage-number card-metadata]
-  (cond-> ((get-method lib.metadata.calculation/display-info-method :default) query stage-number card-metadata)
+  [query stage-number card-metadata options]
+  (cond-> ((get-method lib.metadata.calculation/display-info-method :default) query stage-number card-metadata options)
     (= (:type card-metadata) :question) (assoc :question? true)
     (= (:type card-metadata) :model) (assoc :model? true)
     (= (:type card-metadata) :metric) (assoc :metric? true)
@@ -43,12 +44,15 @@
   [query
    stage-number
    {:keys [fields result-metadata] :as card-metadata}
-   {:keys [include-implicitly-joinable? unique-name-fn] :as options}]
+   {:keys [include-implicitly-joinable?] :as options}]
   (concat
    (lib.metadata.calculation/returned-columns query stage-number card-metadata options)
    (when include-implicitly-joinable?
      (lib.metadata.calculation/implicitly-joinable-columns
-      query stage-number (concat fields result-metadata) unique-name-fn))))
+      query
+      stage-number
+      (concat fields result-metadata)
+      options))))
 
 (mu/defn fallback-display-name :- ::lib.schema.common/non-blank-string
   "If for some reason the metadata is unavailable. This is better than returning nothing I guess."
@@ -63,11 +67,13 @@
             (lib.metadata.calculation/display-name query stage-number card-metadata :long))
           (fallback-display-name source-card)))))
 
-(mu/defn- infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+(mu/defn- infer-returned-columns :- [:maybe ::lib.metadata.calculation/returned-columns]
   [metadata-providerable                :- ::lib.schema.metadata/metadata-providerable
-   {card-query :dataset-query :as card} :- :map]
+   {card-query :dataset-query :as card} :- :map
+   options                              :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (when (some? card-query)
-    (let [cols      (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))
+    (let [query     (lib.query/query metadata-providerable card-query)
+          cols      (lib.metadata.calculation/returned-columns query -1 (lib.util/query-stage query -1) options)
           model-eid (when (= (:type card) :model)
                       (:entity-id card))]
       (cond->> cols
@@ -160,22 +166,24 @@
 
 (mu/defn- card-cols* :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   card                  :- ::lib.schema.metadata/card]
+   card                  :- ::lib.schema.metadata/card
+   options               :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (when-let [cols (or (:fields card)
                       (:result-metadata card)
-                      (infer-returned-columns metadata-providerable card))]
+                      (infer-returned-columns metadata-providerable card options))]
     (->card-metadata-columns metadata-providerable card cols)))
 
 (mu/defn- source-model-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "If `card` itself has a source card that is a Model, return that Model's columns."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   card                  :- ::lib.schema.metadata/card]
+   card                  :- ::lib.schema.metadata/card
+   options               :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (when-let [card-query (some->> (:dataset-query card) (lib.query/query metadata-providerable))]
     (when-let [source-card-id (lib.util/source-card-id card-query)]
       (when-not (= source-card-id (:id card))
         (let [source-card (lib.metadata/card metadata-providerable source-card-id)]
           (when (= (:type source-card) :model)
-            (card-cols* metadata-providerable source-card)))))))
+            (card-cols* metadata-providerable source-card options)))))))
 
 (def ^:private model-preserved-keys
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
@@ -218,35 +226,46 @@
                        binning       (update :display-name lib.binning/ensure-ends-with-binning binning semantic-type)))))))
             result-cols))))
 
-(mu/defn card-metadata-columns :- [:maybe CardColumns]
+(mu/defn card-metadata-columns :- [:maybe ::lib.metadata.calculation/returned-columns]
   "Get a normalized version of the saved metadata associated with Card metadata."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   card                  :- ::lib.schema.metadata/card]
-  (when-not (contains? *card-metadata-columns-card-ids* (:id card))
-    (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
-      (let [result-cols (card-cols* metadata-providerable card)
-            ;; don't pull in metadata from parent model if we ourself are a model
-            model-cols  (when-not (= (:type card) :model)
-                          (source-model-cols metadata-providerable card))]
-        (-> result-cols
-            (cond-> (seq model-cols) (merge-model-metadata model-cols))
-            not-empty)))))
+  ([metadata-providerable card]
+   (card-metadata-columns metadata-providerable card nil))
+
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    card                  :- ::lib.schema.metadata/card
+    options               :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   (when-not (contains? *card-metadata-columns-card-ids* (:id card))
+     (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
+       (let [result-cols (card-cols* metadata-providerable card options)
+             ;; don't pull in metadata from parent model if we ourself are a model
+             model-cols  (when-not (= (:type card) :model)
+                           (source-model-cols metadata-providerable card options))]
+         (not-empty
+          (into []
+                (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable)
+                (cond-> result-cols
+                  (seq model-cols) (merge-model-metadata model-cols)))))))))
 
 (mu/defn saved-question-metadata :- CardColumns
   "Metadata associated with a Saved Question with `card-id`."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   card-id               :- ::lib.schema.id/card]
-  ;; it seems like in some cases (unit tests) the FE is renaming `:result-metadata` to `:fields`, not 100% sure why
-  ;; but handle that case anyway. (#29739)
-  (when-let [card (lib.metadata/card metadata-providerable card-id)]
-    (card-metadata-columns metadata-providerable card)))
+  ([metadata-providerable card-id]
+   (saved-question-metadata metadata-providerable card-id nil))
+
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    card-id               :- ::lib.schema.id/card
+    options               :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   ;; it seems like in some cases (unit tests) the FE is renaming `:result-metadata` to `:fields`, not 100% sure why
+   ;; but handle that case anyway. (#29739)
+   (lib.metadata.cache/with-cached-metadata metadata-providerable (lib.metadata.cache/cache-key ::saved-question-metadata card-id)
+     (when-let [card (lib.metadata/card metadata-providerable card-id)]
+       (card-metadata-columns metadata-providerable card options)))))
 
 (defmethod lib.metadata.calculation/returned-columns-method :metadata/card
-  [query _stage-number card {:keys [unique-name-fn], :as options}]
+  [query _stage-number card options]
   (mapv (fn [col]
           (-> col
               lib.field.util/update-keys-for-col-from-previous-stage
-              (as-> col (assoc col :lib/desired-column-alias (unique-name-fn (:lib/source-column-alias col))))
+              #_(as-> col (assoc col :lib/desired-column-alias (unique-name-fn (:lib/source-column-alias col))))
               (assoc :lib/source :source/card)))
         (if (= (:type card) :metric)
           (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
@@ -256,7 +275,7 @@
                         -1
                         (lib.util/query-stage metric-query -1)
                         options)))
-          (card-metadata-columns query card))))
+          (card-metadata-columns query card options))))
 
 (mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]
   "The type of the query's source-card, if it has one."

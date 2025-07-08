@@ -253,7 +253,7 @@
          (not join-is-in-current-stage?))))
 
 ;;; TODO (Cam 6/12/25) -- all this stuff should be moved into the main [[metabase.lib.field]] namespace as and done
-;;; automatically when [[lib.ref/*ref-style*]] is `:ref.style/broken-legacy-qp-results`
+;;; automatically when `:ref-style` is `:ref.style/broken-legacy-qp-results`
 (mu/defn- super-broken-legacy-field-ref :- [:maybe ::super-broken-legacy-field-ref]
   "Generate a SUPER BROKEN legacy field ref for backward-compatibility purposes for frontend viz settings usage."
   [query :- ::lib.schema/query
@@ -263,16 +263,15 @@
       (->> (if-let [original-ref (:lib/original-ref col)]
              (cond-> original-ref
                remove-join-alias? (lib.join/with-join-alias nil))
-             (binding [lib.ref/*ref-style* :ref.style/broken-legacy-qp-results]
-               (let [col (cond-> col
-                           remove-join-alias? (lib.join/with-join-alias nil)
-                           remove-join-alias? (assoc ::remove-join-alias? true))]
-                 (->> (merge
-                       col
-                       (when-not remove-join-alias?
-                         (when-let [previous-join-alias (:lib/original-join-alias col)]
-                           {:metabase.lib.join/join-alias previous-join-alias})))
-                      lib.ref/ref))))
+             (let [col (cond-> col
+                         remove-join-alias? (lib.join/with-join-alias nil)
+                         remove-join-alias? (assoc ::remove-join-alias? true))]
+               (-> (merge
+                    col
+                    (when-not remove-join-alias?
+                      (when-let [previous-join-alias (:lib/original-join-alias col)]
+                        {:metabase.lib.join/join-alias previous-join-alias})))
+                   (lib.ref/ref {:ref-style :ref.style/broken-legacy-qp-results}))))
            lib.convert/->legacy-MBQL
            (fe-friendly-expression-ref col)))))
 
@@ -317,30 +316,30 @@
   "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata."
   [query        :- ::lib.schema/query
    initial-cols :- ::cols]
-  (binding [lib.metadata.calculation/*display-name-style* :long]
-    (let [lib-cols (doall (lib.metadata.calculation/returned-columns
-                           query
-                           -1
-                           (lib.util/query-stage query -1)
-                           {:unique-name-fn  (lib.util/non-truncating-unique-name-generator)
-                            :include-remaps? (not (get-in query [:middleware :disable-remaps?]))}))
-          ;; generate barebones cols if lib was unable to calculate metadata here.
-          lib-cols (if (empty? lib-cols)
-                     (mapv basic-native-col initial-cols)
-                     lib-cols)]
-      (->> initial-cols
-           (map (fn [col]
-                  (update-keys col u/->kebab-case-en)))
-           ((fn [cols]
-              (cond-> cols
-                (seq lib-cols) (merge-cols lib-cols))))
-           (add-converted-timezone query)
-           (remove-implicit-join-aliases query)
-           add-source-alias
-           add-legacy-source
-           deduplicate-names
-           (add-legacy-field-refs query)
-           (merge-model-metadata query)))))
+  (let [lib-cols (doall (lib.metadata.calculation/returned-columns
+                         query
+                         -1
+                         (lib.util/query-stage query -1)
+                         {:display-name-style :long
+                          :unique-name-fn     (lib.util/non-truncating-unique-name-generator)
+                          :include-remaps?    (not (get-in query [:middleware :disable-remaps?]))}))
+        ;; generate barebones cols if lib was unable to calculate metadata here.
+        lib-cols (if (empty? lib-cols)
+                   (mapv basic-native-col initial-cols)
+                   lib-cols)]
+    (->> initial-cols
+         (map (fn [col]
+                (update-keys col u/->kebab-case-en)))
+         ((fn [cols]
+            (cond-> cols
+              (seq lib-cols) (merge-cols lib-cols))))
+         (add-converted-timezone query)
+         (remove-implicit-join-aliases query)
+         add-source-alias
+         add-legacy-source
+         deduplicate-names
+         (add-legacy-field-refs query)
+         (merge-model-metadata query))))
 
 (defn- add-unit [col]
   (merge

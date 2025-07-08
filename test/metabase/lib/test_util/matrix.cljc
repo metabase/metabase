@@ -8,7 +8,8 @@
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.lib.field.util :as lib.field.util]))
 
 (defn- metadata-with-column-of-type
   [column-type]
@@ -208,9 +209,19 @@
 
 (defn find-first
   "Finds the column with the matching `:lib/desired-column-alias`"
-  [desired columns]
-  (m/find-first (comp #(= desired %) :lib/desired-column-alias) columns))
+  [metadata-providerable desired columns]
+  ;; TODO (Cam 7/7/25) -- `columns` likely don't have `:lib/desired-column-alias` at this point, since `columns`
+  ;; presumably comes from `visible-columns` or one of its subsets like `filterable-columns` and `visible-columns`
+  ;; doesn't have desired aliases since desired alias is a property of `returned-columns`... a couple of existing
+  ;; tests expect `:lib/desired-column-alias` to be present anyway so instead of reworking a bunch of busted tests
+  ;; we'll just hack stuff here instead.
+  (let [columns (into []
+                      (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable)
+                      columns)]
+    (or (m/find-first (comp #(= desired %) :lib/desired-column-alias) columns)
+        (throw (ex-info "Failed to find column with desired alias"
+                        {:desired-alias desired, :found (map :lib/desired-column-alias columns)})))))
 
 (deftest ^:parallel matrix-test-queries-test
   (doseq [[query desired] (test-queries :type/Text)]
-    (is (find-first desired (lib/visible-columns query)))))
+    (is (find-first query desired (lib/visible-columns query)))))

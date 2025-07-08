@@ -6,7 +6,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
@@ -32,46 +31,45 @@
           mp       (lib.tu/mock-metadata-provider
                     mp
                     {:cards [{:id            2
-                              :dataset-query (binding [lib.metadata.calculation/*display-name-style* :long]
-                                               (as-> (lib/query mp (lib.metadata/card mp 1)) $q
-                                                 (lib/aggregate $q (lib/sum (->> $q
-                                                                                 lib/available-aggregation-operators
-                                                                                 (m/find-first (comp #{:sum} :short))
-                                                                                 :columns
-                                                                                 (m/find-first (comp #{"Price"} :display-name)))))
-                                                 (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
-                                                                                    (lib/breakoutable-columns $q))
-                                                                      (lib/with-temporal-bucket :month)))
-                                                 (lib.convert/->legacy-MBQL $q)))
+                              :dataset-query (as-> (lib/query mp (lib.metadata/card mp 1)) $q
+                                               (lib/aggregate $q (lib/sum (->> $q
+                                                                               lib/available-aggregation-operators
+                                                                               (m/find-first (comp #{:sum} :short))
+                                                                               :columns
+                                                                               (m/find-first (comp #{"Price"} :display-name)))))
+                                               (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
+                                                                                  (lib/breakoutable-columns $q -1 {:display-name-style :long}))
+                                                                    (lib/with-temporal-bucket :month)))
+                                               (lib.convert/->legacy-MBQL $q))
                               :database-id   (mt/id)
                               :name          "Products+Reviews Summary"
                               :type          :model}]})
-          question (binding [lib.metadata.calculation/*display-name-style* :long]
-                     (as-> (lib/query mp (lib.metadata/card mp 1)) $q
-                       (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
-                                                          (lib/breakoutable-columns $q))
-                                            (lib/with-temporal-bucket :month)))
-                       (lib/aggregate $q (lib/avg (->> $q
-                                                       lib/available-aggregation-operators
-                                                       (m/find-first (comp #{:avg} :short))
-                                                       :columns
-                                                       (m/find-first (comp #{"Rating"} :display-name)))))
-                       (lib/append-stage $q)
-                       (letfn [(find-col [query display-name]
+          question (as-> (lib/query mp (lib.metadata/card mp 1)) $q
+                     (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
+                                                        (lib/breakoutable-columns $q))
+                                          (lib/with-temporal-bucket :month)))
+                     (lib/aggregate $q (lib/avg (->> $q
+                                                     lib/available-aggregation-operators
+                                                     (m/find-first (comp #{:avg} :short))
+                                                     :columns
+                                                     (m/find-first (comp #{"Rating"} :display-name)))))
+                     (lib/append-stage $q)
+                     (letfn [(find-col [query display-name]
+                               (let [cols (lib/breakoutable-columns query -1 {:display-name-style :long})]
                                  (or (m/find-first #(= (:display-name %) display-name)
-                                                   (lib/breakoutable-columns query))
+                                                   cols)
                                      (throw (ex-info "Failed to find column with display name"
                                                      {:display-name display-name
-                                                      :found        (map :display-name (lib/breakoutable-columns query))}))))]
-                         (lib/join $q (-> (lib/join-clause (lib.metadata/card mp 2)
-                                                           [(lib/=
-                                                             (lib/with-temporal-bucket (find-col $q "Reviews → Created At: Month")
-                                                               :month)
-                                                             (lib/with-temporal-bucket (find-col
-                                                                                        (lib/query mp (lib.metadata/card mp 2))
-                                                                                        "Reviews → Created At: Month")
-                                                               :month))])
-                                          (lib/with-join-fields :all))))))]
+                                                      :found        (map :display-name cols)})))))]
+                       (lib/join $q (-> (lib/join-clause (lib.metadata/card mp 2)
+                                                         [(lib/=
+                                                           (lib/with-temporal-bucket (find-col $q "Reviews → Created At: Month")
+                                                             :month)
+                                                           (lib/with-temporal-bucket (find-col
+                                                                                      (lib/query mp (lib.metadata/card mp 2))
+                                                                                      "Reviews → Created At: Month")
+                                                             :month))])
+                                        (lib/with-join-fields :all)))))]
       (is (= ["Reviews → Created At: Month"
               "Average of Rating"
               "Products+Reviews Summary - Reviews → Created At: Month → Created At: Month"

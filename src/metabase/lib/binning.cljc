@@ -132,11 +132,11 @@
         :default   (i18n/tru "Auto binned")))))
 
 (defmethod lib.metadata.calculation/display-info-method :option/binning
-  [_query _stage-number binning-option]
+  [_query _stage-number binning-option _options]
   (select-keys binning-option [:display-name :default :selected]))
 
 (defmethod lib.metadata.calculation/display-info-method ::binning
-  [query stage-number binning-value]
+  [query stage-number binning-value _options]
   (let [field-metadata ((:metadata-fn binning-value) query stage-number)]
     (merge {:display-name (binning-display-name binning-value field-metadata)}
            (when (= :default (:strategy binning-value))

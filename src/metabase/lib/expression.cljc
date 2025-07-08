@@ -86,18 +86,18 @@
     (lib.metadata.calculation/type-of query stage-number expression)))
 
 (defmethod lib.metadata.calculation/metadata-method :expression
-  [query stage-number [_expression opts expression-name, :as expression-ref-clause]]
+  [query stage-number [_expression opts expression-name, :as expression-ref-clause] options]
   (merge {:lib/type            :metadata/column
           :lib/source-uuid     (:lib/uuid opts)
           :name                expression-name
           :lib/expression-name expression-name
-          :display-name        (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
+          :display-name        (lib.metadata.calculation/display-name query stage-number expression-ref-clause (:display-name-style options))
           :base-type           (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
           :lib/source          :source/expressions}
          {:ident (lib.options/ident (resolve-expression query stage-number expression-name))}
          (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
            {:metabase.lib.field/temporal-unit unit})
-         (when lib.metadata.calculation/*propagate-binning-and-bucketing*
+         (when (:propagate-binning-and-bucketing options)
            (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
              {:inherited-temporal-unit unit}))))
 
@@ -385,32 +385,41 @@
                               (cond-> literal (u.number/bigint? literal) str)])))
 
 (mu/defn- expression-metadata :- ::lib.schema.metadata/column
-  [query                 :- ::lib.schema/query
-   stage-number          :- :int
-   expression-definition :- ::lib.schema.expression/expression]
-  (let [expression-name (lib.util/expression-name expression-definition)]
-    (-> (lib.metadata.calculation/metadata query stage-number expression-definition)
-        ;; We strip any properties a general expression cannot have, e.g. `:id` and
-        ;; `:join-alias`. Keeping all properties a field can have would make it difficult
-        ;; to distinguish the field column from an expression aliasing that field down the
-        ;; line. It also doesn't make sense to keep the ID and the join alias, as they are
-        ;; not the properties of the expression.
-        (select-keys [:base-type :effective-type :lib/desired-column-alias
-                      :lib/source-column-alias :lib/source-uuid :lib/type])
-        (assoc :lib/source   :source/expressions
-               :name         expression-name
-               :display-name expression-name
-               :ident        (lib.options/ident expression-definition)))))
+  ([query stage-number expression-definition]
+   (expression-metadata query stage-number expression-definition nil))
+
+  ([query                 :- ::lib.schema/query
+    stage-number          :- :int
+    expression-definition :- ::lib.schema.expression/expression
+    options               :- [:maybe ::lib.metadata.calculation/metadata.options]]
+   (let [expression-name (lib.util/expression-name expression-definition)]
+     (-> (lib.metadata.calculation/metadata query stage-number expression-definition options)
+         ;; We strip any properties a general expression cannot have, e.g. `:id` and
+         ;; `:join-alias`. Keeping all properties a field can have would make it difficult
+         ;; to distinguish the field column from an expression aliasing that field down the
+         ;; line. It also doesn't make sense to keep the ID and the join alias, as they are
+         ;; not the properties of the expression.
+         (select-keys [:base-type :effective-type :lib/desired-column-alias
+                       :lib/source-column-alias :lib/source-uuid :lib/type])
+         (assoc :lib/source   :source/expressions
+                :name         expression-name
+                :display-name expression-name
+                :ident        (lib.options/ident expression-definition))))))
 
 (mu/defn expressions-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get metadata about the expressions in a given stage of a `query`."
   ([query]
    (expressions-metadata query -1))
 
+  ([query stage-number]
+   (expressions-metadata query stage-number nil))
+
   ([query        :- ::lib.schema/query
-    stage-number :- :int]
-   (some->> (not-empty (:expressions (lib.util/query-stage query stage-number)))
-            (mapv (partial expression-metadata query stage-number)))))
+    stage-number :- :int
+    options      :- [:maybe ::lib.metadata.calculation/metadata.options]]
+   (not-empty
+    (mapv #(expression-metadata query stage-number % options)
+          (:expressions (lib.util/query-stage query stage-number))))))
 
 (mu/defn expressions :- [:maybe ::lib.schema.expression/expressions]
   "Get the expressions map from a given stage of a `query`."
@@ -422,7 +431,7 @@
    (not-empty (:expressions (lib.util/query-stage query stage-number)))))
 
 (defmethod lib.ref/ref-method :expression
-  [expression-clause]
+  [expression-clause _options]
   expression-clause)
 
 (mu/defn expressionable-columns :- [:sequential ::lib.schema.metadata/column]

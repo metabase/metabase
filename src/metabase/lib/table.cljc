@@ -6,7 +6,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.i18n :as i18n]))
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/table
   [_query _stage-number table-metadata _style]
@@ -15,7 +16,7 @@
                (u.humanization/name->human-readable-name :simple))))
 
 (defmethod lib.metadata.calculation/metadata-method :metadata/table
-  [_query _stage-number table-metadata]
+  [_query _stage-number table-metadata _options]
   table-metadata)
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :source-table
@@ -28,14 +29,13 @@
             (lib.metadata.calculation/display-name query stage-number table-metadata :long))
           (i18n/tru "Table {0}" (pr-str source-table))))))
 
-(defn- remove-hidden-default-fields
+(defn- remove-hidden-default-fields-xform
   "Remove Fields that shouldn't be visible from the default Fields for a source Table.
   See [[metabase.query-processor.middleware.add-implicit-clauses/table->sorted-fields*]]."
-  [field-metadatas]
+  []
   (remove (fn [{:keys [visibility-type], active? :active, :as _field-metadata}]
             (or (false? active?)
-                (#{:sensitive :retired} (some-> visibility-type keyword))))
-          field-metadatas))
+                (#{:sensitive :retired} (some-> visibility-type keyword))))))
 
 (defn- sort-default-fields
   "Sort default Fields for a source Table. See [[metabase.warehouse-schema.models.table/field-order-rule]]."
@@ -44,15 +44,13 @@
              [(or position 0) (u/lower-case-en (or field-name ""))])
            field-metadatas))
 
-(defmethod lib.metadata.calculation/returned-columns-method :metadata/table
-  [query _stage-number table-metadata {:keys [unique-name-fn], :as _options}]
+(mu/defmethod lib.metadata.calculation/returned-columns-method :metadata/table :- ::lib.metadata.calculation/returned-columns
+  [query _stage-number table-metadata _options]
   (when-let [field-metadatas (lib.metadata/fields query (:id table-metadata))]
-    (->> field-metadatas
-         remove-hidden-default-fields
-         sort-default-fields
-         (map (fn [col]
-                (assoc col
-                       :lib/source               :source/table-defaults
-                       :lib/source-column-alias  (:name col)
-                       :lib/desired-column-alias (unique-name-fn (or (:name col) "")))))
-         lib.field.util/add-deduplicated-names)))
+    (into []
+          (comp (remove-hidden-default-fields-xform)
+                (map (fn [col]
+                       (assoc col
+                              :lib/source :source/table-defaults)))
+                (lib.field.util/add-source-and-desired-aliases-xform query))
+          (sort-default-fields field-metadatas))))

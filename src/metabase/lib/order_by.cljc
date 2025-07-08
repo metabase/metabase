@@ -37,8 +37,8 @@
       :desc (i18n/tru "{0} descending" expr-display-name))))
 
 (defmethod lib.metadata.calculation/display-info-method ::order-by-clause
-  [query stage-number [tag _opts expr]]
-  (assoc (lib.metadata.calculation/display-info query stage-number expr)
+  [query stage-number [tag _opts expr] options]
+  (assoc (lib.metadata.calculation/display-info query stage-number expr options)
          :direction tag))
 
 (defmulti ^:private order-by-clause-method

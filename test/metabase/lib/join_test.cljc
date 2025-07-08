@@ -8,7 +8,6 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -1721,12 +1720,11 @@
                                                &Orders.*sum/Integer]}]
                     :fields   [$title $category]}))
           join (first (lib/joins query -1))]
-      (binding [lib.metadata.calculation/*display-name-style* :long]
-        (is (= [["TITLE" "Orders__TITLE" "TITLE" "Orders → Title"]
-                ["sum"   "Orders__sum"   "sum"   "Orders → Sum of Quantity"]]
-               (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
-                    (lib.join/join-fields-to-add-to-parent-stage
-                     query -1 join {:unique-name-fn (lib.util/unique-name-generator), :include-remaps? true}))))))))
+      (is (= [["TITLE" "Orders__TITLE" "TITLE" "Orders → Title"]
+              ["sum"   "Orders__sum"   "sum"   "Orders → Sum of Quantity"]]
+             (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
+                  (lib.join/join-fields-to-add-to-parent-stage
+                   query -1 join {:display-name-style :long, :include-remaps? true})))))))
 
 (deftest ^:parallel remapping-in-joins-test-3
   (testing "join-fields-to-add-to-parent-stage should include remapped columns"
@@ -1742,13 +1740,12 @@
                                 :fields       [&Orders.orders.product-id]}]
                     :fields   [$title $category]}))
           join (first (lib/joins query -1))]
-      (binding [lib.metadata.calculation/*display-name-style* :long]
-        (is (= [["PRODUCT_ID" "Orders__PRODUCT_ID" "PRODUCT_ID" "Orders → Product ID"]
-                ;; should get added because it is a remap
-                ["TITLE"      "Orders__TITLE"      "TITLE"      "Orders → Title"]]
-               (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
-                    (lib.join/join-fields-to-add-to-parent-stage
-                     query -1 join {:unique-name-fn (lib.util/unique-name-generator), :include-remaps? true}))))))))
+      (is (= [["PRODUCT_ID" "Orders__PRODUCT_ID" "PRODUCT_ID" "Orders → Product ID"]
+              ;; should get added because it is a remap
+              ["TITLE"      "Orders__TITLE"      "TITLE"      "Orders → Title"]]
+             (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
+                  (lib.join/join-fields-to-add-to-parent-stage
+                   query -1 join {:display-name-style :long, :include-remaps? true})))))))
 
 (deftest ^:parallel remapping-in-joins-duplicates-test
   (testing "Remapped columns in joined source queries should not append duplicates (QUE-1410)"
@@ -1768,12 +1765,11 @@
                                                &Orders.products.title]}]
                     :fields   [$title $category]}))
           join (first (lib/joins query -1))]
-      (binding [lib.metadata.calculation/*display-name-style* :long]
-        (is (= [["PRODUCT_ID" "Orders__PRODUCT_ID" "PRODUCT_ID" "Orders → Product ID"]
-                ["TITLE"      "Orders__TITLE"      "TITLE"      "Orders → Title"]]
-               (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
-                    (lib.join/join-fields-to-add-to-parent-stage
-                     query -1 join {:unique-name-fn (lib.util/unique-name-generator), :include-remaps? true}))))))))
+      (is (= [["PRODUCT_ID" "Orders__PRODUCT_ID" "PRODUCT_ID" "Orders → Product ID"]
+              ["TITLE"      "Orders__TITLE"      "TITLE"      "Orders → Title"]]
+             (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
+                  (lib.join/join-fields-to-add-to-parent-stage
+                   query -1 join {:display-name-style :long, :include-remaps? true})))))))
 
 (deftest ^:parallel calculate-sane-join-aliases-test
   (testing "Don't strip ID for names like 'X → ID'"

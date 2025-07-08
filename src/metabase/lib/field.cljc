@@ -48,17 +48,17 @@
 
 (defmethod lib.metadata.calculation/type-of-method :field
   [query stage-number [_tag {:keys [temporal-unit], :as _opts} _id-or-name :as field-ref]]
-  (let [metadata (cond-> (lib.field.resolution/resolve-field-ref query stage-number field-ref)
+  (let [metadata (cond-> (lib.field.resolution/resolve-field-ref query stage-number field-ref nil)
                    temporal-unit (assoc ::temporal-unit temporal-unit))]
     (lib.metadata.calculation/type-of query stage-number metadata)))
 
 (defmethod lib.metadata.calculation/metadata-method :metadata/column
-  [_query _stage-number {field-name :name, :as field-metadata}]
+  [_query _stage-number {field-name :name, :as field-metadata} _options]
   (assoc field-metadata :name field-name))
 
 (mu/defmethod lib.metadata.calculation/metadata-method :field :- ::lib.schema.metadata/column
-  [query stage-number field-ref]
-  (lib.field.resolution/resolve-field-ref query stage-number field-ref))
+  [query stage-number field-ref options]
+  (lib.field.resolution/resolve-field-ref query stage-number field-ref options))
 
 (defn- field-nesting-path
   [metadata-providerable {:keys [display-name parent-id] :as _field-metadata}]
@@ -159,7 +159,7 @@
                                   ;; each with different meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both
                                   ;; linking to a PEOPLE table). See #30109 for more details.
                                   (if-let [field (lib.metadata/field query fk-field-id)]
-                                    (-> (lib.metadata.calculation/display-info query stage-number field)
+                                    (-> (lib.metadata.calculation/display-info query stage-number field {:display-name-style style})
                                         :display-name
                                         lib.util/strip-id)
                                     (let [table (lib.metadata/table-or-card query table-id)]
@@ -221,7 +221,7 @@
 
 (defmethod lib.metadata.calculation/display-name-method :field
   [query stage-number field-ref style]
-  (let [field-metadata (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
+  (let [field-metadata (lib.field.resolution/resolve-field-ref query stage-number field-ref {:display-name-style style})]
     (lib.metadata.calculation/display-name query stage-number field-metadata style)))
 
 ;;; TODO (Cam 6/12/25) -- not sure what the correct name to be using here is but it's probably not `:name`. Either
@@ -238,12 +238,12 @@
     "unknown_field"))
 
 (defmethod lib.metadata.calculation/display-info-method :metadata/column
-  [query stage-number field-metadata]
+  [query stage-number field-metadata options]
   (merge
-   ((get-method lib.metadata.calculation/display-info-method :default) query stage-number field-metadata)
+   ((get-method lib.metadata.calculation/display-info-method :default) query stage-number field-metadata options)
    ;; These have to be calculated even if the metadata has display-name to support nested fields
    ;; because the query processor doesn't produce nested display-names.
-   {:display-name (lib.metadata.calculation/display-name query stage-number field-metadata)
+   {:display-name      (lib.metadata.calculation/display-name query stage-number field-metadata (:display-name-style options))
     :long-display-name (lib.metadata.calculation/display-name query stage-number field-metadata :long)}
    ;; Include description and fingerprint if they're present on the column. Only proper fields or columns from a model
    ;; have these, not aggregations or expressions.
@@ -369,7 +369,7 @@
     []))
 
 (defmethod lib.ref/ref-method :field
-  [field-clause]
+  [field-clause _options]
   field-clause)
 
 ;;; see also [[metabase.lib.field.resolution/opts-propagated-renamed-keys]]
@@ -411,12 +411,13 @@
       (select-keys (keys old->new))
       (set/rename-keys old->new)))
 
-(defn- column-metadata->field-ref
-  [metadata]
-  (let [inherited-column? (lib.field.util/inherited-column? metadata)
+(mu/defn- column-metadata->field-ref
+  [col                                                                   :- ::lib.schema.metadata/column
+   {:keys [ref-style], :or {ref-style :ref.style/default}, :as _options} :- [:maybe ::lib.ref/ref-method.options]]
+  (let [inherited-column? (lib.field.util/inherited-column? col)
         options           (merge {:lib/uuid       (str (random-uuid))
-                                  :effective-type (column-metadata-effective-type metadata)}
-                                 (select-renamed-keys metadata field-ref-propagated-keys)
+                                  :effective-type (column-metadata-effective-type col)}
+                                 (select-renamed-keys col field-ref-propagated-keys)
                                  ;; MEGA HACK! QP result metadata includes `:source-alias` (which is basically any
                                  ;; join alias that was ever used for the column); if that is present then we need to
                                  ;; generate field refs that use as a join alias because even tho that sounds
@@ -425,19 +426,24 @@
                                  ;;
                                  ;; TODO (Cam 6/26/25) -- figure out if we can actually take this out or not.
                                  (when-let [source-alias (and (not inherited-column?)
-                                                              (not (:fk-field-id metadata))
+                                                              (not (:fk-field-id col))
                                                               (not= :source/implicitly-joinable
-                                                                    (:lib/source metadata))
-                                                              (:source-alias metadata))]
+                                                                    (:lib/source col))
+                                                              (:source-alias col))]
                                    {:join-alias source-alias})
                                  (when-not inherited-column?
-                                   (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-colums)))
-        id-or-name        (or (lib.field.util/inherited-column-name metadata)
-                              ((some-fn :id :lib/deduplicated-name :lib/original-name :name) metadata))]
+                                   (select-renamed-keys col field-ref-propagated-keys-for-non-inherited-colums)))
+        id-or-name        (or (case ref-style
+                                :ref.style/default                  (lib.field.util/inherited-column-name col)
+                                :ref.style/broken-legacy-qp-results ((some-fn :lib/deduplicated-name
+                                                                              :lib/original-name
+                                                                              :name)
+                                                                     col))
+                              ((some-fn :id :lib/deduplicated-name :lib/original-name :name) col))]
     [:field options id-or-name]))
 
 (defmethod lib.ref/ref-method :metadata/column
-  [{source :lib/source, :as metadata}]
+  [{source :lib/source, :as metadata} options]
   (case source
     :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
     :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
@@ -448,9 +454,9 @@
     (:source/fields :source/breakouts)
     (if (:lib/expression-name metadata)
       (lib.expression/column-metadata->expression-ref metadata)
-      (column-metadata->field-ref metadata))
+      (column-metadata->field-ref metadata options))
     #_else
-    (column-metadata->field-ref metadata)))
+    (column-metadata->field-ref metadata options)))
 
 (defn- expression-columns
   "Return the [[::lib.schema.metadata/column]] for all the expressions in a stage of a query."
@@ -591,7 +597,7 @@
   - Explicit join: add it to that join's `:fields` list."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   column       :- lib.metadata.calculation/ColumnMetadataWithSource]
+   column       :- ::lib.metadata.calculation/column-with-source]
   (let [stage  (lib.util/query-stage query stage-number)
         source (:lib/source column)]
     (when (and (empty? (:fields stage))
@@ -667,7 +673,7 @@
   - Explicit join: remove it from that join's `:fields` list (handle `:fields :all` like for source tables)."
   [query      :- ::lib.schema/query
    stage-number :- :int
-   column       :- lib.metadata.calculation/ColumnMetadataWithSource]
+   column       :- ::lib.metadata.calculation/column-with-source]
   (let [source (:lib/source column)]
     (-> (case source
           (:source/table-defaults

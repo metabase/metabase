@@ -170,7 +170,7 @@
     :long    (filter-operator-long-display-name short-name display-name-variant)))
 
 (defmethod lib.metadata.calculation/display-info-method :operator/filter
-  [_query _stage-number {short-name :short, :keys [display-name-variant default]}]
+  [_query _stage-number {short-name :short, :keys [display-name-variant default]} _options]
   (cond-> {:short-name        (u/qualified-name short-name)
            :display-name      (filter-operator-display-name short-name display-name-variant)
            :long-display-name (filter-operator-long-display-name short-name display-name-variant)}

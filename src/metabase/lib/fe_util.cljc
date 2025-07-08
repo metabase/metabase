@@ -30,29 +30,35 @@
    [metabase.util.formatting.date :as fmt.date]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
 
-(def ^:private ExpressionArg
-  [:or
-   :string
-   :boolean
-   :keyword
-   :int
-   :float
-   ::lib.schema.metadata/column
-   ::lib.schema.metadata/segment
-   ::lib.schema.metadata/metric])
+(mr/def ::expression-arg
+  [:multi
+   {:dispatch lib.dispatch/dispatch-value}
+   [:metadata/column    ::lib.schema.metadata/column]
+   [:metadata/segment   ::lib.schema.metadata/segment]
+   [:metadata/metric    ::lib.schema.metadata/metric]
+   [:malli.core/default [:or
+                         :string
+                         :boolean
+                         :keyword
+                         :int
+                         :float]]])
 
-(def ^:private ExpressionParts
-  [:schema
-   {:registry {::expression-parts
-               [:map
-                [:lib/type [:= :mbql/expression-parts]]
-                [:operator [:or :keyword :string]]
-                [:options :map]
-                [:args [:sequential [:or ExpressionArg [:ref ::expression-parts]]]]]}}
-   ::expression-parts])
+(mr/def ::expression-parts
+  [:map
+   [:lib/type [:= :mbql/expression-parts]]
+   [:operator [:or :keyword :string]]
+   [:options  :map]
+   [:args     [:sequential [:ref ::expression-arg-or-parts]]]])
+
+(mr/def ::expression-arg-or-parts
+  [:multi
+   {:dispatch lib.dispatch/dispatch-value}
+   [:mbql/expression-parts ::expression-parts]
+   [:malli.core/default    ::expression-arg]])
 
 (def ^:private expandable-time-units #{:hour})
 
@@ -110,7 +116,7 @@
 (doseq [dispatch-value [:if :case]]
   (defmethod expression-parts-method dispatch-value
     ; case and if expressions expect a vector of pairs of if-then clause as
-    ; the first argument, but ExpressionParts can only represent a flat list of clauses.
+    ; the first argument, but ::expression-parts can only represent a flat list of clauses.
     ; This multimethod flattens the arguments into a flat list.
     [query stage-number [op options clause-pairs fallback]]
     ((get-method expression-parts-method :default)
@@ -168,15 +174,16 @@
     (column-metadata-from-ref query stage-number expression-ref)
     {:lib/expression-name (last expression-ref)}))
 
-(mu/defn expression-parts :- [:or ExpressionArg ExpressionParts]
+(mu/defn expression-parts :- ::expression-arg-or-parts
   "Return the parts of the filter clause `arg` in query `query` at stage `stage-number`."
   ([query value]
    (expression-parts query -1 value))
 
-  ([query :- ::lib.schema/query
-    stage-index :- :int
-    expression-clause :- [:or ::lib.schema.expression/expression ExpressionArg ExpressionParts]]
-   (expression-parts-method query stage-index expression-clause)))
+  ([query             :- ::lib.schema/query
+    stage-number      :- :int
+    expression-clause :- [:or ::lib.schema.expression/expression ::expression-arg-or-parts]]
+   (println "(pr-str expression-clause):" (pr-str expression-clause)) ; NOCOMMIT
+   (expression-parts-method query stage-number expression-clause)))
 
 (defn- case-or-if-expression?
   [clause]
@@ -234,11 +241,11 @@
 (mu/defn expression-clause :- ::lib.schema.expression/expression
   "Returns a standalone clause for an `operator`, `options`, and arguments."
   ;; TODO - remove lib.schema.expression/expression here as it might not be supported in all cases
-  ([parts :- [:or ExpressionParts ExpressionArg ::lib.schema.expression/expression]]
+  ([parts :- [:or ::expression-parts ::expression-arg ::lib.schema.expression/expression]]
    (expression-clause-method parts))
 
   ([operator :- [:or :keyword :string]
-    args     :- [:sequential [:or ExpressionArg ExpressionParts ::lib.schema.expression/expression]]
+    args     :- [:sequential [:or ::expression-arg ::expression-parts ::lib.schema.expression/expression]]
     options  :- [:maybe :map]]
    (expression-clause-method {:lib/type :mbql/expression-parts
                               :operator operator
@@ -575,10 +582,10 @@
    [:unit     {:optional true} [:maybe ::lib.schema.filter/exclude-date-filter-unit]]
    [:values   [:sequential number?]]])
 
-(mu/defn- make-expression-parts :- ExpressionParts
+(mu/defn- make-expression-parts :- ::expression-parts
   "Build a mbql/expression-parts map with a new uuid"
   [operator :- :keyword
-   args :- [:sequential [:or ExpressionArg ExpressionParts]]]
+   args :- [:sequential ::expression-arg-or-parts]]
   {:lib/type :mbql/expression-parts
    :operator operator
    :options  {:lib/uuid (str (random-uuid))}

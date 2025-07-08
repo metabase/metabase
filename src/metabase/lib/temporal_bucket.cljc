@@ -292,7 +292,7 @@
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(mu/defn with-temporal-bucket
+(mu/defn with-temporal-bucket :- :some
   "Add a temporal bucketing unit, e.g. `:day` or `:day-of-year`, to an MBQL clause or something that can be converted to
   an MBQL clause. E.g. for a Field or Field metadata or `:field` clause, this might do something like this:
 
@@ -303,9 +303,10 @@
     [:field 1 {:temporal-unit :day}]
 
   Pass a `nil` `unit` to remove the temporal bucket."
-  [x option-or-unit :- [:maybe [:or
-                                ::lib.schema.temporal-bucketing/option
-                                ::lib.schema.temporal-bucketing/unit]]]
+  [x              :- :some
+   option-or-unit :- [:maybe [:or
+                              ::lib.schema.temporal-bucketing/option
+                              ::lib.schema.temporal-bucketing/unit]]]
   (with-temporal-bucket-method x (cond-> option-or-unit
                                    (not (keyword? option-or-unit)) :unit)))
 
@@ -384,8 +385,8 @@
   (describe-temporal-unit unit))
 
 (defmethod lib.metadata.calculation/display-info-method :option/temporal-bucketing
-  [query stage-number option]
-  (merge {:display-name (lib.metadata.calculation/display-name query stage-number option)
+  [query stage-number option options]
+  (merge {:display-name (lib.metadata.calculation/display-name query stage-number option (:display-name-style options))
           :short-name (u/qualified-name (raw-temporal-bucket option))
           :is-temporal-extraction (let [bucket (raw-temporal-bucket option)]
                                     (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units

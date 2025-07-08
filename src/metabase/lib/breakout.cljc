@@ -37,11 +37,17 @@
   "Get metadata about the breakouts in a given stage of a `query`."
   ([query]
    (breakouts-metadata query -1))
+
   ([query        :- ::lib.schema/query
     stage-number :- :int]
+   (breakouts-metadata query stage-number nil))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    options      :- [:maybe ::lib.metadata.calculation/metadata.options]]
    (some->> (breakouts query stage-number)
             (mapv (fn [field-ref]
-                    (-> (lib.metadata.calculation/metadata query stage-number field-ref)
+                    (-> (lib.metadata.calculation/metadata query stage-number field-ref options)
                         (assoc :lib/source :source/breakouts
                                :ident      (lib.options/ident field-ref))))))))
 
@@ -72,13 +78,17 @@
 
   4. Fields in Tables that are implicitly joinable."
 
-  ([query :- ::lib.schema/query]
+  ([query]
    (breakoutable-columns query -1))
 
+  ([query stage-number]
+   (breakoutable-columns query stage-number nil))
+
   ([query        :- ::lib.schema/query
-    stage-number :- :int]
+    stage-number :- :int
+    options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
    (let [columns (let [stage   (lib.util/query-stage query stage-number)
-                       options {:include-implicitly-joinable-for-source-card? false}]
+                       options (assoc options :include-implicitly-joinable-for-source-card? false)]
                    (lib.metadata.calculation/visible-columns query stage-number stage options))]
      (when (seq columns)
        (let [existing-breakouts         (breakouts query stage-number)

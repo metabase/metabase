@@ -466,33 +466,32 @@
     (let [mp (lib.tu/mock-metadata-provider
               meta/metadata-provider
               {:cards [{:id 1, :name "Card 1", :database-id (meta/id)}]})]
-      (is (nil? (#'lib.card/source-model-cols mp (lib.metadata/card mp 1)))))))
+      (is (nil? (#'lib.card/source-model-cols mp (lib.metadata/card mp 1) nil))))))
 
 (deftest ^:parallel do-not-include-join-aliases-in-original-display-names-test
   (let [query (lib.tu.mocks-31368/query-with-legacy-source-card true)]
-    (binding [lib.metadata.calculation/*display-name-style* :long]
-      (is (=? {:name                      "CATEGORY"
-               :display-name              "Products → Category"
-               :lib/model-display-name    (symbol "nil #_\"key is not present.\"")
-               :lib/original-display-name #(#{(symbol "nil #_\"key is not present.\"")
-                                              "Category"} ;I'll accept either as correct.
-                                            %)
-               :effective-type            :type/Text}
-              (m/find-first #(= (:name %) "CATEGORY")
-                            (lib/returned-columns query))))
-      (testing "If the source card was a model, then propagate its display name as :lib/model-display-name"
-        (let [mp    (lib.tu/merged-mock-metadata-provider
-                     (lib.metadata/->metadata-provider query)
-                     {:cards [{:id 1, :type :model}]})
-              query (lib/query mp query)]
-          (is (=? {:name                   "CATEGORY"
-                   :display-name           "Products → Category"
-                   :lib/model-display-name "Products → Category"
-                   :lib/original-display-name #(#{(symbol "nil #_\"key is not present.\"")
-                                                  "Category"} %)
-                   :effective-type         :type/Text}
-                  (m/find-first #(= (:name %) "CATEGORY")
-                                (lib/returned-columns query)))))))))
+    (is (=? {:name                      "CATEGORY"
+             :display-name              "Products → Category"
+             :lib/model-display-name    (symbol "nil #_\"key is not present.\"")
+             :lib/original-display-name #(#{(symbol "nil #_\"key is not present.\"")
+                                            "Category"} ;I'll accept either as correct.
+                                          %)
+             :effective-type            :type/Text}
+            (m/find-first #(= (:name %) "CATEGORY")
+                          (lib/returned-columns query -1 query {:display-name-style :long}))))
+    (testing "If the source card was a model, then propagate its display name as :lib/model-display-name"
+      (let [mp    (lib.tu/merged-mock-metadata-provider
+                   (lib.metadata/->metadata-provider query)
+                   {:cards [{:id 1, :type :model}]})
+            query (lib/query mp query)]
+        (is (=? {:name                   "CATEGORY"
+                 :display-name           "Products → Category"
+                 :lib/model-display-name "Products → Category"
+                 :lib/original-display-name #(#{(symbol "nil #_\"key is not present.\"")
+                                                "Category"} %)
+                 :effective-type         :type/Text}
+                (m/find-first #(= (:name %) "CATEGORY")
+                              (lib/returned-columns query -1 query {:display-name-style :long}))))))))
 
 (deftest ^:parallel do-not-propagate-lib-expression-names-from-cards-test
   (testing "Columns coming from a source card should not propagate :lib/expression-name"

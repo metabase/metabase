@@ -68,7 +68,7 @@
         ->temporal-name lib.temporal-bucket/describe-temporal-pair
         numeric? #(clojure.core/and (lib.util/original-isa? % :type/Number)
                                     (lib.util/clause? %)
-                                    (-> (lib.metadata.calculation/metadata query stage-number %)
+                                    (-> (lib.metadata.calculation/metadata query stage-number % {:display-name-style style})
                                         lib.types.isa/id?
                                         clojure.core/not))
         temporal? #(lib.util/original-isa? % :type/Temporal)

@@ -2,7 +2,6 @@
   "Code for resolving field metadata from a field ref. There's a lot of code here, isn't there? This is probably more
   complicated than it needs to be!"
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -12,6 +11,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cache :as lib.metadata.cache]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.schema :as lib.schema]
@@ -148,7 +148,8 @@
   have a native query or a Saved Question source query or whatever get it from our results metadata."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   field-ref    :- :mbql.clause/field]
+   field-ref    :- :mbql.clause/field
+   options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (when-not *recursive-column-resolution-by-name*
     (binding [*recursive-column-resolution-by-name* true]
       (let [previous-stage-number (lib.util/previous-stage-number query stage-number)
@@ -156,7 +157,7 @@
                                     (lib.util/query-stage query previous-stage-number)
                                     (lib.util/query-stage query stage-number))
             stage-columns         (for [col (concat
-                                             (lib.metadata.calculation/visible-columns query stage-number stage)
+                                             (lib.metadata.calculation/visible-columns query stage-number stage options)
                                              ;; work around visible columns not including aggregations (#59657)
                                              (lib.aggregation/aggregations-metadata query stage-number))]
                                     (cond-> col
@@ -196,7 +197,7 @@
 
 (defn- opts-fn-inherited-temporal-unit
   "`:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
-  the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is truthy, i.e. bound.
+  `:propagate-binning-and-bucketing` is truthy.
 
   TODO (Cam 6/18/25) -- that DOES NOT seem to be how it actually works. (Other documentation here was not mine.)
 
@@ -204,18 +205,19 @@
   would contain that too. That could be problematic, because original ref that contained `:temporal-unit` contains no
   `:inherited-temporal-unit`. If the column like this was used to generate ref for eg. order by it would contain the
   `:inherited-temporal-unit`, while the original column (eg. in breakout) would not."
-  [opts]
+  [ref-opts {:keys [propagate-binning-and-bucketing], :as _options}]
   (let [inherited-temporal-unit-keys (cond-> '(:inherited-temporal-unit)
-                                       lib.metadata.calculation/*propagate-binning-and-bucketing*
+                                       propagate-binning-and-bucketing
                                        (conj :temporal-unit))]
-    (when-some [inherited-temporal-unit (some opts inherited-temporal-unit-keys)]
+    (when-some [inherited-temporal-unit (some ref-opts inherited-temporal-unit-keys)]
       (keyword inherited-temporal-unit))))
 
-(defn- opts-fn-original-binning [opts]
+(defn- opts-fn-original-binning
+  [ref-opts {:keys [propagate-binning-and-bucketing], :as _options}]
   (let [binning-keys (cond-> (list :lib/original-binning)
-                       lib.metadata.calculation/*propagate-binning-and-bucketing*
+                       propagate-binning-and-bucketing
                        (conj :binning))]
-    (some opts binning-keys)))
+    (some ref-opts binning-keys)))
 
 (defn- opts-fn-options
   "Preserve additional information that may have been added by QP middleware. Sometimes pre-processing middleware needs
@@ -223,12 +225,12 @@
   the [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds keys to track
   which Fields it adds or needs to remap, and then the post-processing middleware does the actual remapping based on
   that info)."
-  [opts]
+  [ref-opts _options]
   (not-empty (m/filter-keys (fn [k]
                               (and (qualified-keyword? k)
                                    (not= (namespace k) "lib")
                                    (not (str/starts-with? (namespace k) "metabase.lib"))))
-                            opts)))
+                            ref-opts)))
 
 (def ^:private opts-metadata-fns
   "Map of
@@ -237,24 +239,33 @@
 
   Where `f` is of the form
 
-    (f opts) => value
+    (f field-ref-options-map metadata-calculation-options) => value
 
   If `f` returns a non-nil value, then it is included under `key-in-col-metadata`."
   (merge
-   (u/index-by identity opts-propagated-keys)
-   (set/map-invert opts-propagated-renamed-keys)
+   (into {}
+         (map (fn [k]
+                [k (fn [ref-opts _options]
+                     (k ref-opts))]))
+         opts-propagated-keys)
+   (into {}
+         (map (fn [[ref-opts-key metadata-key]]
+                [metadata-key (fn [ref-opts _options]
+                                (ref-opts ref-opts-key))]))
+         opts-propagated-renamed-keys)
    {:inherited-temporal-unit opts-fn-inherited-temporal-unit
     :lib/original-binning    opts-fn-original-binning
     :options                 opts-fn-options}))
 
 (mu/defn- options-metadata* :- :map
   "Part of [[resolve-field-metadata]] -- calculate metadata based on options map of the field ref itself."
-  [[_field opts _id-or-name, :as _field-clause] :- :mbql.clause/field]
+  [[_field ref-opts _id-or-name, :as _field-clause] :- :mbql.clause/field
+   options                                          :- [:maybe ::lib.metadata.calculation/metadata.options]]
   (into (if *debug*
-          {::debug.origin (list (list 'options-metadata* opts))}
+          {::debug.origin (list (list 'options-metadata* ref-opts))}
           {})
         (keep (fn [[k f]]
-                (when-some [v (f opts)]
+                (when-some [v (f ref-opts options)]
                   [k v])))
         opts-metadata-fns))
 
@@ -267,8 +278,8 @@
     join-alias (update :ident lib.metadata.ident/explicitly-joined-ident
                        (:ident (lib.join/maybe-resolve-join-across-stages query stage-number join-alias)))))
 
-(defn- options-metadata [query stage-number field-ref]
-  (->> (options-metadata* field-ref)
+(defn- options-metadata [query stage-number field-ref options]
+  (->> (options-metadata* field-ref options)
        (update-ident query stage-number field-ref)))
 
 (mu/defn- current-stage-model-card-id :- [:maybe ::lib.schema.id/card]
@@ -307,9 +318,9 @@
     :table-id
     :visibility-type})
 
-(defn- saved-question-metadata [query card-id]
+(defn- saved-question-metadata [query card-id options]
   (not-empty
-   (for [col (lib.card/saved-question-metadata query card-id)]
+   (for [col (lib.card/saved-question-metadata query card-id options)]
      (cond-> col
        *debug* (update ::debug.origin conj (list 'saved-question-metadata card-id))))))
 
@@ -320,11 +331,14 @@
 ;;; well as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
 (mu/defn- current-stage-model-metadata
   "Pull in metadata from models if the current stage was from a model."
-  [query stage-number field-ref :- :mbql.clause/field]
+  [query
+   stage-number
+   field-ref :- :mbql.clause/field
+   options   :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (when-some [card-id (current-stage-model-card-id query stage-number)]
     ;; prefer using card metadata if we can get it from the metadata provider; otherwise fall back to metadata
     ;; attached to the stage.
-    (when-some [col (or (when-some [card-cols (saved-question-metadata query card-id)]
+    (when-some [col (or (when-some [card-cols (saved-question-metadata query card-id options)]
                           (resolve-column-in-metadata query field-ref card-cols))
                         (when-some [stage-cols (stage-attached-metadata (lib.util/query-stage query stage-number))]
                           (resolve-column-in-metadata query field-ref stage-cols)))]
@@ -335,9 +349,13 @@
                  :lib/card-id card-id)
           (cond-> *debug* (update ::debug.origin conj (list 'current-stage-model-metadata stage-number field-ref)))))))
 
-(mu/defn- current-stage-source-card-metadata [query stage-number field-ref :- :mbql.clause/field]
+(mu/defn- current-stage-source-card-metadata
+  [query
+   stage-number
+   field-ref :- :mbql.clause/field
+   options   :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (when-some [card-id (:source-card (lib.util/query-stage query stage-number))]
-    (when-some [cols (saved-question-metadata query card-id)]
+    (when-some [cols (saved-question-metadata query card-id options)]
       (when-some [col (resolve-column-in-metadata query field-ref cols)]
         (-> col
             lib.field.util/update-keys-for-col-from-previous-stage
@@ -362,13 +380,14 @@
   in models."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   field-ref    :- :mbql.clause/field]
+   field-ref    :- :mbql.clause/field
+   options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (some-> (or
            ;; if the current stage is from a model then get the relevant metadata and do not recurse any further.
-           (current-stage-model-metadata query stage-number field-ref)
+           (current-stage-model-metadata query stage-number field-ref options)
            ;; if the current stage has a `:source-card` (i.e., if it is the first stage of the query) then get
            ;; metadata for that card and do not recurse any further.
-           (current-stage-source-card-metadata query stage-number field-ref)
+           (current-stage-source-card-metadata query stage-number field-ref options)
            ;;
            ;; TODO (Cam 6/19/25) -- what if the current stage is a NATIVE query?
            ;;
@@ -390,7 +409,7 @@
                    ;; introduced in this stage by an expression or something.
                    recursive-col       (when (or (not col)
                                                  (lib.field.util/inherited-column? col))
-                                         (previous-stage-or-source-card-metadata query previous-stage-number previous-stage-ref))]
+                                         (previous-stage-or-source-card-metadata query previous-stage-number previous-stage-ref options))]
                ;; prefer the metadata we get from recursing since maybe that came from a model or something.
                (merge-metadata col recursive-col))))
           (cond-> *debug* (update ::debug.origin conj (list 'previous-stage-or-source-card-metadata stage-number field-ref)))))
@@ -400,7 +419,8 @@
 (mu/defn- resolve-in-join
   [query        :- ::lib.schema/query
    stage-number :- :int
-   field-ref    :- :mbql.clause/field]
+   field-ref    :- :mbql.clause/field
+   options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (some-> (when-some [join-alias (lib.join.util/current-join-alias field-ref)]
             (if-some [join (or (m/find-first #(= (lib.join.util/current-join-alias %) join-alias)
                                              (:joins (lib.util/query-stage query stage-number)))
@@ -408,26 +428,29 @@
                                           (pr-str field-ref) (pr-str join-alias)))]
               ;; found join at this stage of the query, now resolve within the join.
               (let [fake-join-query (assoc query :stages (:stages join))]
-                (when-some [resolved (resolve-field-ref* fake-join-query -1 (lib.join/with-join-alias field-ref nil))]
+                (when-some [resolved (resolve-field-ref* fake-join-query -1 (lib.join/with-join-alias field-ref nil) options)]
                   (-> resolved
                       (assoc :lib/original-join-alias join-alias)
                       (lib.join/with-join-alias join-alias)
                       (m/update-existing :lib/original-ref lib.join/with-join-alias join-alias))))
               ;; join does not exist at this stage of the query, try looking in previous stages.
               (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-                (resolve-in-join query previous-stage-number field-ref))))
+                (resolve-in-join query previous-stage-number field-ref options))))
           (cond-> *debug* (update ::debug.origin conj (list 'resolve-in-join stage-number field-ref)))))
 
 (defn- resolve-field-ref*
-  [query stage-number [_field _opts id-or-name :as field-ref]]
+  [query
+   stage-number
+   [_field _opts id-or-name :as field-ref]
+   options]
   (or
    ;; resolve metadata IF this is from a join.
-   (resolve-in-join query stage-number field-ref)
+   (resolve-in-join query stage-number field-ref options)
    ;; not from a join.
    ;;
    ;; resolve the field ID if we can.
    (let [resolved-for-name (when (string? id-or-name)
-                             (resolve-column-name query stage-number field-ref))
+                             (resolve-column-name query stage-number field-ref options))
          field-id          (if (integer? id-or-name)
                              id-or-name
                              (:id resolved-for-name))]
@@ -443,27 +466,34 @@
           resolved-for-name
           ;; metadata we want to 'flow' from previous stage(s) / source models of the query (e.g.
           ;; `:semantic-type`)
-          (previous-stage-or-source-card-metadata query stage-number field-ref)
+          (previous-stage-or-source-card-metadata query stage-number field-ref options)
           ;; propagate stuff specified in the options map itself. Generally stuff specified here should override stuff
           ;; in upstream metadata from the metadata provider or previous stages/source card/model
-          (options-metadata query stage-number field-ref))
+          (options-metadata query stage-number field-ref options))
          (cond-> *debug* (update ::debug.origin conj (list 'resolve-field-metadata* stage-number field-ref)))))))
 
 (mu/defn resolve-field-ref :- ::lib.schema.metadata/column
   "Resolve metadata for a `:field` ref. This is part of the implementation
   for [[metabase.lib.metadata.calculation/metadata-method]] a `:field` clause."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   field-ref    :- :mbql.clause/field]
-  (let [stage-number (lib.util/canonical-stage-index query stage-number)] ; this is just to make debugging easier
-    (as-> (resolve-field-ref* query stage-number field-ref) $metadata
-      ;; keep the original ref around, we need it to construct the world's most busted broken legacy refs
-      ;; in [[metabase.lib.metadata/result-metadata]].
-      (assoc $metadata :lib/original-ref field-ref)
-      ;; update the effective type if needed now that we have merged metadata from all relevant sources
-      (assoc $metadata :effective-type (if (or (not (:effective-type $metadata))
-                                               (= (:effective-type $metadata) :type/*))
-                                         (:base-type $metadata)
-                                         (:effective-type $metadata)))
-      ;; recalculate the display name so we can make sure it includes binning info or temporal unit or whatever.
-      (assoc $metadata :display-name (lib.metadata.calculation/display-name query stage-number $metadata)))))
+  ([query stage-number field-ref]
+   (resolve-field-ref query stage-number field-ref nil))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    field-ref    :- :mbql.clause/field
+    options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
+   (let [stage-number (lib.util/canonical-stage-index query stage-number)] ; this is just to make debugging easier
+     (lib.metadata.cache/with-cached-metadata query (lib.metadata.cache/cache-key ::resolve-field-ref query stage-number field-ref options)
+       (as-> (resolve-field-ref* query stage-number field-ref options) $metadata
+         ;; keep the original ref around, we need it to construct the world's most busted broken legacy refs
+         ;; in [[metabase.lib.metadata/result-metadata]].
+         (assoc $metadata :lib/original-ref field-ref)
+         ;; update the effective type if needed now that we have merged metadata from all relevant sources
+         (assoc $metadata :effective-type (if (or (not (:effective-type $metadata))
+                                                  (= (:effective-type $metadata) :type/*))
+                                            (:base-type $metadata)
+                                            (:effective-type $metadata)))
+         ;; recalculate the display name so we can make sure it includes binning info or temporal unit or whatever.
+         (assoc $metadata
+                :display-name
+                (lib.metadata.calculation/display-name query stage-number $metadata (:display-name-style options))))))))

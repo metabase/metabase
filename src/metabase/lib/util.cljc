@@ -492,6 +492,13 @@
       (truncate-alias)))
 
 (mr/def ::unique-name-generator
+  "Stateful function with the signature
+
+    (f)        => 'fresh' unique name generator
+    (f str)    => unique-str
+    (f id str) => unique-str
+
+  i.e. repeated calls with the same string should return different unique strings."
   [:function
    ;; (f) => generates a new instance of the unique name generator for recursive generation without 'poisoning the
    ;; well'.

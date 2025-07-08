@@ -6,7 +6,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as result-metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
@@ -906,31 +905,30 @@
                     (as-> query (lib/breakout query (-> (m/find-first #(= (:id %) (meta/id :orders :created-at))
                                                                       (lib/breakoutable-columns query))
                                                         (lib/with-temporal-bucket :year)))))]
-      (binding [lib.metadata.calculation/*display-name-style* :long]
-        (is (=? [{:base-type                                  :type/DateTimeWithLocalTZ
-                  :display-name                               "Created At: Year"
-                  :effective-type                             :type/Integer
-                  ;; additional keys in field ref are WRONG
-                  :field-ref                                  (partial = [:field "CREATED_AT" {:base-type     :type/DateTimeWithLocalTZ
-                                                                                               :temporal-unit :year}])
-                  :id                                         (meta/id :orders :created-at)
-                  :inherited-temporal-unit                    :year
-                  :name                                       "CREATED_AT"
-                  :semantic-type                              :type/CreationTimestamp
-                  :source                                     :breakout
-                  :table-id                                   (meta/id :orders)
-                  :unit                                       :year
-                  :lib/deduplicated-name                      "CREATED_AT"
-                  :lib/desired-column-alias                   "CREATED_AT"
-                  :lib/hack-original-name                     "CREATED_AT"
-                  :lib/original-display-name                  "Created At"
-                  :lib/original-name                          "CREATED_AT"
-                  :lib/source                                 :source/breakouts
-                  :lib/source-column-alias                    "CREATED_AT"
-                  :lib/type                                   :metadata/column
-                  :metabase.lib.field/original-effective-type :type/DateTimeWithLocalTZ
-                  :metabase.lib.field/temporal-unit           :year}]
-                (column-info query {})))))))
+      (is (=? [{:base-type                                  :type/DateTimeWithLocalTZ
+                :display-name                               "Created At: Year"
+                :effective-type                             :type/Integer
+                ;; additional keys in field ref are WRONG
+                :field-ref                                  (partial = [:field "CREATED_AT" {:base-type     :type/DateTimeWithLocalTZ
+                                                                                             :temporal-unit :year}])
+                :id                                         (meta/id :orders :created-at)
+                :inherited-temporal-unit                    :year
+                :name                                       "CREATED_AT"
+                :semantic-type                              :type/CreationTimestamp
+                :source                                     :breakout
+                :table-id                                   (meta/id :orders)
+                :unit                                       :year
+                :lib/deduplicated-name                      "CREATED_AT"
+                :lib/desired-column-alias                   "CREATED_AT"
+                :lib/hack-original-name                     "CREATED_AT"
+                :lib/original-display-name                  "Created At"
+                :lib/original-name                          "CREATED_AT"
+                :lib/source                                 :source/breakouts
+                :lib/source-column-alias                    "CREATED_AT"
+                :lib/type                                   :metadata/column
+                :metabase.lib.field/original-effective-type :type/DateTimeWithLocalTZ
+                :metabase.lib.field/temporal-unit           :year}]
+              (column-info query {}))))))
 
 (deftest ^:parallel preserve-edited-metadata-test
   (testing "Cards preserve their edited metadata"

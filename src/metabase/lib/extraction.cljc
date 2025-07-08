@@ -80,7 +80,7 @@
     (lib.types.isa/URL? column)      (url-extractions column)))
 
 (defmethod lib.metadata.calculation/display-info-method ::extraction
-  [_query _stage-number extraction]
+  [_query _stage-number extraction _options]
   (dissoc extraction :lib/type :column))
 
 (mu/defn extraction-expression :- ::lib.schema.expression/expression

@@ -8,7 +8,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.stage :as lib.stage]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -18,18 +17,6 @@
 
 #?(:cljs
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
-
-(deftest ^:parallel ensure-previous-stages-have-metadata-test
-  (let [query (-> (lib.tu/venues-query)
-                  (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)])
-                  lib/append-stage
-                  lib/append-stage)]
-    (is (=? {:stages [{::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/fields}
-                                                    {:name "NAME", :lib/source :source/fields}]}
-                      {::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/previous-stage}
-                                                    {:name "NAME", :lib/source :source/previous-stage}]}
-                      {}]}
-            (#'lib.stage/ensure-previous-stages-have-metadata query -1 {})))))
 
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are coming back the way we'd expect for :field clauses"
@@ -214,31 +201,29 @@
                   #'lib.tu/query-with-source-card-with-result-metadata]
             :let [query (@varr)]]
       (testing (pr-str varr)
-        (is (=? [{:name                     "USER_ID"
-                  :display-name             "User ID"
-                  :base-type                :type/Integer
-                  :lib/source               :source/card
-                  :lib/desired-column-alias "USER_ID"}
-                 {:name                     "count"
-                  :display-name             "Count"
-                  :base-type                :type/Integer
-                  :lib/source               :source/card
-                  :lib/desired-column-alias "count"}
-                 {:name                     "ID"
-                  :display-name             "ID"
-                  :base-type                :type/BigInteger
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__ID"}
-                 {:name                     "NAME"
-                  :display-name             "Name"
-                  :base-type                :type/Text
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__NAME"}
-                 {:name                     "LAST_LOGIN"
-                  :display-name             "Last Login"
-                  :base-type                :type/DateTime
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"}]
+        (is (=? [{:name         "USER_ID"
+                  :display-name "User ID"
+                  :base-type    :type/Integer
+                  :lib/source   :source/card}
+                 {:name         "count"
+                  :display-name "Count"
+                  :base-type    :type/Integer
+                  :lib/source   :source/card}
+                 {:name         "ID"
+                  :display-name "ID"
+                  :base-type    :type/BigInteger
+                  :lib/source   :source/implicitly-joinable
+                  :fk-field-id  (meta/id :checkins :user-id)}
+                 {:name         "NAME"
+                  :display-name "Name"
+                  :base-type    :type/Text
+                  :lib/source   :source/implicitly-joinable
+                  :fk-field-id  (meta/id :checkins :user-id)}
+                 {:name         "LAST_LOGIN"
+                  :display-name "Last Login"
+                  :base-type    :type/DateTime
+                  :lib/source   :source/implicitly-joinable
+                  :fk-field-id  (meta/id :checkins :user-id)}]
                 (lib/visible-columns query)))))))
 
 (deftest ^:parallel do-not-propagate-temporal-units-to-next-stage-text
@@ -601,17 +586,16 @@
                                 :fields       [&Orders.title
                                                &Orders.*sum/Integer]}]
                     :fields   [$title $category]}))]
-      (binding [lib.metadata.calculation/*display-name-style* :long]
-        (is (= [[(meta/id :products :title)    "TITLE"         "TITLE"    "Title"]                     ; products.title
-                [(meta/id :products :category) "CATEGORY"      "CATEGORY" "Category"]                  ; products.category
-                [(meta/id :products :title)    "Orders__TITLE" "TITLE"    "Orders → Title"]            ; orders.product-id -> products.title
-                [nil                           "Orders__sum"   "sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
-               (map (juxt :id :lib/desired-column-alias :lib/source-column-alias :display-name)
-                    (lib.metadata.calculation/returned-columns
-                     query
-                     -1
-                     (lib.util/query-stage query -1)
-                     {:include-remaps? true}))))))))
+      (is (= [[(meta/id :products :title)    "TITLE"         "TITLE"    "Title"]                     ; products.title
+              [(meta/id :products :category) "CATEGORY"      "CATEGORY" "Category"]                  ; products.category
+              [(meta/id :products :title)    "Orders__TITLE" "TITLE"    "Orders → Title"]            ; orders.product-id -> products.title
+              [nil                           "Orders__sum"   "sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
+             (map (juxt :id :lib/desired-column-alias :lib/source-column-alias :display-name)
+                  (lib.metadata.calculation/returned-columns
+                   query
+                   -1
+                   (lib.util/query-stage query -1)
+                   {:display-name-style :long, :include-remaps? true})))))))
 
 (deftest ^:parallel no-duplicate-remaps-test
   (testing "Do not add duplicate columns when :include-remaps? is true (QUE-1410)"
@@ -784,17 +768,16 @@
                                 :fields       :all}]
                     :order-by [[:asc $id]]
                     :limit    1}))]
-      (binding [lib.metadata.calculation/*display-name-style* :long]
-        (is (= [;; these 8 are from PRODUCTS
-                "ID"
-                "Ean"
-                "Title"
-                "Category"
-                "Vendor"
-                "Price"
-                "Rating"
-                "Created At"
-                ;; the next 2 are from PRODUCTS
-                "Q1 → Category"
-                "Q1 → Count"]
-               (map :display-name (lib/returned-columns query))))))))
+      (is (= [;; these 8 are from PRODUCTS
+              "ID"
+              "Ean"
+              "Title"
+              "Category"
+              "Vendor"
+              "Price"
+              "Rating"
+              "Created At"
+              ;; the next 2 are from PRODUCTS
+              "Q1 → Category"
+              "Q1 → Count"]
+             (map :display-name (lib/returned-columns query -1 query {:display-name-style :long})))))))

@@ -33,7 +33,7 @@
       (lib.util/query-stage normalized-definition -1))))
 
 (defmethod lib.ref/ref-method :metadata/metric
-  [{:keys [id ::lib.join/join-alias], :as metric-metadata}]
+  [{:keys [id ::lib.join/join-alias], :as metric-metadata} _options]
   (let [effective-type (or (:effective-type metric-metadata)
                            (:base-type metric-metadata)
                            (when-let [aggregation (first (:aggregation (metric-definition metric-metadata)))]
@@ -73,20 +73,20 @@
       (fallback-display-name)))
 
 (defmethod lib.metadata.calculation/display-info-method :metadata/metric
-  [query stage-number metric-metadata]
+  [query stage-number metric-metadata options]
   (merge
-   ((get-method lib.metadata.calculation/display-info-method :default) query stage-number metric-metadata)
+   ((get-method lib.metadata.calculation/display-info-method :default) query stage-number metric-metadata options)
    (select-keys metric-metadata [:description :aggregation-position])))
 
 (defmethod lib.metadata.calculation/display-info-method :metric
-  [query stage-number [_tag opts metric-id-or-name]]
+  [query stage-number [_tag opts metric-id-or-name] options]
   (let [display-name (:display-name opts)
         opts (cond-> opts
                (and display-name (not (:long-display-name opts)))
                (assoc :long-display-name display-name))]
     (merge
      (if-let [metric-metadata (resolve-metric query metric-id-or-name)]
-       (lib.metadata.calculation/display-info query stage-number metric-metadata)
+       (lib.metadata.calculation/display-info query stage-number metric-metadata options)
        {:effective-type    :type/*
         :display-name      (fallback-display-name)
         :long-display-name (fallback-display-name)})
@@ -140,11 +140,11 @@
     mbql.normalize/normalize))
 
 (defmethod lib.metadata.calculation/metadata-method :metric
-  [query _stage-number [_ opts metric-id]]
+  [query _stage-number [_ opts metric-id] options]
   (if-let [metric-meta (lib.metadata/metric query metric-id)]
     (let [metric-query      (lib.query/query query (normalize-legacy-query (:dataset-query metric-meta)))
           inner-aggregation (first (lib.aggregation/aggregations metric-query))
-          inner-meta        (lib.metadata.calculation/metadata metric-query -1 inner-aggregation)]
+          inner-meta        (lib.metadata.calculation/metadata metric-query -1 inner-aggregation options)]
       (-> inner-meta
           (assoc :display-name           (:name metric-meta) ; Metric card's name
                  :lib/hack-original-name (:name metric-meta) ; Metric card's name
@@ -155,6 +155,6 @@
           (u/assoc-dissoc :ident (:ident opts))
           ;; If the :metric ref has a :name option, that overrides the metric card's name.
           (cond-> (:name opts) (assoc :name (:name opts)))))
-    {:lib/type :metadata/metric
-     :id metric-id
+    {:lib/type     :metadata/metric
+     :id           metric-id
      :display-name (fallback-display-name)}))

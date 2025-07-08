@@ -54,10 +54,10 @@
        (lib.metadata.calculation/display-name query stage-number aggregation :long)))))
 
 (defmethod lib.metadata.calculation/metadata-method :aggregation
-  [query stage-number [_ag {:keys [base-type effective-type], :as _opts} index, :as _aggregation-ref]]
+  [query stage-number [_ag {:keys [base-type effective-type], :as _opts} index, :as _aggregation-ref] options]
   (let [aggregation (resolve-aggregation query stage-number index)]
     (merge
-     (lib.metadata.calculation/metadata query stage-number aggregation)
+     (lib.metadata.calculation/metadata query stage-number aggregation options)
      {:lib/source :source/aggregations
       :lib/source-uuid (:lib/uuid (second aggregation))}
      (when base-type
@@ -100,8 +100,8 @@
     :count-where "count_where"))
 
 (defmethod lib.metadata.calculation/metadata-method ::quantity-aggregation
-  [query stage-number clause]
-  (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
+  [query stage-number clause options]
+  (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause options)
          :semantic-type :type/Quantity))
 
 (lib.hierarchy/derive ::quantity-aggregation ::aggregation)
@@ -182,8 +182,8 @@
 ;; But for ::no-semantic-type we should drop
 
 (defmethod lib.metadata.calculation/metadata-method ::no-semantic-type
-  [query stage-number clause]
-  (dissoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
+  [query stage-number clause options]
+  (dissoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause options)
           :semantic-type))
 
 ;;; we don't currently have sophisticated logic for generating nice display names for filter clauses.
@@ -209,8 +209,8 @@
   "share")
 
 (defmethod lib.metadata.calculation/metadata-method :share
-  [query stage-number clause]
-  (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
+  [query stage-number clause options]
+  (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause options)
          :semantic-type :type/Percentage))
 
 (lib.hierarchy/derive :share ::aggregation)
@@ -220,15 +220,15 @@
   (i18n/tru "Count of rows matching condition"))
 
 (defmethod lib.metadata.calculation/metadata-method ::aggregation
-  [query stage-number [_tag _opts first-arg :as clause]]
+  [query stage-number [_tag _opts first-arg :as clause] options]
   (merge
    ;; flow the `:options` from the field we're aggregating. This is important, for some reason.
    ;; See [[metabase.query-processor-test.aggregation-test/field-settings-for-aggregate-fields-test]]
    (when first-arg
      ;; This might be an inner aggregation expression without an ident of its own, but that's fine since we're only
      ;; here for its type!
-     (select-keys (lib.metadata.calculation/metadata query stage-number first-arg) [:settings :semantic-type]))
-   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)
+     (select-keys (lib.metadata.calculation/metadata query stage-number first-arg options) [:settings :semantic-type]))
+   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause options)
    {:ident (lib.options/ident clause)}))
 
 (lib.common/defop count       [] [x])
@@ -249,7 +249,7 @@
 (lib.common/defop var         [x])
 
 (defmethod lib.ref/ref-method :aggregation
-  [aggregation-clause]
+  [aggregation-clause _options]
   aggregation-clause)
 
 (def ^:private Aggregable
@@ -286,11 +286,15 @@
   ([query]
    (aggregations-metadata query -1))
 
+  ([query stage-number]
+   (aggregations-metadata query stage-number nil))
+
   ([query        :- ::lib.schema/query
-    stage-number :- :int]
+    stage-number :- :int
+    options      :- [:maybe ::lib.metadata.calculation/metadata.options]]
    (some->> (not-empty (:aggregation (lib.util/query-stage query stage-number)))
             (into [] (map (fn [aggregation]
-                            (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)]
+                            (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation options)]
                               (-> metadata
                                   (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
                                   (assoc :lib/source      :source/aggregations
@@ -308,7 +312,7 @@
   (:display-name (display-info)))
 
 (defmethod lib.metadata.calculation/display-info-method :operator/aggregation
-  [_query _stage-number {:keys [display-info requires-column? selected?] short-name :short}]
+  [_query _stage-number {:keys [display-info requires-column? selected?] short-name :short} _options]
   (cond-> (assoc (display-info)
                  :short-name (u/qualified-name short-name)
                  :requires-column requires-column?)

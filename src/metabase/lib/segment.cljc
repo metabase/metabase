@@ -18,7 +18,7 @@
     (lib.metadata/segment query segment-id)))
 
 (defmethod lib.ref/ref-method :metadata/segment
-  [{:keys [id]}]
+  [{:keys [id]} _options]
   (lib.options/ensure-uuid [:segment {} id]))
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/segment
@@ -46,17 +46,17 @@
       (fallback-display-name)))
 
 (defmethod lib.metadata.calculation/display-info-method :metadata/segment
-  [query stage-number {:keys [description filter-positions], :as segment-metadata}]
+  [query stage-number {:keys [description filter-positions], :as segment-metadata} options]
   (let [default-display-info-method (get-method lib.metadata.calculation/display-info-method :default)
-        default-display-info        (default-display-info-method query stage-number segment-metadata)]
+        default-display-info        (default-display-info-method query stage-number segment-metadata options)]
     (cond-> default-display-info
       description (assoc :description description)
       filter-positions (assoc :filter-positions filter-positions))))
 
 (defmethod lib.metadata.calculation/display-info-method :segment
-  [query stage-number [_tag _opts segment-id-or-name]]
+  [query stage-number [_tag _opts segment-id-or-name] options]
   (if-let [segment-metadata (resolve-segment query segment-id-or-name)]
-    (lib.metadata.calculation/display-info query stage-number segment-metadata)
+    (lib.metadata.calculation/display-info query stage-number segment-metadata options)
     {:effective-type    :type/Boolean
      :display-name      (fallback-display-name)
      :long-display-name (fallback-display-name)}))
