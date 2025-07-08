@@ -155,7 +155,7 @@ describe("scenarios > filters > bulk filtering", () => {
     H.visitQuestionAdhoc(filteredQuestionDetails);
     H.queryBuilderFiltersPanel().findByText("Quantity is less than 30").click();
     H.popover().within(() => {
-      cy.findByLabelText("Filter value").type("{backspace}{backspace}25");
+      cy.findByLabelText("End of range").type("{backspace}{backspace}25");
       cy.button("Update filter").click();
     });
     cy.wait("@dataset");
