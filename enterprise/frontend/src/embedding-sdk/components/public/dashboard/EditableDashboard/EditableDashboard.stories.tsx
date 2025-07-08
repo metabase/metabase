@@ -1,4 +1,4 @@
-import type { StoryFn } from "@storybook/react";
+import type { Meta, StoryFn, StoryObj } from "@storybook/react";
 
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import {
@@ -13,7 +13,7 @@ import {
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
-export default {
+const meta = {
   title: "EmbeddingSDK/EditableDashboard",
   component: EditableDashboard,
   parameters: {
@@ -135,7 +135,10 @@ export default {
       action: "onLoadWithoutCards",
     },
   },
-};
+} satisfies Meta<typeof EditableDashboard>;
+export default meta;
+
+type Story = StoryObj<typeof meta>;
 
 const Template: StoryFn<EditableDashboardProps> = (args) => {
   return <EditableDashboard {...args} />;
@@ -147,4 +150,4 @@ export const Default = {
   args: {
     dashboardId: DASHBOARD_ID,
   },
-};
+} satisfies Story;
