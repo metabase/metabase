@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "stack",
+        "restack"
+      ],
+      "branch": "emb-590-accept-entity-ids-in-all-sdk-related-endpoints-and-handle-it"
+    }
+  ]
 }
