@@ -59,3 +59,13 @@ export const EMBED_FALLBACK_DASHBOARD_ID = 1;
 
 /** If the activity log of the user is completely empty, we fallback to this question. */
 export const EMBED_FALLBACK_QUESTION_ID = 1;
+
+/**
+ * How long to wait before we set the parameter value in the preview.
+ *
+ * Setting this too low will cause the preview to flicker as we need to re-render
+ * the whole question or dashboard when the parameter changes.
+ *
+ * Setting this too high will cause the preview to feel unresponsive.
+ **/
+export const SET_INITIAL_PARAMETER_DEBOUNCE_MS = 500;
