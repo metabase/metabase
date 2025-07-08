@@ -94,10 +94,10 @@
                   (perms.test-util/with-perms-for-group-and-tables!
                     (perms-group/all-users)
                     {(mt/id :reviews) {:perms/create-queries :no}
-                     (mt/id :orders) {:perms/view-data :blocked}
+                     (mt/id :orders) {:perms/create-queries :no}
                      products-table-id {:perms/create-queries :no}}
                     (data-perms/disable-perms-cache
-                     ;; Mimicks the API endpoint:
+                      ;; Mimicks the API endpoint:
                      (binding [qp.perms/*param-values-query* true]
                        (let [remapped-values (params.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
 
