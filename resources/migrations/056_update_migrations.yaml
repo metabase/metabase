@@ -303,7 +303,7 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_data_app_definition_app_id
                     deleteCascade: true
-            - column:
+              - column:
                   name: creator_id
                   remarks: the creator
                   type: int
