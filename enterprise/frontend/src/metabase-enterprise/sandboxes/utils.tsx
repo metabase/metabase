@@ -1,12 +1,15 @@
 import type { ReactNode } from "react";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import type { MappingEditorEntry } from "metabase/common/components/MappingEditor";
 import { Group, Icon, type SelectProps, Tooltip } from "metabase/ui";
-import type { GroupTableAccessPolicy, Table, User } from "metabase-types/api";
+import type { GroupTableAccessPolicy, Table } from "metabase-types/api";
 
-import type { GroupTableAccessPolicyParams } from "./types";
+import type {
+  GroupTableAccessPolicyParams,
+  MappingType,
+  MappingValue,
+} from "./types";
 
 const TENANT_SLUG_ATTRIBUTE = "@tenant.slug";
 
@@ -43,43 +46,43 @@ export const renderUserAttributesForSelect: SelectProps["renderOption"] = ({
   </Group>
 );
 
-const SystemDefined = () => (
-  <Tooltip label={t`This attribute is system defined`}>
-    <Icon name="info" c="text-light" />
-  </Tooltip>
-);
-
-const TenantDefined = () => (
-  <Tooltip
-    label={t`This attribute is inherited from the tenant, but you can override its value`}
-    maw="20rem"
-  >
-    <Icon name="info" c="text-light" />
-  </Tooltip>
-);
-
-export const getSpecialEntries = (user?: User): MappingEditorEntry[] => {
-  return Object.entries(user?.structured_attributes ?? {})
-    .map(([key, { value, source, frozen, original }]) => ({
-      key,
-      value,
-      keyOpts: {
-        disabled: source !== "user" || !!original,
-        leftSection: match(original?.source || source)
-          .with("system", () => <SystemDefined />)
-          .with("tenant", () => <TenantDefined />)
-          .otherwise(() => null),
-      },
-      valueOpts: {
-        disabled: frozen,
-        revert: original,
-      },
-    }))
-    .sort((a, b) =>
-      // sort so that disabled keys and values are first
-      String(a.keyOpts.disabled) + String(a.valueOpts.disabled) <
-      String(b.keyOpts.disabled) + String(b.valueOpts.disabled)
-        ? 1
-        : -1,
-    );
+export const addEntry = (entries: MappingEditorEntry[]) => {
+  return [...entries, { key: "", value: "" }];
 };
+
+export const removeEntry = (entries: MappingEditorEntry[], index: number) => {
+  const entriesCopy = [...entries];
+  entriesCopy.splice(index, 1);
+  return entriesCopy;
+};
+
+export const replaceEntryValue = (
+  entries: MappingEditorEntry[],
+  index: number,
+  newValue: MappingValue,
+) => {
+  const newEntries = [...entries];
+  newEntries[index].value = newValue;
+  return newEntries;
+};
+
+export const replaceEntryKey = (
+  entries: MappingEditorEntry[],
+  index: number,
+  newKey: string,
+) => {
+  const newEntries = [...entries];
+  newEntries[index].key = newKey;
+  return newEntries;
+};
+
+export const buildEntries = (mapping: MappingType): MappingEditorEntry[] =>
+  Object.entries(mapping).map(([key, value]) => ({ key, value }));
+
+export const buildMapping = (entries: MappingEditorEntry[]): MappingType =>
+  entries.reduce((memo: MappingType, { key, value }) => {
+    if (key) {
+      memo[key] = value;
+    }
+    return memo;
+  }, {});

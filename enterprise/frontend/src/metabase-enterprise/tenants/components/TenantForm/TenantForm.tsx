@@ -11,7 +11,7 @@ import {
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Button } from "metabase/ui";
-import { LoginAttributesWidget } from "metabase-enterprise/sandboxes/components/LoginAttributesWidget";
+import { LoginAttributesWidget } from "metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget";
 import type { Tenant } from "metabase-types/api";
 
 const MAX_SLUG_LENGTH = 255;
