@@ -55,6 +55,7 @@
                               :actions                         false
                               :metadata/key-constraints        (not driver-api/is-test?)
                               :database-routing                false
+                              :describe-is-generated           true
                               :describe-is-nullable            true
                               :describe-default-expr           true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))

@@ -88,8 +88,9 @@
                               :window-functions/offset                false
                               :expression-literals                    true
                               :database-routing                       true
-                              :describe-is-nullable                   true
-                              :describe-default-expr                  true}]
+                              :describe-default-expr                  true
+                              :describe-is-generated                  true
+                              :describe-is-nullable                   true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.

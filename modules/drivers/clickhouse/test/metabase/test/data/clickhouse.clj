@@ -138,7 +138,7 @@
 
 (defn- field->clickhouse-column
   [field]
-  (let [{:keys [field-name base-type pk? not-null? default]} field
+  (let [{:keys [field-name base-type pk? not-null? default-expr generated-expr]} field
         ch-type  (if (map? base-type)
                    (:native base-type)
                    (sql.tx/field-base-type->sql-type :clickhouse base-type))
@@ -151,8 +151,9 @@
                    (format "%s Nullable(DateTime64) COMMENT 'time'" col-name)
 
                    :else (format "%s Nullable(%s)" col-name ch-type))
-        ch-col  (if default (str ch-col " DEFAULT " default) ch-col)]
-    ch-col))
+        default (when default-expr (format "DEFAULT (%s)" default-expr))
+        generated (when generated-expr (format "ALIAS (%s)" generated-expr))]
+    (str/join " " (filter some? [ch-col default generated]))))
 
 (defn- ->comma-separated-str
   [coll]
@@ -186,6 +187,9 @@
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil)
 
 (defmethod sql.tx/session-schema :clickhouse [_] "default")
+
+(defmethod sql.tx/generated-column-sql :clickhouse [_ expr]
+  (format "ALIAS (%s)" expr))
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"
