@@ -184,6 +184,29 @@ describe("scenarios > embedding-sdk > popovers", () => {
     });
   });
 
+  it("should properly render the ColorPicker above the visualizer modal (metabase#60116)", () => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
+    });
+
+    getSdkRoot().within(() => {
+      H.editDashboard();
+      H.showDashcardVisualizerModalSettings(0, {
+        buttonText: "Visualize another way",
+      });
+
+      cy.findAllByTestId("color-selector-button").first().click();
+
+      // Clicking at the edge of the color picker popover to be sure that the click does not close it
+      cy.findByTestId("color-selector-popover").click(1, 1);
+      cy.findByTestId("color-selector-popover").should("be.visible");
+
+      // Clicking outside the color picker to be sure that the click closes it
+      cy.findByTestId("chartsettings-sidebar").click(1, 1);
+      cy.findByTestId("color-selector-popover").should("not.exist");
+    });
+  });
+
   it("should prevent closing the ComparisonPicker when clicking it", () => {
     cy.get<string>("@questionId").then((questionId) => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />);
