@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupCollectionItemsEndpoint,
@@ -117,6 +118,13 @@ describe("EditableDashboard", () => {
     expect(
       await screen.findByRole("button", { name: "Pick your starting data" }),
     ).toBeInTheDocument();
+
+    // Default `entityTypes` should be `["model", "table"]`
+    const dataPickerDataCalls = fetchMock.calls("path:/api/search");
+    expect(dataPickerDataCalls).toHaveLength(1);
+    const [[dataPickerDataCallUrl]] = dataPickerDataCalls;
+    expect(dataPickerDataCallUrl).toContain("models=dataset");
+    expect(dataPickerDataCallUrl).toContain("models=table");
   });
 
   it("should allow to go back to the dashboard after seeing the query builder", async () => {
@@ -149,6 +157,39 @@ describe("EditableDashboard", () => {
     expect(
       screen.getByText("You're editing this dashboard."),
     ).toBeInTheDocument();
+  });
+
+  it("should allow to pass `queryBuilderProps.entityTypes` to the query builder", async () => {
+    await setup({
+      queryBuilderProps: {
+        entityTypes: ["model"],
+      },
+    });
+    setupSimpleDataPickerEndpoints();
+
+    expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
+
+    await userEvent.click(
+      within(screen.getByTestId("dashboard-header")).getByLabelText(
+        "Edit dashboard",
+      ),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add questions" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "New Question" }));
+
+    // We should render the simple data picker at this point
+    expect(screen.queryByTestId("dashboard-header")).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Pick your starting data" }),
+    ).toBeInTheDocument();
+
+    const dataPickerDataCalls = fetchMock.calls("path:/api/search");
+    expect(dataPickerDataCalls).toHaveLength(1);
+    const [[dataPickerDataCallUrl]] = dataPickerDataCalls;
+    expect(dataPickerDataCallUrl).toContain("models=dataset");
+    expect(dataPickerDataCallUrl).not.toContain("models=table");
   });
 });
 
