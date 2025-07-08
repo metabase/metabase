@@ -2248,4 +2248,154 @@ describe("scenarios > question > custom column > aggregation", () => {
       });
     });
   });
+
+  describe("scenarios > question > custom column > aggregation with breakout > in a follow up stage", () => {
+    beforeEach(() => {
+      H.createQuestion(
+        {
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              [
+                "aggregation-options",
+                [
+                  "min",
+                  [
+                    "field",
+                    ORDERS.SUBTOTAL,
+                    {
+                      "base-type": "type/Float",
+                    },
+                  ],
+                ],
+                {
+                  name: "Foo",
+                  "display-name": "Foo",
+                },
+              ],
+              [
+                "aggregation-options",
+                [
+                  "+",
+                  [
+                    "aggregation",
+                    0,
+                    {
+                      "base-type": "type/Float",
+                    },
+                  ],
+                  [
+                    "avg",
+                    [
+                      "field",
+                      ORDERS.TAX,
+                      {
+                        "base-type": "type/Float",
+                      },
+                    ],
+                  ],
+                ],
+                {
+                  name: "Bar",
+                  "display-name": "Bar",
+                },
+              ],
+            ],
+            "aggregation-idents": {
+              0: "S9C0DETiO434MYRP83IwM",
+              1: "EHbjfRmmyZ8Xd2WNrh4wq",
+            },
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+            ],
+          },
+        },
+        { visitQuestion: true },
+      );
+      H.openNotebook();
+    });
+
+    it("should be possible to use nested aggregations in custom columns of a follow up stage", () => {
+      H.getNotebookStep("summarize").within(() => {
+        H.addCustomColumn();
+      });
+      H.CustomExpressionEditor.type("[Foo] + [Bar]");
+      H.CustomExpressionEditor.nameInput().type("Sum");
+      H.popover().button("Done").click();
+
+      H.visualize();
+
+      H.assertTableData({
+        columns: ["Created At: Month", "Foo", "Bar", "Sum"],
+        firstRows: [["April 2022", "49.54", "52.76", "102.29"]],
+      });
+    });
+
+    it("should be possible to use nested aggregations in filter clause of a new question", () => {
+      H.getNotebookStep("summarize").within(() => {
+        H.filter({ mode: "notebook" });
+      });
+      H.popover().within(() => {
+        cy.findByText("Bar").click();
+        cy.findByPlaceholderText("Min").type("5");
+        cy.findByPlaceholderText("Max").type("20");
+        cy.button("Add filter").click();
+      });
+      H.visualize();
+      H.assertTableData({
+        columns: ["Created At: Month", "Foo", "Bar"],
+        firstRows: [["September 2022", "15.69", "18.57"]],
+      });
+    });
+
+    it("should be possible to use nested aggregations in join clause of a new question", () => {
+      H.getNotebookStep("summarize").within(() => {
+        H.join();
+      });
+      H.joinTable("Products");
+
+      H.popover().findByText("Foo").click();
+      H.popover().findByText("Price").click();
+
+      H.getNotebookStep("join", { stage: 1 }).button("Pick columns").click();
+      H.popover().within(() => {
+        cy.findByText("Select all").click();
+        cy.findByText("ID").click();
+      });
+
+      H.visualize();
+      H.assertTableData({
+        columns: ["Created At: Month", "Foo", "Bar", "Products - Foo → ID"],
+        firstRows: [["April 2022", "49.54", "52.76", "34"]],
+      });
+    });
+
+    it("should be possible to use nested aggregations in order by clause of a new question", () => {
+      H.getNotebookStep("summarize").within(() => {
+        H.sort();
+      });
+      H.popover().findByText("Bar").click();
+
+      H.visualize();
+      H.assertTableData({
+        columns: ["Created At: Month", "Foo", "Bar"],
+        firstRows: [["April 2023", "15.69", "18.21"]],
+      });
+    });
+
+    it("should be possible to use nested aggregations in breakout of a new question", () => {
+      H.getNotebookStep("summarize").within(() => {
+        H.summarize({ mode: "notebook" });
+      });
+
+      H.popover().findByText("Count of rows").click();
+
+      H.visualize();
+      cy.findByTestId("scalar-value").should("have.text", "49");
+    });
+  });
 });
