@@ -68,24 +68,19 @@
    (for [ag (lib.aggregation/aggregations-metadata query stage-number options)]
      (assoc ag :lib/source :source/aggregations))))
 
-;;; TODO -- maybe the bulk of this logic should be moved into [[metabase.lib.field]], like we did for breakouts and
-;;; aggregations above.
-(mu/defn- fields-columns :- [:maybe ::lib.metadata.calculation/returned-columns]
+(mu/defn- fields-columns :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
   [query        :- ::lib.schema/query
    stage-number :- :int
    options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (when-let [{fields :fields} (lib.util/query-stage query stage-number)]
     (-> (for [[tag :as ref-clause] fields
-              :let                 [metadata (lib.metadata.calculation/metadata query stage-number ref-clause)]]
-          (merge metadata
-                 (when (= tag :expression)
-                   {:lib/source :source/expressions})
-                 {:lib/source-column-alias  (lib.metadata.calculation/column-name query stage-number metadata)
-                  :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query metadata))}))
+              :let                 [col (lib.metadata.calculation/metadata query stage-number ref-clause options)]]
+          (cond-> col
+            (= tag :expression) (assoc :lib/source :source/expressions)))
         (as-> $cols (concat $cols (lib.metadata.calculation/remapped-columns query stage-number $cols options)))
         not-empty)))
 
-(mu/defn- summary-columns :- [:maybe ::lib.metadata.calculation/returned-columns]
+(mu/defn- summary-columns :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
   [query        :- ::lib.schema/query
    stage-number :- :int
    options      :- ::lib.metadata.calculation/returned-columns.options]
@@ -103,15 +98,14 @@
    options      :- ::lib.metadata.calculation/returned-columns.options]
   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
     (not-empty
-     (for [col  (lib.metadata.calculation/returned-columns query
-                                                           previous-stage-number
-                                                           (lib.util/query-stage query previous-stage-number)
-                                                           options)
-           :let [source-alias (or ((some-fn :lib/desired-column-alias :lib/source-column-alias) col)
-                                  (lib.metadata.calculation/column-name query stage-number col))]]
-       (merge
-        (lib.field.util/update-keys-for-col-from-previous-stage col)
-        {:lib/source :source/previous-stage})))))
+     (into []
+           (comp (map lib.field.util/update-keys-for-col-from-previous-stage) ; ???
+                 (map #(assoc % :lib/source :source/previous-stage))
+                 (lib.field.util/add-source-and-desired-aliases-xform query))
+           (lib.metadata.calculation/returned-columns query
+                                                      previous-stage-number
+                                                      (lib.util/query-stage query previous-stage-number)
+                                                      options)))))
 
 (mu/defn- saved-question-visible-columns :- [:maybe ::lib.metadata.calculation/returned-columns]
   "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"

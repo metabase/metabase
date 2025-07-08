@@ -493,7 +493,7 @@
           (previous-stage-or-source-card-metadata query stage-number field-ref options)
           ;; propagate stuff specified in the options map itself. Generally stuff specified here should override stuff
           ;; in upstream metadata from the metadata provider or previous stages/source card/model
-          (options-metadata query stage-number field-ref options))
+          (options-metadata field-ref options))
          (cond-> *debug* (update ::debug.origin conj (list 'resolve-field-ref* stage-number field-ref)))))))
 
 (mu/defn resolve-field-ref :- ::lib.metadata.calculation/column-metadata-with-source

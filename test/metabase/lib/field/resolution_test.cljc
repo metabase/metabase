@@ -283,9 +283,9 @@
       (let [field-ref (first (lib/fields query -1))]
         (is (=? [:field {:lib/uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"} "EXAMPLE_TIMESTAMP"]
                 field-ref))
-        (testing `lib.field.resolution/options-metadata*
+        (testing `lib.field.resolution/options-metadata
           (is (=? {:lib/source-uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
-                  (#'lib.field.resolution/options-metadata* field-ref nil))))
+                  (#'lib.field.resolution/options-metadata field-ref nil))))
         (testing `lib.field.resolution/resolve-field-ref
           (is (=? {:name            "EXAMPLE_TIMESTAMP"
                    :display-name    "Example Timestamp"
