@@ -222,6 +222,8 @@
                     CommandInterface/DROP_TABLE
                     CommandInterface/CREATE_SCHEMA
                     CommandInterface/DROP_SCHEMA
+                    CommandInterface/CREATE_VIEW
+                    CommandInterface/DROP_VIEW
                     CommandInterface/ALTER_TABLE_RENAME
                     CommandInterface/ALTER_TABLE_ADD_COLUMN
                     CommandInterface/ALTER_TABLE_DROP_COLUMN
