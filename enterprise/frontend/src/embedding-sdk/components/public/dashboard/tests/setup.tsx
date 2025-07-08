@@ -198,8 +198,8 @@ export const setupSdkDashboard = async ({
     <Box h="500px">
       <Component
         dashboardId={dashboardId}
-        {...props}
         queryBuilderProps={queryBuilderProps}
+        {...props}
       />
     </Box>,
     {
