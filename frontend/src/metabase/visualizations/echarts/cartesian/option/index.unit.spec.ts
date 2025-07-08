@@ -95,6 +95,7 @@ describe("ensureRoomForLabels", () => {
       mockSettings,
       hasTimelineEvents,
       mockRenderingContext,
+      "bar",
     );
 
     const dataSeriesOptions = buildEChartsSeries(

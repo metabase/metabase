@@ -83,6 +83,7 @@ export const getCartesianChartOption = (
   chartWidth: number,
   isAnimated: boolean,
   renderingContext: RenderingContext,
+  cardDisplay?: string,
 ): EChartsCoreOption => {
   const hasTimelineEvents = timelineEventsModel != null;
   const timelineEventsSeries = hasTimelineEvents
@@ -99,6 +100,7 @@ export const getCartesianChartOption = (
     chartWidth,
     chartMeasurements,
     renderingContext,
+    cardDisplay,
   );
   const goalSeriesOption = getGoalLineSeriesOption(
     chartModel,
@@ -165,6 +167,7 @@ export const getCartesianChartOption = (
         settings,
         hasTimelineEvents,
         renderingContext,
+        cardDisplay,
       ),
       chartModel,
       chartMeasurements,

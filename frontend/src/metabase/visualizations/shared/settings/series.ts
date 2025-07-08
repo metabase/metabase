@@ -41,6 +41,11 @@ export const getSeriesDefaultDisplay = (cardDisplay: string, index: number) => {
     return index === 0 ? "line" : "bar";
   }
 
+  // Row charts use bar series but in horizontal orientation
+  if (cardDisplay === "row") {
+    return "bar";
+  }
+
   return cardDisplay;
 };
 
