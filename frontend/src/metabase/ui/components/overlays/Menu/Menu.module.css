@@ -16,7 +16,7 @@
     color: var(--mb-color-text-light);
   }
 
-  &[data-hovered] {
+  &:hover {
     color: var(--mb-color-text-hover);
     background-color: var(--mb-color-background-hover);
 

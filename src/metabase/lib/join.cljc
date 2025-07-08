@@ -68,7 +68,7 @@
   columns from [[join-condition-lhs-columns]], and the RHS expression from [[join-condition-rhs-columns]]."
   [condition  :- [:maybe ::lib.schema.expression/boolean]]
   (when condition
-    (lib.util.match/match-one condition
+    (lib.util.match/match-lite condition
       [(_operator :guard lib.schema.join/condition-operators)
        _opts
        (_lhs :guard lib.util/clause?)

@@ -2229,7 +2229,6 @@ describe("cumulative count - issue 33330", () => {
     });
     cy.wait("@dataset");
 
-    H.queryBuilderHeader().findByLabelText("Show filters").click();
     cy.findByTestId("filter-pill").should("have.text", "Created At is today");
     cy.findAllByTestId("header-cell")
       .should("contain", "Created At: Month")
