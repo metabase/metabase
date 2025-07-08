@@ -19,10 +19,6 @@ export const loadQuestionSdk =
     dispatch: Dispatch,
     getState: GetState,
   ): Promise<{ question: Question; originalQuestion?: Question }> => {
-    if (!deserializedCard) {
-      throw new Error("No question ID or data found.");
-    }
-
     const { card, originalCard } = await resolveCards({
       cardId: questionId ?? undefined,
       options,
