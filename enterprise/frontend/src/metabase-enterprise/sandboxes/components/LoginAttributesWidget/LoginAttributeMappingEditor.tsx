@@ -71,7 +71,9 @@ export const buildStructuredEntries = (
       },
       valueOpts: {
         disabled: frozen,
-        revert: original,
+        revert:
+          original ||
+          (source === "tenant" ? { value, source, frozen: false } : undefined),
       },
     }))
     .sort((a, b) =>
@@ -85,7 +87,7 @@ export const buildStructuredEntries = (
 
 export interface MappingEditorProps {
   simpleAttributes: UserAttributeMap;
-  structuredAttributes: StructuredUserAttributes;
+  structuredAttributes?: StructuredUserAttributes;
   onChange: (val: UserAttributeMap) => void;
   onError?: (val: boolean) => void;
 }
