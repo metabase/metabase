@@ -48,6 +48,14 @@
   .UpsellCTALink {
     flex-shrink: 0;
   }
+
+  &.Large {
+    align-items: flex-start;
+
+    .UpsellCTALink {
+      padding: 0.5rem 1rem;
+    }
+  }
 }
 
 .SecondaryCTALink {

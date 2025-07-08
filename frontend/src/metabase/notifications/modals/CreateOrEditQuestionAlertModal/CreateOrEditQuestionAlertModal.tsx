@@ -9,7 +9,7 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import ButtonWithStatus from "metabase/common/components/ButtonWithStatus";
+import ActionButton from "metabase/common/components/ActionButton";
 import CS from "metabase/css/core/index.css";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import {
@@ -201,7 +201,7 @@ export const CreateOrEditQuestionAlertModal = ({
           }),
         );
 
-        // need to throw to show error in ButtonWithStatus
+        // need to throw to show error in ActionButton
         throw result.error;
       }
 
@@ -395,13 +395,13 @@ export const CreateOrEditQuestionAlertModal = ({
         </Button>
         <div>
           <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
-          <ButtonWithStatus
-            titleForState={{
-              default: isEditMode && hasChanges ? t`Save changes` : t`Done`,
-            }}
+          <ActionButton
+            primary
             disabled={!isValid}
-            onClickOperation={onCreateOrEditAlert}
-          />
+            actionFn={onCreateOrEditAlert}
+          >
+            {isEditMode && hasChanges ? t`Save changes` : t`Done`}
+          </ActionButton>
         </div>
       </Flex>
     </Modal>
