@@ -1861,3 +1861,42 @@
                                                  card-id
                                                  (tiles.api-test/encoded-lat-field-ref)
                                                  (tiles.api-test/encoded-lon-field-ref))))))))))
+
+(deftest embedded-string-parameter-case-sensitivity-regression-test
+  "Regression test for metabase#29371 - Case-sensitive field filters in embedded dashboards.
+   Embedded dashboards should apply case-insensitive default options for string operators."
+  (mt/dataset test-data
+    (mt/with-temp
+      [:model/Card card {:database_id (mt/id)
+                         :table_id (mt/id :venues)
+                         :dataset_query (mt/mbql-query venues)}
+       :model/Dashboard dashboard {:parameters [{:name "Name Contains"
+                                                 :slug "name_contains"
+                                                 :id "_NAME_CONTAINS_"
+                                                 :type :string/contains}]}
+       :model/DashboardCard dashcard {:card_id (:id card)
+                                      :dashboard_id (:id dashboard)
+                                      :parameter_mappings [{:parameter_id "_NAME_CONTAINS_"
+                                                            :card_id (:id card)
+                                                            :target [:dimension (mt/$ids venues $name)]}]}]
+      (with-embedding-enabled-and-new-secret-key!
+        (t2/update! :model/Dashboard (:id dashboard)
+                    {:enable_embedding true
+                     :embedding_params {"name_contains" "enabled"}})
+
+        (letfn [(dashcard-query-url [params]
+                  (format "embed/dashboard/%s/dashcard/%s/card/%s"
+                          (dash-token dashboard (when params {:params params}))
+                          (:id dashcard)
+                          (:id card)))]
+
+          (testing "Field filter should work case-insensitively in embedded dashboards"
+            (testing "Query with lowercase 'red' should find venues with 'Red' in the name"
+              ;; This test should fail until the bug is fixed - embedded dashboards
+              ;; currently apply case-sensitive filtering by default
+              (let [response (client/client :get 202 (dashcard-query-url {"name_contains" "red"}))]
+                (is (= "completed" (:status response)))
+                ;; Should find "Red Medicine" venue when searching for "red"
+                (let [venue-names (->> response :data :rows (map first) set)]
+                  (is (contains? venue-names "Red Medicine")
+                      "Should find 'Red Medicine' when filtering with lowercase 'red' (case-insensitive)"))))))))))
