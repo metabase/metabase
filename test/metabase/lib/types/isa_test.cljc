@@ -148,10 +148,12 @@
             (is (false? (pred (column negative))))))))))
 
 (deftest ^:parallel string?-test
-  #_{:clj-kondo/ignore [:equals-true]}
-  (are [exp column] (= exp (lib.types.isa/string? column))
-    true  {:effective-type :type/Text :semantic-type :type/SerializedJSON}
-    false {:effective-type :type/JSON :semantic-type :type/SerializedJSON}))
+  (is (true? (lib.types.isa/string? {:effective-type :type/Text :semantic-type :type/SerializedJSON})))
+  (is (false? (lib.types.isa/string? {:effective-type :type/JSON :semantic-type :type/SerializedJSON}))))
+
+(deftest ^:parallel numeric?-test
+  (is (true? (lib.types.isa/numeric? {:effective-type :type/Float :semantic-type :type/Price})))
+  (is (false? (lib.types.isa/numeric? {:effective-type :type/Text :semantic-type :type/Price}))))
 
 (deftest ^:parallel valid-filter-for?-test
   #_{:clj-kondo/ignore [:equals-true]}
