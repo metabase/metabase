@@ -1,30 +1,40 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { type KeyboardEvent, useEffect, useRef } from "react";
+import { match } from "ts-pattern";
 import _ from "underscore";
 
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
 import S from "./Results.module.css";
 import { TableVisibilityToggle } from "./TableVisibilityToggle";
-import type { FlatItem, TreePath } from "./types";
-import { TYPE_ICONS, hasChildren } from "./utils";
+import type { FlatItem, TreeNode, TreePath } from "./types";
+import {
+  TYPE_ICONS,
+  getExpandedDatabaseLeaf,
+  getExpandedSchemaLeaf,
+  hasChildren,
+} from "./utils";
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32;
 const INDENT_OFFSET = 18;
 
 export function Results({
+  isExpanded: isExpandedFn,
   items,
   toggle,
   path,
+  tree,
   onItemClick,
   selectedIndex,
   onSelectedIndexChange,
 }: {
+  isExpanded: (path: string | TreePath) => boolean;
   items: FlatItem[];
   toggle?: (key: string, value?: boolean) => void;
   path: TreePath;
+  tree: TreeNode;
   onItemClick?: (path: TreePath) => void;
   selectedIndex?: number;
   onSelectedIndexChange?: (index: number) => void;
@@ -105,9 +115,30 @@ export function Results({
             }
 
             toggle?.(key, open);
-            if (value && (!isExpanded || type === "table")) {
-              onItemClick?.(value);
+
+            if (!value) {
+              return;
             }
+
+            match({ type, isExpanded })
+              .with({ type: "database", isExpanded: false }, () => {
+                const leaf = getExpandedDatabaseLeaf(tree, isExpandedFn, key);
+
+                onItemClick?.(leaf?.value ?? value);
+              })
+              .with({ type: "schema", isExpanded: false }, () => {
+                const leaf = getExpandedSchemaLeaf(
+                  tree,
+                  isExpandedFn,
+                  parent,
+                  key,
+                );
+
+                onItemClick?.(leaf?.value ?? value);
+              })
+              .with({ type: "table" }, () => {
+                onItemClick?.(value);
+              });
           };
 
           function itemByIndex(index: number) {

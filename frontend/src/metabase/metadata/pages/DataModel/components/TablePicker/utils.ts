@@ -45,6 +45,43 @@ export function hasChildren(type: ItemType): boolean {
   return type !== "table";
 }
 
+export function getExpandedDatabaseLeaf(
+  tree: TreeNode,
+  isExpanded: (value: TreeNode["value"]) => boolean,
+  dbKey: string,
+): TreeNode | undefined {
+  const database = tree.children.find(
+    (child) => child.type === "database" && child.key === dbKey,
+  );
+  const schema = database?.children.find(
+    (child) => child.type === "schema" && isExpanded(child.value),
+  );
+  const table = schema?.children.find(
+    (child) => child.type === "table" && isExpanded(child.value),
+  );
+
+  return table ?? schema ?? database;
+}
+
+export function getExpandedSchemaLeaf(
+  tree: TreeNode,
+  isExpanded: (value: TreeNode["value"]) => boolean,
+  dbKey: string | undefined,
+  schemaKey: string,
+): TreeNode | undefined {
+  const database = tree.children.find(
+    (child) => child.type === "database" && child.key === dbKey,
+  );
+  const schema = database?.children.find(
+    (child) => child.type === "schema" && child.key === schemaKey,
+  );
+  const table = schema?.children.find(
+    (child) => child.type === "table" && isExpanded(child.value),
+  );
+
+  return table ?? schema ?? database;
+}
+
 export function getUrl(value: TreePath) {
   return getUrl_({
     fieldId: undefined,

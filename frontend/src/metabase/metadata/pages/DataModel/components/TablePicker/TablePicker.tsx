@@ -104,8 +104,10 @@ function Tree({
 
   return (
     <Results
+      isExpanded={isExpanded}
       items={items}
       toggle={toggle}
+      tree={tree}
       path={value}
       onItemClick={onChange}
     />
