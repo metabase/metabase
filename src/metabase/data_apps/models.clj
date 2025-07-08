@@ -18,8 +18,8 @@
   (derive model :metabase/model))
 
 (derive :model/DataApp :hook/timestamped?)
+(derive :model/DataApp :hook/entity-id)
 (derive :model/DataAppDefinition :hook/created-at-timestamped?)
-(derive :model/DataAppDefinition :hook/entity-id)
 
 ;;------------------------------------------------------------------------------------------------;;
 ;;                                       :model/DataApp                                           ;;
@@ -135,13 +135,14 @@
 
 (defn release!
   "Release a new definition of an app."
-  [app-id app-definition-id]
+  [app-id app-definition-id creator-id]
   (t2/with-transaction [_conn]
     (t2/update! :model/DataApp app-id {:status :published})
     (t2/update! :model/DataAppRelease :app_id app-id {:retracted true})
     (t2/insert-returning-instance! :model/DataAppRelease
                                    {:app_id            app-id
-                                    :app_definition_id app-definition-id})))
+                                    :app_definition_id app-definition-id
+                                    :creator_id        creator-id})))
 
 (defn released-definition
   "Get the latest released definition for a data app."

@@ -86,7 +86,7 @@
    body]
   (let [existing-data-app (api/read-check (t2/select-one :model/DataApp id))]
     (api/update-check existing-data-app {})
-    (data-apps.models/set-latest-definition! id body)))
+    (data-apps.models/set-latest-definition! id (assoc body :creator_id api/*current-user-id*))))
 
 (api.macros/defendpoint :post "/:id/release"
   "Release the latest definition version of a data app. Always releases the latest definition, ignoring any provided definition_id."
@@ -97,4 +97,4 @@
     (api/update-check existing-data-app {})
     (let [latest-definition (data-apps.models/latest-definition id)]
       (api/check-404 latest-definition)
-      (data-apps.models/release! id (:id latest-definition)))))
+      (data-apps.models/release! id (:id latest-definition) api/*current-user-id*))))
