@@ -48,8 +48,9 @@
                               :metadata/table-existence-check true
                               :transforms/python              true
                               :transforms/table               true
-                              :describe-is-nullable           false
-                              :describe-default-expr          false}]
+                              :describe-default-expr          false
+                              :describe-is-generated          false
+                              :describe-is-nullable           false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

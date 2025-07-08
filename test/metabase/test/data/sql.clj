@@ -241,8 +241,12 @@
            (if condition (str " WHERE " condition) ""))))
 
 (defmulti generated-column-sql
-  "Return the equivalent of 'GENERATED ALWAYS $expr' to be appended to a column definition.
-  The expression should be given as a string."
+  "Return the driver-specific equivalent of 'GENERATED ALWAYS AS $expr' (SQL:2003) to be appended to a column definition.
+  The expression should be given as a string.
+
+  Implementor notes:
+  If the driver does not use standard ANSI SQL syntax for this, this method should be specialised to provide the correct string.
+  If a driver does not support adding generated columns for tests, return nil."
   {:arglists '([driver expr])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
