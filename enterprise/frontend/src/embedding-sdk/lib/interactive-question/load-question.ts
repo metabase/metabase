@@ -12,13 +12,15 @@ export const loadQuestionSdk =
   ({
     options = {},
     deserializedCard,
-    questionId,
+    questionId: initQuestionId,
     initialSqlParameters,
   }: LoadSdkQuestionParams) =>
   async (
     dispatch: Dispatch,
     getState: GetState,
   ): Promise<{ question: Question; originalQuestion?: Question }> => {
+    const questionId = initQuestionId === "new" ? undefined : initQuestionId;
+
     const { card, originalCard } = await resolveCards({
       cardId: questionId ?? undefined,
       options,
