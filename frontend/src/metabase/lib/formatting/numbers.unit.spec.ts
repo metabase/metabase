@@ -1,6 +1,13 @@
-import MetabaseSettings from "metabase/lib/settings";
+import { mockSettings } from "__support__/settings";
+import { renderHookWithProviders } from "__support__/ui";
+import type { NumberFormattingSettings } from "metabase-types/api";
 
-import { formatNumber, numberFormatterForOptions } from "./numbers";
+import {
+  type UseFormatNumberOptions,
+  formatNumber,
+  numberFormatterForOptions,
+  useNumberFormatter,
+} from "./numbers";
 
 describe("formatNumber", () => {
   it("should respect the decimals setting even when compact is true (metabase#54063)", () => {
@@ -63,16 +70,69 @@ describe("formatNumber", () => {
       }),
     ).toEqual("1.000015e+0");
   });
+});
 
-  it("should work with instance settings", () => {
-    expect(formatNumber(2000, { useInstanceSettings: true })).toEqual("2,000");
-
-    MetabaseSettings.set("custom-formatting", {
-      ["type/Number"]: {
-        number_separators: ",.",
+describe("useNumberFormatter", () => {
+  function setup(
+    settings?: NumberFormattingSettings,
+    options: UseFormatNumberOptions = {},
+  ) {
+    const { result } = renderHookWithProviders(
+      () => useNumberFormatter(options),
+      {
+        storeInitialState: {
+          settings: mockSettings({
+            "custom-formatting": {
+              "type/Number": settings ?? {},
+            },
+          }),
+        },
       },
-    });
+    );
+    return result.current;
+  }
 
-    expect(formatNumber(2000, { useInstanceSettings: true })).toEqual("2.000");
+  it("should use the instance settings", () => {
+    {
+      const formatNumber = setup({
+        number_separators: ".,",
+      });
+      expect(formatNumber(2000.45)).toBe("2,000.45");
+    }
+    {
+      const formatNumber = setup({
+        number_separators: ".",
+      });
+      expect(formatNumber(2000.45)).toBe("2000.45");
+    }
+  });
+
+  it("should use the instance settings and allow other setting to be set", () => {
+    const formatNumber = setup({
+      number_separators: ".",
+    });
+    expect(formatNumber(2000.45, { decimals: 0 })).toBe("2000");
+  });
+
+  it("should use the instance settings and allow other setting to be set in hook", () => {
+    const formatNumber = setup(
+      {
+        number_separators: ".",
+      },
+      { decimals: 0 },
+    );
+
+    expect(formatNumber(2000.45)).toBe("2000");
+  });
+
+  it("should be possible to ignore the instance settings", () => {
+    const formatNumber = setup(
+      {
+        number_separators: ".",
+      },
+      { ignoreInstanceSettings: true },
+    );
+
+    expect(formatNumber(2000.45)).toBe("2,000.45");
   });
 });

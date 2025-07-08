@@ -343,7 +343,7 @@ function multiply(a: number | bigint, b: number) {
   return typeof a === "bigint" ? a * BigInt(b) : a * b;
 }
 
-type UseFormatNumberOptions = FormatNumberOptions & {
+export type UseFormatNumberOptions = FormatNumberOptions & {
   ignoreInstanceSettings?: boolean;
 };
 
