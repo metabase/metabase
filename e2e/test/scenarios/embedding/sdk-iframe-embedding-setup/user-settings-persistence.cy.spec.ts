@@ -1,8 +1,16 @@
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
-import { getEmbedSidebar, navigateToEntitySelectionStep } from "./helpers";
+import {
+  codeBlock,
+  getEmbedSidebar,
+  navigateToEmbedOptionsStep,
+  navigateToGetCodeStep,
+} from "./helpers";
 
 const { H } = cy;
+
+const DASHBOARD_NAME = "Orders in a dashboard";
+const QUESTION_NAME = "Orders, Count";
 
 describe("scenarios > embedding > sdk iframe embed setup > user settings persistence", () => {
   beforeEach(() => {
@@ -15,7 +23,10 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
   });
 
   it("persists dashboard embed options", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
 
     cy.log("1. set embed settings to non-default values");
     getEmbedSidebar().within(() => {
@@ -47,7 +58,10 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
   });
 
   it("persists chart embed options", () => {
-    navigateToEmbedOptionsStep({ experience: "chart" });
+    navigateToEmbedOptionsStep({
+      experience: "chart",
+      resourceName: QUESTION_NAME,
+    });
 
     cy.log("1. set chart embed settings to non-default values");
     getEmbedSidebar().within(() => {
@@ -105,7 +119,10 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
   });
 
   it("persists brand colors", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
 
     cy.log("1. change brand color to red");
     cy.findByLabelText("#509EE3").click();
@@ -137,7 +154,10 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
   it("persists sso auth method", () => {
     enableJwtAuth();
-    navigateToGetCodeStep({ experience: "dashboard" });
+    navigateToGetCodeStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
 
     cy.log("1. select sso auth method");
     getEmbedSidebar().within(() => {
@@ -153,10 +173,13 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
     cy.log("2. reload the page");
     waitAndReload();
-    navigateToGetCodeStep({ experience: "dashboard" });
 
     cy.log("3. auth method should persist");
     getEmbedSidebar().within(() => {
+      cy.findByText("Next").click(); // embed resources
+      cy.findByText("Next").click(); // embed options
+      cy.findByText("Get Code").click(); // get code
+
       cy.findByLabelText("Existing Metabase Session").should("not.be.checked");
       cy.findByLabelText("Single sign-on (SSO)").should("be.checked");
       codeBlock().should("not.contain", "useExistingUserSession");
@@ -235,34 +258,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
   });
 });
-
-const navigateToEmbedOptionsStep = ({
-  experience,
-  resourceName,
-}: {
-  experience: "dashboard" | "chart" | "exploration";
-  resourceName?: string;
-}) => {
-  navigateToEntitySelectionStep({ experience, resourceName });
-
-  getEmbedSidebar().within(() => {
-    cy.findByText("Next").click(); // Embed options step
-  });
-};
-
-const navigateToGetCodeStep = ({
-  experience,
-}: {
-  experience: "dashboard" | "chart" | "exploration";
-}) => {
-  navigateToEmbedOptionsStep({ experience });
-
-  getEmbedSidebar().within(() => {
-    cy.findByText("Get Code").click();
-  });
-};
-
-const codeBlock = () => cy.get(".cm-content");
 
 // We must capture at the last embed options to change,
 // otherwise we'd miss the last PUT request.
