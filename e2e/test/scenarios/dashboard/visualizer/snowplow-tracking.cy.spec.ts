@@ -152,7 +152,6 @@ describe("Snowplow tracking", () => {
         event: "visualizer_data_changed",
         event_detail: "visualizer_datasource_reset",
         triggered_from: "visualizer-modal",
-        event_data: "card:81",
       });
 
       // remove a dataset
@@ -163,7 +162,6 @@ describe("Snowplow tracking", () => {
         event: "visualizer_data_changed",
         event_detail: "visualizer_datasource_removed",
         triggered_from: "visualizer-modal",
-        event_data: "card:81",
       });
 
       // close the modal
