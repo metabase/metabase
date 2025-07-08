@@ -3,10 +3,14 @@ const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type { NativeQuestionDetails } from "e2e/support/helpers";
+import type {
+  NativeQuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
+  SAMPLE_DATABASE;
 
 describe("issue 39487", () => {
   const CREATED_AT_FIELD: LocalFieldReference = [
@@ -607,6 +611,92 @@ describe("54205", () => {
       cy.findByRole("option", { name: "Foo, Bar" }).click();
       cy.findByRole("list").should("have.text", "Foo, Bar");
     });
+  });
+});
+
+describe("issue 54920", () => {
+  const initialQuestionDetails: StructuredQuestionDetails = {
+    name: "Base question",
+    query: {
+      "source-table": ORDERS_ID,
+      fields: [["field", ORDERS.CREATED_AT, null]],
+      joins: [
+        {
+          "source-table": PRODUCTS_ID,
+          alias: "Products",
+          fields: [
+            ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
+          ],
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, null],
+            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+          ],
+        },
+        {
+          "source-table": REVIEWS_ID,
+          alias: "Reviews",
+          fields: [["field", REVIEWS.CREATED_AT, { "join-alias": "Reviews" }]],
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, null],
+            ["field", REVIEWS.PRODUCT_ID, { "join-alias": "Reviews" }],
+          ],
+        },
+      ],
+    },
+  };
+
+  const expectedRowCount = 407;
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+  });
+
+  it("should not break downstream queries when an unused field with the same name as a used field is removed from a base question (metabase#54920)", () => {
+    cy.log("create a base question");
+    H.createQuestion(initialQuestionDetails, {
+      wrapId: true,
+      idAlias: "baseQuestionId",
+    });
+
+    cy.log("create a derived question and verify that it can be run");
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText("Base question").click();
+    });
+    H.getNotebookStep("filter")
+      .findByText("Add filters to narrow your answer")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Reviews → Created At").click();
+      cy.findByText("Fixed date range…").click();
+      cy.findByLabelText("Start date").clear().type("10/12/2024");
+      cy.findByLabelText("End date").clear().type("10/15/2024");
+      cy.button("Add filter").click();
+    });
+    H.visualize();
+    H.assertQueryBuilderRowCount(expectedRowCount);
+    H.saveQuestion("Derived question", {
+      wrapId: true,
+      idAlias: "derivedQuestionId",
+    });
+
+    cy.log("remove a column from the base question");
+    H.visitQuestion("@baseQuestionId");
+    H.openNotebook();
+    H.getNotebookStep("join", { index: 0 }).button("Pick columns").click();
+    H.popover().findByText("Created At").click();
+    H.queryBuilderHeader().findByText("Save").click();
+    H.modal().findByText("Save").click();
+    cy.wait("@updateCard");
+
+    cy.log("verify that the derived question still works");
+    H.visitQuestion("@derivedQuestionId");
+    H.assertQueryBuilderRowCount(expectedRowCount);
   });
 });
 
