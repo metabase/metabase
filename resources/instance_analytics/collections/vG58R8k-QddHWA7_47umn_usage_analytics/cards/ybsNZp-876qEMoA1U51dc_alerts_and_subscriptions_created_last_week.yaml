@@ -92,8 +92,7 @@ result_metadata:
   - v_subscriptions
   unit: week
   visibility_type: normal
-- aggregation_index: 0
-  base_type: type/Integer
+- base_type: type/Integer
   display_name: Count
   field_ref:
   - aggregation

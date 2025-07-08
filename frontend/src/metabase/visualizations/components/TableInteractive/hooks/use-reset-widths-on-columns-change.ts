@@ -21,7 +21,6 @@ const DATA_COLUMN_KEYS: (keyof DatasetColumn)[] = [
   "binning_info",
   "display_name",
   "effective_type",
-  "aggregation_index",
   "aggregation_type",
   "entity_id",
   "field_ref",

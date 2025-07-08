@@ -17,7 +17,7 @@ export const getDataLabel = <TDatum>(
   }
 
   const [xDomainStart, xDomainEnd] = xScale.domain();
-  const isOutOfDomain = value <= xDomainStart || value >= xDomainEnd;
+  const isOutOfDomain = value < xDomainStart || value > xDomainEnd;
 
   if (isOutOfDomain) {
     return null;

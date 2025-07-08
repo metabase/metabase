@@ -658,7 +658,7 @@ describe("issue 30535", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.sandboxTable({
       table_id: PRODUCTS_ID,
@@ -1013,7 +1013,7 @@ describe("issue 8490", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     H.createDashboardWithQuestions({
       dashboardDetails: {
@@ -1035,10 +1035,10 @@ describe("issue 8490", () => {
               ],
             ],
             filter: [
-              "time-interval",
+              "between",
               ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
-              -12,
-              "month",
+              "2024-01-01",
+              "2025-01-01",
             ],
           },
           limit: 100,
@@ -1161,7 +1161,9 @@ describe("issue 8490", () => {
     });
 
     // Loading...
-    cy.findByTestId("embed-frame").findByText("로딩...").should("be.visible");
+    cy.findByTestId("embed-frame")
+      .findByText("로드 중...")
+      .should("be.visible");
 
     cy.log("test a static embedded question");
     cy.get("@lineChartQuestionId").then((lineChartQuestionId) => {
@@ -1215,14 +1217,14 @@ describe("issue 8490", () => {
         "static embeddings with `#locale` should show a translated the loading message",
       );
       // Loading...
-      cy.findByText("로딩...")
+      cy.findByText("로드 중...")
         .should("be.visible")
         .then(resolveDashboardLoaderPromise);
 
       cy.log("assert the line chart");
       H.getDashboardCard(0).within(() => {
         // X-axis labels: Jan 2024 (or some other year)
-        cy.findByText(/1월 20\d\d\b/).should("be.visible");
+        cy.findByText(/^1월 20\d\d\b/).should("be.visible");
         // Aggregation "count"
         cy.findByText("카운트").should("be.visible");
       });
@@ -1327,7 +1329,7 @@ describe("issue 51934 (EMB-189)", () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     H.createModelFromTableName({
       tableName: "products",
       modelName: MODEL_IN_ROOT_NAME,

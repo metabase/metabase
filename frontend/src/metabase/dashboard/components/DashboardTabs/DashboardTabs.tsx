@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import Button from "metabase/common/components/Button";
@@ -6,27 +5,17 @@ import { Sortable } from "metabase/common/components/Sortable";
 import type { TabButtonMenuItem } from "metabase/common/components/TabButton";
 import { TabButton } from "metabase/common/components/TabButton";
 import { TabRow } from "metabase/common/components/TabRow";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { Flex } from "metabase/ui";
-import type { DashboardId } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 
 import S from "./DashboardTabs.module.css";
 import { useDashboardTabs } from "./use-dashboard-tabs";
 
-export type DashboardTabsProps = {
-  dashboardId: DashboardId;
-  isEditing?: boolean;
-  isNightMode?: boolean;
-  className?: string;
-};
+export function DashboardTabs() {
+  const { isEditing = false } = useDashboardContext();
 
-export function DashboardTabs({
-  dashboardId,
-  isEditing = false,
-  isNightMode,
-  className,
-}: DashboardTabsProps) {
   const {
     tabs,
     createNewTab,
@@ -36,7 +25,7 @@ export function DashboardTabs({
     selectTab,
     selectedTabId,
     moveTab,
-  } = useDashboardTabs({ dashboardId });
+  } = useDashboardTabs();
   const hasMultipleTabs = tabs.length > 1;
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
@@ -78,14 +67,7 @@ export function DashboardTabs({
   }
 
   return (
-    <Flex
-      align="start"
-      gap="lg"
-      w="100%"
-      className={cx(S.dashboardTabs, className, {
-        [S.isNightMode]: isNightMode,
-      })}
-    >
+    <Flex align="start" gap="lg" w="100%" className={S.dashboardTabs}>
       <TabRow<SelectedTabId>
         value={selectedTabId}
         onChange={selectTab}

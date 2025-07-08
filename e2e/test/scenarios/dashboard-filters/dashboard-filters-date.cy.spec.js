@@ -160,9 +160,11 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
-    // we can't use helpers as they use english words
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
+    H.dashboardHeader().within(() => {
+      // we can't use helpers as they use english words
+      cy.icon("pencil").click();
+      cy.icon("filter").click();
+    });
 
     H.popover().icon("calendar").click(); // "Time" -> "All Options"
 
@@ -203,7 +205,7 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
-      DateFilter.setTime({ hours: 11, minutes: 0 });
+      DateFilter.setTime({ hours: 9, minutes: 27 });
       cy.findByText("Add filter").click();
       break;
 

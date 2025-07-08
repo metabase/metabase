@@ -712,27 +712,25 @@
                   (lib/aggregate (lib/sum (lib/case [[(lib/< (meta/field-metadata :venues :price) 2)
                                                       (meta/field-metadata :venues :price)]]
                                             0))))]
-    (is (=? [{:description              nil
-              :lib/type                 :metadata/column
+    (is (=? [{:lib/type                 :metadata/column
               :table-id                 (meta/id :venues)
               :name                     "CATEGORY_ID"
               :base-type                :type/Integer
               :semantic-type            :type/FK
               :database-type            "INTEGER"
               :effective-type           :type/Integer
-              :lib/source               :source/breakouts
+              :lib/source               :source/table-defaults
+              :lib/breakout?            true
               :lib/source-column-alias  "CATEGORY_ID"
               :lib/source-uuid          string?
               :fk-target-field-id       (meta/id :categories :id)
               :custom-position          0
               :active                   true
               :id                       (meta/id :venues :category-id)
-              :parent-id                nil
               :visibility-type          :normal
               :lib/desired-column-alias "CATEGORY_ID"
               :display-name             "Category ID"
               :has-field-values         :none
-              :target                   nil
               :preview-display          true
               :fingerprint              {:global {:distinct-count 28, :nil% 0.0}}}
              {:lib/type                 :metadata/column
@@ -819,21 +817,6 @@
       0 [:count {}]
       1 [:count {}]
       2 nil)))
-
-(deftest ^:parallel aggregation-column-test
-  (let [query      (-> (lib.tu/venues-query)
-                       (lib/breakout  (meta/field-metadata :venues :category-id))
-                       (lib/aggregate (lib/count))
-                       (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
-        price      (m/find-first #(= (:name %) "PRICE") (lib/visible-columns query))
-        aggs       (lib/aggregations query)]
-    (is (= 2
-           (count aggs)))
-    (testing "aggregations like COUNT have no column"
-      (is (nil? (lib.aggregation/aggregation-column query -1 (first aggs)))))
-    (testing "aggregations like SUM return the column of interest"
-      (is (=? price
-              (lib.aggregation/aggregation-column query -1 (second aggs)))))))
 
 (deftest ^:parallel aggregation-operators-update-after-join
   (testing "available operators includes avg and sum once numeric fields are present (#31384)"

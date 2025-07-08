@@ -2,10 +2,14 @@
 import { css } from "@emotion/react";
 
 import GlobalDashboardS from "metabase/css/dashboard.module.css";
-import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module.css";
 import DashboardGridS from "metabase/dashboard/components/DashboardGrid.module.css";
-import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
-import { isEmbeddingSdk, isStorybookActive } from "metabase/env";
+import {
+  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
+  DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME,
+} from "metabase/dashboard/constants";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { isStorybookActive } from "metabase/env";
+import { utf8_to_b64 } from "metabase/lib/encoding";
 import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
@@ -15,6 +19,8 @@ export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
 export const SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS =
   "saving-dom-image-display-none";
+export const SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS =
+  "saving-dom-image-overflow-visible";
 export const PARAMETERS_MARGIN_BOTTOM = 12;
 
 export const saveDomImageStyles = css`
@@ -25,8 +31,11 @@ export const saveDomImageStyles = css`
     .${SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS} {
       display: none;
     }
+    .${SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS} {
+      overflow: visible;
+    }
 
-    .${DashboardS.FixedWidthContainer} {
+    .${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME} {
       legend {
         top: -9px;
       }
@@ -42,7 +51,7 @@ export const saveDomImageStyles = css`
     /* the renderer for saving to image/pdf does not support text overflow
      with line height in custom themes in the embedding sdk.
      this is a workaround to make sure the text is not clipped vertically */
-    ${isEmbeddingSdk &&
+    ${isEmbeddingSdk() &&
     css`
       .${DashboardGridS.DashboardCardContainer} .${GlobalDashboardS.Card} * {
         overflow: visible !important;
@@ -108,17 +117,18 @@ export const setupDashboardForRendering = (
     return undefined;
   }
 
-  const parametersNode = dashboardRoot
-    ?.querySelector(`#${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}`)
+  const pageHeaderParametersNode = dashboardRoot
+    ?.querySelector(`#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`)
     ?.cloneNode(true);
 
   let parametersHeight = 0;
-  if (parametersNode instanceof HTMLElement) {
-    gridNode.append(parametersNode);
-    parametersNode.style.cssText = `margin-bottom: ${PARAMETERS_MARGIN_BOTTOM}px`;
+  if (pageHeaderParametersNode instanceof HTMLElement) {
+    gridNode.append(pageHeaderParametersNode);
+    pageHeaderParametersNode.style.cssText = `margin-bottom: ${PARAMETERS_MARGIN_BOTTOM}px`;
     parametersHeight =
-      parametersNode.getBoundingClientRect().height + PARAMETERS_MARGIN_BOTTOM;
-    gridNode.removeChild(parametersNode);
+      pageHeaderParametersNode.getBoundingClientRect().height +
+      PARAMETERS_MARGIN_BOTTOM;
+    gridNode.removeChild(pageHeaderParametersNode);
   }
 
   const contentWidth = gridNode.offsetWidth;
@@ -133,7 +143,9 @@ export const setupDashboardForRendering = (
     contentWidth,
     contentHeight,
     parametersNode:
-      parametersNode instanceof HTMLElement ? parametersNode : null,
+      pageHeaderParametersNode instanceof HTMLElement
+        ? pageHeaderParametersNode
+        : null,
     parametersHeight,
     backgroundColor,
   };
@@ -190,9 +202,7 @@ export const getVisualizationSvgDataUri = (
   }
 
   const svgString = new XMLSerializer().serializeToString(element);
-  const utf8Bytes = new TextEncoder().encode(svgString);
-  const binaryString = String.fromCharCode(...utf8Bytes);
-  return `data:image/svg+xml;base64,${window.btoa(binaryString)}`;
+  return `data:image/svg+xml;base64,${utf8_to_b64(svgString)}`;
 };
 
 export const getChartSelector = (

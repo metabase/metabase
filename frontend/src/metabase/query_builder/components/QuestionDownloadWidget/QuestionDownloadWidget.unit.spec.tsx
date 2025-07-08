@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
+import {
+  setupCardQueryDownloadEndpoint,
+  setupLastDownloadFormatEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { act, renderWithProviders, screen } from "__support__/ui";
@@ -55,6 +58,7 @@ const setup = ({
   const question = checkNotNull(metadata.question(card.id));
 
   setupCardQueryDownloadEndpoint(card, "json");
+  setupLastDownloadFormatEndpoints();
 
   renderWithProviders(
     <QuestionDownloadWidget
