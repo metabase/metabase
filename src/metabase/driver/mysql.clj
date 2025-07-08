@@ -66,6 +66,9 @@
                               :connection-impersonation-requires-role true
                               :describe-fields                        true
                               :describe-fks                           true
+                              :describe-default-expr                  true
+                              :describe-is-generated                  true
+                              :describe-is-nullable                   true
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :full-join                              false
@@ -87,10 +90,7 @@
                               ;; and make this work.
                               :window-functions/offset                false
                               :expression-literals                    true
-                              :database-routing                       true
-                              :describe-default-expr                  true
-                              :describe-is-generated                  true
-                              :describe-is-nullable                   true}]
+                              :database-routing                       true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
