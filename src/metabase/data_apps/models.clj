@@ -25,7 +25,7 @@
 ;;                                       :model/DataApp                                           ;;
 ;;------------------------------------------------------------------------------------------------;;
 
-(def ^:private data-app-statuses #{:private :released :archived})
+(def ^:private data-app-statuses #{:private :published :archived})
 
 (t2/deftransforms :model/DataApp
   {:status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum data-app-statuses))})
@@ -109,10 +109,10 @@
       (assoc app :definition app-definition))))
 
 (defn release!
-  "Publish a new definition of an app."
+  "Release a new definition of an app."
   [app-id app-definition-id]
   (t2/with-transaction [_conn]
-    (t2/update! :model/DataApp app-id {:status :released})
+    (t2/update! :model/DataApp app-id {:status :published})
     (t2/insert-returning-instance! :model/DataAppRelease
                                    {:app_id            app-id
                                     :app_definition_id app-definition-id
@@ -125,8 +125,9 @@
                                                      :model/DataAppRelease
                                                      :app_id app-id
                                                      :retracted false
-                                                     {:order-by [[:published_at :desc]]})]
-    (t2/select-one :model/DataAppDefinition :id release-definition-id)))
+                                                     ;; it's append only table so sorting by id for better perf
+                                                     {:order-by [[:id :desc]]})]
+    (t2/select-one :model/DataAppDefinition release-definition-id)))
 
 (defn latest-definition
   "Get the latest definition (released or not) for a data app."
@@ -138,12 +139,7 @@
 (defn latest-release
   "Get the latest release info for a data app."
   [app-id]
-  (t2/select-one :model/DataAppRelease
+  (t2/select-one [:model/DataAppRelease :id :retracted :released_at]
                  :app_id app-id
                  :retracted false
                  {:order-by [[:published_at :desc]]}))
-
-(defn latest-released-definition
-  "Get the latest released definition for a data app."
-  [app-id]
-  (released-definition app-id))

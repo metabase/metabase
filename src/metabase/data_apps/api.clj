@@ -8,10 +8,10 @@
 (comment metabase.data-apps.api.app/keep-me
          metabase.data-apps.api.data-app/keep-me)
 
-(def ^{:arglists '([request respond raise])} app-routes
+(def ^{:arglists '([request respond raise])} consumer-routes
   "/api/app routes for consumer-facing data app APIs"
   (api.macros/ns-handler 'metabase.data-apps.api.app))
 
-(def ^{:arglists '([request respond raise])} data-app-routes
+(def ^{:arglists '([request respond raise])} creator-routes
   "/api/data-app routes for data app CRUD operations"
   (api.macros/ns-handler 'metabase.data-apps.api.data-app))

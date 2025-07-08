@@ -17,39 +17,30 @@
   [id]
   (let [data-app (api/read-check (t2/select-one :model/DataApp id))]
     (assoc data-app
-           :latest_definition (data-apps.models/latest-definition id)
-           :released_definition (data-apps.models/released-definition id)
-           :latest_release (data-apps.models/latest-release id))))
+           :definition (data-apps.models/latest-definition id)
+           :release (data-apps.models/latest-release id))))
 
 (defn- data-app-clauses
   "Honeysql clauses for filtering data apps with status and pagination"
-  [status limit offset]
+  [limit offset]
   (cond-> {}
-    (some? status) (sql.helpers/where [:= :status (keyword status)])
     (some? limit) (sql.helpers/limit limit)
     (some? offset) (sql.helpers/offset offset)))
-
-(defn- filter-clauses-without-paging
-  "Given a where clause, return a clause that can be used to count."
-  [clauses]
-  (dissoc clauses :order-by :limit :offset))
 
 (api.macros/defendpoint :get "/"
   "List all data apps. Optionally filter by status.
 
   Takes `limit`, `offset` for pagination."
-  [_route-params
-   {:keys [status]} :- [:map
-                        [:status {:optional true} [:maybe [:enum "private" "published" "archived"]]]]]
+  [_route-params]
   (let [limit   (request/limit)
         offset  (request/offset)
-        clauses (data-app-clauses status limit offset)]
-    {:data (t2/select :model/DataApp
-                      (sql.helpers/order-by clauses
-                                            [:created_at :desc]
-                                            [:id :asc]))
-     :total (t2/count :model/DataApp (filter-clauses-without-paging clauses))
-     :limit limit
+        clauses (data-app-clauses limit offset)]
+    {:data   (t2/select :model/DataApp
+                        (sql.helpers/order-by clauses
+                                              [:created_at :desc]
+                                              [:id :asc]))
+     :total  (t2/count :model/DataApp (dissoc clauses :order-by :limit :offset))
+     :limit  limit
      :offset offset}))
 
 (api.macros/defendpoint :get "/:id"
@@ -61,6 +52,7 @@
   "Create a new data app with optional initial definition."
   [_route _query body :- [:map
                           [:name ms/NonBlankString]
+                          [:url  ms/NonBlankString]
                           [:description {:optional true} [:maybe :string]]
                           [:definition {:optional true} [:maybe :map]]]]
   (api/create-check :model/DataApp body)
@@ -71,7 +63,8 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    body :- [:map
-            [:name {:optional true} ms/NonBlankString]
+            [:name ms/NonBlankString]
+            [:url ms/NonBlankString]
             [:description {:optional true} [:maybe :string]]]]
   (let [existing-data-app (get-data-app id)]
     (api/update-check existing-data-app body)
@@ -85,24 +78,20 @@
   (t2/update! :model/DataApp id {:status :archived})
   api/generic-204-no-content)
 
-(api.macros/defendpoint :post "/:id/definition"
+(api.macros/defendpoint :put "/:id/definition"
   "Create a new definition version for a data app."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    body]
-  (let [data-app (get-data-app id)]
-    (api/update-check data-app {})
-    (data-apps.models/new-definition! id body)))
+  (api/read-check (t2/select-one :model/DataApp id))
+  (data-apps.models/new-definition! id body))
 
 (api.macros/defendpoint :post "/:id/release"
-  "Release a specific definition version of a data app."
+  "Release the latest definition version of a data app. Always releases the latest definition, ignoring any provided definition_id."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
-   body :- [:map
-            [:definition_id ms/PositiveInt]]]
-  ;; should we assume that we always release the latest definition?
-  (let [data-app (get-data-app id)
-        definition-id (:definition_id body)]
-    (api/update-check data-app {})
-    (api/check-404 (t2/select-one :model/DataAppDefinition :id definition-id :app_id id))
-    (data-apps.models/release! id definition-id)))
+   _body]
+  (api/read-check (t2/select-one :model/DataApp id))
+  (let [latest-definition (data-apps.models/latest-definition id)]
+    (api/check-404 latest-definition)
+    (data-apps.models/release! id (:id latest-definition))))

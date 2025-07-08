@@ -91,19 +91,15 @@ The data apps feature exposes two distinct sets of API endpoints:
 
 ### Admin/Management APIs (`/api/data-app/`)
 
-Located in `api/data-apps.clj`, these endpoints are used for creating, updating, and managing data apps:
-
-These endpoints require appropriate permissions (create/update/delete checks) and are intended for app authors and administrators.
+Located in `api/data-apps.clj`, these endpoints support the manipulation of Data Apps by Creators.
 
 ### Consumer APIs (`/api/app/`)
 
-Located in `api/app.clj`, these endpoints are used by end-users to interact with published data apps:
-
-These endpoints only expose published versions of apps and enforce read permissions. They are designed for app consumers and end-users.
+Located in `api/app.clj`, these endpoints are used to run Data Apps for Consumers.
 
 ### API Design Principles
 
-1. **Separation of Concerns**: Admin operations are clearly separated from consumer operations
+1. **Separation of Concerns**: Creator operations are clearly separated from Consumer operations
 2. **Published-Only Access**: Consumer endpoints only return published app versions
 3. **Permission Enforcement**: All endpoints check appropriate permissions (read/create/update/delete)
 4. **Version Control**: Admin APIs handle versioning, while consumer APIs only see published versions
