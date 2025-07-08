@@ -36,3 +36,4 @@ import "./resource_downloads";
 import "./user_provisioning";
 import "./clean_up";
 import "./metabot";
+import "./tenants";

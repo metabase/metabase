@@ -258,6 +258,10 @@
   "Should Metabase do AI analysis on entities?"
   :ai-entity-analysis)
 
+(define-premium-feature ^{:added "0.56.0"} enable-tenants?
+  "Is this a development instance that should have watermarks?"
+  :tenants)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -295,6 +299,7 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :tenants                        (enable-tenants?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)})
 

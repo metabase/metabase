@@ -420,11 +420,17 @@
     (throw (ex-info (tru "Cannot grant application permission to a tenant group.") {})))
   (grant-permissions! group-or-id (permissions.path/application-perms-path perm-type)))
 
+;; TODO: We really have to figure out a better solution to these circular dependencies than this
 (defn- is-personal-collection-or-descendant-of-one? [collection]
   ((requiring-resolve 'metabase.collections.models.collection/is-personal-collection-or-descendant-of-one?) collection))
 
 (defn- is-trash-or-descendant? [collection]
   ((requiring-resolve 'metabase.collections.models.collection/is-trash-or-descendant?) collection))
+
+(defn- is-tenant-collection?
+  [_collection]
+  ;; for now...
+  false)
 
 (defn- ^:private collection-or-id->collection
   [collection-or-id]
@@ -462,16 +468,17 @@
   [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (when (perms-group/is-tenant-group? group-or-id)
-    (throw (ex-info (tru "Tenant Groups cannot have write access to any collections.") {})))
+    (throw (ex-info (tru "Tenant groups cannot have write access to any collections.") {})))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-readwrite-path collection-or-id)))
 
 (mu/defn grant-collection-read-permissions!
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
   [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
-  (when (and (perms-group/is-tenant-group? group-or-id)
-             (audit/is-collection-id-audit? (u/the-id collection-or-id)))
-    (throw (ex-info (tru "Tenant Groups cannot receive any access to the audit collection.") {})))
+  (let [collection (collection-or-id->collection collection-or-id)]
+    (when (and (not (is-tenant-collection? collection))
+               (perms-group/is-tenant-group? group-or-id))
+      (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {}))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
 
 (defenterprise current-user-has-application-permissions?
