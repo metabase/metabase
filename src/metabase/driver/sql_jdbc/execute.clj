@@ -739,7 +739,6 @@
     (driver-api/database (driver-api/metadata-provider))
     {:session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))}
     (fn [^Connection conn]
-      (tap> {:sql sql})
       (with-open [stmt          (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
                   ^ResultSet rs (try
                                   (execute-statement-or-prepared-statement! driver stmt max-rows params sql)

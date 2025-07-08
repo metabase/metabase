@@ -63,7 +63,7 @@
     (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (def ^:dynamic *use-routing-project*
-  "Used to decide which BigQuery project should be used for a db."
+  "Used to decide which BigQuery project should be used in [[test-db-details]]."
   false)
 
 (defn- test-db-details []

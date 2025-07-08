@@ -62,18 +62,12 @@
   (throw (UnsupportedOperationException. "Redshift does not have a TIME data type.")))
 
 (defn unique-session-schema []
-  "metabase_db_routing_test" #_(str (sql.tu.unique-prefix/unique-prefix) "schema"))
-
-(def ^:dynamic *use-routing-db*
-  "Used to decide which redshift db should be used."
-  false)
+  (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
 (def db-connection-details
   (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
           :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db                      (if *use-routing-db*
-                                     (tx/db-test-env-var :redshift :db-routing)
-                                     (tx/db-test-env-var :redshift :db))
+          :db                      (tx/db-test-env-var-or-throw :redshift :db)
           :user                    (tx/db-test-env-var-or-throw :redshift :user)
           :password                (tx/db-test-env-var-or-throw :redshift :password)
           :schema-filters-type     "inclusion"
@@ -81,19 +75,7 @@
 
 (defmethod tx/dbdef->connection-details :redshift
   [& _]
-  (tap> {:use-routing-db? *use-routing-db*})
-  (tap> {:redshift-db (if *use-routing-db*
-                        (tx/db-test-env-var :redshift :db-routing)
-                        (tx/db-test-env-var :redshift :db))})
-  {:host                    (tx/db-test-env-var-or-throw :redshift :host)
-   :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-   :db                      (if *use-routing-db*
-                              (tx/db-test-env-var :redshift :db-routing)
-                              (tx/db-test-env-var :redshift :db))
-   :user                    (tx/db-test-env-var-or-throw :redshift :user)
-   :password                (tx/db-test-env-var-or-throw :redshift :password)
-   :schema-filters-type     "inclusion"
-   :schema-filters-patterns (str "spectrum," (unique-session-schema))})
+  @db-connection-details)
 
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
@@ -200,13 +182,6 @@
         (log/infof fmt-str schema)
         (.execute stmt (drop-sql schema))))))
 
-(comment
-
-  (mt/test-driver :redshift
-    (tx/before-run :redshift))
-
-  (tap> 1))
-
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]
     (doseq [^String sql [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" (unique-session-schema))
@@ -216,14 +191,12 @@
 
 (defmethod tx/before-run :redshift
   [driver]
-  (tap> "BEFORE RUN")
   (sql-jdbc.execute/do-with-connection-with-options
    driver
    (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
    {:write? true}
    (fn [conn]
      (delete-old-schemas! conn)
-     (tap> "CREATING NEW SESSION SCHEMA")
      (create-session-schema! conn))))
 
 (defn- delete-session-schema!
@@ -305,13 +278,11 @@
          table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))]
      (sql-jdbc.execute/do-with-connection-with-options
       driver
-      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
+      (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
       {:write? false}
       (fn [^java.sql.Connection conn]
         (with-open [rset (.getTables (.getMetaData conn)
-                                     #_catalog        (if *use-routing-db*
-                                                        (tx/db-test-env-var :redshift :db-routing)
-                                                        (tx/db-test-env-var :redshift :db))
+                                     #_catalog        (tx/db-test-env-var-or-throw :redshift :db)
                                      #_schema-pattern session-schema
                                      #_table-pattern  table-name
                                      #_types          (into-array String ["TABLE"]))]
