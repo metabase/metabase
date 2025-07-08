@@ -332,4 +332,180 @@ const raiseError = (message: string) => {
 const warn = (...messages: unknown[]) =>
   console.warn("[metabase.embed.warning]", ...messages);
 
-export { MetabaseEmbed };
+// BEGIN web-component wrapper for convenient usage via <metabase-embed> tag
+
+// Convert kebab-case attribute names to their camelCase setting keys.
+const attributeToSettingKey = (attr: string): string =>
+  attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+
+// Naïve parsing of attribute values -> appropriate JS types (number, boolean, string)
+const parseAttributeValue = (value: string | null): unknown => {
+  if (value === null) {
+    return undefined;
+  }
+
+  // Boolean attributes:
+  if (value === "" || value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+
+  // Numeric attributes (e.g. ids)
+  const num = Number(value);
+  // Preserve leading zeros etc. by ensuring value is numeric and not NaN
+  if (!Number.isNaN(num) && /^\d+(\.\d+)?$/.test(value)) {
+    return num;
+  }
+
+  return value;
+};
+
+class MetabaseEmbedElement extends HTMLElement {
+  private _embed: MetabaseEmbed | null = null;
+
+  // Keep the observed attributes list small & explicit to avoid mistakes.
+  // Only attributes that map to settings are included.
+  static get observedAttributes() {
+    return [
+      "instance-url",
+      "dashboard-id",
+      "question-id",
+      "template",
+      "initial-collection",
+      "is-drill-through-enabled",
+      "with-downloads",
+      "with-title",
+      "use-existing-user-session",
+      "api-key",
+      "preferred-auth-method",
+      "iframe-class-name",
+    ];
+  }
+
+  connectedCallback() {
+    if (this._embed) {
+      return; // already initialised
+    }
+
+    // Gather settings from element attributes
+    const settings: Record<string, unknown> = {};
+    Array.from(this.attributes).forEach(({ name, value }) => {
+      const key = attributeToSettingKey(name);
+      settings[key] = parseAttributeValue(value);
+    });
+
+    // Fallback: if no instanceUrl attribute on element, look for it on the embedding script tag.
+    if (!settings.instanceUrl) {
+      const scriptWithInstance = document.querySelector(
+        "script[data-metabase-instance-url]",
+      ) as HTMLScriptElement | null;
+
+      const attr = scriptWithInstance?.getAttribute(
+        "data-metabase-instance-url",
+      );
+
+      if (attr) {
+        settings.instanceUrl = attr;
+      }
+    }
+
+    // Fallback: global attribute for useExistingUserSession
+    if (settings.useExistingUserSession === undefined) {
+      const scriptWithUserSession = document.querySelector(
+        "script[data-metabase-use-existing-user-session]",
+      ) as HTMLScriptElement | null;
+
+      const attr = scriptWithUserSession?.getAttribute(
+        "data-metabase-use-existing-user-session",
+      );
+
+      if (attr !== null && attr !== undefined) {
+        settings.useExistingUserSession = parseAttributeValue(attr) as boolean;
+      }
+    }
+
+    // Default target is a selector string pointing to this element to avoid passing an
+    // HTMLElement (which cannot be cloned in postMessage payloads).
+    if (!this.id) {
+      // Ensure the element has an id we can reference.
+      this.id = `metabase-embed-${Math.random().toString(36).slice(2)}`;
+    }
+    settings.target = `#${this.id}`;
+
+    // Instantiate the SDK embed.
+    try {
+      this._embed = new MetabaseEmbed(
+        settings as unknown as SdkIframeEmbedTagSettings,
+      );
+    } catch (error) {
+      // Surface constructor errors for easier debugging.
+      console.error("[metabase.embed.error]", error);
+    }
+  }
+
+  disconnectedCallback() {
+    this._embed?.destroy();
+    this._embed = null;
+  }
+
+  attributeChangedCallback(
+    attrName: string,
+    oldVal: string | null,
+    newVal: string | null,
+  ) {
+    if (!this._embed || oldVal === newVal) {
+      return;
+    }
+
+    const key = attributeToSettingKey(attrName) as keyof SdkIframeEmbedSettings;
+
+    // Prevent updates to settings that are immutable after creation.
+    if (
+      (DISABLE_UPDATE_FOR_KEYS as readonly string[]).includes(key as string)
+    ) {
+      return;
+    }
+
+    const value = parseAttributeValue(newVal);
+    // Call updateSettings with a partial settings object.
+    try {
+      this._embed.updateSettings({
+        [key]: value,
+      } as Partial<SdkIframeEmbedSettings>);
+    } catch (error) {
+      console.error("[metabase.embed.error]", error);
+    }
+  }
+}
+
+// Register the custom element once in the current page context.
+if (typeof window !== "undefined" && !customElements.get("metabase-embed")) {
+  customElements.define("metabase-embed", MetabaseEmbedElement);
+}
+
+// Register aliases for convenience without reusing the same constructor (required by the spec)
+if (typeof window !== "undefined") {
+  ["metabase-question", "metabase-dashboard"].forEach((tag) => {
+    if (!customElements.get(tag)) {
+      // Create a unique subclass so each tag has its own constructor reference.
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore – dynamically generated class name is fine.
+      customElements.define(tag, class extends MetabaseEmbedElement {});
+    }
+  });
+}
+
+// Expose the constructor on the global for backwards compatibility with previous SDK usage.
+if (typeof window !== "undefined") {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any)["metabase.embed"] = {
+    // Preserve any existing exports placed there earlier.
+    ...(window as any)["metabase.embed"],
+    MetabaseEmbed,
+  };
+}
+// END web-component wrapper
+
+export { MetabaseEmbed, MetabaseEmbedElement };
