@@ -68,7 +68,10 @@ export const SdkIframeEmbedSetupProvider = ({
     experience,
 
     // We're always using numeric IDs for previews.
-    ...(settings.dashboardId && { dashboardId: Number(settings.dashboardId) }),
+    ...(settings.dashboardId && {
+      dashboardId: settings.dashboardId as number,
+    }),
+
     ...(settings.questionId && { questionId: Number(settings.questionId) }),
   });
 
