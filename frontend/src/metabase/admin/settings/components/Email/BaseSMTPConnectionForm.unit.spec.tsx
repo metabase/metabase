@@ -6,23 +6,35 @@ import { BaseSMTPConnectionForm } from "./BaseSMTPConnectionForm";
 
 const setup = async ({
   secureMode = false,
-  propOverrides = {},
   setEnvVars = "none",
+  settingValues,
+  settingsDetails,
+  onClose,
+  updateMutation,
+  deleteMutation,
+  dataTestId,
+  onTrackSuccess,
 }: {
   secureMode?: boolean;
-  propOverrides?: any;
   setEnvVars?: "none" | "all" | "host";
+  settingValues?: any;
+  settingsDetails?: any;
+  onClose?: any;
+  updateMutation?: any;
+  deleteMutation?: any;
+  dataTestId?: string;
+  onTrackSuccess?: any;
 } = {}) => {
   renderWithProviders(
     <BaseSMTPConnectionForm
-      onClose={() => {}}
+      onClose={onClose || jest.fn()}
       settingValues={{
         host: "smtp.example.com",
         port: 587,
         security: "tls",
-        username: "user@example.com",
+        username: "red@example.com",
         password: "password123",
-        ...propOverrides?.settingValues,
+        ...settingValues,
       }}
       settingsDetails={{
         host: {
@@ -55,26 +67,25 @@ const setup = async ({
           description: "SMTP password",
           display_name: "SMTP Password",
         },
-        ...propOverrides?.settingsDetails,
+        ...settingsDetails,
       }}
       secureMode={secureMode}
-      updateMutation={jest
-        .fn()
-        .mockReturnValue({ unwrap: jest.fn().mockResolvedValue({}) })}
-      deleteMutation={jest.fn().mockResolvedValue({})}
-      dataTestId="test-smtp-form"
-      onTrackSuccess={jest.fn()}
-      {...propOverrides}
+      updateMutation={
+        updateMutation ||
+        jest.fn().mockReturnValue({ unwrap: jest.fn().mockResolvedValue({}) })
+      }
+      deleteMutation={deleteMutation || jest.fn().mockResolvedValue({})}
+      dataTestId={dataTestId || "test-smtp-form"}
+      onTrackSuccess={onTrackSuccess || jest.fn()}
     />,
   );
 
-  // Wait for form to load based on environment variable state
   if (setEnvVars === "all") {
     await screen.findByText("MB_EMAIL_SMTP_USERNAME");
-  } else if (propOverrides?.settingValues?.username === "") {
+  } else if (settingValues?.username === "") {
     await screen.findByText("SMTP Configuration");
   } else {
-    await screen.findByDisplayValue("user@example.com");
+    await screen.findByDisplayValue("red@example.com");
   }
 };
 
@@ -108,7 +119,7 @@ describe("BaseSMTPConnectionForm", () => {
 
       expect(screen.getByDisplayValue("smtp.example.com")).toBeInTheDocument();
       expect(screen.getByDisplayValue("587")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("user@example.com")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("red@example.com")).toBeInTheDocument();
       expect(screen.getByDisplayValue("password123")).toBeInTheDocument();
     });
 
@@ -119,22 +130,22 @@ describe("BaseSMTPConnectionForm", () => {
 
       await setup({
         secureMode: false,
-        propOverrides: { updateMutation: mockUpdate },
+        updateMutation: mockUpdate,
       });
 
       const hostInput = screen.getByLabelText(/SMTP Host/i);
       await userEvent.clear(hostInput);
-      await userEvent.type(hostInput, "smtp.newhost.com");
+      await userEvent.type(hostInput, "smtp.torchic.com");
 
       await userEvent.click(
         screen.getByRole("button", { name: /save changes/i }),
       );
 
       expect(mockUpdate).toHaveBeenCalledWith({
-        host: "smtp.newhost.com",
+        host: "smtp.torchic.com",
         port: 587,
         security: "tls",
-        username: "user@example.com",
+        username: "red@example.com",
         password: "password123",
       });
     });
@@ -144,13 +155,11 @@ describe("BaseSMTPConnectionForm", () => {
     it("should render form with chip selection for port and exclude 'None' security option", async () => {
       await setup({ secureMode: true });
 
-      // Port should be chips, not text input
       expect(screen.queryByLabelText(/SMTP Port/i)).not.toBeInTheDocument();
       expect(screen.getByText("465")).toBeInTheDocument();
       expect(screen.getByText("587")).toBeInTheDocument();
       expect(screen.getByText("2525")).toBeInTheDocument();
 
-      // Security options should NOT include "None"
       expect(screen.queryByText("None")).not.toBeInTheDocument();
       expect(screen.getByText("SSL")).toBeInTheDocument();
       expect(screen.getByText("TLS")).toBeInTheDocument();
@@ -160,14 +169,12 @@ describe("BaseSMTPConnectionForm", () => {
     it("should default to secure values when secureMode=true", async () => {
       await setup({
         secureMode: true,
-        propOverrides: {
-          settingValues: {
-            host: "",
-            port: null,
-            security: null,
-            username: "",
-            password: "",
-          },
+        settingValues: {
+          host: "",
+          port: null,
+          security: null,
+          username: "",
+          password: "",
         },
       });
 
@@ -208,7 +215,7 @@ describe("BaseSMTPConnectionForm", () => {
 
       const hostInput = screen.getByLabelText(/SMTP Host/i);
       await userEvent.clear(hostInput);
-      await userEvent.type(hostInput, "smtp.newhost.com");
+      await userEvent.type(hostInput, "smtp.torchic.com");
 
       expect(saveButton).toBeEnabled();
     });
@@ -218,7 +225,7 @@ describe("BaseSMTPConnectionForm", () => {
 
       await setup({
         secureMode: false,
-        propOverrides: { deleteMutation: mockDelete },
+        deleteMutation: mockDelete,
       });
 
       await userEvent.click(screen.getByRole("button", { name: /clear/i }));
@@ -234,15 +241,13 @@ describe("BaseSMTPConnectionForm", () => {
 
       await setup({
         secureMode: false,
-        propOverrides: {
-          updateMutation: mockUpdate,
-          onTrackSuccess: mockTrack,
-        },
+        updateMutation: mockUpdate,
+        onTrackSuccess: mockTrack,
       });
 
       const hostInput = screen.getByLabelText(/SMTP Host/i);
       await userEvent.clear(hostInput);
-      await userEvent.type(hostInput, "smtp.newhost.com");
+      await userEvent.type(hostInput, "smtp.torchic.com");
 
       await userEvent.click(
         screen.getByRole("button", { name: /save changes/i }),
@@ -259,15 +264,13 @@ describe("BaseSMTPConnectionForm", () => {
 
       await setup({
         secureMode: false,
-        propOverrides: {
-          onClose: mockClose,
-          updateMutation: mockUpdate,
-        },
+        onClose: mockClose,
+        updateMutation: mockUpdate,
       });
 
       const hostInput = screen.getByLabelText(/SMTP Host/i);
       await userEvent.clear(hostInput);
-      await userEvent.type(hostInput, "smtp.newhost.com");
+      await userEvent.type(hostInput, "smtp.torchic.com");
 
       await userEvent.click(
         screen.getByRole("button", { name: /save changes/i }),
