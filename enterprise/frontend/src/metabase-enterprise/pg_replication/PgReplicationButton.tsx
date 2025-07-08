@@ -8,17 +8,13 @@ import {
 } from "metabase-enterprise/api/pg-replication";
 import type { DatabaseId } from "metabase-types/api";
 
-type PgReplicationConnections = Record<DatabaseId, { connection_id: string }>;
-
 export function PgReplicationButton({
   databaseId,
 }: {
   databaseId: DatabaseId;
 }) {
   const showPgReplication = useSetting("pg-replication-enabled");
-  const connections = useSetting("pg-replication-connections") as
-    | PgReplicationConnections
-    | undefined;
+  const connections = useSetting("pg-replication-connections");
 
   const [createPgReplication] = useCreatePgReplicationMutation();
   const [deletePgReplication] = useDeletePgReplicationMutation();

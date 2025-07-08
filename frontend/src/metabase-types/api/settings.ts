@@ -4,6 +4,7 @@ import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
+import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
 import type { UserId } from "./user";
 
@@ -546,6 +547,11 @@ export type ColorSettings = Record<string, string>;
 export type IllustrationSettingValue = "default" | "none" | "custom";
 export type TimeoutValue = { amount: number; unit: string };
 
+export type PgReplicationConnections = Record<
+  DatabaseId,
+  { connection_id: string }
+>;
+
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
@@ -591,10 +597,7 @@ export interface EnterpriseSettings extends Settings {
   "saml-group-sync": boolean | null;
   "saml-group-mappings": Record<string, GroupId[]> | null;
   "pg-replication-enabled": boolean | null;
-  "pg-replication-connections"?: Record<
-    number,
-    { connection_id: string }
-  > | null;
+  "pg-replication-connections"?: PgReplicationConnections | null;
   /**
    * @deprecated
    */
