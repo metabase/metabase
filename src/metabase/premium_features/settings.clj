@@ -274,7 +274,7 @@
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
-   :development-mode               (development-mode?)
+   :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)
    :email_allow_list               (enable-email-allow-list?)
    :email_restrict_recipients      (enable-email-restrict-recipients?)

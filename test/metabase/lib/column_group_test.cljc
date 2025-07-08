@@ -55,7 +55,7 @@
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
-              ::lib.column-group/columns    [{:display-name "Name", :lib/source :source/breakouts}
+              ::lib.column-group/columns    [{:display-name "Name", :lib/source :source/table-defaults, :lib/breakout? true}
                                              {:display-name "Sum of ID", :lib/source :source/aggregations}]}]
             groups))
     (testing `lib/display-info
@@ -415,10 +415,11 @@
                {:display-name "User"
                 :is-from-join false,
                 :is-implicitly-joinable true}
-               {:display-name "Product"
+               ;; we always use LONG display names when the column comes from a previous stage.
+               {:display-name "Mock orders card → Product"
                 :is-from-join false,
                 :is-implicitly-joinable true}
-               {:display-name "User"
+               {:display-name "Mock orders card → User"
                 :is-from-join false,
                 :is-implicitly-joinable true}]
               (map #(lib/display-info query %) groups)))

@@ -712,27 +712,25 @@
                   (lib/aggregate (lib/sum (lib/case [[(lib/< (meta/field-metadata :venues :price) 2)
                                                       (meta/field-metadata :venues :price)]]
                                             0))))]
-    (is (=? [{:description              nil
-              :lib/type                 :metadata/column
+    (is (=? [{:lib/type                 :metadata/column
               :table-id                 (meta/id :venues)
               :name                     "CATEGORY_ID"
               :base-type                :type/Integer
               :semantic-type            :type/FK
               :database-type            "INTEGER"
               :effective-type           :type/Integer
-              :lib/source               :source/breakouts
+              :lib/source               :source/table-defaults
+              :lib/breakout?            true
               :lib/source-column-alias  "CATEGORY_ID"
               :lib/source-uuid          string?
               :fk-target-field-id       (meta/id :categories :id)
               :custom-position          0
               :active                   true
               :id                       (meta/id :venues :category-id)
-              :parent-id                nil
               :visibility-type          :normal
               :lib/desired-column-alias "CATEGORY_ID"
               :display-name             "Category ID"
               :has-field-values         :none
-              :target                   nil
               :preview-display          true
               :fingerprint              {:global {:distinct-count 28, :nil% 0.0}}}
              {:lib/type                 :metadata/column

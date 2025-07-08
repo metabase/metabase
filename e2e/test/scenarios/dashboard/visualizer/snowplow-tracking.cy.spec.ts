@@ -64,7 +64,6 @@ describe("Snowplow tracking", () => {
           event: "visualizer_data_changed",
           event_detail: "visualizer_datasource_added",
           triggered_from: "visualizer-modal",
-          event_data: "card:82", // ideally this would be dynamic
         });
 
         // deselect a dataset
@@ -73,7 +72,6 @@ describe("Snowplow tracking", () => {
           event: "visualizer_data_changed",
           event_detail: "visualizer_datasource_removed",
           triggered_from: "visualizer-modal",
-          event_data: "card:82", // ideally this would be dynamic
         });
 
         // select a dataset (i.e. replace other ones with a new one)
@@ -82,7 +80,6 @@ describe("Snowplow tracking", () => {
           event: "visualizer_data_changed",
           event_detail: "visualizer_datasource_replaced",
           triggered_from: "visualizer-modal",
-          event_data: "card:81", // ideally this would be dynamic
         });
 
         // switch to columns list
@@ -101,7 +98,6 @@ describe("Snowplow tracking", () => {
           event: "visualizer_data_changed",
           event_detail: "visualizer_column_removed",
           triggered_from: "visualizer-modal",
-          event_data: "source: card:81, column: count",
         });
 
         // select a column
@@ -113,7 +109,6 @@ describe("Snowplow tracking", () => {
           event: "visualizer_data_changed",
           event_detail: "visualizer_column_added",
           triggered_from: "visualizer-modal",
-          event_data: "source: card:81, column: count",
         });
 
         // show settings sidebar
@@ -129,7 +124,6 @@ describe("Snowplow tracking", () => {
           event: "visualizer_data_changed",
           event_detail: "visualizer_viz_type_changed",
           triggered_from: "visualizer-modal",
-          event_data: "line",
         });
       });
 
@@ -151,6 +145,27 @@ describe("Snowplow tracking", () => {
       cy.findByTestId("visualizer-tabular-preview-modal").within(() => {
         cy.findByLabelText("Close").click();
       });
+
+      // resets a dataset
+      H.resetDataSourceButton(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "visualizer_data_changed",
+        event_detail: "visualizer_datasource_reset",
+        triggered_from: "visualizer-modal",
+      });
+
+      // remove a dataset
+      H.removeDataSource(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name, {
+        throughMenu: true,
+      });
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "visualizer_data_changed",
+          event_detail: "visualizer_datasource_removed",
+          triggered_from: "visualizer-modal",
+        },
+        3, // we already removed two datasets before
+      );
 
       // close the modal
       H.closeDashcardVisualizerModal();

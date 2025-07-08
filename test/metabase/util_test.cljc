@@ -262,7 +262,7 @@
 #?(:clj
    (deftest lower-case-en-turkish-test
      ;; TODO Can we achieve something like with-locale in CLJS?
-     (mt/with-locale "tr"
+     (mt/with-locale! "tr"
        (is (= "id"
               (u/lower-case-en "ID"))))))
 
@@ -272,7 +272,7 @@
 
 #?(:clj
    (deftest upper-case-en-turkish-test
-     (mt/with-locale "tr"
+     (mt/with-locale! "tr"
        (is (= "ID"
               (u/upper-case-en "id"))))))
 
@@ -294,7 +294,7 @@
 
 #?(:clj
    (deftest capitalize-en-turkish-test
-     (mt/with-locale "tr"
+     (mt/with-locale! "tr"
        (is (= "Ibis"
               (u/capitalize-en "ibis")
               (u/capitalize-en "IBIS")
@@ -348,7 +348,7 @@
 
 #?(:clj
    (deftest normalize-map-turkish-test
-     (mt/with-locale "tr"
+     (mt/with-locale! "tr"
        (is (= {:bird "Toucan"}
               (u/normalize-map {:BIRD "Toucan"}))))))
 
@@ -569,6 +569,21 @@
       (testing (pr-str (list `lib.util/truncate-string-to-byte-count s max-length))
         (is (= expected
                (truncate-string-to-byte-count s max-length)))))))
+
+(deftest ^:parallel index-by-test
+  (is (= {:a :a, :b :b, :c :c}
+         (into {}
+               (u/index-by identity)
+               [:a :b :c])
+         (u/index-by identity [:a :b :c])))
+  (is (= {1 {:id 1, :name "A"}
+          2 {:id 2, :name "B"}}
+         (into {}
+               (u/index-by :id)
+               [{:id 1, :name "A"}, {:id 2, :name "B"}])
+         (u/index-by :id [{:id 1, :name "A"}, {:id 2, :name "B"}])))
+  (is (= {1 4, 2 5}
+         (u/index-by first second [[1 3] [1 4] [2 5]]))))
 
 (deftest ^:parallel rconcat-test
   (is (= [2 4 6 18 16 14 12 10 8 6 4 2 0 50]

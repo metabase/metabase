@@ -507,14 +507,12 @@ export function setup1stStageAggregationFilter() {
 
   H.getDashboardCard(0).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverList().scrollTo("bottom");
-    getPopoverItem("Count").click();
+    getPopoverItem("Count").scrollIntoView().click();
   });
 
   H.getDashboardCard(1).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverList().scrollTo("bottom");
-    getPopoverItem("Count").click();
+    getPopoverItem("Count").scrollIntoView().click();
   });
 
   H.saveDashboard({ waitMs: 250 });
@@ -535,14 +533,12 @@ export function setup1stStageBreakoutFilter() {
 
   H.getDashboardCard(0).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverList().scrollTo("bottom");
-    getPopoverItem("Category", 1).click();
+    getPopoverItem("Category", 1).scrollIntoView().click();
   });
 
   H.getDashboardCard(1).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverList().scrollTo("bottom");
-    getPopoverItem("Category", 1).click();
+    getPopoverItem("Category", 1).scrollIntoView().click();
   });
 
   H.saveDashboard({ waitMs: 250 });
@@ -591,14 +587,12 @@ export function setup2ndStageCustomColumnFilter() {
 
   H.getDashboardCard(0).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverList().scrollTo("bottom");
-    getPopoverItem("5 * Count").click();
+    getPopoverItem("5 * Count").scrollIntoView().click();
   });
 
   H.getDashboardCard(1).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverList().scrollTo("bottom");
-    getPopoverItem("5 * Count").click();
+    getPopoverItem("5 * Count").scrollIntoView().click();
   });
 
   H.saveDashboard({ waitMs: 250 });
@@ -622,14 +616,12 @@ export function setup2ndStageAggregationFilter() {
 
   H.getDashboardCard(0).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverList().scrollTo("bottom");
-    getPopoverItem("Count", 1).click();
+    getPopoverItem("Count", 1).scrollIntoView().click();
   });
 
   H.getDashboardCard(1).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverList().scrollTo("bottom");
-    getPopoverItem("Count", 1).click();
+    getPopoverItem("Count", 1).scrollIntoView().click();
   });
 
   H.getDashboardCard(2).findByText("Select…").click();
@@ -661,24 +653,22 @@ export function setup2ndStageBreakoutFilter() {
 
   H.getDashboardCard(0).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverList().scrollTo("bottom");
-    getPopoverItem("Category", 2).click();
+    getPopoverItem("Product → Category", 1).scrollIntoView().click();
   });
 
   H.getDashboardCard(1).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverList().scrollTo("bottom");
-    getPopoverItem("Category", 2).click();
+    getPopoverItem("Product → Category", 1).scrollIntoView().click();
   });
 
   H.getDashboardCard(2).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverItem("Products Via Product ID Category").click();
+    getPopoverItem("Product → Category").click();
   });
 
   H.getDashboardCard(3).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverItem("Products Via Product ID Category").click();
+    getPopoverItem("Product → Category").click();
   });
 
   H.saveDashboard({ waitMs: 250 });
@@ -790,16 +780,18 @@ export function verifyPopoverMappingOptions(sections: MappingSection[]) {
 
       for (const [sectionName, columnNames] of sections) {
         if (sectionName) {
-          const item = cy.wrap($items[index]);
-          item.scrollIntoView(); // the list is virtualized, we need to keep scrolling to see all the items
-          item.should("have.text", sectionName);
+          // the list is virtualized, we need to keep scrolling to see all the items
+          cy.wrap($items[index])
+            .scrollIntoView()
+            .should("have.text", sectionName);
           ++index;
         }
 
         for (const columnName of columnNames) {
-          const item = cy.wrap($items[index]);
-          item.scrollIntoView();
-          item.findByLabelText(columnName).should("be.visible");
+          cy.wrap($items[index])
+            .scrollIntoView()
+            .findByLabelText(columnName)
+            .should("be.visible");
           ++index;
         }
       }

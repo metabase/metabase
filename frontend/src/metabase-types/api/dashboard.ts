@@ -147,7 +147,7 @@ export type VirtualCard = Partial<
   Omit<Card, "name" | "dataset_query" | "visualization_settings" | "display">
 > & {
   name: null;
-  dataset_query: Record<string, never>;
+  dataset_query?: Record<string, never>; // Some old virtual cards have dataset_query equal to {}
   display: VirtualCardDisplay;
   visualization_settings: VisualizationSettings;
 };
@@ -173,6 +173,7 @@ export type ActionDashboardCard = Omit<
 export type QuestionDashboardCard = BaseDashboardCard & {
   card_id: CardId | null; // will be null for virtual card
   card: Card;
+  inline_parameters: ParameterId[] | null;
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: Card[];
 };
@@ -186,6 +187,7 @@ export type VisualizerDashboardCard = QuestionDashboardCard & {
 export type VirtualDashboardCard = BaseDashboardCard & {
   card_id: null;
   card: VirtualCard;
+  inline_parameters: ParameterId[] | null;
   parameter_mappings?: VirtualDashCardParameterMapping[] | null;
   visualization_settings: BaseDashboardCard["visualization_settings"] & {
     virtual_card: VirtualCard;

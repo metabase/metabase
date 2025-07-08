@@ -11908,6 +11908,31 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
+      id: v55.2025-06-09T01:00:00
+      author: metabase-dev
+      comment: Add inline_parameters to report_dashboardcard for card-level parameter display
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: report_dashboardcard
+                columnName: inline_parameters
+      changes:
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: inline_parameters
+                  type: ${text.type}
+                  remarks: JSON array of parameter IDs that should be displayed inline with this card
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: report_dashboardcard
+            columnName: inline_parameters
+
+  - changeSet:
       id: v55.2025-06-16T17:36:06
       author: nvoxland
       comment: |
@@ -12044,6 +12069,47 @@ databaseChangeLog:
                   name: settings
                   type: longtext
 
+
+  - changeSet:
+      id: v55.2025-07-02T10:00:00
+      author: ranquild
+      comment: |
+        Update `has_field_values` on FK fields to match PKs. Before this change, the FE always used the corresponding
+        PKs fields for FKs fields in dashboards. Now the FE does not swap fields, and we need to set `has_field_values`
+        to prevent any changes in behavior.
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field AS fk
+              SET has_field_values = pk.has_field_values
+              FROM metabase_field AS pk
+              WHERE
+                pk.id = fk.fk_target_field_id AND
+                pk.has_field_values IS NOT NULL AND
+                pk.has_field_values <> fk.has_field_values AND
+                fk.semantic_type = 'type/FK';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field AS fk
+              JOIN metabase_field AS pk ON pk.id = fk.fk_target_field_id
+              SET fk.has_field_values = pk.has_field_values
+              WHERE
+                pk.has_field_values IS NOT NULL AND
+                pk.has_field_values <> fk.has_field_values AND
+                fk.semantic_type = 'type/FK';
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_field AS fk
+              SET has_field_values = (
+                SELECT coalesce(pk.has_field_values, fk.has_field_values)
+                FROM metabase_field AS pk
+                WHERE pk.id = fk.fk_target_field_id
+              )
+              WHERE fk_target_field_id IS NOT NULL AND semantic_type = 'type/FK';
+      rollback: # not necessary
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

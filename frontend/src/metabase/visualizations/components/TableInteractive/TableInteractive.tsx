@@ -36,8 +36,10 @@ import {
 import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
 import type {
   BodyCellVariant,
+  CellFormatter,
   ColumnOptions,
   DataGridTheme,
+  PlainCellFormatter,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
@@ -241,19 +243,41 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const columnSettings = settings.column?.(col);
       const columnIndex = cols.findIndex((c) => c.name === col.name);
 
-      return memoize((untranslatedValue, rowIndex) => {
-        const clicked = getCellClickedObject(columnIndex, rowIndex);
+      const rich: CellFormatter<RowValue> = memoize(
+        (untranslatedValue, rowIndex) => {
+          const clicked = getCellClickedObject(columnIndex, rowIndex);
 
-        const value = tc(untranslatedValue);
+          const value = tc(untranslatedValue);
 
-        return formatValue(value, {
-          ...columnSettings,
-          type: "cell",
-          jsx: true,
-          rich: true,
-          clicked,
-        });
-      });
+          return formatValue(value, {
+            ...columnSettings,
+            type: "cell",
+            jsx: true,
+            rich: true,
+            clicked,
+          });
+        },
+      );
+
+      const plain: PlainCellFormatter<RowValue> = memoize(
+        (untranslatedValue, rowIndex) => {
+          const clicked = getCellClickedObject(columnIndex, rowIndex);
+          const value = tc(untranslatedValue);
+
+          return String(
+            formatValue(value, {
+              ...columnSettings,
+              type: "cell",
+              clicked,
+            }),
+          );
+        },
+      );
+
+      return {
+        rich,
+        plain,
+      };
     });
   }, [cols, settings, getCellClickedObject, tc]);
 
@@ -275,9 +299,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         : data.cols.findIndex((col) => col.name === columnId);
 
       const formatter = columnFormatters[columnIndex];
-      const formattedValue = formatter(
+      const formattedValue = formatter.rich(
         data.rows[rowIndex][columnIndex],
         rowIndex,
+        columnId,
       );
       const clicked = getCellClickedObject(columnIndex, rowIndex);
 
@@ -517,7 +542,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         sortDirection,
         enableResizing: true,
         getBackgroundColor,
-        formatter,
+        formatter: formatter.rich,
+        clipboardFormatter: formatter.plain,
       };
 
       if (isMinibar) {
@@ -536,7 +562,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               align={align}
               backgroundColor={backgroundColor}
               value={value}
-              formatter={formatter}
+              formatter={formatter.rich}
               extent={columnExtent}
               columnSettings={columnSettings}
             />
@@ -692,6 +718,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnReorder: handleColumnReordering,
     pageSize,
     minGridWidth,
+    enableSelection: true,
   });
   const { virtualGrid } = tableProps;
 
