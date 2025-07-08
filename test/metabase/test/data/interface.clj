@@ -75,7 +75,8 @@
    [:not-null?         {:optional true} [:maybe :boolean]]
    [:unique?           {:optional true} [:maybe :boolean]]
    [:pk?               {:optional true} [:maybe :boolean]]
-   [:default           {:optional true} [:maybe :string]]
+   [:default-expr      {:optional true} [:maybe :string]]
+   [:generated-expr    {:optional true} [:maybe :string]]
    ;; should we create an index for this field?
    [:indexed?          {:optional true} [:maybe :boolean]]
    [:semantic-type     {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
