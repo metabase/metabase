@@ -1014,7 +1014,14 @@
                         [[:= :c.column_key [:inline "PRI"]] :pk?]
                         [[:= :is_nullable [:inline "YES"]] :database-is-nullable]
                         [[:if [:= [:lower :column_default] [:inline "null"]] nil :column_default] :database-default]
-                        [[:or [:like :extra "%STORED GENERATED%"] [:like :extra "VIRTUAL GENERATED"]] :database-is-generated]
+
+                        [[:and
+                          ;; mariadb
+                          [:!= :generation_expression nil]
+                          ;; mysql
+                          [:<> :generation_expression ""]]
+                         :database-is-generated]
+
                         [[:nullif :c.column_comment [:inline ""]] :field-comment]]
                :from [[:information_schema.columns :c]]
                :where
