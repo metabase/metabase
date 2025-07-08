@@ -112,6 +112,7 @@ type RenderMode = "dashboard" | "question" | "queryBuilder";
 
 /**
  * Despite being a prop for a specific component, to avoid circular dependencies, the type is defined here.
+ * @inline
  */
 export type EditableDashboardOwnProps = {
   /**
