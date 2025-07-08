@@ -124,7 +124,7 @@ export const setup = async ({
           <DashboardHeader {...dashboardHeaderProps} />
         </MockDashboardContext>
       )}
-    />,
+    ></Route>,
     {
       withRouter: true,
       storeInitialState: {
