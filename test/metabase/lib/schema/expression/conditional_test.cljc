@@ -59,29 +59,21 @@
                              [true b]]]))
     10 20
     10 20.5
-
     "A" "B"
     "A" ""
-
     true false
     true true
     false false
-
     (value-expr :type/Date "2023-03-08")
     (value-expr :type/Date "2023-03-09")
-
     (value-expr :type/Date "2023-03-08")
     (value-expr :type/DateTime "2023-03-09T04:33:45")
-
     (value-expr :type/Date "2023-03-08")
     (value-expr :type/DateTimeWithTZ "2023-03-09T04:33:45Z")
-
     (value-expr :type/DateTime "2023-03-09T04:33:45")
     (value-expr :type/Date "2023-03-09")
-
     (value-expr :type/DateTime "2023-03-08T04:33:45")
     (value-expr :type/DateTime "2023-03-09T04:33:45")
-
     (value-expr :type/DateTime "2023-03-09T04:33:45")
     (value-expr :type/DateTimeWithTZ "2023-03-09T04:33:45Z")
 
@@ -100,23 +92,18 @@
                              [true b]]]))
     10 "A"
     10.5 "B"
-
     true "A"
     true 10
     true 10.5
-
     10 (value-expr :type/Date "2023-03-08")
     10 (value-expr :type/DateTime "2023-03-08T04:33:45")
     10 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
-
     10.5 (value-expr :type/Date "2023-03-08")
     10.5 (value-expr :type/DateTime "2023-03-08T04:33:45")
     10.5 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
-
     "A" (value-expr :type/Date "2023-03-08")
     "A" (value-expr :type/DateTime "2023-03-08T04:33:45")
     "A" (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
-
     true (value-expr :type/Date "2023-03-08")
     true (value-expr :type/DateTime "2023-03-08T04:33:45")
     true (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")))
@@ -173,7 +160,7 @@
       [(value-expr :type/Date "2023-03-08")
        (value-expr :type/Time "15:03:55")])))
 
-(deftest ^:parallel coalesce-schema-valid-test
+(deftest ^:parallel coalesce-schema-invalid-test
   (testing "schema validation for invalid :coalesce expressions"
     (are [args] (false?
                  (mr/validate :mbql.clause/coalesce
@@ -181,12 +168,9 @@
       [1]
       [1 "A"]
       ["A"]
-      ["A"
-       (value-expr :type/Date "2023-03-08")]
-      ["A"
-       (value-expr :type/DateTime "2023-03-08T15:03:55")]
-      ["A"
-       (value-expr :type/DateTimeWithTZ "2023-03-08T15:03:55Z")])))
+      ["A" (value-expr :type/Date "2023-03-08")]
+      ["A" (value-expr :type/DateTime "2023-03-08T15:03:55")]
+      ["A" (value-expr :type/DateTimeWithTZ "2023-03-08T15:03:55Z")])))
 
 (deftest ^:parallel coalesce-schema-type-compatibility-valid-test
   (are [a b] (true?
@@ -196,32 +180,23 @@
                             a b]))
     10 20
     10 20.5
-
     "A" "B"
     "A" ""
-
     true false
     true true
     false false
-
     (value-expr :type/Date "2023-03-08")
     (value-expr :type/Date "2023-03-09")
-
     (value-expr :type/Date "2023-03-08")
     (value-expr :type/DateTime "2023-03-09T04:33:45")
-
     (value-expr :type/Date "2023-03-08")
     (value-expr :type/DateTimeWithTZ "2023-03-09T04:33:45Z")
-
     (value-expr :type/DateTime "2023-03-09T04:33:45")
     (value-expr :type/Date "2023-03-09")
-
     (value-expr :type/DateTime "2023-03-08T04:33:45")
     (value-expr :type/DateTime "2023-03-09T04:33:45")
-
     (value-expr :type/DateTime "2023-03-09T04:33:45")
     (value-expr :type/DateTimeWithTZ "2023-03-09T04:33:45Z")
-
     ; TODO: this case should fail due to Time and Date not being compatible,
     ; but until we have a better way to handle this, we just allow it and document
     ; here as a test.
@@ -236,23 +211,18 @@
                             a b]))
     10 "A"
     10.5 "B"
-
     true "A"
     true 10
     true 10.5
-
     10 (value-expr :type/Date "2023-03-08")
     10 (value-expr :type/DateTime "2023-03-08T04:33:45")
     10 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
-
     10.5 (value-expr :type/Date "2023-03-08")
     10.5 (value-expr :type/DateTime "2023-03-08T04:33:45")
     10.5 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
-
     "A" (value-expr :type/Date "2023-03-08")
     "A" (value-expr :type/DateTime "2023-03-08T04:33:45")
     "A" (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
-
     true (value-expr :type/Date "2023-03-08")
     true (value-expr :type/DateTime "2023-03-08T04:33:45")
     true (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")))
