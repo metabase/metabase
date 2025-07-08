@@ -27,8 +27,7 @@
                                           (dissoc data-app :definition))]
     (let [app-with-definition (if definition
                                 (do
-                                  (data-apps.models/set-latest-definition! app-id {:config definition
-                                                                                   :creator_id (mt/user->id :crowberto)})
+                                  (data-apps.models/set-latest-definition! app-id (merge definition {:creator_id (mt/user->id :crowberto)}))
                                   (assoc app :definition (data-apps.models/latest-definition app-id)))
                                 app)]
       (thunk app-with-definition))))
@@ -64,8 +63,9 @@
   [data-app thunk]
   (with-data-app! [app (cond-> data-app
                          (nil? (:definition data-app))
-                         (assoc :definition default-app-definition-config))]
-    (data-apps.models/release!  (:id app) (:id (data-apps.models/latest-definition (:id app))) (mt/user->id :crowberto))
+                         (assoc :definition {:config     default-app-definition-config
+                                             :creator_id (mt/user->id :crowberto)}))]
+    (data-apps.models/release! (:id app) (mt/user->id :crowberto))
     (thunk (data-apps.models/get-published-data-app (:slug app)))))
 
 (defmacro with-released-app!

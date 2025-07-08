@@ -119,30 +119,40 @@
   [app-id definition]
   (t2/insert-returning-instance! :model/DataAppDefinition
                                  (merge definition
-                                        {:app_id          app-id
+                                        {:app_id app-id
                                          :revision_number (next-revision-number-hsql app-id)})))
 
 (defn create-app!
   "Create a new App with an initial definition."
   [app-data]
   (t2/with-transaction [_conn]
-    (let [app            (t2/insert-returning-instance! :model/DataApp (merge
-                                                                        {:status :private}
-                                                                        (dissoc app-data :definition)))
+    (let [app (t2/insert-returning-instance! :model/DataApp (merge
+                                                             {:status :private}
+                                                             (dissoc app-data :definition)))
           app-definition (when-let [definition (:definition app-data)]
                            (set-latest-definition! (:id app) definition))]
       (assoc app :definition app-definition))))
 
+(defn latest-definition
+  "Get the latest definition (released or not) for a data app."
+  [app-id]
+  (t2/select-one :model/DataAppDefinition
+                 :app_id app-id
+                 {:order-by [[:revision_number :desc]]}))
+
 (defn release!
-  "Release a new definition of an app."
-  [app-id app-definition-id creator-id]
+  "Release the latest definition of an app."
+  [app-id creator-id]
   (t2/with-transaction [_conn]
-    (t2/update! :model/DataApp app-id {:status :published})
-    (t2/update! :model/DataAppRelease :app_id app-id {:retracted true})
-    (t2/insert-returning-instance! :model/DataAppRelease
-                                   {:app_id            app-id
-                                    :app_definition_id app-definition-id
-                                    :creator_id        creator-id})))
+    (let [latest-def (latest-definition app-id)]
+      (when-not latest-def
+        (throw (ex-info "No definition found for app" {:app-id app-id})))
+      (t2/update! :model/DataApp app-id {:status :published})
+      (t2/update! :model/DataAppRelease :app_id app-id {:retracted true})
+      (t2/insert-returning-instance! :model/DataAppRelease
+                                     {:app_id app-id
+                                      :app_definition_id (:id latest-def)
+                                      :creator_id creator-id}))))
 
 (defn released-definition
   "Get the latest released definition for a data app."
@@ -155,13 +165,6 @@
                                                      {:order-by [[:id :desc]]})]
     (t2/select-one :model/DataAppDefinition release-definition-id)))
 
-(defn latest-definition
-  "Get the latest definition (released or not) for a data app."
-  [app-id]
-  (t2/select-one :model/DataAppDefinition
-                 :app_id app-id
-                 {:order-by [[:revision_number :desc]]}))
-
 (defn latest-release
   "Get the latest release info for a data app."
   [app-id]
@@ -173,9 +176,9 @@
 (defn get-published-data-app
   "Get the published version of a data app by id."
   [slug]
-  (let [app                 (t2/select-one :model/DataApp :slug slug :status :published)
-        _                   (when-not app
-                              (throw (ex-info "Not found." {:status-code 404})))
+  (let [app (t2/select-one :model/DataApp :slug slug :status :published)
+        _   (when-not app
+              (throw (ex-info "Not found." {:status-code 404})))
         released-definition (released-definition (:id app))]
     (when-not released-definition
       (throw (ex-info "Data app is not released"

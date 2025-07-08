@@ -411,7 +411,9 @@
   data-apps
   {:team "Workflows"
    :api  #{metabase.data-apps.core}
-   :uses #{models
+   :uses #{api
+           models
+           request
            util}}
 
   database-routing

@@ -6,7 +6,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.data-apps.models :as data-apps.models]
    [metabase.request.core :as request]
-
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -24,6 +23,7 @@
   "Honeysql clauses for filtering data apps with status and pagination"
   [limit offset]
   (cond-> {}
+    true           (sql.helpers/where [:!= :status "archived"])
     (some? limit) (sql.helpers/limit limit)
     (some? offset) (sql.helpers/offset offset)))
 
@@ -32,13 +32,13 @@
 
   Takes `limit`, `offset` for pagination."
   [_route-params]
-  (let [limit (request/limit)
-        offset (request/offset)
+  (let [limit   (request/limit)
+        offset  (request/offset)
         clauses (data-app-clauses limit offset)]
     {:data (t2/select :model/DataApp
                       (sql.helpers/order-by clauses
                                             [:created_at :desc]
-                                            [:id :asc]))
+                                            [:id :desc]))
      :total (t2/count :model/DataApp (dissoc clauses :order-by :limit :offset))
      :limit limit
      :offset offset}))
@@ -89,12 +89,10 @@
     (data-apps.models/set-latest-definition! id (assoc body :creator_id api/*current-user-id*))))
 
 (api.macros/defendpoint :post "/:id/release"
-  "Release the latest definition version of a data app. Always releases the latest definition, ignoring any provided definition_id."
+  "Release the latest definition version of a data app."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    _body]
   (let [existing-data-app (api/read-check (t2/select-one :model/DataApp id))]
     (api/update-check existing-data-app {})
-    (let [latest-definition (data-apps.models/latest-definition id)]
-      (api/check-404 latest-definition)
-      (data-apps.models/release! id (:id latest-definition) api/*current-user-id*))))
+    (data-apps.models/release! id api/*current-user-id*)))
