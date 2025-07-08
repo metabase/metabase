@@ -1892,14 +1892,18 @@
 
           (testing "Field filter should work case-insensitively in embedded dashboards"
             (testing "Query with lowercase 'red' should find venues with 'Red' in the name"
-              ;; This test should fail until the bug is fixed - embedded dashboards
-              ;; currently apply case-sensitive filtering by default
-              (let [response (client/client :get 202 (dashcard-query-url {"name_contains" "red"}))]
-                (is (= "completed" (:status response)))
-                ;; Get venue IDs from the response 
-                (let [venue-ids (->> response :data :rows (map first) set)]
-                  (println "Debug - Found venue IDs:" venue-ids)
-                  ;; We expect to find venue IDs 1 and 10 when searching case-insensitively for "red"
-                  ;; This represents venues containing "Red" in their names  
-                  (is (= #{1 10} venue-ids)
-                      "Should find venues 1 and 10 when filtering with lowercase 'red' (case-insensitive)"))))))))))
+              (let [response    (client/client :get 202 (dashcard-query-url {"name_contains" "red"}))
+                    _           (is (= "completed" (:status response)))
+                    ;; Get venue data from the response
+                    venue-rows  (->> response :data :rows)
+                    venue-ids   (set (map first venue-rows))
+                    venue-names (set (map second venue-rows))]
+                ;; Verify we found the right number of venues
+                (is (= #{1 10} venue-ids)
+                    "Should find venues 1 and 10 when filtering with lowercase 'red' (case-insensitive)")
+                ;; Explicitly verify that we matched both "Red Medicine" (uppercase) and "Fred 62" (lowercase)
+                (testing "Should match venues with both uppercase 'Red' and lowercase 'red'"
+                  (is (some #(re-find #"Red" %) venue-names)
+                      "Should find at least one venue with uppercase 'Red' in the name")
+                  (is (some #(re-find #"red" %) venue-names)
+                      "Should find at least one venue with lowercase 'red' in the name"))))))))))
