@@ -103,9 +103,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Is not");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Greater than");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Less than");
+    cy.contains("Range");
   });
 
   it("should append indexes to duplicate custom expression names (metabase#12104)", () => {

@@ -917,18 +917,19 @@ describe("scenarios > admin > datamodel > segments", () => {
         .click();
       H.popover().contains("Edit Segment").click();
 
-      // update the filter from "< 100" to "> 10"
+      cy.log('update the filter from "< 100" to "> 10"');
       cy.url().should("match", /segment\/1$/);
       cy.get("label").contains("Edit Your Segment");
       cy.findByTestId("filter-pill")
         .contains(/Total\s+is less than/)
         .click();
       H.popover().findByLabelText("Filter operator").click();
-      H.popover().contains("Greater than").click();
-      H.popover().findByPlaceholderText("Enter a number").type("{SelectAll}10");
+      H.popover().contains("Range").click();
+      H.popover().findByPlaceholderText("Start of range").type("{SelectAll}10");
+      H.popover().findByPlaceholderText("End of range").clear();
       H.popover().contains("Update filter").click();
 
-      // confirm that the preview updated
+      cy.log("confirm that the preview updated");
       cy.findByTestId("segment-editor").contains("18758 rows");
 
       // update name and description, set a revision note, and save the update

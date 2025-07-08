@@ -165,9 +165,9 @@ describe("scenarios > models", () => {
 
     H.filter();
     H.popover().findByText("COUN").click();
-    H.selectFilterOperator("Greater than");
+    H.selectFilterOperator("Range");
     H.popover().within(() => {
-      cy.findByLabelText("Filter value").type("30");
+      cy.findByLabelText("Start of range").type("30");
       cy.button("Apply filter").click();
     });
     cy.wait("@dataset").then(({ response }) => {
@@ -405,9 +405,9 @@ describe("scenarios > models", () => {
         cy.findByText("Products").click();
         cy.findByText("Price").click();
       });
-      H.selectFilterOperator("Less than");
+      H.selectFilterOperator("Range");
       H.popover().within(() => {
-        cy.findByPlaceholderText("Enter a number").type("50");
+        cy.findByPlaceholderText("End of range").type("50");
         cy.button("Add filter").click();
       });
 

@@ -10,6 +10,7 @@ type CastTestCase = {
     columns: string[];
     firstRows: string[][];
   };
+  inputSelector?: string;
 };
 
 const TEXT_TEST_CASES: CastTestCase[] = [
@@ -170,7 +171,8 @@ const FLOAT_TEST_CASES: CastTestCase[] = [
   {
     name: "FloatExpression",
     expression: 'float(concat([ID], ".3333"))',
-    filterOperator: "Less than",
+    filterOperator: "Range",
+    inputSelector: "End of range",
     filterValue: "2",
     expectedRowCount: 1,
   },
@@ -232,10 +234,14 @@ function removeCustomColumn({ name }: CastTestCase) {
   H.getNotebookStep("expression").findByText(name).icon("close").click();
 }
 
-function addOperatorFilter({ filterOperator, filterValue }: CastTestCase) {
+function addOperatorFilter({
+  filterOperator,
+  filterValue,
+  inputSelector = "Filter value",
+}: CastTestCase) {
   H.selectFilterOperator(filterOperator);
   H.popover().within(() => {
-    cy.findByLabelText("Filter value").type(filterValue);
+    cy.findByLabelText(inputSelector).type(filterValue);
     cy.button("Add filter").click();
   });
 }
@@ -281,7 +287,6 @@ function testFilterWithExpressions(
     H.assertQueryBuilderRowCount(testCase.expectedRowCount);
 
     if (testCase.expectedTableData) {
-      // @ts-expect-error: assertTableData is not typed
       H.assertTableData(testCase.expectedTableData);
     }
 
