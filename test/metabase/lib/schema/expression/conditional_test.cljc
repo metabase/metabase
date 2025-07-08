@@ -44,12 +44,10 @@
       [[[true true]] true]
 
       [[[true true]] true])
-
     (are [args] (false?
                  (mr/validate :mbql.clause/case
                               (into [:case {:lib/uuid (str (random-uuid))}] args)))
       [1]
-
       [[] 1])))
 
 (deftest ^:parallel case-schema-type-compatibility-valid-test
