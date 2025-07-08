@@ -1,6 +1,10 @@
 import type { LocationDescriptorObject } from "history";
 import { useKBar } from "kbar";
-import type { ChangeEvent, KeyboardEvent, MouseEvent } from "react";
+import type {
+  ChangeEvent,
+  MouseEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
@@ -159,7 +163,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, [onChangeLocation, previousLocation, searchFilters, searchText]);
 
   const handleInputKeyPress = useCallback(
-    (e: KeyboardEvent) => {
+    (e: ReactKeyboardEvent) => {
       if (e.nativeEvent.isComposing) {
         return;
       }
