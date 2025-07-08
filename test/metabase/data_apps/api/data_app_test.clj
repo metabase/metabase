@@ -77,8 +77,8 @@
                               :released_at       (mt/malli=? some?)}}
                 (mt/user-http-request :crowberto :get 200 (data-apps.tu/data-app-url (:id app)))))))
 
-    #_(testing "Get non-existent app returns 404"
-        (mt/user-http-request :crowberto :get 404 (data-apps.tu/data-app-url 99999)))))
+    (testing "Get non-existent app returns 404"
+      (mt/user-http-request :crowberto :get 404 (data-apps.tu/data-app-url Integer/MAX_VALUE)))))
 
 (deftest comprehensive-crud-flow-test
   (testing "Complete CRUD flow for data apps including definition and release"
