@@ -3,7 +3,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Card, Radio, Stack, Text } from "metabase/ui";
-import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import {
   EMBED_EXPERIENCES,
@@ -18,7 +17,7 @@ export const SelectEmbedExperienceStep = () => {
   const {
     experience,
     settings,
-    setSettings,
+    replaceSettings,
     recentDashboards,
     recentQuestions,
   } = useSdkIframeEmbedSetupContext();
@@ -28,7 +27,6 @@ export const SelectEmbedExperienceStep = () => {
   ) => {
     const persistedSettings = _.pick(settings, [
       "theme",
-      "instanceUrl",
       "useExistingUserSession",
     ]);
 
@@ -43,13 +41,13 @@ export const SelectEmbedExperienceStep = () => {
       .with("exploration", () => 0) // resource id does not apply
       .exhaustive();
 
-    setSettings({
+    replaceSettings({
       // these settings do not change when the embed type changes
       ...persistedSettings,
 
       // these settings are overridden when the embed type changes
       ...getDefaultSdkIframeEmbedSettings(experience, defaultResourceId),
-    } as SdkIframeEmbedSettings);
+    });
   };
 
   return (

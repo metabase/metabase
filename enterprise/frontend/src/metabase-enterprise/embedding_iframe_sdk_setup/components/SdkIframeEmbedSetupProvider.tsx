@@ -1,24 +1,23 @@
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { P, match } from "ts-pattern";
 
-import { useSetting } from "metabase/common/hooks";
-import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import { useUserSetting } from "metabase/common/hooks";
 
-import {
-  EMBED_FALLBACK_DASHBOARD_ID,
-  PERSIST_EMBED_SETTINGS_DEBOUNCE_MS,
-} from "../constants";
+import { EMBED_FALLBACK_DASHBOARD_ID } from "../constants";
 import {
   SdkIframeEmbedSetupContext,
   type SdkIframeEmbedSetupContextType,
 } from "../context";
-import {
-  useParameterList,
-  usePersistJsonViaUserSetting,
-  useRecentItems,
-} from "../hooks";
+import { useParameterList, useRecentItems } from "../hooks";
 import type {
   SdkIframeEmbedSetupExperience,
+  SdkIframeEmbedSetupSettings,
   SdkIframeEmbedSetupStep,
 } from "../types";
 import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
@@ -32,32 +31,37 @@ export const SdkIframeEmbedSetupProvider = ({
 }: SdkIframeEmbedSetupProviderProps) => {
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
 
+  const [rawSettings, setSettings] = useState<SdkIframeEmbedSetupSettings>();
+
+  const [persistedSettings, persistSetting] = useUserSetting(
+    "sdk-iframe-embed-setup-settings",
+    { shouldDebounce: true },
+  );
+
   // We don't want to re-fetch the recent items every time we switch between
   // steps, therefore we load recent items once in the provider.
-  const { recentDashboards, recentQuestions, addRecentItem, isRecentsLoading } =
-    useRecentItems();
+  const { recentDashboards, recentQuestions, addRecentItem } = useRecentItems();
+
+  const fallbackDashboardId =
+    recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID;
+
+  const settings = useMemo(() => {
+    return (
+      rawSettings ??
+      getDefaultSdkIframeEmbedSettings("dashboard", fallbackDashboardId)
+    );
+  }, [rawSettings, fallbackDashboardId]);
 
   const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
     "select-embed-experience",
   );
 
-  const instanceUrl = useSetting("site-url");
-
-  const [settings, setSettings] = useState<SdkIframeEmbedSettings>({
-    instanceUrl,
-
-    // This will be overridden by the last selected dashboard in the activity log.
-    dashboardId: EMBED_FALLBACK_DASHBOARD_ID,
-
-    // Default to using user sessions, as we do not know if
-    // SSO for SDK is implemented on the user's backend, even when it is configured.
-    useExistingUserSession: true,
-  });
-
   // Which embed experience are we setting up?
   const experience = useMemo(
     () =>
-      match<SdkIframeEmbedSettings, SdkIframeEmbedSetupExperience>(settings)
+      match<SdkIframeEmbedSetupSettings, SdkIframeEmbedSetupExperience>(
+        settings,
+      )
         .with({ questionId: P.nonNullable }, () => "chart")
         .with({ template: "exploration" }, () => "exploration")
         .otherwise(() => "dashboard"),
@@ -76,68 +80,28 @@ export const SdkIframeEmbedSetupProvider = ({
     ...(settings.questionId && { questionId: Number(settings.questionId) }),
   });
 
-  const fallbackDashboardId =
-    recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID;
-
-  const handleEmbedSettingsRestored = useCallback(
-    (settings: SdkIframeEmbedSettings | null) => {
-      if (isEmbedSettingsLoaded) {
-        return;
-      }
-
-      if (settings) {
-        setSettings({ ...settings, instanceUrl });
-      } else {
-        // Apply the default settings if the user settings are empty.
-        const defaults = getDefaultSdkIframeEmbedSettings(
-          "dashboard",
-          fallbackDashboardId,
-        );
-
-        setSettings(
-          (prev) =>
-            ({ ...prev, ...defaults, instanceUrl }) as SdkIframeEmbedSettings,
-        );
-      }
-
-      setEmbedSettingsLoaded(true);
-    },
-    [fallbackDashboardId, isEmbedSettingsLoaded, instanceUrl],
-  );
-
-  const { storeSetting } = usePersistJsonViaUserSetting({
-    settingKey: "sdk-iframe-embed-setup-settings",
-    omitKeys: ["instanceUrl"],
-    onRestore: handleEmbedSettingsRestored,
-    debounceMs: PERSIST_EMBED_SETTINGS_DEBOUNCE_MS,
-
-    // Wait until recents are loaded before restoring the settings.
-    // This ensures the fallback id contains the most recent resource.
-    skipRestore: isRecentsLoading,
-  });
-
-  const setAndPersistSettings = useCallback(
-    (settings: SdkIframeEmbedSettings) => {
-      setSettings(settings);
-      storeSetting(settings);
-    },
-    [storeSetting],
-  );
-
   const updateSettings = useCallback(
-    (nextSettings: Partial<SdkIframeEmbedSettings>) => {
-      setSettings((prevSettings) => {
+    (nextSettings: Partial<SdkIframeEmbedSetupSettings>) =>
+      setSettings((prev) => {
+        // Merging with a partial setting requires us to cast the typeuse-sdk-iframe-embed-snippet.
         const mergedSettings = {
-          ...prevSettings,
+          ...prev,
           ...nextSettings,
-        } as SdkIframeEmbedSettings;
+        } as SdkIframeEmbedSetupSettings;
 
-        storeSetting(mergedSettings);
+        persistSetting(mergedSettings);
 
         return mergedSettings;
-      });
+      }),
+    [persistSetting],
+  );
+
+  const replaceSettings = useCallback(
+    (nextSettings: SdkIframeEmbedSetupSettings) => {
+      setSettings(nextSettings);
+      persistSetting(nextSettings);
     },
-    [storeSetting],
+    [persistSetting],
   );
 
   const value: SdkIframeEmbedSetupContextType = {
@@ -145,7 +109,7 @@ export const SdkIframeEmbedSetupProvider = ({
     setCurrentStep,
     experience,
     settings,
-    setSettings: setAndPersistSettings,
+    replaceSettings,
     updateSettings,
     recentDashboards,
     recentQuestions,
@@ -154,6 +118,25 @@ export const SdkIframeEmbedSetupProvider = ({
     isLoadingParameters,
     availableParameters,
   };
+
+  // Once the persisted settings are loaded, check if they are valid.
+  // If they are, set them as the current settings.
+  useEffect(() => {
+    if (!isEmbedSettingsLoaded) {
+      // We consider the settings to be valid if it has at least one
+      // of the following properties set.
+      const isPersistedSettingValid =
+        persistedSettings?.dashboardId ||
+        persistedSettings?.questionId ||
+        persistedSettings?.template;
+
+      if (isPersistedSettingValid) {
+        setSettings(persistedSettings);
+      }
+
+      setEmbedSettingsLoaded(true);
+    }
+  }, [persistedSettings, isEmbedSettingsLoaded]);
 
   return (
     <SdkIframeEmbedSetupContext.Provider value={value}>

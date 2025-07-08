@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
+
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { GroupId } from "./group";
@@ -488,7 +490,7 @@ export type UserSettings = {
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
   "trial-banner-dismissal-timestamp"?: string | null;
-  "sdk-iframe-embed-setup-settings"?: string | null;
+  "sdk-iframe-embed-setup-settings"?: SdkIframeEmbedSetupSettings | null;
 };
 
 /**

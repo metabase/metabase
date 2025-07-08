@@ -17,9 +17,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-
-    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
   it("persists dashboard embed options", () => {
@@ -40,7 +37,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
 
     cy.log("2. reload the page");
-    waitAndReload();
+    reload();
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Dashboard").should("be.checked");
       cy.findByText("Next").click(); // Entity selection step
@@ -68,13 +65,14 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       capturePersistSettings();
       cy.findByLabelText("Allow downloads").click().should("be.checked");
       cy.wait("@persistSettings");
+      cy.wait("@persistSettings");
 
       capturePersistSettings();
       cy.findByLabelText("Show chart title").click().should("not.be.checked");
     });
 
     cy.log("2. reload the page");
-    waitAndReload();
+    reload();
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Chart").should("be.checked");
       cy.findByText("Next").click(); // Entity selection step
@@ -105,7 +103,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     H.getIframeBody().findByText("Save").should("not.exist");
 
     cy.log("2. reload the page");
-    waitAndReload();
+    reload();
 
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Exploration").should("be.checked");
@@ -143,7 +141,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       .should("have.css", "color", "rgb(255, 0, 0)");
 
     cy.log("2. reload the page");
-    waitAndReload();
+    reload();
 
     cy.log("3. brand color should be persisted");
     H.getIframeBody()
@@ -172,7 +170,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
 
     cy.log("2. reload the page");
-    waitAndReload();
+    reload();
 
     cy.log("3. auth method should persist");
     getEmbedSidebar().within(() => {
@@ -233,7 +231,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
 
     cy.log("2. reload the page");
-    waitAndReload();
+    reload();
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click(); // Entity selection step
       cy.findByText("Next").click(); // Embed options step
@@ -267,19 +265,14 @@ const capturePersistSettings = () => {
   );
 };
 
-const waitAndReload = () => {
-  cy.wait("@persistSettings").then(() => {
-    // Reduce flakiness by waiting for settings to be saved.
-    cy.wait(1000);
+const reload = () => {
+  cy.reload();
 
-    cy.reload();
-
-    cy.get("#iframe-embed-container").should(
-      "have.attr",
-      "data-iframe-loaded",
-      "true",
-    );
-  });
+  cy.get("#iframe-embed-container").should(
+    "have.attr",
+    "data-iframe-loaded",
+    "true",
+  );
 };
 
 const parameterVisibilityToggle = (slug: string) =>

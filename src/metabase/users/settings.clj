@@ -107,7 +107,7 @@
   :encryption :no
   :export?    false
   :visibility :authenticated
-  :type       :string)
+  :type       :json)
 
 (defsetting license-token-missing-banner-dismissal-timestamp
   (deferred-tru "The array of last two ISO8601 dates when an admin dismissed the license token missing banner.")
