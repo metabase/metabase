@@ -13,6 +13,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Transform view id
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -20,6 +21,7 @@ databaseChangeLog:
               - column:
                   name: database_id
                   type: int
+                  remarks: Id of metabase_database the view is created in
                   constraints:
                     nullable: false
                     referencedTableName: metabase_database
@@ -28,33 +30,40 @@ databaseChangeLog:
               - column:
                   name: view_schema
                   type: varchar(256)
+                  remarks: The schema view is created in
               - column:
                   name: view_name
                   type: varchar(256)
+                  remarks: Name of the view, unique per database and schema
                   constraints:
                     nullable: false
               - column:
                   name: view_display_name
                   type: varchar(256)
+                  remarks: Display name for presentation purposes, user set
               - column:
                   name: dataset_query
                   type: ${text.type}
+                  remarks: Query as stored in report_card
                   constraints:
                     nullable: false
               - column:
                   name: dataset_query_type
                   type: varchar(16)
+                  remarks: Type of dataset_query
                   constraints:
                     nullable: false
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: Timestamp of transform view creation
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
+                  remarks: Timestamp of transform view update
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
