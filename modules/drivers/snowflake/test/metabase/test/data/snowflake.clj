@@ -350,7 +350,7 @@
                                  MUST_CHANGE_PASSWORD = FALSE;"
                                 pk-user
                                 (tx/db-test-env-var-or-throw driver :warehouse)))
-    (jdbc/execute! spec (format "GRANT ROLE %s TO USER %s" (tx/db-test-env-var-or-throw driver :required-role) pk-user))
+    (jdbc/execute! spec (format "GRANT ROLE %s TO USER %s" "ACCOUNTADMIN" pk-user))
     (set-user-public-key details pk-user pub-key)))
 
 (comment
