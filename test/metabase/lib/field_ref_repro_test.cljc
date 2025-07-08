@@ -1,0 +1,63 @@
+(ns metabase.lib.field-ref-repro-test
+  (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.lib.util :as lib.util]))
+
+(deftest ^:parallel mark-selected-columns-with-duplicate-names-test
+  (testing "Should be able to distinguish columns with the same name and differen join alias (#39033)"
+    (let [card1 (-> (lib.tu/mock-cards)
+                    :orders/native
+                    (update :result-metadata #(filterv (comp #{"ID" "PRODUCT_ID" "TOTAL"} :name) %)))
+          card2 (:products/native (lib.tu/mock-cards))
+          metadata-provider (lib/composed-metadata-provider
+                             meta/metadata-provider
+                             (providers.mock/mock-metadata-provider
+                              {:cards [card1 card2]}))
+          query (-> (lib/query metadata-provider card1)
+                    (lib/join (lib/join-clause card2
+                                               [(lib/= (m/find-first (comp #{"PRODUCT_ID"} :name)
+                                                                     (:result-metadata card1))
+                                                       (m/find-first (comp #{"ID"} :name)
+                                                                     (:result-metadata card2)))])))
+          stage-number   -1
+          stage          (lib.util/query-stage query stage-number)
+          vis-columns    (lib.metadata.calculation/visible-columns query stage-number stage)
+          ret-columns    (lib.metadata.calculation/returned-columns query stage-number stage)
+          marked-columns (lib.equality/mark-selected-columns query stage-number vis-columns ret-columns)]
+      (is (= ["ID"
+              "Total"
+              "Product ID"
+              "Mock products card - Product → ID"
+              "Mock products card - Product → Rating"
+              "Mock products card - Product → Category"
+              "Mock products card - Product → Price"
+              "Mock products card - Product → Title"
+              "Mock products card - Product → Created At"
+              "Mock products card - Product → Vendor"
+              "Mock products card - Product → Ean"]
+             (map :display-name vis-columns)
+             (map :display-name ret-columns)
+             (map :display-name marked-columns)))
+      ;; all columns should be selected, none should be unselected
+      (let [{selected true, unselected false} (group-by :selected? marked-columns)]
+        (is (= ["ID"
+                "Total"
+                "Product ID"
+                "Mock products card - Product → Rating"
+                "Mock products card - Product → Category"
+                "Mock products card - Product → Price"
+                "Mock products card - Product → Title"
+                "Mock products card - Product → Created At"
+                "Mock products card - Product → Vendor"
+                "Mock products card - Product → Ean"]
+               (map :display-name selected)))
+        (is (= ["Mock products card - Product → ID"]
+               (map :display-name unselected)))))))
