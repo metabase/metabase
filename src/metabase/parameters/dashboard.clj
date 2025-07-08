@@ -25,7 +25,7 @@
     (keyword (name type))
     :=))
 
-(defn- param-type->default-options
+(defn param-type->default-options
   [type]
   (when (#{:string/contains :string/does-not-contain :string/starts-with :string/ends-with} type)
     {:case-sensitive false}))
