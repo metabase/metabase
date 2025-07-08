@@ -138,6 +138,7 @@
   [app-id app-definition-id]
   (t2/with-transaction [_conn]
     (t2/update! :model/DataApp app-id {:status :published})
+    (t2/update! :model/DataAppRelease :app_id app-id {:retracted true})
     (t2/insert-returning-instance! :model/DataAppRelease
                                    {:app_id            app-id
                                     :app_definition_id app-definition-id})))
@@ -167,3 +168,16 @@
                  :app_id app-id
                  :retracted false
                  {:order-by [[:released_at :desc]]}))
+
+(defn get-published-data-app
+  "Get the published version of a data app by id."
+  [url]
+  #p url
+  (let [app                 (t2/select-one :model/DataApp :url url :status :published)
+        _                   (when-not app
+                              (throw (ex-info "Not found." {:status-code 404})))
+        released-definition (released-definition (:id app))]
+    (when-not released-definition
+      (throw (ex-info "Data app is not released"
+                      {:status-code 404})))
+    (assoc app :definition released-definition)))

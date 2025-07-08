@@ -10,7 +10,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(defmacro with-data-app-cleanup
+(defmacro with-data-app-cleanup!
   "Execute `body`, then delete any *new* data app-related rows created during execution.
   This includes DataApp, DataAppDefinition, and DataAppRelease models.
 
@@ -23,16 +23,18 @@
      ~@body))
 
 (defn do-with-data-app
-  "Create a temporary data app for testing."
-  [{:keys [data-app]} thunk]
+  "Create a temporary data app for testing. Optionally creates a definition if :definition is provided."
+  [{:keys [definition] :as data-app} thunk]
   (mt/with-temp
-    [:model/DataApp {app-id :id} (merge
-                                  {:name "Test Data App"
-                                   :url "/test-data-app"
-                                   :description "Test description"
-                                   :creator_id (mt/user->id :crowberto)}
-                                  data-app)]
-    (thunk (t2/select-one :model/DataApp app-id))))
+    [:model/DataApp {app-id :id :as app} (merge
+                                          {:name "Test Data App"}
+                                          (dissoc data-app :definition))]
+    (let [app-with-definition (if definition
+                                (do
+                                  (data-apps.models/set-latest-definition! app-id {:config definition})
+                                  (assoc app :definition (data-apps.models/latest-definition app-id)))
+                                app)]
+      (thunk app-with-definition))))
 
 (defn data-app-url
   "URL helper for data app endpoints"
@@ -40,27 +42,41 @@
   ([id] (str "/data-app/" id))
   ([id suffix] (str "/data-app/" id suffix)))
 
- ;; Set up with-temp defaults for DataApp model
-(methodical/defmethod t2.with-temp/with-temp-defaults :model/DataApp
-  [_]
-  {:name (u.random/random-name)
-   :url (str "/" (u.random/random-name))
-   :description (str "Test description for " (u.random/random-name))
-   :creator_id (mt/user->id :crowberto)})
-
 (defmacro with-data-app
-  "Macro that sets up a temporary data app for testing.
+  "Macro that sets up a temporary data app for testing. Optionally creates a definition if :definition is provided.
 
-  Example:
+  Examples:
+
     (with-data-app
-      [app {:data-app {:name \"My Test App\"}}]
-      (is (= \"My Test App\" (:name app))))"
+      [app {:name \"My Test App\"
+            :definition default-app-definition-config}]
+      (is (= 1 (get-in app [:definition :revision_number]))))"
   [[bindings props] & body]
-  `(do-with-data-app ~props (fn [~bindings] ~@body)))
+  `(with-data-app-cleanup!
+     (do-with-data-app ~props (fn [~bindings] ~@body))))
 
 (def default-app-definition-config
   "Default app definition config that matches the malli spec"
   (mu/validate-throw ::data-apps.models/AppDefinitionConfig
-                     {:actions    []
+                     {:actions []
                       :parameters []
-                      :pages      [{:name "Default Page"}]}))
+                      :pages [{:name "Default Page"}]}))
+
+(defn do-with-released-app!
+  "Create a temporary data app with a released definition for testing."
+  [data-app thunk]
+  (with-data-app [app (cond-> data-app
+                        (nil? (:definition data-app))
+                        (assoc :definition default-app-definition-config))]
+    (data-apps.models/release! (:id app) (:id (data-apps.models/latest-definition (:id app))))
+    (thunk (data-apps.models/get-published-data-app (:url app)))))
+
+(defmacro with-released-app!
+  "Macro that sets up a temporary data app with a released definition for testing.
+
+  Example:
+    (with-released-app!
+      [app {:name \"My Test App\"}]
+      (is (= \"My Test App\" (:name app))))"
+  [[bindings props] & body]
+  `(do-with-released-app! ~props (fn [~bindings] ~@body)))

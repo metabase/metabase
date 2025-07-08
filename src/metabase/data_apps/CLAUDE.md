@@ -39,7 +39,7 @@ data_app_release
 ├── app_id (FK -> data_app.id, cascade delete)
 ├── app_definition_id (FK -> data_app_definition.id, cascade delete)
 ├── released_at
-└── retracted (boolean, default false)
+└── retracted (boolean, default false - only one active release per app)
 ```
 
 ### Key Relationships
@@ -52,7 +52,8 @@ data_app_release
 
 2. **DataApp → DataAppRelease** (1:N)
    - Each app can have multiple publishing records
-   - Multiple releases can exist without being retracted
+   - Only ONE release can be active at a time (retracted = false)
+   - When publishing a new release, all previous releases are automatically retracted
    - Retracted status allows for simpler publishing and rollback
 
 3. **DataAppDefinition → DataAppRelease** (1:N)
@@ -81,9 +82,10 @@ These functions form the public interface for the data apps module. All external
 ### Database Considerations
 
 - App definitions use `revision_number` (not version) that increments atomically
-- Multiple definitions can be published without needing to deactivate others
+- Only one release can be active per app (enforced by auto-retracting previous releases)
 - Validation occurs before insert/update operations
-- Retracted flag allows marking releases as unavailable when needed
+- The `retracted` field is the only updatable field on releases (append-only design)
+- Publishing automatically retracts all previous releases for that app
 
 ## API Endpoints
 

@@ -163,6 +163,14 @@
              :cache_field_values_schedule "0 50 0 * * ? *"
              :settings                    {:database-source-dataset-name "test-data"}}))
 
+   :model/DataApp
+   (fn [_] (default-timestamped
+            {:name        (u.random/random-name)
+             :url         (str "/" (u.random/random-name))
+             :description (str "Test description for " (u.random/random-name))
+             :status      :private
+             :creator_id  (user-id :crowberto)}))
+
    :model/Dimension
    (fn [_] (default-timestamped
             {:name (u.random/random-name)
