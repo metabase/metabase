@@ -158,11 +158,14 @@ describe("Snowplow tracking", () => {
       H.removeDataSource(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name, {
         throughMenu: true,
       });
-      H.expectUnstructuredSnowplowEvent({
-        event: "visualizer_data_changed",
-        event_detail: "visualizer_datasource_removed",
-        triggered_from: "visualizer-modal",
-      });
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "visualizer_data_changed",
+          event_detail: "visualizer_datasource_removed",
+          triggered_from: "visualizer-modal",
+        },
+        3, // we already removed two datasets before
+      );
 
       // close the modal
       H.closeDashcardVisualizerModal();
