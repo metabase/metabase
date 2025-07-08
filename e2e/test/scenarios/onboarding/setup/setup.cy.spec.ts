@@ -94,7 +94,7 @@ describe("scenarios > setup", () => {
           cy.findByText("MySQL").click();
           cy.findByText("Need help connecting?").should("be.visible");
           cy.findByLabelText("Remove database").click();
-          cy.findByPlaceholderText("Search for a database…").type("SQL");
+          cy.findByPlaceholderText("Search databases").type("SQL");
           cy.findByText("SQLite").click();
           cy.findByText("Need help connecting?");
 
@@ -344,7 +344,7 @@ describe("scenarios > setup", () => {
       .click();
 
     cy.findByTestId("database-form").within(() => {
-      cy.findByPlaceholderText("Search for a database…").type("lite").blur();
+      cy.findByPlaceholderText("Search databases").type("lite").blur();
       cy.findByText("SQLite").click();
       cy.findByLabelText("Display name").type(dbName);
       cy.findByLabelText("Filename").type("./resources/sqlite-fixture.db", {

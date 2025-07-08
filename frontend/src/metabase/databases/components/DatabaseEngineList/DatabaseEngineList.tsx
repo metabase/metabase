@@ -70,7 +70,7 @@ export const DatabaseEngineList = ({
     const selected = options.find((option) => option.value === engineKey);
     return (
       <Button
-        alia-label={t`Remove Database`}
+        aria-label={t`Remove database`}
         fullWidth
         justify="space-between"
         mb="lg"
