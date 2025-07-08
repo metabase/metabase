@@ -1398,7 +1398,7 @@
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first
            include_can_run_adhoc_query
            show_dashboard_questions]} :- [:map
@@ -1410,8 +1410,9 @@
                                           [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
                                           [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
                                           [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]]]
-  (let [model-kwds (set (map keyword (u/one-or-many models)))
-        collection (api/read-check :model/Collection id)]
+  (let [resolved-id (eid-translation/->id-or-404 :collection id)
+        model-kwds (set (map keyword (u/one-or-many models)))
+        collection (api/read-check :model/Collection resolved-id)]
     (u/prog1 (collection-children collection
                                   {:show-dashboard-questions?   show_dashboard_questions
                                    :models                      model-kwds
