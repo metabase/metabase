@@ -1122,6 +1122,21 @@
   ;; For most databases, the same limit is used for all identifier types.
   (table-name-length-limit driver))
 
+(defmulti create-view!
+  "Create (or replace) a view named `view-name`. If the view already exists it will throw an error, unless `:replace?` is true in the opts map."
+  {:added "0.57.0", :arglists '([driver database-id view-name view-definitions & {:keys [replace?] :as opts}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti drop-view!
+  "Drop a view named `view-name`. If the view doesn't exist it will not be dropped. `view-name` may be qualified
+  by schema e.g.
+
+    schema.view"
+  {:added "0.57.0", :arglists '([driver db-id ^String view-name])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti create-table!
   "Create a table named `table-name`. If the table already exists it will throw an error.
   `args` is an optional map with an optional entry `primary-key`. The `primary-key` value is a vector of column names
