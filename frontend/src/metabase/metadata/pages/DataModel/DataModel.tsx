@@ -157,31 +157,35 @@ export const DataModel = ({ children, location, params }: Props) => {
               className={S.column}
               flex={COLUMN_CONFIG.field.flex}
               h="100%"
-              justify={error ? "center" : undefined}
+              justify={
+                (!isLoading && !error && !field) || error ? "center" : undefined
+              }
               maw={COLUMN_CONFIG.field.max}
               miw={COLUMN_CONFIG.field.min}
             >
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                <Flex justify="space-between" w="100%">
-                  {field && (
-                    <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
-                      <FieldSection
-                        databaseId={databaseId}
-                        field={field}
-                        parent={parentField}
-                        isPreviewOpen={isPreviewOpen}
-                        /**
-                         * Make sure internal component state is reset when changing fields.
-                         * This is to avoid state mix-up with optimistic updates.
-                         */
-                        key={getRawTableFieldId(field)}
-                        onFieldValuesClick={openFieldValuesModal}
-                        onPreviewClick={openPreview}
-                      />
-                    </Box>
-                  )}
-                </Flex>
+                {field && (
+                  <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
+                    <FieldSection
+                      databaseId={databaseId}
+                      field={field}
+                      parent={parentField}
+                      isPreviewOpen={isPreviewOpen}
+                      /**
+                       * Make sure internal component state is reset when changing fields.
+                       * This is to avoid state mix-up with optimistic updates.
+                       */
+                      key={getRawTableFieldId(field)}
+                      onFieldValuesClick={openFieldValuesModal}
+                      onPreviewClick={openPreview}
+                    />
+                  </Box>
+                )}
               </LoadingAndErrorWrapper>
+
+              {!isLoading && !error && !field && (
+                <LoadingAndErrorWrapper error={t`Not found.`} />
+              )}
             </Stack>
           )}
 
