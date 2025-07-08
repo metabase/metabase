@@ -7,6 +7,7 @@ import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -20,7 +21,6 @@ import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
   getEmbedOptions,
   getIsEmbeddingIframe,
-  getIsEmbeddingSdk,
 } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -506,11 +506,8 @@ export const getQuestionByCard = createCachedSelector(
     return isQuestionCard(card) ? new Question(card, metadata) : undefined;
   },
 )((_state, props) => {
-  // Sometime card doesn't have an id.
-  // In that case, we use the stringified version of the card as a cache key.
-  // That's nless than ideal, but it avoids flooding the console with warnings
-  // and it's still better than using `undefined` as a cache key.
-  return props.card.id ?? JSON.stringify(props.card).slice(0, 50);
+  // Virtual cards don't have an ID and should not return a question so we use "virtual" as a cache key for all of them
+  return props.card.id == null ? "virtual" : props.card.id;
 });
 
 export const getDashcardParameterMappingOptions = createCachedSelector(
@@ -539,9 +536,9 @@ export function getEmbeddedParameterVisibility(
 }
 
 export const getIsHeaderVisible = createSelector(
-  [getIsEmbeddingIframe, getIsEmbeddingSdk, getEmbedOptions],
-  (isEmbeddingIframe, isEmbeddingSdk, embedOptions) =>
-    (isEmbeddingSdk && isEmbeddingIframe) ||
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
+    (isEmbeddingSdk() && isEmbeddingIframe) ||
     !isEmbeddingIframe ||
     !!embedOptions.header,
 );

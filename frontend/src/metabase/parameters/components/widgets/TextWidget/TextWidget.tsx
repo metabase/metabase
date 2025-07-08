@@ -80,6 +80,9 @@ export class TextWidget extends Component<TextWidgetProps, State> {
           }
         }}
         onKeyUp={(e) => {
+          if (e.nativeEvent.isComposing) {
+            return;
+          }
           const target = e.target as HTMLInputElement;
           if (e.key === "Escape") {
             target.blur();

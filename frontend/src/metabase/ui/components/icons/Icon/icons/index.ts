@@ -349,6 +349,8 @@ import slack_colorized_component from "./slack_colorized.svg?component";
 import slack_colorized_source from "./slack_colorized.svg?source";
 import smartscalar_component from "./smartscalar.svg?component";
 import smartscalar_source from "./smartscalar.svg?source";
+import snail_component from "./snail.svg?component";
+import snail_source from "./snail.svg?source";
 import snippet_component from "./snippet.svg?component";
 import snippet_source from "./snippet.svg?source";
 import sort_component from "./sort.svg?component";
@@ -1160,6 +1162,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: smartscalar_component,
       source: smartscalar_source,
     },
+    snail: {
+      component: snail_component,
+      source: snail_source,
+    },
     snippet: {
       component: snippet_component,
       source: snippet_source,
@@ -1506,6 +1512,7 @@ export type IconName =
   | "slack"
   | "slack_colorized"
   | "smartscalar"
+  | "snail"
   | "snippet"
   | "sparkles"
   | "star_filled"

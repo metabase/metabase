@@ -14,20 +14,19 @@ import type { ClickActionPopoverProps } from "metabase/visualizations/types/clic
 import * as Lib from "metabase-lib";
 
 export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
+  if (!clicked || clicked.value !== undefined || !clicked.columnShortcuts) {
+    return [];
+  }
+
   const { query, stageIndex } = Lib.asReturned(
     question.query(),
     -1,
     question.id(),
   );
   const { isEditable } = Lib.queryDisplayInfo(query);
+  const availableColumns = Lib.expressionableColumns(query, stageIndex);
 
-  if (
-    !clicked ||
-    clicked.value !== undefined ||
-    !clicked.columnShortcuts ||
-    !isEditable ||
-    !hasCombinations(query, stageIndex)
-  ) {
+  if (!isEditable || !hasCombinations(availableColumns)) {
     return [];
   }
 
@@ -54,6 +53,7 @@ export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
       <CombineColumns
         query={query}
         stageIndex={stageIndex}
+        availableColumns={availableColumns}
         onSubmit={handleSubmit}
         width={474}
       />

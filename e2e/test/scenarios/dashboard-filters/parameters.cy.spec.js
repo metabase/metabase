@@ -944,7 +944,9 @@ describe("scenarios > dashboard > parameters", () => {
         H.editDashboard();
       });
 
-      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
 
       H.setDashboardParameterName("Count");
       H.setDashboardParameterType("Number");
@@ -964,7 +966,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.saveDashboard();
 
       H.getDashboardCard(0).within(() => {
-        cy.findByLabelText("Count").within(() => {
+        H.filterWidget().within(() => {
           // exact: false so that it matches "Count\u00a0" (with a non-breaking space)
           cy.findByText("Count", { exact: false }).should("exist");
           cy.findByText("4,000").should("exist");
@@ -1024,7 +1026,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       H.getDashboardCard(0).within(() => {
-        cy.findByText("Category").should("exist");
+        H.filterWidget().contains("Category").should("exist");
 
         // Verify we're hiding filters that are not linked to any cards
         cy.findByText("Count").should("not.exist");
@@ -1032,14 +1034,16 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.editDashboard();
 
-      H.getDashboardCard(0).findByText("Count").click();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").click();
+      });
       H.dashboardParameterSidebar().button("Remove").click();
 
       H.getDashboardCard(0).within(() => {
         cy.findByText("Heading Text").should("exist");
         cy.findByText("Count").should("not.exist");
 
-        cy.findByText("Category").click();
+        H.filterWidget({ isEditing: true }).contains("Category").click();
       });
 
       H.dashboardParameterSidebar().button("Remove").click();
@@ -1153,7 +1157,9 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       // Connect Category filter to first card
-      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
       H.selectDashboardFilter(H.getDashboardCard(1), "Category");
       H.dashboardParameterSidebar().button("Done").click();
 
@@ -1163,7 +1169,9 @@ describe("scenarios > dashboard > parameters", () => {
       H.getDashboardCard(2).findByText("Average of Total").should("exist");
 
       // Verify filter isn't auto-wired and there's no auto-wiring toast
-      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
       H.getDashboardCard(2)
         .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
@@ -1225,7 +1233,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.getDashboardCard(2).within(() => {
         cy.findByDisplayValue("Heading Text").should("exist");
-        cy.findByText("Category 1").should("exist").click();
+        H.filterWidget({ isEditing: true }).contains("Category 1").click();
       });
 
       // Ensure the filter isn't mapped to the question by default
@@ -1244,7 +1252,9 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       // Ensure filters work independently
-      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget().contains("Category").click();
+      });
       H.popover().within(() => {
         cy.findByText("Doohickey").click();
         cy.button("Add filter").click();
@@ -1258,7 +1268,9 @@ describe("scenarios > dashboard > parameters", () => {
         expect(search).to.eq("?category=Doohickey&category_1=");
       });
 
-      H.getDashboardCard(2).findByText("Category 1").click();
+      H.getDashboardCard(2).within(() => {
+        H.filterWidget().contains("Category 1").click();
+      });
       H.popover().within(() => {
         cy.findByText("Gizmo").click();
         cy.button("Add filter").click();
@@ -1333,7 +1345,9 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Widget").should("be.visible");
       });
 
-      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget().contains("Category").click();
+      });
       H.popover().within(() => {
         cy.findByText("Gadget").click();
         cy.button("Add filter").click();
@@ -1394,7 +1408,9 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.undo();
 
-      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
       H.getDashboardCard(1)
         .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
@@ -1448,7 +1464,9 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Widget").should("be.visible");
       });
 
-      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget().contains("Category").click();
+      });
       H.popover().within(() => {
         cy.findByText("Gadget").click();
         cy.button("Add filter").click();
@@ -1597,7 +1615,9 @@ describe("scenarios > dashboard > parameters", () => {
           cy.findByText("Widget").should("be.visible");
         });
 
-        H.getDashboardCard(0).findByText("Category").click();
+        H.getDashboardCard(0).within(() => {
+          H.filterWidget().contains("Category").click();
+        });
         H.popover().within(() => {
           cy.findByText("Gadget").click();
           cy.button("Add filter").click();
@@ -1784,9 +1804,11 @@ describe("scenarios > dashboard > parameters", () => {
 
       // Verify filtering works
       H.getDashboardCard(0).within(() => {
+        cy.findByText("Gadget").should("be.visible"); // wait for query
         H.filterWidget().contains("Category").click();
       });
       H.dashboardParametersPopover().within(() => {
+        cy.findByLabelText("Gadget").should("exist");
         cy.findByLabelText("Gadget").click();
         cy.button("Add filter").click();
       });
@@ -2390,6 +2412,60 @@ describe("scenarios > dashboard > parameters", () => {
           .findByLabelText("Add a filter")
           .should("not.exist");
       });
+    });
+  });
+});
+
+H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
+  beforeEach(() => {
+    H.resetSnowplow();
+    H.restore();
+    cy.signInAsAdmin();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  it("should track dashboard_filter_created event when adding a filter", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+
+    // Ensure tracking is triggered for question dashcard parameters
+    H.setDashCardFilter(0, "Text or Category", null, "Category");
+    H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "dashboard_filter_created",
+      triggered_from: "table",
+      event_detail: "string",
+      target_id: ORDERS_DASHBOARD_ID,
+    });
+
+    H.dashboardParameterSidebar().button("Done").click();
+
+    // Ensure tracking is triggered for heading dashcard parameters
+    H.addHeadingWhileEditing("Heading Text");
+    H.setDashCardFilter(1, "Text or Category", null, "Category 2");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "dashboard_filter_created",
+      triggered_from: "heading",
+      event_detail: "string",
+      target_id: ORDERS_DASHBOARD_ID,
+    });
+
+    H.dashboardParameterSidebar().button("Done").click();
+
+    // Ensure tracking is triggered for dashboard parameters
+    H.setFilter("ID");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "dashboard_filter_created",
+      triggered_from: null,
+      event_detail: "id",
+      target_id: ORDERS_DASHBOARD_ID,
     });
   });
 });
