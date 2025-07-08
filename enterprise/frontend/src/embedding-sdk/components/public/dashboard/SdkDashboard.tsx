@@ -62,7 +62,10 @@ import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import type { DashboardId } from "metabase-types/api";
 
-import type { DrillThroughQuestionProps } from "../InteractiveQuestion";
+import type {
+  DrillThroughQuestionProps,
+  InteractiveQuestionProps,
+} from "../InteractiveQuestion";
 
 import {
   SdkDashboardStyledWrapper,
@@ -106,6 +109,16 @@ export type SdkDashboardProps = PropsWithChildren<
 
 type RenderMode = "dashboard" | "question" | "queryBuilder";
 
+/**
+ * Despite being a prop for a specific component, to avoid circular dependencies, the type is defined here.
+ */
+export type EditableDashboardOwnProps = {
+  /**
+   * Additional props to pass to the query builder rendered by `InteractiveQuestion` when creating a new dashboard question.
+   */
+  queryBuilderProps?: Pick<InteractiveQuestionProps, "entityTypes">;
+};
+
 export type SdkDashboardInnerProps = SdkDashboardProps &
   Partial<
     Pick<
@@ -115,7 +128,8 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
       | "dashcardMenu"
       | "navigateToNewCardFromDashboard"
     >
-  >;
+  > &
+  EditableDashboardOwnProps;
 
 const SdkDashboardInner = ({
   dashboardId: dashboardIdProp,
@@ -141,6 +155,7 @@ const SdkDashboardInner = ({
   className,
   style,
   children,
+  queryBuilderProps,
 }: SdkDashboardInnerProps) => {
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
@@ -293,6 +308,7 @@ const SdkDashboardInner = ({
             onNavigateBack={() => {
               setRenderMode("dashboard");
             }}
+            queryBuilderProps={queryBuilderProps}
           />
         ))
         .exhaustive()}
@@ -328,6 +344,7 @@ type DashboardQueryBuilderProps = {
   targetDashboardId: DashboardId;
   onCreate: (question: MetabaseQuestion) => void;
   onNavigateBack: () => void;
+  queryBuilderProps: EditableDashboardOwnProps["queryBuilderProps"];
 };
 
 /**
@@ -337,6 +354,7 @@ function DashboardQueryBuilder({
   targetDashboardId,
   onCreate,
   onNavigateBack,
+  queryBuilderProps,
 }: DashboardQueryBuilderProps) {
   const dispatch = useSdkDispatch();
   const { dashboard } = useDashboardContext();
@@ -363,6 +381,7 @@ function DashboardQueryBuilder({
       }}
       onNavigateBack={onNavigateBack}
       backToDashboard={dashboard}
+      entityTypes={queryBuilderProps?.entityTypes}
     >
       <InteractiveQuestionDefaultView
         withResetButton
