@@ -62,16 +62,28 @@
             [:ref ::expression/string]      ;; parse string as date
             [:ref ::expression/temporal]]]) ;; truncate datetime to date
 
-(def datetime-modes
-  "Modes supported by datetime() custom expression function."
+(def datetime-string-modes
+  "String modes supported by datetime() custom expression function."
   #{:iso
-    :simple
-    :iso-bytes
-    :simple-bytes
-    :unix-seconds
+    :simple})
+
+(def datetime-binary-modes
+  "Binary modes supported by datetime() custom expression function."
+  #{:iso-bytes
+    :simple-bytes})
+
+(def datetime-number-modes
+  "Binary modes supported by datetime() custom expression function."
+  #{:unix-seconds
     :unix-milliseconds
     :unix-microseconds
     :unix-nanoseconds})
+
+(def datetime-modes
+  "Modes supported by datetime() custom expression function."
+  (set/union datetime-string-modes
+             datetime-binary-modes
+             datetime-number-modes))
 
 (defn- datetime-mode->string [s]
   (-> s
@@ -84,19 +96,41 @@
              [(datetime-mode->string k) k])))
 
 (defn normalize-datetime-mode
-  "Convert a keyword or string to an internal datetime-mode keyword, or nil if it's not correct.
+  "Convert a keyword or string to an internal datetime-mode keyword, or itself if it's not correct.
 
    Is lenient on case and hyphens."
   [s]
-  (get datetime-mode-map (datetime-mode->string s)))
+  (get datetime-mode-map (datetime-mode->string s) s))
 
-(mbql-clause/define-catn-mbql-clause :datetime :- :type/DateTime
-  [:value [:schema :any]] ;; need to support bytes type
-  [:mode [:?
-          [:schema
-           (into [:enum {:error/message "datetime mode string"
-                         :decode/normalize normalize-datetime-mode}]
-                 datetime-modes)]]])
+(mbql-clause/define-mbql-clause :datetime :- :type/DateTime
+  [:cat
+   {:error/message (str "Valid " :datetime " clause")}
+   [:= {:decode/normalize common/normalize-keyword} :datetime]
+   [:schema [:ref ::common/options]]
+
+   [:alt ;; use alt because we need nested cat
+    {:error/message "Invalid combination of value and mode."}
+    ;; String modes
+    [:cat
+     [:schema [:ref ::expression/string]]
+     ;; iso string is default if no mode is present
+     [:? (into [:enum {:error/message "datetime string mode"
+                       :decode/normalize normalize-datetime-mode}]
+               datetime-string-modes)]]
+
+    ;; Number modes
+    [:cat
+     [:schema [:ref ::expression/number]]
+     (into [:enum {:error/message "datetime number mode"
+                   :decode/normalize normalize-datetime-mode}]
+           datetime-number-modes)]
+
+    ;; Binary modes
+    [:cat
+     :any ;; we don't track binary types
+     (into [:enum {:error/message "datetime binary mode"
+                   :decode/normalize normalize-datetime-mode}]
+           datetime-binary-modes)]]])
 
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit

@@ -729,7 +729,7 @@
         lib.schema.expression.temporal/datetime-modes))
 
 (defclause ^{:requires-features #{:expressions :expressions/datetime}} datetime
-  value  :any ;;StringExpressionArg ;; normally a string, number, or bytes
+  value  :any ;; normally a string, number, or bytes
   mode   (optional LiteralDatetimeModeString))
 
 (mr/def ::DatetimeExpression
