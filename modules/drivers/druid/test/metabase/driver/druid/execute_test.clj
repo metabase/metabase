@@ -8,7 +8,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
-(deftest results-order-test
+(deftest ^:parallel results-order-test
   (mt/test-driver :druid
     (testing (str "Make sure Druid cols + columns come back in the same order and that that order is the expected MBQL "
                   "columns order (#9294)")

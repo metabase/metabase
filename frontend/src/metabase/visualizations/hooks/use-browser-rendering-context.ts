@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
+import { usePalette } from "metabase/common/hooks/use-palette";
 import { getIsNightMode } from "metabase/dashboard/selectors";
-import { usePalette } from "metabase/hooks/use-palette";
 import { color } from "metabase/lib/colors";
 import { measureTextHeight, measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";

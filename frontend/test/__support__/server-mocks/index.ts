@@ -37,6 +37,7 @@ export * from "./segment";
 export * from "./session";
 export * from "./settings";
 export * from "./setup";
+export * from "./slack";
 export * from "./store";
 export * from "./table";
 export * from "./task";

@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type * as React from "react";
 
-import { ColorSelector } from "metabase/core/components/ColorSelector";
+import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import type { SingleSeries, VisualizationSettings } from "metabase-types/api";
@@ -49,7 +49,7 @@ const ChartNestedSettingsSeriesSingle = ({
         <SeriesNameInput
           className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
           value={computedSettings.title}
-          subtitle={
+          description={
             seriesCardName === computedSettings.title ? "" : seriesCardName
           }
           onBlurChange={(e) =>

@@ -14,10 +14,6 @@
 
   - Column header
 
-  Requirements:
-
-  - Column not `type/Structured`
-
   Query transformation:
 
   - None/identity. The FE will show the FilterPicker and not call `drillThru` for this drill.
@@ -65,7 +61,7 @@
                         ;;
                         ;; So if neither of those cases apply, we can just return the original query and stage index.
                         (not (or (= (:lib/source column) :source/aggregations)
-                                 (and (= (:lib/source column) :source/breakouts)
+                                 (and (:lib/breakout? column)
                                       (= adding :expression))))
                         {:query        query
                          :stage-number stage-number}
@@ -94,8 +90,7 @@
    {:keys [column column-ref value]} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
-             (nil? value)
-             (not (lib.types.isa/structured? column)))
+             (nil? value))
     ;; When the column we would be filtering on is an aggregation, it can't be filtered without adding a stage.
     (when-let [drill-details (prepare-query-for-drill-addition query stage-number column column-ref :filter)]
       (let [initial-op (when-not (lib.types.isa/temporal? column) ; Date fields have special handling in the FE.

@@ -12,3 +12,6 @@ build
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# debug
+npm-debug.log*

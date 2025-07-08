@@ -51,19 +51,16 @@ export const DatabaseEngineList = ({
           option: S.option,
         }}
       >
-        <Combobox.EventsTarget>
-          <Combobox.Search
-            placeholder={t`Search databases`}
-            leftSection={<Icon name="search" />}
-            value={search}
-            onChange={(event) => {
-              const searchTerm = event.currentTarget.value;
-              setSearch(searchTerm);
-              setIsExpanded(searchTerm.length > 0);
-              combobox.updateSelectedOptionIndex();
-            }}
-          />
-        </Combobox.EventsTarget>
+        <Combobox.Search
+          placeholder={t`Search databases`}
+          leftSection={<Icon name="search" />}
+          value={search}
+          onChange={(event) => {
+            const searchTerm = event.currentTarget.value;
+            setSearch(searchTerm);
+            setIsExpanded(searchTerm.length > 0);
+          }}
+        />
 
         {databasesList.length > 0 ? (
           <ScrollArea type="hover" scrollHideDelay={300}>
@@ -88,8 +85,6 @@ export const DatabaseEngineList = ({
               aria-expanded={isExpanded}
               isExpanded={isExpanded}
               onClick={() => {
-                combobox.updateSelectedOptionIndex();
-
                 if (isExpanded) {
                   setSearch("");
                 }

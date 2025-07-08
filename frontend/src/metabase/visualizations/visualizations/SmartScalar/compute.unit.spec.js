@@ -1538,6 +1538,102 @@ describe("SmartScalar > compute", () => {
         });
       });
 
+      describe("date formatting without unit information", () => {
+        const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
+        const getComparisonProperties =
+          createGetComparisonProperties(comparisonType);
+        const settings = createMockVisualizationSettings({
+          "scalar.field": "Count",
+          "scalar.comparisons": [{ id: "1", type: comparisonType }],
+        });
+
+        const cols = [
+          createMockDateTimeColumn({ name: "Month", unit: "year" }),
+          createMockNumberColumn({ name: "Count" }),
+        ];
+
+        const testCases = [
+          {
+            description:
+              "should format year dates properly when no insights unit is provided",
+            rows: [
+              ["2018-01-01T00:00:00", 100],
+              ["2019-01-01T00:00:00", 300],
+            ],
+            insights: [], // No insights provided
+            expected: {
+              ...getMetricProperties({
+                dateStr: "2019",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "2018",
+                  metricValue: 300,
+                }),
+              },
+            },
+          },
+          {
+            description:
+              "should format year dates when insights unit is undefined",
+            rows: [
+              ["2018-01-01T00:00:00", 100],
+              ["2019-01-01T00:00:00", 300],
+            ],
+            insights: [{ unit: undefined, col: "Count" }],
+            expected: {
+              ...getMetricProperties({
+                dateStr: "2019",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "2018",
+                  metricValue: 300,
+                }),
+              },
+            },
+          },
+          {
+            description: "should format year dates when insights unit is null",
+            rows: [
+              ["2018-01-01T00:00:00", 100],
+              ["2019-01-01T00:00:00", 300],
+            ],
+            insights: [{ unit: null, col: "Count" }],
+            expected: {
+              ...getMetricProperties({
+                dateStr: "2019",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "2018",
+                  metricValue: 300,
+                }),
+              },
+            },
+          },
+        ];
+
+        it.each(testCases)("$description", ({ rows, expected, insights }) => {
+          const { trend } = computeTrend(
+            series({ rows, cols }),
+            insights,
+            settings,
+          );
+
+          expect(getTrend(trend)).toEqual(expected);
+        });
+      });
+
       describe("with time-zones", () => {
         const comparisonType = COMPARISON_TYPES.PERIODS_AGO;
         const getComparisonProperties =

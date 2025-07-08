@@ -1,1 +1,1 @@
-export { default } from "./PluginPlaceholder";
+export * from "./PluginPlaceholder";

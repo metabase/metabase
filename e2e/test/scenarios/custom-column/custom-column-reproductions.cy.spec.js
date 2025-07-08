@@ -1140,17 +1140,18 @@ describe("issue 49882", () => {
   it("should update currently selected suggestion when suggestions list is updated (metabase#49882-4)", () => {
     const selectProductVendor =
       "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}";
+
     H.enterCustomColumnDetails({
       formula: `[Produ${selectProductVendor}`,
       blur: false,
     });
 
-    H.CustomExpressionEditor.completion("Product → Rating").should(
+    H.CustomExpressionEditor.completion("Product → Vendor").should(
       "be.visible",
     );
     H.CustomExpressionEditor.acceptCompletion("tab");
 
-    H.CustomExpressionEditor.value().should("equal", "[Product → Rating]");
+    H.CustomExpressionEditor.value().should("equal", "[Product → Vendor]");
   });
 });
 
@@ -2021,5 +2022,38 @@ describe.skip("issue 58371", () => {
       "eq",
       "0 + [Other Question → Aggregation with Dash-in-name]",
     );
+  });
+});
+
+describe("Issue 58230", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should display an error when using an aggregation function in a custom column (metabase#58230)", () => {
+    H.getNotebookStep("data").button("Custom column").click();
+    H.CustomExpressionEditor.type("Average([Total])");
+    H.popover().findByText(
+      "Aggregations like Average are not allowed when building a custom expression",
+    );
+  });
+
+  it("should display an error when using an aggregation function in a custom filter (metabase#58230)", () => {
+    H.filter({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("Average([Total])");
+    H.popover().findByText(
+      "Aggregations like Average are not allowed when building a custom filter",
+    );
+  });
+
+  it("should not display an error when using an aggregation function in a custom aggregation (metabase#58230)", () => {
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("Average([Total])");
+    H.CustomExpressionEditor.nameInput().type("Foo");
+    H.popover().button("Done").should("be.enabled");
   });
 });

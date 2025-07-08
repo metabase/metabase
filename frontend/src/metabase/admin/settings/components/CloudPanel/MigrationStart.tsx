@@ -1,8 +1,8 @@
+import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { UpsellCloud } from "metabase/admin/upsells/UpsellCloud";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import { useToggle } from "metabase/hooks/use-toggle";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { Box, Button, Icon, Modal, Text } from "metabase/ui";
 
 interface MigrationStartProps {
@@ -14,8 +14,8 @@ export const MigrationStart = ({
   startNewMigration,
   isStarting,
 }: MigrationStartProps) => {
-  const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] =
-    useToggle(false);
+  const [isModalOpen, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
 
   return (
     <>

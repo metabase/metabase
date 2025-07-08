@@ -27,7 +27,7 @@ export const LegacyStaticChart = ({
   options,
 }: LegacyStaticChartProps) => {
   const getColor = createColorGetter(options.colors);
-  const hasDevWatermark = Boolean(options.tokenFeatures?.["development-mode"]);
+  const hasDevWatermark = Boolean(options.tokenFeatures?.development_mode);
   const chartProps = { ...options, getColor, hasDevWatermark };
 
   switch (type) {

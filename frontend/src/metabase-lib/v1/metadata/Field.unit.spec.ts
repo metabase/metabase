@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Database, Field, Table } from "metabase-types/api";
 import {
@@ -7,6 +8,8 @@ import {
   createMockFieldDimension,
   createMockTable,
 } from "metabase-types/api/mocks";
+
+import FieldClass from "./Field";
 
 const FIELD_ID = 1;
 
@@ -342,7 +345,7 @@ describe("Field", () => {
       expect(field.remappedExternalField()).toBe(field.metadata?.field(2));
     });
 
-    it("should return the field's name_field", () => {
+    it("should return the name_field of a PK", () => {
       const field = setup({
         fields: [
           createMockField({
@@ -358,6 +361,29 @@ describe("Field", () => {
       expect(field.remappedExternalField()).toBe(field.metadata?.field(2));
     });
 
+    it("should return the name_field of the target PK for a FK", () => {
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            semantic_type: "type/FK",
+            fk_target_field_id: 2,
+            target: createMockField({
+              id: 2,
+              semantic_type: "type/PK",
+              name_field: createMockField({
+                id: 3,
+                semantic_type: "type/Name",
+              }),
+            }),
+          }),
+        ],
+      });
+
+      expect(field.remappedExternalField()).toBeDefined();
+      expect(field.remappedExternalField()).toBe(field.metadata?.field(3));
+    });
+
     it("should return null when the field has no name_field or no dimension with a 'human readable' field", () => {
       const field = setup({
         fields: [
@@ -368,6 +394,44 @@ describe("Field", () => {
       });
 
       expect(field.remappedExternalField()).toBe(null);
+    });
+
+    it("should return the remapped field for multiple fields if it is identical", () => {
+      const metadata = createMockMetadata({
+        fields: [
+          createMockField({
+            id: 1,
+            semantic_type: "type/PK",
+          }),
+          createMockField({
+            id: 2,
+            semantic_type: "type/FK",
+            dimensions: [
+              createMockFieldDimension({
+                type: "external",
+                human_readable_field_id: 1,
+              }),
+            ],
+          }),
+          createMockField({
+            id: 3,
+            semantic_type: "type/FK",
+            dimensions: [
+              createMockFieldDimension({
+                type: "external",
+                human_readable_field_id: 1,
+              }),
+            ],
+          }),
+        ],
+      });
+      const pkField = checkNotNull(metadata.field(1));
+      const fkField1 = checkNotNull(metadata.field(2));
+      const fkField2 = checkNotNull(metadata.field(3));
+      expect(FieldClass.remappedField([fkField1])).toBe(pkField);
+      expect(FieldClass.remappedField([fkField2])).toBe(pkField);
+      expect(FieldClass.remappedField([fkField1, fkField2])).toBe(pkField);
+      expect(FieldClass.remappedField([pkField, fkField1])).toBeNull();
     });
   });
 

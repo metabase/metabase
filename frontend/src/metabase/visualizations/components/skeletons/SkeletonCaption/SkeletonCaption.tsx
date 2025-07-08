@@ -1,18 +1,17 @@
 import type { HTMLAttributes } from "react";
 
-import Markdown from "metabase/core/components/Markdown";
+import Markdown from "metabase/common/components/Markdown";
 import { Tooltip } from "metabase/ui";
 import {
   LegendDescriptionIcon,
   LegendRightContent,
-} from "metabase/visualizations/components/legend/LegendCaption.styled";
+} from "metabase/visualizations/components/legend/LegendCaption/LegendCaption.styled";
 import type { VisualizationSkeletonProps } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 
 import {
   SkeletonCaptionDescription,
   SkeletonCaptionRoot,
   SkeletonCaptionTitle,
-  SkeletonPlaceholder,
 } from "./SkeletonCaption.styled";
 import type { SkeletonCaptionSize } from "./types";
 
@@ -30,11 +29,7 @@ const SkeletonCaption = ({
 }: SkeletonCaptionProps): JSX.Element => {
   return (
     <SkeletonCaptionRoot className={className}>
-      {name ? (
-        <SkeletonCaptionTitle size={size}>{name}</SkeletonCaptionTitle>
-      ) : (
-        <SkeletonPlaceholder />
-      )}
+      {name && <SkeletonCaptionTitle size={size}>{name}</SkeletonCaptionTitle>}
       <LegendRightContent>
         {description && (
           <Tooltip

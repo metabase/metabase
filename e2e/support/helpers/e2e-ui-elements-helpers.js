@@ -149,6 +149,8 @@ export function notificationList() {
 /**
  * Get the `fieldset` HTML element that we use as a filter widget container.
  *
+ * @param {boolean} isEditing - whether dashboard editing mode is enabled
+ *
  * @returns HTMLFieldSetElement
  *
  * @example
@@ -165,8 +167,10 @@ export function notificationList() {
  * @todo Add the ability to alias the chosen filter widget.
  * @todo Extract into a separate helper file.
  */
-export function filterWidget() {
-  return cy.get("fieldset");
+export function filterWidget({ isEditing = false } = {}) {
+  return cy.findAllByTestId(
+    isEditing ? "editing-parameter-widget" : "parameter-widget",
+  );
 }
 
 export function clearFilterWidget(index = 0) {
@@ -264,7 +268,7 @@ export const moveColumnDown = (column, distance) => {
 
 export const moveDnDKitElement = (
   element,
-  { horizontal = 0, vertical = 0 } = {},
+  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
 ) => {
   element
     .trigger("pointerdown", 0, 0, {
@@ -286,13 +290,41 @@ export const moveDnDKitElement = (
       isPrimary: true,
       button: 0,
     })
-    .wait(200)
-    .trigger("pointerup", horizontal, vertical, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    })
     .wait(200);
+
+  onBeforeDragEnd?.();
+
+  cy.document().trigger("pointerup").wait(200);
+};
+
+export const moveDnDKitListElement = (
+  dataTestId,
+  { startIndex, dropIndex, onBeforeDragEnd = () => {} } = {},
+) => {
+  const selector = new RegExp(dataTestId);
+
+  const getCenter = ($el) => {
+    const { x, y, width, height } = $el.getBoundingClientRect();
+
+    return { clientX: x + width / 2, clientY: y + height / 2 };
+  };
+
+  cy.findAllByTestId(selector)
+    .then(($all) => {
+      const dragEl = $all.get(startIndex);
+      const dropEl = $all.get(dropIndex);
+      const dragPoint = getCenter(dragEl);
+      const dropPoint = getCenter(dropEl);
+
+      return { dragPoint, dropPoint, dragEl };
+    })
+    .then(({ dragPoint, dropPoint, dragEl }) => {
+      moveDnDKitElement(cy.wrap(dragEl), {
+        vertical: dropPoint.clientY - dragPoint.clientY,
+        horizontal: dropPoint.clientX - dragPoint.clientX,
+        onBeforeDragEnd,
+      });
+    });
 };
 
 export const moveDnDKitElementByAlias = (

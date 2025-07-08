@@ -1,24 +1,20 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
-import { Fragment } from "react";
 import { t } from "ttag";
 
-import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
-import EntityItem from "metabase/components/EntityItem";
+import { BrowseCard } from "metabase/browse/components/BrowseCard";
+import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
+import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
+import Link from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isSyncInProgress } from "metabase/lib/syncing";
-import { Icon } from "metabase/ui";
+import { Box, Group, Icon, Loader } from "metabase/ui";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { BrowseHeaderContent } from "../../components/BrowseHeader.styled";
 import { trackTableClick } from "../analytics";
 
-import {
-  TableActionLink,
-  TableCard,
-  TableGrid,
-  TableGridItem,
-  TableLink,
-} from "./TableBrowser.styled";
 import { useDatabaseCrumb } from "./useDatabaseCrumb";
 
 const propTypes = {
@@ -33,7 +29,6 @@ const propTypes = {
 };
 
 export const TableBrowser = ({
-  database,
   tables,
   getTableUrl,
   metadata,
@@ -55,27 +50,18 @@ export const TableBrowser = ({
           ]}
         />
       </BrowseHeaderContent>
-      <TableGrid>
+      <BrowseGrid pt="lg">
         {tables.map((table) => (
-          <TableGridItem key={table.id}>
-            <TableCard hoverable={!isSyncInProgress(table)}>
-              <TableLink
-                to={
-                  !isSyncInProgress(table) ? getTableUrl(table, metadata) : ""
-                }
-                onClick={() => trackTableClick(table.id)}
-              >
-                <TableBrowserItem
-                  database={database}
-                  table={table}
-                  dbId={dbId}
-                  xraysEnabled={xraysEnabled}
-                />
-              </TableLink>
-            </TableCard>
-          </TableGridItem>
+          <TableBrowserItem
+            key={table.id}
+            table={table}
+            dbId={dbId}
+            getTableUrl={getTableUrl}
+            xraysEnabled={xraysEnabled}
+            metadata={metadata}
+          />
         ))}
-      </TableGrid>
+      </BrowseGrid>
     </>
   );
 };
@@ -83,35 +69,41 @@ export const TableBrowser = ({
 TableBrowser.propTypes = propTypes;
 
 const itemPropTypes = {
-  database: PropTypes.object,
   table: PropTypes.object.isRequired,
   dbId: PropTypes.number,
   xraysEnabled: PropTypes.bool,
+  metadata: PropTypes.object,
+  getTableUrl: PropTypes.func.isRequired,
 };
 
-const TableBrowserItem = ({ database, table, dbId, xraysEnabled }) => {
+const TableBrowserItem = ({
+  table,
+  dbId,
+  xraysEnabled,
+  metadata,
+  getTableUrl,
+}) => {
   const isVirtual = isVirtualCardId(table.id);
   const isLoading = isSyncInProgress(table);
 
   return (
-    <EntityItem
-      item={table}
-      name={table.display_name || table.name}
-      iconName="table"
-      iconColor={color("accent2")}
-      loading={isLoading}
-      disabled={isLoading}
-      buttons={
-        !isLoading &&
-        !isVirtual && (
+    <BrowseCard
+      to={!isSyncInProgress(table) ? getTableUrl(table, metadata) : ""}
+      icon="table"
+      title={table.display_name || table.name}
+      onClick={() => trackTableClick(table.id)}
+    >
+      <>
+        {isLoading && <Loader size="xs" data-testid="loading-indicator" />}
+        {!isLoading && !isVirtual && (
           <TableBrowserItemButtons
             tableId={table.id}
             dbId={dbId}
             xraysEnabled={xraysEnabled}
           />
-        )
-      }
-    />
+        )}
+      </>
+    </BrowseCard>
   );
 };
 
@@ -125,24 +117,26 @@ const itemButtonsPropTypes = {
 
 const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
   return (
-    <Fragment>
-      {xraysEnabled && (
-        <TableActionLink to={`/auto/dashboard/table/${tableId}`}>
+    <Box className={cx(CS.hoverChild)}>
+      <Group gap="md">
+        {xraysEnabled && (
+          <Link to={`/auto/dashboard/table/${tableId}`}>
+            <Icon
+              name="bolt_filled"
+              tooltip={t`X-ray this table`}
+              color={color("warning")}
+            />
+          </Link>
+        )}
+        <Link to={`/reference/databases/${dbId}/tables/${tableId}`}>
           <Icon
-            name="bolt_filled"
-            tooltip={t`X-ray this table`}
-            color={color("warning")}
+            name="reference"
+            tooltip={t`Learn about this table`}
+            color={color("text-medium")}
           />
-        </TableActionLink>
-      )}
-      <TableActionLink to={`/reference/databases/${dbId}/tables/${tableId}`}>
-        <Icon
-          name="reference"
-          tooltip={t`Learn about this table`}
-          color={color("text-medium")}
-        />
-      </TableActionLink>
-    </Fragment>
+        </Link>
+      </Group>
+    </Box>
   );
 };
 

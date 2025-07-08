@@ -212,7 +212,7 @@
         "invalid minute" "v49.2024-01-01T10:60:00"
         "invalid second" "v49.2024-01-01T10:30:60"))))
 
-(deftest validate-id-in-file-test
+(deftest ^:parallel validate-id-in-file-test
   (letfn [(validate-id [id file]
             (validate-file (io/file file) (mock-change-set :id id)))]
     (testing "001_update_migrations.yaml"
@@ -228,7 +228,6 @@
           clojure.lang.ExceptionInfo
           #"Change set IDs are in the wrong file"
           (validate-id "v56.2024-01-01T10:30:00" file)))))
-
     (testing "later versions"
       (is (= :ok
              (validate-id "v56.2024-01-01T10:30:00" "056_update_migrations.yaml")))

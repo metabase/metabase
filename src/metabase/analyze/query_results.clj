@@ -13,7 +13,6 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -87,9 +86,7 @@
   (merge
    {:base_type    :type/*
     :display_name (:name column)}
-   (u/select-non-nil-keys
-    column
-    [:name :display_name :description :base_type :semantic_type :unit :fingerprint :id :field_ref])))
+   column))
 
 (mu/defn insights-rf :- fn?
   "A reducing function that calculates what is ultimately returned as `[:data :results_metadata]` in userland QP
