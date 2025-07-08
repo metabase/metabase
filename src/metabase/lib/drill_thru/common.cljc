@@ -121,7 +121,7 @@
 (mu/defn- possible-expression-breakout-column? :- :boolean
   [query  :- ::lib.schema/query
    column :- ::lib.schema.metadata/column]
-  (let [breakout-sourced?   (:lib/breakout? column)
+  (let [breakout-sourced?   (boolean (:lib/breakout? column))
         has-id?             (boolean (:id column))
         matching-expression (lib.expression/maybe-resolve-expression query -1 (:name column))]
     (and breakout-sourced? (boolean matching-expression) (not has-id?))))

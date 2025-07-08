@@ -6,8 +6,6 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-;;; TODO -- not 100% sure we actually need all of this stuff anymore.
-
 (defn- mbql-clause? [x]
   (and (vector? x)
        (keyword? (first x))))
@@ -87,7 +85,7 @@
   [x]
   (:lib/uuid (options x)))
 
-(mu/defn ^:deprecated ident :- [:maybe ::lib.schema.common/non-blank-string]
+(mu/defn ident :- [:maybe ::lib.schema.common/non-blank-string]
   "Get the `:ident` associated with something, e.g. an MBQL clause or join."
   [x]
   (:ident (options x)))
