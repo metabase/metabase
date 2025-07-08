@@ -58,6 +58,22 @@ describe("scenarios > admin > datamodel", () => {
     cy.findByText("Select a database");
   });
 
+  it("should allow to navigate to a table when on a segments page (SEM-484)", () => {
+    H.DataModel.visit();
+
+    cy.findByRole("link", { name: /Segments/ }).click();
+    cy.location("pathname").should("eq", "/admin/datamodel/segments");
+
+    H.DataModel.TablePicker.getTable("Reviews").click();
+    H.DataModel.TableSection.getNameInput()
+      .should("be.visible")
+      .and("have.value", "Reviews");
+    cy.location("pathname").should(
+      "eq",
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}`,
+    );
+  });
+
   describe("Table picker", () => {
     describe("No databases", () => {
       beforeEach(() => {

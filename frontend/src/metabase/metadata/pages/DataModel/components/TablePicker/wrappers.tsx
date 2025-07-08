@@ -18,13 +18,13 @@ export function RouterTablePicker(props: TreePath) {
     (value: TreePath, options?: ChangeOptions) => {
       setValue(value);
 
-      // prevent auto-navigation from table-picker when Segments tab is open
-      if (!isSegments) {
-        if (options?.isAutomatic) {
+      if (options?.isAutomatic) {
+        // prevent auto-navigation from table-picker when Segments tab is open
+        if (!isSegments) {
           dispatch(replace(getUrl(value)));
-        } else {
-          dispatch(push(getUrl(value)));
         }
+      } else {
+        dispatch(push(getUrl(value)));
       }
     },
     [dispatch, isSegments],
