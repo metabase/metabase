@@ -43,7 +43,9 @@ type StorePaths =
   /** development instance specific upsell */
   | "account/new-dev-instance"
   /** redirects to the specific instance storage management page */
-  | "account/storage";
+  | "account/storage"
+  /** EE, self-hosted upsell that communicates back with the instance */
+  | "checkout/upgrade/self-hosted";
 
 export const getStoreUrl = (path: StorePaths = "") => {
   return `https://store.metabase.com/${path}`;
