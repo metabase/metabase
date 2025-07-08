@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import {
   DatabaseInfoSection,
@@ -24,6 +24,12 @@ export function DatabaseDataReplicationSection({
     return null;
   }
 
+  const link = (
+    <ExternalLink href="https://clickhouse.com/docs/integrations/clickpipes/postgres">
+      {t`adjust settings and permissions`}
+    </ExternalLink>
+  );
+
   return (
     <DatabaseInfoSection
       condensed
@@ -39,11 +45,7 @@ export function DatabaseDataReplicationSection({
       <DatabaseInfoSectionDivider condensed />
 
       <Text size="sm" c="text-medium">
-        {t`Note: You may need to `}
-        <ExternalLink href="https://clickhouse.com/docs/integrations/clickpipes/postgres">
-          {t`adjust settings and permissions`}
-        </ExternalLink>
-        {t` in the source database. The process might also require a database restart.`}
+        {jt`Note: You may need to ${link} in the source database. The process might also require a database restart.`}
       </Text>
     </DatabaseInfoSection>
   );
