@@ -1994,4 +1994,155 @@ describe("scenarios > question > custom column > aggregation", () => {
       cy.findByText("Foo (1)").should("be.visible");
     });
   });
+
+  describe("scenarios > question > custom column > aggregation > as question source", () => {
+    beforeEach(() => {
+      H.createQuestion({
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "aggregation-options",
+              [
+                "min",
+                [
+                  "field",
+                  ORDERS.SUBTOTAL,
+                  {
+                    "base-type": "type/Float",
+                  },
+                ],
+              ],
+              {
+                name: "Foo",
+                "display-name": "Foo",
+              },
+            ],
+            [
+              "aggregation-options",
+              [
+                "+",
+                [
+                  "aggregation",
+                  0,
+                  {
+                    "base-type": "type/Float",
+                  },
+                ],
+                [
+                  "avg",
+                  [
+                    "field",
+                    ORDERS.TAX,
+                    {
+                      "base-type": "type/Float",
+                    },
+                  ],
+                ],
+              ],
+              {
+                name: "Bar",
+                "display-name": "Bar",
+              },
+            ],
+          ],
+          "aggregation-idents": {
+            0: "S9C0DETiO434MYRP83IwM",
+            1: "EHbjfRmmyZ8Xd2WNrh4wq",
+          },
+        },
+      }).then((res) => {
+        H.visitQuestionAdhoc(
+          {
+            type: "question",
+            dataset_query: {
+              database: SAMPLE_DB_ID,
+              query: {
+                "source-table": `card__${res.body.id}`,
+              },
+            },
+          },
+          { mode: "notebook" },
+        );
+      });
+    });
+
+    it("should be possible to use a question with nested aggregations as the source of another question", () => {
+      H.visualize();
+      H.assertTableData({
+        columns: ["Foo", "Bar"],
+        firstRows: [["15.69", "19.55"]],
+      });
+    });
+
+    it("should be possible to use nested aggregations in custom columns", () => {
+      H.addCustomColumn();
+      H.CustomExpressionEditor.type("[Foo] + [Bar]");
+      H.CustomExpressionEditor.nameInput().type("Sum");
+      H.popover().button("Done").click();
+
+      H.visualize();
+
+      H.assertTableData({
+        columns: ["Foo", "Bar", "Sum"],
+        firstRows: [["15.69", "19.55", "35.24"]],
+      });
+    });
+
+    it("should be possible to use nested aggregations in filter clause", () => {
+      H.filter({ mode: "notebook" });
+      H.popover().within(() => {
+        cy.findByText("Bar").click();
+        cy.findByPlaceholderText("Min").type("5");
+        cy.findByPlaceholderText("Max").type("20");
+        cy.button("Add filter").click();
+      });
+      H.visualize();
+      H.assertTableData({
+        columns: ["Foo", "Bar"],
+        firstRows: [["15.69", "19.55"]],
+      });
+    });
+
+    it("should be possible to use nested aggregations in join clause", () => {
+      H.join();
+      H.joinTable("Products");
+      H.popover().findByText("Foo").click();
+      H.popover().findByText("Price").click();
+
+      H.getNotebookStep("join").button("Pick columns").click();
+      H.popover().within(() => {
+        cy.findByText("Select all").click();
+        cy.findByText("ID").click();
+      });
+
+      H.visualize();
+      H.assertTableData({
+        columns: ["Foo", "Bar", "Products - Foo → ID"],
+        firstRows: [["15.69", "19.55", "61"]],
+      });
+    });
+
+    it("should be possible to use nested aggregations in order by clause", () => {
+      H.sort();
+      H.popover().findByText("Bar").click();
+
+      H.visualize();
+      H.assertTableData({
+        columns: ["Foo", "Bar"],
+        firstRows: [["15.69", "19.55"]],
+      });
+    });
+
+    it("should be possible to use nested aggregations in breakout", () => {
+      H.summarize({ mode: "notebook" });
+      H.getNotebookStep("summarize")
+        .findByText("Pick a column to group by")
+        .click();
+      H.popover().findByText("Bar").click();
+
+      H.visualize();
+      cy.findByTestId("scalar-value").should("have.text", "19.55");
+    });
+  });
 });
