@@ -491,7 +491,7 @@
     stage-number :- :int]
    (:fields (lib.util/query-stage query stage-number))))
 
-(mu/defn fieldable-columns :- [:sequential ::lib.schema.metadata/column]
+(mu/defn fieldable-columns :- ::lib.metadata.calculation/visible-columns
   "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query. This is
   basically just the columns returned by the source Table/Saved Question/Model or previous query stage.
 

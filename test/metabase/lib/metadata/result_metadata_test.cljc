@@ -922,7 +922,6 @@
                   :unit                                       :year
                   :lib/deduplicated-name                      "CREATED_AT"
                   :lib/desired-column-alias                   "CREATED_AT"
-                  :lib/hack-original-name                     "CREATED_AT"
                   :lib/original-display-name                  "Created At"
                   :lib/original-name                          "CREATED_AT"
                   :lib/source                                 :source/previous-stage
