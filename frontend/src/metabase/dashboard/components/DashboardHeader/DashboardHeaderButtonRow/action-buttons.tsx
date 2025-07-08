@@ -80,9 +80,7 @@ export const dashboardActionButtons: Record<
 
   // VIEW ACTIONS
   [DASHBOARD_ACTION.EDIT_DASHBOARD]: {
-    component: ({ onRefreshPeriodChange }) => (
-      <EditDashboardButton onRefreshPeriodChange={onRefreshPeriodChange} />
-    ),
+    component: EditDashboardButton,
     enabled: ({ isFullscreen, isEditing, canEdit }) =>
       !isFullscreen && !isEditing && canEdit,
   },
