@@ -1961,4 +1961,37 @@ describe("scenarios > question > custom column > aggregation", () => {
       .findByText("Cycle detected: Custom Sum → Custom Sum 2 → Custom Sum")
       .should("be.visible");
   });
+
+  it("should not be possible to create aggregations with the same name", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "aggregation-options",
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              {
+                name: "Foo",
+                "display-name": "Foo",
+              },
+            ],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+    H.openNotebook();
+
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+    H.CustomExpressionEditor.type("Min([Total])");
+    H.CustomExpressionEditor.nameInput().type("Foo");
+    H.popover().button("Done").click();
+
+    H.getNotebookStep("summarize").within(() => {
+      cy.findByText("Foo").should("be.visible");
+      cy.findByText("Foo (1)").should("be.visible");
+    });
+  });
 });
