@@ -42,7 +42,7 @@ data_app_release
 ### Key Relationships
 
 1. **DataApp → DataAppDefinition** (1:N)
-   - Each app can have multiple versioned definitions
+   - Each app can have multiple sequential snapshots (revisions) of its definition
    - Definitions are append-only (immutable once created)
    - Indexed on `app_id` for efficient queries
    - `revision_number` is calculated atomically to prevent race conditions
