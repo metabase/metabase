@@ -13,7 +13,10 @@ import {
 } from "metabase-enterprise/sandboxes/selectors";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
-import type { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
+import type {
+  GroupTableAccessPolicy,
+  UserAttributeKey,
+} from "metabase-types/api";
 
 import {
   fetchPolicy,
@@ -25,7 +28,7 @@ import type { GroupTableAccessPolicyParams, SandboxesState } from "../types";
 
 interface EditSandboxingModalContainerProps {
   policy: GroupTableAccessPolicy;
-  attributes: UserAttribute[];
+  attributes: UserAttributeKey[];
   push: (path: string) => void;
   params: GroupTableAccessPolicyParams;
   route: any;

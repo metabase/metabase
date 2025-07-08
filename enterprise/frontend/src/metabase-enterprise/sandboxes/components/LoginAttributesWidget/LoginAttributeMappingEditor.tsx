@@ -12,7 +12,6 @@ import {
   TextInput,
   Tooltip,
 } from "metabase/ui";
-import type { MappingType } from "metabase-enterprise/sandboxes/types";
 import {
   addEntry,
   buildEntries,
@@ -25,6 +24,7 @@ import type {
   StructuredUserAttribute,
   StructuredUserAttributes,
   UserAttributeMap,
+  UserAttributeSource,
 } from "metabase-types/api";
 
 export type MappingEditorEntry = {
@@ -32,7 +32,7 @@ export type MappingEditorEntry = {
   value: string;
   keyOpts?: {
     disabled?: boolean;
-    source?: "tenant" | "system";
+    source?: UserAttributeSource;
   };
   valueOpts?: {
     disabled?: boolean;
@@ -86,7 +86,7 @@ export const buildStructuredEntries = (
 export interface MappingEditorProps {
   simpleAttributes: UserAttributeMap;
   structuredAttributes: StructuredUserAttributes;
-  onChange: (val: MappingType) => void;
+  onChange: (val: UserAttributeMap) => void;
   onError?: (val: boolean) => void;
 }
 
@@ -188,7 +188,7 @@ const KeyInput = ({
     return (
       <>
         <Text px="sm">{value}</Text>
-        <InfoCard source={keyOpts?.source} />
+        <InfoCard source={keyOpts.source} />
       </>
     );
   }
@@ -254,8 +254,8 @@ const ValueInput = ({
   );
 };
 
-const InfoCard = ({ source }: { source?: "tenant" | "system" }) =>
-  !source ? null : (
+const InfoCard = ({ source }: { source?: "tenant" | "system" | "user" }) =>
+  !["tenant", "system"].includes(source ?? "") ? null : (
     <HoverCard>
       <HoverCard.Target>
         <Icon name="info_filled" c="text-light" />

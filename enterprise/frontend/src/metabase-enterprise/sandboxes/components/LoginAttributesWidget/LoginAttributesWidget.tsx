@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import FormField from "metabase/common/components/FormField";
 import { Accordion, Box, Loader, Text } from "metabase/ui";
-import type { UserId } from "metabase-types/api";
+import type { UserAttributeMap, UserId } from "metabase-types/api";
 
 import { LoginAttributeMappingEditor } from "./LoginAttributeMappingEditor";
 
@@ -26,7 +26,7 @@ export const LoginAttributesWidget = ({
 }: Props) => {
   const [{ value }, , { setValue, setError }] = useField(name);
 
-  const handleChange = (newValue: Record<string, string>) => {
+  const handleChange = (newValue: UserAttributeMap) => {
     const validEntries = Object.entries(newValue).filter(
       ([key]) => !key.startsWith("@"),
     );

@@ -1,14 +1,13 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import type { MappingEditorEntry } from "metabase/common/components/MappingEditor";
 import { Group, Icon, type SelectProps, Tooltip } from "metabase/ui";
 import type { GroupTableAccessPolicy, Table } from "metabase-types/api";
 
 import type {
   GroupTableAccessPolicyParams,
+  MappingEditorEntry,
   MappingType,
-  MappingValue,
 } from "./types";
 
 const TENANT_SLUG_ATTRIBUTE = "@tenant.slug";
@@ -46,28 +45,31 @@ export const renderUserAttributesForSelect: SelectProps["renderOption"] = ({
   </Group>
 );
 
-export const addEntry = (entries: MappingEditorEntry[]) => {
+export const addEntry = <T,>(entries: MappingEditorEntry<T>[]) => {
   return [...entries, { key: "", value: "" }];
 };
 
-export const removeEntry = (entries: MappingEditorEntry[], index: number) => {
+export const removeEntry = <T,>(
+  entries: MappingEditorEntry<T>[],
+  index: number,
+) => {
   const entriesCopy = [...entries];
   entriesCopy.splice(index, 1);
   return entriesCopy;
 };
 
-export const replaceEntryValue = (
-  entries: MappingEditorEntry[],
+export const replaceEntryValue = <T,>(
+  entries: MappingEditorEntry<T>[],
   index: number,
-  newValue: MappingValue,
+  newValue: T,
 ) => {
   const newEntries = [...entries];
   newEntries[index].value = newValue;
   return newEntries;
 };
 
-export const replaceEntryKey = (
-  entries: MappingEditorEntry[],
+export const replaceEntryKey = <T,>(
+  entries: MappingEditorEntry<T>[],
   index: number,
   newKey: string,
 ) => {
@@ -76,11 +78,15 @@ export const replaceEntryKey = (
   return newEntries;
 };
 
-export const buildEntries = (mapping: MappingType): MappingEditorEntry[] =>
+export const buildEntries = <T,>(
+  mapping: MappingType<T>,
+): MappingEditorEntry<T>[] =>
   Object.entries(mapping).map(([key, value]) => ({ key, value }));
 
-export const buildMapping = (entries: MappingEditorEntry[]): MappingType =>
-  entries.reduce((memo: MappingType, { key, value }) => {
+export const buildMapping = <T,>(
+  entries: MappingEditorEntry<T>[],
+): MappingType<T> =>
+  entries.reduce((memo: MappingType<T>, { key, value }) => {
     if (key) {
       memo[key] = value;
     }
