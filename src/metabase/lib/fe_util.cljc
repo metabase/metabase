@@ -182,7 +182,6 @@
   ([query             :- ::lib.schema/query
     stage-number      :- :int
     expression-clause :- [:or ::lib.schema.expression/expression ::expression-arg-or-parts]]
-   (println "(pr-str expression-clause):" (pr-str expression-clause)) ; NOCOMMIT
    (expression-parts-method query stage-number expression-clause)))
 
 (defn- case-or-if-expression?

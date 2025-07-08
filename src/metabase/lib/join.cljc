@@ -570,28 +570,23 @@
     ;; if the join clause comes with an alias and doesn't need a new one, keep it and assume that the condition fields
     ;; have the right join-aliases too
     a-join
-    (let [old-alias   (:alias a-join)
-          stage       (cond-> (lib.util/query-stage query stage-number)
-                        old-alias (update :joins (fn [joins]
-                                                   (mapv #(if (= (:alias %) old-alias)
-                                                            (dissoc % :alias)
-                                                            %)
-                                                         joins))))
-          home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
-          join-alias  (default-alias query stage-number a-join stage home-cols)
-          ;; NOCOMMIT
-          join-query  (lib.query/query-with-stages query (:stages a-join))
-          join-cols   (lib.metadata.calculation/returned-columns join-query
-                                                                 -1
-                                                                 (lib.util/query-stage join-query -1)
-                                                                 {})]
+    (let [old-alias  (:alias a-join)
+          stage      (cond-> (lib.util/query-stage query stage-number)
+                       old-alias (update :joins (fn [joins]
+                                                  (mapv #(if (= (:alias %) old-alias)
+                                                           (dissoc % :alias)
+                                                           %)
+                                                        joins))))
+          home-cols  (lib.metadata.calculation/visible-columns query stage-number stage)
+          join-alias (default-alias query stage-number a-join stage home-cols)
+          join-cols  (lib.metadata.calculation/returned-columns (lib.query/query-with-stages query (:stages a-join)))]
       (cond-> a-join
-        true (dissoc ::replace-alias)
+        true            (dissoc ::replace-alias)
         (not old-alias) (update :conditions
                                 (fn [conditions]
                                   (mapv #(add-alias-to-condition query stage-number % join-alias home-cols join-cols)
                                         conditions)))
-        true (with-join-alias join-alias)))))
+        true            (with-join-alias join-alias)))))
 
 (declare join-conditions
          joined-thing
