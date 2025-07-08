@@ -33,6 +33,8 @@ describe("scenarios > admin > datamodel", () => {
     H.restore();
     cy.signInAsAdmin();
 
+    cy.intercept("GET", "/api/database?*").as("databases");
+    cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
     cy.intercept("POST", "/api/dataset*").as("dataset");
     cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
@@ -42,29 +44,6 @@ describe("scenarios > admin > datamodel", () => {
     cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-  });
-
-  it("should show 404 if database does not exist (metabase#14652)", () => {
-    H.DataModel.visit({ databaseId: 54321, skipWaiting: true });
-
-    TablePicker.getDatabases().should("have.length", 1);
-    TablePicker.getTables().should("have.length", 0);
-    H.DataModel.get().findByText("Not found.").should("be.visible");
-  });
-
-  // TODO: infinitiy loading loop
-  // TODO: dbid + schemaid
-  // TODO: dbid + schemaid + tableid + fieldId
-  it("should show 404 if database does not exist 2 (metabase#14652)", () => {
-    H.DataModel.visit({
-      databaseId: 54321,
-      schemaId: "54321:public",
-      tableId: 54321,
-    });
-
-    TablePicker.getDatabases().should("have.length", 1);
-    TablePicker.getTables().should("have.length", 0);
-    H.DataModel.get().findByText("Not found.").should("be.visible");
   });
 
   it("should allow to navigate to a table when on a segments page (SEM-484)", () => {
@@ -81,6 +60,80 @@ describe("scenarios > admin > datamodel", () => {
       "eq",
       `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}`,
     );
+  });
+
+  describe("data loading", () => {
+    it("should show 404 if database does not exist (metabase#14652)", () => {
+      H.DataModel.visit({ databaseId: 54321, skipWaiting: true });
+      cy.wait("@databases");
+      cy.wait(100); // wait with assertions for React effects to kick in
+
+      TablePicker.getDatabases().should("have.length", 1);
+      TablePicker.getTables().should("have.length", 0);
+      H.DataModel.get().findByText("Not found.").should("be.visible");
+      cy.location("pathname").should("eq", "/admin/datamodel/database/54321");
+    });
+
+    it("should show 404 if schema does not exist", () => {
+      H.DataModel.visit({
+        databaseId: 54321,
+        schemaId: "54321:public",
+        skipWaiting: true,
+      });
+      cy.wait("@databases");
+      cy.wait(100); // wait with assertions for React effects to kick in
+
+      TablePicker.getDatabases().should("have.length", 1);
+      TablePicker.getTables().should("have.length", 0);
+      H.DataModel.get().findByText("Not found.").should("be.visible");
+      cy.location("pathname").should(
+        "eq",
+        "/admin/datamodel/database/54321/schema/54321:public",
+      );
+
+      // make sure schemas loading does not go into an infinite loop
+      cy.get("@schemas.all").should("have.length", 1);
+    });
+
+    it("should show 404 if table does not exist", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: 12345,
+        skipWaiting: true,
+      });
+      cy.wait("@databases");
+      cy.wait(100); // wait with assertions for React effects to kick in
+
+      TablePicker.getDatabases().should("have.length", 1);
+      TablePicker.getTables().should("have.length", 8);
+      H.DataModel.get().findByText("Not found.").should("be.visible");
+      cy.location("pathname").should(
+        "eq",
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/12345`,
+      );
+      verifyFieldSectionEmptyState();
+    });
+
+    it("should show 404 if field does not exist", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: 12345,
+        skipWaiting: true,
+      });
+      cy.wait("@databases");
+      cy.wait(100); // wait with assertions for React effects to kick in
+
+      TablePicker.getDatabases().should("have.length", 1);
+      TablePicker.getTables().should("have.length", 8);
+      H.DataModel.get().findByText("Not found.").should("be.visible");
+      cy.location("pathname").should(
+        "eq",
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
+      );
+    });
   });
 
   describe("Table picker", () => {
@@ -2766,17 +2819,19 @@ const setDataModelPermissions = ({
 };
 
 function verifyTableSectionEmptyState() {
-  cy.get("main")
+  H.DataModel.get()
     .findByText("Start by selecting data to model")
     .should("be.visible");
-  cy.get("main")
+  H.DataModel.get()
     .findByText("Browse your databases to find the table you’d like to edit.")
     .should("be.visible");
 }
 
 function verifyFieldSectionEmptyState() {
-  cy.get("main").findByText("Edit the table and fields").should("be.visible");
-  cy.get("main")
+  H.DataModel.get()
+    .findByText("Edit the table and fields")
+    .should("be.visible");
+  H.DataModel.get()
     .findByText(
       "Select a field to edit it. Then change the display name, semantic type or filtering behavior.",
     )

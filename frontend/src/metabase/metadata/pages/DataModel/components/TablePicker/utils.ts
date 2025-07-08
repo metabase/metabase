@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
+import _ from "underscore";
 
 import {
   skipToken,
@@ -68,7 +69,7 @@ export function getUrl(value: TreePath) {
 export function useTableLoader(path: TreePath) {
   const [fetchDatabases] = useLazyListDatabasesQuery();
   const [fetchSchemas] = useLazyListDatabaseSchemasQuery();
-  const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
+  const [fetchTables] = useLazyListDatabaseSchemaTablesQuery();
 
   const [tree, setTree] = useState<TreeNode>(rootNode());
 
@@ -177,14 +178,17 @@ export function useTableLoader(path: TreePath) {
                 })),
         })),
       );
-      setTree((current) => merge(current, newTree));
+      setTree((current) => {
+        const merged = merge(current, newTree);
+        return _.isEqual(current, merged) ? current : merged;
+      });
     },
     [getDatabases, getSchemas, getTables],
   );
 
   useDeepCompareEffect(() => {
     load(path);
-  }, [load, path, tables.isFetching]);
+  }, [load, path]);
 
   return { tree };
 }
