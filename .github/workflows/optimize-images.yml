@@ -4,9 +4,6 @@ on:
   push:
     paths:
       - 'docs/**/*.png'
-  pull_request:
-    paths:
-      - 'docs/**/*.png'
 
 jobs:
   optimize-images:
@@ -34,9 +31,13 @@ jobs:
       if: steps.changed-files.outputs.any_changed == 'true'
       run: |
         echo "Optimizing PNG files..."
+        echo "Branch:" $(git_current_branch)
         for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
           echo "Processing: $file"
+          before_size=$(stat -c%s "$file")
           mogrify -strip -quality 95 "$file"
+          after_size=$(stat -c%s "$file")
+          echo "  > Before: ${before_size} bytes, After: ${after_size} bytes"
         done
         echo "Optimization complete"
 
@@ -44,12 +45,14 @@ jobs:
       if: steps.changed-files.outputs.any_changed == 'true'
       id: check_changes
       run: |
-        if git diff --quiet; then
+        git add ${{ steps.changed-files.outputs.all_changed_files }}
+        if git diff --quiet --cached; then
           echo "has_changes=false" >> "$GITHUB_OUTPUT"
           echo "No changes detected after optimization"
         else
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
           echo "Changes detected after optimization"
+          git diff --cached --stat
         fi
 
     - name: Commit optimized images
@@ -57,8 +60,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
       run: |
-        git config --global user.email "metabase-bot@metabase.com"
-        git config --global user.name "Metabase bot"
+        git config --global user.email "github-automation@metabase.com"
+        git config --global user.name "Metabase Automation"
         git add docs/**/*.png
         git commit -m "Auto-optimize PNG images with ImageMagick"
         git push
