@@ -63,6 +63,9 @@
                               :describe-fields          true
                               :describe-fks             true
                               :describe-indexes         true
+                              :describe-default-expr    true
+                              :describe-is-generated    true
+                              :describe-is-nullable     true
                               :convert-timezone         true
                               :datetime-diff            true
                               :now                      true
@@ -80,9 +83,6 @@
                               :expressions/float        true
                               :expressions/date         true
                               :database-routing         true
-                              :describe-default-expr    true
-                              :describe-is-generated    true
-                              :describe-is-nullable     true
                               :transforms/table         true
                               :transforms/python        true
                               :metadata/table-existence-check true}]
