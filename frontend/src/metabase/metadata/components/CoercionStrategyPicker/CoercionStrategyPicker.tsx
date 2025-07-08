@@ -2,11 +2,11 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { coercions_for_type } from "cljs/metabase.types.core";
-import { humanizeCoercionStrategy } from "metabase/admin/datamodel/utils/humanizeCoercionStrategy";
 import { Select, type SelectProps } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
 import S from "./CoercionStrategyPicker.module.css";
+import { humanizeCoercionStrategy } from "./utils";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   baseType: Field["base_type"];
