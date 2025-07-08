@@ -1125,9 +1125,22 @@
   ;; For most databases, the same limit is used for all identifier types.
   (table-name-length-limit driver))
 
+(defmulti view-name-length-limit
+  "Return the maximum number of bytes allowed in a view name, or `nil` if there is no limit."
+  {:changelog-test/ignore true, :added "0.57.0", :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod view-name-length-limit :default [driver]
+  ;; For most databases, the same limit is used for all identifier types.
+  (table-name-length-limit driver))
+
 (defmulti create-view!
-  "Create (or replace) a view named `view-name`. If the view already exists it will throw an error, unless `:replace?` is true in the opts map."
-  {:added "0.57.0", :arglists '([driver database-id view-name view-definitions & {:keys [replace?] :as opts}])}
+  "Create (or replace) a view named `view-name`. If the view already exists it will throw an error, unless `:replace?`
+  is true in the opts map.
+  The view definition should be a native query form, which is expected to have been compiled against the specific driver
+  via e.g. [[mbql->native]]."
+  {:added "0.57.0", :arglists '([driver database-id view-name view-definition & {:keys [replace?] :as opts}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
