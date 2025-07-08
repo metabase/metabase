@@ -120,6 +120,9 @@ const EngineSearch = ({
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
+      if (event.nativeEvent.isComposing) {
+        return;
+      }
       switch (event.key) {
         case "Enter":
           activeOption && onChange(activeOption.value);

@@ -115,6 +115,9 @@ const SingleSelectListField = ({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
     if (
       event.key === "Enter" &&
       !_.find(augmentedOptions, (option) => option[0] === filter)

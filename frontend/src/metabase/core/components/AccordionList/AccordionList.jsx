@@ -317,6 +317,10 @@ export default class AccordionList extends Component {
   };
 
   handleKeyDown = (event) => {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
+
     if (event.key === "ArrowUp") {
       event.preventDefault();
 
