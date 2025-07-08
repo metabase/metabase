@@ -1,8 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
-import * as Yup from "yup";
 
-import { isErrorWithMessage } from "metabase/admin/performance/utils";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
@@ -11,67 +8,10 @@ import {
   useDeleteEmailSMTPSettingsMutation,
   useUpdateEmailSMTPSettingsMutation,
 } from "metabase/api/email";
-import { getErrorMessage } from "metabase/api/utils";
-import { useToast } from "metabase/common/hooks";
-import {
-  Form,
-  FormProvider,
-  FormRadioGroup,
-  FormSubmitButton,
-  FormTextInput,
-} from "metabase/forms";
-import { color } from "metabase/lib/colors";
-import * as Errors from "metabase/lib/errors";
-import { Box, Button, Flex, Group, Modal, Radio, Stack } from "metabase/ui";
-import type {
-  EmailSMTPSettings,
-  SettingDefinitionMap,
-} from "metabase-types/api";
+import type { EmailSMTPSettings } from "metabase-types/api";
 
-import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
-
+import { BaseSMTPConnectionForm } from "./BaseSMTPConnectionForm";
 import { trackSMTPSetupSuccess } from "./analytics";
-
-const emailSettingKeys = [
-  "email-smtp-host",
-  "email-smtp-port",
-  "email-smtp-security",
-  "email-smtp-username",
-  "email-smtp-password",
-] as const;
-
-const anySchema = Yup.mixed().nullable().default(null);
-
-// we need to allow this form to be submitted even when we have removed certain inputs
-// when they are set by env vars
-const getFormValueSchema = (
-  settingsDetails: SettingDefinitionMap | undefined,
-) => {
-  return Yup.object({
-    "email-smtp-host": settingsDetails?.["email-smtp-host"]?.is_env_setting
-      ? anySchema
-      : Yup.string().required(Errors.required).default(""),
-    "email-smtp-port": settingsDetails?.["email-smtp-port"]?.is_env_setting
-      ? anySchema
-      : Yup.number()
-          .positive()
-          .nullable()
-          .required(Errors.required)
-          .default(null),
-    "email-smtp-security": settingsDetails?.["email-smtp-security"]
-      ?.is_env_setting
-      ? anySchema
-      : Yup.string().default("none"),
-    "email-smtp-username": settingsDetails?.["email-smtp-username"]
-      ?.is_env_setting
-      ? anySchema
-      : Yup.string().default(""),
-    "email-smtp-password": settingsDetails?.["email-smtp-password"]
-      ?.is_env_setting
-      ? anySchema
-      : Yup.string().default(""),
-  });
-};
 
 export const SelfHostedSMTPConnectionForm = ({
   onClose,
@@ -80,184 +20,59 @@ export const SelfHostedSMTPConnectionForm = ({
 }) => {
   const [updateEmailSMTPSettings] = useUpdateEmailSMTPSettingsMutation();
   const [deleteEmailSMTPSettings] = useDeleteEmailSMTPSettingsMutation();
-  const [sendToast] = useToast();
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
-  const initialValues = useMemo<EmailSMTPSettings>(
+
+  const mappedSettingValues = useMemo(
     () => ({
-      "email-smtp-host": settingValues?.["email-smtp-host"] ?? "",
-      "email-smtp-port": settingValues?.["email-smtp-port"] ?? null,
-      "email-smtp-security": settingValues?.["email-smtp-security"] ?? "none",
-      "email-smtp-username": settingValues?.["email-smtp-username"] ?? "",
-      "email-smtp-password": settingValues?.["email-smtp-password"] ?? "",
+      host: settingValues?.["email-smtp-host"] ?? "",
+      port: settingValues?.["email-smtp-port"] ?? null,
+      security: settingValues?.["email-smtp-security"] ?? "none",
+      username: settingValues?.["email-smtp-username"] ?? "",
+      password: settingValues?.["email-smtp-password"] ?? "",
     }),
     [settingValues],
   );
-  const handleClearEmailSettings = useCallback(async () => {
-    const result = await deleteEmailSMTPSettings();
-    if (result.error) {
-      sendToast({
-        icon: "warning",
-        toastColor: "error",
-        message: isErrorWithMessage(result.error)
-          ? result.error.data.message
-          : t`Error clearing email settings`,
-      });
-    } else {
-      sendToast({
-        message: t`Email settings cleared`,
-      });
-    }
-  }, [deleteEmailSMTPSettings, sendToast]);
 
-  const handleUpdateEmailSettings = useCallback(
-    async (formData: EmailSMTPSettings) => {
-      try {
-        await updateEmailSMTPSettings(formData).unwrap();
-        trackSMTPSetupSuccess({ eventDetail: "self-hosted" });
-        sendToast({
-          message: t`Email settings updated`,
-        });
-        onClose();
-      } catch (error) {
-        sendToast({
-          icon: "warning",
-          toastColor: "error",
-          message: getErrorMessage(error, t`Error updating email settings`),
-        });
-
-        // throw to allow the form to handle the error
-        throw error;
-      }
-    },
-    [updateEmailSMTPSettings, sendToast, onClose],
+  const mappedSettingsDetails = useMemo(
+    () => ({
+      host: settingsDetails?.["email-smtp-host"],
+      port: settingsDetails?.["email-smtp-port"],
+      security: settingsDetails?.["email-smtp-security"],
+      username: settingsDetails?.["email-smtp-username"],
+      password: settingsDetails?.["email-smtp-password"],
+    }),
+    [settingsDetails],
   );
 
-  const allSetByEnvVars = useMemo(() => {
-    return (
-      settingsDetails &&
-      emailSettingKeys.every(
-        (settingKey) => settingsDetails[settingKey]?.is_env_setting,
-      )
-    );
-  }, [settingsDetails]);
+  const handleUpdateMutation = useCallback(
+    (formData: any) => {
+      const emailSMTPData: EmailSMTPSettings = {
+        "email-smtp-host": formData.host,
+        "email-smtp-port": parseInt(formData.port),
+        "email-smtp-security": formData.security,
+        "email-smtp-username": formData.username,
+        "email-smtp-password": formData.password,
+      };
+      return updateEmailSMTPSettings(emailSMTPData);
+    },
+    [updateEmailSMTPSettings],
+  );
+
+  const handleTrackSuccess = useCallback(() => {
+    trackSMTPSetupSuccess({ eventDetail: "self-hosted" });
+  }, []);
 
   return (
-    <Modal
-      title={t`SMTP Configuration`}
-      opened
+    <BaseSMTPConnectionForm
       onClose={onClose}
-      padding="xl"
-      data-testid="self-hosted-smtp-connection-form"
-    >
-      <Box data-testid="settings-updates" pt="lg">
-        <FormProvider
-          initialValues={initialValues}
-          validationSchema={getFormValueSchema(settingsDetails)}
-          onSubmit={handleUpdateEmailSettings}
-          enableReinitialize
-        >
-          {({ dirty, isValid, isSubmitting, values }) => (
-            <Form>
-              <Stack gap="lg">
-                <SetByEnvVarWrapper
-                  settingKey="email-smtp-host"
-                  settingDetails={settingsDetails?.["email-smtp-host"]}
-                >
-                  <FormTextInput
-                    name="email-smtp-host"
-                    label={t`SMTP Host`}
-                    description={
-                      settingsDetails?.["email-smtp-host"]?.description
-                    }
-                    placeholder={"smtp.yourservice.com"}
-                  />
-                </SetByEnvVarWrapper>
-                <SetByEnvVarWrapper
-                  settingKey="email-smtp-port"
-                  settingDetails={settingsDetails?.["email-smtp-port"]}
-                >
-                  <FormTextInput
-                    name="email-smtp-port"
-                    label={t`SMTP Port`}
-                    placeholder={"587"}
-                  />
-                </SetByEnvVarWrapper>
-                <SetByEnvVarWrapper
-                  settingKey="email-smtp-security"
-                  settingDetails={settingsDetails?.["email-smtp-security"]}
-                >
-                  <FormRadioGroup
-                    name="email-smtp-security"
-                    label={t`SMTP Security`}
-                  >
-                    <Group>
-                      {[
-                        { value: "none", name: "None" },
-                        { value: "ssl", name: "SSL" },
-                        { value: "tls", name: "TLS" },
-                        { value: "starttls", name: "STARTTLS" },
-                      ].map(({ value, name }) => (
-                        <Radio
-                          value={value as string}
-                          name="email-smtp-security"
-                          label={name}
-                          key={name}
-                          styles={{
-                            inner: { display: "none" },
-                            label: {
-                              paddingLeft: 0,
-                              color:
-                                values["email-smtp-security"] === value
-                                  ? color("brand")
-                                  : color("text-dark"),
-                            },
-                          }}
-                        />
-                      ))}
-                    </Group>
-                  </FormRadioGroup>
-                </SetByEnvVarWrapper>
-                <SetByEnvVarWrapper
-                  settingKey="email-smtp-username"
-                  settingDetails={settingsDetails?.["email-smtp-username"]}
-                >
-                  <FormTextInput
-                    name="email-smtp-username"
-                    label={t`SMTP Username`}
-                    placeholder={"nicetoseeyou"}
-                  />
-                </SetByEnvVarWrapper>
-                <SetByEnvVarWrapper
-                  settingKey="email-smtp-password"
-                  settingDetails={settingsDetails?.["email-smtp-password"]}
-                >
-                  <FormTextInput
-                    name="email-smtp-password"
-                    type="password"
-                    label={t`SMTP Password`}
-                    placeholder={"Shhh..."}
-                  />
-                </SetByEnvVarWrapper>
-                <Flex mt="1rem" gap="md" justify="end">
-                  <Button
-                    onClick={handleClearEmailSettings}
-                    disabled={allSetByEnvVars || isSubmitting}
-                  >
-                    {t`Clear`}
-                  </Button>
-                  <FormSubmitButton
-                    label={t`Save changes`}
-                    disabled={!dirty || !isValid || isSubmitting}
-                    loading={isSubmitting}
-                    variant="filled"
-                  />
-                </Flex>
-              </Stack>
-            </Form>
-          )}
-        </FormProvider>
-      </Box>
-    </Modal>
+      settingValues={mappedSettingValues}
+      settingsDetails={mappedSettingsDetails}
+      secureMode={false}
+      updateMutation={handleUpdateMutation}
+      deleteMutation={deleteEmailSMTPSettings}
+      dataTestId="self-hosted-smtp-connection-form"
+      onTrackSuccess={handleTrackSuccess}
+    />
   );
 };

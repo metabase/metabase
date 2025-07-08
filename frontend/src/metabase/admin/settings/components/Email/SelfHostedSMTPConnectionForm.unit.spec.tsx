@@ -171,7 +171,7 @@ describe("SelfHostedSMTPConnectionForm", () => {
     expect(url).toContain("/api/email");
     expect(body).toEqual({
       "email-smtp-host": "smtp.treeko.com",
-      "email-smtp-port": "456",
+      "email-smtp-port": 456,
       "email-smtp-security": "tls",
       "email-smtp-username": "ash@example.com",
       "email-smtp-password": "teamrocket",
