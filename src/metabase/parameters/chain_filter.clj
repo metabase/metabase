@@ -605,8 +605,8 @@
   (assert (even? (count options)))
   (let [{:as options}         options
         relax-fk-requirement? (:relax-fk-requirement? options)
-        remapping-field (:remapping-field options)
-        options (dissoc options :relax-fk-requirement? :remapping-field)
+        remapping-field       (:remapping-field options)
+        options               (dissoc options :relax-fk-requirement? :remapping-field)
         v->human-readable     (schema.metadata-queries/human-readable-remapping-map field-id)
         remapping             (delay (remapping field-id))]
     (cond
