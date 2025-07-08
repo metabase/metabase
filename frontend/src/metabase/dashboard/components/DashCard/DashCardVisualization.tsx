@@ -69,6 +69,26 @@ import {
   shouldShowParameterMapper,
 } from "./utils";
 
+/**
+ * This populates the `data` field of each series with an empty
+ * object if it doesn't already have one. This is useful to compute
+ * the visualization settings correctly before data is loaded.
+ *
+ * @param series the series to sanitize
+ */
+function sanitizeSeriesData(series: RawSeries | { card: Card }[]) {
+  return series.map((s) => {
+    if ("data" in s) {
+      // If the series already has data, we're good
+      return s;
+    }
+
+    return {
+      ...s,
+      data: { cols: [], rows: [] },
+    };
+  });
+}
 interface DashCardVisualizationProps {
   dashcard: DashboardCard;
   series: Series;
@@ -397,7 +417,7 @@ export function DashCardVisualization({
 
     // We only show the titleMenuItems if the card has no title.
     const settings = getComputedSettingsForSeries(
-      series,
+      sanitizeSeriesData(series),
     ) as ComputedVisualizationSettings;
     const title = settings["card.title"] ?? series?.[0].card.name ?? "";
 
