@@ -22,7 +22,9 @@ console.warn = () => {};
 
 describe("InteractiveDashboard", () => {
   it("should allow users to click the dashcard title", async () => {
-    await setup();
+    await setup({
+      dashboardName: "Test dashboard",
+    });
 
     expect(screen.getByTestId("legend-label")).toHaveAttribute(
       "data-is-clickable",
@@ -32,7 +34,7 @@ describe("InteractiveDashboard", () => {
     await userEvent.click(screen.getByTestId("legend-label"));
 
     expect(
-      await screen.findByLabelText("Back to Dashboard"),
+      await screen.findByLabelText("Back to Test dashboard"),
     ).toBeInTheDocument();
     expect(screen.getByText("Filter")).toBeInTheDocument();
     expect(screen.getByText("Group")).toBeInTheDocument();

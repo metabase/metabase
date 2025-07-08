@@ -290,6 +290,9 @@ const SdkDashboardInner = ({
               setRenderMode("dashboard");
               dashboardContextProviderRef.current?.refetchDashboard();
             }}
+            onNavigateBack={() => {
+              setRenderMode("dashboard");
+            }}
           />
         ))
         .exhaustive()}
@@ -324,6 +327,7 @@ function SdkDashboardParameterList(
 type DashboardQueryBuilderProps = {
   targetDashboardId: DashboardId;
   onCreate: (question: MetabaseQuestion) => void;
+  onNavigateBack: () => void;
 };
 
 /**
@@ -332,9 +336,21 @@ type DashboardQueryBuilderProps = {
 function DashboardQueryBuilder({
   targetDashboardId,
   onCreate,
+  onNavigateBack,
 }: DashboardQueryBuilderProps) {
   const dispatch = useSdkDispatch();
   const { dashboard } = useDashboardContext();
+
+  /**
+   * This won't happen at this point in time. As `DashboardQueryBuilder` is guaranteed to be rendered
+   * while under the dashboard context, after a dashboard has already been loaded.
+   *
+   * I added this condition just to satisfy TypeScript, so that below this, the dashboard value isn't null.
+   */
+  if (!dashboard) {
+    return null;
+  }
+
   return (
     <InteractiveQuestionProvider
       questionId="new"
@@ -345,8 +361,15 @@ function DashboardQueryBuilder({
           dispatch(setEditingDashboard(dashboard));
         }
       }}
+      onNavigateBack={onNavigateBack}
+      backToDashboard={dashboard}
     >
-      <InteractiveQuestionDefaultView withResetButton withChartTypeSelector />
+      <InteractiveQuestionDefaultView
+        withResetButton
+        withChartTypeSelector
+        // The default value is 600px and it cuts off the "Visualize" button.
+        height="700px"
+      />
     </InteractiveQuestionProvider>
   );
 }

@@ -98,13 +98,7 @@ describe("EditableDashboard", () => {
 
   it("should allow to create a new question in addition to adding existing questions", async () => {
     await setup();
-    // These endpoints are used in the simple data picker
-    setupCollectionItemsEndpoint({
-      collection: createMockCollection(ROOT_COLLECTION),
-      collectionItems: [],
-    });
-    setupEmbeddingDataPickerDecisionEndpoints("flat");
-    setupSearchEndpoints([]);
+    setupSimpleDataPickerEndpoints();
 
     expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
 
@@ -124,4 +118,46 @@ describe("EditableDashboard", () => {
       await screen.findByRole("button", { name: "Pick your starting data" }),
     ).toBeInTheDocument();
   });
+
+  it("should allow to go back to the dashboard after seeing the query builder", async () => {
+    await setup({
+      dashboardName: "Test dashboard",
+    });
+    setupSimpleDataPickerEndpoints();
+
+    expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
+
+    await userEvent.click(
+      within(screen.getByTestId("dashboard-header")).getByLabelText(
+        "Edit dashboard",
+      ),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add questions" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "New Question" }));
+
+    // We should be in the query builder
+    expect(
+      await screen.findByRole("button", { name: "Back to Test dashboard" }),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Back to Test dashboard" }),
+    );
+
+    // We should be back in the dashboard
+    expect(
+      screen.getByText("You're editing this dashboard."),
+    ).toBeInTheDocument();
+  });
 });
+
+function setupSimpleDataPickerEndpoints() {
+  // These endpoints are used in the simple data picker
+  setupCollectionItemsEndpoint({
+    collection: createMockCollection(ROOT_COLLECTION),
+    collectionItems: [],
+  });
+  setupEmbeddingDataPickerDecisionEndpoints("flat");
+  setupSearchEndpoints([]);
+}

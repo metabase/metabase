@@ -213,16 +213,19 @@ const DashboardContextProviderInner = forwardRef(
       async (dashboardId: DashboardId, option: FetchOption = {}) => {
         const hasDashboardChanged = dashboardId !== previousDashboardId;
         const { forceRefetch } = option;
+        // When forcing a refetch, we want to clear the cache
+        const effectiveIsNavigatingBackToDashboard =
+          isNavigatingBackToDashboard && !forceRefetch;
         if (hasDashboardChanged || forceRefetch) {
           setError(null);
 
-          initialize({ clearCache: !isNavigatingBackToDashboard });
+          initialize({ clearCache: !effectiveIsNavigatingBackToDashboard });
           fetchDashboard({
             dashId: dashboardId,
             queryParams: parameterQueryParams,
             options: {
-              clearCache: !isNavigatingBackToDashboard,
-              preserveParameters: isNavigatingBackToDashboard,
+              clearCache: !effectiveIsNavigatingBackToDashboard,
+              preserveParameters: effectiveIsNavigatingBackToDashboard,
             },
           })
             .then((result) => {
