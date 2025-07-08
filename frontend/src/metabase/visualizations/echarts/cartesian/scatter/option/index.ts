@@ -106,6 +106,7 @@ export function getScatterPlotOption(
       settings,
       hasTimelineEvents,
       renderingContext,
+      "scatter",
     ),
   };
 }

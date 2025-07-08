@@ -189,6 +189,7 @@ export function useModelsAndOption(
           width,
           shouldAnimate,
           renderingContext,
+          card.display,
         );
     }
 

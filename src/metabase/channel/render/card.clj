@@ -116,7 +116,6 @@
         (chart-type :scalar "result has one row and one column")
 
         (#{:scalar
-           :row
            :progress
            :gauge
            :table
@@ -129,6 +128,7 @@
            :pie
            :scatter
            :waterfall
+           :row
            :line
            :area
            :bar

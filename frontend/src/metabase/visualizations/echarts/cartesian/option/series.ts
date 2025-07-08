@@ -453,6 +453,7 @@ const buildEChartsBarSeries = (
   chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
+  isHorizontal: boolean = false,
 ): BarSeriesOption | BarSeriesOption[] => {
   const stack = stackName ?? `bar_${seriesModel.dataKey}`;
   const isStacked = settings["stackable.stack_type"] != null;
@@ -473,21 +474,28 @@ const buildEChartsBarSeries = (
     },
     type: "bar",
     z: Z_INDEXES.series,
-    yAxisIndex,
+    ...(isHorizontal 
+      ? { xAxisIndex: yAxisIndex }
+      : { yAxisIndex }),
     barGap: 0,
     barMinHeight: 1,
     stack,
-    barWidth: computeBarWidth(
+    barWidth: isHorizontal ? undefined : computeBarWidth(
       xAxisModel,
       chartMeasurements.boundaryWidth,
       barSeriesCount,
       isStacked,
       settings["graph.x_axis.scale"],
     ),
-    encode: {
-      y: seriesModel.dataKey,
-      x: X_AXIS_DATA_KEY,
-    },
+    encode: isHorizontal
+      ? {
+          x: seriesModel.dataKey,
+          y: X_AXIS_DATA_KEY,
+        }
+      : {
+          y: seriesModel.dataKey,
+          x: X_AXIS_DATA_KEY,
+        },
     label: isStacked
       ? buildEChartsStackLabelOptions(
           seriesModel,
@@ -577,6 +585,7 @@ const buildEChartsLineAreaSeries = (
   chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
+  isHorizontal: boolean = false,
 ): LineSeriesOption => {
   const isSymbolVisible = getShowSymbol(
     chartDataDensity,
@@ -615,7 +624,9 @@ const buildEChartsLineAreaSeries = (
         ? LINE_SIZE[seriesSettings["line.size"]]
         : LINE_SIZE.M,
     },
-    yAxisIndex,
+    ...(isHorizontal 
+      ? { xAxisIndex: yAxisIndex }
+      : { yAxisIndex }),
     showSymbol: true,
     showAllSymbol: true,
     symbolSize: CHART_STYLE.symbolSize,
@@ -628,10 +639,15 @@ const buildEChartsLineAreaSeries = (
       seriesSettings.display === "area"
         ? { opacity: CHART_STYLE.opacity.area }
         : undefined,
-    encode: {
-      y: seriesModel.dataKey,
-      x: X_AXIS_DATA_KEY,
-    },
+    encode: isHorizontal
+      ? {
+          x: seriesModel.dataKey,
+          y: X_AXIS_DATA_KEY,
+        }
+      : {
+          y: seriesModel.dataKey,
+          x: X_AXIS_DATA_KEY,
+        },
     label: buildEChartsLabelOptions(
       seriesModel,
       yAxisScaleTransforms,
@@ -851,6 +867,7 @@ export const buildEChartsSeries = (
   chartWidth: number,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
+  cardDisplay?: string,
 ): EChartsSeriesOption[] => {
   const seriesSettingsByDataKey = getDisplaySeriesSettingsByDataKey(
     chartModel.seriesModels,
@@ -902,6 +919,7 @@ export const buildEChartsSeries = (
             chartWidth,
             chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
+            cardDisplay === "row",
           );
         case "bar":
           return buildEChartsBarSeries(
@@ -920,6 +938,7 @@ export const buildEChartsSeries = (
             chartWidth,
             chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
+            cardDisplay === "row",
           );
       }
     })

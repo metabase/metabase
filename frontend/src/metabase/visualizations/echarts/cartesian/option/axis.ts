@@ -474,22 +474,45 @@ export const buildAxes = (
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
+  cardDisplay?: string,
 ) => {
+  const isHorizontal = cardDisplay === "row";
+  
+  const dimensionAxis = buildDimensionAxis(
+    chartModel,
+    width,
+    settings,
+    chartMeasurements,
+    hasTimelineEvents,
+    renderingContext,
+  );
+  
+  const metricsAxes = buildMetricsAxes(
+    chartModel,
+    chartMeasurements,
+    settings,
+    renderingContext,
+  );
+  
+  if (isHorizontal) {
+    // For horizontal charts (row charts), swap the axes:
+    // - xAxis should be the metrics (numeric values)
+    // - yAxis should be the dimension (categories)
+    return {
+      xAxis: metricsAxes.map(axis => ({
+        ...axis,
+        type: "value" as const,
+      })),
+      yAxis: [{
+        ...dimensionAxis,
+        type: dimensionAxis.type,
+      }],
+    };
+  }
+  
   return {
-    xAxis: buildDimensionAxis(
-      chartModel,
-      width,
-      settings,
-      chartMeasurements,
-      hasTimelineEvents,
-      renderingContext,
-    ),
-    yAxis: buildMetricsAxes(
-      chartModel,
-      chartMeasurements,
-      settings,
-      renderingContext,
-    ),
+    xAxis: dimensionAxis,
+    yAxis: metricsAxes,
   };
 };
 

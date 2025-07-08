@@ -256,6 +256,7 @@ export const getWaterfallChartOption = (
       settings,
       hasTimelineEvents,
       renderingContext,
+      "waterfall",
     ),
   };
 };
