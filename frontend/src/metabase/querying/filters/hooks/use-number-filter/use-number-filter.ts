@@ -25,10 +25,20 @@ export function useNumberFilter({
   column,
   filter,
 }: UseNumberFilterProps) {
-  const filterParts = useMemo(
-    () => (filter ? Lib.numberFilterParts(query, stageIndex, filter) : null),
-    [query, stageIndex, filter],
-  );
+  const filterParts = useMemo(() => {
+    if (!filter) {
+      return null;
+    }
+
+    const filterParts = Lib.numberFilterParts(query, stageIndex, filter);
+    if (!filterParts) {
+      return null;
+    }
+
+    const sugaredFilterParts = normalizeFilterParts(filterParts);
+
+    return sugaredFilterParts;
+  }, [query, stageIndex, filter]);
 
   const availableOptions = useMemo(
     () => getAvailableOptions(query, stageIndex, column),
@@ -62,5 +72,65 @@ export function useNumberFilter({
     ) => getFilterClause(operator, column, values),
     setOperator,
     setValues,
+  };
+}
+
+function normalizeFilterParts({
+  operator,
+  column,
+  values,
+}: Lib.NumberFilterParts) {
+  if (operator === ">") {
+    return {
+      operator: "between" as const,
+      column,
+      values: [values[0], null],
+      options: {
+        minInclusive: false,
+        maxInclusive: false,
+      },
+    };
+  }
+
+  if (operator === "<") {
+    return {
+      operator: "between" as const,
+      column,
+      values: [null, values[0]],
+      options: {
+        minInclusive: false,
+        maxInclusive: false,
+      },
+    };
+  }
+
+  if (operator === "<=") {
+    return {
+      operator: "between" as const,
+      column,
+      values: [null, values[0]],
+      options: {
+        minInclusive: false,
+        maxInclusive: true,
+      },
+    };
+  }
+
+  if (operator === ">=") {
+    return {
+      operator: "between" as const,
+      column,
+      values: [values[0], null],
+      options: {
+        minInclusive: true,
+        maxInclusive: false,
+      },
+    };
+  }
+
+  return {
+    operator,
+    column,
+    values,
   };
 }

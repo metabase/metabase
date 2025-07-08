@@ -550,9 +550,9 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("applies a greater than filter", () => {
       H.popover().findByText("Price").click();
-      H.selectFilterOperator("Greater than");
+      H.selectFilterOperator("Range");
       H.popover().within(() => {
-        cy.findByLabelText("Filter value").type("50");
+        cy.findByLabelText("Start of range").type("50");
         cy.button("Apply filter").click();
       });
       cy.wait("@dataset");
@@ -599,9 +599,9 @@ describe("scenarios > filters > bulk filtering", () => {
         cy.findByText("Category").should("not.exist");
         cy.findByText("Price").click();
       });
-      H.selectFilterOperator("Greater than");
+      H.selectFilterOperator("Range");
       H.popover().within(() => {
-        cy.findByLabelText("Filter value").type("90");
+        cy.findByLabelText("Start of range").type("90");
         cy.button("Apply filter").click();
       });
       cy.wait("@dataset");

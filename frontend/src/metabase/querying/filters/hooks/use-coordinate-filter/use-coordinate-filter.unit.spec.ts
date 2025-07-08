@@ -59,7 +59,7 @@ describe("useCoordinateFilter", () => {
     {
       operator: "between",
       values: [10],
-      expectedDisplayName: "Latitude is greater than 10",
+      expectedDisplayName: "Latitude is greater than or equal to 10",
     },
   ])(
     'should allow to create a filter for "$operator" operator',
