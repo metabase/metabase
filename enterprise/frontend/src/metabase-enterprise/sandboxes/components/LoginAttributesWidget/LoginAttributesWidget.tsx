@@ -5,7 +5,13 @@ import { t } from "ttag";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import FormField from "metabase/common/components/FormField";
 import { Accordion, Box, Loader, Text } from "metabase/ui";
-import type { UserAttributeMap, UserId } from "metabase-types/api";
+import type {
+  StructuredUserAttributes,
+  UserAttributeKey,
+  UserAttributeMap,
+  UserAttributeValue,
+  UserId,
+} from "metabase-types/api";
 
 import { LoginAttributeMappingEditor } from "./LoginAttributeMappingEditor";
 
@@ -16,6 +22,22 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
   userId?: UserId;
 }
 
+// if the value set in the ui is the same as the tenant value, don't save it to the user
+const isTenantValue = (
+  [key, inputValue]: [UserAttributeKey, UserAttributeValue],
+  structuredAttributes: StructuredUserAttributes,
+) => {
+  const attribute = structuredAttributes[key];
+  if (!attribute) {
+    return false;
+  }
+
+  const tenantValue =
+    attribute?.original?.value ??
+    (attribute.source === "tenant" ? attribute.value : undefined);
+  return tenantValue === inputValue;
+};
+
 export const LoginAttributesWidget = ({
   name = "login_attributes",
   title = t`Attributes`,
@@ -25,10 +47,13 @@ export const LoginAttributesWidget = ({
   userId,
 }: Props) => {
   const [{ value }, , { setValue, setError }] = useField(name);
+  const { data: userData, isLoading } = useGetUserQuery(userId ?? skipToken);
 
   const handleChange = (newValue: UserAttributeMap) => {
     const validEntries = Object.entries(newValue).filter(
-      ([key]) => !key.startsWith("@"),
+      ([key, value]) =>
+        !key.startsWith("@") &&
+        !isTenantValue([key, value], userData?.structured_attributes ?? {}),
     );
     setValue(Object.fromEntries(validEntries));
   };
@@ -39,7 +64,6 @@ export const LoginAttributesWidget = ({
     }
   };
 
-  const { data: userData, isLoading } = useGetUserQuery(userId ?? skipToken);
   return (
     <FormField className={className} style={style} description={description}>
       <Accordion mt="xl">
@@ -54,7 +78,7 @@ export const LoginAttributesWidget = ({
               ) : (
                 <LoginAttributeMappingEditor
                   simpleAttributes={value}
-                  structuredAttributes={userData?.structured_attributes ?? {}}
+                  structuredAttributes={userData?.structured_attributes}
                   onChange={handleChange}
                   onError={handleError}
                 />

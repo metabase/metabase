@@ -64,6 +64,7 @@ export interface UserListResult {
   common_name: string;
   email: string;
   personal_collection_id: CollectionId;
+  structured_attributes?: StructuredUserAttributes;
 }
 
 export interface UserListMetadata {
