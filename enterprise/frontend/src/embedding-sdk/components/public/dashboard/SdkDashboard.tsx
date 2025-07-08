@@ -236,7 +236,6 @@ Object.assign(
     "ParameterList",
     "Title",
     "Tabs",
-    "balls",
     "FullscreenButton",
     "ExportAsPdfButton",
     "InfoButton",
