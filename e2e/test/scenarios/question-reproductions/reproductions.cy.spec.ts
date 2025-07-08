@@ -3,10 +3,14 @@ const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type { NativeQuestionDetails } from "e2e/support/helpers";
+import type {
+  NativeQuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
+  SAMPLE_DATABASE;
 
 describe("issue 39487", () => {
   const CREATED_AT_FIELD: LocalFieldReference = [
@@ -302,6 +306,57 @@ describe("issue 47793", () => {
         .and("contain.text", "quantity: 10");
     },
   );
+});
+
+describe("issue 48752", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should reference the correct aggregation after one of the aggregations with the same operator is removed (metabase#48752)", () => {
+    H.openOrdersTable({ mode: "notebook" });
+
+    cy.log("first stage - aggregations and a breakout");
+    H.summarize({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText(/Sum of/).click();
+      cy.findByText("Total").click();
+    });
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().within(() => {
+      cy.findByText(/Sum of/).click();
+      cy.findByText("Subtotal").click();
+    });
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().within(() => {
+      cy.findByText(/Sum of/).click();
+      cy.findByText("Tax").click();
+    });
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByText("User ID").click();
+
+    cy.log("second stage - a filter");
+    H.getNotebookStep("summarize").button("Filter").click();
+    H.popover().within(() => {
+      cy.findByText("Sum of Subtotal").click();
+      cy.findByPlaceholderText("Min").type("10");
+      cy.findByText("Add filter").click();
+    });
+
+    cy.log('remove the first "sum" aggregation from the first stage');
+    H.getNotebookStep("summarize")
+      .findByText("Sum of Total")
+      .icon("close")
+      .click();
+
+    cy.log("assert that the filter references the correct column");
+    H.getNotebookStep("filter", { stage: 1 })
+      .findByText("Sum of Subtotal is greater than or equal to 10")
+      .should("be.visible");
+  });
 });
 
 describe("issue 49270", () => {
@@ -610,6 +665,92 @@ describe("54205", () => {
   });
 });
 
+describe("issue 54920", () => {
+  const initialQuestionDetails: StructuredQuestionDetails = {
+    name: "Base question",
+    query: {
+      "source-table": ORDERS_ID,
+      fields: [["field", ORDERS.CREATED_AT, null]],
+      joins: [
+        {
+          "source-table": PRODUCTS_ID,
+          alias: "Products",
+          fields: [
+            ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
+          ],
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, null],
+            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+          ],
+        },
+        {
+          "source-table": REVIEWS_ID,
+          alias: "Reviews",
+          fields: [["field", REVIEWS.CREATED_AT, { "join-alias": "Reviews" }]],
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, null],
+            ["field", REVIEWS.PRODUCT_ID, { "join-alias": "Reviews" }],
+          ],
+        },
+      ],
+    },
+  };
+
+  const expectedRowCount = 407;
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+  });
+
+  it("should not break downstream queries when an unused field with the same name as a used field is removed from a base question (metabase#54920)", () => {
+    cy.log("create a base question");
+    H.createQuestion(initialQuestionDetails, {
+      wrapId: true,
+      idAlias: "baseQuestionId",
+    });
+
+    cy.log("create a derived question and verify that it can be run");
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText("Base question").click();
+    });
+    H.getNotebookStep("filter")
+      .findByText("Add filters to narrow your answer")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Reviews → Created At").click();
+      cy.findByText("Fixed date range…").click();
+      cy.findByLabelText("Start date").clear().type("10/12/2024");
+      cy.findByLabelText("End date").clear().type("10/15/2024");
+      cy.button("Add filter").click();
+    });
+    H.visualize();
+    H.assertQueryBuilderRowCount(expectedRowCount);
+    H.saveQuestion("Derived question", {
+      wrapId: true,
+      idAlias: "derivedQuestionId",
+    });
+
+    cy.log("remove a column from the base question");
+    H.visitQuestion("@baseQuestionId");
+    H.openNotebook();
+    H.getNotebookStep("join", { index: 0 }).button("Pick columns").click();
+    H.popover().findByText("Created At").click();
+    H.queryBuilderHeader().findByText("Save").click();
+    H.modal().findByText("Save").click();
+    cy.wait("@updateCard");
+
+    cy.log("verify that the derived question still works");
+    H.visitQuestion("@derivedQuestionId");
+    H.assertQueryBuilderRowCount(expectedRowCount);
+  });
+});
+
 describe("issue 55631", () => {
   beforeEach(() => {
     H.restore();
@@ -645,5 +786,82 @@ describe("issue 55631", () => {
       // before the dialog closes.
       cy.findByDisplayValue("Orders", { timeout: 10 }).should("not.exist");
     });
+  });
+});
+
+describe("issue 56416", () => {
+  // name should be longer than the default 60-character limit; this has 71
+  const joinedQuestionName =
+    "Orders + Products, Count, Grouped by Products → Category and Product ID";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to use a column from a joined question with a long name (metabase#56416)", () => {
+    cy.log("create the joined question");
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().findByText("Count of rows").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Products").click();
+      cy.findByText("Category").click();
+    });
+    H.getNotebookStep("summarize")
+      .findByTestId("breakout-step")
+      .icon("add")
+      .click();
+    H.popover().findByText("Product ID").click();
+    H.saveQuestion(joinedQuestionName);
+
+    cy.log("create the main question");
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(joinedQuestionName).click();
+    });
+    H.popover().findByText("Product ID").click();
+    H.popover().findByText("Product ID").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().findByText("Count of rows").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().within(() => {
+      cy.findByText(joinedQuestionName).click();
+      cy.findByText(/→ Category$/).click();
+    });
+    H.getNotebookStep("summarize").icon("filter").click();
+    H.popover().within(() => {
+      cy.findByText(/→ Category$/).click();
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+
+    cy.log("assert that the query can be run");
+    H.visualize();
+    H.assertQueryBuilderRowCount(1);
   });
 });
