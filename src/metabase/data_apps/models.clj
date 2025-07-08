@@ -39,7 +39,9 @@
 
 (mr/def ::AppDefinitionConfig
   [:maybe [:map {:closed true}
-           [:version pos-int?]]])
+           [:actions [:sequential :map]]
+           [:parameters [:sequential :map]]
+           [:pages [:sequential :map]]]])
 
 (defn- validate-app-definition
   "Validate an AppDefinition."
@@ -57,11 +59,13 @@
                   {:status-code 400
                    :changes     (t2/changes instance)})))
 
-(defn- next-revision-number
-  "Get the next revision number for a given app."
+(defn- next-revision-number-hsql
   [app-id]
-  (inc (or (:max (t2/select-one [:model/DataAppDefinition [:%max.revision_number :max]] :app_id app-id))
-           0)))
+  [:coalesce [:+ [:inline 1]
+              {:select [:%max.revision_number]
+               :from [:data_app_definition]
+               :where [:= :app_id app-id]}]
+   [:inline 1]])
 
 ;;------------------------------------------------------------------------------------------------;;
 ;;                                    :model/DataAppRelease                                       ;;
@@ -69,7 +73,7 @@
 
 (t2/define-before-insert :model/DataAppRelease
   [instance]
-  (merge {:published_at :%now} instance))
+  (merge {:released_at :%now} instance))
 
 (t2/define-before-update :model/DataAppRelease
   [instance]
@@ -91,20 +95,21 @@
 ;;                                        Public APIs                                             ;;
 ;;------------------------------------------------------------------------------------------------;;
 
-(defn new-definition!
+(defn set-latest-definition!
   "Create a new definition for an existing app."
   [app-id definition]
   (t2/insert-returning-instance! :model/DataAppDefinition
                                  (merge definition
                                         {:app_id          app-id
-                                         :revision_number (next-revision-number app-id)})))
+                                         :revision_number (next-revision-number-hsql app-id)})))
 
 (defn create-app!
   "Create a new App with an initial definition."
   [app-data]
   (t2/with-transaction [_conn]
     (let [app            (t2/insert-returning-instance! :model/DataApp (dissoc app-data :definition))
-          app-definition (new-definition! (:id app) (:definition app-data))]
+          app-definition (when-let [definition (:definition app-data)]
+                           (set-latest-definition! (:id app) definition))]
       (assoc app :definition app-definition))))
 
 (defn publish!
@@ -113,5 +118,4 @@
   (t2/with-transaction [_conn]
     (t2/insert-returning-instance! :model/DataAppRelease
                                    {:app_id            app-id
-                                    :app_definition_id app-definition-id
-                                    :retracted         false})))
+                                    :app_definition_id app-definition-id})))

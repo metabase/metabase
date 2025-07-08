@@ -70,7 +70,7 @@ The data apps feature uses three main models:
 These functions form the public interface for the data apps module. All external code should use these functions rather than directly accessing the models:
 
 - `create-app!` - Creates a new app with its initial definition
-- `new-definition!` - Creates a new version of an app definition (revision_number calculated atomically)
+- `set-latest-definition!` - Creates a new version of an app definition (revision_number calculated atomically)
 - `publish!` - Publishes a specific app definition version
 
 **Important:** Do not import or use functions from `models.clj` directly outside of this module. Always use the public API in `core.clj`.

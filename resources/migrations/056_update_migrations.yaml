@@ -404,8 +404,8 @@ databaseChangeLog:
                     foreignKeyName: fk_data_app_release_app_definition_id
                     deleteCascade: true
               - column:
-                  remarks: The timestamp of when the app was published
-                  name: published_at
+                  remarks: The timestamp of when the app was released
+                  name: released_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
@@ -462,23 +462,25 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-07-03T16:07:00
       author: qnkhuat
-      comment: index data_app_release.app_id and retracted
+      comment: index data_app_release.app_id, retracted, and released_at desc
       preConditions:
         - onFail: MARK_RAN
         - not:
             - indexExists:
                 tableName: data_app_release
-                indexName: idx_data_app_release_app_id_retracted
+                indexName: idx_data_app_release_app_id_retracted_id
       changes:
         - createIndex:
             tableName: data_app_release
-            indexName: idx_data_app_release_app_id_retracted
+            indexName: idx_data_app_release_app_id_retracted_released_at
             columns:
               - column:
                   name: app_id
-                  descending: true
               - column:
                   name: retracted
+              - column:
+                  name: released_at
+                  descending: true
       rollback: #no op, will be deleted with the table
 
 
