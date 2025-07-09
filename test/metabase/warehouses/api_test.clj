@@ -501,7 +501,8 @@
                       :engine       :h2
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
-                      :features     (driver.u/features :h2 curr-db)}
+                      :features     (driver.u/features :h2 curr-db)
+                      :db_routing_info             nil}
                      (into {} curr-db)))))))))))
 
 (deftest update-database-test-2
