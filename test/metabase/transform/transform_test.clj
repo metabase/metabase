@@ -142,39 +142,47 @@
                                           [["Foo" 10]
                                            ["Bar" 20]
                                            ["Baz" 30]]])
-        (driver/drop-view! driver/*driver* (u/the-id (mt/db)) "young_users")
-        (is (driver/create-view! driver/*driver* (u/the-id (mt/db))
-                                 "young_users"
-                                 "SELECT name, age FROM users where age < 25"))
 
-        ;; make sure we're indeed creating it anew
-        (t2/delete! :model/Table :name "young_users")
+        (let [{:keys [schema]} (t2/select-one :model/Table :name "users")
+              base-name "young_users"
+              view-name (if schema
+                          (str schema "." base-name)
+                          base-name)]
 
-        (sync/sync-new-table-metadata! (mt/db) {:table-name "young_users"})
+          (driver/drop-view! driver/*driver* (u/the-id (mt/db)) view-name)
 
-        (let [table (t2/select-one :model/Table :name "young_users")]
-          (is (=? {:schema nil,
-                   :name "young_users",
-                   :active true,
-                   :display_name "Young Users"} table))
-          (is (=? [{:database_type "CHARACTER VARYING",
-                    :semantic_type nil,
-                    :name "NAME",
-                    :effective_type :type/Text,
-                    :active true,
-                    :position 0,
-                    :visibility_type :normal,
-                    :display_name "Name",
-                    :database_position 0,
-                    :base_type :type/Text}
-                   {:database_type "INTEGER",
-                    :semantic_type nil,
-                    :name "AGE",
-                    :effective_type :type/Integer,
-                    :active true,
-                    :position 1,
-                    :visibility_type :normal,
-                    :display_name "Age",
-                    :database_position 1,
-                    :base_type :type/Integer}]
-                  (t2/select :model/Field :table_id (u/the-id table)))))))))
+          (is (driver/create-view! driver/*driver* (u/the-id (mt/db))
+                                   view-name
+                                   "SELECT name, age FROM users where age < 25"))
+
+          ;; make sure we're indeed creating it anew
+          (t2/delete! :model/Table :name view-name)
+
+          (sync/sync-new-table-metadata! (mt/db) {:table-name base-name :schema schema})
+
+          (let [table (t2/select-one :model/Table :name base-name :schema schema)]
+            (is (=? {:schema schema,
+                     :name base-name,
+                     :active true,
+                     :display_name "Young Users"} table))
+            (is (=? [{:database_type "CHARACTER VARYING",
+                      :semantic_type nil,
+                      :name "NAME",
+                      :effective_type :type/Text,
+                      :active true,
+                      :position 0,
+                      :visibility_type :normal,
+                      :display_name "Name",
+                      :database_position 0,
+                      :base_type :type/Text}
+                     {:database_type "INTEGER",
+                      :semantic_type nil,
+                      :name "AGE",
+                      :effective_type :type/Integer,
+                      :active true,
+                      :position 1,
+                      :visibility_type :normal,
+                      :display_name "Age",
+                      :database_position 1,
+                      :base_type :type/Integer}]
+                    (t2/select :model/Field :table_id (u/the-id table))))))))))
