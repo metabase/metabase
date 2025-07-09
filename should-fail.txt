@@ -1,0 +1,1 @@
+This should fail the precommit: sk-1234567890abcdef1234567890abcdef123456789012
