@@ -71,12 +71,12 @@ Maximum number of rows to return for aggregated queries via the API.
 
 Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
-### `MB_AI_PROXY_BASE_URL`
+### `MB_AI_SERVICE_BASE_URL`
 
 - Type: string
 - Default: `http://localhost:8000`
 
-URL for the a AI Proxy service.
+URL for the a AI Service.
 
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
@@ -257,7 +257,7 @@ Row limit in file attachments excluding the header.
 Maximum number of rows to render in an alert or subscription image.
 
 Range: 1-100. To limit the total number of rows included in the file attachment
-        for an email dashboard subscription, use MB_UNAGGREGATED_QUERY_ROW_LIMIT.
+        for an email dashboard subscription, use MB_ATTACHMENT_ROW_LIMIT.
 
 ### `MB_BCC_ENABLED`
 
