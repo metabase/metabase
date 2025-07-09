@@ -6,9 +6,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.color :as c]
-   [puget.printer :as puget])
-  (:import
-   [java.util.concurrent Executors Future Callable TimeUnit]))
+   [puget.printer :as puget]))
 
 (set! *warn-on-reflection* true)
 
