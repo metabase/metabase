@@ -14,3 +14,17 @@ export const setupTokenStatusEndpoint = (
     { overwriteRoutes: true },
   );
 };
+
+export const setupTokenStatusEndpointEmpty = () => {
+  fetchMock.get("path:/api/premium-features/token/status", 404, {
+    overwriteRoutes: true,
+  });
+};
+
+export const setupTokenActivationEndpoint = (success: boolean) => {
+  fetchMock.put(
+    "path:/api/setting/premium-embedding-token",
+    { success, error: success ? undefined : "Invalid token" },
+    { response: success ? 204 : 400, overwriteRoutes: true },
+  );
+};
