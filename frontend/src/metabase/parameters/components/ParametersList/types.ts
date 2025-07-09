@@ -6,6 +6,8 @@ import type {
 import type Question from "metabase-lib/v1/Question";
 import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
 
+import type { ParameterWidgetProps } from "../ParameterWidget";
+
 export type ParametersListProps = {
   parameters: Parameter[];
 } & Partial<
@@ -30,7 +32,9 @@ export type ParametersListProps = {
     enableParameterRequiredBehavior: boolean;
     widgetsVariant?: "default" | "subtle";
     widgetsWithinPortal?: boolean;
+    widgetsPopoverPosition: ParameterWidgetProps["popoverPosition"];
     layout?: "horizontal" | "vertical";
+    hasTestIdProps?: boolean;
   } & Pick<DashboardFullscreenControls, "isFullscreen"> &
     Pick<DashboardNightModeControls, "isNightMode"> &
     Pick<EmbedHideParametersControls, "hideParameters">

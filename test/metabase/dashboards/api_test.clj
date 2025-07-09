@@ -390,11 +390,12 @@
                                            :dashboard_id       dash-id
                                            :parameter_mappings [{:parameter_id "__ID__"
                                                                  :card_id      orders-card-id
-                                                                 :target       [:dimension (mt/$ids orders $product_id)]}]}]
-      (is (=? {"__ID__" [{:id                 (mt/id :orders :product_id)
+                                                                 :target       [:dimension (mt/$ids orders $user_id)]}]}]
+      (is (=? {"__ID__" [{:id                 (mt/id :orders :user_id)
                           :semantic_type      :type/FK
-                          :fk_target_field_id (mt/id :products :id)
-                          :target             {:id (mt/id :products :id)}}]}
+                          :fk_target_field_id (mt/id :people :id)
+                          :target             {:id (mt/id :people :id)
+                                               :name_field {:id (mt/id :people :name)}}}]}
               (:param_fields (mt/with-test-user :crowberto
                                (#'api.dashboard/get-dashboard dash-id))))))))
 

@@ -14,14 +14,16 @@ import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
 import {
   getDashcardResultsError,
   isDashcardLoading,
+  isQuestionCard,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
-import { isEmbeddingSdk } from "metabase/env";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -31,6 +33,7 @@ import {
   getInitialStateForVisualizerCard,
   isVisualizerDashboardCard,
 } from "metabase/visualizer/utils";
+import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   DashCardId,
@@ -321,6 +324,13 @@ function DashCardInner({
     onEditVisualization(dashcard, initialState);
   }, [dashcard, series, onEditVisualization, datasets]);
 
+  const metadata = useSelector(getMetadata);
+  const question = useMemo(() => {
+    return isQuestionCard(dashcard.card)
+      ? new Question(dashcard.card, metadata)
+      : null;
+  }, [dashcard.card, metadata]);
+
   return (
     <ErrorBoundary>
       <Box
@@ -343,7 +353,7 @@ function DashCardInner({
             [S.shouldForceHiddenBackground]: shouldForceHiddenBackground,
             [S.isNightMode]: shouldRenderAsNightMode,
             [S.isUsuallySlow]: isSlow === "usually-slow",
-            [S.isEmbeddingSdk]: isEmbeddingSdk,
+            [S.isEmbeddingSdk]: isEmbeddingSdk(),
           },
           className,
         )}
@@ -364,6 +374,7 @@ function DashCardInner({
             onLeftEdge={dashcard.col === 0}
             series={series}
             dashcard={dashcard}
+            question={question}
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}
@@ -383,6 +394,8 @@ function DashCardInner({
         )}
         <DashCardVisualization
           dashcard={dashcard}
+          question={question}
+          metadata={metadata}
           series={series}
           gridSize={gridSize}
           gridItemWidth={gridItemWidth}

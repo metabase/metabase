@@ -235,6 +235,8 @@
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
     (metabase.lib.util.match/match)
     (metabase.lib.util.match/match-one)
+    (metabase.lib.util.match/match-lite)
+    (metabase.lib.util.match/match-lite-recursive)
     (metabase.lib.util.match/replace)
     (metabase.lib.util.match/replace-in)
     (metabase.driver-api.core/match)
@@ -290,7 +292,9 @@
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.driver/database-supports?                 {:message "Use metabase.driver.util/supports? instead of metabase.driver/database-supports?"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
-   next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}}
+   next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
+   toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
+   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
