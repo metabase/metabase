@@ -57,7 +57,7 @@
   [{:keys [key]} :- [:map
                      [:key kebab-cased-keyword]]
    _query-params
-   {:keys [value]} :- [:map [:value :any]]]
+   {:keys [value]}]
   (with-setting-access-control
     (setting/set! key value))
   api/generic-204-no-content)
