@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -41,8 +42,8 @@ const QuestionResponsePage = ({
       updatedAt: Date.now(),
     }));
 
-    // Navigate to the new question
-    window.location.href = `/questions/${newQuestionId}`;
+    // Navigate to the new question using Redux router
+    dispatch(push(`/questions/${newQuestionId}`));
   }, [dispatch]);
 
   // Use the prompt from the Redux store as the title
