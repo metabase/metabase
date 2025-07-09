@@ -4,16 +4,21 @@ import styled from "@emotion/styled";
 export const QuestionResponsePageContainer = styled.div`
   display: flex;
   height: 100vh;
-  gap: 1rem;
-  padding: 1rem;
+  gap: 2rem;
+  padding: 2rem;
+  background-color: var(--mb-color-bg-white);
 `;
 
 export const QuestionResponseContent = styled.div`
   flex: 1;
-  min-width: 0;
+  overflow-y: auto;
 `;
 
 export const QuestionResponseSidebar = styled.div`
-  width: 350px;
+  width: 300px;
   flex-shrink: 0;
+  border-left: 1px solid var(--mb-color-border);
+  padding-left: 1rem;
+  overflow-y: auto;
+  max-height: 100vh;
 `;

@@ -4,6 +4,8 @@ import remarkGfm from "remark-gfm";
 import { t } from "ttag";
 
 import { Icon, Menu } from "metabase/ui";
+import Visualization from "metabase/visualizations/components/Visualization";
+import type { RawSeries } from "metabase-types/api";
 
 import { VisualizationEmbed } from "./VisualizationEmbed";
 
@@ -160,6 +162,89 @@ const createCustomComponents = (
           title={title}
           description={description}
         />
+      );
+    }
+
+        // Check if this paragraph contains a table embed
+    const tableMatch = textContent.match(/\{\{table:([^:]+)(?::([^}]+))?\}\}/);
+    if (tableMatch) {
+      const tableTitle = tableMatch[1].trim();
+      const tableDescription = tableMatch[2] || "";
+
+      // Create sample table data in the format expected by Metabase's Table visualization
+      const tableSeries: RawSeries = [{
+        card: {
+          id: 8,
+          name: tableTitle,
+          display: "table" as const,
+          visualization_settings: {},
+          dataset_query: {
+            type: "native" as const,
+            native: { query: "" },
+            database: 1,
+          },
+        },
+        data: {
+          cols: [
+            { name: "Category", display_name: "Category", base_type: "type/Text", semantic_type: "type/Category" },
+            { name: "Revenue", display_name: "Revenue", base_type: "type/Text", semantic_type: "type/Category" },
+            { name: "Growth", display_name: "Growth", base_type: "type/Text", semantic_type: "type/Category" },
+            { name: "Market Share", display_name: "Market Share", base_type: "type/Text", semantic_type: "type/Category" },
+          ],
+          rows: [
+            ["Cloud Storage", "$450K", "+15%", "32%"],
+            ["Data Analytics", "$380K", "+22%", "27%"],
+            ["Security Suite", "$320K", "+8%", "23%"],
+            ["AI/ML Tools", "$280K", "+35%", "18%"],
+          ],
+          rows_truncated: 0,
+        },
+        started_at: new Date().toISOString(),
+      }];
+
+      return (
+        <div style={{ marginBottom: "1.5rem" }}>
+          {tableTitle && (
+            <h4 style={{ marginBottom: "0.75rem", fontSize: "1.1rem", fontWeight: "600" }}>
+              {tableTitle}
+            </h4>
+          )}
+          {tableDescription && (
+            <p style={{ marginBottom: "1rem", color: "var(--mb-color-text-medium)", fontSize: "0.875rem" }}>
+              {tableDescription}
+            </p>
+          )}
+          <div style={{ height: "300px", width: "100%" }}>
+            <Visualization
+              rawSeries={tableSeries}
+              showTitle={false}
+              isDashboard={false}
+              isQueryBuilder={false}
+              isEditing={false}
+              isMobile={false}
+              isNightMode={false}
+              isSettings={false}
+              isEmbeddingSdk={false}
+              isFullscreen={false}
+              isVisualizerViz={false}
+              showAllLegendItems={false}
+              isRawTable={false}
+              scrollToLastColumn={false}
+              width={400}
+              height={280}
+              onRender={() => {}}
+              onRenderError={() => {}}
+              onActionDismissal={() => {}}
+              onHoverChange={() => {}}
+              onVisualizationClick={() => {}}
+              onUpdateVisualizationSettings={() => {}}
+              visualizationIsClickable={() => false}
+              dispatch={() => {}}
+              fontFamily="Lato, sans-serif"
+              hasDevWatermark={false}
+            />
+          </div>
+        </div>
       );
     }
 

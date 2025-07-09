@@ -66,6 +66,11 @@ Here's how our products are distributed across categories:
 
 {{viz:7:Product Category Breakdown:Distribution of products by category and title}}
 
+### Product Category Breakdown Table
+Below is a detailed breakdown of our product categories with revenue and growth metrics:
+
+{{table:Product Categories:Category breakdown with revenue data}}
+
 ### Top Performing Products
 1. **Cloud Storage Solutions** - $450K revenue
 2. **Data Analytics Platform** - $380K revenue
