@@ -317,6 +317,9 @@
      (partial merge-with +)
      document-reducible)))
 
+(def ^:private external-index-base-url
+  "http://localhost:3003/api/")
+
 (defn reset-index!
   "Ensure we have a blank slate; in case the table schema or stored data format has changed."
   []

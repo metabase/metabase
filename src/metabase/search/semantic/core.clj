@@ -10,6 +10,7 @@
    [metabase.request.core :as request]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.semantic.index :as semantic.index]
    [metabase.settings.models.setting :refer [defsetting]]
@@ -151,13 +152,35 @@
   #{})
 
 (defmethod search.engine/score :search.engine/semantic
-
   [search-ctx result]
   ;; TODO: Implement semantic scoring logic
   {:result (dissoc result :score)
    :score  1})
 
 ;;; ---------------------------------------- Index Management ----------------------------------------
+
+(def ^:private external-index-base-url
+  "http://localhost:3003/api/")
+
+(defn populate-external-index!
+  "Populate the external semantic search index with all searchable documents."
+  []
+  (try
+    (let [documents (into [] (search.ingestion/searchable-documents))
+          response (http/post (str external-index-base-url "populate")
+                              {:headers {"Content-Type" "application/json"}
+                               :body    (json/encode {:documents documents})})
+          status (:status response)]
+      (if (= 200 status)
+        (do
+          (log/info "Successfully populated semantic search index with" (count documents) "documents")
+          {:status :success :document-count (count documents)})
+        (throw (ex-info "External semantic search service populate failed"
+                        {:status status
+                         :response response}))))
+    (catch Exception e
+      (log/error e "Failed to populate semantic search index")
+      (throw e))))
 
 (defmethod search.engine/update! :search.engine/semantic
   [_engine document-reducible]
@@ -172,18 +195,22 @@
   {})
 
 (defmethod search.engine/init! :search.engine/semantic
-  [_engine {:keys [re-populate?] :as opts}]
-  (log/info "Semantic search init called with opts:" opts)
-  (let [index-created (semantic.index/when-index-created)]
-    (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
-      (do
-        (log/debug "Forcing early reindex because existing index is old")
-        (search.engine/reindex! :search.engine/semantic {}))
-
-      (let [created? (semantic.index/ensure-ready! opts)]
-        (when (or created? re-populate?)
-          (log/debug "Populating semantic index")
-          (semantic.index/populate-index! :search/updating))))))
+  [_engine _opts]
+  (try
+    (let [response (http/post (str external-index-base-url "init")
+                              {:headers {"Content-Type" "application/json"}
+                               :body    (json/encode {:force-reset? true})})
+          status (:status response)]
+      (if (= 200 status)
+        (do
+          (log/info "Successfully initialized semantic search service")
+          (populate-external-index!))
+        (throw (ex-info "External semantic search service initialization failed"
+                        {:status status
+                         :response response}))))
+    (catch Exception e
+      (log/error e "Failed to initialize semantic search service")
+      (throw e))))
 
 (comment
   (search.engine/init! :search.engine/semantic
