@@ -2057,3 +2057,25 @@ describe("Issue 58230", () => {
     H.popover().button("Done").should("be.enabled");
   });
 });
+
+describe("Issue 12938", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openProductsTable({ mode: "notebook" });
+  });
+
+  it("should be possible to concat number with string (metabase#12938)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: "concat(floor([Rating]), [Title])",
+      name: "MyCustom",
+      clickDone: true,
+    });
+
+    H.visualize();
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+});
