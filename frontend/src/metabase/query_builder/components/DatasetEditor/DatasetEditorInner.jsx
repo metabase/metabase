@@ -248,7 +248,7 @@ const _DatasetEditorInner = (props) => {
   const [focusedFieldName, setFocusedFieldName] = useState();
 
   useMount(() => {
-    if (Lib.canRun(question.query(), question.type())) {
+    if (question.isSaved() && Lib.canRun(question.query(), question.type())) {
       runQuestionQuery();
     }
   });
