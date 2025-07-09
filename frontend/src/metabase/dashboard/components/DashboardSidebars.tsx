@@ -46,12 +46,7 @@ export function DashboardSidebars({
     case SIDEBAR_NAME.editParameter:
       return <ParameterSidebar />;
     case SIDEBAR_NAME.settings:
-      return (
-        <DashboardSettingsSidebar
-          dashboard={dashboard}
-          onClose={closeSidebar}
-        />
-      );
+      return <DashboardSettingsSidebar />;
     case SIDEBAR_NAME.sharing:
       return (
         <DashboardSubscriptionsSidebar
