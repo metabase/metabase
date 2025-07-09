@@ -17,6 +17,7 @@
    [metabase.session.models.session :as session]
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
+   [metabase.tenants.core :as tenants]
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
@@ -395,7 +396,8 @@
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
   (-> (api/check-404 (fetch-user :id id))
-      (t2/hydrate :user_group_memberships)))
+      (t2/hydrate :user_group_memberships)
+      tenants/attribute-structure))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
