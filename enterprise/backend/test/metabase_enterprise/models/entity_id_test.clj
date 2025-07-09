@@ -79,6 +79,7 @@
     :model/Session
     :model/TaskHistory
     :model/TimelineEvent
+    :model/TransformView
     :model/User
     :model/UserParameterValue
     :model/UserKeyValue
