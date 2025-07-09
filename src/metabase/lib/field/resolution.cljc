@@ -450,13 +450,13 @@
    ;; not from a join.
    ;;
    ;; resolve the field ID if we can.
-   (let [resolved-for-name (when (and (string? id-or-name)
-                                      (not *recursive-column-resolution-by-name*))
+   (let [resolved-for-name (when (string? id-or-name)
                              (or (resolve-column-name query stage-number field-ref)
                                  ;; if we can't resolve the column with this name we probably won't be able to
                                  ;; calculate much metadata -- assume it comes from the previous stage so we at least
                                  ;; have a value for `:lib/source`.
-                                 (log/warnf "Failed to resolve field ref with name %s in stage %d" (pr-str id-or-name) stage-number)
+                                 (when-not *recursive-column-resolution-by-name*
+                                   (log/warnf "Failed to resolve field ref with name %s in stage %d" (pr-str id-or-name) stage-number))
                                  {:lib/source :source/previous-stage}))
          field-id          (if (integer? id-or-name)
                              id-or-name

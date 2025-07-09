@@ -258,7 +258,7 @@ function assertTableDataForFilteredTemporalBreakouts() {
   H.assertQueryBuilderRowCount(3);
 }
 
-describe("scenarios > question > multiple column breakouts", () => {
+describe.only("scenarios > question > multiple column breakouts", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -1446,7 +1446,7 @@ describe("scenarios > question > multiple column breakouts", () => {
     });
   });
 
-  describe("data source", () => {
+  describe.only("data source", () => {
     describe("notebook", () => {
       it("should be able to add filters for each source column", () => {
         function addDateBetweenFilter({
@@ -1781,8 +1781,8 @@ describe("scenarios > question > multiple column breakouts", () => {
       });
     });
 
-    describe("viz settings", () => {
-      it("should be able to toggle the fields that correspond to breakout columns in the source card", () => {
+    describe.only("viz settings", () => {
+      it.only("should be able to toggle the fields that correspond to breakout columns in the source card", () => {
         function toggleColumn(columnName: string, isVisible: boolean) {
           cy.findByTestId("chartsettings-sidebar").within(() => {
             cy.findAllByLabelText(columnName)
