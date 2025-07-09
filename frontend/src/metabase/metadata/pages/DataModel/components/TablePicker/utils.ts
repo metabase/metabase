@@ -11,7 +11,7 @@ import {
 } from "metabase/api";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import type { IconName } from "metabase/ui";
-import type { DatabaseId, SchemaName } from "metabase-types/api";
+import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
 import { getUrl as getUrl_ } from "../../utils";
 
@@ -50,15 +50,11 @@ export function getExpandedDatabaseLeaf(
   isExpanded: (value: TreeNode["value"]) => boolean,
   dbKey: string,
 ): TreeNode | undefined {
-  const database = tree.children.find(
-    (child) => child.type === "database" && child.key === dbKey,
-  );
-  const schema = database?.children.find(
-    (child) => child.type === "schema" && isExpanded(child.value),
-  );
-  const table = schema?.children.find(
-    (child) => child.type === "table" && isExpanded(child.value),
-  );
+  const database = tree.children.find((database) => database.key === dbKey);
+  const schema = database?.children.find((schema) => isExpanded(schema.value));
+  const [table] = (database?.children ?? []).flatMap((schema) => {
+    return schema.children.filter((table) => isExpanded(table.value));
+  });
 
   return table ?? schema ?? database;
 }
@@ -69,15 +65,9 @@ export function getExpandedSchemaLeaf(
   dbKey: string | undefined,
   schemaKey: string,
 ): TreeNode | undefined {
-  const database = tree.children.find(
-    (child) => child.type === "database" && child.key === dbKey,
-  );
-  const schema = database?.children.find(
-    (child) => child.type === "schema" && child.key === schemaKey,
-  );
-  const table = schema?.children.find(
-    (child) => child.type === "table" && isExpanded(child.value),
-  );
+  const database = tree.children.find((database) => database.key === dbKey);
+  const schema = database?.children.find((schema) => schema.key === schemaKey);
+  const table = schema?.children.find((table) => isExpanded(table.value));
 
   return table ?? schema ?? database;
 }
@@ -371,10 +361,34 @@ export function useExpandedState(path: TreePath) {
   );
 
   const toggle = useCallback((key: string, value?: boolean) => {
-    setState((current) => ({
-      ...current,
-      [key]: value ?? !current[key],
-    }));
+    const [_databaseId, _schemaName, tableId] = fromKey(key);
+
+    setState((current) => {
+      const newValue = value ?? !current[key];
+
+      if (tableId != null && newValue) {
+        return {
+          // close all tables
+          ...Object.fromEntries(
+            Object.entries(current).map(([key, value]) => {
+              const [, , parsedTableId] = fromKey(key);
+
+              if (parsedTableId != null) {
+                return [key, false];
+              }
+
+              return [key, value];
+            }),
+          ),
+          [key]: newValue,
+        };
+      }
+
+      return {
+        ...current,
+        [key]: newValue,
+      };
+    });
   }, []);
 
   return {
@@ -531,6 +545,12 @@ function merge(a: TreeNode | undefined, b: TreeNode | undefined): TreeNode {
  */
 function toKey({ databaseId, schemaName, tableId }: TreePath) {
   return JSON.stringify([databaseId, schemaName, tableId]);
+}
+
+function fromKey(
+  key: string,
+): [DatabaseId | null, SchemaName | null, TableId | null] {
+  return JSON.parse(key);
 }
 
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
