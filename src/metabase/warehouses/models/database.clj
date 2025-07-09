@@ -281,6 +281,9 @@
       (driver.impl/registered? driver)
       (assoc :features (driver.u/features driver (t2.realize/realize database)))
 
+      (driver.impl/registered? driver)
+      (assoc :db_routing_info (driver/db-routing-info driver))
+
       (and (driver.impl/registered? driver)
            (map? (:details database))
            (not *normalizing-details*))

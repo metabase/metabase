@@ -1337,3 +1337,11 @@
   :hierarchy #'hierarchy)
 
 (defmethod table-known-to-not-exist? ::driver [_ _] false)
+
+(defmulti db-routing-info
+  "Driver specific info for configuring database routing."
+  {:added "0.55.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod db-routing-info ::driver [_driver] nil)
