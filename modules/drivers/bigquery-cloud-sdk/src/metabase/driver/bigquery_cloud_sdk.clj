@@ -804,4 +804,4 @@
 (defmethod driver/db-routing-info :bigquery-cloud-sdk
   [_driver]
   (deferred-tru "Route queries on this database to a different BigQuery project or Google Cloud
-   account based on the person's user attribute. Each BigQuery desitnation must have identical schemas."))
+   account based on the person''s user attribute. Each BigQuery desitnation must have identical schemas."))
