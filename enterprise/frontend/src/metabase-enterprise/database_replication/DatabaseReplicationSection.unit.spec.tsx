@@ -5,29 +5,29 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { DatabaseDataReplicationSection } from "./DatabaseDataReplicationSection";
+import { DatabaseReplicationSection } from "./DatabaseReplicationSection";
 
 const setup = ({ engine = "postgres", settings = {} } = {}) => {
   const database = createMockDatabase({ id: 1, engine });
 
   const storeInitialState = createMockState({
     settings: createMockSettingsState({
-      "pg-replication-enabled": true,
+      "database-replication-enabled": true,
       ...settings,
     }),
   });
 
   return renderWithProviders(
-    <DatabaseDataReplicationSection database={database} />,
+    <DatabaseReplicationSection database={database} />,
     { storeInitialState },
   );
 };
 
-describe("DatabaseDataReplicationSection", () => {
-  it("should show for both pg-replication-enabled AND postgres engine", () => {
+describe("DatabaseReplicationSection", () => {
+  it("should show for both database-replication-enabled AND postgres engine", () => {
     setup({
       engine: "postgres",
-      settings: { "pg-replication-enabled": true },
+      settings: { "database-replication-enabled": true },
     });
 
     const element = screen.queryByText("Data replication");
@@ -45,7 +45,7 @@ describe("DatabaseDataReplicationSection", () => {
     noShow.forEach(({ enabled, engine }) => {
       const { unmount } = setup({
         engine,
-        settings: { "pg-replication-enabled": enabled },
+        settings: { "database-replication-enabled": enabled },
       });
 
       const element = screen.queryByText("Data replication");

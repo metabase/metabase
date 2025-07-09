@@ -9,32 +9,35 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { PgReplicationButton } from "./PgReplicationButton";
+import { DatabaseReplicationButton } from "./DatabaseReplicationButton";
 
 const setup = ({ databaseId = 1, settings = {} }) => {
   const storeInitialState = createMockState({
     settings: createMockSettingsState({
-      "pg-replication-enabled": true,
-      "pg-replication-connections": {},
+      "database-replication-enabled": true,
+      "database-replication-connections": {},
       ...settings,
     }),
   });
 
-  return renderWithProviders(<PgReplicationButton databaseId={databaseId} />, {
-    storeInitialState,
-  });
+  return renderWithProviders(
+    <DatabaseReplicationButton databaseId={databaseId} />,
+    {
+      storeInitialState,
+    },
+  );
 };
 
-describe("PgReplicationButton", () => {
+describe("DatabaseReplicationButton", () => {
   beforeEach(() => {
     fetchMock.reset();
     // Mock the API endpoints
     fetchMock.post(
-      "express:/api/ee/pg-replication/connection/:databaseId",
+      "express:/api/ee/database-replication/connection/:databaseId",
       200,
     );
     fetchMock.delete(
-      "express:/api/ee/pg-replication/connection/:databaseId",
+      "express:/api/ee/database-replication/connection/:databaseId",
       200,
     );
   });
@@ -43,20 +46,20 @@ describe("PgReplicationButton", () => {
     fetchMock.restore();
   });
 
-  describe("when pg-replication-enabled is false", () => {
+  describe("when database-replication-enabled is false", () => {
     it("should not render button", () => {
-      setup({ settings: { "pg-replication-enabled": false } });
+      setup({ settings: { "database-replication-enabled": false } });
 
       expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
   });
 
-  describe("when pg-replication-enabled is true", () => {
+  describe("when database-replication-enabled is true", () => {
     describe("and database has no replication connection", () => {
       it("should render 'Replicate to Data Warehouse' button", () => {
         setup({
           databaseId: 1,
-          settings: { "pg-replication-connections": {} },
+          settings: { "database-replication-connections": {} },
         });
 
         expect(
@@ -68,7 +71,7 @@ describe("PgReplicationButton", () => {
         const view = userEvent.setup();
         setup({
           databaseId: 1,
-          settings: { "pg-replication-connections": {} },
+          settings: { "database-replication-connections": {} },
         });
 
         await view.click(
@@ -82,7 +85,7 @@ describe("PgReplicationButton", () => {
 
         const requests = await findRequests("POST");
         expect(requests[0].url).toMatch(
-          /\/api\/ee\/pg-replication\/connection\/1$/,
+          /\/api\/ee\/database-replication\/connection\/1$/,
         );
       });
     });
@@ -92,7 +95,7 @@ describe("PgReplicationButton", () => {
         setup({
           databaseId: 1,
           settings: {
-            "pg-replication-connections": {
+            "database-replication-connections": {
               1: { connection_id: "conn_123" },
             },
           },
@@ -110,7 +113,7 @@ describe("PgReplicationButton", () => {
         setup({
           databaseId: 1,
           settings: {
-            "pg-replication-connections": {
+            "database-replication-connections": {
               1: { connection_id: "conn_123" },
             },
           },
@@ -129,7 +132,7 @@ describe("PgReplicationButton", () => {
 
         const requests = await findRequests("DELETE");
         expect(requests[0].url).toMatch(
-          /\/api\/ee\/pg-replication\/connection\/1$/,
+          /\/api\/ee\/database-replication\/connection\/1$/,
         );
       });
     });

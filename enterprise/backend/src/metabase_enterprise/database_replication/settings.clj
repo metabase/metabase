@@ -1,10 +1,10 @@
-(ns metabase-enterprise.pg-replication.settings
+(ns metabase-enterprise.database-replication.settings
   (:require
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(defsetting pg-replication-enabled
+(defsetting database-replication-enabled
   (deferred-tru "When enabled, we show users a button to replicate their database to a data warehouse.")
   :visibility :admin
   :type :boolean
@@ -22,8 +22,8 @@
              ;; Need [[api-key]] to make requests to HM
              (some? (setting/get :api-key)))))
 
-(defsetting pg-replication-connections
-  (deferred-tru "Mapping from database-id to PG replication connection information.")
+(defsetting database-replication-connections
+  (deferred-tru "Mapping from database-id to replication connection information.")
   :visibility :admin
   :doc false
   :export? false

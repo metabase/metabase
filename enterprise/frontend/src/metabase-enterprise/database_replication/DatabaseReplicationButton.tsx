@@ -3,34 +3,34 @@ import { t } from "ttag";
 import ActionButton from "metabase/common/components/ActionButton";
 import { useSetting } from "metabase/common/hooks";
 import {
-  useCreatePgReplicationMutation,
-  useDeletePgReplicationMutation,
-} from "metabase-enterprise/api/pg-replication";
+  useCreateDatabaseReplicationMutation,
+  useDeleteDatabaseReplicationMutation,
+} from "metabase-enterprise/api/database-replication";
 import type { DatabaseId } from "metabase-types/api";
 
-export function PgReplicationButton({
+export function DatabaseReplicationButton({
   databaseId,
 }: {
   databaseId: DatabaseId;
 }) {
-  const showPgReplication = useSetting("pg-replication-enabled");
-  const connections = useSetting("pg-replication-connections");
+  const showDatabaseReplication = useSetting("database-replication-enabled");
+  const connections = useSetting("database-replication-connections");
 
-  const [createPgReplication] = useCreatePgReplicationMutation();
-  const [deletePgReplication] = useDeletePgReplicationMutation();
+  const [createDatabaseReplication] = useCreateDatabaseReplicationMutation();
+  const [deleteDatabaseReplication] = useDeleteDatabaseReplicationMutation();
 
   const hasConnection = connections?.[databaseId] != null;
 
-  if (!showPgReplication) {
+  if (!showDatabaseReplication) {
     return null;
   }
 
   const handleCreateReplication = () => {
-    return createPgReplication(databaseId).unwrap();
+    return createDatabaseReplication(databaseId).unwrap();
   };
 
   const handleDeleteReplication = () => {
-    return deletePgReplication(databaseId).unwrap();
+    return deleteDatabaseReplication(databaseId).unwrap();
   };
 
   // Note: the api call will invalidate the session, which updates the setting, which swaps the buttons.
