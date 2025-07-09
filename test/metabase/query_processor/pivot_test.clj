@@ -29,7 +29,10 @@
                               [0 1 2] 0
                               []      7}]
     (is (= expected
-           (#'qp.pivot/group-bitmask 3 indices)))))
+           (#'qp.pivot/group-bitmask 3 indices))))
+
+  (testing "Should work for more than 31 breakouts"
+    (is (= 4294967295 (#'qp.pivot/group-bitmask 32 [])))))
 
 (deftest ^:parallel powerset-test
   (is (= [[]]
@@ -272,10 +275,10 @@
                                                      (:show-column-totals pivot-options))))
             (is (=? {:status    :completed
                      :row_count 156
-                     :data {:cols [{:ident (get-in query [:query :breakout-idents 0])}
-                                   {:ident (get-in query [:query :breakout-idents 1])}
-                                   {:name  "pivot-grouping"}
-                                   {:ident (get-in query [:query :aggregation-idents 0])}]}}
+                     :data {:cols [{:lib/desired-column-alias "CATEGORY"}
+                                   {:lib/desired-column-alias "CREATED_AT"}
+                                   {:lib/desired-column-alias "pivot-grouping"}
+                                   {:lib/desired-column-alias "count"}]}}
                     (qp.pivot/run-pivot-query (assoc query :info {:visualization-settings viz-settings}))))))))))
 
 (deftest ^:parallel nested-question-pivot-aggregation-names-test
@@ -688,7 +691,6 @@
   (testing "field_refs in the result metadata should preserve :base-type if it was specified for some reason, otherwise FE will break"
     ;; `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` will break if the `field_ref`s don't come
     ;; back in this EXACT shape =(, see [[metabase.query-processor.middleware.annotate/fe-friendly-legacy-ref]]
-
     (let [query (merge (mt/mbql-query orders
                          {:aggregation  [[:count]]
                           :breakout     [[:field

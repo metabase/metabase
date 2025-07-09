@@ -42,7 +42,7 @@ describe("issue 13504", () => {
 
     cy.findByTestId("qb-filters-panel").within(() => {
       cy.findByText("Total is greater than 50").should("be.visible");
-      cy.findByText("Created At is Mar 1–31, 2023").should("be.visible");
+      cy.findByText("Created At: Month is Mar 1–31, 2023").should("be.visible");
     });
   });
 });
@@ -668,7 +668,9 @@ describe("issue 21665", () => {
 
     cy.get("@dashboardLoaded").should("have.callCount", 3);
     cy.findByTestId("dashcard")
-      .findByText("There was a problem displaying this chart.")
+      .findByText(
+        "Some columns are missing, this card might not render correctly.",
+      )
       .should("be.visible");
   });
 });
@@ -1200,7 +1202,7 @@ describe("issue 49160", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("pie chart should have a placeholder", () => {

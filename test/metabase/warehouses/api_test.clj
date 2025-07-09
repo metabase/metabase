@@ -8,7 +8,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
@@ -37,6 +37,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.random :as u.random]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses.api :as api.database]
    [ring.util.codec :as codec]
@@ -409,6 +410,8 @@
 (deftest create-db-succesful-track-snowplow-test
   ;; h2 is no longer supported as a db source
   ;; the rests are disj because it's timeouted when adding it as a DB for some reasons
+  ;;
+  ;; TODO (Cam 6/20/25) -- we should NOT be hardcoding driver names in tests
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
                          :h2 :bigquery-cloud-sdk :snowflake)
     (snowplow-test/with-fake-snowplow-collector
@@ -471,7 +474,7 @@
                         normalize)))))))))
 
 (defn- api-update-database! [expected-status-code db-or-id changes]
-  (with-redefs [h2/*allow-testing-h2-connections* true]
+  (with-redefs [driver.settings/*allow-testing-h2-connections* true]
     (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" (u/the-id db-or-id))
                           changes)))
 
@@ -595,7 +598,7 @@
   (testing "Updating a database's `database-enable-actions` setting shouldn't close existing connections (metabase#27877)"
     (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
       (let [;; 1. create a database and sync
-            database-name      (name (gensym))
+            database-name      (u.random/random-name)
             empty-dbdef        {:database-name database-name}
             _                  (tx/create-db! driver/*driver* empty-dbdef)
             connection-details (tx/dbdef->connection-details driver/*driver* :db empty-dbdef)
@@ -1494,11 +1497,11 @@
      :or   {expected-status-code 200
             user                 :crowberto}}
     request-body]
-   (with-redefs [h2/*allow-testing-h2-connections* true]
+   (with-redefs [driver.settings/*allow-testing-h2-connections* true]
      (mt/user-http-request user :post expected-status-code "database/validate" request-body))))
 
 (defn- test-connection-details! [engine details]
-  (with-redefs [h2/*allow-testing-h2-connections* true]
+  (with-redefs [driver.settings/*allow-testing-h2-connections* true]
     (#'api.database/test-connection-details engine details)))
 
 (deftest validate-database-test
@@ -2197,7 +2200,7 @@
       (letfn [(settings []
                 (t2/select-one-fn :settings :model/Database :id (mt/id)))
               (set-settings! [m]
-                (with-redefs [h2/*allow-testing-h2-connections* true]
+                (with-redefs [driver.settings/*allow-testing-h2-connections* true]
                   (u/prog1 (mt/user-http-request :crowberto :put 200 (format "database/%d" (mt/id))
                                                  {:settings m})
                     (is (=? {:id (mt/id)}

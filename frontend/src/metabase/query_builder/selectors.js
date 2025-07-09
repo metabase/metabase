@@ -4,11 +4,11 @@ import * as d3 from "d3";
 import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
+import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/use-favicon";
 import { getDashboardById } from "metabase/dashboard/selectors";
 import Databases from "metabase/entities/databases";
 import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
 import Timelines from "metabase/entities/timelines";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
 import { parseTimestamp } from "metabase/lib/time";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { isNotNull } from "metabase/lib/types";
@@ -756,11 +756,6 @@ const getNativeEditorSelectedRanges = createSelector(
   (uiControls) => uiControls && uiControls.nativeEditorSelectedRange,
 );
 
-export const getIsNativeQueryFixApplied = createSelector(
-  [getUiControls],
-  (uiControls) => uiControls && uiControls.isNativeQueryFixApplied,
-);
-
 export const getIsTimeseries = createSelector(
   [getVisualizationSettings],
   (settings) => settings && isTimeseries(settings),
@@ -880,6 +875,7 @@ export const getVisibleTimelineEvents = createSelector(
     _.chain(timelines)
       .map((timeline) => timeline.events)
       .flatten()
+      .compact()
       .filter((event) => visibleTimelineEventIds.includes(event.id))
       .sortBy((event) => event.timestamp)
       .value(),

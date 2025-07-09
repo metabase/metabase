@@ -1,13 +1,13 @@
 import { Fragment } from "react";
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import {
-  Box,
-  Button,
-  Flex,
-  Popover,
-  Text,
-  TextInput,
-  Stack,
+Box,
+Button,
+Flex,
+Popover,
+Text,
+TextInput,
+Stack,
 } from "metabase/ui";
 import * as PopoverStories from "./Popover.stories";
 
@@ -23,7 +23,6 @@ Our themed wrapper around [Mantine Popover](https://v6.mantine.dev/core/popover/
 
 ## Examples
 
-<Canvas>
-  <Story of={PopoverStories.Default} />
-  <Story of={PopoverStories.InteractiveContent} />
-</Canvas>
+<Canvas of={PopoverStories.Default} />
+
+<Canvas of={PopoverStories.InteractiveContent} />

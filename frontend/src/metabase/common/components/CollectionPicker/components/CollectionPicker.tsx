@@ -2,7 +2,7 @@ import type { Ref } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useMemo } from "react";
 import { useDeepCompareEffect } from "react-use";
 
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Collection, Dashboard } from "metabase-types/api";

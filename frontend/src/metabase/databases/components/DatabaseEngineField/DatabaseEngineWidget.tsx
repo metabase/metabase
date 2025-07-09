@@ -2,10 +2,10 @@ import type { ChangeEvent, KeyboardEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Input from "metabase/common/components/Input";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Input from "metabase/core/components/Input";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 
 import type { EngineOption } from "../../types";
 import { getEngineLogo } from "../../utils/engine";
@@ -120,6 +120,9 @@ const EngineSearch = ({
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
+      if (event.nativeEvent.isComposing) {
+        return;
+      }
       switch (event.key) {
         case "Enter":
           activeOption && onChange(activeOption.value);

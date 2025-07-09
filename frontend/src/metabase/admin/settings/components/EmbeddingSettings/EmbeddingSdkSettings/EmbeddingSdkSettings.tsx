@@ -1,13 +1,17 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
+import { UpsellDevInstances } from "metabase/admin/upsells";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { getLearnUrl, getUpgradeUrl } from "metabase/selectors/settings";
-import { Alert, Box, Button, Icon, Stack, Text } from "metabase/ui";
+import { Alert, Box, Button, Icon, Text } from "metabase/ui";
 
 import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
@@ -101,15 +105,9 @@ export function EmbeddingSdkSettings() {
     .otherwise(() => null);
 
   return (
-    <Box p="0.5rem 1rem 0" maw="40rem">
-      <Stack gap="2.5rem">
-        <Breadcrumbs
-          size="large"
-          crumbs={[
-            [t`Embedding`, "/admin/settings/embedding-in-other-applications"],
-            [t`Embedded analytics SDK for React`],
-          ]}
-        />
+    <SettingsPageWrapper title={t`Embedding SDK`}>
+      <UpsellDevInstances location="embedding-page" />
+      <SettingsSection>
         <EmbeddingToggle
           label={t`Enable Embedded analytics SDK for React`}
           settingKey="enable-embedding-sdk"
@@ -187,7 +185,7 @@ export function EmbeddingSdkSettings() {
             </ExternalLink>
           )} for more.`}
         </Text>
-      </Stack>
-    </Box>
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 }

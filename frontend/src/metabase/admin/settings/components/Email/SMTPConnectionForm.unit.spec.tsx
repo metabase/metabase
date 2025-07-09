@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  findRequests,
   setupEmailEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { findRequests } from "__support__/utils";
 import type {
   EnterpriseSettingKey,
   SettingDefinition,
@@ -73,7 +73,7 @@ const setup = async ({
   });
   setupPropertiesEndpoints(createMockSettings(settingValues));
 
-  renderWithProviders(<SMTPConnectionForm />, {
+  renderWithProviders(<SMTPConnectionForm onClose={() => {}} />, {
     storeInitialState: createMockState({
       settings: createMockSettingsState({
         ...settingValues,

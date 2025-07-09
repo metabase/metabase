@@ -19,6 +19,7 @@ export type DatabaseFeature =
   | "case-sensitivity-string-filter-options"
   | "convert-timezone"
   | "datetime-diff"
+  | "database-routing"
   | "dynamic-schema"
   | "expression-aggregations"
   | "expression-literals"
@@ -119,7 +120,7 @@ export type GetDatabaseHealthResponse =
   | { status: "error"; message: string; errors: unknown };
 
 export interface ListDatabasesRequest {
-  include?: "table";
+  include?: "tables";
   saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;

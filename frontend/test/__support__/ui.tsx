@@ -3,11 +3,11 @@ import type { Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher, RenderHookOptions } from "@testing-library/react";
 import {
+  renderHook,
   screen,
   render as testingLibraryRender,
   waitFor,
 } from "@testing-library/react";
-import { renderHook } from "@testing-library/react-hooks/dom";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
 import { KBarProvider } from "kbar";
@@ -19,7 +19,7 @@ import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
 import { Api } from "metabase/api";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { makeMainReducers } from "metabase/reducers-main";

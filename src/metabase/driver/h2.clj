@@ -3,28 +3,28 @@
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.app-db.core :as mdb]
-   [metabase.classloader.core :as classloader]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.h2.actions :as h2.actions]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
-   (java.sql Clob ResultSet ResultSetMetaData SQLException)
+   (java.sql
+    Clob
+    ResultSet
+    ResultSetMetaData
+    SQLException)
    (java.time OffsetTime)
    (org.h2.command CommandInterface Parser)
    (org.h2.engine SessionLocal)))
@@ -35,16 +35,6 @@
 (comment h2.actions/keep-me)
 
 (driver/register! :h2, :parent :sql-jdbc)
-
-(def ^:dynamic *allow-testing-h2-connections*
-  "Whether to allow testing new H2 connections. Normally this is disabled, which effectively means you cannot create new
-  H2 databases from the API, but this flag is here to disable that behavior for syncing existing databases, or when
-  needed for tests."
-  ;; you can disable this flag with the env var below, please do not use it under any circumstances, it is only here so
-  ;; existing e2e tests will run without us having to update a million tests. We should get rid of this and rework those
-  ;; e2e tests to use SQLite ASAP.
-  (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
-      false))
 
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
@@ -78,7 +68,8 @@
                               :regex                     true
                               :test/jvm-timezone-setting false
                               :uuid-type                 true
-                              :uploads                   true}]
+                              :uploads                   true
+                              :database-routing          true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -119,7 +110,7 @@
 
 (defmethod driver/can-connect? :h2
   [driver {:keys [db] :as details}]
-  (when-not *allow-testing-h2-connections*
+  (when-not driver.settings/*allow-testing-h2-connections*
     (throw (ex-info (tru "H2 is not supported as a data warehouse") {:status-code 400})))
   (when (string? db)
     (let [connection-str  (cond-> db
@@ -166,13 +157,13 @@
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
     ;; reasons
     (when (= (keyword query-type) :native)
-      (let [{:keys [details]} (lib.metadata/database (qp.store/metadata-provider))
+      (let [{:keys [details]} (driver-api/database (driver-api/metadata-provider))
             user              (db-details->user details)]
         (when (or (str/blank? user)
                   (= user "sa"))        ; "sa" is the default USER
           (throw
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
-                    {:type qp.error-type/db})))))))
+                    {:type driver-api/qp.error-type.db})))))))
 
 (defn- make-h2-parser
   "Returns an H2 Parser object for the given (H2) database ID"
@@ -261,7 +252,7 @@
 
 (defn- check-read-only-statements [{{:keys [query]} :native}]
   (when query
-    (let [query-classification (classify-query (lib.metadata/database (qp.store/metadata-provider))
+    (let [query-classification (classify-query (driver-api/database (driver-api/metadata-provider))
                                                query)]
       (when-not (read-only-statements? query-classification)
         (throw (ex-info "Only SELECT statements are allowed in a native query."
@@ -354,6 +345,11 @@
 (defmethod sql.qp/cast-temporal-byte [:h2 :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:utf8tostring expr]))
+
+(defmethod sql.qp/cast-temporal-byte [:h2 :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
                                [:utf8tostring expr]))
 
 ;; H2 v2 added date_trunc and extract
@@ -530,8 +526,8 @@
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
   {:pre [(map? details)]}
-  (mdb/spec :h2 (cond-> details
-                  (string? (:db details)) (update :db connection-string-set-safe-options))))
+  (driver-api/spec :h2 (cond-> details
+                         (string? (:db details)) (update :db connection-string-set-safe-options))))
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]
@@ -560,10 +556,10 @@
 (defmethod sql-jdbc.execute/read-column-thunk :h2
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (let [classname (some-> (.getColumnClassName rsmeta i)
-                          (Class/forName true (classloader/the-classloader)))]
+                          (Class/forName true (driver-api/the-classloader)))]
     (if (isa? classname Clob)
       (fn []
-        (mdb/clob->str (.getObject rs i)))
+        (driver-api/clob->str (.getObject rs i)))
       (fn []
         (.getObject rs i)))))
 
@@ -626,7 +622,7 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :h2 [_ ^SQLException e]
   ;; ok to hardcode driver name here because this function only supports app DB types
-  (mdb/query-canceled-exception? :h2 e))
+  (driver-api/query-canceled-exception? :h2 e))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :h2
   [_ e]

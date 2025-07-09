@@ -548,7 +548,10 @@ describe("issue 17514", () => {
         .findByText("Showing first 2,000 rows")
         .should("be.visible");
 
-      cy.findByTestId("query-builder-main").findByText("76.83").click();
+      cy.findByTestId("query-builder-main")
+        .findAllByText("76.83")
+        .eq(0)
+        .click();
 
       cy.findByTestId("click-actions-view").findByText("Filter by this value");
     });
@@ -1020,7 +1023,7 @@ describe("issue 19742", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Table Metadata").click();
-    hideTable("Orders");
+    H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Exit admin").click();
 
@@ -1041,10 +1044,6 @@ describe("issue 19742", () => {
 
 function selectFromDropdown(optionName) {
   H.popover().findByText(optionName).click();
-}
-
-function hideTable(tableName) {
-  cy.findByText(tableName).find(".Icon-eye_crossed_out").click({ force: true });
 }
 
 const QUESTION_1 = {

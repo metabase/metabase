@@ -12,7 +12,7 @@
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -357,7 +357,8 @@
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
-(mu/defn- get-database
+(mu/defn get-database
+  "Retrieve database respecting `include-editable-data-model?`, `exclude-uneditable-details?` and `include-mirror-databases?`"
   ([id] (get-database id {}))
   ([id :- ms/PositiveInt
     {:keys [include-editable-data-model?
@@ -1008,7 +1009,7 @@
     (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
                   ;; purposes of creating a new H2 database.
-                  (binding [h2/*allow-testing-h2-connections* true]
+                  (binding [driver.settings/*allow-testing-h2-connections* true]
                     (driver.u/can-connect-with-details? (:engine db) (:details db) :throw-exceptions))
                   nil
                   (catch Throwable e
@@ -1244,7 +1245,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [{:keys [engine details]} (t2/select-one :model/Database :id id)]
     ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
-    (binding [h2/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true]
       (if-let [err-map (test-database-connection engine details)]
         (merge err-map {:status "error"})
         {:status "ok"}))))

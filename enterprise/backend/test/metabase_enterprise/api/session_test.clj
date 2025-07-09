@@ -13,6 +13,7 @@
                               :cache-granular-controls
                               :cache-preemptive
                               :config-text-file
+                              :content-translation
                               :content-verification
                               :dashboard-subscription-filters
                               :disable-password-login
@@ -26,6 +27,7 @@
                               :hosting
                               :llm-autodescription
                               :metabot-v3
+                              :ai-entity-analysis
                               :ai-sql-fixer
                               :ai-sql-generation
                               :no-upsell
@@ -50,11 +52,12 @@
             :cache_granular_controls        true
             :cache_preemptive               true
             :config_text_file               true
+            :content_translation            true
             :content_verification           true
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
-            :development-mode               true
+            :development_mode               true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
@@ -63,6 +66,7 @@
             :hosting                        true
             :llm_autodescription            true
             :metabot_v3                     true
+            :ai_entity_analysis             true
             :ai_sql_fixer                   true
             :ai_sql_generation              true
             :official_collections           true

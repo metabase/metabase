@@ -494,8 +494,6 @@ describe("issue 22518", () => {
 });
 
 describe.skip("issue 22519", () => {
-  const ratingDataModelUrl = `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}/field/${REVIEWS.RATING}/general`;
-
   const questionDetails = {
     query: {
       "source-table": REVIEWS_ID,
@@ -509,7 +507,12 @@ describe.skip("issue 22519", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.visit(ratingDataModelUrl);
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: REVIEWS_ID,
+      fieldId: REVIEWS.REVIEWS,
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Don't cast").click();
@@ -1281,55 +1284,55 @@ describe("issue 53556 - nested question based on native model with remapped valu
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["January 2024", "140", "18"],
-        ["February 2024", "140", "17"],
+        ["January 2024", "140  –  160", "18"],
+        ["February 2024", "140  –  160", "17"],
       ],
     });
 
     cy.log("Sort by Total in ascending order");
-    H.tableHeaderClick("Total");
+    H.tableHeaderClick("Total: 8 bins");
     H.popover()
       .findAllByTestId("click-actions-sort-control-sort.ascending")
       .click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["December 2023", "-60", "1"],
-        ["September 2022", "0", "2"],
+        ["December 2023", "-60  –  -40", "1"],
+        ["September 2022", "0  –  20", "2"],
       ],
     });
 
     cy.log("Sort by Created At in descending order");
-    H.tableHeaderClick("Created At");
+    H.tableHeaderClick("Created At: Month");
     H.popover()
       .findAllByTestId("click-actions-sort-control-sort.descending")
       .click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["April 2026", "20", "27"],
-        ["April 2026", "40", "57"],
+        ["April 2026", "20  –  40", "27"],
+        ["April 2026", "40  –  60", "57"],
       ],
     });
 
     cy.log("Sort by Created At in ascending order");
-    H.tableHeaderClick("Created At");
+    H.tableHeaderClick("Created At: Month");
     H.popover()
       .findAllByTestId("click-actions-sort-control-sort.ascending")
       .click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["April 2022", "40", "1"],
-        ["May 2022", "20", "1"],
+        ["April 2022", "40  –  60", "1"],
+        ["May 2022", "20  –  40", "1"],
       ],
     });
   });
@@ -1688,15 +1691,16 @@ describe("issue 31663", () => {
     H.tableInteractive().findByText("Product ID").click();
     cy.wait("@idFields");
     cy.findByPlaceholderText("Select a target").click();
-    H.popover().within(() => {
-      cy.findByText("Orders Model → ID").should("not.exist");
-      cy.findByText("Products Model → ID").should("not.exist");
+    H.popover().findByText("Orders Model → ID").should("not.exist");
+    H.popover().findByText("Products Model → ID").should("not.exist");
 
-      cy.findByText("Orders → ID").should("be.visible");
-      cy.findByText("People → ID").should("be.visible");
-      cy.findByText("Products → ID").should("be.visible");
-      cy.findByText("Reviews → ID").should("be.visible");
-    });
+    H.popover().findByText("Orders → ID").should("be.visible");
+    H.popover().findByText("People → ID").should("be.visible");
+    H.popover().findByText("Products → ID").should("be.visible");
+    H.popover()
+      .scrollTo("bottom")
+      .findByText("Reviews → ID")
+      .should("be.visible");
   });
 });
 
@@ -2229,7 +2233,6 @@ describe("cumulative count - issue 33330", () => {
     });
     cy.wait("@dataset");
 
-    H.queryBuilderHeader().findByLabelText("Show filters").click();
     cy.findByTestId("filter-pill").should("have.text", "Created At is today");
     cy.findAllByTestId("header-cell")
       .should("contain", "Created At: Month")

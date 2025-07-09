@@ -1,20 +1,22 @@
-import type { EditorState } from "@codemirror/state";
+import { EditorSelection, type EditorState } from "@codemirror/state";
 import { useDisclosure } from "@mantine/hooks";
-import CodeMirror, {
-  EditorSelection,
-  type ReactCodeMirrorRef,
-} from "@uiw/react-codemirror";
+import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  CodeMirror,
+  type CodeMirrorRef,
+} from "metabase/common/components/CodeMirror";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import {
+  type DefinedClauseName,
   type ExpressionError,
   diagnoseAndCompile,
   format,
@@ -36,6 +38,7 @@ import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
+import { hasActiveSnippet, useInitialClause } from "./utils";
 
 type EditorProps = {
   id?: string;
@@ -44,11 +47,13 @@ type EditorProps = {
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
   expressionIndex?: number;
+  availableColumns: Lib.ColumnMetadata[];
   reportTimezone?: string;
   readOnly?: boolean;
   error?: ExpressionError | Error | null;
   hasHeader?: boolean;
   onCloseEditor?: () => void;
+  initialExpressionClause?: DefinedClauseName | null;
 
   onChange: (
     clause: Lib.ExpressionClause | null,
@@ -67,16 +72,17 @@ export function Editor(props: EditorProps) {
     expressionMode = "expression",
     stageIndex,
     query,
-    expressionIndex,
+    availableColumns,
     readOnly,
     error,
     reportTimezone,
     shortcuts,
     hasHeader,
     onCloseEditor,
+    initialExpressionClause,
   } = props;
 
-  const ref = useRef<ReactCodeMirrorRef>(null);
+  const ref = useRef<CodeMirrorRef>(null);
   const metadata = useSelector(getMetadata);
   const [isFunctionBrowserOpen, { toggle: toggleFunctionBrowser }] =
     useDisclosure();
@@ -117,8 +123,7 @@ export function Editor(props: EditorProps) {
     expressionMode,
     query,
     stageIndex,
-    expressionIndex,
-    reportTimezone,
+    availableColumns,
     metadata,
     extensions: [customTooltip],
   });
@@ -145,6 +150,15 @@ export function Editor(props: EditorProps) {
     );
   }, []);
 
+  const applyInitialSnippet = useInitialClause({
+    initialExpressionClause,
+  });
+
+  const [isSnippetActive, setIsSnippetActive] = useState(false);
+  const handleUpdate = useCallback((update: ViewUpdate) => {
+    setIsSnippetActive(hasActiveSnippet(update.state));
+  }, []);
+
   return (
     <>
       <LayoutMain className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
@@ -163,8 +177,17 @@ export function Editor(props: EditorProps) {
           width="100%"
           indentWithTab={false}
           autoFocus
+          onCreateEditor={applyInitialSnippet}
+          onUpdate={handleUpdate}
+          autoCorrect="off"
+          tabIndex={0}
+          onFormat={
+            error === null && isValidated && !isSnippetActive
+              ? formatExpression
+              : undefined
+          }
         />
-        <Errors error={error} />
+        <Errors error={isSnippetActive ? null : error} />
 
         {source.trim() === "" && !isFormatting && error == null && (
           <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
@@ -226,8 +249,9 @@ function useExpression({
   clause,
   expressionMode,
   stageIndex,
-  query,
   expressionIndex,
+  query,
+  availableColumns,
   metadata,
   onChange,
 }: EditorProps & {
@@ -257,13 +281,13 @@ function useExpression({
       format(clause, {
         query,
         stageIndex,
-        expressionIndex,
+        availableColumns,
         printWidth: 55, // 60 is the width of the editor
       })
         .catch(() => "")
         .then(done);
     },
-    [clause, query, stageIndex, expressionIndex],
+    [clause, query, stageIndex, availableColumns],
   );
 
   const handleChange = useCallback<typeof onChange>(
@@ -296,8 +320,9 @@ function useExpression({
         expressionMode,
         query,
         stageIndex,
-        metadata,
         expressionIndex,
+        metadata,
+        availableColumns,
       });
       if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
@@ -310,10 +335,11 @@ function useExpression({
       query,
       stageIndex,
       expressionMode,
+      expressionIndex,
       metadata,
       handleChange,
       debouncedOnChange,
-      expressionIndex,
+      availableColumns,
     ],
   );
 
