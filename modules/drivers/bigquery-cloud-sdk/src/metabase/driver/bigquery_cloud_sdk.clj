@@ -15,7 +15,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -803,5 +803,5 @@
 
 (defmethod driver/db-routing-info :bigquery-cloud-sdk
   [_driver]
-  "Route queries on this database to a different BigQuery project or Google Cloud
-   account based on the person's user attribute. Each BigQuery desitnation must have identical schemas.")
+  (deferred-tru "Route queries on this database to a different BigQuery project or Google Cloud
+   account based on the person's user attribute. Each BigQuery desitnation must have identical schemas."))
