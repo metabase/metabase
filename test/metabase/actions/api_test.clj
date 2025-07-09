@@ -158,69 +158,82 @@
 
 (deftest action-model-db-disagree-test
   (let [cross-db-action (fn cross-db-action [model-id other-db-id]
-                          {:type :query
-                           :model_id model-id       ;; model against one-db
-                           :database_id other-db-id ;; action against test-data
-                           :name "cross db action"
+                          {:type        :query
+                           :model_id    model-id            ;; model against one-db
+                           :database_id other-db-id         ;; action against test-data
+                           :name        "cross db action"
                            :dataset_query
                            {:native
-                            {:query "update people
-                                       set source = {{source}}
-                                     where id = {{id}}",
-                             :template-tags {:source {:id "source",
-                                                      :name "source",
+                            {:query         "update people
+                                             set source = {{source}}
+                                             where id = {{id}}",
+                             :template-tags {:source {:id           "source",
+                                                      :name         "source",
                                                       :display-name "Source",
-                                                      :type "text"},
-                                             :id {:id "id",
-                                                  :name "id",
-                                                  :display-name "Id",
-                                                  :type "number"}}},
+                                                      :type         "text"},
+                                             :id     {:id           "id",
+                                                      :name         "id",
+                                                      :display-name "Id",
+                                                      :type         "number"}}},
                             :database other-db-id
-                            :type "native"}
-                           :parameters [{:id "id"
-                                         :slug "id"
-                                         :type :number
-                                         :target [:variable
-                                                  [:template-tag "id"]]}
-                                        {:id "source"
-                                         :slug "source"
-                                         :type :text
-                                         :required false
-                                         :target [:variable
-                                                  [:template-tag "source"]]}]})]
+                            :type     "native"}
+                           :parameters  [{:id     "id"
+                                          :slug   "id"
+                                          :type   :number
+                                          :target [:variable
+                                                   [:template-tag "id"]]}
+                                         {:id       "source"
+                                          :slug     "source"
+                                          :type     :text
+                                          :required false
+                                          :target   [:variable
+                                                     [:template-tag "source"]]}]})]
     (testing "when action's database and model's database disagree"
       (testing "Both dbs are checked for actions enabled at creation"
-        (mt/dataset time-test-data
+        (mt/dataset test-data
           (let [test-data-id (mt/id)]
-            (mt/dataset test-data
+            (mt/dataset time-test-data
               (mt/with-actions-enabled
                 (is (not= (mt/id) test-data-id))
-                (mt/with-temp [:model/Card model {:type :model
-                                                  :dataset_query
-                                                  (mt/native-query
-                                                    {:query "select * from checkins limit 1"})}]
-                  (let [action (cross-db-action (:id model) test-data-id)
-                        response (mt/user-http-request :rasta :post 400 "action"
-                                                       action)]
+                (mt/with-temp [:model/Card model {:type          :model
+                                                  :dataset_query (mt/native-query {:query "select * from checkins limit 1"})}]
+                  (let [action   (cross-db-action (:id model) test-data-id)
+                        response (mt/user-http-request :rasta :post 400 "action" action)]
                     (testing "Checks both databases for actions enabled"
                       (is (partial= {:message "Actions are not enabled."
-                                     :data {:database-id test-data-id}}
+                                     :data    {:database-id test-data-id}}
                                     response))))))))))
       (testing "When executing, both dbs are checked for enabled"
-        (mt/dataset time-test-data
+        (mt/dataset test-data
           (let [test-data-id (mt/id)]
             (mt/with-actions-test-data-and-actions-enabled
-              (mt/with-actions [{model-id :id} {:type :model
-                                                :dataset_query (mt/mbql-query categories)}
-                                {action-on-other-id :action-id} (cross-db-action model-id
-                                                                                 test-data-id)]
+              (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query categories)}
+                                {action-on-other-id :action-id} (cross-db-action model-id test-data-id)]
                 (is (partial= {:message "Actions are not enabled."
-                               :data {:database-id test-data-id}}
-                              (mt/user-http-request :crowberto
+                               :data    {:database-id test-data-id}}
+                              (mt/user-http-request :rasta
                                                     :post 400
                                                     (format "action/%s/execute" action-on-other-id)
-                                                    ;; Twitter is the current value so effectively a no-op
-                                                    {:parameters {:id 1 :source "Twitter"}})))))))))))
+                                                   ;; Twitter is the current value so effectively a no-op
+                                                    {:parameters {:id 1 :source "Twitter"}})))))))
+        (testing "When actions are enabled on the other database"
+          (mt/dataset test-data
+            (let [test-data-id (mt/id)]
+              (mt/with-actions-enabled
+                (mt/with-temp [:model/Card model {:type          :model
+                                                  :dataset_query (mt/native-query {:query "select * from checkins limit 1"})
+                                                  :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}]
+                  (let [action (cross-db-action (:id model) test-data-id)]
+                    (testing "Action creation should succeed when both databases have actions enabled"
+                      (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :post 403 "action" action)))
+                      (is (=? {:name "cross db action"} (mt/user-http-request :crowberto :post 200 "action" action))))
+                    (testing "Action execution should succeed when both databases have actions enabled"
+                      (let [response (mt/user-http-request :crowberto :post "action" action)
+                            url      (format "action/%s/execute" (:id response))
+                            params   {:parameters {:id 1 :source "Twitter"}}]
+                        (is (=? {:message "You don't have permissions to do that."}
+                                (mt/user-http-request :rasta :post 403 url params)))
+                        (is (= {:rows-affected 1} (mt/user-http-request :crowberto :post 200 url params)))))))))))))))
 
 (deftest unified-action-create-test
   (mt/test-helpers-set-global-values!
