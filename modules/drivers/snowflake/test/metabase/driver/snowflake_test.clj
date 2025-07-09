@@ -1255,25 +1255,24 @@
 
 (deftest private-key-file-updated-test
   (mt/test-driver :snowflake
-    (let [normal-details (:details (mt/db))
-          admin-details (assoc normal-details :role "ACCOUNTADMIN")
+    (let [orig-details (assoc (:details (mt/db)) :role "ACCOUNTADMIN")
           pk-user (mt/random-name)
           pub-key (tx/db-test-env-var-or-throw :snowflake :pk-public-key)
           pub-key-2 (tx/db-test-env-var-or-throw :snowflake :pk-public-key-2)
-          rsa-details (merge (dissoc normal-details :password)
+          rsa-details (merge (dissoc orig-details :password)
                              {:user pk-user
                               :private-key-options "uploaded"
                               :private-key-value (priv-key->base64 :pk-private-key)
                               :use-password false})
           new-rsa-details (assoc rsa-details :private-key-value (priv-key->base64 :pk-private-key-2))]
-      (tx/with-temp-pk-user! driver/*driver* admin-details pk-user pub-key
+      (tx/with-temp-pk-user! driver/*driver* orig-details pk-user pub-key
         (testing "healthcheck after updating db with new private key file should work correctly"
           (mt/with-temp [:model/Database rsa-db {:engine :snowflake :details rsa-details}]
             (try
               ;; assert we can connect to the db with the original rsa details
               (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))))
               ;; update the snowflake rsa user to use the new public key
-              (test.data.snowflake/set-user-public-key normal-details pk-user pub-key-2)
+              (test.data.snowflake/set-user-public-key orig-details pk-user pub-key-2)
               ;; assert we can no longer connect with the original rsa details
               (let [resp (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))]
                 (is (= "error" (:status resp)))
@@ -1284,7 +1283,7 @@
               (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))))
               (finally
                 ;; reset the snowflake rsa user to use the original public key
-                (test.data.snowflake/set-user-public-key normal-details pk-user pub-key)))))
+                (test.data.snowflake/set-user-public-key orig-details pk-user pub-key)))))
         (testing "publishing a db update event when details have changed notifies the db it was updated and clears the secret file memoization"
           (mt/with-temp [:model/Database rsa-db {:engine :snowflake :details rsa-details}]
             (let [get-pk-file-str (fn [db]
