@@ -12,9 +12,9 @@ import { useSelector } from "metabase/lib/redux";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
+import { Dashboard } from "../Dashboard";
 import DashboardS from "../Dashboard/Dashboard.module.css";
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
-import { DashboardParameterList } from "../DashboardParameterList";
 
 import S from "./DashboardParameterPanel.module.css";
 
@@ -61,7 +61,7 @@ export function DashboardParameterPanel() {
             isFixedWidth={dashboard?.width === "fixed"}
             data-testid="fixed-width-filters"
           >
-            <DashboardParameterList parameters={parameters} />
+            <Dashboard.ParametersList />
           </FixedWidthContainer>
         </FullWidthContainer>
       </span>
@@ -86,7 +86,7 @@ export function DashboardParameterPanel() {
           isFixedWidth={dashboard?.width === "fixed"}
           data-testid="fixed-width-filters"
         >
-          <DashboardParameterList parameters={parameters} />
+          <Dashboard.ParametersList />
         </FixedWidthContainer>
       </FullWidthContainer>
     </span>

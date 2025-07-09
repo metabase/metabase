@@ -198,13 +198,18 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
       semantic_type: "type/Currency",
     });
 
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.TOTAL}/formatting`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.TOTAL,
+    });
 
-    cy.findByTestId("admin-layout-content").within(() => {
+    H.DataModel.FieldSection.get().within(() => {
       // Assert that this option now exists
-      cy.findByText("Where to display the unit of currency");
+      cy.findByText("Where to display the unit of currency")
+        .scrollIntoView()
+        .should("be.visible");
       cy.findByText("In every table cell").click();
     });
 
