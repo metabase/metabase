@@ -14,6 +14,7 @@ import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import type { MantineThemeOverride } from "metabase/ui";
+import { themeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -64,11 +65,13 @@ export function renderWithSDKProviders(
   const wrapper = (props: any) => {
     return (
       <MetabaseReduxProvider store={store}>
-        <MetabaseProviderInternal
-          {...props}
-          {...sdkProviderProps}
-          store={store}
-        />
+        <themeProviderContext.Provider value={{ withCssVariables: false }}>
+          <MetabaseProviderInternal
+            {...props}
+            {...sdkProviderProps}
+            store={store}
+          />
+        </themeProviderContext.Provider>
       </MetabaseReduxProvider>
     );
   };
