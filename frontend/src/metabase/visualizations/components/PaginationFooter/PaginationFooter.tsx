@@ -3,9 +3,9 @@ import type { MouseEvent } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { useNumberFormatter } from "metabase/lib/formatting";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Icon } from "metabase/ui";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";

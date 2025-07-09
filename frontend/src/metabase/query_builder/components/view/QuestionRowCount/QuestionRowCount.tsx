@@ -4,12 +4,12 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
-import CS from "metabase/css/core/index.css";
-import Database from "metabase/entities/databases";
 import {
   type NumberFormatter,
   useNumberFormatter,
-} from "metabase/lib/formatting";
+} from "metabase/common/hooks/use-number-formatter";
+import CS from "metabase/css/core/index.css";
+import Database from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import { setLimit } from "metabase/query_builder/actions";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";

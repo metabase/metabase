@@ -1,7 +1,5 @@
 import Humanize from "humanize-plus";
-import { type ReactNode, useCallback } from "react";
-
-import { useSetting } from "metabase/common/hooks";
+import type { ReactNode } from "react";
 
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
@@ -18,7 +16,7 @@ const PRECISION_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
   maximumFractionDigits: 2,
 });
 
-type FormatNumberOptions = {
+export type FormatNumberOptions = {
   _numberFormatter?: Intl.NumberFormat;
   compact?: boolean;
   currency?: string;
@@ -341,38 +339,4 @@ function abs(a: number | bigint) {
 
 function multiply(a: number | bigint, b: number) {
   return typeof a === "bigint" ? a * BigInt(b) : a * b;
-}
-
-export type UseFormatNumberOptions = FormatNumberOptions & {
-  ignoreInstanceSettings?: boolean;
-};
-
-export type NumberFormatter = (
-  number: number | bigint,
-  options?: UseFormatNumberOptions,
-) => string;
-
-/**
- * Returns a function that formats a number using the given options,
- * but additionally respects the Metabase instance formatting settings.
- */
-export function useNumberFormatter(
-  options?: UseFormatNumberOptions,
-): NumberFormatter {
-  const formattingSettings = useSetting("custom-formatting");
-  const numberFormattingSettings = options?.ignoreInstanceSettings
-    ? null
-    : (formattingSettings?.["type/Number"] ?? null);
-
-  const formatter = useCallback(
-    (number: number | bigint, innerOptions: FormatNumberOptions = {}) =>
-      formatNumber(number, {
-        ...numberFormattingSettings,
-        ...options,
-        ...innerOptions,
-      }),
-    [numberFormattingSettings, options],
-  );
-
-  return formatter;
 }

@@ -2,8 +2,8 @@ import type { Table } from "@tanstack/react-table";
 import cx from "classnames";
 import { msgid, ngettext } from "ttag";
 
+import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import { FOOTER_HEIGHT } from "metabase/data-grid/constants";
-import { useNumberFormatter } from "metabase/lib/formatting";
 import { PaginationFooter } from "metabase/visualizations/components/PaginationFooter/PaginationFooter";
 
 import S from "./Footer.module.css";
