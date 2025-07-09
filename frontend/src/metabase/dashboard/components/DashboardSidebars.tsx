@@ -13,9 +13,6 @@ import { ParameterSidebar } from "metabase/parameters/components/ParameterSideba
 import { hasMapping } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import type {
-  DashCardId,
-  DashCardVisualizationSettings,
-  DashboardCard,
   Dashboard as IDashboard,
   ParameterId,
   TemporalUnit,
@@ -34,20 +31,6 @@ import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
 interface DashboardSidebarsProps {
   dashboard: IDashboard;
   removeParameter: (id: ParameterId) => void;
-  clickBehaviorSidebarDashcard: DashboardCard | null;
-  onReplaceAllDashCardVisualizationSettings: (
-    id: DashCardId,
-    settings: DashCardVisualizationSettings | null | undefined,
-  ) => void;
-  onUpdateDashCardVisualizationSettings: (
-    id: DashCardId,
-    settings: DashCardVisualizationSettings | null | undefined,
-  ) => void;
-  onUpdateDashCardColumnSettings: (
-    id: DashCardId,
-    columnKey: string,
-    settings?: Record<string, unknown> | null,
-  ) => void;
   setParameterName: (id: ParameterId, name: string) => void;
   setParameterType: (
     parameterId: ParameterId,
@@ -85,10 +68,6 @@ interface DashboardSidebarsProps {
 export function DashboardSidebars({
   dashboard,
   removeParameter,
-  clickBehaviorSidebarDashcard,
-  onReplaceAllDashCardVisualizationSettings,
-  onUpdateDashCardVisualizationSettings,
-  onUpdateDashCardColumnSettings,
   setParameterName,
   setParameterType,
   setParameterDefaultValue,
@@ -122,27 +101,8 @@ export function DashboardSidebars({
     case SIDEBAR_NAME.action: {
       return <ActionSidebar />;
     }
-    case SIDEBAR_NAME.clickBehavior: {
-      if (!clickBehaviorSidebarDashcard) {
-        return null;
-      }
-
-      return (
-        <ClickBehaviorSidebar
-          dashboard={dashboard}
-          dashcard={clickBehaviorSidebarDashcard}
-          parameters={parameters}
-          onUpdateDashCardVisualizationSettings={
-            onUpdateDashCardVisualizationSettings
-          }
-          onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
-          hideClickBehaviorSidebar={closeSidebar}
-          onReplaceAllDashCardVisualizationSettings={
-            onReplaceAllDashCardVisualizationSettings
-          }
-        />
-      );
-    }
+    case SIDEBAR_NAME.clickBehavior:
+      return <ClickBehaviorSidebar />;
 
     case SIDEBAR_NAME.editParameter: {
       const { id: editingParameterId } = editingParameter || {};
