@@ -13,6 +13,7 @@ import * as Urls from "metabase/lib/urls";
 import { copy } from "metabase/lib/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { openUrl } from "metabase/redux/app";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -217,18 +218,24 @@ export const apiCreateQuestion = (
 
     // Saving a card, locks in the current display as though it had been
     // selected in the UI.
-    const card = createdQuestion.lockDisplay().card();
-    dispatch({ type: API_CREATE_QUESTION, payload: card });
+    const createdCard = createdQuestion.lockDisplay().card();
+    dispatch({ type: API_CREATE_QUESTION, payload: createdCard });
 
-    await dispatch(loadMetadataForCard(card));
+    await dispatch(loadMetadataForCard(createdCard));
+    const createdQuestionWithMetadata = new Question(
+      createdCard,
+      getMetadata(getState()),
+    );
 
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
     if (isModel || isMetric) {
-      dispatch(runQuestionQuery());
+      const composedQuestion =
+        createdQuestionWithMetadata.composeQuestionAdhoc();
+      dispatch(runQuestionQuery({ overrideWithQuestion: composedQuestion }));
     }
 
-    return createdQuestion;
+    return createdQuestionWithMetadata;
   };
 };
 
