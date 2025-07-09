@@ -222,7 +222,8 @@
   ;; few more nice helpers, and remove some of the above tests which are duplicative of the below.
   (mt/test-drivers (mt/normal-drivers-with-feature :database-routing)
     (mt/with-premium-features #{:database-routing}
-      (binding [tx/*use-routing-details* true]
+      (binding [tx/*use-routing-dataset* true
+                tx/*use-routing-details* true]
         (mt/dataset routed-data
           (let [routed (mt/db)]
             (binding [tx/*use-routing-details* false]

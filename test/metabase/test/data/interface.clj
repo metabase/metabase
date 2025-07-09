@@ -1117,3 +1117,7 @@
 (def ^:dynamic *use-routing-details*
   "Used to decide if routing details should be used for a db."
   false)
+
+(def ^:dynamic *use-routing-dataset*
+  "Used to override the name of a dataset for routing tests."
+  false)

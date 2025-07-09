@@ -59,7 +59,7 @@
   time."
   [{:keys [database-name] :as db-def}]
   (cond
-    tx/*use-routing-details*
+    tx/*use-routing-dataset*
     "metabase_routing_dataset"
 
     (str/starts-with? database-name "sha_")
