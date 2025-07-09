@@ -28,6 +28,10 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_transform_view_database_id
               - column:
+                  name: state
+                  type: varchar(16)
+                  remarks: State of the entity the table represents, useful eg. for error handling
+              - column:
                   name: view_schema
                   type: varchar(256)
                   remarks: The schema view is created in
@@ -42,9 +46,24 @@ databaseChangeLog:
                   type: varchar(256)
                   remarks: Display name for presentation purposes, user set
               - column:
+                  name: view_table_id
+                  type: int
+                  remarks: Foreign key to metabase_table, can be NULL as populated after sync
+                  constraints:
+                    nullable: true
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_view_table_id
+              - column:
                   name: dataset_query
                   type: ${text.type}
-                  remarks: Query as stored in report_card
+                  remarks: Query as stored in report_card.dataset_query
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dataset_query_schema
+                  type: int
+                  remarks: Schema version similar to report_card.card_schema
                   constraints:
                     nullable: false
               - column:
@@ -77,8 +96,33 @@ databaseChangeLog:
             tableName: transform_view
             columnNames: database_id, view_schema, view_name
             constraintName: unique_transform_view_database_id_view_schema_view_name
-      rollback: # Handled in rollback of previous changeset
+      rollback: # Handled in rollback of "Add transform_view table" changeset
 
+  - changeSet:
+      id: v57.2025-07-09T15:18:37
+      author: lbrdnk
+      comment: Create index for database_id of transform_view table
+      changes:
+        - createIndex:
+            tableName: transform_view
+            indexName: idx_transform_view_database_id
+            columns:
+              - column:
+                  name: database_id
+      rollback: # Handled in rollback of "Add transform_view table" changeset
+
+  - changeSet:
+      id: v57.2025-07-09T15:20:41
+      author: lbrdnk
+      comment: Create index for view_table_id of transform_view table
+      changes:
+        - createIndex:
+            tableName: transform_view
+            indexName: idx_transform_view_view_table_id
+            columns:
+              - column:
+                  name: view_table_id
+      rollback: # Handled in rollback of "Add transform_view table" changeset
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
