@@ -3,9 +3,10 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getUser } from "metabase/selectors/user";
 import { Button, Card, Skeleton, Textarea } from "metabase/ui";
 
-import { addGenerativeQuestion } from "../redux/generativeQuestionsSlice";
+import { addGenerativeQuestion, createQuestionMetadata, generateSampleContent } from "../redux/generativeQuestionsSlice";
 import { getGenerativeQuestionById } from "../redux/selectors";
 
 import { MarkdownRenderer } from "./MarkdownRenderer";
@@ -30,6 +31,7 @@ const QuestionResponsePage = ({
   const [showContent, setShowContent] = useState(false);
 
   const dispatch = useDispatch();
+  const currentUser = useSelector(getUser);
   const question = useSelector((state) =>
     getGenerativeQuestionById(state, questionId),
   );
@@ -43,6 +45,8 @@ const QuestionResponsePage = ({
           id: newQuestionId,
           prompt: selectedText,
           agentType: "Metabot: Your general purpose analyst",
+          content: generateSampleContent(selectedText),
+          metadata: createQuestionMetadata(currentUser, "Metabot: Your general purpose analyst"),
           createdAt: Date.now(),
           updatedAt: Date.now(),
         }),
@@ -51,58 +55,12 @@ const QuestionResponsePage = ({
       // Navigate to the new question using Redux router
       dispatch(push(`/questions/${newQuestionId}`));
     },
-    [dispatch],
+    [dispatch, currentUser],
   );
 
   // Use the prompt from the Redux store as the title
-  const generatedTitle =
-    question?.prompt || "Sales Performance Analysis for Q4 2023";
-  const generatedContent =
-    question?.content ||
-    `
-
-## Executive Summary
-Based on your data, Q4 2023 showed a **15% increase** in total sales compared to Q3, with the strongest performance coming from the Technology sector.
-
-## Key Findings
-
-### Revenue Growth
-- Total revenue: $2.4M (up from $2.1M in Q3)
-- Average order value: $1,200 (12% increase)
-- Customer acquisition: 450 new customers
-
-### Product Distribution
-Here's how our products are distributed across categories:
-
-{{viz:7:Product Category Breakdown:Distribution of products by category and title}}
-
-### Product Category Breakdown Table
-Below is a detailed breakdown of our product categories with revenue and growth metrics:
-
-{{table:Product Categories:Category breakdown with revenue data}}
-
-### Top Performing Products
-1. **Cloud Storage Solutions** - $450K revenue
-2. **Data Analytics Platform** - $380K revenue
-3. **Security Suite** - $320K revenue
-
-### Regional Performance
-- North America: 45% of total sales
-- Europe: 32% of total sales
-- Asia Pacific: 23% of total sales
-
-## Recommendations
-
-1. **Focus on Technology Sector**: Continue investing in cloud and analytics products
-2. **Expand European Market**: Consider localized marketing campaigns
-3. **Customer Retention**: Implement loyalty programs for existing customers
-
-## Next Steps
-
-- Schedule follow-up analysis for Q1 2024
-- Review pricing strategy for top-performing products
-- Plan expansion into emerging markets
-`;
+  const generatedTitle = question?.prompt || "Sales Performance Analysis for Q4 2023";
+  const generatedContent = question?.content || "No content available";
 
   const handleTextNodeClick = (_nodeId: string, _text: string) => {
     // TODO: Implement follow-up question functionality
@@ -164,6 +122,44 @@ Below is a detailed breakdown of our product categories with revenue and growth 
                 width="60%"
                 style={{ marginBottom: "1rem" }}
               />
+            )}
+            {/* Authors Info */}
+            {question?.metadata?.authors && question.metadata.authors.length > 0 && (
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: "0.75rem",
+                  backgroundColor: "var(--mb-color-bg-light)",
+                  borderRadius: "0.375rem",
+                  fontSize: "0.875rem",
+                }}
+              >
+                <div style={{ marginBottom: "0.5rem", fontWeight: "500", color: "var(--mb-color-text-medium)" }}>
+                  {t`Authors`}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                  {question.metadata.authors.map((author) => (
+                    <span
+                      key={author.id}
+                      style={{
+                        padding: "0.25rem 0.5rem",
+                        backgroundColor: author.type === "user" ? "var(--mb-color-brand)" : "var(--mb-color-bg-medium)",
+                        color: author.type === "user" ? "white" : "var(--mb-color-text-dark)",
+                        borderRadius: "0.25rem",
+                        fontSize: "0.75rem",
+                        fontWeight: "500",
+                      }}
+                    >
+                      {author.name}
+                      {author.role && (
+                        <span style={{ marginLeft: "0.25rem", opacity: 0.8 }}>
+                          ({author.role})
+                        </span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
             <div
               style={{

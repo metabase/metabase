@@ -2,14 +2,17 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getUser } from "metabase/selectors/user";
+import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
 import { Button, Card, Loader, Menu, Switch, Textarea } from "metabase/ui";
 
-import { addGenerativeQuestion } from "../redux/generativeQuestionsSlice";
+import { addGenerativeQuestion, createQuestionMetadata, generateSampleContent } from "../redux/generativeQuestionsSlice";
 import { getGenerativeQuestionsList } from "../redux/selectors";
 
 import {
   QuestionsPageContainer,
   QuestionsPageContent,
+  QuestionsPageIllustration,
   QuestionsPageSidebar,
 } from "./QuestionsPage.styled";
 
@@ -25,6 +28,8 @@ const QuestionsPage = ({ router }: QuestionsPageProps): JSX.Element => {
   const [background, setBackground] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState("Metabot: Your general purpose analyst");
   const dispatch = useDispatch();
+  const currentUser = useSelector(getUser);
+  const landingPageIllustration = useSelector(getLandingPageIllustration);
   const generativeQuestions = useSelector(getGenerativeQuestionsList);
 
 
@@ -45,6 +50,8 @@ const QuestionsPage = ({ router }: QuestionsPageProps): JSX.Element => {
       id: questionId,
       prompt: promptText.trim(),
       agentType: selectedAgent,
+      content: generateSampleContent(promptText.trim()),
+      metadata: createQuestionMetadata(currentUser, selectedAgent),
       createdAt: Date.now(),
       updatedAt: Date.now(),
       loading: background,
@@ -69,6 +76,13 @@ const QuestionsPage = ({ router }: QuestionsPageProps): JSX.Element => {
         transition: "opacity 0.3s ease-out, transform 0.3s ease-out",
       }}
     >
+      {landingPageIllustration && (
+        <QuestionsPageIllustration
+          data-testid="questions-page-illustration"
+          backgroundImageSrc={landingPageIllustration.src}
+          isDefault={landingPageIllustration.isDefault}
+        />
+      )}
       <QuestionsPageContent>
         <h1>{t`Questions`}</h1>
         <p>{t`Ask me anything about your data. I'll help you create questions and find insights.`}</p>
