@@ -135,3 +135,109 @@
                      {:name "RATING", :display-name "Rating", :selected? false}
                      {:name "CREATED_AT", :display-name "Created At", :selected? false}]
                     marked))))))))
+
+;; other than producing the metadata for the card, there is no  query processing here
+(deftest ^:parallel multiple-breakouts-of-a-field-selection-test
+  (testing "Should be able to distinguish columns from multiple breakouts of a field from a card (#47734)"
+    (mt/with-driver :h2
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            card-data (-> {:dataset_query (mt/mbql-query orders
+                                            {:aggregation [[:count]]
+                                             :breakout    [!month.created_at !year.created_at]})
+                           :name "Q1"}
+                          mt/card-with-metadata)]
+        (mt/with-temp [:model/Card card card-data]
+          (let [card-meta (lib.metadata/card mp (:id card))
+                count-col (m/find-first (comp #{"count"} :name)
+                                        (lib/returned-columns (lib/query mp card-meta)))
+                query     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                              (lib/join (lib/join-clause card-meta
+                                                         [(lib/= (lib.metadata/field mp (mt/id :orders :id))
+                                                                 count-col)])))
+                stage     (lib.util/query-stage query -1)
+                visible   (lib.metadata.calculation/visible-columns query -1 stage)
+                returned  (lib.metadata.calculation/returned-columns query -1 stage)
+                marked    (lib.equality/mark-selected-columns query -1 visible returned)]
+            (is (=? [{:name "ID", :display-name "ID"}
+                     {:name "USER_ID", :display-name "User ID"}
+                     {:name "PRODUCT_ID", :display-name "Product ID"}
+                     {:name "SUBTOTAL", :display-name "Subtotal"}
+                     {:name "TAX", :display-name "Tax"}
+                     {:name "TOTAL", :display-name "Total"}
+                     {:name "DISCOUNT", :display-name "Discount"}
+                     {:name "CREATED_AT", :display-name "Created At"}
+                     {:name "QUANTITY", :display-name "Quantity"}
+                     {:name "CREATED_AT", :display-name "Q1 → Created At: Month"}
+                     {:name "CREATED_AT_2", :display-name "Q1 → Created At: Year"}
+                     {:name "count", :display-name "Q1 → Count"}
+                     {:name "ID", :display-name "ID"}
+                     {:name "ADDRESS", :display-name "Address"}
+                     {:name "EMAIL", :display-name "Email"}
+                     {:name "PASSWORD", :display-name "Password"}
+                     {:name "NAME", :display-name "Name"}
+                     {:name "CITY", :display-name "City"}
+                     {:name "LONGITUDE", :display-name "Longitude"}
+                     {:name "STATE", :display-name "State"}
+                     {:name "SOURCE", :display-name "Source"}
+                     {:name "BIRTH_DATE", :display-name "Birth Date"}
+                     {:name "ZIP", :display-name "Zip"}
+                     {:name "LATITUDE", :display-name "Latitude"}
+                     {:name "CREATED_AT", :display-name "Created At"}
+                     {:name "ID", :display-name "ID"}
+                     {:name "EAN", :display-name "Ean"}
+                     {:name "TITLE", :display-name "Title"}
+                     {:name "CATEGORY", :display-name "Category"}
+                     {:name "VENDOR", :display-name "Vendor"}
+                     {:name "PRICE", :display-name "Price"}
+                     {:name "RATING", :display-name "Rating"}
+                     {:name "CREATED_AT", :display-name "Created At"}]
+                    visible))
+            (is (=? [{:name "ID", :display-name "ID"}
+                     {:name "USER_ID", :display-name "User ID"}
+                     {:name "PRODUCT_ID", :display-name "Product ID"}
+                     {:name "SUBTOTAL", :display-name "Subtotal"}
+                     {:name "TAX", :display-name "Tax"}
+                     {:name "TOTAL", :display-name "Total"}
+                     {:name "DISCOUNT", :display-name "Discount"}
+                     {:name "CREATED_AT", :display-name "Created At"}
+                     {:name "QUANTITY", :display-name "Quantity"}
+                     {:name "CREATED_AT_2", :display-name "Q1 → Created At: Month"}
+                     {:name "CREATED_AT_2_2", :display-name "Q1 → Created At: Year"}
+                     {:name "count", :display-name "Q1 → Count"}]
+                    returned))
+            (is (=? [{:name "ID", :display-name "ID", :selected? true}
+                     {:name "USER_ID", :display-name "User ID", :selected? true}
+                     {:name "PRODUCT_ID", :display-name "Product ID", :selected? true}
+                     {:name "SUBTOTAL", :display-name "Subtotal", :selected? true}
+                     {:name "TAX", :display-name "Tax", :selected? true}
+                     {:name "TOTAL", :display-name "Total", :selected? true}
+                     {:name "DISCOUNT", :display-name "Discount", :selected? true}
+                     {:name "CREATED_AT", :display-name "Created At", :selected? true}
+                     {:name "QUANTITY", :display-name "Quantity", :selected? true}
+                     ;; the following two Q1 → Created At: ... fields should have :selected? true
+                     {:name "CREATED_AT", :display-name "Q1 → Created At: Month", :selected? false}
+                     {:name "CREATED_AT_2", :display-name "Q1 → Created At: Year", :selected? false}
+                     {:name "count", :display-name "Q1 → Count", :selected? true}
+                     ;; these are implicitly joinable fields, :selected? false is right
+                     {:name "ID", :display-name "ID", :selected? false}
+                     {:name "ADDRESS", :display-name "Address", :selected? false}
+                     {:name "EMAIL", :display-name "Email", :selected? false}
+                     {:name "PASSWORD", :display-name "Password", :selected? false}
+                     {:name "NAME", :display-name "Name", :selected? false}
+                     {:name "CITY", :display-name "City", :selected? false}
+                     {:name "LONGITUDE", :display-name "Longitude", :selected? false}
+                     {:name "STATE", :display-name "State", :selected? false}
+                     {:name "SOURCE", :display-name "Source", :selected? false}
+                     {:name "BIRTH_DATE", :display-name "Birth Date", :selected? false}
+                     {:name "ZIP", :display-name "Zip", :selected? false}
+                     {:name "LATITUDE", :display-name "Latitude", :selected? false}
+                     {:name "CREATED_AT", :display-name "Created At", :selected? false}
+                     {:name "ID", :display-name "ID", :selected? false}
+                     {:name "EAN", :display-name "Ean", :selected? false}
+                     {:name "TITLE", :display-name "Title", :selected? false}
+                     {:name "CATEGORY", :display-name "Category", :selected? false}
+                     {:name "VENDOR", :display-name "Vendor", :selected? false}
+                     {:name "PRICE", :display-name "Price", :selected? false}
+                     {:name "RATING", :display-name "Rating", :selected? false}
+                     {:name "CREATED_AT", :display-name "Created At", :selected? false}]
+                    marked))))))))
