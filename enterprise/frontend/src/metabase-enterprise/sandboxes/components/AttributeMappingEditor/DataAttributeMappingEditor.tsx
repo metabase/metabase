@@ -29,6 +29,7 @@ import type {
 } from "metabase-types/api";
 
 type ValueType = string | DimensionRef | null;
+
 export interface MappingEditorProps {
   value: DataAttributeMap<ValueType>;
   onChange: (val: DataAttributeMap<ValueType>) => void;

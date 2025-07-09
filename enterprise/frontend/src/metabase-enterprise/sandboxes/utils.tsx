@@ -79,9 +79,9 @@ export const replaceEntryKey = <T,>(
 };
 
 export const buildEntries = <T,>(
-  mapping: MappingType<T>,
+  mapping?: MappingType<T>,
 ): MappingEditorEntry<T>[] =>
-  Object.entries(mapping).map(([key, value]) => ({ key, value }));
+  Object.entries(mapping ?? {}).map(([key, value]) => ({ key, value }));
 
 export const buildMapping = <T,>(
   entries: MappingEditorEntry<T>[],

@@ -59,7 +59,7 @@ const hasError = (entries: MappingEditorEntry[]) => {
 };
 
 export const buildStructuredEntries = (
-  attributes: StructuredUserAttributes,
+  attributes?: StructuredUserAttributes,
 ): MappingEditorEntry[] => {
   return Object.entries(attributes ?? {})
     .map(([key, { value, source, frozen, original }]) => ({
@@ -86,14 +86,14 @@ export const buildStructuredEntries = (
 };
 
 export interface MappingEditorProps {
-  simpleAttributes: UserAttributeMap;
+  simpleAttributes?: UserAttributeMap;
   structuredAttributes?: StructuredUserAttributes;
   onChange: (val: UserAttributeMap) => void;
   onError?: (val: boolean) => void;
 }
 
 export const LoginAttributeMappingEditor = ({
-  simpleAttributes,
+  simpleAttributes = {},
   structuredAttributes,
   onChange,
   onError,
