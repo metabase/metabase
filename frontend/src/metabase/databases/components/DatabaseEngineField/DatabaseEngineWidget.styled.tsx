@@ -34,15 +34,20 @@ export const EngineCardRoot = styled.button<EngineCardRootProps>`
   justify-content: center;
   height: 5.375rem;
   padding: 1rem;
-  border: 1px solid var(--mb-color-bg-medium);
+  border: 2px solid var(--mb-color-background);
   border-radius: 0.375rem;
   background-color: var(--mb-color-bg-white);
   cursor: pointer;
-  outline: ${(props) => props.isActive && `2px solid var(--mb-color-focus)`};
+  outline: ${(props) => props.isActive && `2px solid var(--mb-color-brand)`};
 
   &:hover {
     border-color: var(--mb-color-brand);
     background-color: ${() => lighten("brand", 0.6)};
+  }
+
+  &:focus {
+    border: 2px solid var(--mb-color-background);
+    outline: 2px solid var(--mb-color-brand);
   }
 `;
 
