@@ -3,7 +3,7 @@
  */
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { useMemo } from "react";
+import { type PropsWithChildren, useMemo } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
@@ -12,6 +12,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Tooltip, useMantineTheme } from "metabase/ui";
+import type { VisualizationGridSize } from "metabase/visualizations/types";
 
 import {
   ScalarDescriptionContainer,
@@ -24,18 +25,27 @@ import {
 } from "./ScalarValue.styled";
 import { findSize, getMaxFontSize } from "./utils";
 
-export const ScalarWrapper = ({ children }) => (
+export const ScalarWrapper = ({ children }: PropsWithChildren) => (
   <ScalarRoot>{children}</ScalarRoot>
 );
 
-const ScalarValue = ({
+interface ScalarValueProps {
+  value: string;
+  height: number;
+  width: number;
+  gridSize?: VisualizationGridSize;
+  totalNumGridCols?: number;
+  fontFamily: string;
+}
+
+export const ScalarValue = ({
   value,
   height,
   width,
   gridSize,
   totalNumGridCols,
   fontFamily,
-}) => {
+}: ScalarValueProps) => {
   const {
     other: { number: numberTheme },
   } = useMantineTheme();
@@ -78,7 +88,19 @@ const ScalarValue = ({
   );
 };
 
-export const ScalarTitle = ({ lines = 2, title, description, onClick }) => (
+interface ScalarTitleProps {
+  lines?: number;
+  title: string;
+  description: string;
+  onClick?: () => void;
+}
+
+export const ScalarTitle = ({
+  lines = 2,
+  title,
+  description,
+  onClick,
+}: ScalarTitleProps) => (
   <ScalarTitleContainer data-testid="scalar-title" lines={lines}>
     {/*
       This is a hacky spacer so that the h3 is centered correctly.
@@ -113,5 +135,3 @@ export const ScalarTitle = ({ lines = 2, title, description, onClick }) => (
     )}
   </ScalarTitleContainer>
 );
-
-export default ScalarValue;

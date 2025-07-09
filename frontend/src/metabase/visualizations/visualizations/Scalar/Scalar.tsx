@@ -7,10 +7,11 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import ScalarValue, {
+import {
   ScalarTitle,
+  ScalarValue,
   ScalarWrapper,
-} from "metabase/visualizations/components/ScalarValue";
+} from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -252,7 +253,7 @@ export class Scalar extends Component<
               gridSize={gridSize}
               height={getValueHeight(height, { isDashboard, showSmallTitle })}
               totalNumGridCols={totalNumGridCols}
-              value={displayValue}
+              value={displayValue as string}
               width={getValueWidth(width)}
             />
           </span>

@@ -14,9 +14,10 @@ import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Box, Flex, Text, Title, Tooltip, useMantineTheme } from "metabase/ui";
-import ScalarValue, {
+import {
+  ScalarValue,
   ScalarWrapper,
-} from "metabase/visualizations/components/ScalarValue";
+} from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { ScalarTitleContainer } from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
@@ -138,7 +139,7 @@ export function SmartScalar({
             gridSize={gridSize}
             height={getValueHeight(innerHeight)}
             totalNumGridCols={totalNumGridCols}
-            value={displayValue}
+            value={displayValue as string}
             width={getValueWidth(width)}
           />
         </span>
