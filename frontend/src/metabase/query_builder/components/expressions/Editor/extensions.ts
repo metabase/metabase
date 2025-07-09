@@ -14,9 +14,8 @@ type Options = {
   expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex: number | undefined;
+  availableColumns: Lib.ColumnMetadata[];
   metadata: Metadata;
-  reportTimezone?: string;
   extensions?: Extension[];
 };
 
@@ -38,8 +37,7 @@ export function useExtensions(options: Options): Extension[] {
     expressionMode,
     query,
     stageIndex,
-    expressionIndex,
-    reportTimezone,
+    availableColumns,
     metadata,
     extensions: extra = [],
   } = options;
@@ -50,16 +48,15 @@ export function useExtensions(options: Options): Extension[] {
         expressionMode,
         query,
         stageIndex,
-        expressionIndex,
+        availableColumns,
         metadata,
       }),
       expander(),
       suggestions({
         query,
         stageIndex,
-        reportTimezone,
         expressionMode,
-        expressionIndex,
+        availableColumns,
         metadata,
       }),
       tooltips({
@@ -75,9 +72,8 @@ export function useExtensions(options: Options): Extension[] {
     expressionMode,
     query,
     stageIndex,
-    expressionIndex,
+    availableColumns,
     metadata,
-    reportTimezone,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);

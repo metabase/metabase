@@ -8,9 +8,8 @@ export type SuggestOptions = {
   query: Lib.Query;
   stageIndex: number;
   metadata: Metadata;
-  reportTimezone?: string;
   expressionMode: Lib.ExpressionMode;
-  expressionIndex: number | undefined;
+  availableColumns: Lib.ColumnMetadata[];
 };
 
 import { suggestAggregations } from "./aggregations";

@@ -7,6 +7,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
+  setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
@@ -30,6 +31,11 @@ const setup = async ({ enabled }: { enabled: boolean }) => {
 
   fetchMock.get("path:/api/util/random_token", {
     token: "fake-token",
+  });
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-dev_instances",
+    value: true,
   });
 
   renderWithProviders(<StaticEmbeddingSettings />);

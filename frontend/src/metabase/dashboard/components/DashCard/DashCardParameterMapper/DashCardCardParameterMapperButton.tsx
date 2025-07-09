@@ -25,6 +25,7 @@ interface DashCardCardParameterMapperButtonProps {
   selectedMappingOption: ParameterMappingOption | undefined;
   target: ParameterTarget | null | undefined;
   mappingOptions: ParameterMappingOption[];
+  compact?: boolean;
 }
 
 export const DashCardCardParameterMapperButton = ({
@@ -37,6 +38,7 @@ export const DashCardCardParameterMapperButton = ({
   selectedMappingOption,
   target,
   mappingOptions,
+  compact,
 }: DashCardCardParameterMapperButtonProps) => {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
@@ -160,7 +162,7 @@ export const DashCardCardParameterMapperButton = ({
           justify="space-between"
           mx="xs"
           px="sm"
-          py="xs"
+          py={compact ? undefined : "xs"}
           aria-label={buttonTooltip ?? undefined}
           aria-haspopup="listbox"
           aria-expanded={isDropdownVisible}
@@ -171,6 +173,9 @@ export const DashCardCardParameterMapperButton = ({
             setIsDropdownVisible(true);
           }}
           onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing) {
+              return;
+            }
             if (e.key === "Enter") {
               setIsDropdownVisible(true);
             }
