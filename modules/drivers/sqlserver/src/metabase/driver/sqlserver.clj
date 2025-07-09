@@ -54,7 +54,10 @@
                               :index-info                             false
                               :now                                    true
                               :regex                                  false
-                              :test/jvm-timezone-setting              false}]
+                              :test/jvm-timezone-setting              false
+                              :describe-default-expr                  true
+                              :describe-is-nullable                   true
+                              :describe-is-generated                  true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :connection-impersonation-requires-role]
@@ -924,7 +927,7 @@
 (defmethod driver.sql/default-database-role :sqlserver
   [_driver database]
   ;; Use a "role" (sqlserver user) if it exists. Do not fall back to the user
-  ;; field automatically, as it represents the login user which may not be a 
+  ;; field automatically, as it represents the login user which may not be a
   ;; valid database user for impersonation (see issue #60665).
   (let [{:keys [role]} (:details database)]
     role))
