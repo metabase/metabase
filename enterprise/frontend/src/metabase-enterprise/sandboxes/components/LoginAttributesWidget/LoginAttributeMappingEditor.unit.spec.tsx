@@ -286,4 +286,10 @@ describe("LoginAttributeMappingEditor", () => {
       });
     });
   });
+
+  it("can handle not having any attributes", async () => {
+    setup();
+
+    expect(await screen.findByTestId("mapping-editor")).toBeInTheDocument();
+  });
 });
