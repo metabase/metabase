@@ -30,7 +30,16 @@ const BETWEEN_TEST_CASES = [
   [-10, 10.5],
 ];
 
-const EXPECTED_OPERATORS = ["Is", "Is not", "Inside", "Range"];
+const EXPECTED_OPERATORS = [
+  "Is",
+  "Is not",
+  "Inside",
+  "Range",
+  "Greater than",
+  "Greater than or equal to",
+  "Less than",
+  "Less than or equal to",
+];
 
 type SetupOpts = {
   query?: Lib.Query;
@@ -133,16 +142,16 @@ describe("CoordinateFilterPicker", () => {
         async (_title, value) => {
           const { getNextFilterParts, getNextFilterColumnNames } = setup();
 
-          await setOperator("Range");
+          await setOperator("Less than");
           await userEvent.type(
-            screen.getByPlaceholderText("End of range"),
+            screen.getByPlaceholderText("Enter a number"),
             String(value),
           );
           await userEvent.click(screen.getByText("Add filter"));
 
           const filterParts = getNextFilterParts();
           expect(filterParts).toMatchObject({
-            operator: "<=",
+            operator: "<",
             values: [value],
             column: expect.anything(),
           });
@@ -154,15 +163,15 @@ describe("CoordinateFilterPicker", () => {
         const { onChange, getNextFilterParts, getNextFilterColumnNames } =
           setup();
 
-        await setOperator("Range");
-        const input = screen.getByPlaceholderText("Start of range");
+        await setOperator("Greater than");
+        const input = screen.getByPlaceholderText("Enter a number");
         await userEvent.type(input, "{enter}");
         expect(onChange).not.toHaveBeenCalled();
 
         await userEvent.type(input, "15{enter}");
         expect(onChange).toHaveBeenCalled();
         expect(getNextFilterParts()).toMatchObject({
-          operator: ">=",
+          operator: ">",
           column: expect.anything(),
           values: [15],
         });
@@ -368,8 +377,8 @@ describe("CoordinateFilterPicker", () => {
       'should add a filter via the "$label" button when the add button is enabled',
       async ({ label, run }) => {
         const { getNextFilterChangeOpts } = setup({ withAddButton: true });
-        await setOperator("Range");
-        const input = screen.getByPlaceholderText("Start of range");
+        await setOperator("Greater than");
+        const input = screen.getByPlaceholderText("Enter a number");
         await userEvent.type(input, "15");
         await userEvent.click(screen.getByRole("button", { name: label }));
         expect(getNextFilterChangeOpts()).toMatchObject({ run });
@@ -383,13 +392,13 @@ describe("CoordinateFilterPicker", () => {
         "should render a filter with a %s value",
         (_title, value) => {
           const opts = createQueryWithCoordinateFilter({
-            operator: "=",
+            operator: ">",
             values: [value],
           });
           setup(opts);
 
           expect(screen.getByText("User → Latitude")).toBeInTheDocument();
-          expect(screen.getByText("Is")).toBeInTheDocument();
+          expect(screen.getByText("Greater than")).toBeInTheDocument();
           expect(screen.getByDisplayValue(String(value))).toBeInTheDocument();
           expect(screen.getByText("Update filter")).toBeEnabled();
         },
@@ -399,22 +408,22 @@ describe("CoordinateFilterPicker", () => {
         "should update a filter with a %s value",
         async (_title, value) => {
           const opts = createQueryWithCoordinateFilter({
-            operator: "=",
+            operator: ">",
             values: [100],
           });
           const { getNextFilterParts, getNextFilterColumnNames } = setup(opts);
 
-          await setOperator("Range");
-          await userEvent.clear(screen.getByPlaceholderText("Start of range"));
+          await setOperator("Greater than");
+          await userEvent.clear(screen.getByPlaceholderText("Enter a number"));
           await userEvent.type(
-            screen.getByPlaceholderText("Start of range"),
+            screen.getByPlaceholderText("Enter a number"),
             `${value}`,
           );
           await userEvent.click(screen.getByText("Update filter"));
 
           const filterParts = getNextFilterParts();
           expect(filterParts).toMatchObject({
-            operator: ">=",
+            operator: ">",
             values: [value],
             column: expect.anything(),
           });
@@ -558,9 +567,9 @@ describe("CoordinateFilterPicker", () => {
     });
 
     it("should list operators", async () => {
-      setup(createQueryWithCoordinateFilter({ operator: "=" }));
+      setup(createQueryWithCoordinateFilter({ operator: "<" }));
 
-      await userEvent.click(screen.getByText("Is"));
+      await userEvent.click(screen.getByText("Less than"));
       const menu = await screen.findByRole("menu");
       const menuItems = within(menu).getAllByRole("menuitem");
 
@@ -572,17 +581,17 @@ describe("CoordinateFilterPicker", () => {
 
     it("should change an operator", async () => {
       const opts = createQueryWithCoordinateFilter({
-        operator: "=",
+        operator: "<",
         values: [11],
       });
       const { getNextFilterParts, getNextFilterColumnNames } = setup(opts);
 
-      await setOperator("Range");
+      await setOperator("Greater than");
       await userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
-        operator: ">=",
+        operator: ">",
         values: [11],
         column: expect.anything(),
       });
@@ -612,10 +621,16 @@ describe("CoordinateFilterPicker", () => {
       expect(screen.getByDisplayValue("200")).toBeInTheDocument();
       expect(updateButton).toBeEnabled();
 
+      await setOperator("Greater than");
+
+      expect(screen.getByDisplayValue("-100")).toBeInTheDocument();
+      expect(screen.queryByDisplayValue("200")).not.toBeInTheDocument();
+      expect(updateButton).toBeEnabled();
+
       await setOperator("Inside");
 
       expect(screen.getByDisplayValue("-100")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("200")).toBeInTheDocument();
+      expect(screen.queryByDisplayValue("200")).not.toBeInTheDocument();
       expect(updateButton).toBeDisabled();
     });
 
