@@ -156,7 +156,7 @@ export function visitQuestionAdhoc(
  *
  * @param {Object} config
  * @param {number} [config.database=SAMPLE_DB_ID]
- * @param {number} config.table
+ * @param {number | TableId} config.table
  * @param {("notebook"|undefined)} [config.mode]
  * @param {number} [config.limit]
  * @param {function} [config.callback]
