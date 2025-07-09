@@ -27,7 +27,6 @@ const QuestionResponsePage = ({
   // Placeholder content for now
   const generatedTitle = "Sales Performance Analysis for Q4 2023";
   const generatedContent = `
-# Sales Performance Analysis for Q4 2023
 
 ## Executive Summary
 Based on your data, Q4 2023 showed a **15% increase** in total sales compared to Q3, with the strongest performance coming from the Technology sector.
@@ -73,10 +72,10 @@ Here's how our products are distributed across categories:
     // For now, we can use the nodeId and text to generate follow-up questions
   };
 
-  const handleSelectionChange = (selectedNodes: string[]) => {
+  const handleSelectionChange = (_selectedNodes: string[]) => {
     // TODO: Handle selection changes
     // This could update the UI to show selection count, enable/disable actions, etc.
-    console.log("Selected nodes:", selectedNodes);
+    // console.log("Selected nodes:", selectedNodes);
   };
 
   useEffect(() => {

@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { t } from "ttag";
+
+import { Icon, Menu } from "metabase/ui";
 
 import { VisualizationEmbed } from "./VisualizationEmbed";
 
@@ -26,15 +29,19 @@ const generateNodeId = (text: string, index: number): string => {
   return `text-node-${sanitized}-${index}`;
 };
 
-// Create a text node wrapper component
+// Create a text node wrapper component with context menu
 const TextNodeWrapper: React.FC<{
   nodeId: string;
   text: string;
   onTextNodeClick?: (nodeId: string, text: string) => void;
   isSelected: boolean;
   onSelectionChange: (nodeId: string, isSelected: boolean, isMultiSelect: boolean) => void;
+  onStartNewQuestion: () => void;
+  onAskForReview: (reviewerId: string) => void;
   children: React.ReactNode;
-}> = ({ nodeId, text, onTextNodeClick, isSelected, onSelectionChange, children }) => {
+}> = ({ nodeId, text, onTextNodeClick, isSelected, onSelectionChange, onStartNewQuestion, onAskForReview, children }) => {
+  const [menuOpened, setMenuOpened] = useState(false);
+
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -47,50 +54,13 @@ const TextNodeWrapper: React.FC<{
     }
   }, [nodeId, text, onTextNodeClick, isSelected, onSelectionChange]);
 
-  return (
-    <span
-      id={nodeId}
-      data-node-id={nodeId}
-      data-text-content={text}
-      onClick={handleClick}
-      style={{
-        cursor: "pointer",
-        transition: "background-color 0.2s ease",
-        backgroundColor: isSelected
-          ? "var(--mb-color-brand)"
-          : "transparent",
-        color: isSelected
-          ? "white"
-          : "inherit",
-        padding: isSelected ? "2px 4px" : "2px 4px",
-        borderRadius: "3px",
-        margin: "0 1px",
-      }}
-      onMouseEnter={(e) => {
-        if (!isSelected) {
-          e.currentTarget.style.backgroundColor = "var(--mb-color-bg-light)";
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!isSelected) {
-          e.currentTarget.style.backgroundColor = "transparent";
-        }
-      }}
-    >
-      {children}
-    </span>
-  );
-};
-
-// Context menu component
-const ContextMenu: React.FC<{
-  x: number;
-  y: number;
-  onClose: () => void;
-  onStartNewQuestion: () => void;
-  onAskForReview: (reviewerId: string) => void;
-}> = ({ x, y, onClose, onStartNewQuestion, onAskForReview }) => {
-  const [showReviewSubmenu, setShowReviewSubmenu] = useState(false);
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isSelected) {
+      setMenuOpened(true);
+    }
+  }, [isSelected]);
 
   // Sample reviewers - in a real app this would come from props or API
   const reviewers = [
@@ -100,109 +70,84 @@ const ContextMenu: React.FC<{
     { id: "user4", name: "Lisa Wong", role: "Data Scientist" },
   ];
 
-  useEffect(() => {
-    const handleClickOutside = () => onClose();
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, [onClose]);
-
   return (
-    <div
-      style={{
-        position: "fixed",
-        left: x,
-        top: y,
-        backgroundColor: "white",
-        border: "1px solid var(--mb-color-border)",
-        borderRadius: "6px",
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-        zIndex: 1000,
-        minWidth: "200px",
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div
-        style={{
-          padding: "8px 12px",
-          cursor: "pointer",
-          borderBottom: "1px solid var(--mb-color-border)",
-        }}
-        onMouseEnter={() => setShowReviewSubmenu(true)}
-        onMouseLeave={() => setShowReviewSubmenu(false)}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span>Ask for review</span>
-          <span>▶</span>
-        </div>
+    <Menu opened={menuOpened} onClose={() => setMenuOpened(false)} position="bottom-start" shadow="md">
+      <Menu.Target>
+        <span
+          id={nodeId}
+          data-node-id={nodeId}
+          data-text-content={text}
+          onClick={handleClick}
+          onContextMenu={handleContextMenu}
+          style={{
+            cursor: "pointer",
+            transition: "background-color 0.2s ease",
+            backgroundColor: isSelected
+              ? "var(--mb-color-brand)"
+              : "transparent",
+            color: isSelected
+              ? "white"
+              : "inherit",
+            padding: isSelected ? "2px 4px" : "2px 4px",
+            borderRadius: "3px",
+            margin: "0 1px",
+          }}
+          onMouseEnter={(e) => {
+            if (!isSelected) {
+              e.currentTarget.style.backgroundColor = "var(--mb-color-bg-light)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isSelected) {
+              e.currentTarget.style.backgroundColor = "transparent";
+            }
+          }}
+        >
+          {children}
+        </span>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item
+          leftSection={<Icon name="insight" />}
+          onClick={() => {
+            onStartNewQuestion();
+            setMenuOpened(false);
+          }}
+        >
+          {t`Start new question from here`}
+        </Menu.Item>
 
-        {showReviewSubmenu && (
-          <div
-            style={{
-              position: "absolute",
-              left: "100%",
-              top: 0,
-              backgroundColor: "white",
-              border: "1px solid var(--mb-color-border)",
-              borderRadius: "6px",
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-              minWidth: "180px",
+        <Menu.Label>{t`Ask for review`}</Menu.Label>
+        {reviewers.map((reviewer) => (
+          <Menu.Item
+            key={reviewer.id}
+            leftSection={<Icon name="person" />}
+            onClick={() => {
+              onAskForReview(reviewer.id);
+              setMenuOpened(false);
             }}
           >
-            {reviewers.map((reviewer) => (
-              <div
-                key={reviewer.id}
-                style={{
-                  padding: "8px 12px",
-                  cursor: "pointer",
-                  borderBottom: "1px solid var(--mb-color-border)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "var(--mb-color-bg-light)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                }}
-                onClick={() => {
-                  onAskForReview(reviewer.id);
-                  onClose();
-                }}
-              >
-                <div style={{ fontWeight: "500" }}>{reviewer.name}</div>
-                <div style={{ fontSize: "0.8em", color: "var(--mb-color-text-medium)" }}>
-                  {reviewer.role}
-                </div>
+            <div>
+              <div style={{ fontWeight: "500" }}>{reviewer.name}</div>
+              <div style={{ fontSize: "0.8em", color: "var(--mb-color-text-medium)" }}>
+                {reviewer.role}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div
-        style={{
-          padding: "8px 12px",
-          cursor: "pointer",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = "var(--mb-color-bg-light)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = "transparent";
-        }}
-        onClick={() => {
-          onStartNewQuestion();
-          onClose();
-        }}
-      >
-        Start new question from here
-      </div>
-    </div>
+            </div>
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
   );
 };
+
+
 
 // Custom components for react-markdown
 const createCustomComponents = (
   selectedNodes: Set<string>,
   onSelectionChange: (nodeId: string, isSelected: boolean, isMultiSelect: boolean) => void,
+  onStartNewQuestion: () => void,
+  onAskForReview: (reviewerId: string) => void,
   onTextNodeClick?: (nodeId: string, text: string) => void,
 ) => ({
   // Custom paragraph component that adds IDs to text nodes and handles viz embeds
@@ -540,7 +485,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     }
   }, []);
 
-  const handleSelectionChange = useCallback((nodeId: string, isSelected: boolean, isMultiSelect: boolean) => {
+  const handleSelectionChange = useCallback((nodeId: string, isSelected: boolean, _isMultiSelect: boolean) => {
     setSelectedNodes(prev => {
       const newSet = new Set(prev);
       if (isSelected) {
@@ -560,23 +505,23 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   }, [selectedNodes]);
 
   const handleStartNewQuestion = useCallback(() => {
-    const selectedTexts = Array.from(selectedNodes).map(nodeId => {
+    const _selectedTexts = Array.from(selectedNodes).map(nodeId => {
       const element = document.getElementById(nodeId);
       return element?.getAttribute("data-text-content") || "";
     }).join(" ");
 
-    console.log("Starting new question with:", selectedTexts);
     // TODO: Implement navigation to questions page with selected text
+    // console.log("Starting new question with:", selectedTexts);
   }, [selectedNodes]);
 
-  const handleAskForReview = useCallback((reviewerId: string) => {
-    const selectedTexts = Array.from(selectedNodes).map(nodeId => {
+  const handleAskForReview = useCallback((_reviewerId: string) => {
+    const _selectedTexts = Array.from(selectedNodes).map(nodeId => {
       const element = document.getElementById(nodeId);
       return element?.getAttribute("data-text-content") || "";
     }).join(" ");
 
-    console.log("Asking for review from", reviewerId, "with:", selectedTexts);
     // TODO: Implement review request functionality
+    // console.log("Asking for review from", reviewerId, "with:", selectedTexts);
   }, [selectedNodes]);
 
   const customComponents = useMemo(
