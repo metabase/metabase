@@ -338,7 +338,7 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-07-03T16:02:00
       author: qnkhuat
-      comment: Add index on data_app_definition.app_id
+      comment: Index for getting the latest definition
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
@@ -346,14 +346,17 @@ databaseChangeLog:
         - not:
             - indexExists:
                 tableName: data_app_definition
-                indexName: idx_data_app_definition_app_id
+                indexName: idx_data_app_definition_app_id_revision_numer
       changes:
         - createIndex:
             tableName: data_app_definition
-            indexName: idx_data_app_definition_app_id
+            indexName: idx_data_app_definition_app_id_revision_numer
             columns:
               - column:
                   name: app_id
+              - column:
+                  name: revision_number
+                  descending: true
       rollback: #no op, will be deleted with the table
 
   - changeSet:
@@ -380,7 +383,7 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-07-03T16:02:20
       author: qnkhuat
-      comment: Add unique constraint on data_app_definition (revision_number, app_id)
+      comment: Add unique constraint on data_app_definition (app_id, revision_number)
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
@@ -388,16 +391,16 @@ databaseChangeLog:
         - not:
             - uniqueConstraintExists:
                 tableName: data_app_definition
-                constraintName: idx_data_app_definition_revision_number_app_id
+                constraintName: uniq_idx_data_app_definition_app_id_revision_number
       changes:
         - addUniqueConstraint:
             tableName: data_app_definition
-            constraintName: idx_data_app_definition_revision_number_app_id
-            columnNames: revision_number, app_id
+            constraintName: uniq_idx_data_app_definition_app_id_revision_number
+            columnNames: app_id, revision_number
       rollback:
         - dropUniqueConstraint:
             tableName: data_app_definition
-            constraintName: idx_data_app_definition_revision_number_app_id
+            constraintName: uniq_idx_data_app_definition_app_id_revision_number
 
   - changeSet:
       id: v56.2025-07-03T16:03:00
@@ -451,17 +454,24 @@ databaseChangeLog:
                     foreignKeyName: fk_data_app_release_creator_id
                     deleteCascade: true
               - column:
-                  remarks: The timestamp of when the app was released
-                  name: released_at
+                  name: retracted
+                  remarks: Whether this version is retracted
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the app was first released
+                  name: created_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
-                  name: retracted
-                  remarks: Whether this version is retracted
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
+                  remarks: The timestamp of when the release was last updated
+                  name: updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
       rollback:
@@ -488,45 +498,26 @@ databaseChangeLog:
       rollback: #no op, will be deleted with the table
 
   - changeSet:
-      id: v56.2025-07-03T16:05:00
-      author: qnkhuat
-      comment: index data_app_release.app_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: data_app_release
-                indexName: idx_data_app_release_app_id
-      changes:
-        - createIndex:
-            tableName: data_app_release
-            indexName: idx_data_app_release_app_id
-            columns:
-              - column:
-                  name: app_id
-      rollback: #no op, will be deleted with the table
-
-  - changeSet:
       id: v56.2025-07-03T16:07:00
       author: qnkhuat
-      comment: index data_app_release.app_id, retracted, and released_at desc
+      comment: Index to get the latest active release
       preConditions:
         - onFail: MARK_RAN
         - not:
             - indexExists:
                 tableName: data_app_release
-                indexName: idx_data_app_release_app_id_retracted_id
+                indexName: idx_data_app_release_app_id_retracted_created_at
       changes:
         - createIndex:
             tableName: data_app_release
-            indexName: idx_data_app_release_app_id_retracted_released_at
+            indexName: idx_data_app_release_app_id_retracted_created_at
             columns:
               - column:
                   name: app_id
               - column:
                   name: retracted
               - column:
-                  name: released_at
+                  name: created_at
                   descending: true
       rollback: #no op, will be deleted with the table
 

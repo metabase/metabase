@@ -35,7 +35,8 @@ data_app_release
 ├── id (PK)
 ├── app_id (FK -> data_app.id, cascade delete)
 ├── app_definition_id (FK -> data_app_definition.id, cascade delete)
-├── published_at
+├── created_at
+├── updated_at
 └── retracted (boolean, default false)
 ```
 
