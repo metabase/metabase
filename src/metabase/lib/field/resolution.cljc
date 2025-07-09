@@ -89,6 +89,10 @@
 ;;; in [[lib.equality/find-matching-column]], but until I get around to that I'm keeping the old stuff around as a
 ;;; fallback using the `fallback-match-` prefix.
 
+(def ^:private ^:dynamic *recursive-column-resolution-by-name*
+  "Whether we're in a recursive call to [[resolve-column-name]] or not. Prevent infinite recursion (#32063)"
+  false)
+
 (mu/defn- fallback-match-field-name :- [:maybe ::lib.metadata.calculation/column-metadata-with-source]
   "Find the column with `column-name` in a sequence of `column-metadatas`."
   [column-name :- ::lib.schema.common/non-blank-string
@@ -152,10 +156,6 @@
               (fallback-match metadata-providerable field-ref cols))
           (cond-> *debug* (update ::debug.origin (fn [origin]
                                                    (list (list 'resolve-column-in-metadata field-ref :=> origin)))))))
-
-(def ^:private ^:dynamic *recursive-column-resolution-by-name*
-  "Whether we're in a recursive call to [[resolve-column-name]] or not. Prevent infinite recursion (#32063)"
-  false)
 
 (mu/defn- resolve-column-name :- [:maybe ::lib.metadata.calculation/column-metadata-with-source]
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
