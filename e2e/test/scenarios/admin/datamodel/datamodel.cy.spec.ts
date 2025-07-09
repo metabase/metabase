@@ -330,8 +330,16 @@ describe("scenarios > admin > datamodel", () => {
 
           cy.log("open another schema");
           TablePicker.getSchema("Wild").click();
+          cy.log(
+            "should not update URL to point to schema as we have a table open",
+          );
+          cy.location("pathname").should((pathname) => {
+            return pathname.startsWith(
+              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+            );
+          });
           cy.location("pathname").should(
-            "eq",
+            "not.eq",
             `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild`,
           );
           TablePicker.getDatabases().should("have.length", 2);
@@ -360,6 +368,13 @@ describe("scenarios > admin > datamodel", () => {
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 0);
           TablePicker.getTables().should("have.length", 0);
+
+          cy.log("we still have a table opened");
+          cy.location("pathname").should((pathname) => {
+            return pathname.startsWith(
+              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+            );
+          });
         });
 
         it("should allow to search for tables", () => {
@@ -392,7 +407,7 @@ describe("scenarios > admin > datamodel", () => {
           TablePicker.getTables().should("have.length", 2);
         });
 
-        it.only("should restore previously selected table when expanding the tree (SEM-435)", () => {
+        it("should restore previously selected table when expanding the tree (SEM-435)", () => {
           H.DataModel.visit();
 
           TablePicker.getDatabase("Writable Postgres12").click();
