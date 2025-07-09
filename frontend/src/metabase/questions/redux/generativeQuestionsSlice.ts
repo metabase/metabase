@@ -141,7 +141,9 @@ Our cloud storage solutions continue to dominate:
       reviewers: [
         { id: "user2", name: "Sarah Johnson", email: "sarah.johnson@company.com", status: "verified", requestedAt: 1703000000000, reviewedAt: 1703086400000, comment: "Excellent analysis of Q4 trends. The cloud storage focus aligns with our strategy." },
         { id: "user3", name: "Mike Chen", email: "mike.chen@company.com", status: "commented", requestedAt: 1703000000000, reviewedAt: 1703072800000, comment: "Good insights, but we should include more data on customer churn rates." },
-        { id: "user4", name: "Lisa Wong", email: "lisa.wong@company.com", status: "requested", requestedAt: 1703000000000 }
+        { id: "user4", name: "Lisa Wong", email: "lisa.wong@company.com", status: "requested", requestedAt: 1703000000000 },
+        { id: "user11", name: "Maria Garcia", email: "maria.garcia@company.com", status: "requested", requestedAt: 1703000000000, nodeId: "text-node-q4-2023-showed-strong-performance-with--0" },
+        { id: "user12", name: "Chris Lee", email: "chris.lee@company.com", status: "requested", requestedAt: 1703000000000, nodeId: "text-node-our-cloud-storage-solutions-continue-to-dominate-0" }
       ],
       tags: ["sales", "Q4", "performance", "cloud"],
       category: "business-intelligence",
@@ -200,7 +202,9 @@ Our overall retention rate stands at **87%**, with significant variations across
       ],
       reviewers: [
         { id: "user5", name: "David Brown", email: "david.brown@company.com", status: "problematic", requestedAt: 1702500000000, reviewedAt: 1702586400000, comment: "The analysis misses key demographic factors. Need to include age and industry breakdowns." },
-        { id: "user2", name: "Sarah Johnson", email: "sarah.johnson@company.com", status: "verified", requestedAt: 1702500000000, reviewedAt: 1702572800000, comment: "Solid analysis with actionable insights for customer success team." }
+        { id: "user2", name: "Sarah Johnson", email: "sarah.johnson@company.com", status: "verified", requestedAt: 1702500000000, reviewedAt: 1702572800000, comment: "Solid analysis with actionable insights for customer success team." },
+        { id: "user13", name: "Jennifer Kim", email: "jennifer.kim@company.com", status: "requested", requestedAt: 1702500000000, nodeId: "text-node-our-overall-retention-rate-stands-at-87-0" },
+        { id: "user14", name: "Robert Taylor", email: "robert.taylor@company.com", status: "commented", requestedAt: 1702500000000, reviewedAt: 1702572800000, comment: "The enterprise segment analysis needs more detail.", nodeId: "text-node-enterprise-customers-0" }
       ],
       tags: ["retention", "customers", "risk", "churn"],
       category: "customer-analytics",
@@ -257,7 +261,9 @@ Our Q4 marketing campaigns generated **$850K in attributed revenue** across 5 ch
         { id: "user3", name: "Mike Chen", email: "mike.chen@company.com", status: "commented", requestedAt: 1702000000000, reviewedAt: 1702086400000, comment: "Good analysis, but we should include attribution modeling details." },
         { id: "user4", name: "Lisa Wong", email: "lisa.wong@company.com", status: "requested", requestedAt: 1702000000000 },
         { id: "user5", name: "David Brown", email: "david.brown@company.com", status: "requested", requestedAt: 1702000000000 },
-        { id: "user6", name: "Alex Thompson", email: "alex.thompson@company.com", status: "requested", requestedAt: 1702000000000, nodeId: "node_1" }
+        { id: "user6", name: "Alex Thompson", email: "alex.thompson@company.com", status: "requested", requestedAt: 1702000000000, nodeId: "text-node-our-q4-marketing-campaigns-generated-850k-0" },
+        { id: "user7", name: "Emma Davis", email: "emma.davis@company.com", status: "requested", requestedAt: 1702000000000, nodeId: "text-node-linkedin-shows-highest-conversion-rate-32-0" },
+        { id: "user8", name: "James Wilson", email: "james.wilson@company.com", status: "commented", requestedAt: 1702000000000, reviewedAt: 1702086400000, comment: "The ROI analysis looks solid.", nodeId: "text-node-linkedin-320k-38-of-total-0" }
       ],
       tags: ["marketing", "campaigns", "ROI", "channels"],
       category: "marketing-analytics",
@@ -311,7 +317,9 @@ Our platform shows clear seasonal patterns with **peak usage during Q4** (holida
       ],
       reviewers: [
         { id: "user2", name: "Sarah Johnson", email: "sarah.johnson@company.com", status: "verified", requestedAt: 1701500000000, reviewedAt: 1701586400000, comment: "Excellent analysis for infrastructure planning. The seasonal patterns are clearly identified." },
-        { id: "user3", name: "Mike Chen", email: "mike.chen@company.com", status: "verified", requestedAt: 1701500000000, reviewedAt: 1701572800000, comment: "Great insights for capacity planning. The cost implications are particularly valuable." }
+        { id: "user3", name: "Mike Chen", email: "mike.chen@company.com", status: "verified", requestedAt: 1701500000000, reviewedAt: 1701572800000, comment: "Great insights for capacity planning. The cost implications are particularly valuable." },
+        { id: "user9", name: "Rachel Green", email: "rachel.green@company.com", status: "requested", requestedAt: 1701500000000, nodeId: "text-node-our-platform-shows-clear-seasonal-patterns-0" },
+        { id: "user10", name: "Tom Anderson", email: "tom.anderson@company.com", status: "commented", requestedAt: 1701500000000, reviewedAt: 1701572800000, comment: "The Q4 usage spike analysis needs more detail.", nodeId: "text-node-q4-peak-season-0" }
       ],
       tags: ["seasonal", "capacity", "infrastructure", "usage"],
       category: "technical-analytics",
@@ -412,6 +420,14 @@ export const getAvailableReviewers = (): Array<{ id: string; name: string; email
   { id: "user4", name: "Lisa Wong", email: "lisa.wong@company.com", avatar: "https://i.pravatar.cc/150?img=4" },
   { id: "user5", name: "David Brown", email: "david.brown@company.com", avatar: "https://i.pravatar.cc/150?img=5" },
   { id: "user6", name: "Alex Thompson", email: "alex.thompson@company.com", avatar: "https://i.pravatar.cc/150?img=6" },
+  { id: "user7", name: "Emma Davis", email: "emma.davis@company.com", avatar: "https://i.pravatar.cc/150?img=7" },
+  { id: "user8", name: "James Wilson", email: "james.wilson@company.com", avatar: "https://i.pravatar.cc/150?img=8" },
+  { id: "user9", name: "Rachel Green", email: "rachel.green@company.com", avatar: "https://i.pravatar.cc/150?img=9" },
+  { id: "user10", name: "Tom Anderson", email: "tom.anderson@company.com", avatar: "https://i.pravatar.cc/150?img=10" },
+  { id: "user11", name: "Maria Garcia", email: "maria.garcia@company.com", avatar: "https://i.pravatar.cc/150?img=11" },
+  { id: "user12", name: "Chris Lee", email: "chris.lee@company.com", avatar: "https://i.pravatar.cc/150?img=12" },
+  { id: "user13", name: "Jennifer Kim", email: "jennifer.kim@company.com", avatar: "https://i.pravatar.cc/150?img=13" },
+  { id: "user14", name: "Robert Taylor", email: "robert.taylor@company.com", avatar: "https://i.pravatar.cc/150?img=14" },
 ];
 
 export const generativeQuestionsReducer = generativeQuestionsSlice.reducer;

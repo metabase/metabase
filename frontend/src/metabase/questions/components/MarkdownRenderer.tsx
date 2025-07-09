@@ -334,7 +334,7 @@ const createCustomComponents = (
 
     const processedChildren = textNodes.map((child, index) => {
       if (typeof child === "string") {
-        const nodeId = generateNodeId(child, index);
+                const nodeId = generateNodeId(child, index);
         const isSelected = selectedNodes.has(nodeId);
 
         return (
