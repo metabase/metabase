@@ -75,7 +75,7 @@
           result (tenants/attribute-structure user)]
       (is (= {:id 1
               :email "test@example.com"
-              :login_attributes {}
+              :login_attributes nil
               :structured_attributes {}}
              result)))))
 
@@ -98,7 +98,6 @@
           result (tenants/attribute-structure user)]
       (is (= {:id 1
               :email "test@example.com"
-              :login_attributes {}
               :structured_attributes {}}
              result)))))
 

@@ -42,5 +42,4 @@
                                              (when tenant
                                                {"@tenant.slug" (:slug tenant)}))]
     (assoc user
-           :structured_attributes combined-attributes
-           :login_attributes (update-vals combined-attributes :value))))
+           :structured_attributes combined-attributes)))
