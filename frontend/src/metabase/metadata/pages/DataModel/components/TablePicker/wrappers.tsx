@@ -18,23 +18,27 @@ export function RouterTablePicker(props: TreePath) {
     (value: TreePath, options?: ChangeOptions) => {
       setValue(value);
 
-      if (options?.isAutomatic) {
-        // prevent auto-navigation from table-picker when Segments tab is open
-        if (!isSegments) {
-          dispatch(replace(getUrl(value)));
+      const canUpdateUrl = value.tableId != null || props.tableId == null;
+
+      if (canUpdateUrl) {
+        if (options?.isAutomatic) {
+          // prevent auto-navigation from table-picker when Segments tab is open
+          if (!isSegments) {
+            dispatch(replace(getUrl(value)));
+          }
+        } else {
+          dispatch(push(getUrl(value)));
         }
-      } else {
-        dispatch(push(getUrl(value)));
       }
     },
-    [dispatch, isSegments],
+    [dispatch, isSegments, props],
   );
 
   useEffect(() => {
     setValue(props);
   }, [props]);
 
-  return <TablePicker value={value} onChange={onChange} />;
+  return <TablePicker path={value} onChange={onChange} />;
 }
 
 export function UncontrolledTablePicker({
@@ -52,5 +56,5 @@ export function UncontrolledTablePicker({
     },
     [onChange],
   );
-  return <TablePicker value={value} onChange={handleChange} />;
+  return <TablePicker path={value} onChange={handleChange} />;
 }
