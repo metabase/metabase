@@ -12,6 +12,21 @@ import * as Lib from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
+/**
+ * @typedef {import("metabase-types/api").Series} Series
+ * @typedef {import("metabase-types/api").VisualizationSettings} VisualizationSettings
+ * @typedef {import("metabase-types/api/insight").Insight} Insight
+ * @typedef {import("./types").TrendResult} TrendResult
+ */
+
+/**
+ * @param {Series} series
+ * @param {Insight[] | null | undefined} insights
+ * @param {VisualizationSettings} settings
+ * @param {Object} options
+ * @param {Function} options.getColor
+ * @returns {TrendResult}
+ */
 export function computeTrend(series, insights, settings, { getColor }) {
   try {
     const comparisons = settings["scalar.comparisons"] || [];

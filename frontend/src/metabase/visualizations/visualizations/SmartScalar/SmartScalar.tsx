@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { useEffect, useMemo, useRef } from "react";
+import { type PropsWithChildren, useEffect, useMemo, useRef } from "react";
 import innerText from "react-innertext";
 import { jt, t } from "ttag";
 
@@ -26,6 +26,12 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type {
+  ColumnSettings,
+  VisualizationDefinition,
+  VisualizationPassThroughProps,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 
 import { ScalarContainer } from "../Scalar/Scalar.styled";
 
@@ -41,6 +47,7 @@ import {
   TOOLTIP_ICON_SIZE,
   VIZ_SETTINGS_DEFAULTS,
 } from "./constants";
+import type { ComparisonResult } from "./types";
 import {
   formatChangeAutoPrecision,
   getChangeWidth,
@@ -68,7 +75,7 @@ export function SmartScalar({
   totalNumGridCols,
   fontFamily,
   onRenderError,
-}) {
+}: VisualizationProps & VisualizationPassThroughProps) {
   const scalarRef = useRef(null);
 
   const insights = rawSeries?.[0].data?.insights;
@@ -151,7 +158,13 @@ export function SmartScalar({
   );
 }
 
-function ScalarPeriod({ period, onClick }) {
+function ScalarPeriod({
+  period,
+  onClick,
+}: {
+  period: string;
+  onClick?: () => void;
+}) {
   return (
     <ScalarTitleContainer data-testid="scalar-period" lines={1}>
       <Text
@@ -175,7 +188,7 @@ function ScalarPeriod({ period, onClick }) {
   );
 }
 
-const Separator = ({ inTooltip }) => {
+const Separator = ({ inTooltip }: { inTooltip?: boolean }) => {
   const theme = useMantineTheme();
   const isNightMode = useSelector(getIsNightMode);
 
@@ -186,7 +199,6 @@ const Separator = ({ inTooltip }) => {
 
   return (
     <Text
-      d="inline-block"
       mx="0.2rem"
       style={{ transform: "scale(0.7)" }}
       c={separatorColor}
@@ -202,6 +214,11 @@ function PreviousValueComparison({
   width,
   fontFamily,
   formatOptions,
+}: {
+  comparison: ComparisonResult;
+  width: number;
+  fontFamily: string;
+  formatOptions: ColumnSettings;
 }) {
   const fontSize = "0.875rem";
 
@@ -251,8 +268,11 @@ function PreviousValueComparison({
     "",
   ];
 
-  const getDetailCandidate = (valueStr, { inTooltip } = {}) => {
-    if (isEmpty(valueStr)) {
+  const getDetailCandidate = (
+    valueFormatted: string | number | JSX.Element | null,
+    { inTooltip }: { inTooltip?: boolean } = {},
+  ) => {
+    if (isEmpty(valueFormatted)) {
       return comparisonDescStr;
     }
 
@@ -262,15 +282,15 @@ function PreviousValueComparison({
 
     if (isEmpty(comparisonDescStr)) {
       return (
-        <Text key={valueStr} c={descColor} component="span">
-          {valueStr}
+        <Text key={valueFormatted as string} c={descColor} component="span">
+          {valueFormatted}
         </Text>
       );
     }
 
     return jt`${comparisonDescStr}: ${(
       <Text key="value-str" c={descColor} component="span">
-        {valueStr}
+        {valueFormatted}
       </Text>
     )}`;
   };
@@ -292,7 +312,11 @@ function PreviousValueComparison({
     inTooltip: true,
   });
 
-  const VariationPercent = ({ inTooltip, iconSize, children }) => {
+  const VariationPercent = ({
+    inTooltip,
+    iconSize,
+    children,
+  }: PropsWithChildren<{ inTooltip?: boolean; iconSize: string | number }>) => {
     const noChangeColor =
       inTooltip || isNightMode
         ? lighten(theme.fn.themeColor("text-medium"), 0.3)
@@ -308,7 +332,10 @@ function PreviousValueComparison({
     );
   };
 
-  const VariationDetails = ({ inTooltip, children }) => {
+  const VariationDetails = ({
+    inTooltip,
+    children,
+  }: PropsWithChildren<{ inTooltip?: boolean }>) => {
     if (!children) {
       return null;
     }
@@ -443,7 +470,7 @@ Object.assign(SmartScalar, {
   },
 
   isSensible({ insights }) {
-    return insights && insights.length > 0;
+    return !!insights && insights?.length > 0;
   },
 
   // Smart scalars need to have a breakout
@@ -460,4 +487,4 @@ Object.assign(SmartScalar, {
   },
 
   hasEmptyState: true,
-});
+} as VisualizationDefinition);
