@@ -341,7 +341,8 @@
                            (map (u/index-by :name fields)))]
           (if (driver/database-supports? driver/*driver* :describe-default-expr (mt/db))
             (testing ":database-default should be provided"
-              (is (= [nil "42" nil] (mapv :database-default [a b c]))))
+              ;; SQL Server likes to add some parens
+              (is (=? [nil #"\(*42\)*" nil] (mapv :database-default [a b c]))))
             (testing ":database-default should remain unspecified"
               (is (= [nil nil nil] (mapv :database-default [a b c]))))))))))
 

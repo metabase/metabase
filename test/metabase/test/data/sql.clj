@@ -255,6 +255,16 @@
   [_ expr]
   (format "GENERATED ALWAYS AS (%s)" expr))
 
+(defmulti generated-column-infers-type?
+  "Some databases (SQL-Server) do not specify the types of generated columns."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod generated-column-infers-type? :default
+  [_]
+  false)
+
 (defn- field-definition-sql
   [driver {:keys [field-name base-type field-comment not-null? unique? default-expr generated-expr], :as field-definition}]
   (let [field-name      (format-and-quote-field-name driver field-name)
@@ -279,8 +289,10 @@
                          (format "DEFAULT (%s)" default-expr))
         generated      (when generated-expr
                          (generated-column-sql driver generated-expr))
+        infer-type     (and generated-expr (generated-column-infers-type? driver))
+        field-type'    (when-not infer-type field-type)
         inline-comment (inline-column-comment-sql driver field-comment)]
-    (str/join " " (filter some? [field-name field-type not-null default generated unique inline-comment]))))
+    (str/join " " (filter some? [field-name field-type' not-null default generated unique inline-comment]))))
 
 (defn fielddefs->pk-field-names
   "Find the pk field names in fieldefs"
