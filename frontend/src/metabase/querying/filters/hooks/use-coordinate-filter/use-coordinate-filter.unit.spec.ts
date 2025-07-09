@@ -5,30 +5,30 @@ import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { PEOPLE_ID } from "metabase-types/api/mocks/presets";
 
-import type { NumberOrEmptyValue, UiFilterOperator } from "./types";
+import type { NumberOrEmptyValue, UiCoordinateFilterOperator } from "./types";
 import { useCoordinateFilter } from "./use-coordinate-filter";
 
 interface CreateFilterCase {
-  operator: UiFilterOperator;
+  operator: UiCoordinateFilterOperator;
   values: number[];
   expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
-  operator: UiFilterOperator;
+  operator: UiCoordinateFilterOperator;
   expression: Lib.ExpressionClause;
   values: number[];
   expectedDisplayName: string;
 }
 
 interface CoerceFilterCase {
-  operator: UiFilterOperator;
+  operator: UiCoordinateFilterOperator;
   values: NumberOrEmptyValue[];
   expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
-  operator: UiFilterOperator;
+  operator: UiCoordinateFilterOperator;
   values: NumberOrEmptyValue[];
 }
 

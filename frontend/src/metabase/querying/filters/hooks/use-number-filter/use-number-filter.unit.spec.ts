@@ -14,37 +14,37 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import type { NumberOrEmptyValue, UiFilterOperator } from "./types";
+import type { NumberOrEmptyValue, UiNumberFilterOperator } from "./types";
 import { useNumberFilter } from "./use-number-filter";
 
 interface CreateFilterCase {
-  operator: UiFilterOperator;
+  operator: UiNumberFilterOperator;
   values: number[];
   expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
-  operator: UiFilterOperator;
+  operator: UiNumberFilterOperator;
   expression: Lib.ExpressionClause;
   values: number[];
   expectedDisplayName: string;
 }
 
 interface CoerceFilterCase {
-  operator: UiFilterOperator;
+  operator: UiNumberFilterOperator;
   values: NumberOrEmptyValue[];
   expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
-  operator: UiFilterOperator;
+  operator: UiNumberFilterOperator;
   values: NumberOrEmptyValue[];
 }
 
 interface DefaultOperatorCase {
   title: string;
   column: Lib.ColumnMetadata;
-  expectedOperator: UiFilterOperator;
+  expectedOperator: UiNumberFilterOperator;
 }
 
 const METADATA = createMockMetadata({
