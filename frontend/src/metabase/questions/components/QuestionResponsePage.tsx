@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import UserAvatar from "metabase/common/components/UserAvatar";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
-import { Button, Card, Skeleton, Textarea } from "metabase/ui";
+import { Button, Card, Divider, Icon, Menu, Skeleton, Textarea } from "metabase/ui";
 
-import { addGenerativeQuestion, createQuestionMetadata, generateSampleContent } from "../redux/generativeQuestionsSlice";
+import { addGenerativeQuestion, addReviewer, createQuestionMetadata, generateSampleContent, getAvailableReviewers } from "../redux/generativeQuestionsSlice";
 import { getGenerativeQuestionById } from "../redux/selectors";
 
 import { MarkdownRenderer } from "./MarkdownRenderer";
@@ -74,6 +75,42 @@ const QuestionResponsePage = ({
     // console.log("Selected nodes:", selectedNodes);
   };
 
+  const handleAddToLibrary = useCallback(() => {
+    // TODO: Implement add to library functionality
+    // This could save the question to a user's personal collection
+  }, []);
+
+
+
+  const handleAddReviewer = useCallback((reviewer: { id: string; name: string; email: string; avatar?: string }) => {
+    if (question) {
+      dispatch(addReviewer({
+        questionId: question.id,
+        reviewer: {
+          id: reviewer.id,
+          name: reviewer.name,
+          email: reviewer.email,
+          avatar: reviewer.avatar,
+          status: "requested",
+          requestedAt: Date.now(),
+        },
+      }));
+    }
+  }, [dispatch, question]);
+
+  const getReviewStatusColor = (status: string) => {
+    switch (status) {
+      case "requested": return "var(--mb-color-warning)";
+      case "commented": return "var(--mb-color-info)";
+      case "verified": return "var(--mb-color-success)";
+      case "problematic": return "var(--mb-color-error)";
+      default: return "var(--mb-color-text-medium)";
+    }
+  };
+
+  const availableReviewers = getAvailableReviewers();
+  const currentReviewers = question?.metadata?.reviewers || [];
+
   useEffect(() => {
     // Simulate loading time
     const loadingTimer = setTimeout(() => {
@@ -103,48 +140,165 @@ const QuestionResponsePage = ({
       >
         <Card shadow="none" withBorder>
           <div style={{ padding: "1.5rem" }}>
-            {showTitle ? (
-              <h1
-                style={{
-                  marginBottom: "1rem",
-                  fontSize: "1.5rem",
-                  fontWeight: "600",
-                  opacity: 1,
-                  transform: "translateY(0)",
-                  transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
-                }}
-              >
-                {generatedTitle}
-              </h1>
-            ) : (
-              <Skeleton
-                height={32}
-                width="60%"
-                style={{ marginBottom: "1rem" }}
-              />
-            )}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+              {showTitle ? (
+                <h1
+                  style={{
+                    fontSize: "1.5rem",
+                    fontWeight: "600",
+                    opacity: 1,
+                    transform: "translateY(0)",
+                    transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
+                    margin: 0,
+                    flex: 1,
+                  }}
+                >
+                  {generatedTitle}
+                </h1>
+              ) : (
+                <Skeleton
+                  height={32}
+                  width="60%"
+                  style={{ margin: 0, flex: 1 }}
+                />
+              )}
+
+              {/* Action Button */}
+              <Menu>
+                <Menu.Target>
+                  <Button
+                    variant="subtle"
+                    size="sm"
+                    style={{
+                      marginLeft: "1rem",
+                      opacity: showTitle ? 1 : 0,
+                      transition: "opacity 0.4s ease-out",
+                    }}
+                  >
+                    {t`Actions`}
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item onClick={handleAddToLibrary}>
+                    {t`Add to library`}
+                  </Menu.Item>
+                  <Menu trigger="click-hover" position="right" width={200}>
+                    <Menu.Target>
+                      <Menu.Item
+                        fw="bold"
+                        styles={{
+                          item: {
+                            backgroundColor: "transparent",
+                            color: "var(--mb-color-text-primary)",
+                          },
+                          itemSection: {
+                            color: "var(--mb-color-text-primary)",
+                          },
+                        }}
+                        rightSection={<Icon name="chevronright" aria-hidden />}
+                      >
+                        {t`Ask for a review`}
+                      </Menu.Item>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      {availableReviewers
+                        .filter(reviewer => !currentReviewers.find(r => r.id === reviewer.id))
+                        .map(reviewer => (
+                          <Menu.Item
+                            key={reviewer.id}
+                            onClick={() => handleAddReviewer(reviewer)}
+                            leftSection={
+                              <UserAvatar
+                                user={{
+                                  first_name: reviewer.name.split(' ')[0],
+                                  last_name: reviewer.name.split(' ').slice(1).join(' '),
+                                  common_name: reviewer.name,
+                                  email: reviewer.email,
+                                }}
+                              />
+                            }
+                          >
+                            {reviewer.name}
+                          </Menu.Item>
+                        ))}
+                    </Menu.Dropdown>
+                  </Menu>
+                </Menu.Dropdown>
+              </Menu>
+
+              {/* Reviews Menu */}
+              {currentReviewers.length > 0 && (
+                <Menu>
+                  <Menu.Target>
+                    <Button
+                      variant="subtle"
+                      size="sm"
+                      style={{
+                        marginLeft: "0.5rem",
+                        opacity: showTitle ? 1 : 0,
+                        transition: "opacity 0.4s ease-out",
+                      }}
+                    >
+                      {t`Reviews`} ({currentReviewers.length})
+                    </Button>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    {currentReviewers.map(reviewer => (
+                      <Menu.Item
+                        key={reviewer.id}
+                        leftSection={
+                          <div style={{ position: "relative" }}>
+                            <UserAvatar
+                              user={{
+                                first_name: reviewer.name.split(' ')[0],
+                                last_name: reviewer.name.split(' ').slice(1).join(' '),
+                                common_name: reviewer.name,
+                                email: reviewer.email,
+                              }}
+                            />
+                            <div
+                              style={{
+                                position: "absolute",
+                                bottom: 0,
+                                right: 0,
+                                width: "8px",
+                                height: "8px",
+                                borderRadius: "50%",
+                                backgroundColor: getReviewStatusColor(reviewer.status),
+                                border: "2px solid white",
+                              }}
+                            />
+                          </div>
+                        }
+                      >
+                        <div>
+                          <div style={{ fontWeight: "500" }}>{reviewer.name}</div>
+                          <div style={{ fontSize: "0.75rem", color: "var(--mb-color-text-medium)" }}>
+                            {reviewer.status.charAt(0).toUpperCase() + reviewer.status.slice(1)}
+                          </div>
+                        </div>
+                      </Menu.Item>
+                    ))}
+                  </Menu.Dropdown>
+                </Menu>
+              )}
+            </div>
             {/* Authors Info */}
             {question?.metadata?.authors && question.metadata.authors.length > 0 && (
               <div
                 style={{
                   marginBottom: "1rem",
                   padding: "0.75rem",
-                  backgroundColor: "var(--mb-color-bg-light)",
                   borderRadius: "0.375rem",
                   fontSize: "0.875rem",
                 }}
               >
-                <div style={{ marginBottom: "0.5rem", fontWeight: "500", color: "var(--mb-color-text-medium)" }}>
-                  {t`Authors`}
-                </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                   {question.metadata.authors.map((author) => (
                     <span
                       key={author.id}
                       style={{
                         padding: "0.25rem 0.5rem",
-                        backgroundColor: author.type === "user" ? "var(--mb-color-brand)" : "var(--mb-color-bg-medium)",
-                        color: author.type === "user" ? "white" : "var(--mb-color-text-dark)",
                         borderRadius: "0.25rem",
                         fontSize: "0.75rem",
                         fontWeight: "500",
@@ -161,6 +315,7 @@ const QuestionResponsePage = ({
                 </div>
               </div>
             )}
+            <Divider />
             <div
               style={{
                 opacity: showContent ? 1 : 0,

@@ -5,8 +5,22 @@ export interface GenerativeQuestionAuthor {
   role?: string;
 }
 
+export type ReviewStatus = "requested" | "commented" | "verified" | "problematic";
+
+export interface GenerativeQuestionReviewer {
+  id: string;
+  name: string;
+  email?: string;
+  avatar?: string;
+  status: ReviewStatus;
+  requestedAt?: number;
+  reviewedAt?: number;
+  comment?: string;
+}
+
 export interface GenerativeQuestionMetadata {
   authors: GenerativeQuestionAuthor[];
+  reviewers: GenerativeQuestionReviewer[];
   tags?: string[];
   category?: string;
   difficulty?: "easy" | "medium" | "hard";

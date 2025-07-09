@@ -1,7 +1,7 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice } from "@reduxjs/toolkit";
 
-import type { GenerativeQuestion, GenerativeQuestionAuthor, GenerativeQuestionsState } from "metabase-types/store/generativeQuestions";
+import type { GenerativeQuestion, GenerativeQuestionAuthor, GenerativeQuestionReviewer, GenerativeQuestionsState, ReviewStatus } from "metabase-types/store/generativeQuestions";
 
 // Helper function to create metadata with current user and agent
 export const createQuestionMetadata = (
@@ -34,6 +34,7 @@ export const createQuestionMetadata = (
 
   return {
     authors,
+    reviewers: [],
     tags: [],
     category: "analysis",
     difficulty: "medium",
@@ -91,8 +92,239 @@ Below is a detailed breakdown of our product categories with revenue and growth 
 `;
 };
 
+// Sample questions with realistic data and review statuses
+const sampleQuestions: Record<string, GenerativeQuestion> = {
+  "q1": {
+    id: "q1",
+    prompt: "Analyze our Q4 2023 sales performance and identify key growth drivers",
+    title: "Q4 2023 Sales Performance Analysis",
+    content: `
+## Executive Summary
+Q4 2023 showed strong performance with **$2.4M in total revenue**, representing a 15% increase over Q3. The Technology sector led growth, contributing 45% of total sales.
+
+## Key Findings
+
+### Revenue Breakdown
+- Total Revenue: $2.4M (↑15% vs Q3)
+- Average Order Value: $1,200 (↑12%)
+- New Customer Acquisition: 450 customers
+
+### Product Performance
+Our cloud storage solutions continue to dominate:
+
+{{viz:7:Product Category Distribution:Revenue breakdown by product category}}
+
+### Regional Insights
+{{table:Regional Performance:Quarterly performance by region}}
+
+### Top Growth Drivers
+1. **Enterprise Cloud Solutions** - 35% growth
+2. **Data Analytics Platform** - 28% growth
+3. **Security Suite** - 22% growth
+
+## Recommendations
+- Continue investing in cloud infrastructure
+- Expand European market presence
+- Implement customer retention programs
+
+## Next Steps
+- Schedule Q1 2024 planning session
+- Review pricing strategy for top performers
+- Plan expansion into APAC markets
+`,
+    agentType: "Metabot: Your general purpose analyst",
+    metadata: {
+      authors: [
+        { id: "1", name: "John Smith", type: "user", role: "Question Creator" },
+        { id: "agent", name: "Metabot: Your general purpose analyst", type: "agent", role: "AI Assistant" }
+      ],
+      reviewers: [
+        { id: "user2", name: "Sarah Johnson", email: "sarah.johnson@company.com", status: "verified", requestedAt: 1703000000000, reviewedAt: 1703086400000, comment: "Excellent analysis of Q4 trends. The cloud storage focus aligns with our strategy." },
+        { id: "user3", name: "Mike Chen", email: "mike.chen@company.com", status: "commented", requestedAt: 1703000000000, reviewedAt: 1703072800000, comment: "Good insights, but we should include more data on customer churn rates." },
+        { id: "user4", name: "Lisa Wong", email: "lisa.wong@company.com", status: "requested", requestedAt: 1703000000000 }
+      ],
+      tags: ["sales", "Q4", "performance", "cloud"],
+      category: "business-intelligence",
+      difficulty: "medium",
+      estimatedTime: 8
+    },
+    createdAt: 1703000000000,
+    updatedAt: 1703086400000,
+    loading: false
+  },
+  "q2": {
+    id: "q2",
+    prompt: "What are our customer retention patterns and which segments are most at risk?",
+    title: "Customer Retention Analysis & Risk Assessment",
+    content: `
+## Customer Retention Overview
+Our overall retention rate stands at **87%**, with significant variations across customer segments.
+
+## Retention by Segment
+
+### Enterprise Customers
+- Retention Rate: 94% (↑2% vs last year)
+- Average Lifetime Value: $45K
+- Risk Level: Low
+
+{{viz:8:Enterprise Retention Trends:Monthly retention rates for enterprise customers}}
+
+### SMB Customers
+- Retention Rate: 82% (↓3% vs last year)
+- Average Lifetime Value: $8K
+- Risk Level: Medium
+
+### Risk Assessment Table
+{{table:Customer Risk Matrix:Segmentation by retention risk and value}}
+
+## Key Risk Factors
+1. **Feature Adoption Gap** - 40% of churned customers used <3 features
+2. **Support Response Time** - 15% longer for at-risk segments
+3. **Pricing Sensitivity** - 25% of churned customers cited cost concerns
+
+## Recommendations
+- Implement proactive outreach for SMB segment
+- Develop feature adoption campaigns
+- Optimize support response times
+
+## Action Items
+- Create customer success playbook for at-risk segments
+- Launch feature discovery workshops
+- Review pricing strategy for SMB market
+`,
+    agentType: "Data Analyst",
+    metadata: {
+      authors: [
+        { id: "1", name: "John Smith", type: "user", role: "Question Creator" },
+        { id: "agent", name: "Data Analyst", type: "agent", role: "AI Assistant" }
+      ],
+      reviewers: [
+        { id: "user5", name: "David Brown", email: "david.brown@company.com", status: "problematic", requestedAt: 1702500000000, reviewedAt: 1702586400000, comment: "The analysis misses key demographic factors. Need to include age and industry breakdowns." },
+        { id: "user2", name: "Sarah Johnson", email: "sarah.johnson@company.com", status: "verified", requestedAt: 1702500000000, reviewedAt: 1702572800000, comment: "Solid analysis with actionable insights for customer success team." }
+      ],
+      tags: ["retention", "customers", "risk", "churn"],
+      category: "customer-analytics",
+      difficulty: "hard",
+      estimatedTime: 12
+    },
+    createdAt: 1702500000000,
+    updatedAt: 1702586400000,
+    loading: false
+  },
+  "q3": {
+    id: "q3",
+    prompt: "Compare our marketing campaign performance across different channels",
+    title: "Multi-Channel Marketing Campaign Analysis",
+    content: `
+## Campaign Performance Summary
+Our Q4 marketing campaigns generated **$850K in attributed revenue** across 5 channels.
+
+## Channel Performance
+
+### Top Performing Channels
+1. **LinkedIn** - $320K (38% of total)
+2. **Google Ads** - $280K (33% of total)
+3. **Email Marketing** - $150K (18% of total)
+
+{{viz:12:Channel Performance:Revenue and conversion rates by marketing channel}}
+
+### Campaign ROI Analysis
+{{table:Marketing ROI:Return on investment by campaign and channel}}
+
+## Key Insights
+- **LinkedIn** shows highest conversion rate (3.2%)
+- **Email** has lowest cost per acquisition ($45)
+- **Social Media** needs optimization (1.1% conversion)
+
+## Recommendations
+- Increase LinkedIn ad spend by 25%
+- Optimize email segmentation strategy
+- Redesign social media creative assets
+
+## Budget Allocation
+- LinkedIn: 40% of budget
+- Google Ads: 35% of budget
+- Email: 15% of budget
+- Social: 10% of budget
+`,
+    agentType: "Business Intelligence",
+    metadata: {
+      authors: [
+        { id: "1", name: "John Smith", type: "user", role: "Question Creator" },
+        { id: "agent", name: "Business Intelligence", type: "agent", role: "AI Assistant" }
+      ],
+      reviewers: [
+        { id: "user3", name: "Mike Chen", email: "mike.chen@company.com", status: "commented", requestedAt: 1702000000000, reviewedAt: 1702086400000, comment: "Good analysis, but we should include attribution modeling details." },
+        { id: "user4", name: "Lisa Wong", email: "lisa.wong@company.com", status: "requested", requestedAt: 1702000000000 },
+        { id: "user5", name: "David Brown", email: "david.brown@company.com", status: "requested", requestedAt: 1702000000000 }
+      ],
+      tags: ["marketing", "campaigns", "ROI", "channels"],
+      category: "marketing-analytics",
+      difficulty: "medium",
+      estimatedTime: 6
+    },
+    createdAt: 1702000000000,
+    updatedAt: 1702086400000,
+    loading: false
+  },
+  "q4": {
+    id: "q4",
+    prompt: "What are the seasonal patterns in our product usage and how do they affect capacity planning?",
+    title: "Seasonal Usage Patterns & Capacity Planning",
+    content: `
+## Seasonal Usage Analysis
+Our platform shows clear seasonal patterns with **peak usage during Q4** (holiday season) and **lowest usage in Q2**.
+
+## Usage Patterns by Quarter
+
+### Q4 (Peak Season)
+- Average Daily Users: 45K
+- Peak Concurrent Users: 12K
+- Storage Usage: 2.8TB
+
+{{viz:7:Seasonal Usage Trends:Monthly active users and system load}}
+
+### Capacity Planning Insights
+{{table:Capacity Requirements:Infrastructure needs by season and growth projections}}
+
+## Key Findings
+- **Q4 usage** is 40% higher than Q2
+- **Storage growth** averages 15% quarter-over-quarter
+- **Peak hours** are 2-4 PM EST during weekdays
+
+## Infrastructure Recommendations
+- Scale up capacity by 50% for Q4
+- Implement auto-scaling for storage
+- Add CDN nodes for peak traffic
+
+## Cost Implications
+- Q4 infrastructure costs: $85K/month
+- Q2 infrastructure costs: $55K/month
+- Annual savings potential: $120K with optimization
+`,
+    agentType: "Data Scientist",
+    metadata: {
+      authors: [
+        { id: "1", name: "John Smith", type: "user", role: "Question Creator" },
+        { id: "agent", name: "Data Scientist", type: "agent", role: "AI Assistant" }
+      ],
+      reviewers: [
+        { id: "user2", name: "Sarah Johnson", email: "sarah.johnson@company.com", status: "verified", requestedAt: 1701500000000, reviewedAt: 1701586400000, comment: "Excellent analysis for infrastructure planning. The seasonal patterns are clearly identified." },
+        { id: "user3", name: "Mike Chen", email: "mike.chen@company.com", status: "verified", requestedAt: 1701500000000, reviewedAt: 1701572800000, comment: "Great insights for capacity planning. The cost implications are particularly valuable." }
+      ],
+      tags: ["seasonal", "capacity", "infrastructure", "usage"],
+      category: "technical-analytics",
+      difficulty: "hard",
+      estimatedTime: 10
+    },
+    createdAt: 1701500000000,
+    updatedAt: 1701586400000,
+    loading: false
+  }
+};
+
 const initialState: GenerativeQuestionsState = {
-  questions: {},
+  questions: sampleQuestions,
   loading: false,
   error: null,
 };
@@ -114,6 +346,27 @@ const generativeQuestionsSlice = createSlice({
         };
       }
     },
+    addReviewer: (state, action: PayloadAction<{ questionId: string; reviewer: GenerativeQuestionReviewer }>) => {
+      const { questionId, reviewer } = action.payload;
+      if (state.questions[questionId]) {
+        state.questions[questionId].metadata.reviewers.push(reviewer);
+        state.questions[questionId].updatedAt = Date.now();
+      }
+    },
+    updateReviewerStatus: (state, action: PayloadAction<{ questionId: string; reviewerId: string; status: ReviewStatus; comment?: string }>) => {
+      const { questionId, reviewerId, status, comment } = action.payload;
+      if (state.questions[questionId]) {
+        const reviewer = state.questions[questionId].metadata.reviewers.find(r => r.id === reviewerId);
+        if (reviewer) {
+          reviewer.status = status;
+          reviewer.reviewedAt = Date.now();
+          if (comment) {
+            reviewer.comment = comment;
+          }
+          state.questions[questionId].updatedAt = Date.now();
+        }
+      }
+    },
     removeGenerativeQuestion: (state, action: PayloadAction<string>) => {
       delete state.questions[action.payload];
     },
@@ -129,9 +382,20 @@ const generativeQuestionsSlice = createSlice({
 export const {
   addGenerativeQuestion,
   updateGenerativeQuestion,
+  addReviewer,
+  updateReviewerStatus,
   removeGenerativeQuestion,
   setLoading,
   setError,
 } = generativeQuestionsSlice.actions;
+
+// Sample reviewers data - in a real app this would come from an API
+export const getAvailableReviewers = (): Array<{ id: string; name: string; email: string; avatar?: string }> => [
+  { id: "user1", name: "John Smith", email: "john.smith@company.com", avatar: "https://i.pravatar.cc/150?img=1" },
+  { id: "user2", name: "Sarah Johnson", email: "sarah.johnson@company.com", avatar: "https://i.pravatar.cc/150?img=2" },
+  { id: "user3", name: "Mike Chen", email: "mike.chen@company.com", avatar: "https://i.pravatar.cc/150?img=3" },
+  { id: "user4", name: "Lisa Wong", email: "lisa.wong@company.com", avatar: "https://i.pravatar.cc/150?img=4" },
+  { id: "user5", name: "David Brown", email: "david.brown@company.com", avatar: "https://i.pravatar.cc/150?img=5" },
+];
 
 export const generativeQuestionsReducer = generativeQuestionsSlice.reducer;

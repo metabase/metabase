@@ -84,8 +84,6 @@ const QuestionsPage = ({ router }: QuestionsPageProps): JSX.Element => {
         />
       )}
       <QuestionsPageContent>
-        <h1>{t`Questions`}</h1>
-        <p>{t`Ask me anything about your data. I'll help you create questions and find insights.`}</p>
         <Card shadow="none" withBorder style={{ marginTop: "1rem" }}>
           <Textarea
             placeholder={t`Describe what you want to know about your data...`}
