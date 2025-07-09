@@ -141,10 +141,7 @@
                     :email "test@example.com"
                     :tenant_id tenant-id
                     :login_attributes {"role" "admin"
-                                       "department" "engineering"
-                                       "environment" "production"
-                                       "region" "us-east-1"
-                                       "@tenant.slug" "test-tenant"}
+                                       "department" "engineering"}
                     :structured_attributes {"role" {:source :user :frozen false :value "admin"}
                                             "department" {:source :user :frozen false :value "engineering"}
                                             "environment" {:source :tenant :frozen false :value "production"}
@@ -170,9 +167,7 @@
                     :email "test@example.com"
                     :tenant_id tenant-id
                     :login_attributes {"role" "user-role"
-                                       "department" "engineering"
-                                       "environment" "production"
-                                       "@tenant.slug" "test-tenant"}
+                                       "department" "engineering"}
                     :structured_attributes {"role" {:source :user :frozen false :value "user-role"
                                                     :original {:source :tenant :frozen false :value "tenant-role"}}
                                             "department" {:source :user :frozen false :value "engineering"}
@@ -242,8 +237,7 @@
             (is (= {:id 1
                     :email "test@example.com"
                     :tenant_id tenant-id
-                    :login_attributes {"role" "admin"
-                                       "@tenant.slug" "empty-tenant"}
+                    :login_attributes {"role" "admin"}
                     :structured_attributes {"role" {:source :user :frozen false :value "admin"}
                                             "@tenant.slug" {:source :system :frozen true :value "empty-tenant"}}}
                    result))))))))
@@ -264,8 +258,7 @@
             (is (= {:id 1
                     :email "test@example.com"
                     :tenant_id tenant-id
-                    :login_attributes {"role" "admin"
-                                       "@tenant.slug" "empty-attrs-tenant"}
+                    :login_attributes {"role" "admin"}
                     :structured_attributes {"role" {:source :user :frozen false :value "admin"}
                                             "@tenant.slug" {:source :system :frozen true :value "empty-attrs-tenant"}}}
                    result))))))))
@@ -285,9 +278,7 @@
                 result (tenants/attribute-structure user)]
             (is (= {:id 1
                     :email "test@example.com"
-                    :tenant_id tenant-id
-                    :login_attributes {"environment" "production"
-                                       "@tenant.slug" "test-tenant"}
+                    :tenant_id tenant-id :login_attributes nil
                     :structured_attributes {"environment" {:source :tenant :frozen false :value "production"}
                                             "@tenant.slug" {:source :system :frozen true :value "test-tenant"}}}
                    result))))))))
@@ -308,8 +299,7 @@
             (is (= {:id 1
                     :email "test@example.com"
                     :tenant_id tenant-id
-                    :login_attributes {"environment" "production"
-                                       "@tenant.slug" "test-tenant"}
+                    :login_attributes {}
                     :structured_attributes {"environment" {:source :tenant :frozen false :value "production"}
                                             "@tenant.slug" {:source :system :frozen true :value "test-tenant"}}}
                    result))))))))
@@ -336,9 +326,7 @@
                     :last_name "Doe"
                     :is_active true
                     :tenant_id tenant-id
-                    :login_attributes {"role" "user"
-                                       "environment" "production"
-                                       "@tenant.slug" "test-tenant"}
+                    :login_attributes {"role" "user"}
                     :structured_attributes {"role" {:source :user :frozen false :value "user"}
                                             "environment" {:source :tenant :frozen false :value "production"}
                                             "@tenant.slug" {:source :system :frozen true :value "test-tenant"}}}

@@ -81,5 +81,4 @@
   [user]
   (let [combined-attributes (combine (:login_attributes user))]
     (assoc user
-           :structured_attributes combined-attributes
-           :login_attributes (update-vals combined-attributes :value))))
+           :structured_attributes combined-attributes)))
