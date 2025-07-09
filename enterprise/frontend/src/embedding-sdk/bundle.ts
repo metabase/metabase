@@ -20,4 +20,9 @@ import "sdk-ee-plugins";
 import "sdk-specific-imports";
 
 export * from "./components/public";
-export * from "./hooks/public";
+
+export { getSdkStore } from "./store/index";
+export { getApplicationName } from "metabase/selectors/whitelabel";
+export { getSetting } from "metabase/selectors/settings";
+export { getUser } from "metabase/selectors/user";
+export { getLoginStatus } from "embedding-sdk/store/selectors";

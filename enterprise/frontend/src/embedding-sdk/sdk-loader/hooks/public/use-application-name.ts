@@ -1,2 +1,4 @@
+import { useLazySelector } from "embedding-sdk/sdk-loader/hooks/private/use-lazy-selector";
+
 export const useApplicationName = () =>
-  window.MetabaseEmbeddingSDK?.useApplicationName();
+  useLazySelector(window.MetabaseEmbeddingSDK?.getApplicationName);

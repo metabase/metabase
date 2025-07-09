@@ -7,5 +7,6 @@ interface Window {
   // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   MetabaseEmbeddingSDK?: typeof import("embedding-sdk/bundle");
 
+  EMBEDDING_SDK_BUNDLE_LOADING?: boolean;
   EMBEDDING_SDK_VERSION?: string;
 }
