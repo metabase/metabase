@@ -19,6 +19,11 @@ interface UseNumberFilterProps {
   filter?: Lib.Filterable;
 }
 
+export type InclusiveOptions = {
+  minInclusive?: boolean;
+  maxInclusive?: boolean;
+};
+
 export function useNumberFilter({
   query,
   stageIndex,
@@ -51,6 +56,13 @@ export function useNumberFilter({
       : getDefaultOperator(query, column, availableOptions),
   );
 
+  const [inclusiveOptions, setInclusiveOptions] = useState<InclusiveOptions>(
+    filterParts?.options ?? {
+      minInclusive: true,
+      maxInclusive: true,
+    },
+  );
+
   const [values, setValues] = useState(() =>
     getDefaultValues(operator, filterParts ? filterParts.values : []),
   );
@@ -65,13 +77,15 @@ export function useNumberFilter({
     valueCount,
     hasMultipleValues,
     isValid,
+    inclusiveOptions,
     getDefaultValues,
     getFilterClause: (
       operator: UiNumberFilterOperator,
       values: NumberOrEmptyValue[],
-    ) => getFilterClause(operator, column, values),
+    ) => getFilterClause(operator, column, values, inclusiveOptions),
     setOperator,
     setValues,
+    setInclusiveOptions,
   };
 }
 

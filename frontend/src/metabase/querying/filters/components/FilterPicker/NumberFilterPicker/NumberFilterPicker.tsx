@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import {
   type UiNumberFilterOperator,
@@ -37,10 +37,12 @@ export function NumberFilterPicker({
     valueCount,
     hasMultipleValues,
     isValid,
+    inclusiveOptions,
     getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
+    setInclusiveOptions,
   } = useNumberFilter({
     query,
     stageIndex,
@@ -48,15 +50,14 @@ export function NumberFilterPicker({
     filter,
   });
 
-  const [leftInclusive, setLeftInclusive] = useState(true);
-  const [rightInclusive, setRightInclusive] = useState(true);
-
   const handleOperatorChange = (newOperator: UiNumberFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
     if (newOperator === "between") {
-      setLeftInclusive(true);
-      setRightInclusive(true);
+      setInclusiveOptions({
+        minInclusive: true,
+        maxInclusive: true,
+      });
     }
   };
 
@@ -102,10 +103,8 @@ export function NumberFilterPicker({
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
           onChange={setValues}
-          leftInclusive={leftInclusive}
-          rightInclusive={rightInclusive}
-          onLeftInclusiveChange={setLeftInclusive}
-          onRightInclusiveChange={setRightInclusive}
+          inclusiveOptions={inclusiveOptions}
+          onInclusiveOptionsChange={setInclusiveOptions}
         />
         <FilterPickerFooter
           isNew={isNew}

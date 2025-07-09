@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import type { NumberOrEmptyValue } from "metabase/querying/filters/hooks/use-number-filter";
+import type {
+  InclusiveOptions,
+  NumberOrEmptyValue,
+} from "metabase/querying/filters/hooks/use-number-filter";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
@@ -19,10 +22,8 @@ interface NumberValueInputProps {
   valueCount: number;
   hasMultipleValues?: boolean;
   onChange: (values: NumberOrEmptyValue[]) => void;
-  leftInclusive?: boolean;
-  rightInclusive?: boolean;
-  onLeftInclusiveChange: (value: boolean) => void;
-  onRightInclusiveChange: (value: boolean) => void;
+  inclusiveOptions: InclusiveOptions;
+  onInclusiveOptionsChange: (value: any) => void;
 }
 
 function NumberValueInput({
@@ -33,10 +34,8 @@ function NumberValueInput({
   valueCount,
   hasMultipleValues,
   onChange,
-  leftInclusive = true,
-  rightInclusive = true,
-  onLeftInclusiveChange,
-  onRightInclusiveChange,
+  inclusiveOptions,
+  onInclusiveOptionsChange,
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
@@ -82,10 +81,19 @@ function NumberValueInput({
           leftSection={
             <ToggleButton
               aria-label="toggle greater inclusiveness"
-              onChange={() => onLeftInclusiveChange(!leftInclusive)}
+              onChange={() =>
+                onInclusiveOptionsChange({
+                  minInclusive: !inclusiveOptions.minInclusive,
+                  maxInclusive: inclusiveOptions.maxInclusive,
+                })
+              }
             >
               <Icon
-                name={leftInclusive ? "greater_than_or_equal" : "greater_than"}
+                name={
+                  inclusiveOptions.minInclusive
+                    ? "greater_than_or_equal"
+                    : "greater_than"
+                }
               />
             </ToggleButton>
           }
@@ -102,10 +110,19 @@ function NumberValueInput({
           leftSection={
             <ToggleButton
               aria-label="toggle less inclusiveness"
-              onChange={() => onRightInclusiveChange(!rightInclusive)}
+              onChange={() =>
+                onInclusiveOptionsChange({
+                  minInclusive: inclusiveOptions.minInclusive,
+                  maxInclusive: !inclusiveOptions.maxInclusive,
+                })
+              }
             >
               <Icon
-                name={rightInclusive ? "less_than_or_equal" : "less_than"}
+                name={
+                  inclusiveOptions.maxInclusive
+                    ? "less_than_or_equal"
+                    : "less_than"
+                }
               />
             </ToggleButton>
           }

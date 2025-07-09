@@ -74,8 +74,12 @@ export function getFilterClause(
   operator: UiNumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
+  options?: {
+    minInclusive?: boolean;
+    maxInclusive?: boolean;
+  },
 ) {
-  const filterParts = getFilterParts(operator, column, values);
+  const filterParts = getFilterParts(operator, column, values, options);
   return filterParts != null ? Lib.numberFilterClause(filterParts) : undefined;
 }
 
@@ -83,10 +87,14 @@ function getFilterParts(
   operator: UiNumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
+  options?: {
+    minInclusive?: boolean;
+    maxInclusive?: boolean;
+  },
 ): Lib.NumberFilterParts | undefined {
   switch (operator) {
     case "between":
-      return getBetweenFilterParts(operator, column, values);
+      return getBetweenFilterParts(operator, column, values, options);
     default:
       return getSimpleFilterParts(operator, column, values);
   }
@@ -116,8 +124,15 @@ function getBetweenFilterParts(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
+  options?: {
+    minInclusive?: boolean;
+    maxInclusive?: boolean;
+  },
 ): Lib.NumberFilterParts | undefined {
   const [startValue, endValue] = values;
+  const minInclusive = options?.minInclusive ?? true;
+  const maxInclusive = options?.maxInclusive ?? true;
+
   if (isNotNull(startValue) && isNotNull(endValue)) {
     const minValue = startValue < endValue ? startValue : endValue;
     const maxValue = startValue < endValue ? endValue : startValue;
@@ -126,18 +141,28 @@ function getBetweenFilterParts(
       operator,
       column,
       values: [minValue, maxValue],
+      options: {
+        minInclusive,
+        maxInclusive,
+      },
     };
   } else if (isNotNull(startValue)) {
     return {
-      operator: ">=",
+      operator: minInclusive ? ">=" : ">",
       column,
       values: [startValue],
+      options: {
+        minInclusive,
+      },
     };
   } else if (isNotNull(endValue)) {
     return {
-      operator: "<=",
+      operator: maxInclusive ? "<=" : "<",
       column,
       values: [endValue],
+      options: {
+        maxInclusive,
+      },
     };
   }
 }

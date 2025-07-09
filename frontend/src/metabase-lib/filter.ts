@@ -87,8 +87,9 @@ export function numberFilterClause({
   operator,
   column,
   values,
+  options,
 }: NumberFilterParts): ExpressionClause {
-  return ML.number_filter_clause(operator, column, values);
+  return ML.number_filter_clause(operator, column, values, options);
 }
 
 export function numberFilterParts(

@@ -386,6 +386,10 @@ export type NumberFilterParts = {
   operator: NumberFilterOperator;
   column: ColumnMetadata;
   values: NumberFilterValue[];
+  options?: {
+    minInclusive?: boolean;
+    maxInclusive?: boolean;
+  };
 };
 
 export type CoordinateFilterParts = {
