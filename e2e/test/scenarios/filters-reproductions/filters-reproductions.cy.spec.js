@@ -899,15 +899,18 @@ describe("issue 31340", () => {
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
     cy.intercept("GET", "/api/field/*/search/*").as("search");
 
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: PEOPLE_ID,
+      fieldId: PEOPLE.PASSWORD,
+    });
 
-    cy.findByTestId("column-PASSWORD")
-      .findByDisplayValue("Password")
-      .type(`{selectAll}${LONG_COLUMN_NAME}`)
+    H.DataModel.FieldSection.getNameInput()
+      .focus()
+      .clear()
+      .type(LONG_COLUMN_NAME)
       .blur();
-
     cy.wait("@fieldUpdate");
 
     H.createQuestion(
