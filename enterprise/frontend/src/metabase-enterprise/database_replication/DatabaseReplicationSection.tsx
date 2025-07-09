@@ -1,39 +1,46 @@
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
-import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
-import { Flex, Text } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
 import { DatabaseReplicationButton } from "./DatabaseReplicationButton";
+import { DatabaseReplicationPostgresInfo } from "./DatabaseReplicationPostgresInfo";
 import { DatabaseReplicationStatusInfo } from "./DatabaseReplicationStatusInfo";
+
+function getEngineInfo(engine: string | undefined) {
+  switch (engine) {
+    case "postgres":
+      return DatabaseReplicationPostgresInfo();
+    default:
+      return null;
+  }
+}
 
 export function DatabaseReplicationSection({
   database,
 }: {
   database: Database;
 }) {
-  const showDatabaseReplication = useSetting("database-replication-enabled");
-  const isPgDatabase = database.engine === "postgres";
+  const databaseReplicationEnabled = useSetting("database-replication-enabled");
+  const databaseSupportsReplication = database.features?.includes(
+    "database-replication",
+  );
 
-  if (!showDatabaseReplication || !isPgDatabase) {
+  if (!databaseReplicationEnabled || !databaseSupportsReplication) {
     return null;
   }
 
-  const link = (
-    <ExternalLink href="https://clickhouse.com/docs/integrations/clickpipes/postgres">
-      {t`adjust settings and permissions`}
-    </ExternalLink>
-  );
+  const engineInfo = getEngineInfo(database.engine);
 
   return (
     <DatabaseInfoSection
       condensed
-      name={t`Data replication`}
+      name={t`Database replication`}
       // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
       description={t`Continuously sync the tables from this database with Metabase Cloud Storage - a fast managed database. Then query the copied tables instead of the originals.`}
     >
@@ -42,11 +49,12 @@ export function DatabaseReplicationSection({
         <DatabaseReplicationButton databaseId={database.id} />
       </Flex>
 
-      <DatabaseInfoSectionDivider condensed />
-
-      <Text size="sm" c="text-medium">
-        {jt`Note: You may need to ${link} in the source database. The process might also require a database restart.`}
-      </Text>
+      {engineInfo && (
+        <>
+          <DatabaseInfoSectionDivider condensed />
+          {engineInfo}
+        </>
+      )}
     </DatabaseInfoSection>
   );
 }
