@@ -30,26 +30,26 @@
       :name)
      column)))
 
-(defn add-deduplicated-names-xform
-  "Transducer version of [[add-deduplicated-names]]."
-  []
-  (let [deduplicated-name-fn (lib.util/non-truncating-unique-name-generator)]
-    (map (fn [col]
-           (let [original-name ((some-fn :lib/original-name :name) col)]
-             (assoc col
-                    :lib/original-name     original-name
-                    :lib/deduplicated-name (deduplicated-name-fn (:name col))))))))
-
 (mu/defn add-deduplicated-names :- [:sequential
                                     [:merge
                                      ::lib.schema.metadata/column
                                      [:map
                                       [:lib/deduplicated-name :string]]]]
-  "Add `:lib/original-name` and `:lib/deduplicated-name` to columns if they don't already have them."
-  [cols :- [:sequential ::lib.schema.metadata/column]]
-  (into []
-        (add-deduplicated-names-xform)
-        cols))
+  "Add `:lib/original-name` and `:lib/deduplicated-name` to columns if they don't already have them.
+
+  The zero arity is a transducer version."
+  ([]
+   (let [deduplicated-name-fn (lib.util/non-truncating-unique-name-generator)]
+     (map (fn [col]
+            (let [original-name ((some-fn :lib/original-name :name) col)]
+              (assoc col
+                     :lib/original-name     original-name
+                     :lib/deduplicated-name (deduplicated-name-fn (:name col))))))))
+
+  ([cols :- [:sequential ::lib.schema.metadata/column]]
+   (into []
+         (add-deduplicated-names)
+         cols)))
 
 (mu/defn add-source-and-desired-aliases-xform :- fn?
   "Transducer to add `:lib/source-column-alias`, `:lib/desired-column-alias`, `:lib/original-name`, and
@@ -57,7 +57,7 @@
 
     (into [] (add-unique-names-xform) cols)"
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable]
-  (comp (add-deduplicated-names-xform)
+  (comp (add-deduplicated-names)
         (let [unique-name-fn (lib.util/unique-name-generator)]
           (map (fn [col]
                  (let [source-alias  ((some-fn :lib/source-column-alias :name) col)

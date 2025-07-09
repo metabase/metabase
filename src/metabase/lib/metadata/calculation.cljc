@@ -655,7 +655,12 @@
     (into []
           (mapcat (fn [{:keys [table-id], ::keys [fk-ident fk-field-id fk-field-name fk-join-alias]}]
                     (let [table-metadata (id->table table-id)
-                          ;; TODO (Cam 7/8/25) -- shouldn't we be forwarding the rest of the `options` as well?
+                          ;; Shouldn't we be forwarding the rest of the `options` as well? -- Cam
+                          ;;
+                          ;; I wouldn't say so. This is deliberately minimal, including only the core/default columns
+                          ;; for an implicit join. In practice since implicit joins are only to tables (or cards, in
+                          ;; the future) the other options (including joins, expressions, etc.) are not relevant. It's
+                          ;; always the table's columns, or the returned-columns of the card. -- Braden
                           options        {:include-implicitly-joinable? false}]
                       (for [field (visible-columns-method query stage-number table-metadata options)
                             :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)]]
