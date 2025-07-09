@@ -4,6 +4,7 @@ import { c, t } from "ttag";
 import { useUserSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import { Collapse, Group, Icon, UnstyledButton } from "metabase/ui";
@@ -23,6 +24,7 @@ export const BrowseNavSection = ({
   const BROWSE_MODELS_URL = "/browse/models";
   const BROWSE_DATA_URL = "/browse/databases";
   const BROWSE_METRICS_URL = "/browse/metrics";
+  const BROWSE_DATA_APPS_URL = "/data-apps";
 
   const [expandBrowse = true, setExpandBrowse] = useUserSetting(
     "expand-browse-in-nav",
@@ -89,6 +91,18 @@ export const BrowseNavSection = ({
             aria-label={t`Browse metrics`}
           >
             {t`Metrics`}
+          </PaddedSidebarLink>
+        )}
+
+        {PLUGIN_DATA_APPS.isEnabled() && (
+          <PaddedSidebarLink
+            icon="format_code"
+            url={BROWSE_DATA_APPS_URL}
+            isSelected={nonEntityItem?.url?.startsWith(BROWSE_DATA_APPS_URL)}
+            onClick={onItemSelect}
+            aria-label={t`Browse data apps`}
+          >
+            {t`Data Apps`}
           </PaddedSidebarLink>
         )}
       </Collapse>

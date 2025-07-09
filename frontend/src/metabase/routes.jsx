@@ -39,6 +39,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
+  PLUGIN_DATA_APPS,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
 } from "metabase/plugins";
@@ -237,6 +238,22 @@ export const getRoutes = (store) => {
             <ModalRoute path="copy" modal={DashboardCopyModalConnected} />
             <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
           </Route>
+
+          {PLUGIN_DATA_APPS.isEnabled() && (
+            <Route path="data-apps">
+              <IndexRoute
+                component={PLUGIN_DATA_APPS.LIST_APPS_PAGE_COMPONENT}
+              />
+              <Route
+                path="new"
+                component={PLUGIN_DATA_APPS.APP_PAGE_COMPONENT}
+              />
+              <Route
+                path="edit/:appId"
+                component={PLUGIN_DATA_APPS.APP_PAGE_COMPONENT}
+              />
+            </Route>
+          )}
 
           <Route path="/question">
             <Route

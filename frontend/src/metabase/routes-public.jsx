@@ -1,4 +1,5 @@
 import { Route } from "metabase/hoc/Title";
+import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import PublicAction from "metabase/public/containers/PublicAction";
 import PublicApp from "metabase/public/containers/PublicApp";
@@ -18,6 +19,12 @@ export const getRoutes = (store) => {
           path="dashboard/:uuid(/:tabSlug)"
           component={PublicOrEmbeddedDashboardPage}
         />
+        {PLUGIN_DATA_APPS.isEnabled() && (
+          <Route
+            path="data-app/:appUrl"
+            component={PLUGIN_DATA_APPS.PUBLIC_APP_PAGE_COMPONENT}
+          />
+        )}
         <Route path="*" component={PublicNotFound} />
       </Route>
       <Route path="*" component={PublicNotFound} />
