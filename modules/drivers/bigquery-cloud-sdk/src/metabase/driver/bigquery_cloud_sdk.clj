@@ -801,7 +801,6 @@
   [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
 
-
 (defmethod driver/db-routing-info :bigquery-cloud-sdk
   [_driver]
   "Route queries on this database to a different BigQuery project or Google Cloud
