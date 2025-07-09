@@ -74,10 +74,7 @@ export function getFilterClause(
   operator: UiNumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
-  options?: {
-    minInclusive?: boolean;
-    maxInclusive?: boolean;
-  },
+  options?: Lib.NumberFilterOptions,
 ) {
   const filterParts = getFilterParts(operator, column, values, options);
   return filterParts != null ? Lib.numberFilterClause(filterParts) : undefined;
@@ -87,10 +84,7 @@ function getFilterParts(
   operator: UiNumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
-  options?: {
-    minInclusive?: boolean;
-    maxInclusive?: boolean;
-  },
+  options?: Lib.NumberFilterOptions,
 ): Lib.NumberFilterParts | undefined {
   switch (operator) {
     case "between":
@@ -124,10 +118,7 @@ function getBetweenFilterParts(
   operator: Lib.NumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
-  options?: {
-    minInclusive?: boolean;
-    maxInclusive?: boolean;
-  },
+  options?: Lib.NumberFilterOptions,
 ): Lib.NumberFilterParts | undefined {
   const [startValue, endValue] = values;
   const minInclusive = options?.minInclusive ?? true;

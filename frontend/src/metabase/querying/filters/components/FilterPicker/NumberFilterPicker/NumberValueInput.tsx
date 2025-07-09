@@ -1,10 +1,7 @@
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import type {
-  InclusiveOptions,
-  NumberOrEmptyValue,
-} from "metabase/querying/filters/hooks/use-number-filter";
+import type { NumberOrEmptyValue } from "metabase/querying/filters/hooks/use-number-filter";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
@@ -22,7 +19,7 @@ interface NumberValueInputProps {
   valueCount: number;
   hasMultipleValues?: boolean;
   onChange: (values: NumberOrEmptyValue[]) => void;
-  inclusiveOptions: InclusiveOptions;
+  inclusiveOptions: Lib.NumberFilterOptions;
   onInclusiveOptionsChange: (value: any) => void;
 }
 
