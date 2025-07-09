@@ -13,7 +13,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
-   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.premium-features.core :as premium-features]
@@ -24,7 +23,6 @@
    [metabase.search.permissions :as search.permissions]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu])
   (:import
    (java.time LocalDate)))

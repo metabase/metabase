@@ -1,6 +1,5 @@
 (ns metabase.search.filter
   (:require
-   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.premium-features.core :as premium-features]
