@@ -4,6 +4,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import UserAvatar from "metabase/common/components/UserAvatar";
+import { colors } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 import { Button, Card, Divider, Icon, Menu, Skeleton, Textarea } from "metabase/ui";
@@ -475,15 +476,16 @@ const QuestionResponsePage = ({
             style={{
               height: "100%",
               padding: "2rem",
-              overflowY: "auto",
+              display: "flex",
+              flexDirection: "column",
               opacity: showContent ? 1 : 0,
               transform: showContent ? "translateX(0)" : "translateX(20px)",
               transition: "opacity 0.6s ease-out, transform 0.6s ease-out",
               transitionDelay: "0.3s",
             }}
           >
-            <Card shadow="none" withBorder>
-              <div style={{ padding: "1rem" }}>
+            <Card shadow="none" withBorder style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              <div style={{ padding: "1rem", display: "flex", flexDirection: "column", height: "100%" }}>
                 <h3
                   style={{
                     marginBottom: "1rem",
@@ -494,56 +496,32 @@ const QuestionResponsePage = ({
                   {t`Agent Chat`}
                 </h3>
 
-                {/* Prompt Card */}
-                <Card
-                  shadow="none"
-                  withBorder
-                  style={{
-                    marginBottom: "1rem",
-                    backgroundColor: "var(--mb-color-bg-light)",
-                  }}
-                >
-                  <div style={{ padding: "0.75rem" }}>
-                    <div
-                      style={{
-                        fontSize: "0.75rem",
-                        color: "var(--mb-color-text-medium)",
-                        marginBottom: "0.25rem",
-                        fontWeight: "500",
-                      }}
-                    >
-                      {t`Question`}
-                    </div>
-                    <div style={{ fontSize: "0.875rem", lineHeight: "1.4" }}>
-                      {question?.prompt || t`No question available`}
-                    </div>
-                  </div>
-                </Card>
+                {/* Chat Messages Area */}
                 <div
                   ref={chatContainerRef}
                   style={{
-                    height: "400px",
-                    border: "1px solid var(--mb-color-border)",
-                    borderRadius: "0.375rem",
-                    padding: "0.75rem",
-                    marginBottom: "1rem",
+                    flex: 1,
                     overflowY: "auto",
-                    backgroundColor: "var(--mb-color-bg-light)",
+                    marginBottom: "1rem",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "1rem",
                   }}
                 >
                   {question?.chatHistory?.map((message) => (
                     <div
                       key={message.id}
                       style={{
-                        marginBottom: "1rem",
-                        padding: "0.5rem",
-                        borderRadius: "0.375rem",
-                        backgroundColor: message.role === "user" ? "var(--mb-color-primary)" : "var(--mb-color-bg-white)",
-                        color: message.role === "user" ? "white" : "var(--mb-color-text-primary)",
+                        padding: "0.75rem",
+                        borderRadius: "0.5rem",
+                        backgroundColor: message.role === "user" ? colors.brand : "var(--mb-color-bg-light)",
+                        color: message.role === "user" ? colors.white : "var(--mb-color-text-primary)",
                         alignSelf: message.role === "user" ? "flex-end" : "flex-start",
-                        maxWidth: "85%",
+                        maxWidth: "90%",
                         marginLeft: message.role === "user" ? "auto" : "0",
                         marginRight: message.role === "user" ? "0" : "auto",
+                        border: message.role === "assistant" ? "1px solid var(--mb-color-border)" : "none",
+                        boxShadow: message.role === "user" ? `0 2px 4px ${colors.shadow}` : "none",
                       }}
                     >
                       <div style={{ fontSize: "0.75rem", marginBottom: "0.25rem", opacity: 0.8 }}>
@@ -560,11 +538,13 @@ const QuestionResponsePage = ({
                   {isSendingMessage && (
                     <div
                       style={{
-                        padding: "0.5rem",
-                        borderRadius: "0.375rem",
-                        backgroundColor: "var(--mb-color-bg-white)",
-                        maxWidth: "85%",
+                        padding: "0.75rem",
+                        borderRadius: "0.5rem",
+                        backgroundColor: "var(--mb-color-bg-light)",
+                        border: "1px solid var(--mb-color-border)",
+                        maxWidth: "90%",
                         marginRight: "auto",
+                        alignSelf: "flex-start",
                       }}
                     >
                       <div style={{ fontSize: "0.75rem", marginBottom: "0.25rem", opacity: 0.8 }}>
@@ -576,7 +556,16 @@ const QuestionResponsePage = ({
                     </div>
                   )}
                 </div>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
+
+                {/* Sticky Input Area */}
+                <div style={{
+                  display: "flex",
+                  gap: "0.5rem",
+                  flexShrink: 0,
+                  backgroundColor: "var(--mb-color-bg-white)",
+                  paddingTop: "0.5rem",
+                  borderTop: "1px solid var(--mb-color-border)",
+                }}>
                   <Textarea
                     placeholder={t`Ask a follow-up question...`}
                     minRows={2}
