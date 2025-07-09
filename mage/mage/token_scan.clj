@@ -4,8 +4,7 @@
    [clojure.string :as str]
    [mage.color :as c]
    [mage.util :as u])
-  (:import
-   [java.util.regex Pattern]))
+  (:import [java.util.concurrent Executors Callable TimeUnit]))
 
 (set! *warn-on-reflection* true)
 
@@ -47,7 +46,7 @@
 
 (defn- scan-file
   "Scan a single file for regex patterns. Returns map with file path and matches."
-  [^String file-path patterns]
+  [patterns ^String file-path]
   (try
     (let [lines (str/split-lines (slurp file-path))
           ignore-lines (atom #{})
@@ -153,69 +152,79 @@
   "Get files updated relative to master branch"
   [diff-target]
   (let [project-root u/project-root-directory]
-    (->> (u/updated-files diff-target)
+    (->> (u/sh "git" "diff" "--name-only" diff-target)
+         str/split-lines
+         (remove #{""})
+         (filter (fn [filename]
+                   (fs/exists? (str project-root "/" filename))))
          (map (fn [filename]
-                (str project-root "/" filename))))))
+                (str project-root "/" filename)))
+         (remove exclude-path-str?))))
 
-(defn- merge-results
+
+(defn- merge-scanned
   "Merge results from parallel scanning"
   ([] {:total-files 0 :files-with-matches 0 :total-matches 0 :total-unused-ignores 0 :results []})
   ([acc] acc)
-  ([acc result]
+  ([acc scanned]
    (-> acc
        (update :total-files inc)
-       (update :files-with-matches (if (seq (:matches result)) inc identity))
-       (update :total-matches + (count (:matches result)))
-       (update :total-unused-ignores + (count (:unused-ignores result)))
-       (update :results conj result))))
+       (update :files-with-matches (if (seq (:matches scanned)) inc identity))
+       (update :total-matches + (count (:matches scanned)))
+       (update :total-unused-ignores + (count (:unused-ignores scanned)))
+       (update :scanned conj scanned))))
 
-
-(defn scan-files
-  "Scan files for regex patterns using parallel processing"
-  [patterns files {:keys [pool-size] :or {pool-size (* 2 (.availableProcessors (Runtime/getRuntime)))}} & {:keys [verbose]}]
-  (let [start-time (System/nanoTime)]
-    (println (c/cyan "Scanning " (c/green (count files)) " files with " (c/red (count patterns)) " patterns using " (c/magenta pool-size) " threads..."))
-    #_(when verbose
-        (println (c/cyan "Scanning files: " (c/green (pr-str files)))))
-    (let [results (u/pmap-reduce
-                   #(scan-file % patterns)
-                   merge-results
-                   files
-                   {:pool-size pool-size})
-          duration-ms (/ (- (System/nanoTime) start-time) 1000000.0)]
-      (assoc results
-             :duration-ms duration-ms
-             :pool-size pool-size))))
+(defn scan-files [patterns files]
+  (let [start-time (System/nanoTime)
+        pool-size (-> (/ (count files) 8) int (max 4) (min 32))
+        _ (println (c/yellow "Using thread pool size: " pool-size))
+        executor (Executors/newFixedThreadPool pool-size)
+        callables (mapv (fn [f]
+                          (reify Callable
+                            (call [_] (scan-file patterns f))))
+                        files)
+        futures (.invokeAll executor callables)
+        results (mapv #(.get ^java.util.concurrent.Future %) futures)
+        merged (reduce merge-scanned (merge-scanned) results)
+        duration-ms (/ (- (System/nanoTime) start-time) 1e6)]
+    (.shutdown executor)
+    (.awaitTermination executor 10 TimeUnit/SECONDS)
+    (assoc merged
+           :duration-ms duration-ms)))
 
 (defn run-scan
   "Main entry point for regex scanning"
   [{:keys [options arguments]}]
-  (let [{:keys [all-files verbose no-lines]} options
-        diff-target (or (first arguments) "master")
-        files (if all-files
-                (get-all-files)
-                (get-git-updated-files diff-target))
+  (let [{:keys [all-files target verbose no-lines]} options
+        files (cond
+                ;; Arguments provided = specific files to scan
+                (seq arguments) arguments
+                ;; --all-files flag
+                all-files (get-all-files)
+                ;; Default: scan git-updated files
+                :else (get-git-updated-files (or target "master")))
         
         _ (when (empty? files)
             (println (c/yellow "No files to scan"))
             (System/exit 0))
         
-        {:keys [results duration-ms total-files files-with-matches total-matches total-unused-ignores]}
-        (scan-files token-patterns files {} :verbose verbose)]
-    
+        {:keys [scanned duration-ms total-files files-with-matches total-matches total-unused-ignores] :as x}
+        (scan-files token-patterns files)]
+
     ;; Print results
-    (doseq [{:keys [file matches unused-ignores error]} results]
-      (when error
-        (println (c/red "Error scanning " file ": " error)))
-      (when (seq matches)
-        (println (c/blue file))
-        (when-not no-lines
-          (doseq [{:keys [pattern-name line-number line-text]} matches]
-            (println (c/white "  Line# " (c/bold line-number) " [" (c/yellow pattern-name) "]:" (c/green (str/trim line-text)))))))
-      (when (seq unused-ignores)
-        (println (c/red file))
-        (doseq [line-num unused-ignores]
-          (println (c/red "  Line# " (c/bold line-num) ": Unused " ignore-marker " comment")))))
+    (when verbose
+      (doseq [{:keys [file matches unused-ignores error]} scanned]
+        (when error
+          (println (c/red "Error scanning " file ": " error)))
+        (when (seq matches)
+          (println (c/blue file))
+          (when-not no-lines
+            (doseq [{:keys [pattern-name line-number line-text]} matches]
+              (println (c/white "  Line# " (c/bold line-number) " [" (c/yellow pattern-name) "]:" (c/green (str/trim line-text)))))))
+        (when (seq unused-ignores)
+          (println (c/red file))
+          (doseq [line-num unused-ignores]
+            (println (c/red "  Line# " (c/bold line-num) ": Unused " ignore-marker " comment"))))))
 
     (println (c/green "Scan completed in " (format "%.0f" duration-ms) "ms"))
     (println (c/yellow "Files scanned:      " total-files))
@@ -225,4 +234,4 @@
       (println (c/red "Unused ignores:     " total-unused-ignores))
       (System/exit 1))
     ;; Return results for potential further processing
-    results))
+    scanned))
