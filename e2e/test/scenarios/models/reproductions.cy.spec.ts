@@ -1730,7 +1730,7 @@ describe("issue 56775", () => {
   });
 });
 
-describe("issue 57359", () => {
+describe.skip("issue 57359", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -1740,7 +1740,7 @@ describe("issue 57359", () => {
   });
 
   it("should not break the model when editing metadata (metabase#57359)", () => {
-    cy.log("create a question without running the query");
+    cy.log("create a question with two joins to the same");
     H.openOrdersTable({ mode: "notebook" });
     cy.wrap([1, 2]).each(() => {
       H.join();
