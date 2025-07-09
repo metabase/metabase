@@ -1,7 +1,7 @@
 import fs from "fs";
 
 import { graphql } from "@octokit/graphql";
-import _ from "underscore";
+import _, { has } from "underscore";
 
 import { hiddenLabels, nonUserFacingLabels } from "./constants";
 import {
@@ -25,11 +25,16 @@ import {
 } from "./version-helpers";
 
 function isBackport(pullRequest: Issue) {
-  return pullRequest.title.includes('backport') ||
-    (
-      Array.isArray(pullRequest.labels) &&
-      pullRequest.labels.some((label) => label.name === 'was-backported')
-    );
+  return (
+    pullRequest.title.includes("backport") || hasLabel(pullRequest, "backport")
+  );
+}
+
+function hasLabel(issue: Issue, labelName: string) {
+  return (
+    Array.isArray(issue.labels) &&
+    issue.labels.some((label) => label.name === labelName)
+  );
 }
 
 const isNotNull = <T>(value: T | null): value is T => value !== null;
@@ -116,6 +121,12 @@ async function getOriginalIssues({
 
   if (!issue) {
     console.log(`  Issue ${issueNumber} not found`);
+    return [];
+  }
+
+  // if this isn't a pull request, but is an Embedding SDK issue, skip it
+  if (!issue.pull_request && hasLabel(issue, "Embedding/SDK")) {
+    console.log("  Skip an Embedding SDK issue");
     return [];
   }
 
