@@ -69,3 +69,5 @@ export const EMBED_FALLBACK_QUESTION_ID = 1;
  * Setting this too high will cause the preview to feel unresponsive.
  **/
 export const SET_INITIAL_PARAMETER_DEBOUNCE_MS = 500;
+
+export const USER_SETTINGS_DEBOUNCE_MS = 500;

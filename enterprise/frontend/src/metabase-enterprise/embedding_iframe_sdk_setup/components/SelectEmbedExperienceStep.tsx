@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Card, Radio, Stack, Text } from "metabase/ui";
+import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase-enterprise/embedding_iframe_sdk/constants";
 
 import {
   EMBED_EXPERIENCES,
@@ -25,10 +26,10 @@ export const SelectEmbedExperienceStep = () => {
   const handleEmbedExperienceChange = (
     experience: SdkIframeEmbedSetupExperience,
   ) => {
-    const persistedSettings = _.pick(settings, [
-      "theme",
-      "useExistingUserSession",
-    ]);
+    const persistedSettings = _.pick(
+      settings,
+      ALLOWED_EMBED_SETTING_KEYS_MAP.base,
+    );
 
     // Use the most recent item for the selected type.
     // If the activity log is completely empty, use the fallback.

@@ -35,7 +35,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const [persistedSettings, persistSetting] = useUserSetting(
     "sdk-iframe-embed-setup-settings",
-    { shouldDebounce: true, debounceTimeout: 500 },
+    { shouldDebounce: true, debounceTimeout: 800 },
   );
 
   // We don't want to re-fetch the recent items every time we switch between
@@ -49,11 +49,11 @@ export const SdkIframeEmbedSetupProvider = ({
     );
   }, [recentDashboards]);
 
-  const settings = rawSettings ?? defaultSettings;
-
   const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
     "select-embed-experience",
   );
+
+  const settings = rawSettings ?? defaultSettings;
 
   // Which embed experience are we setting up?
   const experience = useMemo(
