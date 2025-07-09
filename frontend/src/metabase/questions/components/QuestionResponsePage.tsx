@@ -38,6 +38,7 @@ const QuestionResponsePage = ({
     dispatch(addGenerativeQuestion({
       id: newQuestionId,
       prompt: selectedText,
+      agentType: "Metabot: Your general purpose analyst",
       createdAt: Date.now(),
       updatedAt: Date.now(),
     }));
@@ -187,6 +188,18 @@ Here's how our products are distributed across categories:
             >
               {t`Agent Chat`}
             </h3>
+
+            {/* Prompt Card */}
+            <Card shadow="none" withBorder style={{ marginBottom: "1rem", backgroundColor: "var(--mb-color-bg-light)" }}>
+              <div style={{ padding: "0.75rem" }}>
+                <div style={{ fontSize: "0.75rem", color: "var(--mb-color-text-medium)", marginBottom: "0.25rem", fontWeight: "500" }}>
+                  {t`Question`}
+                </div>
+                <div style={{ fontSize: "0.875rem", lineHeight: "1.4" }}>
+                  {question?.prompt || t`No question available`}
+                </div>
+              </div>
+            </Card>
             <div
               style={{
                 height: "300px",
@@ -198,14 +211,6 @@ Here's how our products are distributed across categories:
                 backgroundColor: "var(--mb-color-bg-light)",
               }}
             >
-              <div
-                style={{
-                  fontSize: "0.875rem",
-                  color: "var(--mb-color-text-medium)",
-                }}
-              >
-                {t`Chat history will appear here...`}
-              </div>
             </div>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <Textarea

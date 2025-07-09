@@ -23,6 +23,7 @@ const QuestionsPage = ({ router }: QuestionsPageProps): JSX.Element => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [promptText, setPromptText] = useState("");
   const [background, setBackground] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState("Metabot: Your general purpose analyst");
   const dispatch = useDispatch();
   const generativeQuestions = useSelector(getGenerativeQuestionsList);
 
@@ -43,6 +44,7 @@ const QuestionsPage = ({ router }: QuestionsPageProps): JSX.Element => {
     dispatch(addGenerativeQuestion({
       id: questionId,
       prompt: promptText.trim(),
+      agentType: selectedAgent,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       loading: background,
@@ -92,14 +94,25 @@ const QuestionsPage = ({ router }: QuestionsPageProps): JSX.Element => {
             <Menu>
               <Menu.Target>
                 <Button variant="subtle" size="sm">
-                  {t`Select Agent`}
+                  {selectedAgent}
                 </Button>
               </Menu.Target>
               <Menu.Dropdown>
-                <Menu.Item>{t`Data Analyst`}</Menu.Item>
-                <Menu.Item>{t`SQL Expert`}</Menu.Item>
-                <Menu.Item>{t`Business Intelligence`}</Menu.Item>
-                <Menu.Item>{t`Data Scientist`}</Menu.Item>
+                <Menu.Item onClick={() => setSelectedAgent("Metabot: Your general purpose analyst")}>
+                  {t`Metabot: Your general purpose analyst`}
+                </Menu.Item>
+                <Menu.Item onClick={() => setSelectedAgent("Data Analyst")}>
+                  {t`Data Analyst`}
+                </Menu.Item>
+                <Menu.Item onClick={() => setSelectedAgent("SQL Expert")}>
+                  {t`SQL Expert`}
+                </Menu.Item>
+                <Menu.Item onClick={() => setSelectedAgent("Business Intelligence")}>
+                  {t`Business Intelligence`}
+                </Menu.Item>
+                <Menu.Item onClick={() => setSelectedAgent("Data Scientist")}>
+                  {t`Data Scientist`}
+                </Menu.Item>
               </Menu.Dropdown>
             </Menu>
             <div

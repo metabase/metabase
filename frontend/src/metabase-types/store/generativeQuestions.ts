@@ -3,6 +3,7 @@ export interface GenerativeQuestion {
   prompt: string;
   title?: string;
   content?: string;
+  agentType: string;
   createdAt: number;
   updatedAt: number;
   loading?: boolean;
