@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -98,11 +98,20 @@ export const LoginAttributeMappingEditor = ({
   onChange,
   onError,
 }: MappingEditorProps) => {
-  const [entries, setEntries] = useState<MappingEditorEntry[]>(() =>
-    structuredAttributes
-      ? buildStructuredEntries(structuredAttributes)
-      : buildEntries(simpleAttributes),
+  const [entries, setEntries] = useState<MappingEditorEntry[]>(
+    structuredAttributes ? [] : buildEntries(simpleAttributes),
   );
+
+  useEffect(() => {
+    // structuredAttributes can change if a different tenant is selected
+    if (structuredAttributes) {
+      setEntries((previousEntries) => [
+        ...buildStructuredEntries(structuredAttributes),
+        // keep any user-defined entries
+        ...previousEntries.filter((entry) => !entry.keyOpts?.disabled),
+      ]);
+    }
+  }, [structuredAttributes]);
 
   const handleChange = (newEntries: MappingEditorEntry[]) => {
     setEntries(newEntries);
@@ -160,17 +169,19 @@ export const LoginAttributeMappingEditor = ({
           </Flex>
         );
       })}
-      {_.every(entries, (entry) => entry.value !== "" && entry.key !== "") && (
-        <Button
-          variant="light"
-          size="xs"
-          leftSection={<Icon name="add" />}
-          onClick={() => handleChange(addEntry(entries))}
-          mt="lg"
-        >
-          {t`Add an attribute`}
-        </Button>
-      )}
+      <Button
+        variant="light"
+        size="xs"
+        leftSection={<Icon name="add" />}
+        onClick={() => handleChange(addEntry(entries))}
+        mt="md"
+        disabled={_.some(
+          entries,
+          (entry) => entry.value === "" || entry.key === "",
+        )}
+      >
+        {t`Add an attribute`}
+      </Button>
     </Box>
   );
 };
