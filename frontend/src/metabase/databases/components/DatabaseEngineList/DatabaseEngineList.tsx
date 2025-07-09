@@ -137,7 +137,7 @@ export const DatabaseEngineList = ({
             />
           </ScrollArea>
         ) : (
-          <NoDatabaseFound />
+          <NoDatabaseFound isSetupStep={isSetupStep} />
         )}
       </Combobox>
     </Stack>
@@ -158,7 +158,13 @@ const DatabaseLogo = ({ db }: { db: string }) => {
   );
 };
 
-const NoDatabaseFound = () => {
+const NoDatabaseFound = ({ isSetupStep }: { isSetupStep?: boolean }) => {
+  // Intentionally left a bit of a duplication because this is likely a temporary UX hotfix until we find a permanent
+  // solution for the setup flow based on whether or not they have storage.
+  const text = isSetupStep
+    ? t`Sorry, we couldn't find this data source.`
+    : t`Sorry, we couldn't find this data source. Try uploading your data in the CSV format instead.`;
+
   return (
     <Stack
       gap="md"
@@ -171,10 +177,9 @@ const NoDatabaseFound = () => {
       <Center className={S.noResultsIcon} w="3rem" h="3rem">
         <Icon name="database" c="inherit" />
       </Center>
-      <Text
-        ta="center"
-        c="inherit"
-      >{t`Sorry, we couldn't find this data source. Try uploading your data in the CSV format instead.`}</Text>
+      <Text ta="center" c="inherit">
+        {text}
+      </Text>
     </Stack>
   );
 };
