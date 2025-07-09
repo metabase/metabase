@@ -1,14 +1,14 @@
 # Security Token Scanner
 
-The security token scanner is a tool that automatically detects potentially leaked API keys, secrets, and other sensitive tokens in the Metabase codebase. It runs as a git precommit hook to prevent accidental token leaks from being committed.
+The security token scanner is a tool that automatically detects potentially leaked API keys, secrets, and other sensitive tokens in the Metabase codebase. It runs as a git precommit hook via `lint-staged` to prevent accidental token leaks from being committed.
 
 ## What it scans for
 
 The scanner looks for patterns that match common token formats:
 
-- **Airgap Tokens**: JWE tokens starting with `airgap_`
+- **Airgap Tokens**: JWE tokens starting with `airgap_` (400+ characters)
 - **Hash/Dev Tokens**: 64-character hex strings or `mb_dev_` prefixed tokens
-- **OpenAI API Keys**: Keys starting with `sk-` (48 characters total)
+- **OpenAI API Keys**: Keys starting with `sk-` (43-51 characters total)
 - **JWT Tokens**: Standard JWT format with header.payload.signature
 - **JWE Tokens**: Encrypted JWT tokens (400+ characters)
 - **GitHub Tokens**: Personal access tokens starting with `gh[pousr]_`
@@ -17,6 +17,8 @@ The scanner looks for patterns that match common token formats:
 
 ## Running the scanner
 
+The scanner runs automatically via `lint-staged` on staged files during git commits. You can also run it directly from mage.
+
 ### Basic usage
 
 ```bash
@@ -24,60 +26,53 @@ The scanner looks for patterns that match common token formats:
 ./bin/mage token-scan
 
 # Scan files changed vs specific branch
-./bin/mage token-scan develop
+./bin/mage token-scan --target develop
 
 # Scan all files in the project
 ./bin/mage token-scan -a
 
-# Show just file paths without line details
-./bin/mage token-scan -n
+# Scan specific files
+./bin/mage token-scan file1.txt file2.txt
+
+# Run with verbose output
+./bin/mage token-scan -v
 ```
 
 ### Example output
 
 ```
-Scanning 143 files with 8 patterns using 16 threads...
+Using thread pool size: 16
 /Users/dev/metabase/src/metabase/api/auth.clj
   Line# 42 [OpenAI API Key]: const apiKey = "sk-1234567890abcdef1234567890abcdef123456789012";
 
-Scan completed in 89ms
+Scan completed in:   89ms
 Files scanned:      143
 Files with matches: 1
 Total matches:      1
 ```
 
-## Ignoring legitimate tokens
+## Whitelisting legitimate tokens
 
-Sometimes you need to include tokens in source code for testing or examples. Use the `metabase-scanner-ignore` comment on the same line:
+Sometimes you need to include token-like strings in source code for testing or examples. The scanner uses a whitelist file to avoid flagging known safe tokens.
 
-```clojure
-;; Good: token is ignored
-(def test-token "sk-1234567890abcdef1234567890abcdef123456789012") ; metabase-scanner-ignore
-
-;; Bad: token will be flagged
-(def test-token "sk-1234567890abcdef1234567890abcdef123456789012")
-```
-
-```javascript
-// Good: token is ignored
-const testKey = "eyJhbGciOiJIUzI1NiI..."; // metabase-scanner-ignore
-
-// Bad: token will be flagged
-const testKey = "eyJhbGciOiJIUzI1NiI...";
-```
-
-### Unused ignore comments
-
-The scanner will error if you have `metabase-scanner-ignore` comments that don't suppress any matches:
+The whitelist is located at `mage/resources/token_scanner_whitelist.txt` and contains strings that should not be flagged as secrets:
 
 ```
-/Users/dev/metabase/src/example.clj
-  Line# 15: Unused metabase-scanner-ignore comment
+# Common test/example tokens that appear in documentation
+sk-1234567890abcdef1234567890abcdef123456789012
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
 
-Unused ignores: 1
+# Hash values from tests and examples
+430bb02a37bb2471176e54ca323d0940c4e0ee210c3ab04262cb6576fe4ded6d
+sha256:9ff56186de4dd0b9bb2a37c977c3a4c9358647cde60a16f11f4c05bded1fe77a
+
+# Slack bot tokens from examples
+xoxb-781236542736-2364535789652-GkwFDQoHqzXDVsC6GzqYUypD
 ```
 
-This prevents ignore comments from accumulating over time. Remove unused ignore comments to fix this error.
+To whitelist a token, add the exact string to this file. Each line is treated as a substring that will be checked against the entire line containing the token using exact substring matching.
+
+**Important**: The whitelist uses simple substring matching, not regex patterns. Add the exact token string that should be ignored.
 
 ## Adding new token patterns
 
@@ -86,7 +81,7 @@ To add a new token pattern, edit `mage/mage/token_scan.clj` and add an entry to 
 ```clojure
 (def ^:private token-patterns
   {"Existing Pattern" #"existing-regex"
-   "New Token Type" #"new-token-pattern-regex"})
+   "Your New Token Type" #"13{2}7"})
 ```
 
 ### Pattern guidelines
@@ -95,6 +90,7 @@ To add a new token pattern, edit `mage/mage/token_scan.clj` and add an entry to 
 - **Include length constraints**: Use `{min,max}` quantifiers to avoid false positives
 - **Add comments**: Explain the token format and expected length
 - **Test thoroughly**: Run the scanner on the codebase to check for false positives
+    - Run it on everything with: `mage token-scan -a`
 
 Example of a good pattern:
 ```clojure
@@ -134,7 +130,7 @@ The scanner currently excludes:
 The scanner runs automatically as a git precommit hook. If it finds tokens or unused ignore comments, the commit will be blocked with:
 
 - **Token detected**: Review the file to ensure it's not a real secret
-- **Unused ignore**: Remove the unnecessary `metabase-scanner-ignore` comment
+
 
 The scanner only scans files that are staged for commit, making it fast and focused on new changes.
 
