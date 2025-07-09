@@ -1739,7 +1739,7 @@ describe.skip("issue 57359", () => {
   });
 
   it("should not break the model when editing metadata (metabase#57359)", () => {
-    cy.log("create a question with two joins to the same");
+    cy.log("create a question with two joins without running the query");
     H.openOrdersTable({ mode: "notebook" });
     cy.wrap([1, 2]).each(() => {
       H.join();
@@ -1761,6 +1761,8 @@ describe.skip("issue 57359", () => {
     H.openColumnOptions("Product ID");
     H.renameColumn("Product ID", "Product ID2");
     H.saveMetadataChanges();
+
+    cy.log("make sure the query can run");
     cy.wait("@dataset");
     H.tableInteractive().should("be.visible");
   });
