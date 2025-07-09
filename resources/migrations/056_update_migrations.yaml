@@ -443,7 +443,6 @@ databaseChangeLog:
                     referencedTableName: data_app_definition
                     referencedColumnNames: id
                     foreignKeyName: fk_data_app_release_app_definition_id
-                    deleteCascade: true
               - column:
                   name: creator_id
                   remarks: the creator
