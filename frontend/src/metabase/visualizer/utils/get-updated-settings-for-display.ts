@@ -121,17 +121,20 @@ const pieToFunnel = (
 ) => {
   const {
     "pie.metric": metric,
-    "pie.dimension": dimension,
+    "pie.dimension": pieDimension,
     "card.title": cardTitle,
     ...otherSettings
   } = settings;
+
+  const dimension = Array.isArray(pieDimension)
+    ? pieDimension[0]
+    : pieDimension;
 
   return {
     columns,
     columnValuesMapping,
     settings: {
       ...otherSettings,
-      "card.title": cardTitle,
       "funnel.metric": metric,
       "funnel.dimension": dimension,
       "graph.metrics": [metric].filter(isNotNull) as string[],
@@ -225,14 +228,20 @@ const funnelToCartesian = (
   const metrics = [metric].filter(isNotNull);
   const dimensions = [dimension].filter(isNotNull);
 
+  const isInRefs = (ref: string) =>
+    columnValuesMapping[ref] && columnValuesMapping[ref].length > 0;
+
   return {
     columns,
     columnValuesMapping,
     settings: {
       ...otherSettings,
-      "graph.metrics": metrics.length > 0 ? metrics : preservedMetrics,
+      "graph.metrics":
+        metrics.length > 0 ? metrics : preservedMetrics.filter(isInRefs),
       "graph.dimensions":
-        dimensions.length > 0 ? dimensions : preservedDimensions,
+        dimensions.length > 0
+          ? dimensions
+          : preservedDimensions.filter(isInRefs),
     },
   };
 };
