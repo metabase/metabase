@@ -139,19 +139,19 @@
 (defn- field->clickhouse-column
   [field]
   (let [{:keys [field-name base-type pk? not-null? default-expr generated-expr]} field
-        ch-type  (if (map? base-type)
-                   (:native base-type)
-                   (sql.tx/field-base-type->sql-type :clickhouse base-type))
-        col-name (quote-name field-name)
-        ch-col   (cond
-                   (or pk? (disallowed-as-nullable? ch-type) (map? base-type) not-null?)
-                   (format "%s %s" col-name ch-type)
+        ch-type   (if (map? base-type)
+                    (:native base-type)
+                    (sql.tx/field-base-type->sql-type :clickhouse base-type))
+        col-name  (quote-name field-name)
+        ch-col    (cond
+                    (or pk? (disallowed-as-nullable? ch-type) (map? base-type) not-null?)
+                    (format "%s %s" col-name ch-type)
 
-                   (= ch-type "Time")
-                   (format "%s Nullable(DateTime64) COMMENT 'time'" col-name)
+                    (= ch-type "Time")
+                    (format "%s Nullable(DateTime64) COMMENT 'time'" col-name)
 
-                   :else (format "%s Nullable(%s)" col-name ch-type))
-        default (when default-expr (format "DEFAULT (%s)" default-expr))
+                    :else (format "%s Nullable(%s)" col-name ch-type))
+        default   (when default-expr (format "DEFAULT (%s)" default-expr))
         generated (when generated-expr (format "ALIAS (%s)" generated-expr))]
     (str/join " " (filter some? [ch-col default generated]))))
 
