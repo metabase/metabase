@@ -30,7 +30,8 @@
                                                                      :uploads_schema_name  nil
                                                                      :uploads_table_prefix nil})
                   (or (not-handling-api-request?)
-                      (mi/can-write? :model/Database db_id))
+                      (mi/can-write? :model/Database db_id)
+                      (t2/select-one-fn :is_attached_dwh :model/Database db_id))
                   (t2/update! :model/Database db_id {:uploads_enabled      true
                                                      :uploads_schema_name  schema_name
                                                      :uploads_table_prefix table_prefix})
