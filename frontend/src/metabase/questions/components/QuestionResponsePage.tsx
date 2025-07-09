@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { Button, Card, Skeleton, Textarea } from "metabase/ui";
 
+import { MarkdownRenderer } from "./MarkdownRenderer";
 import {
   QuestionResponseContent,
   QuestionResponsePageContainer,
@@ -61,6 +62,12 @@ Based on your data, Q4 2023 showed a **15% increase** in total sales compared to
 - Plan expansion into emerging markets
 `;
 
+  const handleTextNodeClick = (_nodeId: string, _text: string) => {
+    // TODO: Implement follow-up question functionality
+    // This could open a modal, add to chat, or highlight the text
+    // For now, we can use the nodeId and text to generate follow-up questions
+  };
+
   useEffect(() => {
     // Simulate loading time
     const loadingTimer = setTimeout(() => {
@@ -112,20 +119,17 @@ Based on your data, Q4 2023 showed a **15% increase** in total sales compared to
             )}
             <div
               style={{
-                lineHeight: "1.6",
-                fontSize: "0.95rem",
                 opacity: showContent ? 1 : 0,
                 transform: showContent ? "translateY(0)" : "translateY(10px)",
                 transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
                 transitionDelay: "0.2s",
               }}
-              dangerouslySetInnerHTML={{
-                __html: generatedContent
-                  .replace(/\n/g, "<br>")
-                  .replace(/#{1,6}\s+(.+)/g, "<h2>$1</h2>")
-                  .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>"),
-              }}
-            />
+            >
+              <MarkdownRenderer
+                content={generatedContent}
+                onTextNodeClick={handleTextNodeClick}
+              />
+            </div>
           </div>
         </Card>
       </QuestionResponseContent>
