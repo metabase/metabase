@@ -39,7 +39,6 @@
                  :expressions/datetime
                  :expressions/date
                  :expressions/text
-                 :view
                  :distinct-where
                  :database-routing]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))

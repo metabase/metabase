@@ -69,7 +69,8 @@
                               :test/jvm-timezone-setting false
                               :uuid-type                 true
                               :uploads                   true
-                              :database-routing          true}]
+                              :database-routing          true
+                              :view                      true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -222,6 +223,8 @@
                     CommandInterface/DROP_TABLE
                     CommandInterface/CREATE_SCHEMA
                     CommandInterface/DROP_SCHEMA
+                    CommandInterface/CREATE_VIEW
+                    CommandInterface/DROP_VIEW
                     CommandInterface/ALTER_TABLE_RENAME
                     CommandInterface/ALTER_TABLE_ADD_COLUMN
                     CommandInterface/ALTER_TABLE_DROP_COLUMN
