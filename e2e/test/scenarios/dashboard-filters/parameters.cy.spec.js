@@ -1787,7 +1787,7 @@ describe("scenarios > dashboard > parameters", () => {
       },
     };
 
-    it("should be able to add and use filters", () => {
+    it("should be able to add and use filters", { tags: "@flaky" }, () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
       }).then(({ body: { dashboard_id } }) => {

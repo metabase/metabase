@@ -8,9 +8,9 @@
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/DataApp [_model] :data_app)
+(methodical/defmethod t2/table-name :model/DataApp           [_model] :data_app)
 (methodical/defmethod t2/table-name :model/DataAppDefinition [_model] :data_app_definition)
-(methodical/defmethod t2/table-name :model/DataAppRelease [_model] :data_app_release)
+(methodical/defmethod t2/table-name :model/DataAppRelease    [_model] :data_app_release)
 
 (doseq [model [:model/DataApp
                :model/DataAppDefinition
@@ -78,7 +78,7 @@
   [instance]
   (throw (ex-info "AppDefinition is append-only and cannot be updated"
                   {:status-code 400
-                   :changes (t2/changes instance)})))
+                   :changes     (t2/changes instance)})))
 
 (defn- next-revision-number-hsql
   [app-id]
@@ -117,7 +117,7 @@
   [app-id definition]
   (t2/insert-returning-instance! :model/DataAppDefinition
                                  (merge definition
-                                        {:app_id app-id
+                                        {:app_id          app-id
                                          :revision_number (next-revision-number-hsql app-id)})))
 
 (defn create-app!

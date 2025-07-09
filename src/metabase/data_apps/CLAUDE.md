@@ -55,6 +55,7 @@ data_app_release
    - Each app can have multiple publishing records
    - Only ONE release can be active at a time (retracted = false)
    - When publishing a new release, all previous releases are automatically retracted
+   - Multiple releases can exist without being retracted
    - Retracted status allows for simpler publishing and rollback
 
 3. **DataAppDefinition → DataAppRelease** (1:N)
@@ -124,7 +125,7 @@ Use the testing utilities in `test/metabase/data_apps/test_util.clj`:
 3. **Always use cleanup macros** to prevent test data leakage between runs
 4. **Use `=?` for response validation** instead of checking individual fields - more idiomatic and concise
 
-## Common Patterns
+### Common Patterns
 
 1. Always validate app definition configs before saving
 2. Use transactions when updating multiple related records
