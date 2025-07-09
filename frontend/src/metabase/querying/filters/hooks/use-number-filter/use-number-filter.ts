@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
-import type { NumberOrEmptyValue } from "./types";
+import type { NumberOrEmptyValue, UiNumberFilterOperator } from "./types";
 import {
   getAvailableOptions,
   getDefaultOperator,
@@ -25,10 +25,20 @@ export function useNumberFilter({
   column,
   filter,
 }: UseNumberFilterProps) {
-  const filterParts = useMemo(
-    () => (filter ? Lib.numberFilterParts(query, stageIndex, filter) : null),
-    [query, stageIndex, filter],
-  );
+  const filterParts = useMemo(() => {
+    if (!filter) {
+      return null;
+    }
+
+    const filterParts = Lib.numberFilterParts(query, stageIndex, filter);
+    if (!filterParts) {
+      return null;
+    }
+
+    const sugaredFilterParts = normalizeNumberFilterParts(filterParts);
+
+    return sugaredFilterParts;
+  }, [query, stageIndex, filter]);
 
   const availableOptions = useMemo(
     () => getAvailableOptions(query, stageIndex, column),
@@ -57,10 +67,70 @@ export function useNumberFilter({
     isValid,
     getDefaultValues,
     getFilterClause: (
-      operator: Lib.NumberFilterOperator,
+      operator: UiNumberFilterOperator,
       values: NumberOrEmptyValue[],
     ) => getFilterClause(operator, column, values),
     setOperator,
     setValues,
+  };
+}
+
+function normalizeNumberFilterParts({
+  operator,
+  column,
+  values,
+}: Lib.NumberFilterParts) {
+  if (operator === ">") {
+    return {
+      operator: "between" as const,
+      column,
+      values: [values[0], null],
+      options: {
+        minInclusive: false,
+        maxInclusive: false,
+      },
+    };
+  }
+
+  if (operator === "<") {
+    return {
+      operator: "between" as const,
+      column,
+      values: [null, values[0]],
+      options: {
+        minInclusive: false,
+        maxInclusive: false,
+      },
+    };
+  }
+
+  if (operator === "<=") {
+    return {
+      operator: "between" as const,
+      column,
+      values: [null, values[0]],
+      options: {
+        minInclusive: false,
+        maxInclusive: true,
+      },
+    };
+  }
+
+  if (operator === ">=") {
+    return {
+      operator: "between" as const,
+      column,
+      values: [values[0], null],
+      options: {
+        minInclusive: true,
+        maxInclusive: false,
+      },
+    };
+  }
+
+  return {
+    operator,
+    column,
+    values,
   };
 }

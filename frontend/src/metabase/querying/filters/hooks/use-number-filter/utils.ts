@@ -6,7 +6,11 @@ import {
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
-import type { NumberOrEmptyValue, OperatorOption } from "./types";
+import type {
+  NumberOrEmptyValue,
+  OperatorOption,
+  UiNumberFilterOperator,
+} from "./types";
 
 export function getAvailableOptions(
   query: Lib.Query,
@@ -21,7 +25,7 @@ export function getAvailableOptions(
   );
 }
 
-export function getOptionByOperator(operator: Lib.NumberFilterOperator) {
+export function getOptionByOperator(operator: UiNumberFilterOperator) {
   return OPERATOR_OPTIONS[operator];
 }
 
@@ -29,7 +33,7 @@ export function getDefaultOperator(
   query: Lib.Query,
   column: Lib.ColumnMetadata,
   availableOptions: OperatorOption[],
-): Lib.NumberFilterOperator {
+): UiNumberFilterOperator {
   const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
 
   const desiredOperator =
@@ -38,11 +42,14 @@ export function getDefaultOperator(
     fieldValuesInfo.hasFieldValues !== "none"
       ? "="
       : "between";
-  return getDefaultAvailableOperator(availableOptions, desiredOperator);
+  return getDefaultAvailableOperator(
+    availableOptions,
+    desiredOperator,
+  ) as UiNumberFilterOperator;
 }
 
 export function getDefaultValues(
-  operator: Lib.NumberFilterOperator,
+  operator: UiNumberFilterOperator,
   values: NumberOrEmptyValue[],
 ): NumberOrEmptyValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
@@ -56,7 +63,7 @@ export function getDefaultValues(
 }
 
 export function isValidFilter(
-  operator: Lib.NumberFilterOperator,
+  operator: UiNumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
 ) {
@@ -64,7 +71,7 @@ export function isValidFilter(
 }
 
 export function getFilterClause(
-  operator: Lib.NumberFilterOperator,
+  operator: UiNumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
 ) {
@@ -73,7 +80,7 @@ export function getFilterClause(
 }
 
 function getFilterParts(
-  operator: Lib.NumberFilterOperator,
+  operator: UiNumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
 ): Lib.NumberFilterParts | undefined {
@@ -86,7 +93,7 @@ function getFilterParts(
 }
 
 function getSimpleFilterParts(
-  operator: Lib.NumberFilterOperator,
+  operator: UiNumberFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
 ): Lib.NumberFilterParts | undefined {

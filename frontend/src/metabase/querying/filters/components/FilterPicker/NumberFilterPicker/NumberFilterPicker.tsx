@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 
-import { useNumberFilter } from "metabase/querying/filters/hooks/use-number-filter";
+import {
+  type UiNumberFilterOperator,
+  useNumberFilter,
+} from "metabase/querying/filters/hooks/use-number-filter";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -48,7 +51,7 @@ export function NumberFilterPicker({
   const [leftInclusive, setLeftInclusive] = useState(true);
   const [rightInclusive, setRightInclusive] = useState(true);
 
-  const handleOperatorChange = (newOperator: Lib.NumberFilterOperator) => {
+  const handleOperatorChange = (newOperator: UiNumberFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
     if (newOperator === "between") {

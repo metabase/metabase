@@ -30,16 +30,7 @@ const BETWEEN_TEST_CASES = [
   [-10, 10.5],
 ];
 
-const EXPECTED_OPERATORS = [
-  "Is",
-  "Is not",
-  "Inside",
-  "Range",
-  "Greater than",
-  "Greater than or equal to",
-  "Less than",
-  "Less than or equal to",
-];
+const EXPECTED_OPERATORS = ["Is", "Is not", "Inside", "Range"];
 
 type SetupOpts = {
   query?: Lib.Query;
@@ -142,9 +133,9 @@ describe("CoordinateFilterPicker", () => {
         async (_title, value) => {
           const { getNextFilterParts, getNextFilterColumnNames } = setup();
 
-          await setOperator("Less than");
+          await setOperator("Range");
           await userEvent.type(
-            screen.getByPlaceholderText("Enter a number"),
+            screen.getByPlaceholderText("End of range"),
             String(value),
           );
           await userEvent.click(screen.getByText("Add filter"));
@@ -163,8 +154,8 @@ describe("CoordinateFilterPicker", () => {
         const { onChange, getNextFilterParts, getNextFilterColumnNames } =
           setup();
 
-        await setOperator("Greater than");
-        const input = screen.getByPlaceholderText("Enter a number");
+        await setOperator("Range");
+        const input = screen.getByPlaceholderText("Start of range");
         await userEvent.type(input, "{enter}");
         expect(onChange).not.toHaveBeenCalled();
 
@@ -377,8 +368,8 @@ describe("CoordinateFilterPicker", () => {
       'should add a filter via the "$label" button when the add button is enabled',
       async ({ label, run }) => {
         const { getNextFilterChangeOpts } = setup({ withAddButton: true });
-        await setOperator("Greater than");
-        const input = screen.getByPlaceholderText("Enter a number");
+        await setOperator("Range");
+        const input = screen.getByPlaceholderText("Start of range");
         await userEvent.type(input, "15");
         await userEvent.click(screen.getByRole("button", { name: label }));
         expect(getNextFilterChangeOpts()).toMatchObject({ run });
@@ -398,7 +389,7 @@ describe("CoordinateFilterPicker", () => {
           setup(opts);
 
           expect(screen.getByText("User → Latitude")).toBeInTheDocument();
-          expect(screen.getByText("Greater than")).toBeInTheDocument();
+          expect(screen.getByText("Range")).toBeInTheDocument();
           expect(screen.getByDisplayValue(String(value))).toBeInTheDocument();
           expect(screen.getByText("Update filter")).toBeEnabled();
         },
@@ -413,10 +404,10 @@ describe("CoordinateFilterPicker", () => {
           });
           const { getNextFilterParts, getNextFilterColumnNames } = setup(opts);
 
-          await setOperator("Greater than");
-          await userEvent.clear(screen.getByPlaceholderText("Enter a number"));
+          await setOperator("Range");
+          await userEvent.clear(screen.getByPlaceholderText("Start of range"));
           await userEvent.type(
-            screen.getByPlaceholderText("Enter a number"),
+            screen.getByPlaceholderText("Start of range"),
             `${value}`,
           );
           await userEvent.click(screen.getByText("Update filter"));
@@ -569,7 +560,7 @@ describe("CoordinateFilterPicker", () => {
     it("should list operators", async () => {
       setup(createQueryWithCoordinateFilter({ operator: "<" }));
 
-      await userEvent.click(screen.getByText("Less than"));
+      await userEvent.click(screen.getByText("Range"));
       const menu = await screen.findByRole("menu");
       const menuItems = within(menu).getAllByRole("menuitem");
 
@@ -586,12 +577,12 @@ describe("CoordinateFilterPicker", () => {
       });
       const { getNextFilterParts, getNextFilterColumnNames } = setup(opts);
 
-      await setOperator("Greater than");
+      await setOperator("Range");
       await userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
-        operator: ">",
+        operator: "<=",
         values: [11],
         column: expect.anything(),
       });
@@ -621,16 +612,10 @@ describe("CoordinateFilterPicker", () => {
       expect(screen.getByDisplayValue("200")).toBeInTheDocument();
       expect(updateButton).toBeEnabled();
 
-      await setOperator("Greater than");
-
-      expect(screen.getByDisplayValue("-100")).toBeInTheDocument();
-      expect(screen.queryByDisplayValue("200")).not.toBeInTheDocument();
-      expect(updateButton).toBeEnabled();
-
       await setOperator("Inside");
 
       expect(screen.getByDisplayValue("-100")).toBeInTheDocument();
-      expect(screen.queryByDisplayValue("200")).not.toBeInTheDocument();
+      expect(screen.getByDisplayValue("200")).toBeInTheDocument();
       expect(updateButton).toBeDisabled();
     });
 

@@ -34,10 +34,6 @@ const EXPECTED_OPERATORS = [
   "Equal to",
   "Not equal to",
   "Range",
-  "Greater than",
-  "Greater than or equal to",
-  "Less than",
-  "Less than or equal to",
   "Is empty",
   "Not empty",
 ];
@@ -137,9 +133,9 @@ describe("NumberFilterPicker", () => {
         async (_title, value) => {
           const { getNextFilterParts, getNextFilterColumnName } = setup();
 
-          await setOperator("Greater than");
+          await setOperator("Range");
           await userEvent.type(
-            screen.getByPlaceholderText("Enter a number"),
+            screen.getByPlaceholderText("Start of range"),
             String(value),
           );
           await userEvent.click(screen.getByText("Add filter"));
@@ -158,8 +154,8 @@ describe("NumberFilterPicker", () => {
         const { onChange, getNextFilterParts, getNextFilterColumnName } =
           setup();
 
-        await setOperator("Greater than");
-        const input = screen.getByPlaceholderText("Enter a number");
+        await setOperator("Range");
+        const input = screen.getByPlaceholderText("Start of range");
         await userEvent.type(input, "{enter}");
         expect(onChange).not.toHaveBeenCalled();
 
@@ -182,8 +178,8 @@ describe("NumberFilterPicker", () => {
           { query, column },
         );
 
-        await setOperator("Greater than");
-        const input = screen.getByPlaceholderText("Enter a number");
+        await setOperator("Range");
+        const input = screen.getByPlaceholderText("Start of range");
         await userEvent.type(input, "9007199254740993{enter}");
         expect(onChange).toHaveBeenCalled();
         expect(getNextFilterParts()).toMatchObject({
@@ -329,8 +325,8 @@ describe("NumberFilterPicker", () => {
       'should add a filter via the "$label" button when the add button is enabled',
       async ({ label, run }) => {
         const { getNextFilterChangeOpts } = setup({ withAddButton: true });
-        await setOperator("Greater than");
-        const input = screen.getByPlaceholderText("Enter a number");
+        await setOperator("Range");
+        const input = screen.getByPlaceholderText("Start of range");
         await userEvent.type(input, "15");
         await userEvent.click(screen.getByRole("button", { name: label }));
         expect(getNextFilterChangeOpts()).toMatchObject({ run });
@@ -351,7 +347,6 @@ describe("NumberFilterPicker", () => {
           );
 
           expect(screen.getByText("Total")).toBeInTheDocument();
-          expect(screen.getByText("Greater than")).toBeInTheDocument();
           expect(screen.getByDisplayValue(String(value))).toBeInTheDocument();
           expect(screen.getByText("Update filter")).toBeEnabled();
         },
@@ -367,8 +362,8 @@ describe("NumberFilterPicker", () => {
             }),
           );
 
-          const input = screen.getByPlaceholderText("Enter a number");
-          await setOperator("Greater than");
+          const input = screen.getByPlaceholderText("Start of range");
+          await setOperator("Range");
           await userEvent.clear(input);
           await userEvent.type(input, `${value}`);
           await userEvent.click(screen.getByText("Update filter"));
@@ -493,7 +488,7 @@ describe("NumberFilterPicker", () => {
     it("should list operators", async () => {
       setup(createQueryWithNumberFilter({ operator: "<" }));
 
-      await userEvent.click(screen.getByText("Less than"));
+      await userEvent.click(screen.getByText("Range"));
       const menu = await screen.findByRole("menu");
       const menuItems = within(menu).getAllByRole("menuitem");
 
@@ -511,12 +506,12 @@ describe("NumberFilterPicker", () => {
         }),
       );
 
-      await setOperator("Greater than");
+      await setOperator("Range");
       await userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
-        operator: ">",
+        operator: "<=",
         column: expect.anything(),
         values: [11],
       });
@@ -538,7 +533,7 @@ describe("NumberFilterPicker", () => {
       expect(screen.getByText("20")).toBeInTheDocument();
       expect(updateButton).toBeEnabled();
 
-      await setOperator("Greater than");
+      await setOperator("Range");
 
       expect(screen.getByDisplayValue("10")).toBeInTheDocument();
       expect(screen.queryByText("20")).not.toBeInTheDocument();

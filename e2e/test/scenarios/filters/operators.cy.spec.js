@@ -24,17 +24,7 @@ describe("operators in questions", () => {
       unexpected: ["Is null", "Not null"],
     },
     number: {
-      expected: [
-        "Equal to",
-        "Not equal to",
-        "Greater than",
-        "Less than",
-        "Range",
-        "Greater than or equal to",
-        "Less than or equal to",
-        "Is empty",
-        "Not empty",
-      ],
+      expected: ["Equal to", "Not equal to", "Range", "Is empty", "Not empty"],
       unexpected: ["Is null", "Not null"],
     },
     relativeDates: {

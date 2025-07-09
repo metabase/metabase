@@ -238,9 +238,9 @@ describe("issue 27104", () => {
     // The following line is the main assertion.
     H.popover().button("Back").should("have.text", "Count");
     // The rest of the test is not really needed for this reproduction.
-    H.selectFilterOperator("Greater than");
+    H.selectFilterOperator("Range");
     H.popover().within(() => {
-      cy.findByPlaceholderText("Enter a number").type("0").blur();
+      cy.findByPlaceholderText("Start of range").type("0").blur();
       cy.button("Add filter").click();
     });
 

@@ -1,9 +1,7 @@
-import type * as Lib from "metabase-lib";
-
-import type { OperatorOption } from "./types";
+import type { OperatorOption, UiCoordinateFilterOperator } from "./types";
 
 export const OPERATOR_OPTIONS: Record<
-  Lib.CoordinateFilterOperator,
+  UiCoordinateFilterOperator,
   OperatorOption
 > = {
   "=": {
@@ -20,25 +18,9 @@ export const OPERATOR_OPTIONS: Record<
     operator: "inside",
     valueCount: 4,
   },
-  ">": {
-    operator: ">",
-    valueCount: 1,
-  },
-  "<": {
-    operator: "<",
-    valueCount: 1,
-  },
   between: {
     operator: "between",
     valueCount: 2,
     name: "Range",
-  },
-  ">=": {
-    operator: ">=",
-    valueCount: 1,
-  },
-  "<=": {
-    operator: "<=",
-    valueCount: 1,
   },
 };
