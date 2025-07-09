@@ -47,7 +47,7 @@ export const CloudSMTPConnectionCard = ({
             <Group justify="space-between">
               <Group wrap="nowrap" align="flex-start">
                 {isSMTPOverrideConfigured ? (
-                  <Radio.Indicator className={S.indicator} />
+                  <Radio.Indicator />
                 ) : (
                   <Icon name="check" c="success" size={20} />
                 )}
@@ -68,7 +68,7 @@ export const CloudSMTPConnectionCard = ({
             <Box p="lg">
               <Group justify="space-between">
                 <Group wrap="nowrap" align="flex-start">
-                  <Radio.Indicator className={S.indicator} />
+                  <Radio.Indicator />
                   <div>
                     <Text className={S.label}>{t`Custom SMTP Server`}</Text>
                     <Text>{t`Emails come from your organisation`}</Text>
