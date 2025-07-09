@@ -67,15 +67,15 @@ export default Object.assign(Action, {
       props: {
         options: [
           /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
-          { name: t`Primary`, value: "primary" },
+          { label: t`Primary`, value: "primary" },
           /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
-          { name: t`Outline`, value: "default" },
+          { label: t`Outline`, value: "default" },
           /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
-          { name: t`Danger`, value: "danger" },
+          { label: t`Danger`, value: "danger" },
           /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
-          { name: t`Success`, value: "success" },
+          { label: t`Success`, value: "success" },
           /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
-          { name: t`Borderless`, value: "borderless" },
+          { label: t`Borderless`, value: "borderless" },
         ],
       },
     },

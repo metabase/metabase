@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import type * as React from "react";
 
 import {
   setupActionsEndpoints,
@@ -13,6 +12,8 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import type { DashCardId } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockCard,
@@ -43,9 +44,11 @@ const dashboard = createMockDashboard({
   dashcards: [dashcard, actionDashcard, actionDashcardWithAction],
 });
 
-const setup = (
-  options?: Partial<React.ComponentProps<typeof ActionSidebar>>,
-) => {
+const setup = ({
+  dashcardId = actionDashcard.id,
+}: {
+  dashcardId?: DashCardId;
+} = {}) => {
   setupDatabasesEndpoints([actionsDatabase]);
   setupSearchEndpoints([collectionItem]);
   setupActionsEndpoints([]);
@@ -55,13 +58,18 @@ const setup = (
   const closeSpy = jest.fn();
 
   renderWithProviders(
-    <ActionSidebar
-      onUpdateVisualizationSettings={vizUpdateSpy}
-      onClose={closeSpy}
+    <MockDashboardContext
+      dashboardId={dashboard.id}
       dashboard={dashboard}
-      dashcardId={actionDashcard.id}
-      {...options}
-    />,
+      sidebar={{
+        props: { dashcardId },
+      }}
+      onUpdateDashCardVisualizationSettings={vizUpdateSpy as any}
+      closeSidebar={closeSpy}
+      navigateToNewCardFromDashboard={null}
+    >
+      <ActionSidebar />
+    </MockDashboardContext>,
   );
 
   return { vizUpdateSpy, closeSpy };
@@ -96,7 +104,9 @@ describe("Dashboard > ActionSidebar", () => {
     await userEvent.type(textInput, "xyz");
 
     await waitFor(() =>
-      expect(vizUpdateSpy).toHaveBeenLastCalledWith({ "button.label": "xyz" }),
+      expect(vizUpdateSpy).toHaveBeenLastCalledWith(actionDashcard.id, {
+        "button.label": "xyz",
+      }),
     );
   });
 
@@ -110,7 +120,7 @@ describe("Dashboard > ActionSidebar", () => {
     await userEvent.click(screen.getByText("Danger"));
 
     await waitFor(() =>
-      expect(vizUpdateSpy).toHaveBeenLastCalledWith({
+      expect(vizUpdateSpy).toHaveBeenLastCalledWith(actionDashcard.id, {
         "button.variant": "danger",
       }),
     );

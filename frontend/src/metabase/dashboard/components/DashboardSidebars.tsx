@@ -22,11 +22,10 @@ import type {
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
-  VisualizationSettings,
 } from "metabase-types/api";
 import type { SelectedTabId, State } from "metabase-types/store";
 
-import { ActionSidebarConnected } from "./ActionSidebar";
+import { ActionSidebar } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
@@ -121,24 +120,7 @@ export function DashboardSidebars({
     case SIDEBAR_NAME.addQuestion:
       return <AddCardSidebar />;
     case SIDEBAR_NAME.action: {
-      if (!sidebar.props.dashcardId) {
-        return null;
-      }
-
-      const dashcardId = sidebar.props.dashcardId;
-
-      const onUpdateVisualizationSettings = (
-        settings: Partial<VisualizationSettings>,
-      ) => onUpdateDashCardVisualizationSettings(dashcardId, settings);
-
-      return (
-        <ActionSidebarConnected
-          dashboard={dashboard}
-          dashcardId={dashcardId}
-          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-          onClose={closeSidebar}
-        />
-      );
+      return <ActionSidebar />;
     }
     case SIDEBAR_NAME.clickBehavior: {
       if (!clickBehaviorSidebarDashcard) {

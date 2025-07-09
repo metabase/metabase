@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useIsTruncated } from "metabase/common/hooks/use-is-truncated";
 import { Text, type TextProps, Tooltip } from "metabase/ui";
 
-interface EllipsifiedProps {
+interface EllipsifiedProps extends TextProps {
   style?: CSSProperties;
   className?: string;
   showTooltip?: boolean;
@@ -32,6 +32,7 @@ export const Ellipsified = ({
   placement = "top",
   "data-testid": dataTestId,
   id,
+  ...textProps
 }: EllipsifiedProps) => {
   const canSkipTooltipRendering = !showTooltip && !alwaysShowTooltip;
   const { isTruncated, ref } = useIsTruncated<HTMLDivElement>({
@@ -62,6 +63,7 @@ export const Ellipsified = ({
         fz="inherit"
         lh="inherit"
         {...truncatedProps}
+        {...textProps}
       >
         {children}
       </Text>
