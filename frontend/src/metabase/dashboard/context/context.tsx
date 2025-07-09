@@ -21,7 +21,8 @@ import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dash
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
 import type { DashboardActionKey } from "../components/DashboardHeader/DashboardHeaderButtonRow/types";
 import type { DashboardMode } from "../types/dashboard-mode";
-import { resolveDashboardBehaviors, type DashboardBehaviorInput } from "../utils/dashboard-mode-behavior";
+import { resolveDashboardBehaviors } from "../utils/dashboard-mode-behavior";
+import type { ClickActionModeGetter } from "metabase/visualizations/types/click-actions";
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
@@ -85,9 +86,9 @@ export type DashboardContextReturned = DashboardContextOwnResult &
     fullscreenRef: ReturnType<typeof useDashboardFullscreen>["ref"];
   } & DashboardRefreshPeriodControls &
   EmbedThemeControls & {
-    navigateToNewCardFromDashboard: ((opts: any) => void) | null;
-    getClickActionMode: ((data: { question: any }) => any) | undefined;
-    dashboardActions: any[] | null;
+    navigateToNewCardFromDashboard: ((opts: NavigateToNewCardFromDashboardOpts) => void) | null;
+    getClickActionMode: ClickActionModeGetter | undefined;
+    dashboardActions: string[] | null;
   };
 
 export const DashboardContext = createContext<

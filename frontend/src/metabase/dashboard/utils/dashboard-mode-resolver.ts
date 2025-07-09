@@ -84,7 +84,7 @@ export function resolveDashboardMode(
 interface ResolveActionsOptions {
   actions: DashboardActionType[];
   editing: boolean;
-  downloadsEnabled: { pdf?: boolean; results?: boolean };
+  downloadsEnabled: { pdf: boolean; results: boolean };
 }
 
 export function resolveDashboardActions(options: ResolveActionsOptions): string[] {
@@ -107,8 +107,10 @@ export function resolveDashboardActions(options: ResolveActionsOptions): string[
     resolvedActions.push(DASHBOARD_ACTION.DOWNLOAD_PDF);
   }
 
-  if (downloadsEnabled.results && !resolvedActions.includes("download-results")) {
-    resolvedActions.push("download-results");
+  if (downloadsEnabled.results) {
+    if (!resolvedActions.includes("download-results")) {
+      resolvedActions.push("download-results");
+    }
   }
 
   return resolvedActions;
