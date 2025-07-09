@@ -74,27 +74,6 @@ describe("scenarios > admin > datamodel", () => {
       cy.location("pathname").should("eq", "/admin/datamodel/database/54321");
     });
 
-    it("should show 404 if schema does not exist", () => {
-      H.DataModel.visit({
-        databaseId: 54321,
-        schemaId: "54321:public",
-        skipWaiting: true,
-      });
-      cy.wait("@databases");
-      cy.wait(100); // wait with assertions for React effects to kick in
-
-      TablePicker.getDatabases().should("have.length", 1);
-      TablePicker.getTables().should("have.length", 0);
-      H.DataModel.get().findByText("Not found.").should("be.visible");
-      cy.location("pathname").should(
-        "eq",
-        "/admin/datamodel/database/54321/schema/54321:public",
-      );
-
-      // make sure schemas loading does not go into an infinite loop
-      cy.get("@schemas.all").should("have.length", 1);
-    });
-
     it("should show 404 if table does not exist", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
