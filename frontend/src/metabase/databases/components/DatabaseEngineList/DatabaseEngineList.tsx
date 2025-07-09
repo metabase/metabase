@@ -60,7 +60,7 @@ export const DatabaseEngineList = ({
 
   const clearSelectedItem = useCallback(() => {
     if (isSetupStep) {
-      (onSelect as (engineKey?: string) => void)(undefined);
+      onSelect(undefined);
     }
   }, [onSelect, isSetupStep]);
 
