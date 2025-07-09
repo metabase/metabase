@@ -42,9 +42,10 @@ export const getNewCardUrl = ({
 
   const previousQuestion = new Question(previousCard, metadata);
   const { isEditable } = Lib.queryDisplayInfo(previousQuestion.query());
-  const parametersMappedToCard = getParametersMappedToDashcard(
+  const parametersMappedToCard = getParametersMappedToCard(
     dashboard.parameters,
     dashcard,
+    previousCard,
   );
 
   let nextQuestion: Question | undefined = undefined;
@@ -80,14 +81,16 @@ export const getNewCardUrl = ({
   }
 };
 
-export function getParametersMappedToDashcard(
+export function getParametersMappedToCard(
   parameters: Dashboard["parameters"],
   dashcard: QuestionDashboardCard,
+  card: Card | VirtualCard,
 ): ParameterWithTarget[] {
   const { parameter_mappings } = dashcard;
   return (parameters || []).flatMap((parameter) => {
     const mapping = _.findWhere(parameter_mappings || [], {
       parameter_id: parameter.id,
+      card_id: card.id,
     });
 
     if (!mapping) {

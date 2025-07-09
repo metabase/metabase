@@ -1,10 +1,14 @@
 (ns metabase.query-processor.middleware.resolve-joins-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
@@ -315,3 +319,88 @@
                              $venues.price]
                   :order-by [[:asc $venues.name]]
                   :limit    3})))))
+
+(deftest ^:parallel do-not-duplicate-columns-with-default-temporal-bucketing-test
+  (testing "Do not add a duplicate column from a join if it uses :default temporal bucketing"
+    (let [original-query {:fields [[:field (meta/id :orders :id) nil]
+                                   [:field (meta/id :people :birth-date) {:join-alias "P", :temporal-unit :default}]]}]
+      (doseq [temporal-unit           [nil :default]
+              base-type               [nil :type/Date]
+              effective-type          [nil :type/Date]
+              inherited-temporal-unit [nil :default]
+              ;; make sure random keys don't affect this either
+              nonsense-key            [nil 1337]
+              lib-key                 [nil "PRODUCTS"]
+              :let                    [opts (cond-> {:join-alias "P"}
+                                              temporal-unit           (assoc :temporal-unit temporal-unit)
+                                              base-type               (assoc :base-type base-type)
+                                              effective-type          (assoc :effective-type effective-type)
+                                              inherited-temporal-unit (assoc :inherited-temporal-unit inherited-temporal-unit)
+                                              nonsense-key            (assoc :nonsense-key nonsense-key)
+                                              lib-key                 (assoc :lib/nonsense-key lib-key))
+                                       clause [:field (meta/id :people :birth-date) opts]]]
+        (testing (pr-str clause)
+          (is (= original-query
+                 (resolve-joins/append-join-fields-to-fields
+                  original-query
+                  [clause]))))))))
+
+(deftest ^:parallel do-not-duplicate-columns-with-default-temporal-bucketing-e2e-test
+  (testing "Do not add a duplicate column from a join if it uses :default temporal bucketing"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :database-id   (meta/id)
+                           :name          "QB Binning"
+                           :dataset-query (lib.tu.macros/mbql-query orders
+                                            {:joins  [{:source-table (meta/id :people)
+                                                       :alias        "People"
+                                                       :condition    [:=
+                                                                      $user-id
+                                                                      &People.people.id]
+                                                       :fields       [&People.people.longitude
+                                                                      &People.!default.people.birth-date]}
+                                                      {:source-table (meta/id :products)
+                                                       :alias        "Products"
+                                                       :condition    [:=
+                                                                      $product-id
+                                                                      &Products.products.id]
+                                                       :fields       [&Products.products.price]}]
+                                             :fields [$id]})}]})
+          query (lib/query mp (lib.metadata/card mp 1))]
+      (is (=? (lib.tu.macros/$ids orders
+                [$id
+                 &People.people.longitude
+                 ;; the `:default` temporal unit gets removed somewhere
+                 &People.people.birth-date
+                 &Products.products.price])
+              (-> (qp.preprocess/preprocess query) :query :fields))))))
+
+;;; adapted from [[metabase.query-processor-test.explicit-joins-test/join-against-saved-question-with-sort-test]]
+(deftest ^:parallel join-against-same-table-returned-columns-test
+  (testing "Joining against a query that ultimately have the same source table SHOULD result in 'duplicate' columns being included."
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$products
+                                               :aggregation  [[:count]]
+                                               :breakout     [$category]
+                                               :order-by     [[:asc [:aggregation 0]]]}
+                                :alias        "Q1"
+                                :condition    [:= $category [:field %category {:join-alias "Q1"}]]
+                                :fields       :all}]
+                    :order-by [[:asc $id]]
+                    :limit    1}))]
+      (is (= [;; these 8 are from PRODUCTS
+              "ID"
+              "Ean"
+              "Title"
+              "Category"
+              "Vendor"
+              "Price"
+              "Rating"
+              "Created At"
+              ;; the next 2 are from PRODUCTS
+              "Q1 → Category"
+              "Q1 → Count"]
+             (map :display_name (qp.preprocess/query->expected-cols query)))))))

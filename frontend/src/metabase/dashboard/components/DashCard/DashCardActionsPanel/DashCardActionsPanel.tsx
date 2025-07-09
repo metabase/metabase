@@ -1,12 +1,14 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { AddFilterParameterMenu } from "metabase/dashboard/components/AddFilterParameterMenu";
 import {
+  isHeadingDashCard,
   isLinkDashCard,
+  isQuestionDashCard,
   isVirtualDashCard,
   supportsInlineParameters,
 } from "metabase/dashboard/utils";
@@ -18,13 +20,15 @@ import {
   isVisualizerDashboardCard,
   isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
+import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
-  Dashboard,
   DashboardCard,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { canEditQuestion } from "../DashCardMenu/utils";
 
 import { ActionSettingsButtonConnected } from "./ActionSettingsButton/ActionSettingsButton";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
@@ -35,8 +39,8 @@ import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
 
 interface Props {
   series: Series;
-  dashboard: Dashboard;
   dashcard?: DashboardCard;
+  question: Question | null;
   isLoading: boolean;
   isPreviewing: boolean;
   hasError: boolean;
@@ -63,8 +67,8 @@ interface Props {
 
 function DashCardActionsPanelInner({
   series,
-  dashboard,
   dashcard,
+  question,
   isLoading,
   isPreviewing,
   hasError,
@@ -138,7 +142,17 @@ function DashCardActionsPanelInner({
     );
   }
 
-  if (dashcard && supportsInlineParameters(dashcard)) {
+  const canAddFilter = useMemo(() => {
+    if (!dashcard || !supportsInlineParameters(dashcard)) {
+      return false;
+    }
+
+    return isQuestionDashCard(dashcard)
+      ? question != null && canEditQuestion(question)
+      : isHeadingDashCard(dashcard);
+  }, [dashcard, question]);
+
+  if (canAddFilter) {
     buttons.push(
       <AddFilterParameterMenu key="add-filter" onAdd={onAddParameter}>
         <DashCardActionButton
@@ -169,11 +183,15 @@ function DashCardActionsPanelInner({
       isVisualizerDashboardCard(dashcard) ||
       isVisualizerSupportedVisualization(dashcard?.card.display)
     ) {
+      const label = isVisualizerDashboardCard(dashcard)
+        ? t`Edit visualization`
+        : t`Visualize another way`;
+
       buttons.push(
         <DashCardActionButton
           key="visualizer-button"
-          tooltip={t`Edit visualization`}
-          aria-label={t`Edit visualization`}
+          tooltip={label}
+          aria-label={label}
           onClick={onEditVisualization}
         >
           <DashCardActionButton.Icon name="lineandbar" />
@@ -190,7 +208,6 @@ function DashCardActionsPanelInner({
         <ChartSettingsButton
           key="chart-settings-button"
           series={series}
-          dashboard={dashboard}
           dashcard={dashcard}
           onReplaceAllVisualizationSettings={
             handleOnReplaceAllVisualizationSettings
@@ -269,7 +286,6 @@ function DashCardActionsPanelInner({
       buttons.push(
         <ActionSettingsButtonConnected
           key="action-settings-button"
-          dashboard={dashboard}
           dashcard={dashcard}
         />,
       );

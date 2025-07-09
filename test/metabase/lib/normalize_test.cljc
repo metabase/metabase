@@ -32,19 +32,17 @@
                               "description" "Theoretical fake query in a JSON-based query lang"}}]})))
 
 (deftest ^:parallel normalize-value-test
-  ;; huh? The schema for this says `:effective-type` is required... I'm confused about why we need to preserve snake
-  ;; keys
-  (testing ":value clauses should keep snake_case keys in the type info arg (#23354)"
+  (testing ":value clauses in MBQL 5 should use kebab-case-keys"
     (is (= [:value {:lib/uuid       "ca0a1ee8-a9a6-4ca7-8a78-699c352fac7c"
                     :effective-type :type/Integer
-                    :some_key       "some key value"}
+                    :some-key       "some key value"}
             "some value"]
            (lib/normalize [:value {:lib/uuid       "ca0a1ee8-a9a6-4ca7-8a78-699c352fac7c"
-                                   :effective-type :type/Integer
+                                   :effective_type :type/Integer
                                    :some_key       "some key value"}
                            "some value"])
            (lib/normalize ["value" {"lib/uuid"       "ca0a1ee8-a9a6-4ca7-8a78-699c352fac7c"
-                                    "effective-type" "type/Integer"
+                                    "effective_type" "type/Integer"
                                     "some_key"       "some key value"}
                            "some value"])))))
 

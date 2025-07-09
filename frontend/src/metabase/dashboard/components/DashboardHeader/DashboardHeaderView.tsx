@@ -2,8 +2,6 @@ import cx from "classnames";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import EditBar from "metabase/common/components/EditBar";
 import LastEditInfoLabel from "metabase/common/components/LastEditInfoLabel";
@@ -14,6 +12,7 @@ import {
 } from "metabase/dashboard/actions";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { useDashboardContext } from "metabase/dashboard/context";
 import {
   getCanResetFilters,
   getIsEditing,
@@ -22,12 +21,6 @@ import {
   getIsShowDashboardSettingsSidebar,
   getIsSidebarOpen,
 } from "metabase/dashboard/selectors";
-import type {
-  DashboardFullscreenControls,
-  DashboardNightModeControls,
-  DashboardRefreshPeriodControls,
-} from "metabase/dashboard/types";
-import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
@@ -53,9 +46,7 @@ type DashboardHeaderViewProps = {
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
   onLastEditInfoClick?: () => void;
-} & DashboardFullscreenControls &
-  DashboardRefreshPeriodControls &
-  DashboardNightModeControls;
+};
 
 export function DashboardHeaderView({
   editingTitle = "",
@@ -65,15 +56,9 @@ export function DashboardHeaderView({
   collection,
   isLastEditInfoVisible,
   onLastEditInfoClick,
-  refreshPeriod,
-  onRefreshPeriodChange,
-  setRefreshElapsedHook,
-  isFullscreen,
-  onFullscreenChange,
-  isNightMode,
-  onNightModeChange,
-  hasNightModeToggle,
 }: DashboardHeaderViewProps) {
+  const { titled } = useDashboardContext();
+
   const isNavBarOpen = useSelector(getIsNavbarOpen);
   const isEditing = useSelector(getIsEditing);
 
@@ -87,14 +72,13 @@ export function DashboardHeaderView({
   const isSettingsSidebarOpen = useSelector(getIsShowDashboardSettingsSidebar);
 
   const isDashboardHeaderVisible = useSelector(getIsHeaderVisible);
+
   const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
   const handleResetFilters = useCallback(async () => {
     await dispatch(resetParameters());
     await dispatch(applyDraftParameterValues());
   }, [dispatch]);
-
-  const { dashboardActions } = useInteractiveDashboardContext();
 
   const _headerButtons = useMemo(
     () => (
@@ -106,34 +90,11 @@ export function DashboardHeaderView({
         <DashboardHeaderButtonRow
           canResetFilters={canResetFilters}
           onResetFilters={handleResetFilters}
-          dashboardActionKeys={dashboardActions}
-          refreshPeriod={refreshPeriod}
-          onRefreshPeriodChange={onRefreshPeriodChange}
-          setRefreshElapsedHook={setRefreshElapsedHook}
-          isFullscreen={isFullscreen}
-          onFullscreenChange={onFullscreenChange}
-          isNightMode={isNightMode}
-          onNightModeChange={onNightModeChange}
-          hasNightModeToggle={hasNightModeToggle}
           isAnalyticsDashboard={isAnalyticsDashboard}
         />
       </Flex>
     ),
-    [
-      canResetFilters,
-      handleResetFilters,
-      dashboardActions,
-      hasNightModeToggle,
-      isAnalyticsDashboard,
-      isFullscreen,
-      isNavBarOpen,
-      isNightMode,
-      onFullscreenChange,
-      onNightModeChange,
-      onRefreshPeriodChange,
-      refreshPeriod,
-      setRefreshElapsedHook,
-    ],
+    [canResetFilters, handleResetFilters, isAnalyticsDashboard, isNavBarOpen],
   );
 
   useEffect(() => {
@@ -178,33 +139,35 @@ export function DashboardHeaderView({
               data-testid="fixed-width-dashboard-header"
               isFixedWidth={dashboard?.width === "fixed"}
             >
-              <Box
-                role="heading"
-                className={cx(S.HeaderContent, {
-                  [S.showSubHeader]: showSubHeader,
-                })}
-              >
-                <Flex className={S.HeaderCaptionContainer}>
-                  <DashboardTitle className={S.HeaderCaption} />
-                  <PLUGIN_MODERATION.EntityModerationIcon
-                    dashboard={dashboard}
-                  />
-                  <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-                    color={color("brand")}
-                    collection={collection}
-                    entity="dashboard"
-                  />
-                </Flex>
-                <Flex className={S.HeaderBadges}>
-                  {isLastEditInfoVisible && (
-                    <LastEditInfoLabel
-                      className={S.HeaderLastEditInfoLabel}
-                      item={dashboard}
-                      onClick={onLastEditInfoClick}
+              {titled && (
+                <Box
+                  role="heading"
+                  className={cx(S.HeaderContent, {
+                    [S.showSubHeader]: showSubHeader,
+                  })}
+                >
+                  <Flex className={S.HeaderCaptionContainer}>
+                    <DashboardTitle className={S.HeaderCaption} />
+                    <PLUGIN_MODERATION.EntityModerationIcon
+                      dashboard={dashboard}
                     />
-                  )}
-                </Flex>
-              </Box>
+                    <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+                      color="brand"
+                      collection={collection}
+                      entity="dashboard"
+                    />
+                  </Flex>
+                  <Flex className={S.HeaderBadges}>
+                    {isLastEditInfoVisible && (
+                      <LastEditInfoLabel
+                        className={S.HeaderLastEditInfoLabel}
+                        item={dashboard}
+                        onClick={onLastEditInfoClick}
+                      />
+                    )}
+                  </Flex>
+                </Box>
+              )}
 
               <Flex
                 className={cx(S.HeaderButtonsContainer, {

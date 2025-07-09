@@ -130,7 +130,7 @@ export const createMockTokenFeatures = (
   ai_sql_fixer: false,
   ai_sql_generation: false,
   database_routing: false,
-  "development-mode": false,
+  development_mode: false,
   ...opts,
 });
 
