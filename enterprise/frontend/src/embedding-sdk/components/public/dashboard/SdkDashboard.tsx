@@ -167,7 +167,12 @@ const SdkDashboardInner = ({
     );
   }
 
-  if (!dashboardId || errorPage?.status === 404) {
+  // Passing an invalid entity ID format results in a 400 Bad Request.
+  // We can show this as a generic "not found" error on the frontend.
+  const isDashboardNotFound =
+    errorPage?.status === 404 || errorPage?.status === 400;
+
+  if (!dashboardId || isDashboardNotFound) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
         <DashboardNotFoundError id={dashboardId} />
