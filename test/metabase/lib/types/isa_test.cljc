@@ -101,7 +101,7 @@
             [{:pred #'lib.types.isa/temporal?,           :positive :type/Date,              :negative :type/CreationDate}
              {:pred #'lib.types.isa/temporal?,           :positive :type/DateTime,          :negative :type/City}
              {:pred #'lib.types.isa/numeric?,            :positive :type/Integer,           :negative :type/FK}
-             {:pred #'lib.types.isa/numeric?,            :positive :type/Price,             :negative :type/CreationDate}
+             {:pred #'lib.types.isa/numeric?,            :positive :type/Float,             :negative :type/Price}
              {:pred #'lib.types.isa/boolean?,            :positive :type/Boolean,           :negative :type/PK}
              {:pred #'lib.types.isa/string?,             :positive :type/Text,              :negative :type/URL}
              {:pred #'lib.types.isa/string-like?,        :positive :type/TextLike,          :negative :type/Address}
@@ -148,10 +148,13 @@
             (is (false? (pred (column negative))))))))))
 
 (deftest ^:parallel string?-test
-  #_{:clj-kondo/ignore [:equals-true]}
-  (are [exp column] (= exp (lib.types.isa/string? column))
-    true  {:effective-type :type/Text :semantic-type :type/SerializedJSON}
-    false {:effective-type :type/JSON :semantic-type :type/SerializedJSON}))
+  (is (true? (lib.types.isa/string? {:effective-type :type/Text :semantic-type :type/SerializedJSON})))
+  (is (false? (lib.types.isa/string? {:effective-type :type/JSON :semantic-type :type/SerializedJSON}))))
+
+(deftest ^:parallel numeric?-test
+  (is (true? (lib.types.isa/numeric? {:effective-type :type/Float :semantic-type nil})))
+  (is (true? (lib.types.isa/numeric? {:effective-type :type/Float :semantic-type :type/Price})))
+  (is (false? (lib.types.isa/numeric? {:effective-type :type/Text :semantic-type :type/Price}))))
 
 (deftest ^:parallel valid-filter-for?-test
   #_{:clj-kondo/ignore [:equals-true]}

@@ -12,6 +12,51 @@ import type { Filter, LocalFieldReference } from "metabase-types/api";
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
 
+describe("issue 48754", () => {
+  const questionDetails: StructuredQuestionDetails = {
+    name: "Q1",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should (metabase#48754)", () => {
+    H.createQuestion(questionDetails);
+    H.openReviewsTable({ mode: "notebook" });
+    H.getNotebookStep("data").button("Summarize").click();
+    H.popover().findByText("Count of rows").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Product").click();
+      cy.findByText("Category").click();
+    });
+    H.getNotebookStep("summarize").button("Join data").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText("Q1").click();
+    });
+    H.popover()
+      .findByText(/Category/)
+      .click();
+    H.popover()
+      .findByText(/Category/)
+      .click();
+    H.visualize();
+    H.assertQueryBuilderRowCount(4);
+  });
+});
+
 describe("issue 39487", () => {
   const CREATED_AT_FIELD: LocalFieldReference = [
     "field",
@@ -244,6 +289,107 @@ describe("issue 39487", () => {
   function previousButton() {
     return H.popover().get("button[data-direction=previous]");
   }
+});
+
+describe("issue 14124", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not include date when metric is binned by hour of day (metabase#14124)", () => {
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: null,
+    });
+
+    H.createQuestion(
+      {
+        name: "14124",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findAllByRole("columnheader", {
+      name: "Created At: Hour of day",
+    }).should("be.visible");
+
+    cy.log("Reported failing in v0.37.2");
+    cy.findAllByRole("gridcell", { name: "3:00 AM" }).should("be.visible");
+  });
+});
+
+describe("issue 15563", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not display multiple 'Created At' fields when they are remapped to PK/FK (metabase#15563)", () => {
+    // Remap fields
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: "type/PK",
+    });
+    cy.request("PUT", `/api/field/${REVIEWS.CREATED_AT}`, {
+      semantic_type: "type/FK",
+      fk_target_field_id: ORDERS.CREATED_AT,
+    });
+
+    H.openReviewsTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Count of rows").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    cy.get("[data-element-id=list-section-header]")
+      .contains("Created At")
+      .click();
+    cy.get("[data-element-id=list-section] [data-element-id=list-item-title]")
+      .contains("Created At")
+      .should("have.length", 1);
+  });
+});
+
+describe("issue 36122", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should display breakouts group for all FKs (metabase#36122)", () => {
+    cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
+      semantic_type: "type/FK",
+      fk_target_field_id: PRODUCTS.ID,
+    });
+
+    H.openReviewsTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+
+    H.popover().within(() => {
+      cy.findAllByTestId("dimension-list-item")
+        .eq(3)
+        .should("have.text", "Rating");
+      cy.get("[data-element-id=list-section-header]").should("have.length", 3);
+      cy.get("[data-element-id=list-section-header]")
+        .eq(0)
+        .should("have.text", "Reviews");
+      cy.get("[data-element-id=list-section-header]")
+        .eq(1)
+        .should("have.text", "Product");
+      cy.get("[data-element-id=list-section-header]")
+        .eq(2)
+        .should("have.text", "Rating");
+    });
+  });
 });
 
 const MONGO_DB_ID = 2;
@@ -571,6 +717,24 @@ describe("issue 46845", () => {
     });
     H.visualize();
     H.assertQueryBuilderRowCount(1);
+  });
+});
+
+describe("issue 44567", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to name the aggregation expression the same as the column it is aggregating (metabase#44567)", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.getNotebookStep("data").button("Summarize").click();
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({ formula: "Sum([Total])", name: "Total" });
+    H.popover().button("Done").click();
+    H.getNotebookStep("summarize").findByText("Total").click();
+    H.enterCustomColumnDetails({ formula: "Sum([Total]) + 1" });
+    H.popover().button("Update").should("be.enabled");
   });
 });
 

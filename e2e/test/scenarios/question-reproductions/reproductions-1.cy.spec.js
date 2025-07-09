@@ -1023,7 +1023,7 @@ describe("issue 19742", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Table Metadata").click();
-    hideTable("Orders");
+    H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Exit admin").click();
 
@@ -1044,10 +1044,6 @@ describe("issue 19742", () => {
 
 function selectFromDropdown(optionName) {
   H.popover().findByText(optionName).click();
-}
-
-function hideTable(tableName) {
-  cy.findByText(tableName).find(".Icon-eye_crossed_out").click({ force: true });
 }
 
 const QUESTION_1 = {

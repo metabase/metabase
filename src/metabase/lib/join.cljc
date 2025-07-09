@@ -158,7 +158,11 @@
     (lib.options/update-options field-or-join u/assoc-dissoc :join-alias join-alias)
 
     :metadata/column
-    (u/assoc-dissoc field-or-join ::join-alias join-alias)
+    (if join-alias
+      (assoc field-or-join ::join-alias join-alias, :lib/source :source/joins)
+      (-> field-or-join
+          (dissoc ::join-alias)
+          (cond-> (= (:lib/source field-or-join) :source/joins) (dissoc :lib/source))))
 
     :mbql/join
     (with-join-alias-update-join field-or-join join-alias)
@@ -230,7 +234,7 @@
   (throw (ex-info "You can't calculate a metadata map for a join! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
 
-(mu/defn- column-from-join :- lib.metadata.calculation/ColumnMetadataWithSource
+(mu/defn- column-from-join :- ::lib.metadata.calculation/column-metadata-with-source
   "For a column that comes from a join, add or update metadata as needed, e.g. include join name in the display name."
   [query           :- ::lib.schema/query
    stage-number    :- :int
@@ -347,11 +351,11 @@
   [query stage-number join options]
   (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all) options))
 
-(mu/defn all-joins-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
+(mu/defn all-joins-visible-columns :- ::lib.metadata.calculation/columns-with-unique-aliases
   "Convenience for calling [[lib.metadata.calculation/visible-columns]] on all of the joins in a query stage."
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   options        :- lib.metadata.calculation/VisibleColumnsOptions]
+   options        :- ::lib.metadata.calculation/visible-columns.options]
   (into []
         (mapcat (fn [join]
                   (lib.metadata.calculation/visible-columns
@@ -361,11 +365,11 @@
                        (assoc :include-implicitly-joinable? false)))))
         (:joins (lib.util/query-stage query stage-number))))
 
-(mu/defn all-joins-fields-to-add-to-parent-stage :- lib.metadata.calculation/ColumnsWithUniqueAliases
+(mu/defn all-joins-fields-to-add-to-parent-stage :- ::lib.metadata.calculation/columns-with-unique-aliases
   "Convenience for calling [[lib.metadata.calculation/returned-columns-method]] on all the joins in a query stage."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   options      :- lib.metadata.calculation/ReturnedColumnsOptions]
+   options      :- ::lib.metadata.calculation/returned-columns.options]
   (into []
         (mapcat (fn [join]
                   (join-fields-to-add-to-parent-stage query stage-number join options)))
