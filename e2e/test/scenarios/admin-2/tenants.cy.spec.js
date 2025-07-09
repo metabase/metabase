@@ -19,6 +19,10 @@ const JWT_SECRET =
 const GIZMO_TENANT = {
   name: "Gizmos",
   slug: "gizmo",
+  attributes: {
+    CAPS: "✨GIZMO✨",
+    color: "cerulean",
+  },
 };
 
 const DOOHICKEY_TENANT = {
@@ -59,6 +63,8 @@ describe("Tenants - management OSS", { tags: "@OSS" }, () => {
 
 describe("Tenants - management", () => {
   beforeEach(() => {
+    cy.intercept("GET", "/api/ee/tenant/*").as("getTenant");
+    cy.intercept("GET", "/api/user/*").as("getUser");
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
@@ -66,15 +72,6 @@ describe("Tenants - management", () => {
 
   it("should disable the feature if the token feature is not enabled", () => {
     H.deleteToken();
-
-    cy.visit("/admin/tenants");
-    cy.location("pathname").should("eq", "/admin/people");
-
-    cy.findByRole("link", { name: /gear/ }).should("not.exist");
-  });
-
-  it("should disable the feature if the token feature is not enabled", () => {
-    H.setTokenFeatures("none");
 
     cy.visit("/admin/tenants");
     cy.location("pathname").should("eq", "/admin/people");
@@ -205,8 +202,9 @@ describe("Tenants - management", () => {
     });
 
     H.modal().within(() => {
+      cy.findByText("Attributes").click();
       cy.findByTestId("mapping-editor").within(() => {
-        cy.findByDisplayValue("@tenant.slug").should("exist");
+        cy.findByText("@tenant.slug").should("exist");
         cy.findByDisplayValue("parrot").should("exist");
 
         cy.findByRole("button", { name: /Add an attribute/i }).click();
@@ -217,14 +215,18 @@ describe("Tenants - management", () => {
         cy.findByText(
           'Keys starting with "@" are reserved for system use',
         ).should("exist");
-        cy.button(/close/).click();
+        cy.findByPlaceholderText("Key").clear().type("my-special-attr");
+
+        cy.findAllByPlaceholderText("Value")
+          .should("have.length", 2)
+          .last()
+          .type("Snowflake");
       });
 
       cy.button("Create").click();
     });
 
     cy.button("Done").click();
-
     cy.findByTestId("admin-people-list-table").should("contain.text", "Parrot");
 
     // Reactivate tenant
@@ -334,7 +336,7 @@ describe("Tenants - management", () => {
       "use-tenants": true,
     });
 
-    TENANTS.forEach((tenant) => cy.request("POST", "/api/ee/tenant", tenant));
+    createTenants();
 
     cy.visit("admin/tenants/people");
 
@@ -358,7 +360,7 @@ describe("Tenants - management", () => {
     H.modal().should("not.exist");
   });
 
-  it("should show the tenant attribute in user attribute lists when multi tenancy is enabled", () => {
+  it("should show tenant attributes in user attribute lists when multi tenancy is enabled", () => {
     H.restore("postgres-writable");
     H.activateToken("bleeding-edge");
 
@@ -386,6 +388,9 @@ describe("Tenants - management", () => {
     H.popover().findByText("@tenant.slug").should("not.exist");
 
     cy.request("PUT", "/api/setting/use-tenants", { value: true });
+
+    createTenants();
+    createUsers();
 
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
     cy.findByRole("switch", { name: /database routing/i }).click({
@@ -418,11 +423,41 @@ describe("Tenants - management", () => {
     H.popover()
       .findByRole("option", { name: /@tenant.slug/ })
       .findByRole("img", { name: /info/ });
+
+    cy.log("check that tenant attributes propagate to users");
+
+    cy.visit("/admin/tenants/people");
+    cy.findByTestId("admin-layout-content").findByText("External Users");
+    cy.findByTestId("admin-people-list-table").within(() => {
+      cy.findByText(`${GIZMO_USER.first_name} ${GIZMO_USER.last_name}`).should(
+        "exist",
+      );
+    });
+
+    cy.findAllByRole("button", { name: /ellipsis/ })
+      .should("have.length", 2)
+      .last()
+      .click();
+    H.popover().findByText("Edit user").click();
+
+    cy.wait(["@getUser", "@getTenant"]);
+
+    H.modal().within(() => {
+      cy.findByText("Attributes").click();
+      Object.entries(GIZMO_TENANT.attributes).forEach(([key, value]) => {
+        cy.findByText(key).should("be.visible");
+        cy.findByDisplayValue(value).should("be.visible");
+      });
+      cy.findByLabelText("close").click();
+    });
   });
 });
 
 describe("tenant users", () => {
   beforeEach(() => {
+    cy.intercept("GET", "/api/ee/tenant/*").as("getTenant");
+    cy.intercept("GET", "/api/user/*").as("getUser");
+
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
@@ -438,8 +473,7 @@ describe("tenant users", () => {
       "use-tenants": true,
     });
 
-    TENANTS.forEach((tenant) => cy.request("POST", "/api/ee/tenant", tenant));
-
+    createTenants();
     USERS.forEach((user) =>
       cy
         .task("signJwt", {
@@ -562,4 +596,20 @@ const assertPermissionTableColumnsExist = (assertions) => {
   cy.findByRole("columnheader", { name: "Manage database" }).should(
     assertions[4],
   );
+};
+
+const createUsers = () => {
+  cy.request("GET", "/api/ee/tenant").then(({ body }) => {
+    USERS.forEach((user) => {
+      const tenantId = body.data.find(
+        (tenant) => tenant.slug === user.tenant,
+      ).id;
+
+      cy.request("POST", "/api/user", { ...user, tenant_id: tenantId });
+    });
+  });
+};
+
+const createTenants = () => {
+  TENANTS.forEach((tenant) => cy.request("POST", "/api/ee/tenant", tenant));
 };

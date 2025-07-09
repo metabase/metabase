@@ -1,10 +1,12 @@
 import { useField } from "formik";
-import type { HTMLAttributes } from "react";
+import { type HTMLAttributes, useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
 import FormField from "metabase/common/components/FormField";
 import { Accordion, Box, Loader, Text } from "metabase/ui";
+import { useGetTenantQuery } from "metabase-enterprise/api";
+import { getExtraAttributes } from "metabase-enterprise/sandboxes/utils";
 import type {
   StructuredUserAttributes,
   UserAttributeKey,
@@ -47,13 +49,22 @@ export const LoginAttributesWidget = ({
   userId,
 }: Props) => {
   const [{ value }, , { setValue, setError }] = useField(name);
+  const [{ value: tenantId }] = useField("tenant_id");
+
   const { data: userData, isLoading } = useGetUserQuery(userId ?? skipToken);
+  const { data: tenant, isLoading: isLoadingTenant } = useGetTenantQuery(
+    tenantId ?? skipToken,
+  );
+
+  const structuredAttributes = useMemo(() => {
+    return getExtraAttributes(userData?.structured_attributes, tenant);
+  }, [userData?.structured_attributes, tenant]);
 
   const handleChange = (newValue: UserAttributeMap) => {
     const validEntries = Object.entries(newValue).filter(
       ([key, value]) =>
         !key.startsWith("@") &&
-        !isTenantValue([key, value], userData?.structured_attributes ?? {}),
+        !isTenantValue([key, value], structuredAttributes ?? {}),
     );
     setValue(Object.fromEntries(validEntries));
   };
@@ -73,12 +84,12 @@ export const LoginAttributesWidget = ({
           </Accordion.Control>
           <Accordion.Panel>
             <Box pt="md">
-              {isLoading ? (
+              {isLoading || isLoadingTenant ? (
                 <Loader />
               ) : (
                 <LoginAttributeMappingEditor
                   simpleAttributes={value}
-                  structuredAttributes={userData?.structured_attributes}
+                  structuredAttributes={structuredAttributes}
                   onChange={handleChange}
                   onError={handleError}
                 />
