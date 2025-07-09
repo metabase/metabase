@@ -18,7 +18,9 @@ import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
+import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
@@ -34,28 +36,20 @@ import { DashboardDetails } from "./DashboardDetails";
 import { DashboardEntityIdCard } from "./DashboardEntityIdCard";
 import { InsightsUpsellTab } from "./components/InsightsUpsellTab";
 
-interface DashboardInfoSidebarProps {
-  dashboard: Dashboard;
-  setDashboardAttribute: <Key extends keyof Dashboard>(
-    attribute: Key,
-    value: Dashboard[Key],
-  ) => void;
-  onClose: () => void;
-}
-
 enum Tab {
   Overview = "overview",
   History = "history",
   Insights = "insights",
 }
 
-export function DashboardInfoSidebar({
-  dashboard,
-  setDashboardAttribute,
-  onClose,
-}: DashboardInfoSidebarProps) {
+export function DashboardInfoSidebar() {
+  const { dashboard, closeSidebar } = useDashboardContext();
+  const setDashboardAttribute = useSetDashboardAttributeHandler();
+
   const [isOpen, setIsOpen] = useState(false);
-  useHotkeys([["]", onClose]]);
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
+
+  useHotkeys([["]", closeSidebar]]);
 
   useMount(() => {
     // this component is not rendered until it is "open"
@@ -64,17 +58,15 @@ export function DashboardInfoSidebar({
     setIsOpen(true);
   });
 
-  const [descriptionError, setDescriptionError] = useState<string | null>(null);
-
   const { data: revisions } = useRevisionListQuery({
-    query: { model_type: "dashboard", model_id: dashboard.id },
+    query: { model_type: "dashboard", model_id: dashboard?.id },
   });
 
   const isIADashboard = useMemo(
     () =>
-      dashboard.collection &&
+      dashboard?.collection &&
       isInstanceAnalyticsCollection(dashboard?.collection),
-    [dashboard.collection],
+    [dashboard?.collection],
   );
 
   const currentUser = useSelector(getUser);
@@ -101,6 +93,10 @@ export function DashboardInfoSidebar({
     [],
   );
 
+  if (!dashboard) {
+    return null;
+  }
+
   const canWrite = dashboard.can_write && !dashboard.archived;
 
   return (
@@ -109,7 +105,7 @@ export function DashboardInfoSidebar({
         <Sidesheet
           isOpen={isOpen}
           title={t`Info`}
-          onClose={onClose}
+          onClose={closeSidebar}
           removeBodyPadding
           size="md"
         >

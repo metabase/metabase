@@ -1,9 +1,7 @@
-import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import DashboardSubscriptionsSidebar from "metabase/notifications/DashboardSubscriptionsSidebar";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
-import type { Dashboard as IDashboard } from "metabase-types/api";
 import type { SelectedTabId, State } from "metabase-types/store";
 
 import { ActionSidebar } from "./ActionSidebar";
@@ -13,7 +11,6 @@ import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
 
 interface DashboardSidebarsProps {
-  dashboard: IDashboard;
   isFullscreen: boolean;
   sidebar: State["dashboard"]["sidebar"];
   closeSidebar: () => void;
@@ -21,13 +18,10 @@ interface DashboardSidebarsProps {
 }
 
 export function DashboardSidebars({
-  dashboard,
   isFullscreen,
   sidebar,
   closeSidebar,
 }: DashboardSidebarsProps) {
-  const setDashboardAttribute = useSetDashboardAttributeHandler();
-
   if (isFullscreen) {
     return null;
   }
@@ -48,13 +42,7 @@ export function DashboardSidebars({
     case SIDEBAR_NAME.sharing:
       return <DashboardSubscriptionsSidebar />;
     case SIDEBAR_NAME.info:
-      return (
-        <DashboardInfoSidebar
-          dashboard={dashboard}
-          setDashboardAttribute={setDashboardAttribute}
-          onClose={closeSidebar}
-        />
-      );
+      return <DashboardInfoSidebar />;
     case SIDEBAR_NAME.analyze:
       return (
         <PLUGIN_AI_ENTITY_ANALYSIS.AIDashboardAnalysisSidebar
