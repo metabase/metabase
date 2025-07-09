@@ -13,6 +13,8 @@ jobs:
   claude-response:
     runs-on: ubuntu-latest
     steps:
+      - run: git config --global --add safe.directory /__w/metabase/metabase
+      - uses: actions/checkout@v4
       - uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
