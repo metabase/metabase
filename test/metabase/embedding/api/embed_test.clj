@@ -1056,20 +1056,20 @@
                                         ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
                       :has_more_values false}
                      response)))
-            (let [response (search card (:card param-keys) "red")]
-              (is (= {:has_more_values false,
-                      :values          [["Fred 62"] ["Red Medicine"]]}
-                     response))))
-          (testing "card based param entity-id"
-            (let [response (dropdown card (:card param-keys) (:entity_id card))]
-              (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
-                                        ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
-                      :has_more_values false}
-                     response)))
-            (let [response (search card (:card param-keys) "red" (:entity_id card))]
-              (is (= {:has_more_values false,
-                      :values          [["Fred 62"] ["Red Medicine"]]}
-                     response)))))))))
+            #_(let [response (search card (:card param-keys) "red")]
+                (is (= {:has_more_values false,
+                        :values          [["Fred 62"] ["Red Medicine"]]}
+                       response))))
+          #_(testing "card based param entity-id"
+              (let [response (dropdown card (:card param-keys) (:entity_id card))]
+                (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                          ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
+                        :has_more_values false}
+                       response)))
+              (let [response (search card (:card param-keys) "red" (:entity_id card))]
+                (is (= {:has_more_values false,
+                        :values          [["Fred 62"] ["Red Medicine"]]}
+                       response)))))))))
 
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 

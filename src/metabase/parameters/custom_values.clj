@@ -70,14 +70,15 @@
                             (if textual?
                               (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
                               (lib/= value-column query-string)))]
-    (-> query
-        (lib/limit *max-rows*)
-        (lib/filter nonempty)
-        (cond-> #_query query-filter (lib/filter query-filter))
-        (lib/breakout value-column)
+    (u/prog1 (-> query
+                 (lib/limit *max-rows*)
+                 (lib/filter nonempty)
+                 (cond-> #_query query-filter (lib/filter query-filter))
+                 (lib/breakout value-column)
         ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
         ;; "internal" query in the BE.
-        (assoc-in [:middleware :disable-remaps?] true))))
+                 (assoc-in [:middleware :disable-remaps?] true))
+      (tap> [`values-from-card-query query value-field-ref value-column textual? nonempty query-filter '=> <>]))))
 
 (mu/defn values-from-card
   "Get distinct values of a field from a card.
@@ -101,6 +102,7 @@
     opts            :- [:maybe :map]]
    (let [mbql-query   (values-from-card-query card value-field-ref opts)
          result       (qp/process-query mbql-query)
+         _ (tap> [`result result])
          values       (get-in result [:data :rows])]
      {:values         values
       ;; If the row_count returned = the limit we specified, then it's probably has more than that.
