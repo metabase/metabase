@@ -8,10 +8,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ignore-marker
-  "This is the pattern we check for to say 'this token is OK to use in source code'
-   It's constructed this weird way because this file gets scanned too: so it would match itself, causing a false positive."
-  (str/join "-" ["metabase" "scanner" "ignore"]))
 
 (def ^:private token-patterns
   "Token regex patterns to scan for and their names for reporting.
@@ -26,6 +22,74 @@
    "Slack Bot Token" #"xoxb-[0-9]+-[0-9]+-[A-Za-z0-9]+" ;; Slack bot tokens
    "AWS Access Key"  #"AKIA[0-9A-Z]{16}" ;; AWS access key IDs
    })
+
+(def token-like-whitelist
+  "A set of token-like strings that are not considered secrets.
+   These are used to avoid false positives in the token scanning process.
+
+  Usually we use the ignore-marker but in e.g. markdown code blocks you cannot easily do that without affecting the formatting."
+  (->>
+   (str u/project-root-directory "/mage/resources/token_scanner_whitelist.txt")
+   slurp
+   str/split-lines))
+
+(defn white-listed? [line]
+  (boolean (some #(str/includes? line %) token-like-whitelist)))
+
+(defn- exclude-path-str?
+  "Check if a file should be excluded from scanning (auto-generated, build artifacts, etc.)"
+  [path-str]
+  (or
+   ;; Version control and build directories
+   (str/includes? path-str "/.git/")
+   (str/includes? path-str "/node_modules/")
+   (str/includes? path-str "/target/")
+   (str/includes? path-str "/resources/frontend_client/")
+
+   ;; Build artifacts and generated files
+   (str/ends-with? path-str ".db")
+   (str/ends-with? path-str ".js.map")
+   (str/ends-with? path-str ".jar")
+   (str/ends-with? path-str ".class")
+   (str/ends-with? path-str ".min.js")
+   (str/ends-with? path-str ".bundle.js")
+   (str/ends-with? path-str ".hot.bundle.js")
+
+   ;; Checksum and hash files (likely to contain 64-char hashes)
+   (str/ends-with? path-str "/SHA256.sum")
+   (str/ends-with? path-str ".sha256")
+   (str/ends-with? path-str ".md5")
+
+   ;; Binary and compiled files
+   (str/ends-with? path-str ".so")
+   (str/ends-with? path-str ".dylib")
+   (str/ends-with? path-str ".dll")
+   (str/ends-with? path-str ".exe")
+   (str/ends-with? path-str "bin/bb")
+
+   ;; Image and media files
+   (str/ends-with? path-str ".png")
+   (str/ends-with? path-str ".jpg")
+   (str/ends-with? path-str ".jpeg")
+   (str/ends-with? path-str ".gif")
+   (str/ends-with? path-str ".svg")
+   (str/ends-with? path-str ".ico")
+
+   ;; Archive files
+   (str/ends-with? path-str ".zip")
+   (str/ends-with? path-str ".tar")
+   (str/ends-with? path-str ".gz")
+
+   ;; Generated documentation and test data
+   (str/includes? path-str "/stories-data/")
+   (str/includes? path-str "/test-data/")
+   (str/includes? path-str "/fixtures/")
+
+   ;; fake ag token file
+   (str/ends-with? path-str "test_resources/fake_ag_token.txt")
+
+   ;; docs about this feature
+   (str/ends-with? path-str "docs/developers-guide/security-token-scanner.md")))
 
 (defn- truncate-around-match
   "Truncate text around a regex match, showing ~100 chars before and after"
@@ -49,94 +113,25 @@
   [patterns ^String file-path]
   (try
     (let [lines (str/split-lines (slurp file-path))
-          ignore-lines (atom #{})
-          unused-ignores (atom #{})
-          
-          ;; First pass: find all lines with ignore markers
-          ;; Skip collecting unused ignores for documentation files
-          _ (when-not (str/includes? file-path "docs/developers-guide/security-token-scanner.md")
-              (doseq [[line-idx line] (map-indexed vector lines)]
-                (when (str/includes? line ignore-marker)
-                  (swap! unused-ignores conj (inc line-idx)))))
-          
           matches (into []
                         (comp
                          (map-indexed (fn [line-idx line]
                                         (keep (fn [[pattern-name pattern]]
-                                                (when (re-find pattern line)
-                                                  (let [line-num (inc line-idx)]
-                                                    (if (str/includes? line ignore-marker)
-                                                      ;; Mark this ignore as used
-                                                      (do (swap! ignore-lines conj line-num)
-                                                          (swap! unused-ignores disj line-num)
-                                                          nil) ; Don't include in matches
-                                                      ;; Include in matches
-                                                      {:pattern-name pattern-name
-                                                       :line-number line-num
-                                                       :line-text (truncate-around-match line pattern)}))))
+                                                (when (and (re-find pattern line)
+                                                           (not (white-listed? line)))
+                                                  {:pattern-name pattern-name
+                                                   :line-number (inc line-idx)
+                                                   :line-text (truncate-around-match line pattern)}))
                                               patterns)))
                          cat)
                         lines)]
       {:file file-path
        :matches matches
-       :unused-ignores @unused-ignores
        :error nil})
     (catch Exception e
       {:file file-path
        :matches []
-       :unused-ignores #{}
        :error (str e)})))
-
-(defn- exclude-path-str?
-  "Check if a file should be excluded from scanning (auto-generated, build artifacts, etc.)"
-  [path-str]
-  (or
-   ;; Version control and build directories
-   (str/includes? path-str "/.git/")
-   (str/includes? path-str "/node_modules/")
-   (str/includes? path-str "/target/")
-   (str/includes? path-str "/resources/frontend_client/")
-   
-   ;; Build artifacts and generated files
-   (str/ends-with? path-str ".db")
-   (str/ends-with? path-str ".js.map")
-   (str/ends-with? path-str ".jar")
-   (str/ends-with? path-str ".class")
-   (str/ends-with? path-str ".min.js")
-   (str/ends-with? path-str ".bundle.js")
-   (str/ends-with? path-str ".hot.bundle.js")
-   
-   ;; Checksum and hash files (likely to contain 64-char hashes)
-   (str/ends-with? path-str "/SHA256.sum")
-   (str/ends-with? path-str ".sha256")
-   (str/ends-with? path-str ".md5")
-   
-   ;; Binary and compiled files
-   (str/ends-with? path-str ".so")
-   (str/ends-with? path-str ".dylib")
-   (str/ends-with? path-str ".dll")
-   (str/ends-with? path-str ".exe")
-   
-   ;; Image and media files
-   (str/ends-with? path-str ".png")
-   (str/ends-with? path-str ".jpg")
-   (str/ends-with? path-str ".jpeg")
-   (str/ends-with? path-str ".gif")
-   (str/ends-with? path-str ".svg")
-   (str/ends-with? path-str ".ico")
-   
-   ;; Archive files
-   (str/ends-with? path-str ".zip")
-   (str/ends-with? path-str ".tar")
-   (str/ends-with? path-str ".gz")
-   
-   ;; Generated documentation and test data
-   (str/includes? path-str "/stories-data/")
-   (str/includes? path-str "/test-data/")
-   (str/includes? path-str "/fixtures/")
-
-   ;; fake ag token file
-   (str/ends-with? path-str "test_resources/fake_ag_token.txt")))
 
 (defn- get-all-files
   "Get all files in the project (excluding auto-generated files and build artifacts)"
@@ -144,7 +139,6 @@
   (let [project-root u/project-root-directory]
     (->> (fs/glob project-root "**/*")
          (filter fs/regular-file?)
-         (remove fs/executable?)
          (map str)
          (remove exclude-path-str?))))
 
@@ -161,17 +155,15 @@
                 (str project-root "/" filename)))
          (remove exclude-path-str?))))
 
-
 (defn- merge-scanned
   "Merge results from parallel scanning"
-  ([] {:total-files 0 :files-with-matches 0 :total-matches 0 :total-unused-ignores 0 :results []})
+  ([] {:total-files 0 :files-with-matches 0 :total-matches 0 :results []})
   ([acc] acc)
   ([acc scanned]
    (-> acc
        (update :total-files inc)
        (update :files-with-matches (if (seq (:matches scanned)) inc identity))
        (update :total-matches + (count (:matches scanned)))
-       (update :total-unused-ignores + (count (:unused-ignores scanned)))
        (update :scanned conj scanned))))
 
 (defn scan-files [patterns files]
@@ -179,10 +171,7 @@
         pool-size (-> (/ (count files) 8) int (max 4) (min 32))
         _ (println (c/yellow "Using thread pool size: " pool-size))
         executor (Executors/newFixedThreadPool pool-size)
-        callables (mapv (fn [f]
-                          (reify Callable
-                            (call [_] (scan-file patterns f))))
-                        files)
+        callables (mapv (fn [f] (reify Callable (call [_] (scan-file patterns f)))) files)
         futures (.invokeAll executor callables)
         results (mapv #(.get ^java.util.concurrent.Future %) futures)
         merged (reduce merge-scanned (merge-scanned) results)
@@ -208,30 +197,30 @@
             (println (c/yellow "No files to scan"))
             (System/exit 0))
         
-        {:keys [scanned duration-ms total-files files-with-matches total-matches total-unused-ignores] :as x}
+        {:keys [scanned duration-ms total-files files-with-matches total-matches] :as x}
         (scan-files token-patterns files)]
 
     ;; Print results
-    (when verbose
-      (doseq [{:keys [file matches unused-ignores error]} scanned]
-        (when error
-          (println (c/red "Error scanning " file ": " error)))
-        (when (seq matches)
-          (println (c/blue file))
-          (when-not no-lines
-            (doseq [{:keys [pattern-name line-number line-text]} matches]
-              (println (c/white "  Line# " (c/bold line-number) " [" (c/yellow pattern-name) "]:" (c/green (str/trim line-text)))))))
-        (when (seq unused-ignores)
-          (println (c/red file))
-          (doseq [line-num unused-ignores]
-            (println (c/red "  Line# " (c/bold line-num) ": Unused " ignore-marker " comment"))))))
+    (doseq [{:keys [file matches error]} scanned]
+      (when error
+        (println (c/red "Error scanning " file ": " error)))
+      (when (seq matches)
+        (println (c/blue file))
+        (when-not no-lines
+          (doseq [{:keys [pattern-name line-number line-text]} matches]
+            (println (c/white "  Line# " (c/bold line-number) " [" (c/yellow pattern-name) "]:" (c/green (str/trim line-text))))))))
 
-    (println (c/green "Scan completed in " (format "%.0f" duration-ms) "ms"))
-    (println (c/yellow "Files scanned:      " total-files))
-    (println (c/yellow "Files with matches: " files-with-matches))
-    (println (c/yellow "Total matches:      " total-matches))
-    (when (> total-unused-ignores 0)
-      (println (c/red "Unused ignores:     " total-unused-ignores))
-      (System/exit 1))
+    (println (c/green "Scan completed in:   " (format "%.0f" duration-ms) "ms"))
+    (when verbose
+      (println "--------------------")
+      (println (c/yellow "Files scanned:      " total-files))
+      (println (c/yellow "Files with matches: " files-with-matches))
+      (println (c/yellow "Total matches:      " total-matches)))
+
+    (when (> total-matches 0)
+      (throw (ex-info nil
+                      {:results (dissoc x :scanned)
+                       :mage/error (str (c/red "Token Scanning found a potential secret.\n")
+                                        (c/cyan "See: https://github.com/metabase/metabase/blob/master/docs/developers-guide/security-token-scanner.md"))})))
     ;; Return results for potential further processing
     scanned))
