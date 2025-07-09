@@ -12,6 +12,7 @@ import { StaticVisualization } from "metabase/static-viz/components/StaticVisual
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type { MantineThemeOverride } from "metabase/ui";
 import { Box } from "metabase/ui";
+import { themeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { RawSeries } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -112,13 +113,15 @@ export const SdkVisualizationStory = ({
   theme,
 }: IsomorphicVisualizationStoryProps & { theme?: MetabaseTheme }) => {
   return (
-    <Box w={1000} h={600} bg={theme?.colors?.background}>
-      <VisualizationWrapper>
-        <SdkThemeProvider theme={theme}>
-          <Visualization rawSeries={rawSeries} width={500} />
-        </SdkThemeProvider>
-      </VisualizationWrapper>
-    </Box>
+    <themeProviderContext.Provider value={{ withCssVariables: true }}>
+      <Box w={1000} h={600} bg={theme?.colors?.background}>
+        <VisualizationWrapper>
+          <SdkThemeProvider theme={theme}>
+            <Visualization rawSeries={rawSeries} width={500} />
+          </SdkThemeProvider>
+        </VisualizationWrapper>
+      </Box>
+    </themeProviderContext.Provider>
   );
 };
 

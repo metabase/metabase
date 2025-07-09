@@ -3,11 +3,11 @@ import type { Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher, RenderHookOptions } from "@testing-library/react";
 import {
+  renderHook,
   screen,
   render as testingLibraryRender,
   waitFor,
 } from "@testing-library/react";
-import { renderHook } from "@testing-library/react-hooks/dom";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
 import { KBarProvider } from "kbar";
@@ -247,10 +247,7 @@ export function TestWrapper({
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
         <themeProviderContext.Provider value={{ withCssVariables: false }}>
-          <ThemeProvider
-            theme={theme}
-            mantineProviderProps={{ withCssVariables: false }}
-          >
+          <ThemeProvider theme={theme}>
             <GlobalStylesForTest />
 
             <MaybeKBar hasKBar={withKBar}>
@@ -419,9 +416,9 @@ const ThemeProviderWrapper = ({
   children,
   ...props
 }: React.PropsWithChildren) => (
-  <ThemeProvider mantineProviderProps={{ withCssVariables: false }} {...props}>
-    {children}
-  </ThemeProvider>
+  <themeProviderContext.Provider value={{ withCssVariables: false }}>
+    <ThemeProvider {...props}>{children}</ThemeProvider>
+  </themeProviderContext.Provider>
 );
 
 export function renderWithTheme(children: React.ReactElement) {
