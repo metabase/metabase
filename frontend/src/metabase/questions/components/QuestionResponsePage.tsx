@@ -39,6 +39,11 @@ Based on your data, Q4 2023 showed a **15% increase** in total sales compared to
 - Average order value: $1,200 (12% increase)
 - Customer acquisition: 450 new customers
 
+### Product Distribution
+Here's how our products are distributed across categories:
+
+{{viz:7:Product Category Breakdown:Distribution of products by category and title}}
+
 ### Top Performing Products
 1. **Cloud Storage Solutions** - $450K revenue
 2. **Data Analytics Platform** - $380K revenue

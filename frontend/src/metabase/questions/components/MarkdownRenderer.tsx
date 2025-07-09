@@ -2,6 +2,8 @@ import React, { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+import { VisualizationEmbed } from "./VisualizationEmbed";
+
 interface MarkdownRendererProps {
   content: string;
   onTextNodeClick?: (nodeId: string, text: string) => void;
@@ -21,8 +23,40 @@ const generateNodeId = (text: string, index: number): string => {
 const createCustomComponents = (
   onTextNodeClick?: (nodeId: string, text: string) => void,
 ) => ({
-  // Custom paragraph component that adds IDs to text nodes
+  // Custom paragraph component that adds IDs to text nodes and handles viz embeds
   p: ({ children, ...props }: any) => {
+    const textContent = React.Children.toArray(children).join("");
+
+        // Check if this paragraph contains a visualization embed
+    const vizMatch = textContent.match(/\{\{viz:(\d+)(?::([^}]+))?\}\}/);
+    if (vizMatch) {
+      const questionId = parseInt(vizMatch[1], 10);
+      const fullDescription = vizMatch[2] || "";
+
+      // Split the description into title and description if it contains a colon
+      let title: string | undefined;
+      let description: string | undefined;
+
+      if (fullDescription) {
+        const colonIndex = fullDescription.indexOf(":");
+        if (colonIndex !== -1) {
+          title = fullDescription.substring(0, colonIndex).trim();
+          description = fullDescription.substring(colonIndex + 1).trim();
+        } else {
+          title = fullDescription.trim();
+        }
+      }
+
+      return (
+        <VisualizationEmbed
+          questionId={questionId}
+          title={title}
+          description={description}
+        />
+      );
+    }
+
+    // Regular paragraph processing
     const textNodes = React.Children.toArray(children).filter(
       (child) =>
         typeof child === "string" ||
@@ -267,12 +301,6 @@ const createCustomComponents = (
       {children}
     </em>
   ),
-
-  // TODO: Add custom components for rich embeds and interactive charts
-  // These will be used to embed Metabase visualizations and interactive elements
-  // Example:
-  // embed: ({ children, ...props }: any) => <EmbeddedChart {...props}>{children}</EmbeddedChart>,
-  // chart: ({ children, ...props }: any) => <InteractiveChart {...props}>{children}</InteractiveChart>,
 });
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
@@ -286,7 +314,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
   return (
     <div style={{ lineHeight: "1.6", fontSize: "0.95rem" }}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={customComponents}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={customComponents}
+      >
         {content}
       </ReactMarkdown>
     </div>
