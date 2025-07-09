@@ -1,25 +1,9 @@
-import _ from "underscore";
-
 import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import {
-  getEditingParameter,
-  getEditingParameterInlineDashcard,
-  getParameters,
-} from "metabase/dashboard/selectors";
-import { useSelector } from "metabase/lib/redux";
 import DashboardSubscriptionsSidebar from "metabase/notifications/DashboardSubscriptionsSidebar";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
-import { hasMapping } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
-import type {
-  Dashboard as IDashboard,
-  ParameterId,
-  TemporalUnit,
-  ValuesQueryType,
-  ValuesSourceConfig,
-  ValuesSourceType,
-} from "metabase-types/api";
+import type { Dashboard as IDashboard } from "metabase-types/api";
 import type { SelectedTabId, State } from "metabase-types/store";
 
 import { ActionSidebar } from "./ActionSidebar";
@@ -30,35 +14,7 @@ import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
 
 interface DashboardSidebarsProps {
   dashboard: IDashboard;
-  removeParameter: (id: ParameterId) => void;
-  setParameterName: (id: ParameterId, name: string) => void;
-  setParameterType: (
-    parameterId: ParameterId,
-    nextType: string,
-    nextSectionId: string,
-  ) => void;
-  setParameterDefaultValue: (id: ParameterId, value: unknown) => void;
-  setParameterIsMultiSelect: (id: ParameterId, isMultiSelect: boolean) => void;
-  setParameterQueryType: (id: ParameterId, queryType: ValuesQueryType) => void;
-  setParameterSourceType: (
-    id: ParameterId,
-    sourceType: ValuesSourceType,
-  ) => void;
-  setParameterSourceConfig: (
-    id: ParameterId,
-    config: ValuesSourceConfig,
-  ) => void;
-  setParameterFilteringParameters: (
-    parameterId: ParameterId,
-    filteringParameters: ParameterId[],
-  ) => void;
-  setParameterRequired: (id: ParameterId, value: boolean) => void;
-  setParameterTemporalUnits: (
-    parameterId: ParameterId,
-    temporalUnits: TemporalUnit[],
-  ) => void;
   isFullscreen: boolean;
-
   onCancel: () => void;
   sidebar: State["dashboard"]["sidebar"];
   closeSidebar: () => void;
@@ -67,28 +23,11 @@ interface DashboardSidebarsProps {
 
 export function DashboardSidebars({
   dashboard,
-  removeParameter,
-  setParameterName,
-  setParameterType,
-  setParameterDefaultValue,
-  setParameterIsMultiSelect,
-  setParameterQueryType,
-  setParameterSourceType,
-  setParameterSourceConfig,
-  setParameterFilteringParameters,
-  setParameterRequired,
-  setParameterTemporalUnits,
   isFullscreen,
   onCancel,
   sidebar,
   closeSidebar,
 }: DashboardSidebarsProps) {
-  const parameters = useSelector(getParameters);
-  const editingParameter = useSelector(getEditingParameter);
-  const editingParameterInlineDashcard = useSelector(
-    getEditingParameterInlineDashcard,
-  );
-
   const setDashboardAttribute = useSetDashboardAttributeHandler();
 
   if (isFullscreen) {
@@ -104,34 +43,8 @@ export function DashboardSidebars({
     case SIDEBAR_NAME.clickBehavior:
       return <ClickBehaviorSidebar />;
 
-    case SIDEBAR_NAME.editParameter: {
-      const { id: editingParameterId } = editingParameter || {};
-      const [[parameter], otherParameters] = _.partition(
-        parameters,
-        (p) => p.id === editingParameterId,
-      );
-
-      return (
-        <ParameterSidebar
-          parameter={parameter}
-          editingParameterInlineDashcard={editingParameterInlineDashcard}
-          otherParameters={otherParameters}
-          onChangeName={setParameterName}
-          onChangeType={setParameterType}
-          onChangeDefaultValue={setParameterDefaultValue}
-          onChangeIsMultiSelect={setParameterIsMultiSelect}
-          onChangeQueryType={setParameterQueryType}
-          onChangeSourceType={setParameterSourceType}
-          onChangeSourceConfig={setParameterSourceConfig}
-          onChangeFilteringParameters={setParameterFilteringParameters}
-          onRemoveParameter={removeParameter}
-          onClose={closeSidebar}
-          onChangeRequired={setParameterRequired}
-          onChangeTemporalUnits={setParameterTemporalUnits}
-          hasMapping={hasMapping(parameter, dashboard)}
-        />
-      );
-    }
+    case SIDEBAR_NAME.editParameter:
+      return <ParameterSidebar />;
     case SIDEBAR_NAME.settings:
       return (
         <DashboardSettingsSidebar
