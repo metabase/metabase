@@ -379,6 +379,11 @@ describe("scenarios > admin > datamodel", () => {
           TablePicker.getDatabase("Writable Postgres12").click();
 
           TableSection.getNameInput().should("have.value", "Birds");
+          TablePicker.getTable("Birds").should(
+            "have.css",
+            "background-color",
+            "color(srgb 0.862745 0.923922 0.978039)",
+          );
         });
       },
     );
