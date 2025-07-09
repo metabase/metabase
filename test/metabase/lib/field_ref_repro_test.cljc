@@ -82,3 +82,29 @@
       (is (nil? (lib.equality/find-matching-column
                  expression-ref
                  (lib/visible-columns query)))))))
+
+(deftest ^:parallel returned-columns-bad-field-refs-test
+  (let [query (lib/query
+               meta/metadata-provider
+               (lib.tu.macros/mbql-query venues
+                 {:source-query {:source-table $$venues
+                                 :joins        [{:strategy     :left-join
+                                                 :source-table $$categories
+                                                 :alias        "Cat"
+                                                 :condition    [:= $category-id &Cat.categories.id]
+                                                 :fields       [&Cat.categories.name]}]
+                                 :fields       [$id
+                                                &Cat.categories.name]}
+                  ;; THIS REF IS WRONG -- it should not be using `Cat` because the join is in the source query rather
+                  ;; than in the current stage. However, we should be smart enough to try to figure out what they
+                  ;; meant.
+                  :breakout     [&Cat.categories.name]}))]
+    ;; we expect the returned column should not look like it's coming from a join
+    (is (=? [{:id                           (meta/id :categories :name)
+              :name                         "NAME"
+              ;; `:lib/source` is broken -- see #59596
+              :lib/source                   :source/joins ; should be :source/breakout (if something at all)
+              :metabase.lib.join/join-alias "Cat"  ; should be missing
+              :lib/source-column-alias      "NAME" ; should be "Cat__NAME"
+              :lib/desired-column-alias     "Cat__NAME"}]
+            (lib/returned-columns query)))))
