@@ -5,7 +5,10 @@ import { Text } from "metabase/ui";
 
 export function DatabaseReplicationPostgresInfo() {
   const link = (
-    <ExternalLink href="https://clickhouse.com/docs/integrations/clickpipes/postgres">
+    <ExternalLink
+      key="link"
+      href="https://clickhouse.com/docs/integrations/clickpipes/postgres"
+    >
       {t`adjust settings and permissions`}
     </ExternalLink>
   );
