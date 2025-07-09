@@ -256,7 +256,8 @@ Our Q4 marketing campaigns generated **$850K in attributed revenue** across 5 ch
       reviewers: [
         { id: "user3", name: "Mike Chen", email: "mike.chen@company.com", status: "commented", requestedAt: 1702000000000, reviewedAt: 1702086400000, comment: "Good analysis, but we should include attribution modeling details." },
         { id: "user4", name: "Lisa Wong", email: "lisa.wong@company.com", status: "requested", requestedAt: 1702000000000 },
-        { id: "user5", name: "David Brown", email: "david.brown@company.com", status: "requested", requestedAt: 1702000000000 }
+        { id: "user5", name: "David Brown", email: "david.brown@company.com", status: "requested", requestedAt: 1702000000000 },
+        { id: "user6", name: "Alex Thompson", email: "alex.thompson@company.com", status: "requested", requestedAt: 1702000000000, nodeId: "node_1" }
       ],
       tags: ["marketing", "campaigns", "ROI", "channels"],
       category: "marketing-analytics",
@@ -353,6 +354,19 @@ const generativeQuestionsSlice = createSlice({
         state.questions[questionId].updatedAt = Date.now();
       }
     },
+    addNodeReviewer: (state, action: PayloadAction<{ questionId: string; nodeId: string; reviewer: GenerativeQuestionReviewer }>) => {
+      const { questionId, nodeId, reviewer } = action.payload;
+      if (state.questions[questionId]) {
+        const nodeReviewer = {
+          ...reviewer,
+          nodeId,
+          status: "requested" as ReviewStatus,
+          requestedAt: Date.now(),
+        };
+        state.questions[questionId].metadata.reviewers.push(nodeReviewer);
+        state.questions[questionId].updatedAt = Date.now();
+      }
+    },
     updateReviewerStatus: (state, action: PayloadAction<{ questionId: string; reviewerId: string; status: ReviewStatus; comment?: string }>) => {
       const { questionId, reviewerId, status, comment } = action.payload;
       if (state.questions[questionId]) {
@@ -383,6 +397,7 @@ export const {
   addGenerativeQuestion,
   updateGenerativeQuestion,
   addReviewer,
+  addNodeReviewer,
   updateReviewerStatus,
   removeGenerativeQuestion,
   setLoading,
@@ -396,6 +411,7 @@ export const getAvailableReviewers = (): Array<{ id: string; name: string; email
   { id: "user3", name: "Mike Chen", email: "mike.chen@company.com", avatar: "https://i.pravatar.cc/150?img=3" },
   { id: "user4", name: "Lisa Wong", email: "lisa.wong@company.com", avatar: "https://i.pravatar.cc/150?img=4" },
   { id: "user5", name: "David Brown", email: "david.brown@company.com", avatar: "https://i.pravatar.cc/150?img=5" },
+  { id: "user6", name: "Alex Thompson", email: "alex.thompson@company.com", avatar: "https://i.pravatar.cc/150?img=6" },
 ];
 
 export const generativeQuestionsReducer = generativeQuestionsSlice.reducer;

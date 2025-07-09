@@ -16,6 +16,7 @@ export interface GenerativeQuestionReviewer {
   requestedAt?: number;
   reviewedAt?: number;
   comment?: string;
+  nodeId?: string; // Optional reference to specific text node
 }
 
 export interface GenerativeQuestionMetadata {

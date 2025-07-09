@@ -7,7 +7,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 import { Button, Card, Divider, Icon, Menu, Skeleton, Textarea } from "metabase/ui";
 
-import { addGenerativeQuestion, addReviewer, createQuestionMetadata, generateSampleContent, getAvailableReviewers } from "../redux/generativeQuestionsSlice";
+import { addGenerativeQuestion, addNodeReviewer, addReviewer, createQuestionMetadata, generateSampleContent, getAvailableReviewers } from "../redux/generativeQuestionsSlice";
 import { getGenerativeQuestionById } from "../redux/selectors";
 
 import { MarkdownRenderer } from "./MarkdownRenderer";
@@ -98,6 +98,31 @@ const QuestionResponsePage = ({
     }
   }, [dispatch, question]);
 
+    const handleRequestNodeReview = useCallback((nodeId: string, text: string, reviewerId: string) => {
+    if (question) {
+      const availableReviewers = getAvailableReviewers();
+      const reviewer = availableReviewers.find(r => r.id === reviewerId);
+
+      if (reviewer) {
+        dispatch(addNodeReviewer({
+          questionId: question.id,
+          nodeId,
+          reviewer: {
+            id: reviewer.id,
+            name: reviewer.name,
+            email: reviewer.email,
+            avatar: reviewer.avatar,
+            status: "requested",
+            requestedAt: Date.now(),
+          },
+        }));
+
+        // Show a simple notification (in a real app, this would be a toast)
+        console.log(`Review requested for node "${text.substring(0, 50)}..." from ${reviewer.name}`);
+      }
+    }
+  }, [dispatch, question]);
+
   const getReviewStatusColor = (status: string) => {
     switch (status) {
       case "requested": return "var(--mb-color-warning)";
@@ -110,6 +135,26 @@ const QuestionResponsePage = ({
 
   const availableReviewers = getAvailableReviewers();
   const currentReviewers = question?.metadata?.reviewers || [];
+
+  // Helper function to get reviewers for specific nodes
+  const getNodeReviewers = useCallback(() => {
+    if (!question?.metadata?.reviewers) return {};
+
+    const nodeReviewers: Record<string, Array<{ id: string; name: string; status: string }>> = {};
+    question.metadata.reviewers.forEach(reviewer => {
+      if (reviewer.nodeId) {
+        if (!nodeReviewers[reviewer.nodeId]) {
+          nodeReviewers[reviewer.nodeId] = [];
+        }
+        nodeReviewers[reviewer.nodeId].push({
+          id: reviewer.id,
+          name: reviewer.name,
+          status: reviewer.status,
+        });
+      }
+    });
+    return nodeReviewers;
+  }, [question?.metadata?.reviewers]);
 
   useEffect(() => {
     // Simulate loading time
@@ -275,6 +320,11 @@ const QuestionResponsePage = ({
                           <div style={{ fontWeight: "500" }}>{reviewer.name}</div>
                           <div style={{ fontSize: "0.75rem", color: "var(--mb-color-text-medium)" }}>
                             {reviewer.status.charAt(0).toUpperCase() + reviewer.status.slice(1)}
+                            {reviewer.nodeId && (
+                              <span style={{ marginLeft: "0.5rem", fontStyle: "italic" }}>
+                                (node review)
+                              </span>
+                            )}
                           </div>
                         </div>
                       </Menu.Item>
@@ -329,6 +379,9 @@ const QuestionResponsePage = ({
                 onTextNodeClick={handleTextNodeClick}
                 onSelectionChange={handleSelectionChange}
                 onStartNewQuestion={handleStartNewQuestion}
+                onRequestNodeReview={handleRequestNodeReview}
+                nodeReviewers={getNodeReviewers()}
+                availableReviewers={availableReviewers}
               />
             </div>
           </div>

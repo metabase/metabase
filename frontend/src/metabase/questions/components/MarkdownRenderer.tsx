@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { t } from "ttag";
 
 import { Icon, Menu } from "metabase/ui";
+import UserAvatar from "metabase/common/components/UserAvatar";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { RawSeries } from "metabase-types/api";
 
@@ -14,6 +15,9 @@ interface MarkdownRendererProps {
   onTextNodeClick?: (nodeId: string, text: string) => void;
   onSelectionChange?: (selectedNodes: string[]) => void;
   onStartNewQuestion?: (selectedText: string) => void;
+  onRequestNodeReview?: (nodeId: string, text: string, reviewerId: string) => void;
+  nodeReviewers?: Record<string, Array<{ id: string; name: string; status: string }>>;
+  availableReviewers?: Array<{ id: string; name: string; email: string; avatar?: string }>;
 }
 
 interface _TextNode {
@@ -40,8 +44,11 @@ const TextNodeWrapper: React.FC<{
   isSelected: boolean;
   onSelectionChange: (nodeId: string, isSelected: boolean, isMultiSelect: boolean) => void;
   onStartNewQuestion?: (selectedText: string) => void;
+  onRequestNodeReview?: (nodeId: string, text: string, reviewerId: string) => void;
+  nodeReviewers?: Record<string, Array<{ id: string; name: string; status: string }>>;
+  availableReviewers?: Array<{ id: string; name: string; email: string; avatar?: string }>;
   children: React.ReactNode;
-}> = ({ nodeId, text, onTextNodeClick, isSelected, onSelectionChange, onStartNewQuestion, children }) => {
+}> = ({ nodeId, text, onTextNodeClick, isSelected, onSelectionChange, onStartNewQuestion, onRequestNodeReview, nodeReviewers, availableReviewers, children }) => {
   const [menuOpened, setMenuOpened] = useState(false);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
@@ -93,6 +100,7 @@ const TextNodeWrapper: React.FC<{
             padding: isSelected ? "2px 4px" : "2px 4px",
             borderRadius: "3px",
             margin: "0 1px",
+            position: "relative",
           }}
           onMouseEnter={(e) => {
             if (!isSelected) {
@@ -106,8 +114,41 @@ const TextNodeWrapper: React.FC<{
           }}
         >
           {children}
+
+          {/* Yellow review indicator */}
+          {nodeReviewers?.[nodeId] && nodeReviewers[nodeId].length > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                top: "-2px",
+                right: "-2px",
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                backgroundColor: "var(--mb-color-warning)",
+                border: "1px solid white",
+                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.1)",
+                zIndex: 1,
+              }}
+            />
+          )}
         </span>
       </Menu.Target>
+
+      {/* Review status indicator */}
+      {nodeReviewers?.[nodeId] && nodeReviewers[nodeId].length > 0 && (
+        <div
+          style={{
+            fontSize: "0.7rem",
+            color: "var(--mb-color-text-medium)",
+            marginTop: "2px",
+            marginLeft: "4px",
+            fontStyle: "italic",
+          }}
+        >
+          Review requested: {nodeReviewers[nodeId].map(r => r.name).join(", ")}
+        </div>
+      )}
       <Menu.Dropdown>
         <Menu.Item
           leftSection={<Icon name="insight" />}
@@ -118,6 +159,39 @@ const TextNodeWrapper: React.FC<{
         >
           {t`Start new question from here`}
         </Menu.Item>
+        <Menu trigger="click-hover" position="right" width={200}>
+          <Menu.Target>
+            <Menu.Item
+              leftSection={<Icon name="eye" />}
+              rightSection={<Icon name="chevronright" aria-hidden />}
+            >
+              {t`Request review`}
+            </Menu.Item>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {availableReviewers?.map(reviewer => (
+              <Menu.Item
+                key={reviewer.id}
+                onClick={() => {
+                  onRequestNodeReview?.(nodeId, text, reviewer.id);
+                  setMenuOpened(false);
+                }}
+                leftSection={
+                  <UserAvatar
+                    user={{
+                      first_name: reviewer.name.split(' ')[0],
+                      last_name: reviewer.name.split(' ').slice(1).join(' '),
+                      common_name: reviewer.name,
+                      email: reviewer.email,
+                    }}
+                  />
+                }
+              >
+                {reviewer.name}
+              </Menu.Item>
+            ))}
+          </Menu.Dropdown>
+        </Menu>
       </Menu.Dropdown>
     </Menu>
   );
@@ -131,6 +205,9 @@ const createCustomComponents = (
   onSelectionChange: (nodeId: string, isSelected: boolean, isMultiSelect: boolean) => void,
   onStartNewQuestion?: (selectedText: string) => void,
   onTextNodeClick?: (nodeId: string, text: string) => void,
+  onRequestNodeReview?: (nodeId: string, text: string, reviewerId: string) => void,
+  nodeReviewers?: Record<string, Array<{ id: string; name: string; status: string }>>,
+  availableReviewers?: Array<{ id: string; name: string; email: string; avatar?: string }>,
 ) => ({
   // Custom paragraph component that adds IDs to text nodes and handles viz embeds
   p: ({ children, ...props }: any) => {
@@ -269,6 +346,9 @@ const createCustomComponents = (
             isSelected={isSelected}
             onSelectionChange={onSelectionChange}
             onStartNewQuestion={onStartNewQuestion}
+            onRequestNodeReview={onRequestNodeReview}
+            nodeReviewers={nodeReviewers}
+            availableReviewers={availableReviewers}
           >
             {child}
           </TextNodeWrapper>
@@ -367,6 +447,9 @@ const createCustomComponents = (
             isSelected={isSelected}
             onSelectionChange={onSelectionChange}
             onStartNewQuestion={onStartNewQuestion}
+            onRequestNodeReview={onRequestNodeReview}
+            nodeReviewers={nodeReviewers}
+            availableReviewers={availableReviewers}
           >
             {child}
           </TextNodeWrapper>
@@ -520,6 +603,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   onTextNodeClick,
   onSelectionChange,
   onStartNewQuestion,
+  onRequestNodeReview,
+  nodeReviewers,
+  availableReviewers,
 }) => {
   const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{
@@ -593,8 +679,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   }, [selectedNodes]);
 
   const customComponents = useMemo(
-    () => createCustomComponents(selectedNodes, handleSelectionChange, onStartNewQuestion, onTextNodeClick),
-    [selectedNodes, handleSelectionChange, onStartNewQuestion, onTextNodeClick],
+    () => createCustomComponents(selectedNodes, handleSelectionChange, onStartNewQuestion, onTextNodeClick, onRequestNodeReview, nodeReviewers, availableReviewers),
+    [selectedNodes, handleSelectionChange, onStartNewQuestion, onTextNodeClick, onRequestNodeReview, nodeReviewers, availableReviewers],
   );
 
   return (
