@@ -506,18 +506,18 @@ databaseChangeLog:
         - not:
             - indexExists:
                 tableName: data_app_release
-                indexName: idx_data_app_release_app_id_retracted_created_at
+                indexName: idx_data_app_release_app_id_retracted_id
       changes:
         - createIndex:
             tableName: data_app_release
-            indexName: idx_data_app_release_app_id_retracted_created_at
+            indexName: idx_data_app_release_app_id_retracted_id
             columns:
               - column:
                   name: app_id
               - column:
                   name: retracted
               - column:
-                  name: created_at
+                  name: id
                   descending: true
       rollback: #no op, will be deleted with the table
 
