@@ -10,8 +10,16 @@ import {
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import type { CardId, FieldReference } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  REVIEWS,
+  REVIEWS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+} = SAMPLE_DATABASE;
 
 describe("issue 29943", () => {
   function reorderTotalAndCustomColumns() {
@@ -621,6 +629,48 @@ describe("issue 33427", () => {
       .should("contain", "CREATED_BY")
       .and("contain", "UPDATED_BY");
   }
+});
+
+describe("issue 25113", () => {
+  const questionDetails: StructuredQuestionDetails = {
+    name: "People Question",
+    type: "question",
+    query: {
+      "source-table": PEOPLE_ID,
+      fields: [["field", PEOPLE.ID, null]],
+    },
+  };
+
+  const modelDetails: StructuredQuestionDetails = {
+    ...questionDetails,
+    name: "People Model",
+    type: "model",
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not mistakenly override model column metadata with raw field metadata (metabase#25113)", () => {
+    H.createQuestion(modelDetails, { visitQuestion: true });
+    H.openQuestionActions("Edit metadata");
+    H.openColumnOptions("ID");
+    H.renameColumn("ID", "ID renamed");
+    H.saveMetadataChanges();
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.openNotebook();
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText("People Model").click();
+    });
+    H.popover().findByText("ID").click();
+    H.popover().findByText("ID renamed").click();
+    H.visualize();
+    H.assertTableData({ columns: ["ID", "People Model → ID renamed"] });
+  });
 });
 
 describe("issue 39749", () => {

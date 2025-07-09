@@ -19,7 +19,7 @@ export function StaticEmbeddingSettings() {
 
   return (
     <SettingsPageWrapper title={t`Static embedding`}>
-      <UpsellDevInstances source="embedding-page" />
+      <UpsellDevInstances location="embedding-page" />
       <SettingsSection>
         <EmbeddingToggle
           settingKey="enable-embedding-static"
