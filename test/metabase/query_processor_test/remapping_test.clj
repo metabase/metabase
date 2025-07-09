@@ -336,7 +336,7 @@
                   (testing "Metadata"
                     (is (= [["TITLE"    "Title"]                     ; products.title
                             ["CATEGORY" "Category"]                  ; products.category
-                            ["TITLE_2"  "Orders → Title"]            ; orders.title
+                            ["TITLE_2"  "Orders → Title"]            ; Orders.title (remapped from orders.product-id => products.title)
                             ["sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
                            (map (juxt :name :display_name) (mt/cols results))))))
                 (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]

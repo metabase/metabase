@@ -109,7 +109,8 @@ body:where(:global(.mb-wrapper)) {
     stroke: none !important;
   }
 
-  .EmbedFrame .DashCard .Card {
+  .EmbedFrame .DashCard .Card,
+  .dropdown {
     background-color: var(--mb-color-bg-black);
     border: 1px solid var(--mb-color-border);
   }
