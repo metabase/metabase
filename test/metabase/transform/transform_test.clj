@@ -67,7 +67,7 @@
 (deftest create-view-with-complex-query-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :view)
-    (testing "Creating a view with complex SQL (joins, subqueries, etc.)"
+    (testing "Creating a view with complex SQL"
       (mt/dataset  (mt/dataset-definition "users-departments-db"
                                           ["users"
                                            [{:field-name "name" :base-type :type/Text}
@@ -100,7 +100,8 @@
 
         (doseq [view-name ["view_with_underscores"
                            "ViewWithCamelCase"
-                           "view123"]]
+                           "view123"
+                           "view with spaces"]]
           (testing (str "View name: " view-name)
             (driver/drop-view! driver/*driver* (u/the-id (mt/db)) view-name)
 
