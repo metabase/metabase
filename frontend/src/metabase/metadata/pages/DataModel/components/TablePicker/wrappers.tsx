@@ -18,6 +18,9 @@ export function RouterTablePicker(props: TreePath) {
     (value: TreePath, options?: ChangeOptions) => {
       setValue(value);
 
+      // Update URL only when either:
+      // - opening a different table
+      // - or table has not been opened yet
       const canUpdateUrl = value.tableId != null || props.tableId == null;
 
       if (canUpdateUrl) {
