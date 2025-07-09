@@ -1168,6 +1168,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       );
 
       H.openQuestionActions("Edit metadata");
+      H.waitForLoaderToBeRemoved();
       H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
 
       cy.location("pathname").should(
@@ -1176,6 +1177,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       );
 
       H.openQuestionActions("Edit metadata");
+      H.waitForLoaderToBeRemoved();
 
       cy.go("back");
       cy.location("pathname").should(

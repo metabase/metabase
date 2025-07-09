@@ -249,7 +249,7 @@ const _DatasetEditorInner = (props) => {
 
   useMount(() => {
     if (Lib.canRun(question.query(), question.type())) {
-      runDirtyQuestionQuery();
+      runQuestionQuery();
     }
   });
 
