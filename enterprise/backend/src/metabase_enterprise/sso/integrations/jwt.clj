@@ -137,9 +137,10 @@
             (str return-to-param redirect))))))
 
 (defmethod sso.i/sso-get :jwt
-  [{{:keys [jwt redirect]} :params, :as request}]
+  [{{:keys [jwt access_token redirect]} :params, :as request}]
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
-  (let [jwt-data (when jwt (session-data jwt request))
+  (let [jwt (or jwt access_token)
+        jwt-data (when jwt (session-data jwt request))
         is-sdk? (sso-utils/is-embedding-sdk-header? request)]
     (cond
       (and is-sdk? (not (embed.settings/enable-embedding-sdk))) (throw-embedding-disabled)
