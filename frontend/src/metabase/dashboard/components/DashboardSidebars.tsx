@@ -15,7 +15,6 @@ import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
 interface DashboardSidebarsProps {
   dashboard: IDashboard;
   isFullscreen: boolean;
-  onCancel: () => void;
   sidebar: State["dashboard"]["sidebar"];
   closeSidebar: () => void;
   selectedTabId: SelectedTabId;
@@ -24,7 +23,6 @@ interface DashboardSidebarsProps {
 export function DashboardSidebars({
   dashboard,
   isFullscreen,
-  onCancel,
   sidebar,
   closeSidebar,
 }: DashboardSidebarsProps) {
@@ -48,12 +46,7 @@ export function DashboardSidebars({
     case SIDEBAR_NAME.settings:
       return <DashboardSettingsSidebar />;
     case SIDEBAR_NAME.sharing:
-      return (
-        <DashboardSubscriptionsSidebar
-          dashboard={dashboard}
-          onCancel={onCancel}
-        />
-      );
+      return <DashboardSubscriptionsSidebar />;
     case SIDEBAR_NAME.info:
       return (
         <DashboardInfoSidebar
