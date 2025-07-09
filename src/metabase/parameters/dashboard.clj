@@ -26,6 +26,7 @@
     :=))
 
 (defn param-type->default-options
+  "Default chain-filter constraint options based on parameter type."
   [type]
   (when (#{:string/contains :string/does-not-contain :string/starts-with :string/ends-with} type)
     {:case-sensitive false}))
