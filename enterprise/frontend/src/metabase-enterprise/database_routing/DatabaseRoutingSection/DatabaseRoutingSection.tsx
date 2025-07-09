@@ -106,8 +106,12 @@ export const DatabaseRoutingSection = ({
   return (
     <DatabaseInfoSection
       name={t`Database routing`}
-      // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
-      description={t`When someone views a question using data from this database, Metabase will send the queries to the destination database set by the person's user attribute. Each destination database must have identical schemas.`}
+      description={
+        database.engine === "bigquery-cloud-sdk"
+          ? t`Route queries on this database to a different BigQuery project or Google Cloud account based on the person's user attribute. Each BigQuery destination must have identical schemas.`
+          : // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+            t`When someone views a question using data from this database, Metabase will send the queries to the destination database set by the person's user attribute. Each destination database must have identical schemas.`
+      }
       data-testid="database-routing-section"
     >
       <Flex justify="space-between" align="center">
