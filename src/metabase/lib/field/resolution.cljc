@@ -100,7 +100,7 @@
                         (cond-> *debug* (update ::debug.origin (fn [origin]
                                                                  (list (list 'resolve-column-name-in-metadata column-name :key k :=> origin)))))))
               resolution-keys)
-        (do
+        (when-not *recursive-column-resolution-by-name*
           ;; ideally we shouldn't hit this but if we do it's not the end of the world.
           (log/infof "Couldn't resolve column name %s."
                      (pr-str column-name))
@@ -450,7 +450,8 @@
    ;; not from a join.
    ;;
    ;; resolve the field ID if we can.
-   (let [resolved-for-name (when (string? id-or-name)
+   (let [resolved-for-name (when (and (string? id-or-name)
+                                      (not *recursive-column-resolution-by-name*))
                              (or (resolve-column-name query stage-number field-ref)
                                  ;; if we can't resolve the column with this name we probably won't be able to
                                  ;; calculate much metadata -- assume it comes from the previous stage so we at least
