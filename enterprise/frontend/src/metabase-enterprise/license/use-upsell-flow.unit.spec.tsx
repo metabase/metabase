@@ -31,7 +31,7 @@ const TestComponent = ({
 };
 
 const setupContainer = ({
-  campaign = "test campagin",
+  campaign = "test campaign",
   location = "test location",
   currentUser = {
     first_name: "John",
@@ -137,11 +137,14 @@ describe("useUpsellFlow", () => {
       });
 
       await waitFor(() => {
-        expect(mockPostMessage).toHaveBeenCalledWith({
-          type: "license-token-activation",
-          payload: { success: true },
-          source: "metabase-store",
-        });
+        expect(mockPostMessage).toHaveBeenCalledWith(
+          {
+            type: "license-token-activation",
+            payload: { success: true },
+            source: "metabase-store",
+          },
+          "https://store.metabase.com",
+        );
       });
 
       await waitFor(() => {
@@ -176,11 +179,14 @@ describe("useUpsellFlow", () => {
       );
 
       await waitFor(() => {
-        expect(mockPostMessage).toHaveBeenCalledWith({
-          type: "license-token-activation",
-          payload: { success: false },
-          source: "metabase-store",
-        });
+        expect(mockPostMessage).toHaveBeenCalledWith(
+          {
+            type: "license-token-activation",
+            payload: { success: false },
+            source: "metabase-store",
+          },
+          "https://store.metabase.com",
+        );
       });
 
       await waitFor(async () => {

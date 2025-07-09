@@ -123,13 +123,16 @@ function sendMessageTokenActivation(
   success: boolean,
   storeWindow: WindowProxy,
 ) {
-  storeWindow.postMessage({
-    source: "metabase-store",
-    type: "license-token-activation",
-    payload: {
-      success,
-    },
-  } satisfies LicenseTokenActivationMessage);
+  storeWindow.postMessage(
+    {
+      source: "metabase-store",
+      type: "license-token-activation",
+      payload: {
+        success,
+      },
+    } satisfies LicenseTokenActivationMessage,
+    STORE_ORIGIN,
+  );
 }
 
 function getStoreUrlWithParams({
