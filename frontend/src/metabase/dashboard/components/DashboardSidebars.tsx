@@ -1,8 +1,8 @@
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { useDashboardContext } from "metabase/dashboard/context";
 import DashboardSubscriptionsSidebar from "metabase/notifications/DashboardSubscriptionsSidebar";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
-import type { SelectedTabId, State } from "metabase-types/store";
 
 import { ActionSidebar } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
@@ -10,16 +10,8 @@ import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSideba
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
 
-interface DashboardSidebarsProps {
-  isFullscreen: boolean;
-  sidebar: State["dashboard"]["sidebar"];
-  selectedTabId: SelectedTabId;
-}
-
-export function DashboardSidebars({
-  isFullscreen,
-  sidebar,
-}: DashboardSidebarsProps) {
+export function DashboardSidebars() {
+  const { isFullscreen, sidebar } = useDashboardContext();
   if (isFullscreen) {
     return null;
   }
