@@ -106,31 +106,31 @@
   [:cat
    {:error/message (str "Valid " :datetime " clause")}
    [:= {:decode/normalize common/normalize-keyword} :datetime]
-   [:schema [:ref ::common/options]]
-
-   [:alt ;; use alt because we need nested cat
-    {:error/message "Valid combination of value and mode."}
-    ;; String modes
+   [:alt
+    ;; string modes
     [:cat
-     [:schema [:ref ::expression/string]]
-     ;; iso string is default if no mode is present
-     [:? (into [:enum {:error/message "datetime string mode"
-                       :decode/normalize normalize-datetime-mode}]
-               datetime-string-modes)]]
+     [:merge
+      ::common/options
+      [:map [:mode {:optional true} ;; no mode should be iso string
+             (into [:enum {:decode/normalize normalize-datetime-mode}]
+                   datetime-string-modes)]]]
+     [:schema [:ref ::expression/string]]]
 
-    ;; Number modes
+    ;; number modes
     [:cat
-     [:schema [:ref ::expression/number]]
-     (into [:enum {:error/message "datetime number mode"
-                   :decode/normalize normalize-datetime-mode}]
-           datetime-number-modes)]
+     [:merge
+      ::common/options
+      [:map [:mode (into [:enum {:decode/normalize normalize-datetime-mode}]
+                         datetime-number-modes)]]]
+     [:schema [:ref ::expression/number]]]
 
-    ;; Binary modes
+    ;; binary modes
     [:cat
-     :any ;; we don't track binary types
-     (into [:enum {:error/message "datetime binary mode"
-                   :decode/normalize normalize-datetime-mode}]
-           datetime-binary-modes)]]])
+     [:merge
+      ::common/options
+      [:map [:mode (into [:enum {:decode/normalize normalize-datetime-mode}]
+                         datetime-binary-modes)]]]
+     :any]]])
 
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit
