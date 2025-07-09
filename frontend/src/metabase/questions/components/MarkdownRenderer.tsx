@@ -16,6 +16,7 @@ interface MarkdownRendererProps {
   onSelectionChange?: (selectedNodes: string[]) => void;
   onStartNewQuestion?: (selectedText: string) => void;
   onRequestNodeReview?: (nodeId: string, text: string, reviewerId: string) => void;
+  onAddToChat?: (nodeId: string, text: string) => void;
   nodeReviewers?: Record<string, Array<{ id: string; name: string; status: string }>>;
   availableReviewers?: Array<{ id: string; name: string; email: string; avatar?: string }>;
 }
@@ -45,10 +46,11 @@ const TextNodeWrapper: React.FC<{
   onSelectionChange: (nodeId: string, isSelected: boolean, isMultiSelect: boolean) => void;
   onStartNewQuestion?: (selectedText: string) => void;
   onRequestNodeReview?: (nodeId: string, text: string, reviewerId: string) => void;
+  onAddToChat?: (nodeId: string, text: string) => void;
   nodeReviewers?: Record<string, Array<{ id: string; name: string; status: string }>>;
   availableReviewers?: Array<{ id: string; name: string; email: string; avatar?: string }>;
   children: React.ReactNode;
-}> = ({ nodeId, text, onTextNodeClick, isSelected, onSelectionChange, onStartNewQuestion, onRequestNodeReview, nodeReviewers, availableReviewers, children }) => {
+}> = ({ nodeId, text, onTextNodeClick, isSelected, onSelectionChange, onStartNewQuestion, onRequestNodeReview, onAddToChat, nodeReviewers, availableReviewers, children }) => {
   const [menuOpened, setMenuOpened] = useState(false);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
@@ -159,6 +161,14 @@ const TextNodeWrapper: React.FC<{
         >
           {t`Start new question from here`}
         </Menu.Item>
+        <Menu.Item
+          onClick={() => {
+            onAddToChat?.(nodeId, text);
+            setMenuOpened(false);
+          }}
+        >
+          {t`Add to chat`}
+        </Menu.Item>
         <Menu trigger="click-hover" position="right" width={200}>
           <Menu.Target>
             <Menu.Item
@@ -206,6 +216,7 @@ const createCustomComponents = (
   onStartNewQuestion?: (selectedText: string) => void,
   onTextNodeClick?: (nodeId: string, text: string) => void,
   onRequestNodeReview?: (nodeId: string, text: string, reviewerId: string) => void,
+  onAddToChat?: (nodeId: string, text: string) => void,
   nodeReviewers?: Record<string, Array<{ id: string; name: string; status: string }>>,
   availableReviewers?: Array<{ id: string; name: string; email: string; avatar?: string }>,
 ) => ({
@@ -347,6 +358,7 @@ const createCustomComponents = (
             onSelectionChange={onSelectionChange}
             onStartNewQuestion={onStartNewQuestion}
             onRequestNodeReview={onRequestNodeReview}
+            onAddToChat={onAddToChat}
             nodeReviewers={nodeReviewers}
             availableReviewers={availableReviewers}
           >
@@ -448,6 +460,7 @@ const createCustomComponents = (
             onSelectionChange={onSelectionChange}
             onStartNewQuestion={onStartNewQuestion}
             onRequestNodeReview={onRequestNodeReview}
+            onAddToChat={onAddToChat}
             nodeReviewers={nodeReviewers}
             availableReviewers={availableReviewers}
           >
@@ -604,6 +617,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   onSelectionChange,
   onStartNewQuestion,
   onRequestNodeReview,
+  onAddToChat,
   nodeReviewers,
   availableReviewers,
 }) => {
@@ -679,8 +693,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   }, [selectedNodes]);
 
   const customComponents = useMemo(
-    () => createCustomComponents(selectedNodes, handleSelectionChange, onStartNewQuestion, onTextNodeClick, onRequestNodeReview, nodeReviewers, availableReviewers),
-    [selectedNodes, handleSelectionChange, onStartNewQuestion, onTextNodeClick, onRequestNodeReview, nodeReviewers, availableReviewers],
+    () => createCustomComponents(selectedNodes, handleSelectionChange, onStartNewQuestion, onTextNodeClick, onRequestNodeReview, onAddToChat, nodeReviewers, availableReviewers),
+    [selectedNodes, handleSelectionChange, onStartNewQuestion, onTextNodeClick, onRequestNodeReview, onAddToChat, nodeReviewers, availableReviewers],
   );
 
   return (

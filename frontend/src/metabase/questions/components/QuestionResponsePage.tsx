@@ -30,6 +30,7 @@ const QuestionResponsePage = ({
   const [chatMessage, setChatMessage] = useState("");
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
   const dispatch = useDispatch();
   const currentUser = useSelector(getUser);
@@ -123,6 +124,23 @@ const QuestionResponsePage = ({
       }
     }
   }, [dispatch, question]);
+
+  const handleAddToChat = useCallback((nodeId: string, text: string) => {
+    // Add the node reference token and text to the chat input
+    const nodeReference = `[Node: ${nodeId}]`;
+    const newMessage = `${nodeReference}\n\n${text}`;
+
+    setChatMessage(newMessage);
+
+    // Focus the chat input after a short delay to ensure the state has updated
+    setTimeout(() => {
+      if (chatInputRef.current) {
+        chatInputRef.current.focus();
+        // Move cursor to the end of the text
+        chatInputRef.current.setSelectionRange(newMessage.length, newMessage.length);
+      }
+    }, 100);
+  }, []);
 
   const handleSendMessage = useCallback(async () => {
     if (!chatMessage.trim() || !question || isSendingMessage) return;
@@ -453,6 +471,7 @@ const QuestionResponsePage = ({
                 onSelectionChange={handleSelectionChange}
                 onStartNewQuestion={handleStartNewQuestion}
                 onRequestNodeReview={handleRequestNodeReview}
+                onAddToChat={handleAddToChat}
                 nodeReviewers={getNodeReviewers()}
                 availableReviewers={availableReviewers}
               />
@@ -567,6 +586,7 @@ const QuestionResponsePage = ({
                   borderTop: "1px solid var(--mb-color-border)",
                 }}>
                   <Textarea
+                    ref={chatInputRef}
                     placeholder={t`Ask a follow-up question...`}
                     minRows={2}
                     maxRows={4}
