@@ -1340,7 +1340,7 @@
 
 (defmulti db-routing-info
   "Driver specific info for configuring database routing."
-  {:added "0.55.0" :arglists '([driver])}
+  {:added "0.56.0" :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
