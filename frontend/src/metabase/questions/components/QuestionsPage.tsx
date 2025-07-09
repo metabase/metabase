@@ -1,21 +1,79 @@
+import { useCallback } from "react";
 import { t } from "ttag";
 
-import { Textarea } from "metabase/ui";
+import { Button, Card, Menu, Switch, Textarea } from "metabase/ui";
 
-import { QuestionsPageContainer, QuestionsPageContent } from "./QuestionsPage.styled";
+import {
+  QuestionsPageContainer,
+  QuestionsPageContent,
+} from "./QuestionsPage.styled";
 
-const QuestionsPage = (): JSX.Element => {
+interface QuestionsPageProps {
+  router: {
+    push: (path: string) => void;
+  };
+}
+
+const QuestionsPage = ({ router }: QuestionsPageProps): JSX.Element => {
+  const handleAskClick = useCallback(() => {
+    // Generate a UUID for the question
+    const questionId = crypto.randomUUID();
+    router.push(`/questions/${questionId}`);
+  }, [router]);
+
   return (
     <QuestionsPageContainer>
       <QuestionsPageContent>
         <h1>{t`Questions`}</h1>
         <p>{t`Ask me anything about your data. I'll help you create questions and find insights.`}</p>
-        <Textarea
-          placeholder={t`Describe what you want to know about your data...`}
-          minRows={10}
-          maxRows={20}
-          style={{ width: "100%", marginTop: "1rem" }}
-        />
+        <Card shadow="none" withBorder style={{ marginTop: "1rem" }}>
+          <Textarea
+            placeholder={t`Describe what you want to know about your data...`}
+            minRows={10}
+            maxRows={20}
+            style={{ width: "100%" }}
+          />
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingTop: "1rem",
+              borderTop: "1px solid var(--mb-color-border)",
+              marginTop: "1rem",
+            }}
+          >
+            <Menu>
+              <Menu.Target>
+                <Button variant="subtle" size="sm">
+                  {t`Select Agent`}
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item>{t`Data Analyst`}</Menu.Item>
+                <Menu.Item>{t`SQL Expert`}</Menu.Item>
+                <Menu.Item>{t`Business Intelligence`}</Menu.Item>
+                <Menu.Item>{t`Data Scientist`}</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <span
+                style={{
+                  fontSize: "0.875rem",
+                  color: "var(--mb-color-text-medium)",
+                }}
+              >
+                {t`Background`}
+              </span>
+              <Switch />
+              <Button variant="primary" size="sm" onClick={handleAskClick}>
+                {t`Ask`}
+              </Button>
+            </div>
+          </div>
+        </Card>
       </QuestionsPageContent>
     </QuestionsPageContainer>
   );

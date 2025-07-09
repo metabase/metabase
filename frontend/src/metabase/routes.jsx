@@ -36,11 +36,9 @@ import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
-import {
-  PLUGIN_COLLECTIONS,
-  PLUGIN_METABOT,
-} from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_METABOT } from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
+import QuestionResponsePage from "metabase/questions/components/QuestionResponsePage";
 import QuestionsPage from "metabase/questions/components/QuestionsPage";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
@@ -251,7 +249,16 @@ export const getRoutes = (store) => {
             <Route path=":slug/:objectId" component={QueryBuilder} />
           </Route>
 
-          <Route path="/questions" title={t`Questions`} component={QuestionsPage} />
+          <Route
+            path="/questions"
+            title={t`Questions`}
+            component={QuestionsPage}
+          />
+          <Route
+            path="/questions/:questionId"
+            title={t`Question Response`}
+            component={QuestionResponsePage}
+          />
 
           {/* MODELS */}
           {getModelRoutes()}
