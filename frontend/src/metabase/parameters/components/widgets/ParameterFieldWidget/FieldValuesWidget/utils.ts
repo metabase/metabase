@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isTransientId } from "metabase/dashboard/utils";
 import { stripId } from "metabase/lib/formatting";
 import type { ComboboxItem } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -35,7 +36,7 @@ export function canUseCardEndpoints(question?: Question) {
 }
 
 export function canUseDashboardEndpoints(dashboard?: Dashboard | null) {
-  return dashboard?.id;
+  return !isTransientId(dashboard?.id) && dashboard?.id;
 }
 
 export function shouldList({
