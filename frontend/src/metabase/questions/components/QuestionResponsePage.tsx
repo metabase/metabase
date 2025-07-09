@@ -30,26 +30,36 @@ const QuestionResponsePage = ({
   const [showContent, setShowContent] = useState(false);
 
   const dispatch = useDispatch();
-  const question = useSelector((state) => getGenerativeQuestionById(state, questionId));
+  const question = useSelector((state) =>
+    getGenerativeQuestionById(state, questionId),
+  );
 
-  const handleStartNewQuestion = useCallback((selectedText: string) => {
-    const newQuestionId = crypto.randomUUID();
+  const handleStartNewQuestion = useCallback(
+    (selectedText: string) => {
+      const newQuestionId = crypto.randomUUID();
 
-    dispatch(addGenerativeQuestion({
-      id: newQuestionId,
-      prompt: selectedText,
-      agentType: "Metabot: Your general purpose analyst",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    }));
+      dispatch(
+        addGenerativeQuestion({
+          id: newQuestionId,
+          prompt: selectedText,
+          agentType: "Metabot: Your general purpose analyst",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        }),
+      );
 
-    // Navigate to the new question using Redux router
-    dispatch(push(`/questions/${newQuestionId}`));
-  }, [dispatch]);
+      // Navigate to the new question using Redux router
+      dispatch(push(`/questions/${newQuestionId}`));
+    },
+    [dispatch],
+  );
 
   // Use the prompt from the Redux store as the title
-  const generatedTitle = question?.prompt || "Sales Performance Analysis for Q4 2023";
-  const generatedContent = question?.content || `
+  const generatedTitle =
+    question?.prompt || "Sales Performance Analysis for Q4 2023";
+  const generatedContent =
+    question?.content ||
+    `
 
 ## Executive Summary
 Based on your data, Q4 2023 showed a **15% increase** in total sales compared to Q3, with the strongest performance coming from the Technology sector.
@@ -133,7 +143,7 @@ Below is a detailed breakdown of our product categories with revenue and growth 
           transition: "opacity 0.6s ease-out, transform 0.6s ease-out",
         }}
       >
-        <Card shadow="none" withBorder style={{ height: "100%" }}>
+        <Card shadow="none" withBorder>
           <div style={{ padding: "1.5rem" }}>
             {showTitle ? (
               <h1
@@ -182,7 +192,7 @@ Below is a detailed breakdown of our product categories with revenue and growth 
           transitionDelay: "0.3s",
         }}
       >
-        <Card shadow="none" withBorder style={{ height: "100%" }}>
+        <Card shadow="none" withBorder>
           <div style={{ padding: "1rem" }}>
             <h3
               style={{
@@ -195,9 +205,23 @@ Below is a detailed breakdown of our product categories with revenue and growth 
             </h3>
 
             {/* Prompt Card */}
-            <Card shadow="none" withBorder style={{ marginBottom: "1rem", backgroundColor: "var(--mb-color-bg-light)" }}>
+            <Card
+              shadow="none"
+              withBorder
+              style={{
+                marginBottom: "1rem",
+                backgroundColor: "var(--mb-color-bg-light)",
+              }}
+            >
               <div style={{ padding: "0.75rem" }}>
-                <div style={{ fontSize: "0.75rem", color: "var(--mb-color-text-medium)", marginBottom: "0.25rem", fontWeight: "500" }}>
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "var(--mb-color-text-medium)",
+                    marginBottom: "0.25rem",
+                    fontWeight: "500",
+                  }}
+                >
                   {t`Question`}
                 </div>
                 <div style={{ fontSize: "0.875rem", lineHeight: "1.4" }}>
@@ -215,8 +239,7 @@ Below is a detailed breakdown of our product categories with revenue and growth 
                 overflowY: "auto",
                 backgroundColor: "var(--mb-color-bg-light)",
               }}
-            >
-            </div>
+            ></div>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <Textarea
                 placeholder={t`Ask a follow-up question...`}
