@@ -1736,7 +1736,6 @@ describe.skip("issue 57359", () => {
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("PUT", "/api/card/*").as("updateCard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
   it("should not break the model when editing metadata (metabase#57359)", () => {
@@ -1759,11 +1758,11 @@ describe.skip("issue 57359", () => {
 
     cy.log("edit query metadata");
     H.openQuestionActions("Edit metadata");
-    cy.wait("@cardQuery");
     H.openColumnOptions("Product ID");
     H.renameColumn("Product ID", "Product ID2");
     H.saveMetadataChanges();
     cy.wait("@dataset");
+    H.tableInteractive().should("be.visible");
   });
 });
 
