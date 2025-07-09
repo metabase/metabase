@@ -8,6 +8,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.lib.util :as lib.util]))
 
@@ -61,3 +62,23 @@
                (map :display-name selected)))
         (is (= ["Mock products card - Product → ID"]
                (map :display-name unselected)))))))
+
+(deftest ^:parallel find-matching-column-expression-with-field-name-test
+  ;; query returns both PRODUCTS.CATEGORY and an expression named CATEGORY
+  (testing "Should be able to match expression refs for expressions duplicating a column name (QUE-1378)"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query products
+                   {:expressions {"CATEGORY" [:concat [:field %category nil] "2"]}
+                    :expression-idents {"CATEGORY" "NasJJtjrlg_blZ_8ddjSx"}
+                    :fields      [[:field %category nil]
+                                  [:expression "CATEGORY"]]
+                    :limit       1}))
+          expression-ref (last (lib/fields query))]
+      (is (=? [:expression {} "CATEGORY"]
+              expression-ref))
+      ;; should return a column with properties like:
+      ;; {... :lib/source :source/expressions, :name "CATEGORY", :lib/desired-column-alias "CATEGORY_2"}
+      (is (nil? (lib.equality/find-matching-column
+                 expression-ref
+                 (lib/visible-columns query)))))))
