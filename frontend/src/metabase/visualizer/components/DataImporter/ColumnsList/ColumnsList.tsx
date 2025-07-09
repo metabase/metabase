@@ -127,7 +127,6 @@ export const ColumnsList = (props: ColumnListProps) => {
                           event: "visualizer_data_changed",
                           event_detail: "visualizer_datasource_reset",
                           triggered_from: "visualizer-modal",
-                          event_data: source.id,
                         });
                         onResetDataSource(source);
                       }}
@@ -144,7 +143,6 @@ export const ColumnsList = (props: ColumnListProps) => {
                           event: "visualizer_data_changed",
                           event_detail: "visualizer_datasource_removed",
                           triggered_from: "visualizer-modal",
-                          event_data: source.id,
                         });
                         onRemoveDataSource(source);
                       }}

@@ -121,7 +121,7 @@ export const Help = () => {
         />
       </Group>
 
-      <UpsellBetterSupport source="settings-troubleshooting" />
+      <UpsellBetterSupport location="settings-troubleshooting" />
 
       <SettingsSection
         title={t`Diagnostic info`}
