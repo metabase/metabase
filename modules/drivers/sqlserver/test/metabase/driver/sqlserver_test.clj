@@ -9,8 +9,8 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
@@ -709,15 +709,15 @@
     (testing "returns role when explicitly configured"
       (let [database {:details {:user "login_user" :role "db_user"}}]
         (is (= "db_user" (driver.sql/default-database-role :sqlserver database)))))
-    
+
     (testing "returns nil when no role is configured"
       (let [database {:details {:user "login_user"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
-    
+
     (testing "returns nil even when user is 'sa'"
       (let [database {:details {:user "sa"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
-    
+
     (testing "ignores user field and only uses role field"
       (let [database {:details {:user "login_user" :role "impersonation_user"}}]
         (is (= "impersonation_user" (driver.sql/default-database-role :sqlserver database)))))))
