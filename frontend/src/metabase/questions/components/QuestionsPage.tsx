@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Button, Card, Menu, Switch, Textarea } from "metabase/ui";
+import { Button, Card, Loader, Menu, Switch, Textarea } from "metabase/ui";
 
 import { addGenerativeQuestion } from "../redux/generativeQuestionsSlice";
 import { getGenerativeQuestionsList } from "../redux/selectors";
@@ -25,6 +25,8 @@ const QuestionsPage = ({ router }: QuestionsPageProps): JSX.Element => {
   const [background, setBackground] = useState(false);
   const dispatch = useDispatch();
   const generativeQuestions = useSelector(getGenerativeQuestionsList);
+
+
 
   const handleAskClick = useCallback(() => {
     if (!promptText.trim()) return;
@@ -141,14 +143,14 @@ const QuestionsPage = ({ router }: QuestionsPageProps): JSX.Element => {
                 shadow="none"
                 withBorder
                 style={{ cursor: "pointer", position: "relative" }}
-                onClick={() => !question.loading && router.push(`/questions/${question.id}`)}
+                onClick={() => router.push(`/questions/${question.id}`)}
               >
                 <div style={{ padding: "0.75rem" }}>
                   <div style={{ fontSize: "0.875rem", fontWeight: "500", marginBottom: "0.25rem" }}>
                     {question.title || question.prompt.slice(0, 50) + (question.prompt.length > 50 ? "..." : "")}
                     {question.loading && (
                       <span style={{ marginLeft: 8, verticalAlign: "middle" }}>
-                        <span className="spinner" style={{ display: "inline-block", width: 16, height: 16, border: "2px solid #ccc", borderTop: "2px solid var(--mb-color-brand)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                        <Loader size="xs" />
                       </span>
                     )}
                   </div>
@@ -164,11 +166,6 @@ const QuestionsPage = ({ router }: QuestionsPageProps): JSX.Element => {
     </QuestionsPageContainer>
   );
 };
-
-// Add spinner animation CSS
-const style = document.createElement('style');
-style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
-document.head.appendChild(style);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QuestionsPage;
