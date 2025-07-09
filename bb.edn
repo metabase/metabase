@@ -149,17 +149,14 @@
 
   token-scan
   {:doc        "Security token scanner for detecting leaked API keys and secrets"
-   :examples   [["./bin/mage token-scan" "Scan files updated relative to master"]
-                ["./bin/mage token-scan --target HEAD" "Scan files updated relative to HEAD"]
+   :examples   [["./bin/mage token-scan file1.txt file2.txt" "Scan specific files"]
                 ["./bin/mage token-scan -a" "Scan all files in the project"]
-                ["./bin/mage token-scan file1.txt file2.txt" "Scan specific files"]
-                ["./bin/mage token-scan -v" "Scan with verbose output"]]
+                ["./bin/mage token-scan -v file1.txt" "Scan with verbose output"]]
    :requires   [[mage.token-scan :as token-scan]]
    :options    [["-a" "--all-files" "Scan all files in the project"]
-                ["-t" "--target TARGET" "Git diff target for updated files (default: master)"]
                 ["-v" "--verbose" "Verbose output"]
                 ["-n" "--no-lines" "Don't show line details, just file paths"]]
-   :arg-schema [:sequential [:string {:description "Files to scan (if not provided, scans git-updated files)"}]]
+   :arg-schema [:sequential [:string {:description "Files to scan"}]]
    :task       (task! (token-scan/run-scan parsed))}
 
   setup-stats-repl

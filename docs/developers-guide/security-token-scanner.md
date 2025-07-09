@@ -22,25 +22,23 @@ The scanner runs automatically via `lint-staged` on staged files during git comm
 ### Basic usage
 
 ```bash
-# Scan files changed in current branch vs master
-./bin/mage token-scan
-
-# Scan files changed vs specific branch
-./bin/mage token-scan --target develop
+# Scan specific files
+./bin/mage token-scan file1.txt file2.txt
 
 # Scan all files in the project
 ./bin/mage token-scan -a
 
-# Scan specific files
-./bin/mage token-scan file1.txt file2.txt
-
 # Run with verbose output
-./bin/mage token-scan -v
+./bin/mage token-scan -v file1.txt file2.txt
+
+# Scan without showing line details
+./bin/mage token-scan --no-lines file1.txt file2.txt
 ```
 
 ### Example output
 
 ```
+Scanning 143 files
 Using thread pool size: 16
 /Users/dev/metabase/src/metabase/api/auth.clj
   Line# 42 [OpenAI API Key]: const apiKey = "sk-1234567890abcdef1234567890abcdef123456789012";
@@ -140,7 +138,7 @@ The scanner only scans files that are staged for commit, making it fast and focu
 
 If the scanner flags legitimate code:
 
-1. **Add an ignore comment** if it's a test token or example
+1. **Add to whitelist** if it's a test token or example (edit `token_scanner_whitelist.txt`)
 2. **Refine the pattern** if it's too broad (edit `token-patterns`)
 3. **Exclude the file type** if it's generated content (edit `exclude-path-str?`)
 
@@ -167,5 +165,5 @@ Use this sparingly and only when absolutely necessary.
 For issues with the scanner:
 
 1. Check the git hook output for detailed error messages
-2. Run the scanner locally to debug: `./bin/mage token-scan -v`
+2. Run the scanner locally to debug: `./bin/mage token-scan -v file1.txt file2.txt`
 3. Ask in the #security or #dev channels for help with patterns or exclusions

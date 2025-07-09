@@ -142,18 +142,6 @@
          (map str)
          (remove exclude-path-str?))))
 
-(defn- get-git-updated-files
-  "Get files updated relative to master branch"
-  [diff-target]
-  (let [project-root u/project-root-directory]
-    (->> (u/sh "git" "diff" "--name-only" diff-target)
-         str/split-lines
-         (remove #{""})
-         (filter (fn [filename]
-                   (fs/exists? (str project-root "/" filename))))
-         (map (fn [filename]
-                (str project-root "/" filename)))
-         (remove exclude-path-str?))))
 
 (defn- merge-scanned
   "Merge results from parallel scanning"
@@ -184,18 +172,24 @@
 (defn run-scan
   "Main entry point for regex scanning"
   [{:keys [options arguments]}]
-  (let [{:keys [all-files target verbose no-lines]} options
+  (let [{:keys [all-files verbose no-lines]} options
         files (cond
                 ;; Arguments provided = specific files to scan
                 (seq arguments) arguments
                 ;; --all-files flag
                 all-files (get-all-files)
-                ;; Default: scan git-updated files
-                :else (get-git-updated-files (or target "master")))
+                ;; Default: require specific files
+                :else (throw (ex-info
+                              nil
+                              {:mage/error (c/yellow "No files specified. Use -a to scan all files or specify files to scan.")
+                               :babashka/exit 1})))
         
-        _ (when (empty? files)
-            (println (c/yellow "No files to scan"))
-            (System/exit 0))
+        _ (if (empty? files)
+            (throw (ex-info
+                    nil
+                    {:mage/error (c/yellow "No files to scan")
+                     :babshka/exit 0}))
+            (println "Scanning" (count files) "files"))
         
         {:keys [scanned duration-ms total-files files-with-matches total-matches] :as x}
         (scan-files token-patterns files)]
