@@ -254,6 +254,32 @@ describe("updateSettingsForDisplay", () => {
         },
       });
     });
+
+    it("should ignore preserved columns that have been removed in the meantime (VIZ-1204)", () => {
+      const preservedMetrics = ["COLUMN_1", "COLUMN_3"];
+      const preservedDimensions = ["COLUMN_2"];
+
+      const result = getUpdatedSettingsForDisplay(
+        columnValuesMapping,
+        columns,
+        {
+          "funnel.metric": "COLUMN_3",
+          "funnel.dimension": "COLUMN_2",
+          "graph.metrics": preservedMetrics,
+          "graph.dimensions": preservedDimensions,
+        },
+        "funnel",
+        "line",
+      );
+      expect(result).toEqual({
+        columnValuesMapping,
+        columns,
+        settings: {
+          "graph.metrics": ["COLUMN_3"],
+          "graph.dimensions": ["COLUMN_2"],
+        },
+      });
+    });
   });
 
   describe("funnel → pie", () => {
@@ -274,6 +300,31 @@ describe("updateSettingsForDisplay", () => {
         settings: {
           "pie.metric": "COLUMN_3",
           "pie.dimension": "COLUMN_2",
+        },
+      });
+    });
+  });
+
+  describe("pie → funnel", () => {
+    it("should work when a pie has an array of dimensions (VIZ-1205)", () => {
+      const result = getUpdatedSettingsForDisplay(
+        columnValuesMapping,
+        columns,
+        {
+          "pie.metric": "COLUMN_3",
+          "pie.dimension": ["COLUMN_2"],
+        },
+        "pie",
+        "funnel",
+      );
+      expect(result).toEqual({
+        columnValuesMapping,
+        columns,
+        settings: {
+          "funnel.metric": "COLUMN_3",
+          "funnel.dimension": "COLUMN_2",
+          "graph.metrics": ["COLUMN_3"],
+          "graph.dimensions": ["COLUMN_2"],
         },
       });
     });
