@@ -5,6 +5,7 @@ export const virtualCardDisplayTypes = [
   "placeholder",
   "text",
   "iframe",
+  "markdowncard",
 ] as const;
 
 export type VirtualCardDisplay = (typeof virtualCardDisplayTypes)[number];
@@ -30,6 +31,7 @@ const cardDisplayTypes = [
   "progress",
   "funnel",
   "object",
+  "markdown",
   "map",
   "scatter",
   "waterfall",

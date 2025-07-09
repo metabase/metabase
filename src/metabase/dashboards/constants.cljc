@@ -30,7 +30,9 @@
    :object      {:min {:width 4 :height 3} :default {:width 12 :height 9}}
    :row         {:min {:width 4 :height 3} :default {:width 12 :height 6}}
    :heading     {:min {:width 1 :height 1} :default {:width GRID_WIDTH :height 1}}
-   :text        {:min {:width 1 :height 1} :default {:width 12 :height 3}}})
+   :text        {:min {:width 1 :height 1} :default {:width 12 :height 3}}
+   :markdowncard {:min {:width 4 :height 3} :default {:width 12 :height 6}}
+   :markdown    {:min {:width 4 :height 3} :default {:width 12 :height 9}}})
 
 #?(:cljs (def ^:export CARD_SIZE_DEFAULTS_JSON
            "Default card sizes per visualization type as a json object suitable for the FE"
