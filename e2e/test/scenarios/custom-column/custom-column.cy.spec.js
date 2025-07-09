@@ -1962,7 +1962,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       .should("be.visible");
   });
 
-  it("should not be possible to create aggregations with the same name", () => {
+  it("should be possible to create aggregations with the same name", () => {
     H.createQuestion(
       {
         query: {
@@ -1990,8 +1990,7 @@ describe("scenarios > question > custom column > aggregation", () => {
     H.popover().button("Done").click();
 
     H.getNotebookStep("summarize").within(() => {
-      cy.findByText("Foo").should("be.visible");
-      cy.findByText("Foo (1)").should("be.visible");
+      cy.findAllByText("Foo").should("have.length", 2);
     });
   });
 
