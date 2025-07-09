@@ -21,10 +21,17 @@ export const setupTokenStatusEndpointEmpty = () => {
   });
 };
 
-export const setupTokenActivationEndpoint = (success: boolean) => {
+export const setupTokenActivationEndpoint = ({
+  success,
+  status,
+}: {
+  success?: boolean;
+  status?: number;
+}) => {
+  const responseStatus = status ?? (success ? 204 : 400);
   fetchMock.put(
     "path:/api/setting/premium-embedding-token",
     { success, error: success ? undefined : "Invalid token" },
-    { response: success ? 204 : 400, overwriteRoutes: true },
+    { response: responseStatus, overwriteRoutes: true },
   );
 };

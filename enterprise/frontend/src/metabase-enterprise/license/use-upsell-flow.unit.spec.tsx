@@ -62,7 +62,9 @@ const setupContainer = ({
     currentUser: createMockUser(currentUser),
   });
   setupTokenStatusEndpointEmpty();
-  setupTokenActivationEndpoint(tokenActivation);
+  setupTokenActivationEndpoint({
+    success: tokenActivation,
+  });
 
   const { rerender } = renderWithProviders(
     <div>
