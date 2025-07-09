@@ -39,7 +39,15 @@ import { RefreshWidget } from "../RefreshWidget";
 import S from "./Dashboard.module.css";
 import { Grid } from "./components/Grid";
 
-function Dashboard({ className }: { className?: string }) {
+function _DashboardParameterList(
+  props: Omit<DashboardParameterListProps, "parameters">,
+) {
+  const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
+
+  return <DashboardParameterList parameters={parameters} {...props} />;
+}
+
+const DashboardDefaultView = ({ className }: { className?: string }) => {
   const {
     dashboard,
     isEditing,
@@ -95,6 +103,9 @@ function Dashboard({ className }: { className?: string }) {
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
+  const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
+  const isFullHeight = isEditing || isSharing;
+
   if (!dashboard) {
     return (
       <Stack justify="center" align="center" gap="sm" mt="xl">
@@ -103,9 +114,6 @@ function Dashboard({ className }: { className?: string }) {
       </Stack>
     );
   }
-
-  const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
-  const isFullHeight = isEditing || isSharing;
 
   return (
     <Flex
@@ -161,12 +169,7 @@ function Dashboard({ className }: { className?: string }) {
         data-element-id="dashboard-header-container"
         data-testid="dashboard-header-container"
       >
-        {/**
-         * Do not conditionally render `<DashboardHeader />` as it calls
-         * `useDashboardTabs` under the hood. This hook sets `selectedTabId`
-         * in Redux state which kicks off a fetch for the dashboard cards.
-         */}
-        <DashboardHeader />
+        <Dashboard.Header />
       </Box>
 
       <Flex
@@ -192,7 +195,7 @@ function Dashboard({ className }: { className?: string }) {
             className={S.CardsContainer}
             data-element-id="dashboard-cards-container"
           >
-            <Grid />
+            <Dashboard.Grid />
           </FullWidthContainer>
         </Box>
 
@@ -229,25 +232,31 @@ function Dashboard({ className }: { className?: string }) {
       <FilterApplyToast />
     </Flex>
   );
-}
+};
 
-function _DashboardParameterList(
-  props: Omit<DashboardParameterListProps, "parameters">,
-) {
-  const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
+type DashboardComponentType = typeof DashboardDefaultView & {
+  Header: typeof DashboardHeader;
+  Grid: typeof Grid;
+  Title: typeof DashboardTitle;
+  Tabs: typeof DashboardTabs;
+  ParametersList: typeof _DashboardParameterList;
+  FullscreenButton: typeof FullscreenToggle;
+  ExportAsPdfButton: typeof ExportAsPdfButton;
+  InfoButton: typeof DashboardInfoButton;
+  NightModeButton: typeof NightModeToggleButton;
+  RefreshPeriod: typeof RefreshWidget;
+};
 
-  return <DashboardParameterList parameters={parameters} {...props} />;
-}
+const DashboardComponent = DashboardDefaultView as DashboardComponentType;
+DashboardComponent.Header = DashboardHeader;
+DashboardComponent.Grid = Grid;
+DashboardComponent.Title = DashboardTitle;
+DashboardComponent.Tabs = DashboardTabs;
+DashboardComponent.ParametersList = _DashboardParameterList;
+DashboardComponent.FullscreenButton = FullscreenToggle;
+DashboardComponent.ExportAsPdfButton = ExportAsPdfButton;
+DashboardComponent.InfoButton = DashboardInfoButton;
+DashboardComponent.NightModeButton = NightModeToggleButton;
+DashboardComponent.RefreshPeriod = RefreshWidget;
 
-Dashboard.Grid = Grid;
-Dashboard.Header = DashboardHeader;
-Dashboard.Title = DashboardTitle;
-Dashboard.Tabs = DashboardTabs;
-Dashboard.ParametersList = _DashboardParameterList;
-Dashboard.FullscreenButton = FullscreenToggle;
-Dashboard.ExportAsPdfButton = ExportAsPdfButton;
-Dashboard.InfoButton = DashboardInfoButton;
-Dashboard.NightModeButton = NightModeToggleButton;
-Dashboard.RefreshPeriod = RefreshWidget;
-
-export { Dashboard };
+export const Dashboard = DashboardComponent;

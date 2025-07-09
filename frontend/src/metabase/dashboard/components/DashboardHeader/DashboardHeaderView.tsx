@@ -11,7 +11,6 @@ import {
   resetParameters,
 } from "metabase/dashboard/actions";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
-import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { useDashboardContext } from "metabase/dashboard/context";
 import {
   getCanResetFilters,
@@ -29,10 +28,13 @@ import {
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
-import type { Collection, Dashboard } from "metabase-types/api";
+import type {
+  Collection,
+  type Dashboard as IDashboard,
+} from "metabase-types/api";
 
+import { Dashboard } from "../Dashboard";
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
-import { DashboardTitle } from "../DashboardTitle";
 import { SIDEBAR_WIDTH } from "../Sidebar";
 
 import S from "./DashboardHeaderView.module.css";
@@ -41,7 +43,7 @@ type DashboardHeaderViewProps = {
   editingTitle?: string;
   editingButtons?: JSX.Element[];
   editWarning?: string;
-  dashboard: Dashboard;
+  dashboard: IDashboard;
   collection: Collection;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
@@ -147,7 +149,7 @@ export function DashboardHeaderView({
                   })}
                 >
                   <Flex className={S.HeaderCaptionContainer}>
-                    <DashboardTitle className={S.HeaderCaption} />
+                    <Dashboard.Title className={S.HeaderCaption} />
                     <PLUGIN_MODERATION.EntityModerationIcon
                       dashboard={dashboard}
                     />
@@ -187,7 +189,7 @@ export function DashboardHeaderView({
             data-testid="fixed-width-dashboard-tabs"
             isFixedWidth={dashboard?.width === "fixed"}
           >
-            <DashboardTabs />
+            <Dashboard.Tabs />
           </FixedWidthContainer>
         </FullWidthContainer>
       </div>

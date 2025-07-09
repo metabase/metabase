@@ -5,14 +5,13 @@ import {
   useEffect,
 } from "react";
 import { t } from "ttag";
-import { pick } from "underscore";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
   DashboardNotFoundError,
-  PublicComponentWrapper,
   SdkError,
   SdkLoader,
+  withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
@@ -223,23 +222,30 @@ const SdkDashboardInner = ({
   );
 };
 
-export const SdkDashboard = ({ ...props }: SdkDashboardInnerProps) => (
-  <PublicComponentWrapper>
-    <SdkDashboardInner {...props} />
-  </PublicComponentWrapper>
-);
+export const SdkDashboard = withPublicComponentWrapper(
+  SdkDashboardInner,
+) as typeof SdkDashboardInner &
+  Pick<
+    typeof Dashboard,
+    | "Grid"
+    | "Header"
+    | "Title"
+    | "Tabs"
+    | "ParametersList"
+    | "FullscreenButton"
+    | "ExportAsPdfButton"
+    | "InfoButton"
+    | "NightModeButton"
+    | "RefreshPeriod"
+  >;
 
-Object.assign(
-  SdkDashboard,
-  pick(Dashboard, [
-    "Grid",
-    "ParameterList",
-    "Title",
-    "Tabs",
-    "FullscreenButton",
-    "ExportAsPdfButton",
-    "InfoButton",
-    "NightModeButton",
-    "RefreshPeriod",
-  ]),
-);
+SdkDashboard.Grid = Dashboard.Grid;
+SdkDashboard.Header = Dashboard.Header;
+SdkDashboard.Title = Dashboard.Title;
+SdkDashboard.Tabs = Dashboard.Tabs;
+SdkDashboard.ParametersList = Dashboard.ParametersList;
+SdkDashboard.FullscreenButton = Dashboard.FullscreenButton;
+SdkDashboard.ExportAsPdfButton = Dashboard.ExportAsPdfButton;
+SdkDashboard.InfoButton = Dashboard.InfoButton;
+SdkDashboard.NightModeButton = Dashboard.NightModeButton;
+SdkDashboard.RefreshPeriod = Dashboard.RefreshPeriod;
