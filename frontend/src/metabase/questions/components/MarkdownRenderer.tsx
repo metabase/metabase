@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -7,6 +7,13 @@ import { VisualizationEmbed } from "./VisualizationEmbed";
 interface MarkdownRendererProps {
   content: string;
   onTextNodeClick?: (nodeId: string, text: string) => void;
+  onSelectionChange?: (selectedNodes: string[]) => void;
+}
+
+interface _TextNode {
+  id: string;
+  text: string;
+  element: HTMLElement;
 }
 
 // Generate a unique ID for text nodes
@@ -19,8 +26,183 @@ const generateNodeId = (text: string, index: number): string => {
   return `text-node-${sanitized}-${index}`;
 };
 
+// Create a text node wrapper component
+const TextNodeWrapper: React.FC<{
+  nodeId: string;
+  text: string;
+  onTextNodeClick?: (nodeId: string, text: string) => void;
+  isSelected: boolean;
+  onSelectionChange: (nodeId: string, isSelected: boolean, isMultiSelect: boolean) => void;
+  children: React.ReactNode;
+}> = ({ nodeId, text, onTextNodeClick, isSelected, onSelectionChange, children }) => {
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const isMultiSelect = e.shiftKey || e.metaKey || e.ctrlKey;
+    onSelectionChange(nodeId, !isSelected, isMultiSelect);
+
+    if (!isMultiSelect) {
+      onTextNodeClick?.(nodeId, text);
+    }
+  }, [nodeId, text, onTextNodeClick, isSelected, onSelectionChange]);
+
+  return (
+    <span
+      id={nodeId}
+      data-node-id={nodeId}
+      data-text-content={text}
+      onClick={handleClick}
+      style={{
+        cursor: "pointer",
+        transition: "background-color 0.2s ease",
+        backgroundColor: isSelected
+          ? "var(--mb-color-brand)"
+          : "transparent",
+        color: isSelected
+          ? "white"
+          : "inherit",
+        padding: isSelected ? "2px 4px" : "2px 4px",
+        borderRadius: "3px",
+        margin: "0 1px",
+      }}
+      onMouseEnter={(e) => {
+        if (!isSelected) {
+          e.currentTarget.style.backgroundColor = "var(--mb-color-bg-light)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isSelected) {
+          e.currentTarget.style.backgroundColor = "transparent";
+        }
+      }}
+    >
+      {children}
+    </span>
+  );
+};
+
+// Context menu component
+const ContextMenu: React.FC<{
+  x: number;
+  y: number;
+  onClose: () => void;
+  onStartNewQuestion: () => void;
+  onAskForReview: (reviewerId: string) => void;
+}> = ({ x, y, onClose, onStartNewQuestion, onAskForReview }) => {
+  const [showReviewSubmenu, setShowReviewSubmenu] = useState(false);
+
+  // Sample reviewers - in a real app this would come from props or API
+  const reviewers = [
+    { id: "user1", name: "John Smith", role: "Data Analyst" },
+    { id: "user2", name: "Sarah Johnson", role: "Business Intelligence" },
+    { id: "user3", name: "Mike Chen", role: "Product Manager" },
+    { id: "user4", name: "Lisa Wong", role: "Data Scientist" },
+  ];
+
+  useEffect(() => {
+    const handleClickOutside = () => onClose();
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [onClose]);
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        left: x,
+        top: y,
+        backgroundColor: "white",
+        border: "1px solid var(--mb-color-border)",
+        borderRadius: "6px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        zIndex: 1000,
+        minWidth: "200px",
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div
+        style={{
+          padding: "8px 12px",
+          cursor: "pointer",
+          borderBottom: "1px solid var(--mb-color-border)",
+        }}
+        onMouseEnter={() => setShowReviewSubmenu(true)}
+        onMouseLeave={() => setShowReviewSubmenu(false)}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>Ask for review</span>
+          <span>▶</span>
+        </div>
+
+        {showReviewSubmenu && (
+          <div
+            style={{
+              position: "absolute",
+              left: "100%",
+              top: 0,
+              backgroundColor: "white",
+              border: "1px solid var(--mb-color-border)",
+              borderRadius: "6px",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+              minWidth: "180px",
+            }}
+          >
+            {reviewers.map((reviewer) => (
+              <div
+                key={reviewer.id}
+                style={{
+                  padding: "8px 12px",
+                  cursor: "pointer",
+                  borderBottom: "1px solid var(--mb-color-border)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "var(--mb-color-bg-light)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+                onClick={() => {
+                  onAskForReview(reviewer.id);
+                  onClose();
+                }}
+              >
+                <div style={{ fontWeight: "500" }}>{reviewer.name}</div>
+                <div style={{ fontSize: "0.8em", color: "var(--mb-color-text-medium)" }}>
+                  {reviewer.role}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div
+        style={{
+          padding: "8px 12px",
+          cursor: "pointer",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = "var(--mb-color-bg-light)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = "transparent";
+        }}
+        onClick={() => {
+          onStartNewQuestion();
+          onClose();
+        }}
+      >
+        Start new question from here
+      </div>
+    </div>
+  );
+};
+
 // Custom components for react-markdown
 const createCustomComponents = (
+  selectedNodes: Set<string>,
+  onSelectionChange: (nodeId: string, isSelected: boolean, isMultiSelect: boolean) => void,
   onTextNodeClick?: (nodeId: string, text: string) => void,
 ) => ({
   // Custom paragraph component that adds IDs to text nodes and handles viz embeds
@@ -66,31 +248,19 @@ const createCustomComponents = (
     const processedChildren = textNodes.map((child, index) => {
       if (typeof child === "string") {
         const nodeId = generateNodeId(child, index);
+        const isSelected = selectedNodes.has(nodeId);
+
         return (
-          <span
+          <TextNodeWrapper
             key={nodeId}
-            id={nodeId}
-            data-node-id={nodeId}
-            data-text-content={child}
-            onClick={() => onTextNodeClick?.(nodeId, child)}
-            style={{
-              cursor: onTextNodeClick ? "pointer" : "default",
-              transition: "background-color 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              if (onTextNodeClick) {
-                e.currentTarget.style.backgroundColor =
-                  "var(--mb-color-bg-light)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (onTextNodeClick) {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }
-            }}
+            nodeId={nodeId}
+            text={child}
+            onTextNodeClick={onTextNodeClick}
+            isSelected={isSelected}
+            onSelectionChange={onSelectionChange}
           >
             {child}
-          </span>
+          </TextNodeWrapper>
         );
       }
       return child;
@@ -175,31 +345,19 @@ const createCustomComponents = (
     const processedChildren = textNodes.map((child, index) => {
       if (typeof child === "string") {
         const nodeId = generateNodeId(child, index);
+        const isSelected = selectedNodes.has(nodeId);
+
         return (
-          <span
+          <TextNodeWrapper
             key={nodeId}
-            id={nodeId}
-            data-node-id={nodeId}
-            data-text-content={child}
-            onClick={() => onTextNodeClick?.(nodeId, child)}
-            style={{
-              cursor: onTextNodeClick ? "pointer" : "default",
-              transition: "background-color 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              if (onTextNodeClick) {
-                e.currentTarget.style.backgroundColor =
-                  "var(--mb-color-bg-light)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (onTextNodeClick) {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }
-            }}
+            nodeId={nodeId}
+            text={child}
+            onTextNodeClick={onTextNodeClick}
+            isSelected={isSelected}
+            onSelectionChange={onSelectionChange}
           >
             {child}
-          </span>
+          </TextNodeWrapper>
         );
       }
       return child;
@@ -348,17 +506,102 @@ const createCustomComponents = (
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   onTextNodeClick,
+  onSelectionChange,
 }) => {
+  const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  // Update URL when selection changes
+  useEffect(() => {
+    if (selectedNodes.size > 0) {
+      const selectedIds = Array.from(selectedNodes);
+      const url = new URL(window.location.href);
+      url.searchParams.set("selected", selectedIds.join(","));
+      window.history.replaceState({}, "", url.toString());
+    } else {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("selected");
+      window.history.replaceState({}, "", url.toString());
+    }
+
+    onSelectionChange?.(Array.from(selectedNodes));
+  }, [selectedNodes, onSelectionChange]);
+
+  // Load selection from URL on mount
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const selectedParam = url.searchParams.get("selected");
+    if (selectedParam) {
+      const selectedIds = selectedParam.split(",");
+      setSelectedNodes(new Set(selectedIds));
+    }
+  }, []);
+
+  const handleSelectionChange = useCallback((nodeId: string, isSelected: boolean, isMultiSelect: boolean) => {
+    setSelectedNodes(prev => {
+      const newSet = new Set(prev);
+      if (isSelected) {
+        newSet.add(nodeId);
+      } else {
+        newSet.delete(nodeId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (selectedNodes.size > 0) {
+      setContextMenu({ x: e.clientX, y: e.clientY });
+    }
+  }, [selectedNodes]);
+
+  const handleStartNewQuestion = useCallback(() => {
+    const selectedTexts = Array.from(selectedNodes).map(nodeId => {
+      const element = document.getElementById(nodeId);
+      return element?.getAttribute("data-text-content") || "";
+    }).join(" ");
+
+    console.log("Starting new question with:", selectedTexts);
+    // TODO: Implement navigation to questions page with selected text
+  }, [selectedNodes]);
+
+  const handleAskForReview = useCallback((reviewerId: string) => {
+    const selectedTexts = Array.from(selectedNodes).map(nodeId => {
+      const element = document.getElementById(nodeId);
+      return element?.getAttribute("data-text-content") || "";
+    }).join(" ");
+
+    console.log("Asking for review from", reviewerId, "with:", selectedTexts);
+    // TODO: Implement review request functionality
+  }, [selectedNodes]);
+
   const customComponents = useMemo(
-    () => createCustomComponents(onTextNodeClick),
-    [onTextNodeClick],
+    () => createCustomComponents(selectedNodes, handleSelectionChange, onTextNodeClick),
+    [selectedNodes, handleSelectionChange, onTextNodeClick],
   );
 
   return (
-    <div style={{ lineHeight: "1.6", fontSize: "0.95rem" }}>
+    <div
+      style={{ lineHeight: "1.6", fontSize: "0.95rem" }}
+      onContextMenu={handleContextMenu}
+    >
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={customComponents}>
         {content}
       </ReactMarkdown>
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          onStartNewQuestion={handleStartNewQuestion}
+          onAskForReview={handleAskForReview}
+        />
+      )}
     </div>
   );
 };

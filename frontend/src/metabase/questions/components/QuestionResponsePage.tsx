@@ -73,6 +73,12 @@ Here's how our products are distributed across categories:
     // For now, we can use the nodeId and text to generate follow-up questions
   };
 
+  const handleSelectionChange = (selectedNodes: string[]) => {
+    // TODO: Handle selection changes
+    // This could update the UI to show selection count, enable/disable actions, etc.
+    console.log("Selected nodes:", selectedNodes);
+  };
+
   useEffect(() => {
     // Simulate loading time
     const loadingTimer = setTimeout(() => {
@@ -133,6 +139,7 @@ Here's how our products are distributed across categories:
               <MarkdownRenderer
                 content={generatedContent}
                 onTextNodeClick={handleTextNodeClick}
+                onSelectionChange={handleSelectionChange}
               />
             </div>
           </div>
