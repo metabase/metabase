@@ -84,7 +84,7 @@ export function useTableLoader(path: TreePath) {
 
     if (databasesRef.current.isError) {
       // Do not refetch when this call failed previously.
-      // This is to prevent infinite data-loading loop.
+      // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
       return [];
     }
 
@@ -120,7 +120,7 @@ export function useTableLoader(path: TreePath) {
         tablesRef.current.isError
       ) {
         // Do not refetch when this call failed previously.
-        // This is to prevent infinite data-loading loop.
+        // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
         return [];
       }
 
@@ -158,7 +158,7 @@ export function useTableLoader(path: TreePath) {
         schemasRef.current.isError
       ) {
         // Do not refetch when this call failed previously.
-        // This is to prevent infinite data-loading loop.
+        // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
         return [];
       }
 
