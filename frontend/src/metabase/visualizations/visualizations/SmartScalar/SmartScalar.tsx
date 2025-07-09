@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { type PropsWithChildren, useEffect, useMemo, useRef } from "react";
 import innerText from "react-innertext";

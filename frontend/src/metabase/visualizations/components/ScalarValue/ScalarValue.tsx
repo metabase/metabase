@@ -1,7 +1,6 @@
 /*
  * Shared component for Scalar and SmartScalar to make sure our number presentation stays in sync
  */
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { type PropsWithChildren, useMemo } from "react";
 import { t } from "ttag";

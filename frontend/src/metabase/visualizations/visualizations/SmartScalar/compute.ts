@@ -32,11 +32,37 @@ import type {
 import type { Insight } from "metabase-types/api/insight";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
+export type ComparisonResult = {
+  changeArrowIconName: ChangeArrowType | undefined;
+  changeColor: string | undefined;
+  changeType: ChangeType;
+  comparisonDescStr: string | undefined;
+  comparisonValue: RowValue | undefined;
+  display: {
+    percentChange: string;
+    comparisonValue: string | number | JSX.Element | null;
+  };
+  percentChange: number | undefined;
+};
+
 interface DateUnitSettings {
   dateColumn: DatasetColumn;
   dateColumnSettings: ColumnSettings;
   dateUnit?: DateTimeAbsoluteUnit;
   queryType: DatasetQuery["type"];
+}
+
+interface MetricData {
+  clicked: Lib.ClickObject;
+  date: string;
+  dateUnitSettings: DateUnitSettings;
+  formatOptions: ColumnSettings;
+  indexData: {
+    dimensionColIndex: number;
+    metricColIndex: number;
+    latestRowIndex: number;
+  };
+  value: RowValue;
 }
 
 export function computeTrend(
@@ -98,7 +124,7 @@ function buildComparisonObject({
   series: Series;
   settings: VisualizationSettings;
   getColor: ColorGetter;
-}) {
+}): ComparisonResult {
   const { formatOptions, value } = currentMetricData;
 
   const { comparisonDescStr, comparisonValue } =
@@ -144,8 +170,6 @@ function buildComparisonObject({
     percentChange,
   };
 }
-
-export type ComparisonResult = ReturnType<typeof buildComparisonObject>;
 
 function computeComparison({
   comparison,
@@ -199,7 +223,7 @@ function getCurrentMetricData({
   series: Series;
   insights: Insight[] | null | undefined;
   settings: VisualizationSettings;
-}) {
+}): MetricData {
   const [
     {
       card: {
@@ -263,7 +287,7 @@ function getCurrentMetricData({
     compact: settings["scalar.compact_primary_number"],
   };
 
-  const clicked = {
+  const clicked: Lib.ClickObject = {
     value,
     column: cols[metricColIndex],
     dimensions: [
@@ -292,8 +316,6 @@ function getCurrentMetricData({
     value,
   };
 }
-
-type MetricData = ReturnType<typeof getCurrentMetricData>;
 
 function computeTrendAnotherColumn({
   comparison,
@@ -665,24 +687,27 @@ function formatDateStr({
 export const CHANGE_TYPE_OPTIONS = {
   get MISSING() {
     return {
-      CHANGE_TYPE: "PREVIOUS_VALUE_MISSING",
+      CHANGE_TYPE: "PREVIOUS_VALUE_MISSING" as const,
       PERCENT_CHANGE_STR: t`N/A`,
       COMPARISON_VALUE_STR: t`(No data)`,
     };
   },
   get SAME() {
     return {
-      CHANGE_TYPE: "PREVIOUS_VALUE_SAME",
+      CHANGE_TYPE: "PREVIOUS_VALUE_SAME" as const,
       PERCENT_CHANGE_STR: t`No change`,
       COMPARISON_VALUE_STR: "",
     };
   },
   get CHANGED() {
     return {
-      CHANGE_TYPE: "PREVIOUS_VALUE_CHANGED",
+      CHANGE_TYPE: "PREVIOUS_VALUE_CHANGED" as const,
     };
   },
 };
+
+type ChangeType =
+  (typeof CHANGE_TYPE_OPTIONS)[keyof typeof CHANGE_TYPE_OPTIONS]["CHANGE_TYPE"];
 
 export const CHANGE_ARROW_ICONS = {
   ARROW_UP: "arrow_up",
