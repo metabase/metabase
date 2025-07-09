@@ -27,7 +27,7 @@ const createCustomComponents = (
   p: ({ children, ...props }: any) => {
     const textContent = React.Children.toArray(children).join("");
 
-        // Check if this paragraph contains a visualization embed
+    // Check if this paragraph contains a visualization embed
     const vizMatch = textContent.match(/\{\{viz:(\d+)(?::([^}]+))?\}\}/);
     if (vizMatch) {
       const questionId = parseInt(vizMatch[1], 10);
@@ -164,11 +164,53 @@ const createCustomComponents = (
       {children}
     </ol>
   ),
-  li: ({ children, ...props }: any) => (
-    <li {...props} style={{ marginBottom: "0.25rem" }}>
-      {children}
-    </li>
-  ),
+  li: ({ children, ...props }: any) => {
+    // Process text nodes within list items for clickable functionality
+    const textNodes = React.Children.toArray(children).filter(
+      (child) =>
+        typeof child === "string" ||
+        (React.isValidElement(child) && child.type === "text"),
+    );
+
+    const processedChildren = textNodes.map((child, index) => {
+      if (typeof child === "string") {
+        const nodeId = generateNodeId(child, index);
+        return (
+          <span
+            key={nodeId}
+            id={nodeId}
+            data-node-id={nodeId}
+            data-text-content={child}
+            onClick={() => onTextNodeClick?.(nodeId, child)}
+            style={{
+              cursor: onTextNodeClick ? "pointer" : "default",
+              transition: "background-color 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              if (onTextNodeClick) {
+                e.currentTarget.style.backgroundColor =
+                  "var(--mb-color-bg-light)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (onTextNodeClick) {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }
+            }}
+          >
+            {child}
+          </span>
+        );
+      }
+      return child;
+    });
+
+    return (
+      <li {...props} style={{ marginBottom: "0.25rem" }}>
+        {processedChildren}
+      </li>
+    );
+  },
 
   // Custom blockquote component
   blockquote: ({ children, ...props }: any) => (
@@ -314,10 +356,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
   return (
     <div style={{ lineHeight: "1.6", fontSize: "0.95rem" }}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={customComponents}
-      >
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={customComponents}>
         {content}
       </ReactMarkdown>
     </div>
