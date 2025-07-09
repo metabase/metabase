@@ -48,7 +48,7 @@
             (let [original-name ((some-fn :lib/original-name :name) col)]
               (assoc col
                      :lib/original-name     original-name
-                     :lib/deduplicated-name (deduplicated-name-fn (:name col))))))))
+                     :lib/deduplicated-name (deduplicated-name-fn ((some-fn :lib/deduplicated-name :name) col))))))))
 
   ([cols :- [:sequential ::lib.schema.metadata/column]]
    (into []
