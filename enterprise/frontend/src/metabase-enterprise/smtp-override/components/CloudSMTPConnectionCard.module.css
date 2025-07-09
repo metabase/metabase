@@ -6,8 +6,6 @@
 
 .RadioCardRoot {
   :hover {
-    background-color: var(--mb-color-bg-light);
-
     .label {
       color: var(--mb-color-brand);
     }
@@ -16,8 +14,4 @@
 
 .label {
   font-weight: bold;
-}
-
-.indicator {
-  border: 1px solid gray;
 }
