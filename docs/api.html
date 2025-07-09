@@ -4227,6 +4227,14 @@ redirect_from:
           }
         }, {
           "in" : "query",
+          "name" : "include_can_run_adhoc_query",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "query",
           "name" : "archived",
           "required" : false,
           "schema" : {
@@ -4454,7 +4462,7 @@ redirect_from:
     "/api/collection/{id}/items" : {
       "get" : {
         "summary" : "GET /api/collection/{id}/items",
-        "description" : "Fetch a specific Collection's items with the following options:\n\n  *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models\n  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.\n  *  `pinned_state` - when `is_pinned`, return pinned objects only.\n                   when `is_not_pinned`, return non pinned objects only.\n                   when `all`, return everything. By default returns everything.\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
+        "description" : "Fetch a specific Collection's items with the following options:\n\n  *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models\n  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.\n  *  `pinned_state` - when `is_pinned`, return pinned objects only.\n                   when `is_not_pinned`, return non pinned objects only.\n                   when `all`, return everything. By default returns everything.\n  *  `include_can_run_adhoc_query` - when this is true hydrates the `can_run_adhoc_query` flag on card models\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -4478,6 +4486,14 @@ redirect_from:
         }, {
           "in" : "query",
           "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_can_run_adhoc_query",
           "required" : false,
           "schema" : {
             "type" : "boolean",
@@ -7536,6 +7552,48 @@ redirect_from:
     "/api/ee/metabot-v3/v2/agent" : {
       "post" : {
         "summary" : "POST /api/ee/metabot-v3/v2/agent",
+        "description" : "Send a chat message to the LLM via the AI Service.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "context" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.context~1context"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "history" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.client.schema~1messages"
+                  },
+                  "message" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "metabot_id" : {
+                    "type" : "string"
+                  },
+                  "state" : {
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                },
+                "required" : [ "message", "context", "conversation_id", "state" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-v3" ]
+      }
+    },
+    "/api/ee/metabot-v3/v2/agent-streaming" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-v3/v2/agent-streaming",
         "description" : "Send a chat message to the LLM via the AI Proxy.",
         "parameters" : [ ],
         "requestBody" : {
