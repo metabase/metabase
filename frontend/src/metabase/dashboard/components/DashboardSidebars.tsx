@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import _ from "underscore";
 
 import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
@@ -14,12 +13,9 @@ import { ParameterSidebar } from "metabase/parameters/components/ParameterSideba
 import { hasMapping } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import type {
-  CardId,
   DashCardId,
   DashCardVisualizationSettings,
   DashboardCard,
-  DashboardId,
-  DashboardTabId,
   Dashboard as IDashboard,
   ParameterId,
   TemporalUnit,
@@ -39,11 +35,6 @@ import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
 interface DashboardSidebarsProps {
   dashboard: IDashboard;
   removeParameter: (id: ParameterId) => void;
-  addCardToDashboard: (opts: {
-    dashId: DashboardId;
-    cardId: CardId;
-    tabId: DashboardTabId | null;
-  }) => void;
   clickBehaviorSidebarDashcard: DashboardCard | null;
   onReplaceAllDashCardVisualizationSettings: (
     id: DashCardId,
@@ -95,7 +86,6 @@ interface DashboardSidebarsProps {
 export function DashboardSidebars({
   dashboard,
   removeParameter,
-  addCardToDashboard,
   clickBehaviorSidebarDashcard,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
@@ -114,23 +104,11 @@ export function DashboardSidebars({
   onCancel,
   sidebar,
   closeSidebar,
-  selectedTabId,
 }: DashboardSidebarsProps) {
   const parameters = useSelector(getParameters);
   const editingParameter = useSelector(getEditingParameter);
   const editingParameterInlineDashcard = useSelector(
     getEditingParameterInlineDashcard,
-  );
-
-  const handleAddCard = useCallback(
-    (cardId: CardId) => {
-      addCardToDashboard({
-        dashId: dashboard.id,
-        cardId: cardId,
-        tabId: selectedTabId,
-      });
-    },
-    [addCardToDashboard, dashboard.id, selectedTabId],
   );
 
   const setDashboardAttribute = useSetDashboardAttributeHandler();
@@ -141,7 +119,7 @@ export function DashboardSidebars({
 
   switch (sidebar.name) {
     case SIDEBAR_NAME.addQuestion:
-      return <AddCardSidebar onSelect={handleAddCard} onClose={closeSidebar} />;
+      return <AddCardSidebar />;
     case SIDEBAR_NAME.action: {
       if (!sidebar.props.dashcardId) {
         return null;
