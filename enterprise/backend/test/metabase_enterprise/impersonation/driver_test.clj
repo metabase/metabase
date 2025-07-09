@@ -195,6 +195,10 @@
   [driver {:keys [details]}]
   (assoc details :user (impersonation-default-user driver)))
 
+(defmethod impersonation-details :sqlserver
+  [driver {:keys [details]}]
+  (assoc details :role (impersonation-default-user driver)))
+
 (doseq [driver [:postgres :snowflake]]
   (defmethod impersonation-details driver
     [_driver {:keys [details]}]
