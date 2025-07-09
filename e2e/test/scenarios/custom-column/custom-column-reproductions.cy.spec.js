@@ -2078,4 +2078,18 @@ describe("Issue 12938", () => {
       .findByText("There was a problem with your question")
       .should("not.exist");
   });
+
+  it("should be possible to concat number with string (metabase#12938)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: 'concat(hour([Created At]), ":", minute([Created At]))',
+      name: "MyCustom",
+      clickDone: true,
+    });
+
+    H.visualize();
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
 });
