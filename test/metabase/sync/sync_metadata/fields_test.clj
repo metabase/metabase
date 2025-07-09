@@ -206,27 +206,32 @@
 (deftest pk-sync-test
   (testing "Test PK Syncing"
     (mt/with-temp-copy-of-db
-      (letfn [(get-semantic-type [] (t2/select-one-fn :semantic_type :model/Field, :id (mt/id :venues :id)))]
+      (letfn [(get-pk-details [] (t2/select-one [:model/Field :semantic_type :database_is_pk], :id (mt/id :venues :id)))]
         (testing "Semantic type should be :id to begin with"
-          (is (= :type/PK
-                 (get-semantic-type))))
+          (is (= {:database_is_pk true
+                  :semantic_type  :type/PK}
+                 (get-pk-details))))
         (testing "Clear out the semantic type"
           (t2/update! :model/Field (mt/id :venues :id) {:semantic_type nil})
-          (is (= nil
-                 (get-semantic-type))))
+          (is (= {:database_is_pk true
+                  :semantic_type  nil}
+                 (get-pk-details))))
         (testing "Calling sync-table! should set the semantic type again"
           (sync/sync-table! (t2/select-one :model/Table :id (mt/id :venues)))
-          (is (= :type/PK
-                 (get-semantic-type))))
+          (is (= {:database_is_pk true
+                  :semantic_type  :type/PK}
+                 (get-pk-details))))
         (testing "sync-table! should *not* change the semantic type of fields that are marked with a different type"
           (t2/update! :model/Field (mt/id :venues :id) {:semantic_type :type/Latitude})
-          (is (= :type/Latitude
-                 (get-semantic-type))))
+          (is (= {:database_is_pk true
+                  :semantic_type  :type/Latitude}
+                 (get-pk-details))))
         (testing "Make sure that sync-table runs set-table-pks-if-needed!"
           (t2/update! :model/Field (mt/id :venues :id) {:semantic_type nil})
           (sync/sync-table! (t2/select-one :model/Table :id (mt/id :venues)))
-          (is (= :type/PK
-                 (get-semantic-type))))))))
+          (is (= {:database_is_pk true
+                  :semantic_type  :type/PK}
+                 (get-pk-details))))))))
 
 (deftest fk-relationships-test
   (testing "Check that Foreign Key relationships were created on sync as we expect"
