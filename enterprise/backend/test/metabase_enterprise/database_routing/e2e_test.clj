@@ -10,7 +10,6 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.test.data.bigquery-cloud-sdk :as bigquery-cloud-sdk]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
@@ -223,20 +222,19 @@
   ;; few more nice helpers, and remove some of the above tests which are duplicative of the below.
   (mt/test-drivers (mt/normal-drivers-with-feature :database-routing)
     (mt/with-premium-features #{:database-routing}
-      (with-redefs [bigquery-cloud-sdk/test-dataset-id (constantly "metabase_routing_dataset")]
-        (binding [bigquery-cloud-sdk/*use-routing-project* true]
-          (mt/dataset routed-data
-            (let [routed (mt/db)]
-              (binding [bigquery-cloud-sdk/*use-routing-project* false]
-                (mt/dataset router-data
-                  (let [router (mt/db)]
-                    (wire-routing {:parent router :children [routed]})
-                    (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
-                                                            :user_attribute "db_name"}]
-                      (met/with-user-attributes! :rasta {"db_name" (:name routed)}
-                        (is (= [[1 "original-foo"] [2 "original-bar"]]
-                               (mt/with-current-user (mt/user->id :crowberto)
-                                 (mt/rows (mt/process-query (mt/query t))))))
-                        (is (= [[1 "routed-foo"] [2 "routed-bar"]]
-                               (mt/with-current-user (mt/user->id :rasta)
-                                 (mt/rows (mt/process-query (mt/query t))))))))))))))))))
+      (binding [tx/*use-routing-details* true]
+        (mt/dataset routed-data
+          (let [routed (mt/db)]
+            (binding [tx/*use-routing-details* false]
+              (mt/dataset router-data
+                (let [router (mt/db)]
+                  (wire-routing {:parent router :children [routed]})
+                  (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
+                                                          :user_attribute "db_name"}]
+                    (met/with-user-attributes! :rasta {"db_name" (:name routed)}
+                      (is (= [[1 "original-foo"] [2 "original-bar"]]
+                             (mt/with-current-user (mt/user->id :crowberto)
+                               (mt/rows (mt/process-query (mt/query t))))))
+                      (is (= [[1 "routed-foo"] [2 "routed-bar"]]
+                             (mt/with-current-user (mt/user->id :rasta)
+                               (mt/rows (mt/process-query (mt/query t)))))))))))))))))

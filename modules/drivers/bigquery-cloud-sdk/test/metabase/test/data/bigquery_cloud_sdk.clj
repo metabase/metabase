@@ -58,17 +58,19 @@
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
-  (if (str/starts-with? database-name "sha_")
-    database-name
-    (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
+  (cond
+    tx/*use-routing-details*
+    "metabase_routing_dataset"
 
-(def ^:dynamic *use-routing-project*
-  "Used to decide which BigQuery project should be used in [[test-db-details]]."
-  false)
+    (str/starts-with? database-name "sha_")
+    database-name
+
+    :else
+    (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
   {:project-id (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
-   :service-account-json (if *use-routing-project*
+   :service-account-json (if tx/*use-routing-details*
                            (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json-routing)
                            (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json))})
 
