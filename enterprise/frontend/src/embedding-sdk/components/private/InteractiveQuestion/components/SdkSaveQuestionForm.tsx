@@ -1,4 +1,3 @@
-import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import {
   SaveQuestionForm,
   SaveQuestionTitle,
@@ -37,11 +36,7 @@ export const SdkSaveQuestionForm = ({
   const { question, originalQuestion, onSave, onCreate, targetCollection } =
     useInteractiveQuestionContext();
 
-  const { id, isLoading } = useTranslatedCollectionId({
-    id: targetCollection,
-  });
-
-  if (!question || isLoading) {
+  if (!question) {
     return null;
   }
 
@@ -52,7 +47,7 @@ export const SdkSaveQuestionForm = ({
       onCreate={onCreate}
       onSave={onSave}
       multiStep={false}
-      targetCollection={id}
+      targetCollection={targetCollection ?? undefined}
     >
       <Stack p="md">
         <Title order={2}>
