@@ -29,7 +29,7 @@ export const settingsApi = Api.injectEndpoints({
     >({
       query: (emailSettingsOverride) => ({
         method: "PUT",
-        url: `/api/email/override`,
+        url: `/api/ee/email/override`,
         body: emailSettingsOverride,
       }),
       invalidatesTags: (_, error) =>
@@ -46,7 +46,7 @@ export const settingsApi = Api.injectEndpoints({
     deleteCloudEmailSMTPSettings: builder.mutation<void, void>({
       query: () => ({
         method: "DELETE",
-        url: `/api/email/override`,
+        url: `/api/ee/email/override`,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),

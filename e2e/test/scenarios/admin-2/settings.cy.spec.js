@@ -678,7 +678,7 @@ H.describeWithSnowplow("scenarios > admin > settings > email settings", () => {
 
   describe("Pro-cloud instance", () => {
     beforeEach(() => {
-      cy.intercept("DELETE", "api/email/override").as("smtpCleared");
+      cy.intercept("DELETE", "api/ee/email/override").as("smtpCleared");
       cy.intercept("GET", "/api/session/properties", (req) => {
         req.continue((res) => {
           // in an actual pro-cloud instance this gets configured via env vars
@@ -686,7 +686,7 @@ H.describeWithSnowplow("scenarios > admin > settings > email settings", () => {
           return res.body;
         });
       });
-      cy.intercept("PUT", "api/email/override").as("smtpSaved");
+      cy.intercept("PUT", "api/ee/email/override").as("smtpSaved");
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-cloud");

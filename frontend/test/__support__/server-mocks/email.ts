@@ -16,6 +16,6 @@ export const setupEmailEndpoints = (settings = defaultSettings) => {
 };
 
 export const setupEmailOverrideEndpoints = (settings = defaultSettings) => {
-  fetchMock.put("path:/api/email/override", settings);
-  fetchMock.delete("path:/api/email/override", 204);
+  fetchMock.put("path:/api/ee/email/override", settings);
+  fetchMock.delete("path:/api/ee/email/override", 204);
 };

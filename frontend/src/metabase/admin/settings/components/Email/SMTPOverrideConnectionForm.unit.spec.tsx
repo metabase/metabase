@@ -167,7 +167,7 @@ describe("SMTPOverrideConnectionForm", () => {
     const puts = await findRequests("PUT");
     const { url, body } = puts[0];
 
-    expect(url).toContain("/api/email/override");
+    expect(url).toContain("/api/ee/email/override");
     expect(body).toEqual({
       "email-smtp-host-override": "smtp.treeko.com",
       "email-smtp-port-override": 587,
