@@ -184,7 +184,8 @@
                   :table-id           (meta/id :venues)
                   :name               "CATEGORY_ID"
                   :has-field-values   :none
-                  :lib/source         :source/breakouts
+                  :lib/source         :source/table-defaults
+                  :lib/breakout?      true
                   :fk-target-field-id (meta/id :categories :id)
                   :effective-type     :type/Integer
                   :id                 (meta/id :venues :category-id)
@@ -208,11 +209,13 @@
                     (lib/expression "Category ID + 1"  (lib/+ (meta/field-metadata :venues :category-id) 1))
                     (lib/breakout [:expression {:lib/uuid (str (random-uuid))} "Category ID + 1"]))]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:lib/type     :metadata/column
-                  :name         "Category ID + 1"
-                  :display-name "Category ID + 1"
-                  :base-type    :type/Integer
-                  :lib/source   :source/breakouts}]
+        (is (=? [{:lib/type            :metadata/column
+                  :name                "Category ID + 1"
+                  :display-name        "Category ID + 1"
+                  :base-type           :type/Integer
+                  :lib/source          :source/expressions
+                  :lib/expression-name "Category ID + 1"
+                  :lib/breakout?       true}]
                 (lib/orderable-columns query)))))))
 
 (deftest ^:parallel order-by-breakout-expression-test

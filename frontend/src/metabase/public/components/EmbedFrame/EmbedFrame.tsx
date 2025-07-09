@@ -15,6 +15,7 @@ import {
 } from "metabase/dashboard/constants";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { getDashboardType } from "metabase/dashboard/utils";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
@@ -22,7 +23,6 @@ import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import { useSyncUrlParameters } from "metabase/query_builder/hooks/use-sync-url-parameters";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box } from "metabase/ui";
@@ -108,7 +108,6 @@ export const EmbedFrame = ({
   withFooter = true,
 }: EmbedFrameProps) => {
   useGlobalTheme(theme);
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const hasEmbedBranding = useSelector(
     (state) => !getSetting(state, "hide-embed-branding?"),
   );
@@ -122,10 +121,9 @@ export const EmbedFrame = ({
   const ParametersListComponent = getParametersListComponent({
     isQuestion,
     isDashboard,
-    isEmbeddingSdk,
   });
 
-  const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk);
+  const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk());
 
   useMount(() => {
     initializeIframeResizer(() => setHasFrameScroll(false));
@@ -173,7 +171,6 @@ export const EmbedFrame = ({
     enabled: shouldSyncUrlParameters({
       isQuestion,
       isDashboard,
-      isEmbeddingSdk,
     }),
   });
 
@@ -321,13 +318,11 @@ function isParametersWidgetContainersSticky(parameterCount: number) {
 function getParametersListComponent({
   isQuestion,
   isDashboard,
-  isEmbeddingSdk,
 }: {
   isQuestion: boolean;
   isDashboard: boolean;
-  isEmbeddingSdk: boolean;
 }) {
-  return shouldSyncUrlParameters({ isQuestion, isDashboard, isEmbeddingSdk })
+  return shouldSyncUrlParameters({ isQuestion, isDashboard })
     ? SyncedParametersList
     : ParametersList;
 }
@@ -335,11 +330,9 @@ function getParametersListComponent({
 function shouldSyncUrlParameters({
   isQuestion,
   isDashboard,
-  isEmbeddingSdk,
 }: {
   isQuestion: boolean;
   isDashboard: boolean;
-  isEmbeddingSdk: boolean;
 }) {
   // Couldn't determine if it's a question or a dashboard until one becomes true.
   if (!isQuestion && !isDashboard) {
@@ -354,6 +347,6 @@ function shouldSyncUrlParameters({
      * We don't want to sync the query string to the URL when using the embedding SDK,
      * because it would change the URL of users' apps.
      */
-    return !isEmbeddingSdk;
+    return !isEmbeddingSdk();
   }
 }

@@ -400,14 +400,16 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           H.getDashboardCard(0).findByText("Select…").click();
           H.popover().within(() => {
-            QSHelpers.getPopoverList().scrollTo("bottom");
-            QSHelpers.getPopoverItem("Product → Category", 1).click();
+            QSHelpers.getPopoverItem("Product → Category", 1)
+              .scrollIntoView()
+              .click();
           });
 
           H.getDashboardCard(1).findByText("Select…").click();
           H.popover().within(() => {
-            QSHelpers.getPopoverList().scrollTo("bottom");
-            QSHelpers.getPopoverItem("Product → Category", 1).click();
+            QSHelpers.getPopoverItem("Product → Category", 1)
+              .scrollIntoView()
+              .click();
           });
 
           H.saveDashboard({ waitMs: 250 });

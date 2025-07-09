@@ -58,7 +58,7 @@
                                   lhs-col-spec))
          rhs-column  (rhs-col-fn (find-col-with-spec
                                   query
-                                  (lib/join-condition-rhs-columns query rhs-table lhs-column nil)
+                                  (lib/join-condition-rhs-columns query rhs-table (lib/ref lhs-column) nil)
                                   rhs-table-spec
                                   rhs-col-spec))
          join-clause (lib/join-clause rhs-table [(lib/= lhs-column rhs-column)])]

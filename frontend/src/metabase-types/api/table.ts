@@ -6,7 +6,7 @@ import type { Segment } from "./segment";
 export type ConcreteTableId = number;
 export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
 export type TableId = ConcreteTableId | VirtualTableId;
-export type SchemaId = string;
+export type SchemaId = string; // ideally this should be typed as `${DatabaseId}:${SchemaName}`
 
 export type TableVisibilityType =
   | null

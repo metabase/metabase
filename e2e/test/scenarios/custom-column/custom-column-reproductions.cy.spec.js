@@ -1140,17 +1140,18 @@ describe("issue 49882", () => {
   it("should update currently selected suggestion when suggestions list is updated (metabase#49882-4)", () => {
     const selectProductVendor =
       "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}";
+
     H.enterCustomColumnDetails({
-      formula: `[Product Rati${selectProductVendor}`,
+      formula: `[Produ${selectProductVendor}`,
       blur: false,
     });
 
-    H.CustomExpressionEditor.completion("Product → Rating").should(
+    H.CustomExpressionEditor.completion("Product → Vendor").should(
       "be.visible",
     );
     H.CustomExpressionEditor.acceptCompletion("tab");
 
-    H.CustomExpressionEditor.value().should("equal", "[Product → Rating]");
+    H.CustomExpressionEditor.value().should("equal", "[Product → Vendor]");
   });
 });
 
