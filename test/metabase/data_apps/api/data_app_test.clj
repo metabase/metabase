@@ -25,7 +25,7 @@
                     filtered-response))))
 
         (testing "After archiving one app, listing returns only non-archived"
-          (mt/user-http-request :crowberto :delete 204 (data-apps.tu/data-app-url (:id app1)))
+          (mt/user-http-request :crowberto :put 200 (data-apps.tu/data-app-url (:id app1) "/status") {:status :archived})
           (let [list-response     (mt/user-http-request :crowberto :get 200 (data-apps.tu/data-app-url))
                 filtered-response (filter-apps-by-ids list-response #{(:id app1) (:id app2)})]
             (is (=? {:data   [{:id (:id app2)}]
@@ -38,11 +38,11 @@
   (testing "GET /api/data-app/:id - get specific data app"
     (testing "Get private app returns app without definition or release"
       (data-apps.tu/with-data-app!
-        [app {:name "Private App" :slug "/private-app" :description "A private app"}]
+        [app {:name "Private App" :slug "private-app" :description "A private app"}]
         (let [response (mt/user-http-request :crowberto :get 200 (data-apps.tu/data-app-url (:id app)))]
           (is (=? {:id          (:id app)
                    :name        "Private App"
-                   :slug        "/private-app"
+                   :slug        "private-app"
                    :description "A private app"
                    :creator_id  (mt/user->id :crowberto)
                    :definition  nil
@@ -52,11 +52,11 @@
     (testing "Get app with definition returns latest definition"
       (data-apps.tu/with-data-app!
         [app {:name       "App With Definition"
-              :slug       "/app-with-def"
+              :slug       "app-with-def"
               :definition {:config data-apps.tu/default-app-definition-config}}]
         (is (=? {:id         (:id app)
                  :name       "App With Definition"
-                 :slug       "/app-with-def"
+                 :slug       "app-with-def"
                  :creator_id (mt/user->id :crowberto)
                  :definition {:config          data-apps.tu/default-app-definition-config
                               :revision_number 1}
@@ -65,15 +65,14 @@
 
     (testing "Get released app returns definition and release info"
       (data-apps.tu/with-released-app!
-        [app {:name "Released App" :slug "/released-app"}]
+        [app {:name "Released App" :slug "released-app"}]
         (is (=? {:id         (:id app)
                  :name       "Released App"
-                 :slug       "/released-app"
+                 :slug       "released-app"
                  :creator_id (mt/user->id :crowberto)
                  :definition {:config          (mt/malli=? :map)
                               :revision_number (mt/malli=? pos-int?)}
                  :release    {:app_definition_id (mt/malli=? pos-int?)
-                              :retracted         false
                               :released_at       (mt/malli=? some?)}}
                 (mt/user-http-request :crowberto :get 200 (data-apps.tu/data-app-url (:id app)))))))
 
@@ -85,75 +84,80 @@
     (data-apps.tu/with-data-app-cleanup!
       (mt/with-test-user :crowberto
         (let [create-response (mt/user-http-request :crowberto :post 200 (data-apps.tu/data-app-url)
-                                                    {:name "My Data App"
-                                                     :slug "/my-data-app"
+                                                    {:name        "My Data App"
+                                                     :slug        "my-data-app"
                                                      :description "A comprehensive test app"})
               app-id (:id create-response)]
           (testing "Create returns expected fields"
-            (is (=? {:id (mt/malli=? pos-int?)
-                     :name "My Data App"
-                     :slug "/my-data-app"
+            (is (=? {:id          (mt/malli=? pos-int?)
+                     :name        "My Data App"
+                     :slug        "my-data-app"
                      :description "A comprehensive test app"
-                     :creator_id (mt/user->id :crowberto)}
+                     :creator_id  (mt/user->id :crowberto)}
                     create-response)))
 
           (testing "Update app fields"
             (let [update-response (mt/user-http-request :crowberto :put 200 (data-apps.tu/data-app-url app-id)
-                                                        {:name "Updated Data App"
-                                                         :slug "/updated-data-app"
+                                                        {:name        "Updated Data App"
+                                                         :slug        "updated-data-app"
                                                          :description "Updated description"})]
-              (is (=? {:name "Updated Data App"
-                       :slug "/updated-data-app"
+              (is (=? {:name        "Updated Data App"
+                       :slug        "updated-data-app"
                        :description "Updated description"}
                       update-response))))
 
           (testing "Add definition to app"
-            (let [definition {:config data-apps.tu/default-app-definition-config}
+            (let [config              data-apps.tu/default-app-definition-config
                   definition-response (mt/user-http-request :crowberto :put 200 (data-apps.tu/data-app-url app-id "/definition")
-                                                            definition)]
-              (is (=? {:app_id app-id
-                       :config data-apps.tu/default-app-definition-config
+                                                            {:config config})]
+              (is (=? {:app_id          app-id
+                       :config          data-apps.tu/default-app-definition-config
                        :revision_number 1}
                       definition-response))
 
               (testing "fetching the app will return the latest definition"
-                (is (=? {:definition {:config (:config definition)
+                (is (=? {:definition {:config          config
                                       :revision_number 1}}
                         (mt/user-http-request :crowberto :get 200 (data-apps.tu/data-app-url app-id))))))
 
             (testing "Add second definition version"
-              (let [new-config {:actions []
+              (let [new-config {:actions    []
                                 :parameters []
-                                :pages [{:name "New page"}]}
+                                :pages      [{:name "New page"}]}
                     definition-response (mt/user-http-request :crowberto :put 200 (data-apps.tu/data-app-url app-id "/definition")
                                                               {:config new-config})]
-                (is (=? {:app_id app-id
-                         :config new-config
+                (is (=? {:app_id          app-id
+                         :config          new-config
                          :revision_number 2}
                         definition-response))
 
                 (testing "fetching the app will return the latest definition"
-                  (is (=? {:definition {:config new-config
+                  (is (=? {:definition {:config          new-config
                                         :revision_number 2}}
                           (mt/user-http-request :crowberto :get 200 (data-apps.tu/data-app-url app-id)))))
 
                 (testing "Release latest definition"
                   (let [release-response (mt/user-http-request :crowberto :post 200 (data-apps.tu/data-app-url app-id "/release"))]
                     (is (=? {:app_definition_id (:id definition-response)
-                             :released_at (mt/malli=? some?)
-                             :retracted false}
+                             :released_at       (mt/malli=? some?)
+                             :retracted         false}
                             release-response))
 
                     (let [app-with-release (mt/user-http-request :crowberto :get 200 (data-apps.tu/data-app-url app-id))]
-                      (is (=? {:release {:app_definition_id (:id definition-response)
-                                         :retracted false}}
+                      (is (=? {:release {:app_definition_id (:id definition-response)}}
                               app-with-release))))))))
 
-          (testing "Soft delete sets status to archived"
-            (mt/user-http-request :crowberto :delete 204 (data-apps.tu/data-app-url app-id))
+          (testing "Archive the status"
+            (mt/user-http-request :crowberto :put 200 (data-apps.tu/data-app-url app-id "/status") {:status :archived})
             (let [archived-app (t2/select-one :model/DataApp app-id)]
               (is (=? {:status :archived}
-                      archived-app)))))))))
+                      archived-app))))
+
+          (testing "Mark the app as private"
+            (mt/user-http-request :crowberto :put 200 (data-apps.tu/data-app-url app-id "/status") {:status :private})
+            (let [private-app (t2/select-one :model/DataApp app-id)]
+              (is (=? {:status :private}
+                      private-app)))))))))
 
 (deftest definition-validation-test
   (testing "Validation of definition fields"
@@ -161,15 +165,15 @@
       [app {}]
       (testing "Backend ignores user-provided revision_number and sets it automatically"
         (let [definition-response (mt/user-http-request :crowberto :put 200 (data-apps.tu/data-app-url (:id app) "/definition")
-                                                        {:config data-apps.tu/default-app-definition-config
+                                                        {:config          data-apps.tu/default-app-definition-config
                                                          :revision_number 5})]
           (is (= 1 (:revision_number definition-response))))))))
 
 (deftest multiple-releases-retraction-test
   (testing "Multiple releases with old releases being retracted"
     (data-apps.tu/with-data-app!
-      [{app-id :id} {:name "Multi Release App"
-                     :slug "/multi-release-app"
+      [{app-id :id} {:name        "Multi Release App"
+                     :slug        "multi-release-app"
                      :description "App for testing multiple releases"}]
       (testing "Create first definition and release"
         (mt/user-http-request :crowberto :put 200 (data-apps.tu/data-app-url app-id "/definition")
@@ -183,22 +187,27 @@
               (is (false? (:retracted (first releases))))))))
 
       (testing "Create second definition and release"
-        (let [config2 {:actions []
-                       :parameters []
-                       :pages [{:name "Updated page"}]}
+        (let [config2           {:actions    []
+                                 :parameters []
+                                 :pages      [{:name "Updated page"}]}
               second-definition (mt/user-http-request :crowberto :put 200 (data-apps.tu/data-app-url app-id "/definition")
-                                                      {:config config2})
-              release2-response (mt/user-http-request :crowberto :post 200 (data-apps.tu/data-app-url app-id "/release"))]
-          (is (=? {:retracted false} release2-response))
-
-          (testing "Second release is active, first release is retracted"
-            (let [releases (t2/select :model/DataAppRelease :app_id app-id {:order-by [[:id :asc]]})]
-              (is (= 2 (count releases)))
-              (is (true? (:retracted (first releases))))
-              (is (false? (:retracted (second releases))))))
-
+                                                      {:config config2})]
+          (mt/user-http-request :crowberto :post 200 (data-apps.tu/data-app-url app-id "/release"))
           (testing "Only the latest release is returned when fetching the app"
             (let [app-with-release (mt/user-http-request :crowberto :get 200 (data-apps.tu/data-app-url app-id))]
-              (is (=? {:release {:retracted false
-                                 :app_definition_id (:id second-definition)}
+              (is (=? {:release    {:app_definition_id (:id second-definition)}
                        :definition {:revision_number 2}} app-with-release)))))))))
+
+(deftest disallow-updating-status-in-update-app-api-test
+  (data-apps.tu/with-data-app!
+    [app {:name       "App With Definition"
+          :slug       "app-with-def"
+          :definition {:config data-apps.tu/default-app-definition-config}}]
+    (testing "status is disallowed when updating from PUT /api/data-app/:id"
+      (mt/user-http-request :crowberto :put 400 (data-apps.tu/data-app-url (:id app)) {:status :archived}))
+
+    (testing "can update using PUT /api/data-app/:id/status"
+      (mt/user-http-request :crowberto :put 200 (data-apps.tu/data-app-url (:id app) "/status") {:status :archived})
+
+      (testing "bad statues are ignored"
+        (mt/user-http-request :crowberto :put 400 (data-apps.tu/data-app-url (:id app) "/status") {:status :bad-status})))))

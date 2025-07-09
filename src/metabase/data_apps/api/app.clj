@@ -16,12 +16,13 @@
    _query-params]
   (let [limit   (request/limit)
         offset  (request/offset)
-        clauses (cond-> {:where [:exists {:select [1]
-                                          :from [:data_app_release]
-                                          :where [:and
-                                                  [:= :data_app_release.app_id :data_app.id]
-                                                  [:= :data_app_release.retracted false]]}]}
-                  limit (sql.helpers/limit limit)
+        clauses (cond-> {:where ;; TODO: might be faster to use left join here instead of exists, benchmark with EXPLAIN
+                         [:exists {:select [1]
+                                   :from   [:data_app_release]
+                                   :where  [:and
+                                            [:= :data_app_release.app_id :data_app.id]
+                                            [:= :data_app_release.retracted false]]}]}
+                  limit  (sql.helpers/limit limit)
                   offset (sql.helpers/offset offset))
         filter-clauses-without-paging (dissoc clauses :limit :offset)]
     {:data   (t2/select :model/DataApp (sql.helpers/order-by clauses [:created_at :desc]))

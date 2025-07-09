@@ -29,7 +29,8 @@
 (def ^:private data-app-statuses #{:private :published :archived})
 
 (t2/deftransforms :model/DataApp
-  {:status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum data-app-statuses))})
+  {:status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum data-app-statuses))
+   :slug   (mi/transform-validator mi/transform-identity (partial mi/assert-regex #"^[0-9a-zA-Z_-]+$"))})
 
 ;; TODO: revisit permissions model
 (defmethod mi/can-read? :model/DataApp
@@ -138,18 +139,17 @@
                  {:order-by [[:revision_number :desc]]}))
 
 (defn release!
-  "Release the latest definition of an app."
+  "Release the latest definition of an app. Also take the app out of private or archived if necessary."
   [app-id creator-id]
   (t2/with-transaction [_conn]
     (let [latest-def (latest-definition app-id)]
       (when-not latest-def
         (throw (ex-info "No definition found for app" {:app-id app-id})))
       (t2/update! :model/DataApp app-id {:status :published})
-      (t2/update! :model/DataAppRelease :app_id app-id {:retracted true})
       (t2/insert-returning-instance! :model/DataAppRelease
-                                     {:app_id app-id
+                                     {:app_id            app-id
                                       :app_definition_id (:id latest-def)
-                                      :creator_id creator-id}))))
+                                      :creator_id        creator-id}))))
 
 (defn released-definition
   "Get the latest released definition for a data app."
@@ -165,10 +165,11 @@
 (defn latest-release
   "Get the latest release info for a data app."
   [app-id]
-  (t2/select-one [:model/DataAppRelease :id :retracted :released_at :app_definition_id]
+  ;; app_definition_id is only needed for testing
+  (t2/select-one [:model/DataAppRelease :id :app_definition_id :created_at]
                  :app_id app-id
                  :retracted false
-                 {:order-by [[:released_at :desc]]}))
+                 {:order-by [[:id :desc]]}))
 
 (defn get-published-data-app
   "Get the published version of a data app by id."

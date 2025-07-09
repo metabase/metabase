@@ -62,22 +62,25 @@
   "Update an existing data app."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
-   body :- [:map
-            [:name ms/NonBlankString]
-            [:slug ms/NonBlankString]
+   body :- [:map {:closed true}
+            [:name        {:optional true} ms/NonBlankString]
+            [:slug        {:optional true} ms/NonBlankString]
             [:description {:optional true} [:maybe :string]]]]
   (let [existing-data-app (get-data-app id)]
     (api/update-check existing-data-app body)
     (t2/update! :model/DataApp id body)
     (get-data-app id)))
 
-(api.macros/defendpoint :delete "/:id"
-  "Soft delete a data app."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [existing-data-app (get-data-app id)]
-    (api/update-check existing-data-app {})
-    (t2/update! :model/DataApp id {:status :archived}))
-  api/generic-204-no-content)
+(api.macros/defendpoint :put "/:id/status"
+  "Change the status of an app."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query
+   body :- [:map {:closed true}
+            [:status :keyword]]]
+  (let [existing-data-app (api/check-404 (t2/select-one :model/DataApp id))]
+    (api/update-check existing-data-app body)
+    (t2/update! :model/DataApp id body)
+    (get-data-app id)))
 
 (api.macros/defendpoint :put "/:id/definition"
   "Create a new definition version for a data app."

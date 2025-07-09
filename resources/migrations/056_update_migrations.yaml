@@ -468,7 +468,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   remarks: The timestamp of when the release was last updated
-                  name: updated
+                  name: updated_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:

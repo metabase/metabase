@@ -166,7 +166,7 @@
    :model/DataApp
    (fn [_] (default-timestamped
             {:name        (u.random/random-name)
-             :slug        (str "/" (u.random/random-name))
+             :slug        (u.random/random-name)
              :description (str "Test description for " (u.random/random-name))
              :status      :private
              :creator_id  (user-id :crowberto)}))
