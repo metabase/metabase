@@ -2138,6 +2138,10 @@ describe("Issue 25189", () => {
       cy.findByText("Today").click();
     });
 
+    cy.findAllByTestId("header-cell")
+      .contains("CCreated At")
+      .should("be.visible");
+
     cy.get("main")
       .findByText("There was a problem with your question")
       .should("not.exist");
@@ -2186,6 +2190,10 @@ describe("Issue 25189", () => {
       cy.findAllByText("Created At").should("have.length", 2).last().click();
       cy.findByText("Today").click();
     });
+
+    cy.findAllByTestId("header-cell")
+      .contains("Created At")
+      .should("be.visible");
 
     cy.get("main")
       .findByText("There was a problem with your question")
