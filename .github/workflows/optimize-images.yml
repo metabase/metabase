@@ -96,6 +96,7 @@ jobs:
 
         # Format bytes saved for human readability
         bytes_saved="${{ steps.optimize.outputs.bytes_saved }}"
+        bytes_before="${{ steps.optimize.outputs.total_before }}"
         if [ "$bytes_saved" -gt 1048576 ]; then
           # Convert to MB
           size_saved=$(echo "scale=1; $bytes_saved / 1048576" | bc)
@@ -109,7 +110,13 @@ jobs:
           size_unit="bytes"
         fi
 
-        git commit -m "Optimized ${{ steps.optimize.outputs.files_optimized }} images, saved ${size_saved} ${size_unit}"
+        # Calculate percentage reduction
+        if [ "$bytes_before" -gt 0 ]; then
+          percentage=$(echo "scale=1; $bytes_saved * 100 / $bytes_before" | bc)
+          git commit -m "Optimized ${{ steps.optimize.outputs.files_optimized }} images, saved ${size_saved} ${size_unit} (${percentage}% smaller)"
+        else
+          git commit -m "Optimized ${{ steps.optimize.outputs.files_optimized }} images, saved ${size_saved} ${size_unit}"
+        fi
         git push
         echo 'Files optimized:'
         echo ${{ steps.changed-files.outputs.all_changed_files }}
