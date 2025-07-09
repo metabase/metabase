@@ -4,8 +4,10 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (deftest create-view-test
   (mt/test-drivers
@@ -128,3 +130,51 @@
                      (driver/create-view! driver/*driver* (u/the-id (mt/db))
                                           "invalid_view"
                                           "SELECT * FROM nonexistent_table")))))))
+
+(deftest sync-view-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :view)
+    (testing "Can create a new view and immediately sync it"
+      (mt/dataset (mt/dataset-definition "users-db"
+                                         ["users"
+                                          [{:field-name "name" :base-type :type/Text}
+                                           {:field-name "age" :base-type :type/Integer}]
+                                          [["Foo" 10]
+                                           ["Bar" 20]
+                                           ["Baz" 30]]])
+        (driver/drop-view! driver/*driver* (u/the-id (mt/db)) "young_users")
+        (is (driver/create-view! driver/*driver* (u/the-id (mt/db))
+                                 "young_users"
+                                 "SELECT name, age FROM users where age < 25"))
+
+        ;; make sure we're indeed creating it anew
+        (t2/delete! :model/Table :name "young_users")
+
+        (sync/sync-new-table-metadata! (mt/db) {:table-name "young_users"})
+
+        (let [table (t2/select-one :model/Table :name "young_users")]
+          (is (=? {:schema nil,
+                   :name "young_users",
+                   :active true,
+                   :display_name "Young Users"} table))
+          (is (=? [{:database_type "CHARACTER VARYING",
+                    :semantic_type nil,
+                    :name "NAME",
+                    :effective_type :type/Text,
+                    :active true,
+                    :position 0,
+                    :visibility_type :normal,
+                    :display_name "Name",
+                    :database_position 0,
+                    :base_type :type/Text}
+                   {:database_type "INTEGER",
+                    :semantic_type nil,
+                    :name "AGE",
+                    :effective_type :type/Integer,
+                    :active true,
+                    :position 1,
+                    :visibility_type :normal,
+                    :display_name "Age",
+                    :database_position 1,
+                    :base_type :type/Integer}]
+                  (t2/select :model/Field :table_id (u/the-id table)))))))))

@@ -80,7 +80,7 @@
 (mu/defn sync-new-table-metadata!
   "Sync the metadata for a new table in `database`"
   [database :- i/DatabaseInstance {:keys [table-name schema]}]
-  (let [table (sync-tables/create-table!
+  (let [table (sync-tables/create-or-reactivate-table!
                database
                {:name table-name :schema (not-empty schema)})]
     (doto table sync-table-metadata!)))
