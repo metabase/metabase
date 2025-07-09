@@ -282,6 +282,12 @@ function formatExpressionOptions(options: Lib.ExpressionOptions): Doc | null {
   if ("include-current" in options && options["include-current"]) {
     return formatStringLiteral("include-current");
   }
+  if ("mode" in options && options.mode) {
+    const camelCased = options.mode.replace(/-\w/g, (match) =>
+      match.charAt(1).toUpperCase(),
+    );
+    return formatStringLiteral(camelCased);
+  }
   return null;
 }
 
