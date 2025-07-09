@@ -406,4 +406,4 @@
 (defn add-attributes
   "Adds the `:attributes` key to a user."
   [{:keys [login_attributes] :as user}]
-  (assoc user :attributes (merge login_attributes (tenants/login-attributes user))))
+  (assoc user :attributes (merge {} (tenants/login-attributes user) login_attributes)))
