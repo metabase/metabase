@@ -72,11 +72,13 @@ export const SdkVisualizationWrapper = ({
   theme?: MetabaseTheme;
   initialStore?: State;
 }) => (
-  <Box fz="0.875rem">
-    <VisualizationWrapper initialStore={initialStore}>
-      <SdkThemeProvider theme={theme}>{children}</SdkThemeProvider>
-    </VisualizationWrapper>
-  </Box>
+  <themeProviderContext.Provider value={{ withCssVariables: true }}>
+    <Box fz="0.875rem">
+      <VisualizationWrapper initialStore={initialStore}>
+        <SdkThemeProvider theme={theme}>{children}</SdkThemeProvider>
+      </VisualizationWrapper>
+    </Box>
+  </themeProviderContext.Provider>
 );
 export interface IsomorphicVisualizationStoryProps {
   // Use `any` on purpose to avoid type casting of imported json snapshots of raw series
