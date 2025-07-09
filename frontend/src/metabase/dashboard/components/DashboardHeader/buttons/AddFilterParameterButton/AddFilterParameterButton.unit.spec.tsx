@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import {
   createMockDashboardState,
   createMockState,
@@ -41,16 +42,28 @@ const SECTIONS = [
   },
 ];
 
+const DASHBOARD_ID = 1;
+
 const setup = ({ isAddParameterPopoverOpen = false } = {}) => {
+  const dashboardState = createMockDashboardState({
+    dashboardId: DASHBOARD_ID,
+    isAddParameterPopoverOpen,
+  });
   const state = createMockState({
-    dashboard: createMockDashboardState({
-      isAddParameterPopoverOpen,
-    }),
+    dashboard: dashboardState,
   });
 
-  return renderWithProviders(<AddFilterParameterButton />, {
-    storeInitialState: state,
-  });
+  return renderWithProviders(
+    <MockDashboardContext
+      dashboardId={DASHBOARD_ID}
+      navigateToNewCardFromDashboard={null}
+    >
+      <AddFilterParameterButton />
+    </MockDashboardContext>,
+    {
+      storeInitialState: state,
+    },
+  );
 };
 
 describe("AddFilterParameterButton", () => {
