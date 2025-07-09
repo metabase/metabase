@@ -38,7 +38,11 @@ import { ScalarContainer } from "../Scalar/Scalar.styled";
 
 import { SmartScalarComparisonWidget } from "./SettingsComponents/SmartScalarSettingsWidgets";
 import { VariationIcon, VariationValue } from "./SmartScalar.styled";
-import { CHANGE_TYPE_OPTIONS, computeTrend } from "./compute";
+import {
+  CHANGE_TYPE_OPTIONS,
+  type ComparisonResult,
+  computeTrend,
+} from "./compute";
 import {
   DASHCARD_HEADER_HEIGHT,
   ICON_MARGIN_RIGHT,
@@ -48,7 +52,6 @@ import {
   TOOLTIP_ICON_SIZE,
   VIZ_SETTINGS_DEFAULTS,
 } from "./constants";
-import type { ComparisonResult } from "./types";
 import {
   formatChangeAutoPrecision,
   getChangeWidth,
@@ -163,7 +166,7 @@ function ScalarPeriod({
   period,
   onClick,
 }: {
-  period: string;
+  period: string | number | JSX.Element | null;
   onClick?: () => void;
 }) {
   return (
@@ -238,7 +241,7 @@ function PreviousValueComparison({
 
   const fittedChangeDisplay =
     changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
-      ? formatChangeAutoPrecision(percentChange, {
+      ? formatChangeAutoPrecision(percentChange as number, {
           fontFamily,
           fontWeight: 900,
           width: getChangeWidth(width),
