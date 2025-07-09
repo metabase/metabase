@@ -33,12 +33,8 @@
 (defenterprise validate-new-tenant-collection!
   "Throws API exceptions if the passed collection is an invalid tenant collection."
   :feature :tenants
-  [parent-coll {ttype :type :as _new-coll}]
-  (when (or (some-> parent-coll collection/is-tenant-collection?)
-            (collection/is-tenant-collection-type? ttype))
-    ;; make sure the type is valid (same as parent if the parent exists)
-    (api/check-400 (or (= ttype (:type parent-coll))
-                       (nil? parent-coll)))
+  [{ttype :type :as _new-coll}]
+  (when (collection/is-tenant-collection-type? ttype)
     ;; make sure tenants is enabled
     (api/check-400 (perms/use-tenants))
 

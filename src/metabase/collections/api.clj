@@ -8,6 +8,7 @@
    [honey.sql.helpers :as sql.helpers]
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [malli.util]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -1242,45 +1243,64 @@
   "OSS version. Throws API exceptions if the passed collection is an invalid tenant collection, which in OSS
   means 'any tenant collection.'"
   metabase-enterprise.tenants.core
-  [parent-coll {ttype :type :as _new-coll}]
-  (when (or (some-> parent-coll collection/is-tenant-collection?)
-            (collection/is-tenant-collection-type? ttype))
+  [{ttype :type :as _new-coll}]
+  (when (collection/is-tenant-collection-type? ttype)
     (throw (ex-info "Cannot create tenant collection on OSS." {:status-code 400}))))
 
-(defn create-collection!
+(def ^:private CreateCollectionArguments
+  "The arguments to the `POST /api/collection` endpoint, i.e. what the API needs to create a collection."
+  [:map
+   [:name            ms/NonBlankString]
+   [:description     {:optional true} [:maybe ms/NonBlankString]]
+   [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:namespace       {:optional true} [:maybe ms/NonBlankString]]
+   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]
+   [:type            {:optional true} [:maybe [:enum "shared-tenant-collection"]]]])
+
+(def ^:private NewCollectionArguments
+  "What we use internally to actually create a collection, i.e. what `t2/insert!` needs to create a collection."
+  (-> CreateCollectionArguments
+      (malli.util/dissoc :parent_id)
+      (malli.util/assoc :location [:maybe ms/NonBlankString])
+      (malli.util/optional-keys [:location])
+      (malli.util/closed-schema)))
+
+(mu/defn- apply-defaults-to-collection :- NewCollectionArguments
+  "Converts `CreateCollectionArguments` into `NewCollectionArguments` - i.e. translates what the API gets into what
+  toucan needs to create a collection."
+  [coll-data :- CreateCollectionArguments]
+  (let [parent-coll (when-let [pid (:parent_id coll-data)]
+                      (t2/select-one :model/Collection pid))]
+    (cond-> coll-data
+      ;; default to the same type of tenant collection, if applicable
+      (some-> parent-coll collection/is-tenant-collection?) (assoc :type (:type parent-coll))
+      ;; set the location
+      parent-coll (assoc :location (collection/children-location parent-coll))
+      ;; select only the known set of keys
+      true (select-keys (malli.util/keys NewCollectionArguments)))))
+
+(mu/defn create-collection!
   "Create a new collection."
-  [{:keys [name description parent_id namespace authority_level] ttype :type :as coll-data}]
+  [{:keys [authority_level parent_id namespace] :as coll-data}
+   :- CreateCollectionArguments]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id namespace)
-  (let [parent-coll (when parent_id (t2/select-one :model/Collection parent_id))]
-    (validate-new-tenant-collection! parent-coll coll-data)
-    (when (some? authority_level)
-      ;; make sure only admin and an EE token is present to be able to create an Official token
-      (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
-      (api/check-superuser))
+  (when (some? authority_level)
+    ;; make sure only admin and an EE token is present to be able to create an Official token
+    (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
+    (api/check-superuser))
+  (let [coll-data (apply-defaults-to-collection coll-data)]
+    (validate-new-tenant-collection! coll-data)
+
     ;; Now create the new Collection :)
-    (u/prog1 (t2/insert-returning-instance! :model/Collection
-                                            (merge
-                                             {:name            name
-                                              :description     description
-                                              :authority_level authority_level
-                                              :namespace       namespace
-                                              :type            ttype}
-                                             (when parent_id
-                                               {:location (collection/children-location parent-coll)})))
+    (u/prog1 (t2/insert-returning-instance! :model/Collection coll-data)
       (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*}))))
 
 (api.macros/defendpoint :post "/"
   "Create a new Collection."
   [_route-params
    _query-params
-   body :- [:map
-            [:name            ms/NonBlankString]
-            [:description     {:optional true} [:maybe ms/NonBlankString]]
-            [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
-            [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-            [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]
-            [:type            {:optional true} [:maybe [:enum "shared-tenant-collection"]]]]]
+   body :- CreateCollectionArguments]
   (create-collection! body))
 
 (defn- maybe-send-archived-notifications!

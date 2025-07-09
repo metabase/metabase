@@ -315,9 +315,10 @@
           (is id)
           (is (= "shared-tenant-collection" (:type coll))))))))
 
-(deftest a-child-of-a-shared-tenant-collection-must-be-a-tenant-collection
+(deftest a-child-of-a-shared-tenant-collection-defaults-to-shared-tenant-collection-type
   (mt/with-premium-features #{:tenants}
     (mt/with-temporary-setting-values [use-tenants true]
       (mt/with-temp [:model/Collection {parent-id :id} {:type "shared-tenant-collection"}]
-        (mt/user-http-request :crowberto :post 400 "collection/" {:name (mt/random-name)
-                                                                  :parent_id parent-id})))))
+        (is (= "shared-tenant-collection"
+               (:type (mt/user-http-request :crowberto :post 200 "collection/" {:name (mt/random-name)
+                                                                                :parent_id parent-id}))))))))
