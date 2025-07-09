@@ -69,7 +69,8 @@
                               :test/jvm-timezone-setting false
                               :uuid-type                 true
                               :uploads                   true
-                              :database-routing          true}]
+                              :database-routing          true
+                              :view                      true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))

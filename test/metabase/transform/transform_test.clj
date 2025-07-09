@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.transform.transform-test
   "Test for transforms"
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
@@ -10,9 +9,7 @@
 
 (deftest create-view-test
   (mt/test-drivers
-    (-> (mt/normal-drivers-with-feature :view)
-        ;; WIP: for now we're focusing just on those two, full support later
-        (set/intersection #{:postgres :h2}))
+    (mt/normal-drivers-with-feature :view)
     (testing "Can create and replace a new view"
       (mt/dataset (mt/dataset-definition "users-db"
                                          ["users"
@@ -36,8 +33,7 @@
 
 (deftest drop-view-nonexistent-test
   (mt/test-drivers
-    (-> (mt/normal-drivers-with-feature :view)
-        (set/intersection #{:postgres :h2}))
+    (mt/normal-drivers-with-feature :view)
     (testing "Dropping a non-existent view should not throw an error"
       (mt/dataset (mt/dataset-definition "simple-db"
                                          ["table1"
@@ -49,8 +45,7 @@
 
 (deftest create-view-without-replace-fails-if-exists-test
   (mt/test-drivers
-    (-> (mt/normal-drivers-with-feature :view)
-        (set/intersection #{:postgres :h2}))
+    (mt/normal-drivers-with-feature :view)
     (testing "Creating a view that already exists should fail without :replace? true"
       (mt/dataset (mt/dataset-definition "products-db"
                                          ["products"
@@ -71,8 +66,7 @@
 
 (deftest create-view-with-complex-query-test
   (mt/test-drivers
-    (-> (mt/normal-drivers-with-feature :view)
-        (set/intersection #{:postgres :h2}))
+    (mt/normal-drivers-with-feature :view)
     (testing "Creating a view with complex SQL (joins, subqueries, etc.)"
       (mt/dataset  (mt/dataset-definition "users-departments-db"
                                           ["users"
@@ -97,8 +91,7 @@
 
 (deftest view-name-edge-cases-test
   (mt/test-drivers
-    (-> (mt/normal-drivers-with-feature :view)
-        (set/intersection #{:postgres :h2}))
+    (mt/normal-drivers-with-feature :view)
     (testing "View names with special characters and edge cases"
       (mt/dataset (mt/dataset-definition "edge-case-db"
                                          ["test_table"
@@ -122,8 +115,7 @@
 
 (deftest view-with-invalid-sql-test
   (mt/test-drivers
-    (-> (mt/normal-drivers-with-feature :view)
-        (set/intersection #{:postgres :h2}))
+    (mt/normal-drivers-with-feature :view)
     (testing "Creating a view with invalid SQL should fail"
       (mt/dataset (mt/dataset-definition "error-db"
                                          ["table1"
