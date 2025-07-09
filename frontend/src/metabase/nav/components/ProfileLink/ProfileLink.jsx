@@ -21,11 +21,12 @@ import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";
+import { getUser } from "metabase/selectors/user";
 import {
   getApplicationName,
   getIsWhiteLabeling,
 } from "metabase/selectors/whitelabel";
-import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
+import { Icon, Menu, Tooltip } from "metabase/ui";
 
 import { useHelpLink } from "./useHelpLink";
 
@@ -53,6 +54,8 @@ function ProfileLink({
   const [modalOpen, setModalOpen] = useState(null);
   const version = useSetting("version");
   const applicationName = useSelector(getApplicationName);
+  const user = useSelector(getUser);
+  const initials = user ? (user.first_name?.[0] || "") + (user.last_name?.[0] || "") : "?";
   const { tag, date, ...versionExtra } = version;
   const helpLink = useHelpLink();
   const dispatch = useDispatch();
@@ -144,14 +147,25 @@ function ProfileLink({
       <Menu position="bottom-end" shadow="md" width={200}>
         <Menu.Target>
           <Tooltip label={t`Settings`}>
-            <ActionIcon
-              size="lg"
-              variant="subtle"
-              c="text-dark"
-              aria-label={t`Settings`}
+            {/* Avatar trigger instead of gear icon */}
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                background: "var(--mb-color-bg-light)",
+                color: "var(--mb-color-brand)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 700,
+                fontSize: 16,
+                cursor: "pointer",
+              }}
+              aria-label={t`Profile menu`}
             >
-              <Icon name="gear" size={16} />
-            </ActionIcon>
+              {initials}
+            </div>
           </Tooltip>
         </Menu.Target>
         <Menu.Dropdown>

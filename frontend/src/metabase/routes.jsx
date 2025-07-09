@@ -32,17 +32,16 @@ import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDa
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
-import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
-  PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
 } from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
+import QuestionsPage from "metabase/questions/components/QuestionsPage";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
@@ -148,15 +147,8 @@ export const getRoutes = (store) => {
           {/* The global all hands routes, things in here are for all the folks */}
           <Route
             path="/"
-            component={HomePage}
             onEnter={(nextState, replace) => {
-              const page = PLUGIN_LANDING_PAGE.getLandingPage();
-              if (page && page !== "/") {
-                replace({
-                  pathname: page.startsWith("/") ? page : `/${page}`,
-                  state: { preserveNavbarState: true },
-                });
-              }
+              replace("/questions");
             }}
           />
 
@@ -258,6 +250,8 @@ export const getRoutes = (store) => {
             <Route path=":slug/metabot" component={QueryBuilder} />
             <Route path=":slug/:objectId" component={QueryBuilder} />
           </Route>
+
+          <Route path="/questions" title={t`Questions`} component={QuestionsPage} />
 
           {/* MODELS */}
           {getModelRoutes()}

@@ -24,7 +24,7 @@ type NavbarProps = {
 };
 
 const mapStateToProps = (state: State) => ({
-  isOpen: getIsNavbarOpen(state),
+  isOpen: true,
   user: getUser(state),
   adminPaths: getAdminPaths(state),
 });

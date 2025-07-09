@@ -18,6 +18,7 @@ import ScrollToTop from "metabase/hoc/ScrollToTop";
 import { initializeIframeResizer } from "metabase/lib/dom";
 import { connect } from "metabase/lib/redux";
 import AppBar from "metabase/nav/containers/AppBar";
+import AppBarTabsContainer from "metabase/nav/containers/AppBar/AppBarTabsContainer";
 import Navbar from "metabase/nav/containers/Navbar";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { setErrorPage } from "metabase/redux/app";
@@ -92,6 +93,7 @@ function App({
   isNavBarEnabled,
   children,
   onError,
+  location,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
   useTokenRefresh();
@@ -100,6 +102,12 @@ function App({
     initializeIframeResizer();
   }, []);
 
+  // Show the new tabbed AppBar for non-admin pages
+  const shouldShowTabbedAppBar = isAppBarVisible && !isAdminApp;
+
+  // Only hide the sidebar when on /questions, otherwise always show it
+  const isSidebarVisible = !location.pathname.startsWith('/questions');
+
   return (
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
@@ -107,9 +115,10 @@ function App({
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
             <AppBanner />
-            {isAppBarVisible && <AppBar />}
+            {shouldShowTabbedAppBar && <AppBarTabsContainer />}
+            {isAppBarVisible && isAdminApp && <AppBar />}
             <AppContentContainer isAdminApp={isAdminApp}>
-              {isNavBarEnabled && <Navbar />}
+              {isNavBarEnabled && isSidebarVisible && <Navbar />}
               <AppContent ref={setViewportElement}>
                 <ContentViewportContext.Provider
                   value={viewportElement ?? null}

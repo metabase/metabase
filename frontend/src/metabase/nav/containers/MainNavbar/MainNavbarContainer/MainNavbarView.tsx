@@ -48,6 +48,7 @@ import { AddDataModal } from "./AddDataModal";
 import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
+import NewItemButton from "metabase/nav/components/NewItemButton";
 
 interface CollectionTreeItem extends Collection {
   icon: IconName | IconProps;
@@ -147,6 +148,11 @@ export function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
+          </SidebarSection>
+
+          {/* New menu button section */}
+          <SidebarSection>
+            <NewItemButton />
           </SidebarSection>
 
           {shouldDisplayGettingStarted && (
