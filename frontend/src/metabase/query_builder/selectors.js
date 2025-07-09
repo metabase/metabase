@@ -400,86 +400,21 @@ export const getRowIndexToPKMap = createSelector(
   },
 );
 
-function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
-  return Lib.areLegacyQueriesEqual(
-    queryA,
-    queryB,
-    tableMetadata?.fields.map(({ id }) => id),
-  );
-}
-
-// Models or metrics may be composed via the `composeQuestion` method.
-// A composed entity should be treated as the equivalent to its original form.
-// We need to handle scenarios where both the `lastRunQuestion` and the `currentQuestion` are
-// in either form.
-function areComposedEntitiesEquivalent({
-  originalQuestion,
-  lastRunQuestion,
-  currentQuestion,
-  tableMetadata,
-}) {
-  const isQuestion = originalQuestion?.type() === "question";
-  if (!originalQuestion || !lastRunQuestion || !currentQuestion || isQuestion) {
-    return false;
-  }
-
-  const composedOriginal = originalQuestion.composeQuestionAdhoc();
-
-  const isLastRunComposed = areLegacyQueriesEqual(
-    lastRunQuestion.datasetQuery(),
-    composedOriginal.datasetQuery(),
-    tableMetadata,
-  );
-  const isCurrentComposed = areLegacyQueriesEqual(
-    currentQuestion.datasetQuery(),
-    composedOriginal.datasetQuery(),
-    tableMetadata,
-  );
-
-  const isLastRunEquivalentToCurrent =
-    isLastRunComposed &&
-    areLegacyQueriesEqual(
-      currentQuestion.datasetQuery(),
-      originalQuestion.datasetQuery(),
-      tableMetadata,
-    );
-
-  const isCurrentEquivalentToLastRun =
-    isCurrentComposed &&
-    areLegacyQueriesEqual(
-      lastRunQuestion.datasetQuery(),
-      originalQuestion.datasetQuery(),
-      tableMetadata,
-    );
-
-  return isLastRunEquivalentToCurrent || isCurrentEquivalentToLastRun;
-}
-
 export function areQueriesEquivalent({
-  originalQuestion,
   lastRunQuestion,
   currentQuestion,
   tableMetadata,
 }) {
-  return (
-    areLegacyQueriesEqual(
-      lastRunQuestion?.datasetQuery(),
-      currentQuestion?.datasetQuery(),
-      tableMetadata,
-    ) ||
-    areComposedEntitiesEquivalent({
-      originalQuestion,
-      lastRunQuestion,
-      currentQuestion,
-      tableMetadata,
-    })
+  return Lib.areLegacyQueriesEqual(
+    lastRunQuestion?.datasetQuery(),
+    currentQuestion?.datasetQuery(),
+    tableMetadata?.fields.map(({ id }) => id),
   );
 }
 
 export const getIsResultDirty = createSelector(
   [
     getQuestion,
-    getOriginalQuestion,
     getLastRunQuestion,
     getLastRunParameterValues,
     getNextRunParameterValues,
@@ -487,7 +422,6 @@ export const getIsResultDirty = createSelector(
   ],
   (
     question,
-    originalQuestion,
     lastRunQuestion,
     lastParameters,
     nextParameters,
@@ -501,7 +435,6 @@ export const getIsResultDirty = createSelector(
       haveParametersChanged ||
       (isEditable &&
         !areQueriesEquivalent({
-          originalQuestion,
           lastRunQuestion,
           currentQuestion: question,
           tableMetadata,

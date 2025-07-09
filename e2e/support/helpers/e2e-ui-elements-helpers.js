@@ -603,3 +603,7 @@ export function repeatAssertion(assertFn, timeout = 4000, interval = 400) {
 export function mapPinIcon() {
   return cy.get(".leaflet-marker-icon");
 }
+
+export function waitForLoaderToBeRemoved() {
+  cy.findByTestId("loading-indicator").should("not.exist");
+}
