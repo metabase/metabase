@@ -22,7 +22,7 @@
 (defn- check-features []
   (when (not (premium-features/is-hosted?))
     (throw (ex-info (tru "API is not available on non-hosted servers.")
-                    {:status-code 403}))))
+                    {:status-code 402}))))
 
 (api.macros/defendpoint :put "/override"
   "Update multiple cloud email Settings. You must be a superuser or have `setting` permission to do this.

@@ -28,14 +28,15 @@
   ;; NOTE: When adding tests, ask yourself "should this also be tested in the /api/email test?"
   (testing "PUT /api/ee/email/override - check updating email settings"
     (with-redefs [premium-features/is-hosted? (constantly false)]
-      (testing "Cannot call without hosting"
-        (is (= "API is not available on non-hosted servers."
-               (mt/user-http-request :crowberto :put 403 "ee/email/override" default-email-override-settings)))))
+      (mt/with-premium-features [:cloud-custom-smtp]
+        (testing "Cannot call without hosting"
+          (is (= "API is not available on non-hosted servers."
+                 (mt/user-http-request :crowberto :put 402 "ee/email/override" default-email-override-settings))))))
     (with-redefs [premium-features/is-hosted? (constantly true)]
       (mt/with-premium-features []
         (testing "Cannot call without the :cloud-custom-smtp feature"
           (is (= "Custom SMTP is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                 (:message (mt/user-http-request :crowberto :put 403 "ee/email/override" default-email-override-settings))))))
+                 (:message (mt/user-http-request :crowberto :put 402 "ee/email/override" default-email-override-settings))))))
       (mt/with-premium-features [:cloud-custom-smtp]
         (let [original-values (email-override-settings)
               body default-email-override-settings]
@@ -99,9 +100,10 @@
 (deftest clear-email-override-settings-test
   (testing "DELETE /api/ee/email/override"
     (with-redefs [premium-features/is-hosted? (constantly false)]
-      (testing "Cannot call without hosting"
-        (is (= "API is not available on non-hosted servers."
-               (mt/user-http-request :crowberto :delete 403 "ee/email/override" default-email-override-settings)))))
+      (mt/with-premium-features [:cloud-custom-smtp]
+        (testing "Cannot call without hosting"
+          (is (= "API is not available on non-hosted servers."
+                 (mt/user-http-request :crowberto :delete 402 "ee/email/override" default-email-override-settings))))))
     (with-redefs [premium-features/is-hosted? (constantly true)]
       (mt/with-premium-features [:cloud-custom-smtp]
         (tu/discard-setting-changes [email-smtp-host-override email-smtp-port-override email-smtp-security-override
