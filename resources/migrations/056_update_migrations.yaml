@@ -169,7 +169,379 @@ databaseChangeLog:
                   type: ${text.type}
                   constraints:
                     nullable: false
-# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+
+  - changeSet:
+      id: v56.2025-07-03T16:00:00
+      author: qnkhuat
+      comment: Create data_app table for data apps functionality
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: data_app
+      changes:
+        - createTable:
+            tableName: data_app
+            remarks: Applications
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: App name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  remarks: App description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: slug
+                  remarks: unique slug of an app
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: creator_id
+                  remarks: the creator
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_data_app_creator_id
+                    deleteCascade: true
+              - column:
+                  name: status
+                  remarks: Status of the app (private, published, archived)
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  remarks: Entity id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: The timestamp of when the app was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the app was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: data_app
+
+  - changeSet:
+      id: v56.2025-07-03T16:00:10
+      author: qnkhuat
+      comment: Add index on data_app.creator_id
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: data_app
+        - not:
+            - indexExists:
+                tableName: data_app
+                indexName: idx_data_app_creator_id
+      changes:
+        - createIndex:
+            tableName: data_app
+            indexName: idx_data_app_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback: #no op, will be deleted with the table
+
+  - changeSet:
+      id: v56.2025-07-03T16:01:00
+      author: qnkhuat
+      comment: Create data_app_definition table for data apps functionality
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: data_app_definition
+      changes:
+        - createTable:
+            tableName: data_app_definition
+            remarks: App definitions (append only)
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: app_id
+                  remarks: Referenced app
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: data_app
+                    referencedColumnNames: id
+                    foreignKeyName: fk_data_app_definition_app_id
+                    deleteCascade: true
+              - column:
+                  name: creator_id
+                  remarks: the creator
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_data_app_definition_creator_id
+                    deleteCascade: true
+              - column:
+                  name: revision_number
+                  remarks: Revision number for ordering
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: config
+                  remarks: App configuration JSON
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the definition was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: data_app_definition
+
+  - changeSet:
+      id: v56.2025-07-03T16:02:00
+      author: qnkhuat
+      comment: Index for getting the latest definition
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: data_app_definition
+        - not:
+            - indexExists:
+                tableName: data_app_definition
+                indexName: idx_data_app_definition_app_id_revision_numer
+      changes:
+        - createIndex:
+            tableName: data_app_definition
+            indexName: idx_data_app_definition_app_id_revision_numer
+            columns:
+              - column:
+                  name: app_id
+              - column:
+                  name: revision_number
+                  descending: true
+      rollback: #no op, will be deleted with the table
+
+  - changeSet:
+      id: v56.2025-07-03T16:02:10
+      author: qnkhuat
+      comment: Add index on data_app_definition.creator_id
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: data_app_definition
+        - not:
+            - indexExists:
+                tableName: data_app_definition
+                indexName: idx_data_app_definition_creator_id
+      changes:
+        - createIndex:
+            tableName: data_app_definition
+            indexName: idx_data_app_definition_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback: #no op, will be deleted with the table
+
+  - changeSet:
+      id: v56.2025-07-03T16:02:20
+      author: qnkhuat
+      comment: Add unique constraint on data_app_definition (app_id, revision_number)
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: data_app_definition
+        - not:
+            - uniqueConstraintExists:
+                tableName: data_app_definition
+                constraintName: uniq_idx_data_app_definition_app_id_revision_number
+      changes:
+        - addUniqueConstraint:
+            tableName: data_app_definition
+            constraintName: uniq_idx_data_app_definition_app_id_revision_number
+            columnNames: app_id, revision_number
+      rollback:
+        - dropUniqueConstraint:
+            tableName: data_app_definition
+            constraintName: uniq_idx_data_app_definition_app_id_revision_number
+
+  - changeSet:
+      id: v56.2025-07-03T16:03:00
+      author: qnkhuat
+      comment: Create data_app_release table for data apps functionality
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: data_app_release
+      changes:
+        - createTable:
+            tableName: data_app_release
+            remarks: App publishing records
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: app_id
+                  remarks: Referenced app
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: data_app
+                    referencedColumnNames: id
+                    foreignKeyName: fk_data_app_release_app_id
+                    deleteCascade: true
+              - column:
+                  name: app_definition_id
+                  remarks: Referenced app definition
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: data_app_definition
+                    referencedColumnNames: id
+                    foreignKeyName: fk_data_app_release_app_definition_id
+              - column:
+                  name: creator_id
+                  remarks: the creator
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_data_app_release_creator_id
+                    deleteCascade: true
+              - column:
+                  name: retracted
+                  remarks: Whether this version is retracted
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the app was first released
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the release was last updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: data_app_release
+
+  - changeSet:
+      id: v56.2025-07-03T16:04:00
+      author: qnkhuat
+      comment: index data_app_release.app_definition_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: data_app_release
+                indexName: idx_data_app_release_app_definition_id
+      changes:
+        - createIndex:
+            tableName: data_app_release
+            indexName: idx_data_app_release_app_definition_id
+            columns:
+              - column:
+                  name: app_definition_id
+      rollback: #no op, will be deleted with the table
+
+  - changeSet:
+      id: v56.2025-07-03T16:07:00
+      author: qnkhuat
+      comment: Index to get the latest active release
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: data_app_release
+                indexName: idx_data_app_release_app_id_retracted_id
+      changes:
+        - createIndex:
+            tableName: data_app_release
+            indexName: idx_data_app_release_app_id_retracted_id
+            columns:
+              - column:
+                  name: app_id
+              - column:
+                  name: retracted
+              - column:
+                  name: id
+                  descending: true
+      rollback: #no op, will be deleted with the table
+
+  - changeSet:
+      id: v56.2025-07-03T16:08:00
+      author: qnkhuat
+      comment: Add index on data_app_release.creator_id
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: data_app_release
+        - not:
+            - indexExists:
+                tableName: data_app_release
+                indexName: idx_data_app_release_creator_id
+      changes:
+        - createIndex:
+            tableName: data_app_release
+            indexName: idx_data_app_release_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback: #no op, will be deleted with the table
+
+  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
 #

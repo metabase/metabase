@@ -19,6 +19,13 @@
    "NativeQuerySnippet"
    "Timeline"])
 
+(def to-implement-models
+  "The list of exported models but are pending for implementation."
+  [;; see https://linear.app/metabase/issue/WRK-579
+   "DataApp"
+   "DataAppDefinition"
+   "DataAppRelease"])
+
 (def exported-models
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
