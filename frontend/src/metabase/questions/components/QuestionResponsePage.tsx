@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Button, Card, Skeleton, Textarea } from "metabase/ui";
+
+import { addGenerativeQuestion } from "../redux/generativeQuestionsSlice";
+import { getGenerativeQuestionById } from "../redux/selectors";
 
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import {
@@ -19,14 +23,31 @@ interface QuestionResponsePageProps {
 const QuestionResponsePage = ({
   params,
 }: QuestionResponsePageProps): JSX.Element => {
-  const { questionId: _questionId } = params;
+  const { questionId } = params;
   const [isLoading, setIsLoading] = useState(true);
   const [showTitle, setShowTitle] = useState(false);
   const [showContent, setShowContent] = useState(false);
 
-  // Placeholder content for now
-  const generatedTitle = "Sales Performance Analysis for Q4 2023";
-  const generatedContent = `
+  const dispatch = useDispatch();
+  const question = useSelector((state) => getGenerativeQuestionById(state, questionId));
+
+  const handleStartNewQuestion = useCallback((selectedText: string) => {
+    const newQuestionId = crypto.randomUUID();
+
+    dispatch(addGenerativeQuestion({
+      id: newQuestionId,
+      prompt: selectedText,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }));
+
+    // Navigate to the new question
+    window.location.href = `/questions/${newQuestionId}`;
+  }, [dispatch]);
+
+  // Use the prompt from the Redux store as the title
+  const generatedTitle = question?.prompt || "Sales Performance Analysis for Q4 2023";
+  const generatedContent = question?.content || `
 
 ## Executive Summary
 Based on your data, Q4 2023 showed a **15% increase** in total sales compared to Q3, with the strongest performance coming from the Technology sector.
@@ -139,6 +160,7 @@ Here's how our products are distributed across categories:
                 content={generatedContent}
                 onTextNodeClick={handleTextNodeClick}
                 onSelectionChange={handleSelectionChange}
+                onStartNewQuestion={handleStartNewQuestion}
               />
             </div>
           </div>

@@ -3,10 +3,10 @@ import styled from "@emotion/styled";
 
 export const QuestionsPageContainer = styled.div`
   display: flex;
-  flex-direction: column;
   height: 100%;
   padding: 2rem;
   background-color: var(--mb-color-bg-white);
+  gap: 2rem;
 `;
 
 export const QuestionsPageContent = styled.div`
@@ -27,4 +27,11 @@ export const QuestionsPageContent = styled.div`
     margin-bottom: 1rem;
     line-height: 1.5;
   }
+`;
+
+export const QuestionsPageSidebar = styled.div`
+  width: 300px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--mb-color-border);
+  padding-left: 1rem;
 `;

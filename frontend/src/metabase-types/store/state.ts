@@ -10,6 +10,7 @@ import type { DownloadsState } from "./downloads";
 import type { EmbedState } from "./embed";
 import type { EmbeddingDataPickerState } from "./embedding-data-picker";
 import type { EntitiesState } from "./entities";
+import type { GenerativeQuestionsState } from "./generativeQuestions";
 import type { ParametersState } from "./parameters";
 import type { QueryBuilderState } from "./qb";
 import type { RequestsState } from "./requests";
@@ -30,6 +31,7 @@ export interface State {
   embed: EmbedState;
   embeddingDataPicker: EmbeddingDataPickerState;
   entities: EntitiesState;
+  generativeQuestions: GenerativeQuestionsState;
   parameters: ParametersState;
   qb: QueryBuilderState;
   requests: RequestsState;

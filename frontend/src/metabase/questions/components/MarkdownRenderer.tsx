@@ -11,6 +11,7 @@ interface MarkdownRendererProps {
   content: string;
   onTextNodeClick?: (nodeId: string, text: string) => void;
   onSelectionChange?: (selectedNodes: string[]) => void;
+  onStartNewQuestion?: (selectedText: string) => void;
 }
 
 interface _TextNode {
@@ -36,10 +37,9 @@ const TextNodeWrapper: React.FC<{
   onTextNodeClick?: (nodeId: string, text: string) => void;
   isSelected: boolean;
   onSelectionChange: (nodeId: string, isSelected: boolean, isMultiSelect: boolean) => void;
-  onStartNewQuestion: () => void;
-  onAskForReview: (reviewerId: string) => void;
+  onStartNewQuestion?: (selectedText: string) => void;
   children: React.ReactNode;
-}> = ({ nodeId, text, onTextNodeClick, isSelected, onSelectionChange, onStartNewQuestion, onAskForReview, children }) => {
+}> = ({ nodeId, text, onTextNodeClick, isSelected, onSelectionChange, onStartNewQuestion, children }) => {
   const [menuOpened, setMenuOpened] = useState(false);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
@@ -110,31 +110,12 @@ const TextNodeWrapper: React.FC<{
         <Menu.Item
           leftSection={<Icon name="insight" />}
           onClick={() => {
-            onStartNewQuestion();
+            onStartNewQuestion?.(text);
             setMenuOpened(false);
           }}
         >
           {t`Start new question from here`}
         </Menu.Item>
-
-        <Menu.Label>{t`Ask for review`}</Menu.Label>
-        {reviewers.map((reviewer) => (
-          <Menu.Item
-            key={reviewer.id}
-            leftSection={<Icon name="person" />}
-            onClick={() => {
-              onAskForReview(reviewer.id);
-              setMenuOpened(false);
-            }}
-          >
-            <div>
-              <div style={{ fontWeight: "500" }}>{reviewer.name}</div>
-              <div style={{ fontSize: "0.8em", color: "var(--mb-color-text-medium)" }}>
-                {reviewer.role}
-              </div>
-            </div>
-          </Menu.Item>
-        ))}
       </Menu.Dropdown>
     </Menu>
   );
@@ -146,8 +127,7 @@ const TextNodeWrapper: React.FC<{
 const createCustomComponents = (
   selectedNodes: Set<string>,
   onSelectionChange: (nodeId: string, isSelected: boolean, isMultiSelect: boolean) => void,
-  onStartNewQuestion: () => void,
-  onAskForReview: (reviewerId: string) => void,
+  onStartNewQuestion?: (selectedText: string) => void,
   onTextNodeClick?: (nodeId: string, text: string) => void,
 ) => ({
   // Custom paragraph component that adds IDs to text nodes and handles viz embeds
@@ -203,6 +183,7 @@ const createCustomComponents = (
             onTextNodeClick={onTextNodeClick}
             isSelected={isSelected}
             onSelectionChange={onSelectionChange}
+            onStartNewQuestion={onStartNewQuestion}
           >
             {child}
           </TextNodeWrapper>
@@ -300,6 +281,7 @@ const createCustomComponents = (
             onTextNodeClick={onTextNodeClick}
             isSelected={isSelected}
             onSelectionChange={onSelectionChange}
+            onStartNewQuestion={onStartNewQuestion}
           >
             {child}
           </TextNodeWrapper>
@@ -452,6 +434,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   onTextNodeClick,
   onSelectionChange,
+  onStartNewQuestion,
 }) => {
   const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{
@@ -525,8 +508,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   }, [selectedNodes]);
 
   const customComponents = useMemo(
-    () => createCustomComponents(selectedNodes, handleSelectionChange, onTextNodeClick),
-    [selectedNodes, handleSelectionChange, onTextNodeClick],
+    () => createCustomComponents(selectedNodes, handleSelectionChange, onStartNewQuestion, onTextNodeClick),
+    [selectedNodes, handleSelectionChange, onStartNewQuestion, onTextNodeClick],
   );
 
   return (
