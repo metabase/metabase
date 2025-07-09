@@ -28,9 +28,9 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_transform_view_database_id
               - column:
-                  name: state
+                  name: status
                   type: varchar(16)
-                  remarks: State of the entity the table represents, useful eg. for error handling
+                  remarks: Status of the entity the table represents, useful eg. for error handling
               - column:
                   name: view_schema
                   type: varchar(256)
