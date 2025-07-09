@@ -7,24 +7,33 @@ import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "../../constants";
+import {
+  DashboardInfoButton,
+  ExportAsPdfButton,
+  FullscreenToggle,
+  NightModeToggleButton,
+} from "../DashboardHeader/buttons";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
+import { DashboardTabs } from "../DashboardTabs";
+import { DashboardTitle } from "../DashboardTitle";
+import { RefreshWidget } from "../RefreshWidget";
 
 import S from "./Dashboard.module.css";
-import { Grid } from "./components/Grid";
+import { Grid, ParametersList } from "./components";
 
-function Dashboard({ className }: { className?: string }) {
+const DashboardDefaultView = ({ className }: { className?: string }) => {
   const {
     dashboard,
     isEditing,
@@ -56,8 +65,6 @@ function Dashboard({ className }: { className?: string }) {
     sidebar,
     closeSidebar,
   } = useDashboardContext();
-
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
 
   const canWrite = Boolean(dashboard?.can_write);
   const canRestore = Boolean(dashboard?.can_restore);
@@ -140,7 +147,7 @@ function Dashboard({ className }: { className?: string }) {
           S.DashboardHeaderContainer,
           EmbedFrameS.EmbedFrameHeader,
           {
-            [S.isEmbeddingSdk]: isEmbeddingSdk,
+            [S.isEmbeddingSdk]: isEmbeddingSdk(),
             [S.isFullscreen]: isFullscreen,
             [S.isNightMode]: shouldRenderAsNightMode,
           },
@@ -148,12 +155,7 @@ function Dashboard({ className }: { className?: string }) {
         data-element-id="dashboard-header-container"
         data-testid="dashboard-header-container"
       >
-        {/**
-         * Do not conditionally render `<DashboardHeader />` as it calls
-         * `useDashboardTabs` under the hood. This hook sets `selectedTabId`
-         * in Redux state which kicks off a fetch for the dashboard cards.
-         */}
-        <DashboardHeader />
+        <Dashboard.Header />
       </Box>
 
       <Flex
@@ -175,8 +177,11 @@ function Dashboard({ className }: { className?: string }) {
           data-testid="dashboard-parameters-and-cards"
         >
           <DashboardParameterPanel />
-          <FullWidthContainer data-element-id="dashboard-cards-container">
-            <Grid />
+          <FullWidthContainer
+            className={S.CardsContainer}
+            data-element-id="dashboard-cards-container"
+          >
+            <Dashboard.Grid />
           </FullWidthContainer>
         </Box>
 
@@ -211,5 +216,31 @@ function Dashboard({ className }: { className?: string }) {
       </Flex>
     </Flex>
   );
-}
-export { Dashboard };
+};
+
+type DashboardComponentType = typeof DashboardDefaultView & {
+  Header: typeof DashboardHeader;
+  Grid: typeof Grid;
+  Title: typeof DashboardTitle;
+  Tabs: typeof DashboardTabs;
+  ParametersList: typeof ParametersList;
+  FullscreenButton: typeof FullscreenToggle;
+  ExportAsPdfButton: typeof ExportAsPdfButton;
+  InfoButton: typeof DashboardInfoButton;
+  NightModeButton: typeof NightModeToggleButton;
+  RefreshPeriod: typeof RefreshWidget;
+};
+
+const DashboardComponent = DashboardDefaultView as DashboardComponentType;
+DashboardComponent.Header = DashboardHeader;
+DashboardComponent.Grid = Grid;
+DashboardComponent.Title = DashboardTitle;
+DashboardComponent.Tabs = DashboardTabs;
+DashboardComponent.ParametersList = ParametersList;
+DashboardComponent.FullscreenButton = FullscreenToggle;
+DashboardComponent.ExportAsPdfButton = ExportAsPdfButton;
+DashboardComponent.InfoButton = DashboardInfoButton;
+DashboardComponent.NightModeButton = NightModeToggleButton;
+DashboardComponent.RefreshPeriod = RefreshWidget;
+
+export const Dashboard = DashboardComponent;
