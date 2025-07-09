@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
-import { useToast } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getStoreUrl } from "metabase/selectors/settings";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
@@ -34,12 +34,14 @@ export function useUpsellFlow({
     }
   });
   const currentUser = useSelector(getCurrentUser);
+  const siteName = useSetting("site-name");
 
   const upsellLink = useUpsellLink({
     url: getStoreUrlWithParams({
       firstName: currentUser?.first_name ?? "",
       lastName: currentUser?.last_name ?? "",
       email: currentUser?.email ?? "",
+      siteName,
     }),
     campaign,
     location,
@@ -134,16 +136,19 @@ function getStoreUrlWithParams({
   firstName,
   lastName,
   email,
+  siteName,
 }: {
   firstName: string;
   lastName: string;
   email: string;
+  siteName: string;
 }) {
   const storeUrl = STORE_URL;
   const returnUrl = window.location.href;
   const returnUrlEncoded = encodeURIComponent(returnUrl);
+  const siteNameEncoded = encodeURIComponent(siteName);
   const userDetails = `firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}&email=${encodeURIComponent(email)}`;
-  const storeUrlWithParams = `${storeUrl}?&returnUrl=${returnUrlEncoded}&${userDetails}`;
+  const storeUrlWithParams = `${storeUrl}?&returnUrl=${returnUrlEncoded}&${userDetails}&company=${siteNameEncoded}`;
 
   return storeUrlWithParams;
 }

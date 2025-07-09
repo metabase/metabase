@@ -58,7 +58,7 @@ const setupContainer = ({
   });
 
   const state = createMockState({
-    settings: mockSettings({}),
+    settings: mockSettings({ "site-name": "Basemeta" }),
     currentUser: createMockUser(currentUser),
   });
   setupTokenStatusEndpointEmpty();
@@ -99,7 +99,7 @@ describe("useUpsellFlow", () => {
 
       const encodedUrl = encodeURIComponent(window.location.href);
       const userDetailsPart =
-        "&firstName=John&lastName=Coltrane&email=john.coltrane%40example.com";
+        "&firstName=John&lastName=Coltrane&email=john.coltrane%40example.com&company=Basemeta";
       const utmParamsPart =
         "&utm_source=product&utm_medium=upsell&utm_campaign=branding&utm_content=branding-upsell-admin-screen&source_plan=oss";
       expect(mockWindowOpen).toHaveBeenCalledWith(
