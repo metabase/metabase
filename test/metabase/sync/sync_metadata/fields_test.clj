@@ -546,3 +546,33 @@
           (let [field-after-sync (t2/select-one :model/Field :id (u/the-id flocks-example-bird-name-field))]
             (is (= :type/FK (:semantic_type field-after-sync)))
             (is (= (u/the-id birds-example-name-field) (:fk_target_field_id field-after-sync)))))))))
+
+(deftest database-default-test
+  (with-test-db
+    (let [ddl "CREATE TABLE t (a INTEGER DEFAULT 42, b INTEGER NULL)"]
+      (jdbc/execute! one-off-dbs/*conn* [ddl])
+      (sync/sync-database! (mt/db))
+      (let [table (t2/select-one :model/Table :db_id (mt/id) :name "T")
+            {a "A", b "B"} (u/index-by :name (t2/select :model/Field :table_id (:id table)))]
+        (is (= "42" (:database_default a)))
+        (is (nil? (:database_default b)))))))
+
+(deftest database-generated-test
+  (with-test-db
+    (let [ddl "CREATE TABLE t (a INTEGER GENERATED ALWAYS AS 42, b INTEGER NULL)"]
+      (jdbc/execute! one-off-dbs/*conn* [ddl])
+      (sync/sync-database! (mt/db))
+      (let [table (t2/select-one :model/Table :db_id (mt/id) :name "T")
+            {a "A", b "B"} (u/index-by :name (t2/select :model/Field :table_id (:id table)))]
+        (is (true? (:database_is_generated a)))
+        (is (false? (:database_is_generated b)))))))
+
+(deftest database-nullable-test
+  (with-test-db
+    (let [ddl "CREATE TABLE t (a INTEGER NULL, b INTEGER NOT NULL)"]
+      (jdbc/execute! one-off-dbs/*conn* [ddl])
+      (sync/sync-database! (mt/db))
+      (let [table (t2/select-one :model/Table :db_id (mt/id) :name "T")
+            {a "A", b "B"} (u/index-by :name (t2/select :model/Field :table_id (:id table)))]
+        (is (true? (:database_is_nullable a)))
+        (is (false? (:database_is_nullable b)))))))
