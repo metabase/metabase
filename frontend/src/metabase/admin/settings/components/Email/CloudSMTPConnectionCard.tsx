@@ -54,9 +54,7 @@ export const CloudSMTPConnectionCard = ({
 
                 <div>
                   <Text className={S.label}>{t`Managed by Metabase`}</Text>
-                  <Text>
-                    {t`Emails come from Metabase (e.g. noreply@metabase.com)`}
-                  </Text>
+                  <Text>{t`Emails come from Metabase Cloud email server`}</Text>
                 </div>
               </Group>
             </Group>
@@ -71,7 +69,7 @@ export const CloudSMTPConnectionCard = ({
                   <Radio.Indicator />
                   <div>
                     <Text className={S.label}>{t`Custom SMTP Server`}</Text>
-                    <Text>{t`Emails come from your organisation`}</Text>
+                    <Text>{t`Emails come from your email server`}</Text>
                   </div>
                 </Group>
                 <Button
