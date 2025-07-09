@@ -18,7 +18,7 @@ import { isSmallScreen, isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
-import { zoomInRow } from "metabase/query_builder/actions/zoom";
+import { zoomInRow } from "metabase/query_builder/actions";
 import type { SearchAwareLocation, WrappedResult } from "metabase/search/types";
 import {
   getFiltersFromLocation,

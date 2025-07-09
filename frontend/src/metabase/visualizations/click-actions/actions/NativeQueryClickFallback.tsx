@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
 import { isWithinIframe } from "metabase/lib/dom";
-import { setUIControls } from "metabase/query_builder/actions/ui";
+import { setUIControls } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { Button, Flex } from "metabase/ui";
 import type {
