@@ -24,8 +24,8 @@
                   (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)])
                   lib/append-stage
                   lib/append-stage)]
-    (is (=? {:stages [{::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/fields}
-                                                    {:name "NAME", :lib/source :source/fields}]}
+    (is (=? {:stages [{::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/table-defaults}
+                                                    {:name "NAME", :lib/source :source/table-defaults}]}
                       {::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/previous-stage}
                                                     {:name "NAME", :lib/source :source/previous-stage}]}
                       {}]}
@@ -42,7 +42,7 @@
                  :lib/metadata meta/metadata-provider}]
       (is (mr/validate ::lib.schema/query query))
       (is (=? [(merge (m/filter-vals some? (meta/field-metadata :venues :price))
-                      {:lib/source :source/fields})]
+                      {:lib/source :source/table-defaults})]
               (lib/returned-columns query))))))
 
 (deftest ^:parallel deduplicate-expression-names-in-aggregations-test

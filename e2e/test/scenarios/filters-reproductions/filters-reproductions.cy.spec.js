@@ -1,4 +1,5 @@
 const { H } = cy;
+
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -898,15 +899,18 @@ describe("issue 31340", () => {
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
     cy.intercept("GET", "/api/field/*/search/*").as("search");
 
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: PEOPLE_ID,
+      fieldId: PEOPLE.PASSWORD,
+    });
 
-    cy.findByTestId("column-PASSWORD")
-      .findByDisplayValue("Password")
-      .type(`{selectAll}${LONG_COLUMN_NAME}`)
+    H.DataModel.FieldSection.getNameInput()
+      .focus()
+      .clear()
+      .type(LONG_COLUMN_NAME)
       .blur();
-
     cy.wait("@fieldUpdate");
 
     H.createQuestion(
@@ -1623,6 +1627,30 @@ describe("issue 58923", () => {
               cy.wrap(top - bottom).should("be.gt", 16);
             });
         });
+      });
+  });
+});
+
+describe("issue QUE-1359", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should render an outline on the custom expression item in the filter popover (QUE-1359)", () => {
+    H.openReviewsTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+
+    Cypress._.times(10, () => cy.realPress("ArrowDown"));
+
+    H.popover()
+      .findByText("Custom Expression")
+      .parent()
+      .then((el) => {
+        cy.wrap(window.getComputedStyle(el[0]).outline).should(
+          "contain",
+          "solid",
+        );
       });
   });
 });
