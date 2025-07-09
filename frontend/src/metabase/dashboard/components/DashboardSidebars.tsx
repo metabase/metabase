@@ -13,14 +13,12 @@ import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
 interface DashboardSidebarsProps {
   isFullscreen: boolean;
   sidebar: State["dashboard"]["sidebar"];
-  closeSidebar: () => void;
   selectedTabId: SelectedTabId;
 }
 
 export function DashboardSidebars({
   isFullscreen,
   sidebar,
-  closeSidebar,
 }: DashboardSidebarsProps) {
   if (isFullscreen) {
     return null;
@@ -44,12 +42,7 @@ export function DashboardSidebars({
     case SIDEBAR_NAME.info:
       return <DashboardInfoSidebar />;
     case SIDEBAR_NAME.analyze:
-      return (
-        <PLUGIN_AI_ENTITY_ANALYSIS.AIDashboardAnalysisSidebar
-          dashcardId={sidebar.props?.dashcardId}
-          onClose={closeSidebar}
-        />
-      );
+      return <PLUGIN_AI_ENTITY_ANALYSIS.AIDashboardAnalysisSidebar />;
     default:
       return null;
   }
