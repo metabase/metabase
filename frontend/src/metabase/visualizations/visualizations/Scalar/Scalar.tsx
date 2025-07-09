@@ -24,7 +24,7 @@ import type {
   ComputedVisualizationSettings,
   VisualizationPassThroughProps,
   VisualizationProps,
-} from "metabase/visualizations/types/visualization";
+} from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import type { DatasetColumn, DatasetData } from "metabase-types/api/dataset";
 
