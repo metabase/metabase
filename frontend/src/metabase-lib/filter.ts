@@ -105,8 +105,15 @@ export function coordinateFilterClause({
   column,
   longitudeColumn,
   values,
+  options,
 }: CoordinateFilterParts): ExpressionClause {
-  return ML.coordinate_filter_clause(operator, column, longitudeColumn, values);
+  return ML.coordinate_filter_clause(
+    operator,
+    column,
+    longitudeColumn,
+    values,
+    options,
+  );
 }
 
 export function coordinateFilterParts(
