@@ -102,10 +102,7 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
   Partial<
     Pick<
       DashboardContextProps,
-      | "getClickActionMode"
-      | "dashboardActions"
       | "dashcardMenu"
-      | "navigateToNewCardFromDashboard"
       | "dashboardMode"
     >
   >;
@@ -128,10 +125,7 @@ const SdkDashboardInner = ({
   },
   renderDrillThroughQuestion: AdHocQuestionView,
   mode,
-  dashboardActions,
   dashcardMenu = plugins?.dashboard?.dashboardCardMenu,
-  getClickActionMode,
-  navigateToNewCardFromDashboard = undefined,
   className,
   style,
   children,
@@ -198,11 +192,6 @@ const SdkDashboardInner = ({
     <DashboardContextProvider
       dashboardId={dashboardId}
       parameterQueryParams={initialParameters}
-      navigateToNewCardFromDashboard={
-        navigateToNewCardFromDashboard !== undefined
-          ? navigateToNewCardFromDashboard
-          : onNavigateToNewCardFromDashboard
-      }
       downloadsEnabled={displayOptions.downloadsEnabled}
       background={displayOptions.background}
       bordered={displayOptions.bordered}
@@ -213,9 +202,7 @@ const SdkDashboardInner = ({
       onLoad={handleLoad}
       onLoadWithoutCards={handleLoadWithoutCards}
       onError={(error) => dispatch(setErrorPage(error))}
-      getClickActionMode={getClickActionMode}
       dashcardMenu={dashcardMenu}
-      dashboardActions={dashboardActions}
       dashboardMode={mode}
       onAddQuestion={(dashboard) => {
         dispatch(setEditingDashboard(dashboard));

@@ -21,7 +21,7 @@ import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dash
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
 import type { DashboardActionKey } from "../components/DashboardHeader/DashboardHeaderButtonRow/types";
 import type { DashboardMode } from "../types/dashboard-mode";
-import { resolveDashboardBehaviors } from "../utils/dashboard-mode-behavior";
+import { resolveDashboardBehaviors, type DashboardBehaviorInput } from "../utils/dashboard-mode-behavior";
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
@@ -55,13 +55,7 @@ export type DashboardContextOwnProps = {
   onError?: (error: unknown) => void;
   onLoadWithoutCards?: (dashboard: Dashboard) => void;
   onAddQuestion?: (dashboard: Dashboard | null) => void;
-  navigateToNewCardFromDashboard:
-    | ((opts: NavigateToNewCardFromDashboardOpts) => void)
-    | null;
   dashcardMenu?: DashboardCardMenu | null;
-  dashboardActions?:
-    | DashboardActionButtonList
-    | (({ isEditing, downloadsEnabled }: Pick<DashboardContextReturned, "isEditing" | "downloadsEnabled">) => DashboardActionButtonList);
   dashboardMode?: DashboardMode;
   isDashcardVisible?: (dc: DashboardCard) => boolean;
 };
@@ -90,7 +84,11 @@ export type DashboardContextReturned = DashboardContextOwnResult &
   DashboardFullscreenControls & {
     fullscreenRef: ReturnType<typeof useDashboardFullscreen>["ref"];
   } & DashboardRefreshPeriodControls &
-  EmbedThemeControls;
+  EmbedThemeControls & {
+    navigateToNewCardFromDashboard: ((opts: any) => void) | null;
+    getClickActionMode: ((data: { question: any }) => any) | undefined;
+    dashboardActions: any[] | null;
+  };
 
 export const DashboardContext = createContext<
   DashboardContextReturned | undefined
@@ -102,9 +100,7 @@ const DashboardContextProviderInner = ({
   onLoad,
   onLoadWithoutCards,
   onError,
-  navigateToNewCardFromDashboard,
   dashcardMenu,
-  dashboardActions: initDashboardActions,
   dashboardMode,
   isDashcardVisible,
 
@@ -120,7 +116,6 @@ const DashboardContextProviderInner = ({
   autoScrollToDashcardId = undefined,
   reportAutoScrolledToDashcard = noop,
   cardTitled = true,
-  getClickActionMode = undefined,
   withFooter = true,
 
   dashboard,
@@ -351,22 +346,14 @@ const DashboardContextProviderInner = ({
     return dashboard;
   }, [dashboard, isDashcardVisible]);
 
-  const dashboardBehaviors = resolveDashboardBehaviors({
-    mode: dashboardMode,
+  const behaviors = resolveDashboardBehaviors({
+    dashboardMode,
     isEditing,
     downloadsEnabled: {
       pdf: downloadsEnabled?.pdf ?? false,
       results: downloadsEnabled?.results ?? false,
     },
   });
-
-  const finalDashboardActions = dashboardBehaviors.dashboardActions ||
-    (typeof initDashboardActions === "function"
-      ? initDashboardActions({ isEditing, downloadsEnabled })
-      : initDashboardActions) as any;
-
-  const finalNavigateToNewCard = dashboardBehaviors.navigateToNewCard || navigateToNewCardFromDashboard;
-  const finalGetClickActionMode = dashboardBehaviors.getClickActionMode || getClickActionMode;
 
   return (
     <DashboardContext.Provider
@@ -378,10 +365,10 @@ const DashboardContextProviderInner = ({
         onLoad,
         onError,
         dashcardMenu,
-        dashboardActions: finalDashboardActions,
+        dashboardActions: behaviors.dashboardActions,
         dashboardMode,
 
-        navigateToNewCardFromDashboard: finalNavigateToNewCard,
+        navigateToNewCardFromDashboard: behaviors.navigateToNewCardFromDashboard,
         isLoading,
         isLoadingWithoutCards,
         error,
@@ -407,7 +394,7 @@ const DashboardContextProviderInner = ({
         autoScrollToDashcardId,
         reportAutoScrolledToDashcard,
         cardTitled,
-        getClickActionMode: finalGetClickActionMode,
+        getClickActionMode: behaviors.getClickActionMode,
         withFooter,
 
         selectedTabId,

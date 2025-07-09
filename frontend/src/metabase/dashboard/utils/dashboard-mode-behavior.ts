@@ -7,30 +7,26 @@ import {
   resolveNavigation,
 } from "./dashboard-mode-resolver";
 
-export interface DashboardBehaviorOptions {
-  mode?: DashboardMode;
+export interface DashboardBehaviorInput {
+  dashboardMode?: DashboardMode;
   isEditing: boolean;
   downloadsEnabled: { pdf?: boolean; results?: boolean };
 }
 
-export interface DashboardBehaviors {
+export interface DashboardBehaviorOutput {
   dashboardActions: any[] | null;
-  navigateToNewCard: ((opts: any) => void) | null;
+  navigateToNewCardFromDashboard: ((opts: any) => void) | null;
   getClickActionMode: ((data: { question: any }) => any) | undefined;
 }
 
-export function resolveDashboardBehaviors(options: DashboardBehaviorOptions): DashboardBehaviors {
-  const { mode, isEditing, downloadsEnabled } = options;
+export function resolveDashboardBehaviors(input: DashboardBehaviorInput): DashboardBehaviorOutput {
+  const { dashboardMode, isEditing, downloadsEnabled } = input;
   
-  if (!mode) {
-    return {
-      dashboardActions: null,
-      navigateToNewCard: null,
-      getClickActionMode: undefined,
-    };
+  if (!dashboardMode) {
+    return createDefaultBehaviors();
   }
 
-  const resolvedMode = resolveDashboardMode(mode);
+  const resolvedMode = resolveDashboardMode(dashboardMode);
   
   return {
     dashboardActions: resolveDashboardActions({
@@ -38,8 +34,16 @@ export function resolveDashboardBehaviors(options: DashboardBehaviorOptions): Da
       editing: resolvedMode.dashboard.editing && isEditing,
       downloadsEnabled,
     }),
-    navigateToNewCard: resolveNavigation(resolvedMode.questions.navigation),
+    navigateToNewCardFromDashboard: resolveNavigation(resolvedMode.questions.navigation),
     getClickActionMode: buildClickActionMode(resolvedMode),
+  };
+}
+
+function createDefaultBehaviors(): DashboardBehaviorOutput {
+  return {
+    dashboardActions: null,
+    navigateToNewCardFromDashboard: null,
+    getClickActionMode: undefined,
   };
 }
 
