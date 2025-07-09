@@ -225,7 +225,7 @@
   "Appends branding content to the :fields list in the Slack link-section.
    Unless we're running the Pro/Enterprise plan, all Slack header links will include branding"
   [fields]
-  (conj fields {:text (str "<" channel.slack/metabase-branding-link "|" channel.slack/metabase-branding-copy ">")
+  (conj fields {:text "Made with Metabase :blue_heart:"
                 :type "mrkdwn"}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
