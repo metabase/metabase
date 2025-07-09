@@ -1,7 +1,7 @@
 import fs from "fs";
 
 import { graphql } from "@octokit/graphql";
-import _, { has } from "underscore";
+import _ from "underscore";
 
 import { hiddenLabels, nonUserFacingLabels } from "./constants";
 import {
@@ -26,7 +26,7 @@ import {
 
 function isBackport(pullRequest: Issue) {
   return (
-    pullRequest.title.includes("backport") || hasLabel(pullRequest, "backport")
+    pullRequest.title.includes("backport") || hasLabel(pullRequest, "was-backport")
   );
 }
 
