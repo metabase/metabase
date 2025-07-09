@@ -67,7 +67,7 @@ jobs:
         git push
         echo 'Files optimized:'
         echo ${{ steps.changed-files.outputs.all_changed_files }}
-        echo 'Applied: mogrify -quality 100"'
+        echo 'Applied: mogrify -strip -quality 95"'
 
     - name: Output summary
       if: steps.changed-files.outputs.any_changed == 'true'
