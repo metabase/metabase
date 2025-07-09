@@ -229,6 +229,20 @@ function compileEqualityOp(node: Node, ctx: Context): Lib.ExpressionParts {
   return compileInfixOp(node.token.text, node, ctx);
 }
 
+// concat("foo", "bar")
+//
+// Node:
+//   type: CALL
+//   children:
+//    Node:
+//      type: ARG_LIST
+//      children:
+//        Node:
+//          type: STRING
+//          value: "foo"
+//        Node:
+//          type: STRING
+//          value: "bar"
 function compileFunctionCall(node: Node, ctx: Context): Lib.ExpressionParts {
   assert(node.type === CALL, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
@@ -257,6 +271,10 @@ function compileFunctionCall(node: Node, ctx: Context): Lib.ExpressionParts {
       args.pop();
       options["case-sensitive"] = false;
     }
+    if (operator === "datetime" && args.length === 2) {
+      args.pop();
+      options["mode"] = compileDatetimeMode(node, last);
+    }
   }
 
   return withNode(node, {
@@ -264,6 +282,35 @@ function compileFunctionCall(node: Node, ctx: Context): Lib.ExpressionParts {
     options,
     args,
   });
+}
+
+const DATETIME_MODE_MAP: Record<string, Lib.DatetimeMode> = {
+  iso: "iso",
+  simple: "simple",
+  isobytes: "iso-bytes",
+  unixseconds: "unix-seconds",
+  unixmilliseconds: "unix-milliseconds",
+  unixmicroseconds: "unix-microseconds",
+  unixnanoseconds: "unix-nanoseconds",
+};
+
+function compileDatetimeMode(
+  node: Node,
+  mode: Lib.ExpressionParts | Lib.ExpressionArg | undefined,
+): Lib.DatetimeMode {
+  if (mode === undefined) {
+    // default to iso
+    return "iso";
+  }
+
+  check(
+    !Lib.isExpressionParts(mode),
+    t`The mode argument cannot be an expression`,
+    node,
+  );
+  check(isStringLiteral(mode), t`Expected string literal for mode`, node);
+
+  return DATETIME_MODE_MAP[mode.toLowerCase().replaceAll("-", "")];
 }
 
 function compileArgList(
