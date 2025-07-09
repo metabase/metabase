@@ -30,11 +30,15 @@
       :name)
      column)))
 
-(mu/defn add-deduplicated-names :- [:sequential
-                                    [:merge
-                                     ::lib.schema.metadata/column
-                                     [:map
-                                      [:lib/deduplicated-name :string]]]]
+(mu/defn add-deduplicated-names :- [:or
+                                    ;; zero-arity: transducer
+                                    fn?
+                                    ;; one-arity
+                                    [:sequential
+                                     [:merge
+                                      ::lib.schema.metadata/column
+                                      [:map
+                                       [:lib/deduplicated-name :string]]]]]
   "Add `:lib/original-name` and `:lib/deduplicated-name` to columns if they don't already have them.
 
   The zero arity is a transducer version."
