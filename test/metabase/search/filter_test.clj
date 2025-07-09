@@ -31,7 +31,7 @@
     ;; Boolean filters
     (:archived? :has-temporal-dimensions? :search-native-query :verified) true
     ;; Collection filters (sets/sequences)
-    (:created-by :last-edited-by :ids :required-non-temporal-dimension-ids) #{1}
+    (:created-by :last-edited-by :ids) #{1}
     :display-type #{"table"}
     ;; Date range filters (strings)
     (:created-at :last-edited-at) "2023-01-01"
@@ -78,8 +78,7 @@
    :ids                                 [1 2 3 4]
    :models                              (disj search.config/all-models "dataset")
    :display-type                        ["line"]
-   :has-temporal-dimensions?            true
-   :required-non-temporal-dimension-ids [1]})
+   :has-temporal-dimensions?            true})
 
 (deftest with-filters-test
   (testing "The kitchen sink context is complete"
@@ -121,7 +120,6 @@
                       [:< [:cast :search_index.last_edited_at :date] #t"2024-10-03"]
                       [:in :search_index.last_editor_id [321]]
                       [:in :search_index.display_type ["line"]]
-                      [:= :search_index.has_temporal_dimensions true]
-                      [:raw "COALESCE((search_index.non_temporal_dimension_ids)::jsonb, '[]'::jsonb) @> '[1]'::jsonb"]}}
+                      [:= :search_index.has_temporal_dimensions true]}}
            (-> (search.filter/with-filters kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
                (update :where set))))))

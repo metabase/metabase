@@ -262,30 +262,6 @@
                                 [:not [:like
                                        (search.config/column-with-model-alias model :result_metadata)
                                        "%\"temporal_unit\":%"]]]))))
-;; Non-temporal dimension IDs filter
-(doseq [model ["card" "dataset" "metric"]]
-  (defmethod build-optional-filter-query [:required-non-temporal-dimension-ids model]
-    [_filter model query required-field-ids]
-    (if (and (seq required-field-ids) (= (mdb/db-type) :postgres))
-      ;; PostgreSQL-specific JSONB containment check
-      (let [metadata-column (search.config/column-with-model-alias model :result_metadata)
-            ;; Create the JSON array of required field IDs
-            required-ids-json (json/encode (vec (sort required-field-ids)))]
-        (sql.helpers/where query
-                           [:raw (format "COALESCE(
-                                           (SELECT jsonb_agg(field_id ORDER BY field_id)
-                                             FROM (
-                                               SELECT DISTINCT (elem->>'id')::integer as field_id
-                                               FROM jsonb_array_elements(%s::jsonb) elem
-                                               WHERE elem->>'id' IS NOT NULL
-                                                 AND elem->>'temporal_unit' IS NULL
-                                             ) sorted_ids),
-                                            '[]'::jsonb
-                                          ) @> '%s'::jsonb"
-                                         (name metadata-column)
-                                         required-ids-json)]))
-      ;; For non-PostgreSQL or empty required IDs, don't filter (return all results)
-      query)))
 
 (defn- feature->supported-models
   "Return A map of filter to its support models.
@@ -325,8 +301,7 @@
                 search-native-query
                 verified
                 display-type
-                has-temporal-dimensions?
-                required-non-temporal-dimension-ids]} search-context
+                has-temporal-dimensions?]} search-context
         feature->supported-models (feature->supported-models)]
     (cond-> models
       (some? created-at)                          (set/intersection (:created-at feature->supported-models))
@@ -336,8 +311,7 @@
       (true? search-native-query)                 (set/intersection (:search-native-query feature->supported-models))
       (true? verified)                            (set/intersection (:verified feature->supported-models))
       (seq   display-type)                        (set/intersection (:display-type feature->supported-models))
-      (some? has-temporal-dimensions?)            (set/intersection (:has-temporal-dimensions feature->supported-models))
-      (seq   required-non-temporal-dimension-ids) (set/intersection (:required-non-temporal-dimension-ids feature->supported-models)))))
+      (some? has-temporal-dimensions?)            (set/intersection (:has-temporal-dimensions feature->supported-models)))))
 
 (mu/defn build-filters :- :map
   "Build the search filters for a model."
@@ -355,8 +329,7 @@
                 verified
                 ids
                 display-type
-                has-temporal-dimensions?
-                required-non-temporal-dimension-ids]} search-context]
+                has-temporal-dimensions?]} search-context]
     (cond-> honeysql-query
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
@@ -389,9 +362,6 @@
 
       (some? has-temporal-dimensions?)
       (#(build-optional-filter-query :has-temporal-dimensions model % has-temporal-dimensions?))
-
-      (seq required-non-temporal-dimension-ids)
-      (#(build-optional-filter-query :required-non-temporal-dimension-ids model % required-non-temporal-dimension-ids))
 
       (= "table" model)
       (sql.helpers/where

@@ -151,7 +151,6 @@
     :last-edited-at             {:type :date-range}
     :last-editor-id             {:type :list, :context-key :last-edited-by}
     :native-query               {:type :native-query, :context-key :search-native-query}
-    :non-temporal-dimension-ids {:type :field-id-list, :context-key :required-non-temporal-dimension-ids, :field "non_temporal_dimension_ids"}
     :verified                   {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}}))
 
 (def ^:private filter-defaults-by-context
@@ -245,7 +244,6 @@
    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:limit-int                           {:optional true} ms/Int]
    [:offset-int                          {:optional true} ms/Int]
-   [:required-non-temporal-dimension-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
    [:search-native-query                 {:optional true} true?]
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items

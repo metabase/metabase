@@ -269,7 +269,6 @@
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
    [:has-temporal-dimensions?            {:optional true} [:maybe boolean?]]
-   [:required-non-temporal-dimension-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
    [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]])
 
 (mu/defn search-context :- SearchContext
@@ -283,7 +282,6 @@
            current-user-perms
            display-type
            has-temporal-dimensions?
-           required-non-temporal-dimension-ids
            filter-items-in-personal-collection
            ids
            is-impersonated-user?
@@ -339,8 +337,7 @@
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
                  (seq ids)                                   (assoc :ids ids)
                  (seq display-type)                          (assoc :display-type display-type)
-                 (some? has-temporal-dimensions?)            (assoc :has-temporal-dimensions? has-temporal-dimensions?)
-                 (seq required-non-temporal-dimension-ids)   (assoc :required-non-temporal-dimension-ids required-non-temporal-dimension-ids))]
+                 (some? has-temporal-dimensions?)            (assoc :has-temporal-dimensions? has-temporal-dimensions?))]
     (when (and (seq ids)
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))

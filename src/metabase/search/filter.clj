@@ -86,18 +86,6 @@
 
 (defmethod where-clause* ::list [_ k v] [:in k v])
 
-(defmethod where-clause* ::single-value-exclude [_ k v] [:not= k v])
-
-(defmethod where-clause* ::field-id-list [_ k v]
-  "Filter for checking if all required field IDs are contained in a JSON array column.
-  Uses JSON path query for maximum compatibility across JSON types."
-  (when (seq v)
-    (let [ids-str (str/join "," v)]
-      ;; Use JSON containment with explicit casting
-      [:raw (format "COALESCE((%s)::jsonb, '[]'::jsonb) @> '[%s]'::jsonb"
-                    (name k)
-                    ids-str)])))
-
 (defn personal-collections-where-clause
   "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
   WARNING: this method queries the appdb, and its approach will get very slow when there are many users!"

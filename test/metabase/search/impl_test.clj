@@ -46,7 +46,6 @@
              [:like [:lower :collection_type]   "%foo%"] [:inline 0]
              [:like [:lower :display]           "%foo%"] [:inline 0]
              [:like [:lower :display_type]      "%foo%"] [:inline 0]
-             [:like [:lower :non_temporal_dimension_ids] "%foo%"] [:inline 0]
              [:like [:lower :table_schema]      "%foo%"] [:inline 0]
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]

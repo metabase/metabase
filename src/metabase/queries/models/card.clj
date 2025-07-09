@@ -1339,32 +1339,8 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(defn- non-temporal-dimension-ids-clause
-  "TODO @tplude 20250619
-  This index column is specifically for being able to search for compatible datasets for the visualizer
-  in a somewhat performant way for larger instances (20k+ cards). One of the broad conditions for dataset
-  compatibility is such that if the current visualizer state has any non temporal dimensions active, each
-  of those dimensions must be present in a candidate dataset (by field id). To support that filtering logic
-  we use the below query for crudely extracting the non temporal field IDs present in a card's result_metadata
-  into an index column. A more robust way of doing this would be to not use a DB query and instead populate
-  this index column by taking the card's dataset_query and converting it to lib format and using lib utilities
-  for properly deciding which columns are non temporal dimensions."
-  [app-db]
-  (if (= app-db :postgres)
-    [:raw "COALESCE(
-           (SELECT jsonb_agg(field_id ORDER BY field_id)
-            FROM (
-              SELECT DISTINCT (elem->>'id')::integer as field_id
-              FROM jsonb_array_elements(this.result_metadata::jsonb) elem
-              WHERE elem->>'id' IS NOT NULL
-                AND elem->>'temporal_unit' IS NULL
-            ) sorted_ids),
-           '[]'::jsonb
-         )"]
-    [:raw "'[]'"]))
-
 (defn ^:private base-search-spec
-  [app-db]
+  []
   {:model        :model/Card
    :attrs        {:archived            true
                   :collection-id       true
@@ -1386,8 +1362,7 @@
                   :updated-at          true
                   :display-type        :this.display
                   ;; Niche columns for visualizer compatibility filtering
-                  :has-temporal-dimensions [:like :this.result_metadata "%\"temporal_unit\":%"]
-                  :non-temporal-dimension-ids (non-temporal-dimension-ids-clause app-db)}
+                  :has-temporal-dimensions [:like :this.result_metadata "%\"temporal_unit\":%"]}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
@@ -1422,10 +1397,10 @@
    #_:end})
 
 (search/define-spec "card"
-  (-> (base-search-spec %app-db) (sql.helpers/where [:= :this.type "question"])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "question"])))
 
 (search/define-spec "dataset"
-  (-> (base-search-spec %app-db) (sql.helpers/where [:= :this.type "model"])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "model"])))
 
 (search/define-spec "metric"
-  (-> (base-search-spec %app-db) (sql.helpers/where [:= :this.type "metric"])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "metric"])))
