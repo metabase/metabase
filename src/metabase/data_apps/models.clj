@@ -19,6 +19,7 @@
 
 (derive :model/DataApp :hook/timestamped?)
 (derive :model/DataApp :hook/entity-id)
+(derive :model/DataAppRelease :hook/timestamped?)
 (derive :model/DataAppDefinition :hook/created-at-timestamped?)
 
 ;;------------------------------------------------------------------------------------------------;;
@@ -89,10 +90,6 @@
 ;;------------------------------------------------------------------------------------------------;;
 ;;                                    :model/DataAppRelease                                       ;;
 ;;------------------------------------------------------------------------------------------------;;
-
-(t2/define-before-insert :model/DataAppRelease
-  [instance]
-  (merge {:released_at :%now} instance))
 
 (t2/define-before-update :model/DataAppRelease
   [instance]

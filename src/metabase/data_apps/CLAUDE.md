@@ -20,7 +20,7 @@ This directory contains the core functionality for Metabase Data Apps - a featur
 data_app
 ├── id (PK)
 ├── name
-├── url (unique)
+├── slug (unique)
 ├── status (private, published, archived)
 ├── entity_id
 ├── created_at
@@ -38,8 +38,9 @@ data_app_release
 ├── id (PK)
 ├── app_id (FK -> data_app.id, cascade delete)
 ├── app_definition_id (FK -> data_app_definition.id, cascade delete)
-├── released_at
-└── retracted (boolean, default false - only one active release per app)
+├── created_at
+├── updated_at
+└── retracted (boolean, default false)
 ```
 
 ### Key Relationships
@@ -65,7 +66,7 @@ data_app_release
 ### Model Structure
 
 The data apps feature uses three main models:
-- `:model/DataApp` - The main app entity with unique URL (table: `data_app`)
+- `:model/DataApp` - The main app entity with unique slug (table: `data_app`)
 - `:model/DataAppDefinition` - Immutable versioned app configurations (table: `data_app_definition`)
 - `:model/DataAppRelease` - Release records tracking active versions (table: `data_app_release`)
 
