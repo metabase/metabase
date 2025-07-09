@@ -2,7 +2,7 @@ import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 
 import {
-  type UiFilterOperator,
+  type UiCoordinateFilterOperator,
   useCoordinateFilter,
 } from "metabase/querying/filters/hooks/use-coordinate-filter";
 import { Box } from "metabase/ui";
@@ -57,7 +57,7 @@ export function CoordinateFilterPicker({
   const [leftInclusive, setLeftInclusive] = useState(true);
   const [rightInclusive, setRightInclusive] = useState(true);
 
-  const handleOperatorChange = (newOperator: UiFilterOperator) => {
+  const handleOperatorChange = (newOperator: UiCoordinateFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
   };

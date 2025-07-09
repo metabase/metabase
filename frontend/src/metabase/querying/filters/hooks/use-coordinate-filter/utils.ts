@@ -9,7 +9,8 @@ import { OPERATOR_OPTIONS } from "./constants";
 import type {
   NumberOrEmptyValue,
   OperatorOption,
-  UiFilterOperator,
+  UiCoordinateFilterOperator,
+  UiCoordinateFilterParts,
 } from "./types";
 
 export function getAvailableOptions(
@@ -25,17 +26,17 @@ export function getAvailableOptions(
   );
 }
 
-export function getOptionByOperator(operator: UiFilterOperator) {
+export function getOptionByOperator(operator: UiCoordinateFilterOperator) {
   return OPERATOR_OPTIONS[operator];
 }
 
 export function getDefaultOperator(
   availableOptions: OperatorOption[],
-): UiFilterOperator {
+): UiCoordinateFilterOperator {
   return getDefaultAvailableOperator(
     availableOptions,
     "between",
-  ) as UiFilterOperator;
+  ) as UiCoordinateFilterOperator;
 }
 
 export function getAvailableColumns(
@@ -54,7 +55,7 @@ export function getAvailableColumns(
 
 export function getDefaultSecondColumn(
   columns: Lib.ColumnMetadata[],
-  filterParts: Lib.CoordinateFilterParts | null,
+  filterParts: UiCoordinateFilterParts | null,
 ): Lib.ColumnMetadata | undefined {
   return filterParts?.longitudeColumn ?? columns[0];
 }
@@ -67,7 +68,7 @@ export function canPickColumns(
 }
 
 export function getDefaultValues(
-  operator: UiFilterOperator,
+  operator: UiCoordinateFilterOperator,
   values: NumberOrEmptyValue[],
 ): NumberOrEmptyValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
@@ -81,7 +82,7 @@ export function getDefaultValues(
 }
 
 export function isValidFilter(
-  operator: UiFilterOperator,
+  operator: UiCoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberOrEmptyValue[],
@@ -90,7 +91,7 @@ export function isValidFilter(
 }
 
 export function getFilterClause(
-  operator: UiFilterOperator,
+  operator: UiCoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberOrEmptyValue[],
@@ -102,7 +103,7 @@ export function getFilterClause(
 }
 
 function getFilterParts(
-  operator: UiFilterOperator,
+  operator: UiCoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberOrEmptyValue[],
@@ -118,7 +119,7 @@ function getFilterParts(
 }
 
 function getSimpleFilterParts(
-  operator: UiFilterOperator,
+  operator: UiCoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {

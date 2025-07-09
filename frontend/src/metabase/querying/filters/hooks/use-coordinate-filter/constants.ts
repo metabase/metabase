@@ -1,6 +1,9 @@
-import type { OperatorOption, UiFilterOperator } from "./types";
+import type { OperatorOption, UiCoordinateFilterOperator } from "./types";
 
-export const OPERATOR_OPTIONS: Record<UiFilterOperator, OperatorOption> = {
+export const OPERATOR_OPTIONS: Record<
+  UiCoordinateFilterOperator,
+  OperatorOption
+> = {
   "=": {
     operator: "=",
     valueCount: 1,
