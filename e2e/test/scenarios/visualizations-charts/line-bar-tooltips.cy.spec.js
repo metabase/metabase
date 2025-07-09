@@ -373,7 +373,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       H.editDashboard();
       H.showDashcardVisualizerModalSettings(0, {
-        buttonText: "Visualize another way",
+        isVisualizerCard: false,
       });
 
       updateColumnTitle(originalName, customName);
@@ -431,7 +431,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       H.editDashboard();
       H.showDashcardVisualizerModal(0, {
-        buttonText: "Visualize another way",
+        isVisualizerCard: false,
       });
       H.modal().within(() => {
         cy.button("Settings").click();
@@ -506,7 +506,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       H.editDashboard();
       H.showDashcardVisualizerModalSettings(0, {
-        buttonText: "Visualize another way",
+        isVisualizerCard: false,
       });
 
       updateColumnTitle(originalAvgSeriesName, customAvgSeriesName);
@@ -655,7 +655,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       H.editDashboard();
       H.showDashcardVisualizerModalSettings(0, {
-        buttonText: "Visualize another way",
+        isVisualizerCard: false,
       });
 
       updateColumnTitle(originalAvgSeriesName, updatedOriginalAvgSeriesName);
@@ -735,7 +735,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       H.editDashboard();
       H.showDashcardVisualizerModalSettings(0, {
-        buttonText: "Visualize another way",
+        isVisualizerCard: false,
       });
 
       updateColumnTitle(originalName, updatedName);
@@ -805,7 +805,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       H.editDashboard();
       H.showDashcardVisualizerModalSettings(0, {
-        buttonText: "Visualize another way",
+        isVisualizerCard: false,
       });
 
       updateColumnTitle(originalSeriesName, updatedOriginalSeriesName);

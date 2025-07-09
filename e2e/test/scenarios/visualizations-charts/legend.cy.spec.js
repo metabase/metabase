@@ -389,7 +389,7 @@ describe("scenarios > visualizations > legend", () => {
     }
 
     H.showDashcardVisualizerModal(0, {
-      buttonText: "Visualize another way",
+      isVisualizerCard: false,
     });
 
     H.modal().within(() => {

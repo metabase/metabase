@@ -271,17 +271,21 @@ export function chartLegendItem(name: string) {
 }
 
 type ShowDashcardVisualizerModalOptions = {
-  buttonText?: "Edit visualization" | "Visualize another way";
+  isVisualizerCard?: boolean;
 };
 
 export function showDashcardVisualizerModal(
   index = 0,
   options: ShowDashcardVisualizerModalOptions = {},
 ) {
-  const { buttonText = "Edit visualization" } = options;
+  const { isVisualizerCard = true } = options;
   showDashboardCardActions(index);
 
-  getDashboardCard(index).findByLabelText(buttonText).click({ force: true });
+  getDashboardCard(index)
+    .findByLabelText(
+      isVisualizerCard ? "Edit visualization" : "Visualize another way",
+    )
+    .click({ force: true });
 
   modal().within(() => {
     cy.findByTestId("visualization-canvas-loader").should("not.exist");
