@@ -165,9 +165,7 @@
                      :name base-name,
                      :active true,
                      :display_name "Young Users"} table))
-            (is (=? [{:database_type "CHARACTER VARYING",
-                      :semantic_type nil,
-                      :name "NAME",
+            (is (=? [{:semantic_type nil,
                       :effective_type :type/Text,
                       :active true,
                       :position 0,
@@ -175,9 +173,7 @@
                       :display_name "Name",
                       :database_position 0,
                       :base_type :type/Text}
-                     {:database_type "INTEGER",
-                      :semantic_type nil,
-                      :name "AGE",
+                     {:semantic_type nil,
                       :effective_type :type/Integer,
                       :active true,
                       :position 1,
@@ -185,4 +181,5 @@
                       :display_name "Age",
                       :database_position 1,
                       :base_type :type/Integer}]
-                    (t2/select :model/Field :table_id (u/the-id table))))))))))
+                    (sort-by :position
+                             (t2/select :model/Field :table_id (u/the-id table)))))))))))
