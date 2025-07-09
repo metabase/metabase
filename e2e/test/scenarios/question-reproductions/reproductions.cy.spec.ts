@@ -953,6 +953,74 @@ describe("issue 55631", () => {
   });
 });
 
+describe.skip("issue 39033", () => {
+  const question1Name = "Q1";
+  const question1Details: NativeQuestionDetails = {
+    name: question1Name,
+    native: {
+      query: "select id, product_id, total from orders",
+      "template-tags": {},
+    },
+  };
+
+  const question2Name = "Q2";
+  const question2Details: NativeQuestionDetails = {
+    name: question2Name,
+    native: {
+      query: "select * from products",
+      "template-tags": {},
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  function getJoinedColumn() {
+    return cy
+      .findByTestId(`${question2Name.toLowerCase()}-table-columns`)
+      .findByLabelText(`${question2Name} - PRODUCT_ID → ID`);
+  }
+
+  it("should correctly mark columns as selected when joining a native query (metabase#39033)", () => {
+    cy.log("create a question");
+    H.createNativeQuestion(question1Details);
+    H.createNativeQuestion(question2Details);
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(question1Name).click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(question2Name).click();
+    });
+    H.popover().findByText("PRODUCT_ID").click();
+    H.popover().findByText("ID").click();
+
+    cy.log("run the query");
+    H.visualize();
+    cy.wait("@dataset");
+
+    cy.log("assert that columns are marked as selected correctly");
+    H.openVizSettingsSidebar();
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.button("Add or remove columns").click();
+
+      getJoinedColumn().should("be.checked").click();
+      getJoinedColumn().should("not.be.checked");
+      cy.wait("@dataset");
+
+      getJoinedColumn().should("not.be.checked").click();
+      getJoinedColumn().should("be.checked");
+      cy.wait("@dataset");
+    });
+  });
+});
+
 describe("issue 56416", () => {
   // name should be longer than the default 60-character limit; this has 71
   const joinedQuestionName =
