@@ -1,6 +1,7 @@
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Button, Card, Textarea } from "metabase/ui";
+import { Button, Card, Skeleton, Textarea } from "metabase/ui";
 
 import {
   QuestionResponseContent,
@@ -18,6 +19,9 @@ const QuestionResponsePage = ({
   params,
 }: QuestionResponsePageProps): JSX.Element => {
   const { questionId: _questionId } = params;
+  const [isLoading, setIsLoading] = useState(true);
+  const [showTitle, setShowTitle] = useState(false);
+  const [showContent, setShowContent] = useState(false);
 
   // Placeholder content for now
   const generatedTitle = "Sales Performance Analysis for Q4 2023";
@@ -57,24 +61,63 @@ Based on your data, Q4 2023 showed a **15% increase** in total sales compared to
 - Plan expansion into emerging markets
 `;
 
+  useEffect(() => {
+    // Simulate loading time
+    const loadingTimer = setTimeout(() => {
+      setIsLoading(false);
+      // Show title after a short delay
+      setTimeout(() => setShowTitle(true), 300);
+      // Show content after title appears
+      setTimeout(() => setShowContent(true), 600);
+    }, 1500);
+
+    return () => clearTimeout(loadingTimer);
+  }, []);
+
   return (
-    <QuestionResponsePageContainer>
-      <QuestionResponseContent>
+    <QuestionResponsePageContainer
+      style={{
+        opacity: isLoading ? 0 : 1,
+        transition: "opacity 0.5s ease-in-out",
+      }}
+    >
+      <QuestionResponseContent
+        style={{
+          opacity: showContent ? 1 : 0,
+          transform: showContent ? "translateY(0)" : "translateY(20px)",
+          transition: "opacity 0.6s ease-out, transform 0.6s ease-out",
+        }}
+      >
         <Card shadow="none" withBorder style={{ height: "100%" }}>
           <div style={{ padding: "1.5rem" }}>
-            <h1
-              style={{
-                marginBottom: "1rem",
-                fontSize: "1.5rem",
-                fontWeight: "600",
-              }}
-            >
-              {generatedTitle}
-            </h1>
+            {showTitle ? (
+              <h1
+                style={{
+                  marginBottom: "1rem",
+                  fontSize: "1.5rem",
+                  fontWeight: "600",
+                  opacity: 1,
+                  transform: "translateY(0)",
+                  transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
+                }}
+              >
+                {generatedTitle}
+              </h1>
+            ) : (
+              <Skeleton
+                height={32}
+                width="60%"
+                style={{ marginBottom: "1rem" }}
+              />
+            )}
             <div
               style={{
                 lineHeight: "1.6",
                 fontSize: "0.95rem",
+                opacity: showContent ? 1 : 0,
+                transform: showContent ? "translateY(0)" : "translateY(10px)",
+                transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
+                transitionDelay: "0.2s",
               }}
               dangerouslySetInnerHTML={{
                 __html: generatedContent
@@ -87,7 +130,14 @@ Based on your data, Q4 2023 showed a **15% increase** in total sales compared to
         </Card>
       </QuestionResponseContent>
 
-      <QuestionResponseSidebar>
+      <QuestionResponseSidebar
+        style={{
+          opacity: showContent ? 1 : 0,
+          transform: showContent ? "translateX(0)" : "translateX(20px)",
+          transition: "opacity 0.6s ease-out, transform 0.6s ease-out",
+          transitionDelay: "0.3s",
+        }}
+      >
         <Card shadow="none" withBorder style={{ height: "100%" }}>
           <div style={{ padding: "1rem" }}>
             <h3

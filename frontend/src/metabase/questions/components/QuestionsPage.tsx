@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { Button, Card, Menu, Switch, Textarea } from "metabase/ui";
@@ -15,14 +15,28 @@ interface QuestionsPageProps {
 }
 
 const QuestionsPage = ({ router }: QuestionsPageProps): JSX.Element => {
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
   const handleAskClick = useCallback(() => {
+    setIsTransitioning(true);
+
     // Generate a UUID for the question
     const questionId = crypto.randomUUID();
-    router.push(`/questions/${questionId}`);
+
+    // Wait for fade-out animation before navigating
+    setTimeout(() => {
+      router.push(`/questions/${questionId}`);
+    }, 300);
   }, [router]);
 
   return (
-    <QuestionsPageContainer>
+    <QuestionsPageContainer
+      style={{
+        opacity: isTransitioning ? 0 : 1,
+        transform: isTransitioning ? "translateY(-10px)" : "translateY(0)",
+        transition: "opacity 0.3s ease-out, transform 0.3s ease-out",
+      }}
+    >
       <QuestionsPageContent>
         <h1>{t`Questions`}</h1>
         <p>{t`Ask me anything about your data. I'll help you create questions and find insights.`}</p>
@@ -68,7 +82,12 @@ const QuestionsPage = ({ router }: QuestionsPageProps): JSX.Element => {
                 {t`Background`}
               </span>
               <Switch />
-              <Button variant="primary" size="sm" onClick={handleAskClick}>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleAskClick}
+                disabled={isTransitioning}
+              >
                 {t`Ask`}
               </Button>
             </div>
