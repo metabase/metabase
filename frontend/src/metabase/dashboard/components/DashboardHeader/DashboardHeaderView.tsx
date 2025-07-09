@@ -28,10 +28,7 @@ import {
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
-import type {
-  Collection,
-  type Dashboard as IDashboard,
-} from "metabase-types/api";
+import type { Collection, Dashboard as IDashboard } from "metabase-types/api";
 
 import { Dashboard } from "../Dashboard";
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";

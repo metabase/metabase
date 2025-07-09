@@ -7,11 +7,10 @@ import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -26,10 +25,6 @@ import {
   FullscreenToggle,
   NightModeToggleButton,
 } from "../DashboardHeader/buttons";
-import {
-  DashboardParameterList,
-  type DashboardParameterListProps,
-} from "../DashboardParameterList";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
 import { DashboardTabs } from "../DashboardTabs";
@@ -37,15 +32,7 @@ import { DashboardTitle } from "../DashboardTitle";
 import { RefreshWidget } from "../RefreshWidget";
 
 import S from "./Dashboard.module.css";
-import { Grid } from "./components/Grid";
-
-function _DashboardParameterList(
-  props: Omit<DashboardParameterListProps, "parameters">,
-) {
-  const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
-
-  return <DashboardParameterList parameters={parameters} {...props} />;
-}
+import { Grid, ParametersList } from "./components";
 
 const DashboardDefaultView = ({ className }: { className?: string }) => {
   const {
@@ -103,9 +90,6 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
-  const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
-  const isFullHeight = isEditing || isSharing;
-
   if (!dashboard) {
     return (
       <Stack justify="center" align="center" gap="sm" mt="xl">
@@ -114,6 +98,9 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
       </Stack>
     );
   }
+
+  const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
+  const isFullHeight = isEditing || isSharing;
 
   return (
     <Flex
@@ -239,7 +226,7 @@ type DashboardComponentType = typeof DashboardDefaultView & {
   Grid: typeof Grid;
   Title: typeof DashboardTitle;
   Tabs: typeof DashboardTabs;
-  ParametersList: typeof _DashboardParameterList;
+  ParametersList: typeof ParametersList;
   FullscreenButton: typeof FullscreenToggle;
   ExportAsPdfButton: typeof ExportAsPdfButton;
   InfoButton: typeof DashboardInfoButton;
@@ -252,7 +239,7 @@ DashboardComponent.Header = DashboardHeader;
 DashboardComponent.Grid = Grid;
 DashboardComponent.Title = DashboardTitle;
 DashboardComponent.Tabs = DashboardTabs;
-DashboardComponent.ParametersList = _DashboardParameterList;
+DashboardComponent.ParametersList = ParametersList;
 DashboardComponent.FullscreenButton = FullscreenToggle;
 DashboardComponent.ExportAsPdfButton = ExportAsPdfButton;
 DashboardComponent.InfoButton = DashboardInfoButton;

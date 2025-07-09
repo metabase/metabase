@@ -6,7 +6,7 @@ import {
   DashboardParameterList as ParameterList,
 } from "../../DashboardParameterList";
 
-export function DashboardParameterList(
+export function ParametersList(
   props: Omit<DashboardParameterListProps, "parameters">,
 ) {
   const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
