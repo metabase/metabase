@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useDeepCompareEffect, useLatest } from "react-use";
-import _ from "underscore";
+import { useDeepCompareEffect } from "react-use";
 
 import {
   skipToken,
@@ -11,7 +10,7 @@ import {
 } from "metabase/api";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import type { IconName } from "metabase/ui";
-import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
+import type { DatabaseId, SchemaName } from "metabase-types/api";
 
 import { getUrl as getUrl_ } from "../../utils";
 
@@ -45,33 +44,6 @@ export function hasChildren(type: ItemType): boolean {
   return type !== "table";
 }
 
-export function getExpandedDatabaseLeaf(
-  tree: TreeNode,
-  isExpanded: (value: TreeNode["value"]) => boolean,
-  dbKey: string,
-): TreeNode | undefined {
-  const database = tree.children.find((database) => database.key === dbKey);
-  const schema = database?.children.find((schema) => isExpanded(schema.value));
-  const [table] = (database?.children ?? []).flatMap((schema) => {
-    return schema.children.filter((table) => isExpanded(table.value));
-  });
-
-  return table ?? schema ?? database;
-}
-
-export function getExpandedSchemaLeaf(
-  tree: TreeNode,
-  isExpanded: (value: TreeNode["value"]) => boolean,
-  dbKey: string | undefined,
-  schemaKey: string,
-): TreeNode | undefined {
-  const database = tree.children.find((database) => database.key === dbKey);
-  const schema = database?.children.find((schema) => schema.key === schemaKey);
-  const table = schema?.children.find((table) => isExpanded(table.value));
-
-  return table ?? schema ?? database;
-}
-
 export function getUrl(value: TreePath) {
   return getUrl_({
     fieldId: undefined,
@@ -94,29 +66,16 @@ export function getUrl(value: TreePath) {
  * This works by fetching the data and then recursively merging the results into the tree of data that was already fetched.
  */
 export function useTableLoader(path: TreePath) {
-  const [fetchDatabases, databases] = useLazyListDatabasesQuery();
-  const [fetchSchemas, schemas] = useLazyListDatabaseSchemasQuery();
+  const [fetchDatabases] = useLazyListDatabasesQuery();
+  const [fetchSchemas] = useLazyListDatabaseSchemasQuery();
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
-  const databasesRef = useLatest(databases);
-  const schemasRef = useLatest(schemas);
-  const tablesRef = useLatest(tables);
 
   const [tree, setTree] = useState<TreeNode>(rootNode());
 
   const getDatabases = useCallback(async () => {
-    const response = await fetchDatabases(
-      { include_editable_data_model: true },
-      true,
-    );
-
-    if (databasesRef.current.isError) {
-      // Do not refetch when this call failed previously.
-      // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
-      return [];
-    }
-
+    const res = await fetchDatabases({}, true);
     return (
-      response.data?.data.map((database) =>
+      res.data?.data.map((database) =>
         node<DatabaseNode>({
           type: "database",
           label: database.name,
@@ -124,7 +83,7 @@ export function useTableLoader(path: TreePath) {
         }),
       ) ?? []
     );
-  }, [fetchDatabases, databasesRef]);
+  }, [fetchDatabases]);
 
   const getTables = useCallback(
     async (
@@ -134,27 +93,17 @@ export function useTableLoader(path: TreePath) {
       if (databaseId === undefined || schemaName === undefined) {
         return [];
       }
-
-      const newArgs = {
-        id: databaseId,
-        schema: schemaName,
-        include_hidden: true,
-        include_editable_data_model: true,
-      };
-
-      if (
-        _.isEqual(tablesRef.current.originalArgs, newArgs) &&
-        tablesRef.current.isError
-      ) {
-        // Do not refetch when this call failed previously.
-        // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
-        return [];
-      }
-
-      const response = await fetchTables(newArgs, true);
-
+      const res = await fetchTables(
+        {
+          id: databaseId,
+          schema: schemaName,
+          include_hidden: true,
+          include_editable_data_model: true,
+        },
+        true,
+      );
       return (
-        response?.data?.map((table) =>
+        res?.data?.map((table) =>
           node<TableNode>({
             type: "table",
             label: table.display_name,
@@ -165,7 +114,7 @@ export function useTableLoader(path: TreePath) {
         ) ?? []
       );
     },
-    [fetchTables, tablesRef],
+    [fetchTables],
   );
 
   const getSchemas = useCallback(
@@ -173,41 +122,32 @@ export function useTableLoader(path: TreePath) {
       if (databaseId === undefined) {
         return [];
       }
-
-      const newArgs = {
-        id: databaseId,
-        include_hidden: true,
-        include_editable_data_model: true,
-      };
-
-      if (
-        _.isEqual(schemasRef.current.originalArgs, newArgs) &&
-        schemasRef.current.isError
-      ) {
-        // Do not refetch when this call failed previously.
-        // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
-        return [];
-      }
-
-      const response = await fetchSchemas(newArgs, true);
+      const res = await fetchSchemas(
+        {
+          id: databaseId,
+          include_hidden: true,
+          include_editable_data_model: true,
+        },
+        true,
+      );
       return Promise.all(
-        response.data?.map(async (schemaName, _, schemas) => {
-          const schema = node<SchemaNode>({
+        res.data?.map(async (schema, _, schemas) => {
+          const res = node<SchemaNode>({
             type: "schema",
-            label: schemaName,
-            value: { databaseId, schemaName },
+            label: schema,
+            value: { databaseId, schemaName: schema },
           });
 
           // If the schema is unnamed, or if it's the only schema in the database,
           // fetch the tables immediately so we can render a flattened tree.
-          if (schemaName === UNNAMED_SCHEMA_NAME || schemas.length === 1) {
-            schema.children = await getTables(databaseId, schemaName);
+          if (schema === UNNAMED_SCHEMA_NAME || schemas.length === 1) {
+            res.children = await getTables(databaseId, schema);
           }
-          return schema;
+          return res;
         }) ?? [],
       );
     },
-    [fetchSchemas, getTables, schemasRef],
+    [fetchSchemas, getTables],
   );
 
   const load = useCallback(
@@ -234,24 +174,14 @@ export function useTableLoader(path: TreePath) {
                 })),
         })),
       );
-      setTree((current) => {
-        const merged = merge(current, newTree);
-        return _.isEqual(current, merged) ? current : merged;
-      });
+      setTree((current) => merge(current, newTree));
     },
     [getDatabases, getSchemas, getTables],
   );
 
   useDeepCompareEffect(() => {
     load(path);
-  }, [
-    load,
-    path,
-    // When a table is modified, e.g. we change display_name with PUT /api/table/:id
-    // we need to manually call the lazy RTK hooks, so that the the updated table
-    // is refetched here. We detect this modification with tables.isFetching.
-    tables.isFetching,
-  ]);
+  }, [load, path, tables.isFetching]);
 
   return { tree };
 }
@@ -361,34 +291,10 @@ export function useExpandedState(path: TreePath) {
   );
 
   const toggle = useCallback((key: string, value?: boolean) => {
-    const [_databaseId, _schemaName, tableId] = fromKey(key);
-
-    setState((current) => {
-      const newValue = value ?? !current[key];
-
-      if (tableId != null && newValue) {
-        return {
-          // close all tables
-          ...Object.fromEntries(
-            Object.entries(current).map(([key, value]) => {
-              const [, , parsedTableId] = fromKey(key);
-
-              if (parsedTableId != null) {
-                return [key, false];
-              }
-
-              return [key, value];
-            }),
-          ),
-          [key]: newValue,
-        };
-      }
-
-      return {
-        ...current,
-        [key]: newValue,
-      };
-    });
+    setState((current) => ({
+      ...current,
+      [key]: value ?? !current[key],
+    }));
   }, []);
 
   return {
@@ -545,12 +451,6 @@ function merge(a: TreeNode | undefined, b: TreeNode | undefined): TreeNode {
  */
 function toKey({ databaseId, schemaName, tableId }: TreePath) {
   return JSON.stringify([databaseId, schemaName, tableId]);
-}
-
-function fromKey(
-  key: string,
-): [DatabaseId | null, SchemaName | null, TableId | null] {
-  return JSON.parse(key);
 }
 
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
