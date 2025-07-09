@@ -28,9 +28,11 @@
 
 (def ^:private data-app-statuses #{:private :published :archived})
 
+(def ^:private simple-slug-regex #"^[0-9a-zA-Z_-]+$")
+
 (t2/deftransforms :model/DataApp
   {:status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum data-app-statuses))
-   :slug   (mi/transform-validator mi/transform-identity (partial mi/assert-regex #"^[0-9a-zA-Z_-]+$"))})
+   :slug   (mi/transform-validator mi/transform-identity (partial mi/assert-regex simple-slug-regex))})
 
 ;; TODO: revisit permissions model
 (defmethod mi/can-read? :model/DataApp

@@ -198,7 +198,7 @@
               (is (=? {:release    {:app_definition_id (:id second-definition)}
                        :definition {:revision_number 2}} app-with-release)))))))))
 
-(deftest disallow-updating-status-in-update-app-api-test
+(deftest status-update-api-test
   (data-apps.tu/with-data-app!
     [app {:name       "App With Definition"
           :slug       "app-with-def"
