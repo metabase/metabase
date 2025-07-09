@@ -420,7 +420,7 @@
   metabase.channel.impl.http-test/with-server                                           clojure.core/let
   metabase.collections.models.collection-test/with-collection-in-location               clojure.core/let
   metabase.data-apps.test-util/with-data-app!                                           clojure.core/let
-  metabsae.data-apps.test-util/with-released-app!                                       clojure.core/let
+  metabase.data-apps.test-util/with-released-app!                                       clojure.core/let
   metabase.driver.mongo.connection/with-mongo-client                                    clojure.core/let
   metabase.driver.mongo.connection/with-mongo-database                                  clojure.core/let
   metabase.driver.mongo.query-processor/mongo-let                                       clojure.core/let

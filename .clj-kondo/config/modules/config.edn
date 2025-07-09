@@ -410,7 +410,8 @@
 
   data-apps
   {:team "Workflows"
-   :api  #{metabase.data-apps.core}
+   :api  #{metabase.data-apps.core
+           metabase.data-apps.api}
    :uses #{api
            models
            request
