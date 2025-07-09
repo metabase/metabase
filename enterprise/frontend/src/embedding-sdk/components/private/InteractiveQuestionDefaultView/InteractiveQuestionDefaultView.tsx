@@ -14,7 +14,6 @@ import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import CS from "metabase/css/core/index.css";
 import {
   Box,
   Button,
@@ -189,21 +188,7 @@ export const InteractiveQuestionDefaultView = ({
       <Box className={InteractiveQuestionS.Main} p="sm" w="100%" h="100%">
         <Box className={InteractiveQuestionS.Content}>
           {isEditorOpen ? (
-            <>
-              {/* Use the same horizontal padding as https://github.com/metabase/metabase/blob/98e2dcc7c8c7c9147f4a787cc7ed36eddde9c080/frontend/src/metabase/querying/notebook/components/Notebook/Notebook.tsx#L48 */}
-              {/* Vertical padding matches the visualization header above */}
-              {/* If we don't conditionally render this button, it will be shown twice after visualizing the query once. */}
-              {!queryResults && (
-                <Box
-                  px={{ base: "1rem", sm: "2rem" }}
-                  pt="md"
-                  className={CS.hideEmpty}
-                >
-                  <InteractiveQuestion.BackButton />
-                </Box>
-              )}
-              <InteractiveQuestion.Editor onApply={closeEditor} />
-            </>
+            <InteractiveQuestion.Editor onApply={closeEditor} />
           ) : (
             <InteractiveQuestion.QuestionVisualization height="100%" />
           )}
