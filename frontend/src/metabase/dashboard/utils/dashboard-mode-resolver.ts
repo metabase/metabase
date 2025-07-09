@@ -81,69 +81,54 @@ export function resolveDashboardMode(
   };
 }
 
-/**
- * Converts user-friendly dashboard actions to internal action keys
- */
-export function resolveDashboardActions(
-  actions: DashboardActionType[],
-  editing: boolean,
-  downloadsEnabled: { pdf: boolean; results: boolean },
-): string[] {
-  // If editing is enabled, use editing actions
+interface ResolveActionsOptions {
+  actions: DashboardActionType[];
+  editing: boolean;
+  downloadsEnabled: { pdf?: boolean; results?: boolean };
+}
+
+export function resolveDashboardActions(options: ResolveActionsOptions): string[] {
+  const { actions, editing, downloadsEnabled } = options;
+  
   if (editing) {
     return DASHBOARD_EDITING_ACTIONS;
   }
 
-  // Otherwise, map user actions to internal keys
-  const resolvedActions = actions
-    .map((action) => DASHBOARD_ACTION_MAP[action])
-    .filter(Boolean);
+  const resolvedActions: string[] = [];
+  
+  for (const action of actions) {
+    const mappedAction = DASHBOARD_ACTION_MAP[action];
+    if (mappedAction) {
+      resolvedActions.push(mappedAction);
+    }
+  }
 
-  // Auto-include download actions if enabled
-  if (
-    downloadsEnabled.pdf &&
-    !resolvedActions.includes(DASHBOARD_ACTION.DOWNLOAD_PDF)
-  ) {
+  if (downloadsEnabled.pdf && !resolvedActions.includes(DASHBOARD_ACTION.DOWNLOAD_PDF)) {
     resolvedActions.push(DASHBOARD_ACTION.DOWNLOAD_PDF);
+  }
+
+  if (downloadsEnabled.results && !resolvedActions.includes("download-results")) {
+    resolvedActions.push("download-results");
   }
 
   return resolvedActions;
 }
 
-/**
- * Creates a QueryClickActionsMode from user-friendly question config
- */
-export function resolveQuestionMode(
-  config: ResolvedDashboardMode["questions"],
-  plugins?: MetabasePluginsConfig,
-): QueryClickActionsMode {
-  // Handle drilling configuration
-  let hasDrills = false;
-  let availableOnlyDrills: string[] | undefined;
+interface ResolveQuestionModeOptions {
+  config: ResolvedDashboardMode["questions"];
+  plugins?: MetabasePluginsConfig;
+}
 
-  if (config.drilling === true) {
-    hasDrills = true;
-  } else if (Array.isArray(config.drilling)) {
-    hasDrills = true;
-    availableOnlyDrills = config.drilling.map((drill) => DRILL_TYPE_MAP[drill]);
-  }
+export function resolveQuestionMode(options: ResolveQuestionModeOptions): QueryClickActionsMode {
+  const { config, plugins } = options;
+  
+  const hasDrills = config.drilling === true || Array.isArray(config.drilling);
+  const availableOnlyDrills = Array.isArray(config.drilling) 
+    ? config.drilling.map((drill) => DRILL_TYPE_MAP[drill]).filter(Boolean) as any[]
+    : undefined;
 
-  // Handle click actions
-  let clickActions: any[] = [];
-  if (config.clickActions === true) {
-    // Use all available click actions
-    clickActions = Object.values(CLICK_ACTION_MAP);
-  } else if (Array.isArray(config.clickActions)) {
-    clickActions = config.clickActions
-      .map((action) => CLICK_ACTION_MAP[action])
-      .filter(Boolean);
-  }
-
-  // Handle fallback
-  let fallback = undefined;
-  if (config.fallback === "native-query") {
-    fallback = NativeQueryClickFallback;
-  }
+  const clickActions = buildClickActions(config.clickActions);
+  const fallback = config.fallback === "native-query" ? NativeQueryClickFallback : undefined;
 
   return {
     name: "dashboard-mode",
@@ -154,9 +139,20 @@ export function resolveQuestionMode(
   };
 }
 
-/**
- * Creates a navigation handler from user-friendly navigation config
- */
+function buildClickActions(clickActions: any): any[] {
+  if (clickActions === true) {
+    return Object.values(CLICK_ACTION_MAP);
+  }
+  
+  if (Array.isArray(clickActions)) {
+    return clickActions
+      .map((action: any) => (CLICK_ACTION_MAP as any)[action])
+      .filter(Boolean);
+  }
+  
+  return [];
+}
+
 export function resolveNavigation(
   config: ResolvedDashboardMode["questions"]["navigation"],
 ): ((opts: any) => void) | null {
@@ -165,7 +161,6 @@ export function resolveNavigation(
   }
 
   if (config === true) {
-    // Default navigation behavior
     return (opts) => {
       console.log("Navigate to question:", opts);
     };
@@ -176,7 +171,6 @@ export function resolveNavigation(
       return (opts) => config.customHandler!(opts.questionId, opts.filters);
     }
 
-    // Default with new tab option
     return (opts) => {
       console.log("Navigate to question:", opts, "newTab:", config.newTab);
     };
