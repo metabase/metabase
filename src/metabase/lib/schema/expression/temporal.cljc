@@ -109,7 +109,7 @@
    [:schema [:ref ::common/options]]
 
    [:alt ;; use alt because we need nested cat
-    {:error/message "Invalid combination of value and mode."}
+    {:error/message "Valid combination of value and mode."}
     ;; String modes
     [:cat
      [:schema [:ref ::expression/string]]
