@@ -4,24 +4,24 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { PgReplicationStatusInfo } from "./PgReplicationStatusInfo";
+import { DatabaseReplicationStatusInfo } from "./DatabaseReplicationStatusInfo";
 
 const setup = ({ databaseId = 1, settings = {} }) => {
   const storeInitialState = createMockState({
     settings: createMockSettingsState({
-      "pg-replication-connections": {},
+      "database-replication-connections": {},
       ...settings,
     }),
   });
 
   return renderWithProviders(
-    <PgReplicationStatusInfo databaseId={databaseId} />,
+    <DatabaseReplicationStatusInfo databaseId={databaseId} />,
     { storeInitialState },
   );
 };
 
-describe("PgReplicationStatusInfo", () => {
-  describe("state derivation from pg-replication-connections", () => {
+describe("DatabaseReplicationStatusInfo", () => {
+  describe("state derivation from database-replication-connections", () => {
     describe("when database has no replication connection", () => {
       it("should show 'Not replicating' status", () => {
         setup({ databaseId: 1 });
@@ -33,7 +33,9 @@ describe("PgReplicationStatusInfo", () => {
         setup({
           databaseId: 2,
           settings: {
-            "pg-replication-connections": { 1: { connection_id: "conn_123" } },
+            "database-replication-connections": {
+              1: { connection_id: "conn_123" },
+            },
           },
         });
 
@@ -46,7 +48,7 @@ describe("PgReplicationStatusInfo", () => {
         setup({
           databaseId: 1,
           settings: {
-            "pg-replication-connections": {
+            "database-replication-connections": {
               1: { connection_id: "conn_123" },
             },
           },
@@ -68,7 +70,7 @@ describe("PgReplicationStatusInfo", () => {
         setup({
           databaseId: 2,
           settings: {
-            "pg-replication-connections": {
+            "database-replication-connections": {
               1: { connection_id: "conn_123" },
               2: { connection_id: "conn_456" },
               3: { connection_id: "conn_789" },

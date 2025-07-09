@@ -5,15 +5,15 @@ import { useSetting } from "metabase/common/hooks";
 import { Badge, Flex, type FlexProps, Text, Tooltip } from "metabase/ui";
 import type { DatabaseId } from "metabase-types/api";
 
-interface PgReplicationStatusInfoProps extends FlexProps {
+interface DatabaseReplicationStatusInfoProps extends FlexProps {
   databaseId: DatabaseId;
 }
 
-export const PgReplicationStatusInfo = ({
+export const DatabaseReplicationStatusInfo = ({
   databaseId,
   ...props
-}: PgReplicationStatusInfoProps) => {
-  const connections = useSetting("pg-replication-connections");
+}: DatabaseReplicationStatusInfoProps) => {
+  const connections = useSetting("database-replication-connections");
 
   const status = useMemo(() => {
     const hasConnection = connections?.[databaseId] != null;

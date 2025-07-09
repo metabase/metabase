@@ -763,8 +763,8 @@ export const PLUGIN_DB_ROUTING = {
   ): "default" | "hidden" | "disabled" => "default",
 };
 
-export const PLUGIN_DATA_REPLICATION = {
-  DatabaseDataReplicationSection: PluginPlaceholder as ComponentType<{
+export const PLUGIN_DATABASE_REPLICATION = {
+  DatabaseReplicationSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
   }>,
 };

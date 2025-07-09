@@ -3,20 +3,20 @@ import type { DatabaseId } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 
-export const pgReplicationApi = EnterpriseApi.injectEndpoints({
+export const DatabaseReplicationApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    createPgReplication: builder.mutation<void, DatabaseId>({
+    createDatabaseReplication: builder.mutation<void, DatabaseId>({
       query: (databaseId) => ({
         method: "POST",
-        url: `/api/ee/pg-replication/connection/${databaseId}`,
+        url: `/api/ee/database-replication/connection/${databaseId}`,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
     }),
-    deletePgReplication: builder.mutation<void, DatabaseId>({
+    deleteDatabaseReplication: builder.mutation<void, DatabaseId>({
       query: (databaseId) => ({
         method: "DELETE",
-        url: `/api/ee/pg-replication/connection/${databaseId}`,
+        url: `/api/ee/database-replication/connection/${databaseId}`,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
@@ -25,6 +25,6 @@ export const pgReplicationApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
-  useCreatePgReplicationMutation,
-  useDeletePgReplicationMutation,
-} = pgReplicationApi;
+  useCreateDatabaseReplicationMutation,
+  useDeleteDatabaseReplicationMutation,
+} = DatabaseReplicationApi;

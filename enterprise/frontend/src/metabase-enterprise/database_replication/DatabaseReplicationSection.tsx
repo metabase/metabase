@@ -9,18 +9,18 @@ import { useSetting } from "metabase/common/hooks";
 import { Flex, Text } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
-import { PgReplicationButton } from "./PgReplicationButton";
-import { PgReplicationStatusInfo } from "./PgReplicationStatusInfo";
+import { DatabaseReplicationButton } from "./DatabaseReplicationButton";
+import { DatabaseReplicationStatusInfo } from "./DatabaseReplicationStatusInfo";
 
-export function DatabaseDataReplicationSection({
+export function DatabaseReplicationSection({
   database,
 }: {
   database: Database;
 }) {
-  const showPgReplication = useSetting("pg-replication-enabled");
+  const showDatabaseReplication = useSetting("database-replication-enabled");
   const isPgDatabase = database.engine === "postgres";
 
-  if (!showPgReplication || !isPgDatabase) {
+  if (!showDatabaseReplication || !isPgDatabase) {
     return null;
   }
 
@@ -38,8 +38,8 @@ export function DatabaseDataReplicationSection({
       description={t`Continuously sync the tables from this database with Metabase Cloud Storage - a fast managed database. Then query the copied tables instead of the originals.`}
     >
       <Flex align="center" justify="space-between" gap="lg">
-        <PgReplicationStatusInfo databaseId={database.id} />
-        <PgReplicationButton databaseId={database.id} />
+        <DatabaseReplicationStatusInfo databaseId={database.id} />
+        <DatabaseReplicationButton databaseId={database.id} />
       </Flex>
 
       <DatabaseInfoSectionDivider condensed />
