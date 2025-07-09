@@ -118,6 +118,7 @@ export const setup = async ({
       component={() => (
         <MockDashboardContext
           dashboardId={dashboard.id}
+          dashboard={dashboard}
           navigateToNewCardFromDashboard={null}
         >
           <DashboardHeader {...dashboardHeaderProps} />
