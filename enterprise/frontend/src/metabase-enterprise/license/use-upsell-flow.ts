@@ -64,7 +64,7 @@ export function useUpsellFlow({
     return () => {
       window.removeEventListener("message", listener);
     };
-  }, [updateToken, error, sendToast]);
+  }, [updateToken]);
 
   useEffect(() => {
     if (error && storeWindowRef.current) {
