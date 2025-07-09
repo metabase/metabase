@@ -441,8 +441,8 @@
       lib.cache/discard-query-cache))
 
 (defn- get-native-stages [native-stage]
-  (for [{:keys [type card-id]} (-> native-stage :template-tags vals)
-        :when (= type :card)]
+  (for [{:keys [card-id] tag-type :type} (-> native-stage :template-tags vals)
+        :when (= tag-type :card)]
     {:source-card card-id}))
 
 (defn- stage-seq* [query-fragment]
