@@ -65,11 +65,3 @@ export function aggregationClause(
 ): AggregationClause {
   return ML.aggregation_clause(operator, column);
 }
-
-export function aggregationColumn(
-  query: Query,
-  stageIndex: number,
-  aggregation: AggregationClause,
-): ColumnMetadata | null {
-  return ML.aggregation_column(query, stageIndex, aggregation);
-}
