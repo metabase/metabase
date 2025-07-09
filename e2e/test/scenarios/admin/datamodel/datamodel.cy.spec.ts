@@ -1899,10 +1899,10 @@ describe("scenarios > admin > datamodel", () => {
           FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
           PreviewSection.get()
-            .findByPlaceholderText("Min")
+            .findByPlaceholderText("Start of range")
             .should("be.visible");
           PreviewSection.get()
-            .findByPlaceholderText("Max")
+            .findByPlaceholderText("End of range")
             .should("be.visible");
 
           cy.reload();

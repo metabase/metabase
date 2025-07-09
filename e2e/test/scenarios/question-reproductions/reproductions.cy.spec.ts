@@ -488,7 +488,7 @@ describe("issue 48752", () => {
     H.getNotebookStep("summarize").button("Filter").click();
     H.popover().within(() => {
       cy.findByText("Sum of Subtotal").click();
-      cy.findByPlaceholderText("Min").type("10");
+      cy.findByPlaceholderText("Start of range").type("10");
       cy.findByText("Add filter").click();
     });
 
