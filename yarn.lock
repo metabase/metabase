@@ -17108,6 +17108,11 @@ react-remove-scroll@^2.6.2:
     use-callback-ref "^1.3.3"
     use-sidecar "^1.1.3"
 
+react-resizable-panels@^3.0.3:
+  version "3.0.3"
+  resolved "https://registry.npmjs.org/react-resizable-panels/-/react-resizable-panels-3.0.3.tgz"
+  integrity sha512-7HA8THVBHTzhDK4ON0tvlGXyMAJN1zBeRpuyyremSikgYh2ku6ltD7tsGQOcXx4NKPrZtYCm/5CBr+dkruTGQw==
+
 react-resizable@^3.0.5:
   version "3.0.5"
   resolved "https://registry.npmjs.org/react-resizable/-/react-resizable-3.0.5.tgz"

@@ -1,7 +1,7 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice } from "@reduxjs/toolkit";
 
-import type { GenerativeQuestion, GenerativeQuestionAuthor, GenerativeQuestionReviewer, GenerativeQuestionsState, ReviewStatus } from "metabase-types/store/generativeQuestions";
+import type { ChatMessage, GenerativeQuestion, GenerativeQuestionAuthor, GenerativeQuestionReviewer, GenerativeQuestionsState, ReviewStatus } from "metabase-types/store/generativeQuestions";
 
 // Helper function to create metadata with current user and agent
 export const createQuestionMetadata = (
@@ -150,6 +150,44 @@ Our cloud storage solutions continue to dominate:
       difficulty: "medium",
       estimatedTime: 8
     },
+    chatHistory: [
+      {
+        id: "msg1",
+        role: "user",
+        content: "Analyze our Q4 2023 sales performance and identify key growth drivers",
+        timestamp: 1703000000000,
+      },
+      {
+        id: "msg2",
+        role: "assistant",
+        content: "I'll analyze your Q4 2023 sales data to identify key growth drivers and provide actionable insights.",
+        timestamp: 1703000060000,
+      },
+      {
+        id: "msg3",
+        role: "user",
+        content: "Can you break down the regional performance in more detail?",
+        timestamp: 1703000120000,
+      },
+      {
+        id: "msg4",
+        role: "assistant",
+        content: "Here's a detailed regional breakdown:\n\n**North America (45% of sales):**\n- Strong enterprise adoption of cloud solutions\n- 28% growth in security products\n- Average deal size: $15K\n\n**Europe (32% of sales):**\n- Growing SMB market\n- 15% increase in analytics platform usage\n- Average deal size: $8K\n\n**Asia Pacific (23% of sales):**\n- Emerging market expansion\n- 40% growth in mobile solutions\n- Average deal size: $5K",
+        timestamp: 1703000180000,
+      },
+      {
+        id: "msg5",
+        role: "user",
+        content: "What about customer acquisition costs?",
+        timestamp: 1703000240000,
+      },
+      {
+        id: "msg6",
+        role: "assistant",
+        content: "Customer acquisition costs by region:\n\n- **North America:** $2,400 (down 8% from Q3)\n- **Europe:** $1,800 (down 12% from Q3)\n- **Asia Pacific:** $1,200 (down 15% from Q3)\n\nOverall CAC decreased by 11% due to improved marketing efficiency and word-of-mouth referrals from satisfied enterprise customers.",
+        timestamp: 1703000300000,
+      }
+    ],
     createdAt: 1703000000000,
     updatedAt: 1703086400000,
     loading: false
@@ -211,6 +249,44 @@ Our overall retention rate stands at **87%**, with significant variations across
       difficulty: "hard",
       estimatedTime: 12
     },
+    chatHistory: [
+      {
+        id: "msg1",
+        role: "user",
+        content: "What are our customer retention patterns and which segments are most at risk?",
+        timestamp: 1702500000000,
+      },
+      {
+        id: "msg2",
+        role: "assistant",
+        content: "I'll analyze your customer retention data to identify patterns and risk factors across different segments.",
+        timestamp: 1702500060000,
+      },
+      {
+        id: "msg3",
+        role: "user",
+        content: "Can you focus on the SMB segment? I'm concerned about the 3% decline.",
+        timestamp: 1702500120000,
+      },
+      {
+        id: "msg4",
+        role: "assistant",
+        content: "Here's a detailed SMB analysis:\n\n**SMB Segment Deep Dive:**\n- Current retention: 82% (down from 85% last year)\n- Average customer lifetime: 18 months\n- Top churn reasons:\n  - Pricing concerns (35%)\n  - Feature complexity (28%)\n  - Support response time (22%)\n\n**Risk Factors:**\n- 60% of SMB customers use <5 features\n- Support tickets take 4.2 hours average response\n- 40% haven't completed onboarding\n\n**Immediate Actions Needed:**\n- Implement SMB-specific onboarding\n- Create simplified feature bundles\n- Reduce support response time to <2 hours",
+        timestamp: 1702500180000,
+      },
+      {
+        id: "msg5",
+        role: "user",
+        content: "What's the cost to implement these improvements?",
+        timestamp: 1702500240000,
+      },
+      {
+        id: "msg6",
+        role: "assistant",
+        content: "Estimated implementation costs:\n\n**Onboarding Improvements:**\n- Dedicated SMB success manager: $85K/year\n- Automated onboarding flows: $25K development\n- Training materials: $15K\n\n**Support Optimization:**\n- Additional support staff: $120K/year\n- Knowledge base development: $30K\n- Response time monitoring: $10K\n\n**Total Investment:** $285K\n\n**Expected ROI:**\n- 5% retention improvement = $400K additional revenue\n- Payback period: 8.5 months\n- 3-year ROI: 320%",
+        timestamp: 1702500300000,
+      }
+    ],
     createdAt: 1702500000000,
     updatedAt: 1702586400000,
     loading: false
@@ -270,6 +346,44 @@ Our Q4 marketing campaigns generated **$850K in attributed revenue** across 5 ch
       difficulty: "medium",
       estimatedTime: 6
     },
+    chatHistory: [
+      {
+        id: "msg1",
+        role: "user",
+        content: "Compare our marketing campaign performance across different channels",
+        timestamp: 1702000000000,
+      },
+      {
+        id: "msg2",
+        role: "assistant",
+        content: "I'll analyze your marketing campaign performance across all channels to identify the most effective strategies.",
+        timestamp: 1702000060000,
+      },
+      {
+        id: "msg3",
+        role: "user",
+        content: "Which channel has the best ROI?",
+        timestamp: 1702000120000,
+      },
+      {
+        id: "msg4",
+        role: "assistant",
+        content: "Here's the ROI breakdown by channel:\n\n**Email Marketing:** 450% ROI (highest)\n- Cost: $33K\n- Revenue: $150K\n- Conversion rate: 2.8%\n\n**LinkedIn:** 320% ROI\n- Cost: $100K\n- Revenue: $320K\n- Conversion rate: 3.2%\n\n**Google Ads:** 280% ROI\n- Cost: $100K\n- Revenue: $280K\n- Conversion rate: 2.1%\n\n**Social Media:** 180% ROI (lowest)\n- Cost: $50K\n- Revenue: $90K\n- Conversion rate: 1.1%\n\nEmail marketing shows the best ROI due to lower costs and highly targeted audience.",
+        timestamp: 1702000180000,
+      },
+      {
+        id: "msg5",
+        role: "user",
+        content: "Should we increase email marketing budget?",
+        timestamp: 1702000240000,
+      },
+      {
+        id: "msg6",
+        role: "assistant",
+        content: "Yes, but with caution. Here's why:\n\n**Pros of increasing email budget:**\n- Highest ROI among all channels\n- Lower customer acquisition cost ($45 vs $312 for LinkedIn)\n- Better targeting capabilities\n- Scalable with automation\n\n**Considerations:**\n- Email list quality is crucial\n- Risk of diminishing returns\n- Need to maintain engagement rates\n- Compliance with email regulations\n\n**Recommendation:**\n- Increase email budget by 30% ($43K total)\n- Focus on segmentation and personalization\n- A/B test subject lines and content\n- Monitor deliverability and engagement metrics\n\nExpected outcome: $195K revenue (30% increase) with 450% ROI maintained.",
+        timestamp: 1702000300000,
+      }
+    ],
     createdAt: 1702000000000,
     updatedAt: 1702086400000,
     loading: false
@@ -326,6 +440,44 @@ Our platform shows clear seasonal patterns with **peak usage during Q4** (holida
       difficulty: "hard",
       estimatedTime: 10
     },
+    chatHistory: [
+      {
+        id: "msg1",
+        role: "user",
+        content: "What are the seasonal patterns in our product usage and how do they affect capacity planning?",
+        timestamp: 1701500000000,
+      },
+      {
+        id: "msg2",
+        role: "assistant",
+        content: "I'll analyze your product usage patterns to identify seasonal trends and their impact on capacity planning.",
+        timestamp: 1701500060000,
+      },
+      {
+        id: "msg3",
+        role: "user",
+        content: "How much should we scale up for Q4?",
+        timestamp: 1701500120000,
+      },
+      {
+        id: "msg4",
+        role: "assistant",
+        content: "Based on historical data, here's the recommended Q4 scaling:\n\n**Infrastructure Scaling:**\n- Compute capacity: +50% (from 45K to 67K daily users)\n- Storage: +60% (from 2.8TB to 4.5TB)\n- Bandwidth: +75% (peak concurrent users: 12K to 21K)\n\n**Cost Breakdown:**\n- Current monthly cost: $55K\n- Q4 monthly cost: $85K\n- Additional investment: $30K/month\n\n**Risk Mitigation:**\n- Auto-scaling policies for 20% buffer\n- CDN expansion for global traffic\n- Database read replicas for query load\n\n**ROI Justification:**\n- Q4 revenue typically 40% higher\n- Infrastructure cost increase: 55%\n- Net margin improvement: 25%",
+        timestamp: 1701500180000,
+      },
+      {
+        id: "msg5",
+        role: "user",
+        content: "What about the cost savings in Q2?",
+        timestamp: 1701500240000,
+      },
+      {
+        id: "msg6",
+        role: "assistant",
+        content: "Great question! Here's the Q2 optimization strategy:\n\n**Q2 Cost Reduction Opportunities:**\n- Scale down compute by 30% (saves $16K/month)\n- Reduce storage instances by 25% (saves $8K/month)\n- Optimize CDN usage (saves $6K/month)\n\n**Total Q2 Savings:** $30K/month\n\n**Annual Impact:**\n- Q4 additional cost: $90K (3 months)\n- Q2 savings: $30K (3 months)\n- Q1/Q3 neutral: $0\n- **Net annual cost increase:** $60K\n\n**Alternative Strategy:**\n- Implement spot instances for non-critical workloads\n- Use reserved instances for baseline capacity\n- **Potential additional savings:** $20K/year\n\nThis brings the net annual cost increase down to $40K, which is 0.8% of typical Q4 revenue.",
+        timestamp: 1701500300000,
+      }
+    ],
     createdAt: 1701500000000,
     updatedAt: 1701586400000,
     loading: false
@@ -343,7 +495,19 @@ const generativeQuestionsSlice = createSlice({
   initialState,
   reducers: {
     addGenerativeQuestion: (state, action: PayloadAction<GenerativeQuestion>) => {
-      state.questions[action.payload.id] = action.payload;
+      const question = action.payload;
+      // Initialize chat history with the initial prompt if not provided
+      if (!question.chatHistory || question.chatHistory.length === 0) {
+        question.chatHistory = [
+          {
+            id: `msg-${Date.now()}`,
+            role: "user",
+            content: question.prompt,
+            timestamp: question.createdAt,
+          },
+        ];
+      }
+      state.questions[question.id] = question;
     },
     updateGenerativeQuestion: (state, action: PayloadAction<Partial<GenerativeQuestion> & { id: string }>) => {
       const { id, ...updates } = action.payload;
@@ -398,6 +562,26 @@ const generativeQuestionsSlice = createSlice({
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
     },
+    addChatMessage: (state, action: PayloadAction<{ questionId: string; message: ChatMessage }>) => {
+      const { questionId, message } = action.payload;
+      if (state.questions[questionId]) {
+        state.questions[questionId].chatHistory.push(message);
+        state.questions[questionId].updatedAt = Date.now();
+      }
+    },
+    updateChatMessage: (state, action: PayloadAction<{ questionId: string; messageId: string; updates: Partial<ChatMessage> }>) => {
+      const { questionId, messageId, updates } = action.payload;
+      if (state.questions[questionId]) {
+        const messageIndex = state.questions[questionId].chatHistory.findIndex(m => m.id === messageId);
+        if (messageIndex !== -1) {
+          state.questions[questionId].chatHistory[messageIndex] = {
+            ...state.questions[questionId].chatHistory[messageIndex],
+            ...updates,
+          };
+          state.questions[questionId].updatedAt = Date.now();
+        }
+      }
+    },
   },
 });
 
@@ -410,6 +594,8 @@ export const {
   removeGenerativeQuestion,
   setLoading,
   setError,
+  addChatMessage,
+  updateChatMessage,
 } = generativeQuestionsSlice.actions;
 
 // Sample reviewers data - in a real app this would come from an API

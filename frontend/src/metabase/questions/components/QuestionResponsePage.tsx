@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -7,15 +8,10 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 import { Button, Card, Divider, Icon, Menu, Skeleton, Textarea } from "metabase/ui";
 
-import { addGenerativeQuestion, addNodeReviewer, addReviewer, createQuestionMetadata, generateSampleContent, getAvailableReviewers } from "../redux/generativeQuestionsSlice";
+import { addChatMessage, addGenerativeQuestion, addNodeReviewer, addReviewer, createQuestionMetadata, generateSampleContent, getAvailableReviewers } from "../redux/generativeQuestionsSlice";
 import { getGenerativeQuestionById } from "../redux/selectors";
 
 import { MarkdownRenderer } from "./MarkdownRenderer";
-import {
-  QuestionResponseContent,
-  QuestionResponsePageContainer,
-  QuestionResponseSidebar,
-} from "./QuestionResponsePage.styled";
 
 interface QuestionResponsePageProps {
   params: {
@@ -30,6 +26,9 @@ const QuestionResponsePage = ({
   const [isLoading, setIsLoading] = useState(true);
   const [showTitle, setShowTitle] = useState(false);
   const [showContent, setShowContent] = useState(false);
+  const [chatMessage, setChatMessage] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const dispatch = useDispatch();
   const currentUser = useSelector(getUser);
@@ -48,6 +47,7 @@ const QuestionResponsePage = ({
           agentType: "Metabot: Your general purpose analyst",
           content: generateSampleContent(selectedText),
           metadata: createQuestionMetadata(currentUser, "Metabot: Your general purpose analyst"),
+          chatHistory: [],
           createdAt: Date.now(),
           updatedAt: Date.now(),
         }),
@@ -123,6 +123,65 @@ const QuestionResponsePage = ({
     }
   }, [dispatch, question]);
 
+  const handleSendMessage = useCallback(async () => {
+    if (!chatMessage.trim() || !question || isSendingMessage) return;
+
+    setIsSendingMessage(true);
+    const messageId = `msg-${Date.now()}`;
+    const timestamp = Date.now();
+
+    // Add user message
+    dispatch(addChatMessage({
+      questionId: question.id,
+      message: {
+        id: messageId,
+        role: "user",
+        content: chatMessage.trim(),
+        timestamp,
+      },
+    }));
+
+    setChatMessage("");
+
+    // Simulate AI response
+    setTimeout(() => {
+      const aiResponseId = `msg-${Date.now()}`;
+      const aiResponse = generateAIResponse(chatMessage.trim(), question.agentType);
+
+      dispatch(addChatMessage({
+        questionId: question.id,
+        message: {
+          id: aiResponseId,
+          role: "assistant",
+          content: aiResponse,
+          timestamp: Date.now(),
+        },
+      }));
+
+      setIsSendingMessage(false);
+    }, 1000);
+  }, [chatMessage, question, isSendingMessage, dispatch]);
+
+  const generateAIResponse = (userMessage: string, agentType: string): string => {
+    // Simple response generation based on message content and agent type
+    const lowerMessage = userMessage.toLowerCase();
+
+    if (lowerMessage.includes("cost") || lowerMessage.includes("budget") || lowerMessage.includes("price")) {
+      return "Based on the analysis, here are the cost implications:\n\n**Implementation Costs:**\n- Infrastructure scaling: $30K/month during peak\n- Additional staff: $120K/year\n- Technology upgrades: $50K one-time\n\n**Expected ROI:**\n- Revenue increase: 15-25%\n- Payback period: 8-12 months\n- 3-year ROI: 200-300%";
+    }
+
+    if (lowerMessage.includes("timeline") || lowerMessage.includes("schedule") || lowerMessage.includes("when")) {
+      return "Here's a recommended timeline:\n\n**Phase 1 (Months 1-2):**\n- Infrastructure assessment\n- Team training\n- Pilot implementation\n\n**Phase 2 (Months 3-4):**\n- Full deployment\n- Monitoring setup\n- Performance optimization\n\n**Phase 3 (Months 5-6):**\n- Scale up operations\n- Process refinement\n- Success measurement";
+    }
+
+    if (lowerMessage.includes("risk") || lowerMessage.includes("challenge") || lowerMessage.includes("problem")) {
+      return "Key risks and mitigation strategies:\n\n**Primary Risks:**\n- Data migration complexity\n- User adoption resistance\n- Integration challenges\n\n**Mitigation:**\n- Comprehensive testing plan\n- Change management program\n- Phased rollout approach\n- Regular stakeholder communication";
+    }
+
+    // Default response
+    return `Thank you for your question. As your ${agentType}, I can help you dive deeper into this analysis. Could you please specify what aspect you'd like me to focus on? I can provide more detailed insights on costs, timelines, risks, or any other specific area.`;
+  };
+
   const getReviewStatusColor = (status: string) => {
     switch (status) {
       case "requested": return "var(--mb-color-warning)";
@@ -169,20 +228,33 @@ const QuestionResponsePage = ({
     return () => clearTimeout(loadingTimer);
   }, []);
 
+  // Auto-scroll chat to bottom when new messages are added
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [question?.chatHistory?.length]);
+
   return (
-    <QuestionResponsePageContainer
+    <div
       style={{
+        height: "calc(100vh - 60px)", // Account for header
         opacity: isLoading ? 0 : 1,
         transition: "opacity 0.5s ease-in-out",
       }}
     >
-      <QuestionResponseContent
-        style={{
-          opacity: showContent ? 1 : 0,
-          transform: showContent ? "translateY(0)" : "translateY(20px)",
-          transition: "opacity 0.6s ease-out, transform 0.6s ease-out",
-        }}
-      >
+      <PanelGroup direction="horizontal" style={{ height: "100%" }}>
+        <Panel defaultSize={70} minSize={30}>
+          <div
+            style={{
+              height: "100%",
+              padding: "2rem",
+              overflowY: "auto",
+              opacity: showContent ? 1 : 0,
+              transform: showContent ? "translateY(0)" : "translateY(20px)",
+              transition: "opacity 0.6s ease-out, transform 0.6s ease-out",
+            }}
+          >
         <Card shadow="none" withBorder>
           <div style={{ padding: "1.5rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
@@ -386,83 +458,155 @@ const QuestionResponsePage = ({
             </div>
           </div>
         </Card>
-      </QuestionResponseContent>
+        </div>
+        </Panel>
 
-      <QuestionResponseSidebar
-        style={{
-          opacity: showContent ? 1 : 0,
-          transform: showContent ? "translateX(0)" : "translateX(20px)",
-          transition: "opacity 0.6s ease-out, transform 0.6s ease-out",
-          transitionDelay: "0.3s",
-        }}
-      >
-        <Card shadow="none" withBorder>
-          <div style={{ padding: "1rem" }}>
-            <h3
-              style={{
-                marginBottom: "1rem",
-                fontSize: "1.1rem",
-                fontWeight: "600",
-              }}
-            >
-              {t`Agent Chat`}
-            </h3>
+        <PanelResizeHandle
+          style={{
+            width: "4px",
+            backgroundColor: "var(--mb-color-border)",
+            cursor: "col-resize",
+            transition: "background-color 0.2s ease",
+          }}
+        />
 
-            {/* Prompt Card */}
-            <Card
-              shadow="none"
-              withBorder
-              style={{
-                marginBottom: "1rem",
-                backgroundColor: "var(--mb-color-bg-light)",
-              }}
-            >
-              <div style={{ padding: "0.75rem" }}>
-                <div
+        <Panel defaultSize={30} minSize={20}>
+          <div
+            style={{
+              height: "100%",
+              padding: "2rem",
+              overflowY: "auto",
+              opacity: showContent ? 1 : 0,
+              transform: showContent ? "translateX(0)" : "translateX(20px)",
+              transition: "opacity 0.6s ease-out, transform 0.6s ease-out",
+              transitionDelay: "0.3s",
+            }}
+          >
+            <Card shadow="none" withBorder>
+              <div style={{ padding: "1rem" }}>
+                <h3
                   style={{
-                    fontSize: "0.75rem",
-                    color: "var(--mb-color-text-medium)",
-                    marginBottom: "0.25rem",
-                    fontWeight: "500",
+                    marginBottom: "1rem",
+                    fontSize: "1.1rem",
+                    fontWeight: "600",
                   }}
                 >
-                  {t`Question`}
+                  {t`Agent Chat`}
+                </h3>
+
+                {/* Prompt Card */}
+                <Card
+                  shadow="none"
+                  withBorder
+                  style={{
+                    marginBottom: "1rem",
+                    backgroundColor: "var(--mb-color-bg-light)",
+                  }}
+                >
+                  <div style={{ padding: "0.75rem" }}>
+                    <div
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "var(--mb-color-text-medium)",
+                        marginBottom: "0.25rem",
+                        fontWeight: "500",
+                      }}
+                    >
+                      {t`Question`}
+                    </div>
+                    <div style={{ fontSize: "0.875rem", lineHeight: "1.4" }}>
+                      {question?.prompt || t`No question available`}
+                    </div>
+                  </div>
+                </Card>
+                <div
+                  ref={chatContainerRef}
+                  style={{
+                    height: "400px",
+                    border: "1px solid var(--mb-color-border)",
+                    borderRadius: "0.375rem",
+                    padding: "0.75rem",
+                    marginBottom: "1rem",
+                    overflowY: "auto",
+                    backgroundColor: "var(--mb-color-bg-light)",
+                  }}
+                >
+                  {question?.chatHistory?.map((message) => (
+                    <div
+                      key={message.id}
+                      style={{
+                        marginBottom: "1rem",
+                        padding: "0.5rem",
+                        borderRadius: "0.375rem",
+                        backgroundColor: message.role === "user" ? "var(--mb-color-primary)" : "var(--mb-color-bg-white)",
+                        color: message.role === "user" ? "white" : "var(--mb-color-text-primary)",
+                        alignSelf: message.role === "user" ? "flex-end" : "flex-start",
+                        maxWidth: "85%",
+                        marginLeft: message.role === "user" ? "auto" : "0",
+                        marginRight: message.role === "user" ? "0" : "auto",
+                      }}
+                    >
+                      <div style={{ fontSize: "0.75rem", marginBottom: "0.25rem", opacity: 0.8 }}>
+                        {message.role === "user" ? "You" : question?.agentType || "Assistant"}
+                      </div>
+                      <div style={{ fontSize: "0.875rem", lineHeight: "1.4", whiteSpace: "pre-wrap" }}>
+                        {message.content}
+                      </div>
+                      <div style={{ fontSize: "0.625rem", marginTop: "0.25rem", opacity: 0.6 }}>
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  ))}
+                  {isSendingMessage && (
+                    <div
+                      style={{
+                        padding: "0.5rem",
+                        borderRadius: "0.375rem",
+                        backgroundColor: "var(--mb-color-bg-white)",
+                        maxWidth: "85%",
+                        marginRight: "auto",
+                      }}
+                    >
+                      <div style={{ fontSize: "0.75rem", marginBottom: "0.25rem", opacity: 0.8 }}>
+                        {question?.agentType || "Assistant"}
+                      </div>
+                      <div style={{ fontSize: "0.875rem", fontStyle: "italic", opacity: 0.7 }}>
+                        {t`Typing...`}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div style={{ fontSize: "0.875rem", lineHeight: "1.4" }}>
-                  {question?.prompt || t`No question available`}
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <Textarea
+                    placeholder={t`Ask a follow-up question...`}
+                    minRows={2}
+                    maxRows={4}
+                    style={{ flex: 1 }}
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    style={{ alignSelf: "flex-end" }}
+                    onClick={handleSendMessage}
+                    disabled={!chatMessage.trim() || isSendingMessage}
+                  >
+                    {isSendingMessage ? t`Sending...` : t`Send`}
+                  </Button>
                 </div>
               </div>
             </Card>
-            <div
-              style={{
-                height: "300px",
-                border: "1px solid var(--mb-color-border)",
-                borderRadius: "0.375rem",
-                padding: "0.75rem",
-                marginBottom: "1rem",
-                overflowY: "auto",
-                backgroundColor: "var(--mb-color-bg-light)",
-              }}
-            ></div>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <Textarea
-                placeholder={t`Ask a follow-up question...`}
-                minRows={2}
-                maxRows={4}
-                style={{ flex: 1 }}
-              />
-              <Button
-                variant="primary"
-                size="sm"
-                style={{ alignSelf: "flex-end" }}
-              >
-                {t`Send`}
-              </Button>
-            </div>
           </div>
-        </Card>
-      </QuestionResponseSidebar>
-    </QuestionResponsePageContainer>
+        </Panel>
+      </PanelGroup>
+    </div>
   );
 };
 

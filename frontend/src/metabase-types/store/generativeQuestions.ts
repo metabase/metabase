@@ -19,6 +19,18 @@ export interface GenerativeQuestionReviewer {
   nodeId?: string; // Optional reference to specific text node
 }
 
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: number;
+  metadata?: {
+    nodeId?: string;
+    reviewerId?: string;
+    reviewStatus?: string;
+  };
+}
+
 export interface GenerativeQuestionMetadata {
   authors: GenerativeQuestionAuthor[];
   reviewers: GenerativeQuestionReviewer[];
@@ -35,6 +47,7 @@ export interface GenerativeQuestion {
   content?: string;
   agentType: string;
   metadata: GenerativeQuestionMetadata;
+  chatHistory: ChatMessage[];
   createdAt: number;
   updatedAt: number;
   loading?: boolean;
