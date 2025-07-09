@@ -4,6 +4,7 @@ import type { DataApp } from "./types";
 
 export function createMockDataApp(opts: Partial<DataApp> = {}): DataApp {
   return {
+    id: "",
     name: "Untitled",
     url: slugify(opts.name || "Untitled"),
     status: "private", // private, published, archived
