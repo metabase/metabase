@@ -1994,6 +1994,60 @@ describe("scenarios > question > custom column > aggregation", () => {
     });
   });
 
+  it("should be possible to reorder aggregations with the same name", () => {
+    H.createQuestion(
+      {
+        query: { "source-table": ORDERS_ID },
+      },
+      { visitQuestion: true },
+    );
+    H.openNotebook();
+
+    H.summarize({ mode: "notebook" });
+
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+    H.CustomExpressionEditor.type("Count() + 1");
+    H.CustomExpressionEditor.nameInput().type("Count");
+    H.popover().button("Done").click();
+
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+    H.CustomExpressionEditor.type("[Count] + 1");
+    H.CustomExpressionEditor.nameInput().type("Count");
+    H.popover().button("Done").click();
+
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+    H.CustomExpressionEditor.type("[Count] + 2");
+    H.CustomExpressionEditor.nameInput().type("Final");
+    H.popover().button("Done").click();
+
+    cy.log("Both the secound Count and Final should reference the first Count");
+    H.visualize();
+    H.assertTableData({
+      columns: ["Count", "Count", "Final"],
+      firstRows: [["18,761", "18,762", "18,763"]],
+    });
+
+    H.openNotebook();
+
+    cy.log("Move the second Count to be the first");
+    H.moveDnDKitElement(
+      H.getNotebookStep("summarize")
+        .findAllByText("Count")
+        .should("have.length", 2)
+        .last(),
+      { horizontal: -400 },
+    );
+
+    cy.log("The values should not have changed, but the order should have");
+    H.visualize();
+    H.assertTableData({
+      columns: ["Count", "Count", "Final"],
+      firstRows: [["18,762", "18,761", "18,763"]],
+    });
+  });
+
   describe("scenarios > question > custom column > aggregation > as question source", () => {
     beforeEach(() => {
       H.createQuestion({
@@ -2142,6 +2196,122 @@ describe("scenarios > question > custom column > aggregation", () => {
 
       H.visualize();
       cy.findByTestId("scalar-value").should("have.text", "19.55");
+    });
+  });
+
+  it("should be possible reference both aggregations with same name in a question that uses this question as a source", () => {
+    H.createQuestion({
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          [
+            "aggregation-options",
+            ["+", ["count"], 1],
+            {
+              name: "Count",
+              "display-name": "Count",
+            },
+          ],
+          [
+            "aggregation-options",
+            [
+              "+",
+              [
+                "aggregation",
+                0,
+                {
+                  "base-type": "type/Integer",
+                },
+              ],
+              1,
+            ],
+            {
+              name: "Count",
+              "display-name": "Count",
+            },
+          ],
+        ],
+        "aggregation-idents": {
+          0: "yghxlgQAdtwA084aeX3B5",
+          1: "P0axSVy7tmOrcgbkPtxAL",
+        },
+        breakout: [
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            { "base-type": "type/DateTime", "temporal-unit": "month" },
+          ],
+        ],
+      },
+    }).then((res) => {
+      cy.wrap(res.body.id).as("questionA");
+      H.visitQuestionAdhoc(
+        {
+          type: "question",
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": `card__${res.body.id}`,
+            },
+          },
+        },
+        { mode: "notebook" },
+      );
+
+      cy.log("Filter by the first Count");
+      H.filter({ mode: "notebook" });
+      H.popover().within(() => {
+        cy.findAllByText("Count").should("have.length", 2);
+
+        cy.findAllByText("Count").eq(0).click();
+
+        // if this was referencing the second Count, it would filter out all rows
+        cy.findByPlaceholderText("Max").type("2.5");
+        cy.button("Add filter").click();
+      });
+
+      cy.log("Filter by the second Count");
+      H.getNotebookStep("filter").icon("add").click();
+      H.popover().within(() => {
+        cy.findAllByText("Count").should("have.length", 2);
+
+        cy.findAllByText("Count").eq(1).click();
+
+        // if this was referencing the first Count, it would filter out all rows
+        cy.findByPlaceholderText("Min").type("2.5");
+        cy.button("Add filter").click();
+      });
+
+      H.visualize();
+      H.assertTableData({
+        columns: ["Created At: Month", "Count", "Count"],
+        firstRows: [["April 2022", "2", "3"]],
+      });
+
+      H.saveQuestion("Question B", { wrapId: true, idAlias: "questionB" });
+
+      cy.log("Change the order in the underlying question");
+      H.visitQuestion("@questionA");
+      H.openNotebook();
+      H.moveDnDKitElement(
+        H.getNotebookStep("summarize")
+          .findAllByText("Count")
+          .should("have.length", 2)
+          .last(),
+        { horizontal: -400 },
+      );
+
+      cy.findByTestId("qb-header").button("Save").click();
+      H.modal().within(() => {
+        cy.log("Ensure that 'Replace original question' is checked");
+        cy.findByLabelText(/Replace original question/i).should("be.checked");
+        cy.button("Save").click();
+      });
+      H.visitQuestion("@questionB");
+      H.assertTableData({
+        columns: ["Created At: Month", "Count", "Count"],
+        firstRows: [["April 2022", "3", "2"]],
+      });
     });
   });
 
@@ -2395,6 +2565,78 @@ describe("scenarios > question > custom column > aggregation", () => {
 
       H.visualize();
       cy.findByTestId("scalar-value").should("have.text", "49");
+    });
+
+    it("should be possible reference both aggregations with same name in follow up stage", () => {
+      H.openOrdersTable({ mode: "notebook" });
+
+      H.summarize({ mode: "notebook" });
+
+      H.popover().findByText("Custom Expression").scrollIntoView().click();
+      H.CustomExpressionEditor.type("Count() + 1");
+      H.CustomExpressionEditor.nameInput().type("Count");
+      H.popover().button("Done").click();
+
+      H.getNotebookStep("summarize").icon("add").click();
+      H.popover().findByText("Custom Expression").scrollIntoView().click();
+      H.CustomExpressionEditor.type("[Count] + 1");
+      H.CustomExpressionEditor.nameInput().type("Count");
+      H.popover().button("Done").click();
+
+      H.getNotebookStep("summarize")
+        .findByText("Pick a column to group by")
+        .click();
+      H.popover().findByText("Created At").click();
+
+      cy.log("Filter by the first Count");
+      H.getNotebookStep("summarize").within(() => {
+        H.filter({ mode: "notebook" });
+      });
+      H.popover().within(() => {
+        cy.findAllByText("Count").should("have.length", 2);
+
+        cy.findAllByText("Count").eq(0).click();
+
+        // if this was referencing the second Count, it would filter out all rows
+        cy.findByPlaceholderText("Max").type("2.5");
+        cy.button("Add filter").click();
+      });
+
+      cy.log("Filter by the second Count");
+      H.getNotebookStep("filter", { stage: 1 }).icon("add").click();
+      H.popover().within(() => {
+        cy.findAllByText("Count").should("have.length", 2);
+
+        cy.findAllByText("Count").eq(1).click();
+
+        // if this was referencing the first Count, it would filter out all rows
+        cy.findByPlaceholderText("Min").type("2.5");
+        cy.button("Add filter").click();
+      });
+
+      H.visualize();
+      H.assertTableData({
+        columns: ["Created At: Month", "Count", "Count"],
+        firstRows: [["April 2022", "2", "3"]],
+      });
+
+      cy.log(
+        "Swapping the aggregation clauses should not change the results, but the column order will be different",
+      );
+      H.openNotebook();
+      H.moveDnDKitElement(
+        H.getNotebookStep("summarize")
+          .findAllByText("Count")
+          .should("have.length", 2)
+          .last(),
+        { horizontal: -400 },
+      );
+
+      H.visualize();
+      H.assertTableData({
+        columns: ["Created At: Month", "Count", "Count"],
+        firstRows: [["April 2022", "3", "2"]],
+      });
     });
   });
 });
