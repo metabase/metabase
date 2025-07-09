@@ -3,6 +3,7 @@ import type { MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { CollapsibleDashboardParameterList } from "metabase/dashboard/components/CollapsibleDashboardParameterList";
 import { DashCardParameterMapper } from "metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -123,14 +124,20 @@ export function Heading({
 
   let leftContent: JSX.Element | null;
 
-  if (hasVariables && isEditingParameter) {
+  if (isEditingParameter) {
     leftContent = (
       <Box h="100%" style={{ overflow: "hidden" }}>
-        <DashCardParameterMapper
-          compact
-          dashcard={dashcard}
-          isMobile={isMobile}
-        />
+        {hasVariables ? (
+          <DashCardParameterMapper
+            compact
+            dashcard={dashcard}
+            isMobile={isMobile}
+          />
+        ) : (
+          <Flex h="100%" display="flex" align="center">
+            <Ellipsified>{t`You can connect widgets to {{ variables }} in heading cards.`}</Ellipsified>
+          </Flex>
+        )}
       </Box>
     );
   } else if (isPreviewing) {
