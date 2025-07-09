@@ -39,7 +39,6 @@ export const SdkIframeEmbedPreview = () => {
           const { MetabaseEmbed } = window["metabase.embed"];
 
           embedJsRef.current = new MetabaseEmbed({
-            // The settings from the setup context omits `instanceUrl` so we need to cast.
             ...settings,
 
             target: "#iframe-embed-container",

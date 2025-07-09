@@ -70,4 +70,10 @@ export const EMBED_FALLBACK_QUESTION_ID = 1;
  **/
 export const SET_INITIAL_PARAMETER_DEBOUNCE_MS = 500;
 
-export const USER_SETTINGS_DEBOUNCE_MS = 500;
+/**
+ * How long to wait before we persist the user settings.
+ *
+ * Setting this too low will cause the settings to be saved too frequently,
+ * causing unnecessary API calls and potential race condition.
+ */
+export const USER_SETTINGS_DEBOUNCE_MS = 800;

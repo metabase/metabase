@@ -9,7 +9,10 @@ import { P, match } from "ts-pattern";
 
 import { useUserSetting } from "metabase/common/hooks";
 
-import { EMBED_FALLBACK_DASHBOARD_ID } from "../constants";
+import {
+  EMBED_FALLBACK_DASHBOARD_ID,
+  USER_SETTINGS_DEBOUNCE_MS,
+} from "../constants";
 import {
   SdkIframeEmbedSetupContext,
   type SdkIframeEmbedSetupContextType,
@@ -35,7 +38,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const [persistedSettings, persistSetting] = useUserSetting(
     "sdk-iframe-embed-setup-settings",
-    { shouldDebounce: true, debounceTimeout: 800 },
+    { debounceTimeout: USER_SETTINGS_DEBOUNCE_MS },
   );
 
   // We don't want to re-fetch the recent items every time we switch between
