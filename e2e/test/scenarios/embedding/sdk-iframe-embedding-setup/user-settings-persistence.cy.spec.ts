@@ -39,9 +39,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
         .should("not.be.checked");
     });
 
-    cy.wait("@persistSettings");
-    cy.wait("@persistSettings");
-
     cy.log("2. reload the page");
     reloadAndWait();
     getEmbedSidebar().within(() => {
@@ -70,12 +67,10 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
     cy.log("1. set chart embed settings to non-default values");
     getEmbedSidebar().within(() => {
-      capturePersistSettings();
       cy.findByLabelText("Allow downloads").click().should("be.checked");
       cy.wait("@persistSettings");
       cy.wait("@persistSettings");
 
-      capturePersistSettings();
       cy.findByLabelText("Show chart title").click().should("not.be.checked");
     });
 
@@ -101,7 +96,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     navigateToEmbedOptionsStep({ experience: "exploration" });
 
     cy.log("1. set exploration settings to non-default values");
-    capturePersistSettings();
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow users to save new questions")
         .click()
@@ -134,8 +128,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     cy.findByLabelText("#509EE3").click();
 
     H.popover().within(() => {
-      capturePersistSettings();
-
       cy.findByDisplayValue("#509EE3")
         .should("be.visible")
         .clear()
@@ -167,8 +159,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
     cy.log("1. select sso auth method");
     getEmbedSidebar().within(() => {
-      capturePersistSettings();
-
       cy.findByLabelText("Single sign-on (SSO)")
         .should("not.be.disabled")
         .click()
@@ -226,8 +216,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
         "true",
       );
 
-      capturePersistSettings();
-
       cy.findByLabelText("Product ID").type("456").blur();
     });
 
@@ -266,6 +254,8 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 });
 
 const reloadAndWait = () => {
+  cy.wait("@persistSettings");
+
   cy.reload();
 
   cy.get("#iframe-embed-container").should(

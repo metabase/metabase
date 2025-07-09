@@ -35,7 +35,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const [persistedSettings, persistSetting] = useUserSetting(
     "sdk-iframe-embed-setup-settings",
-    { shouldDebounce: true },
+    { shouldDebounce: true, debounceTimeout: 500 },
   );
 
   // We don't want to re-fetch the recent items every time we switch between
