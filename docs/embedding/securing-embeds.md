@@ -12,6 +12,8 @@ There are two basic ways to secure stuff on the internet:
 1. **Authentication** looks at _who_ someone is (using standards such as [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md)).
 2. **Authorization** looks at _what_ someone has access to (using standards such as OAuth 2.0).
 
+In this guide, we'll talk primarily about authentication.
+
 ## Public embedding
 
 [Public embedding](public-links.md#public-embeds) doesn't involve any authentication or authorization. A public embed displays a public link with a unique string at the end, like this:
