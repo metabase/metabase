@@ -1,4 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import type { DatabaseFeature } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
@@ -7,8 +8,11 @@ import {
 
 import { DatabaseReplicationSection } from "./DatabaseReplicationSection";
 
-const setup = ({ engine = "postgres", settings = {} } = {}) => {
-  const database = createMockDatabase({ id: 1, engine });
+const setup = ({
+  settings = {},
+  features = [],
+}: { settings?: any; features?: DatabaseFeature[] } = {}) => {
+  const database = createMockDatabase({ id: 1, engine: "postgres", features });
 
   const storeInitialState = createMockState({
     settings: createMockSettingsState({
@@ -26,29 +30,28 @@ const setup = ({ engine = "postgres", settings = {} } = {}) => {
 describe("DatabaseReplicationSection", () => {
   it("should show for both database-replication-enabled AND postgres engine", () => {
     setup({
-      engine: "postgres",
+      features: ["database-replication"],
       settings: { "database-replication-enabled": true },
     });
 
-    const element = screen.queryByText("Data replication");
+    const element = screen.queryByText("Database replication");
     expect(element).toBeInTheDocument();
   });
 
-  it("should now show for other combinations", () => {
+  it("should not show for other combinations", () => {
     const noShow = [
-      { enabled: true, engine: "mysql" },
-      { enabled: false, engine: "postgres" },
-      { enabled: false, engine: "mysql" },
-      { enabled: null, engine: "postgres" },
+      { enabled: true, feature: false },
+      { enabled: false, feature: true },
+      { enabled: false, feature: false },
     ];
 
-    noShow.forEach(({ enabled, engine }) => {
+    noShow.forEach(({ enabled, feature }) => {
       const { unmount } = setup({
-        engine,
+        features: feature ? ["database-replication"] : [],
         settings: { "database-replication-enabled": enabled },
       });
 
-      const element = screen.queryByText("Data replication");
+      const element = screen.queryByText("Database replication");
       expect(element).not.toBeInTheDocument();
 
       unmount();
