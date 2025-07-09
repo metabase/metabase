@@ -291,6 +291,107 @@ describe("issue 39487", () => {
   }
 });
 
+describe("issue 14124", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not include date when metric is binned by hour of day (metabase#14124)", () => {
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: null,
+    });
+
+    H.createQuestion(
+      {
+        name: "14124",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findAllByRole("columnheader", {
+      name: "Created At: Hour of day",
+    }).should("be.visible");
+
+    cy.log("Reported failing in v0.37.2");
+    cy.findAllByRole("gridcell", { name: "3:00 AM" }).should("be.visible");
+  });
+});
+
+describe("issue 15563", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not display multiple 'Created At' fields when they are remapped to PK/FK (metabase#15563)", () => {
+    // Remap fields
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: "type/PK",
+    });
+    cy.request("PUT", `/api/field/${REVIEWS.CREATED_AT}`, {
+      semantic_type: "type/FK",
+      fk_target_field_id: ORDERS.CREATED_AT,
+    });
+
+    H.openReviewsTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Count of rows").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    cy.get("[data-element-id=list-section-header]")
+      .contains("Created At")
+      .click();
+    cy.get("[data-element-id=list-section] [data-element-id=list-item-title]")
+      .contains("Created At")
+      .should("have.length", 1);
+  });
+});
+
+describe("issue 36122", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should display breakouts group for all FKs (metabase#36122)", () => {
+    cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
+      semantic_type: "type/FK",
+      fk_target_field_id: PRODUCTS.ID,
+    });
+
+    H.openReviewsTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+
+    H.popover().within(() => {
+      cy.findAllByTestId("dimension-list-item")
+        .eq(3)
+        .should("have.text", "Rating");
+      cy.get("[data-element-id=list-section-header]").should("have.length", 3);
+      cy.get("[data-element-id=list-section-header]")
+        .eq(0)
+        .should("have.text", "Reviews");
+      cy.get("[data-element-id=list-section-header]")
+        .eq(1)
+        .should("have.text", "Product");
+      cy.get("[data-element-id=list-section-header]")
+        .eq(2)
+        .should("have.text", "Rating");
+    });
+  });
+});
+
 const MONGO_DB_ID = 2;
 
 describe("issue 47793", () => {
@@ -848,6 +949,74 @@ describe("issue 55631", () => {
       // It is important to have extremely short timeout in order to catch the issue
       // before the dialog closes.
       cy.findByDisplayValue("Orders", { timeout: 10 }).should("not.exist");
+    });
+  });
+});
+
+describe.skip("issue 39033", () => {
+  const question1Name = "Q1";
+  const question1Details: NativeQuestionDetails = {
+    name: question1Name,
+    native: {
+      query: "select id, product_id, total from orders",
+      "template-tags": {},
+    },
+  };
+
+  const question2Name = "Q2";
+  const question2Details: NativeQuestionDetails = {
+    name: question2Name,
+    native: {
+      query: "select * from products",
+      "template-tags": {},
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  function getJoinedColumn() {
+    return cy
+      .findByTestId(`${question2Name.toLowerCase()}-table-columns`)
+      .findByLabelText(`${question2Name} - PRODUCT_ID → ID`);
+  }
+
+  it("should correctly mark columns as selected when joining a native query (metabase#39033)", () => {
+    cy.log("create a question");
+    H.createNativeQuestion(question1Details);
+    H.createNativeQuestion(question2Details);
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(question1Name).click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(question2Name).click();
+    });
+    H.popover().findByText("PRODUCT_ID").click();
+    H.popover().findByText("ID").click();
+
+    cy.log("run the query");
+    H.visualize();
+    cy.wait("@dataset");
+
+    cy.log("assert that columns are marked as selected correctly");
+    H.openVizSettingsSidebar();
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.button("Add or remove columns").click();
+
+      getJoinedColumn().should("be.checked").click();
+      getJoinedColumn().should("not.be.checked");
+      cy.wait("@dataset");
+
+      getJoinedColumn().should("not.be.checked").click();
+      getJoinedColumn().should("be.checked");
+      cy.wait("@dataset");
     });
   });
 });

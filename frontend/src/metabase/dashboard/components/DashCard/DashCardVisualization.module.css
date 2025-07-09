@@ -6,7 +6,8 @@
   color: var(--mb-color-text-medium);
 }
 
-.InlineParametersList * {
+.InlineParametersList *,
+.InlineParametersMenuTrigger * {
   pointer-events: all;
 }
 

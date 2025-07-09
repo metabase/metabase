@@ -188,8 +188,9 @@
                     (lib/aggregate (lib/avg (lib/with-join-alias (lib/ref (get cols "count")) "checkins_by_user"))))]
       (is (=? [{:id                       (meta/id :users :last-login)
                 :name                     "LAST_LOGIN"
-                :lib/source               :source/breakouts
-                :lib/source-column-alias  "LAST_LOGIN"
+                :lib/source               :source/table-defaults
+                :lib/breakout?            true
+                :lib/source-column-alias "LAST_LOGIN"
                 :lib/desired-column-alias "LAST_LOGIN"}
                {:name                     "avg"
                 :lib/source               :source/aggregations
@@ -282,7 +283,7 @@
                 field-ref))
         (testing `lib.field.resolution/options-metadata*
           (is (=? {:lib/source-uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
-                  (#'lib.field.resolution/options-metadata* field-ref))))
+                  (#'lib.field.resolution/options-metadata field-ref))))
         (testing `lib.field.resolution/resolve-field-ref
           (is (=? {:name            "EXAMPLE_TIMESTAMP"
                    :display-name    "Example Timestamp"
@@ -414,27 +415,27 @@
             (is (=? [:field {:lib/uuid string?, :join-alias (symbol "nil #_\"key is not present.\"")} "Products__CATEGORY"]
                     breakout-ref))
             (binding [lib.metadata.calculation/*display-name-style* :long]
-              (is (=? {:active                        true
-                       :base-type                     :type/Text
-                       :display-name                  "Products → Category"
-                       :effective-type                :type/Text
-                       :fingerprint                   map?
-                       :id                            (meta/id :products :category)
-                       :lib/original-display-name     "Category"
-                       :lib/original-name             "CATEGORY"
-                       :lib/original-join-alias       "Products"
+              (is (=? {:active                    true
+                       :base-type                 :type/Text
+                       :display-name              "Products → Category"
+                       :effective-type :type/Text
+                       :fingerprint               map?
+                       :id                        (meta/id :products :category)
+                       :lib/original-display-name "Category"
+                       :lib/original-name         "CATEGORY"
+                       :lib/original-join-alias   "Products"
                        ;; this key is DEPRECATED (see description in column metadata schema) but still used (FOR
                        ;; NOW) (QUE-1403)
-                       :source-alias                  "Products"
-                       :lib/source                    :source/card ; or is it supposed to be `:source/breakouts`?
-                       :lib/source-uuid               (lib.options/uuid breakout-ref)
-                       :lib/type                      :metadata/column
-                       :name                          "CATEGORY"
-                       :semantic-type                 :type/Category
-                       :table-id                      (meta/id :products)
-                       :visibility-type               :normal}
+                       :source-alias              "Products"
+                       :lib/source                :source/card ; or is it supposed to be `:source/table-defaults`
+                       :lib/source-uuid           (lib.options/uuid breakout-ref)
+                       :lib/type                  :metadata/column
+                       :name                      "CATEGORY"
+                       :semantic-type             :type/Category
+                       :table-id                  (meta/id :products)
+                       :visibility-type           :normal}
                       ;; this eventually uses `lib.field.resolution`
-                      (lib.field.resolution/resolve-field-ref query -1 breakout-ref))))))))))
+                      (lib.field.resolution/resolve-field-ref query' -1 breakout-ref))))))))))
 
 (deftest ^:parallel join-from-model-test
   (testing "Do the right thing with joins that come from models"
@@ -497,30 +498,31 @@
 
 (deftest ^:parallel legacy-query-with-broken-breakout-breakouts-test
   (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
-    (let [query (metabase.lib.breakout-test/legacy-query-with-broken-breakout)
+    (let [query        (metabase.lib.breakout-test/legacy-query-with-broken-breakout)
           breakout-ref (first (lib/breakouts query))]
       (is (=? [:field {:lib/uuid string?} (meta/id :products :category)]
               breakout-ref))
       (binding [lib.metadata.calculation/*display-name-style* :long]
-        (is (=? {:active                        true
-                 :base-type                     :type/Text
-                 :database-type                 "CHARACTER VARYING"
-                 :display-name                  "Products → Category"
-                 :fingerprint-version           5
-                 :has-field-values              :auto-list
-                 :id                            (meta/id :products :category)
-                 :lib/original-display-name     "Category"
-                 :lib/original-join-alias       "Products"
-                 :lib/original-name             "CATEGORY"
-                 :lib/source                    :source/breakouts
-                 :lib/source-uuid               (lib.options/uuid breakout-ref)
-                 :lib/type                      :metadata/column
-                 :metabase.lib.join/join-alias  (symbol "nil #_\"key is not present.\"")
-                 :name                          "CATEGORY"
-                 :preview-display               true
-                 :semantic-type                 :type/Category
-                 :table-id                      (meta/id :products)
-                 :visibility-type               :normal}
+        (is (=? {:active                       true
+                 :base-type                    :type/Text
+                 :database-type                "CHARACTER VARYING"
+                 :display-name                 "Products → Category"
+                 :fingerprint-version          5
+                 :has-field-values             :auto-list
+                 :id                           (meta/id :products :category)
+                 :lib/original-display-name    "Category"
+                 :lib/original-join-alias      "Products"
+                 :lib/original-name            "CATEGORY"
+                 :lib/source                   :source/card
+                 :lib/breakout?                true
+                 :lib/source-uuid              (lib.options/uuid breakout-ref)
+                 :lib/type                     :metadata/column
+                 :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                 :name                         "CATEGORY"
+                 :preview-display              true
+                 :semantic-type                :type/Category
+                 :table-id                     (meta/id :products)
+                 :visibility-type              :normal}
                 (first (lib/breakouts-metadata query)))
             "don't set :lib/previous-stage-join-alias")))))
 
