@@ -6,7 +6,9 @@ describe("getFilterChangeDescription", () => {
       const current = {};
       const draft = { filter1: "value1" };
 
-      expect(getFilterChangeDescription(current, draft)).toBe("1 filter added");
+      expect(getFilterChangeDescription(current, draft)).toBe(
+        "1 filter changed",
+      );
     });
 
     it("should describe a single filter removed", () => {
@@ -14,7 +16,7 @@ describe("getFilterChangeDescription", () => {
       const draft = {};
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "1 filter removed",
+        "1 filter changed",
       );
     });
 
@@ -23,7 +25,7 @@ describe("getFilterChangeDescription", () => {
       const draft = { filter1: "value2" };
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "1 filter updated",
+        "1 filter changed",
       );
     });
   });
@@ -34,7 +36,7 @@ describe("getFilterChangeDescription", () => {
       const draft = { filter1: "value1", filter2: "value2" };
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "2 filters added",
+        "2 filters changed",
       );
     });
 
@@ -43,7 +45,7 @@ describe("getFilterChangeDescription", () => {
       const draft = {};
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "2 filters removed",
+        "2 filters changed",
       );
     });
 
@@ -52,7 +54,7 @@ describe("getFilterChangeDescription", () => {
       const draft = { filter1: "newValue1", filter2: "newValue2" };
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "2 filters updated",
+        "2 filters changed",
       );
     });
   });
@@ -63,7 +65,7 @@ describe("getFilterChangeDescription", () => {
       const draft = { filter1: "newValue1", filter2: "value2" };
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "1 filter added, 1 filter updated",
+        "2 filters changed",
       );
     });
 
@@ -72,7 +74,7 @@ describe("getFilterChangeDescription", () => {
       const draft = { filter2: "value2" };
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "1 filter added, 1 filter removed",
+        "2 filters changed",
       );
     });
 
@@ -81,7 +83,7 @@ describe("getFilterChangeDescription", () => {
       const draft = { filter1: "newValue1" };
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "1 filter updated, 1 filter removed",
+        "2 filters changed",
       );
     });
 
@@ -90,7 +92,7 @@ describe("getFilterChangeDescription", () => {
       const draft = { filter1: "newValue1", filter3: "value3" };
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "1 filter added, 1 filter updated, 1 filter removed",
+        "3 filters changed",
       );
     });
   });
@@ -100,21 +102,27 @@ describe("getFilterChangeDescription", () => {
       const current = { filter1: null };
       const draft = { filter1: "value1" };
 
-      expect(getFilterChangeDescription(current, draft)).toBe("1 filter added");
+      expect(getFilterChangeDescription(current, draft)).toBe(
+        "1 filter changed",
+      );
     });
 
     it("should treat undefined as empty", () => {
       const current = { filter1: undefined };
       const draft = { filter1: "value1" };
 
-      expect(getFilterChangeDescription(current, draft)).toBe("1 filter added");
+      expect(getFilterChangeDescription(current, draft)).toBe(
+        "1 filter changed",
+      );
     });
 
     it("should treat empty array as empty", () => {
       const current = { filter1: [] };
       const draft = { filter1: ["value1"] };
 
-      expect(getFilterChangeDescription(current, draft)).toBe("1 filter added");
+      expect(getFilterChangeDescription(current, draft)).toBe(
+        "1 filter changed",
+      );
     });
 
     it("should not treat non-empty array as empty", () => {
@@ -122,7 +130,7 @@ describe("getFilterChangeDescription", () => {
       const draft = { filter1: ["value2"] };
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "1 filter updated",
+        "1 filter changed",
       );
     });
 
@@ -131,7 +139,7 @@ describe("getFilterChangeDescription", () => {
       const draft = { filter1: null };
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "1 filter removed",
+        "1 filter changed",
       );
     });
 
@@ -140,7 +148,7 @@ describe("getFilterChangeDescription", () => {
       const draft = { filter1: [] };
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "1 filter removed",
+        "1 filter changed",
       );
     });
   });
@@ -151,7 +159,7 @@ describe("getFilterChangeDescription", () => {
       const draft = { filter1: ["a", "c"] };
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "1 filter updated",
+        "1 filter changed",
       );
     });
 
@@ -160,7 +168,7 @@ describe("getFilterChangeDescription", () => {
       const draft = { filter1: ["b", "a"] };
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "1 filter updated",
+        "1 filter changed",
       );
     });
 
@@ -178,7 +186,7 @@ describe("getFilterChangeDescription", () => {
       const draft = { filter1: { key: "value2" } };
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "1 filter updated",
+        "1 filter changed",
       );
     });
 
@@ -229,7 +237,7 @@ describe("getFilterChangeDescription", () => {
       };
 
       expect(getFilterChangeDescription(current, draft)).toBe(
-        "3 filters added, 1 filter updated, 1 filter removed",
+        "5 filters changed",
       );
     });
   });
