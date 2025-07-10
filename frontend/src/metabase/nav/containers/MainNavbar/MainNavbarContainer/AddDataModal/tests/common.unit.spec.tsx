@@ -106,9 +106,29 @@ describe("AddDataModal", () => {
       expect(alert).toBeInTheDocument();
       expect(
         within(alert).getByText(
-          /To add a new database, please contact your administrator/,
+          /To add a new database, please contact your administrator at.*\.$/,
         ),
       ).toBeInTheDocument();
+      expect(
+        within(alert).getByText("admin@metabase.test"),
+      ).toBeInTheDocument();
+    });
+
+    it("doesn't show admin email when there isn't one", async () => {
+      setup({ isAdmin: false, adminEmail: null });
+
+      await userEvent.click(screen.getByRole("tab", { name: /Database$/ }));
+
+      const alert = screen.getByRole("alert");
+      expect(alert).toBeInTheDocument();
+      expect(
+        within(alert).getByText(
+          "To add a new database, please contact your administrator.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(alert).queryByText("admin@metabase.test"),
+      ).not.toBeInTheDocument();
     });
   });
 
