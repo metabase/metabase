@@ -34,6 +34,8 @@
                                   app)]
         (thunk app-with-definition))
       (finally
+        ;; Work around the fact that MySQL tries to delete child tables in the wrong order (definition, then release),
+        ;; and trips around the fact that ONLY the "definition -> release" FK does NOT cascade on delete.
         (t2/delete! :model/DataAppRelease :app_id app-id)))))
 
 (defn data-app-url
