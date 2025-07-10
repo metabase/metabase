@@ -91,7 +91,7 @@ describe("CloudSMTPConnectionCard", () => {
 
     expect(screen.getByText(/Custom smtp server/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/Emails come from your organisation/i),
+      screen.getByText(/Emails come from your email server/i),
     ).toBeInTheDocument();
 
     expect(
