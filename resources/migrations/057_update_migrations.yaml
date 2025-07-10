@@ -48,8 +48,6 @@ databaseChangeLog:
                   name: view_name
                   type: varchar(256)
                   remarks: Name of the view, unique per database and schema
-                  constraints:
-                    nullable: false
               - column:
                   name: view_display_name
                   type: varchar(256)
