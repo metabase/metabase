@@ -54,7 +54,7 @@
   absolute-max-results)
 
 (defsetting download-row-limit
-  (deferred-tru "Row limit in file exports excluding the header. Enforces 1048575 excluding header as minimum. xlsx downloads are inherently limited to 1048575 rows even if this limit is higher.")
+  (deferred-tru "Row limit in file exports excluding the header. Enforces 1048575 excluding header as maximum. xlsx downloads are inherently limited to 1048575 rows even if this limit is higher.")
   :visibility :internal
   :export?    true
   :type       :positive-integer
@@ -62,4 +62,4 @@
                 (let [limit (setting/get-value-of-type :positive-integer :download-row-limit)]
                   (if (nil? limit)
                     limit
-                    (max limit *minimum-download-row-limit*)))))
+                    (min limit *minimum-download-row-limit*)))))
