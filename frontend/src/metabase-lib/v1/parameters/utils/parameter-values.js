@@ -29,8 +29,12 @@ export function getParameterValue({
 }
 
 /**
+ * @import { UiParameter } from "metabase-lib/v1/parameters/types";
+ *
  * In some cases, we need to use default parameter value in place of an absent one.
  * Please use this function when dealing with the required parameters.
+ *
+ * @returns {UiParameter[]}
  */
 export function getValuePopulatedParameters({
   parameters,

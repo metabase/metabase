@@ -328,6 +328,7 @@ interface InstanceSettings {
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "example-dashboard-id": number | null;
+  "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;

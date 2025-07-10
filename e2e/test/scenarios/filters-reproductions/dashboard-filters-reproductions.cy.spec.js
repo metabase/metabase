@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 const { H } = cy;
 import {
   SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
@@ -1162,6 +1163,10 @@ describe("issue 21528", () => {
     cy.findByRole("main")
       .findByText("Start by selecting data to model")
       .should("be.visible");
+    cy.location("pathname").should(
+      "eq",
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}`,
+    );
     cy.findByTestId("admin-navbar").findByText("Exit admin").click();
 
     H.openNavigationSidebar();

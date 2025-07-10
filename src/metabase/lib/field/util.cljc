@@ -2,6 +2,8 @@
   "Some small field-related helper functions which are used from a few different namespaces."
   (:require
    [clojure.set :as set]
+   [metabase.lib.join.util :as lib.join.util]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
@@ -28,24 +30,46 @@
       :name)
      column)))
 
-(mu/defn add-deduplicated-names :- [:sequential
-                                    [:merge
-                                     ::lib.schema.metadata/column
-                                     [:map
-                                      [:lib/deduplicated-name :string]]]]
-  "Add `:lib/original-name` and `:lib/deduplicated-name` to columns if they don't already have them."
-  [cols :- [:sequential ::lib.schema.metadata/column]]
-  (let [deduplicated-name-fn (lib.util/non-truncating-unique-name-generator)]
-    (mapv (if (every? :lib/deduplicated-name cols)
-            ;; just double-check that they're deduplicated.
-            (fn [col]
-              (update col :lib/deduplicated-name deduplicated-name-fn))
-            (fn [col]
-              (let [original-name ((some-fn :lib/original-name :name) col)]
-                (assoc col
-                       :lib/original-name     original-name
-                       :lib/deduplicated-name (deduplicated-name-fn (:name col))))))
-          cols)))
+(mu/defn add-deduplicated-names :- [:or
+                                    ;; zero-arity: transducer
+                                    fn?
+                                    ;; one-arity
+                                    [:sequential
+                                     [:merge
+                                      ::lib.schema.metadata/column
+                                      [:map
+                                       [:lib/deduplicated-name :string]]]]]
+  "Add `:lib/original-name` and `:lib/deduplicated-name` to columns if they don't already have them.
+
+  The zero arity is a transducer version."
+  ([]
+   (let [deduplicated-name-fn (lib.util/non-truncating-unique-name-generator)]
+     (map (fn [col]
+            (let [original-name ((some-fn :lib/original-name :name) col)]
+              (assoc col
+                     :lib/original-name     original-name
+                     :lib/deduplicated-name (deduplicated-name-fn ((some-fn :lib/deduplicated-name :name) col))))))))
+
+  ([cols :- [:sequential ::lib.schema.metadata/column]]
+   (into []
+         (add-deduplicated-names)
+         cols)))
+
+(mu/defn add-source-and-desired-aliases-xform :- fn?
+  "Transducer to add `:lib/source-column-alias`, `:lib/desired-column-alias`, `:lib/original-name`, and
+  `:lib/deduplicated-name` to a sequence of columns.
+
+    (into [] (add-unique-names-xform) cols)"
+  [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable]
+  (comp (add-deduplicated-names)
+        (let [unique-name-fn (lib.util/unique-name-generator)]
+          (map (fn [col]
+                 (let [source-alias  ((some-fn :lib/source-column-alias :name) col)
+                       desired-alias (unique-name-fn
+                                      (lib.join.util/desired-alias metadata-providerable col))]
+                   (assoc col
+                          :lib/source-column-alias  source-alias
+                          :lib/desired-column-alias desired-alias)))))))
 
 (defn update-keys-for-col-from-previous-stage
   "For a column that came from a previous stage, change the keys for things that mean 'this happened in the current

@@ -1730,6 +1730,44 @@ describe("issue 56775", () => {
   });
 });
 
+describe.skip("issue 57359", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+  });
+
+  it("should not break the model when editing metadata (metabase#57359)", () => {
+    cy.log("create a question with two joins without running the query");
+    H.openOrdersTable({ mode: "notebook" });
+    cy.wrap([1, 2]).each(() => {
+      H.join();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        cy.findByText("Products").click();
+      });
+    });
+    H.saveQuestion("Q1");
+
+    cy.log("turn the question into a model");
+    H.openQuestionActions("Turn into a model");
+    H.modal().button("Turn this into a model").click();
+    cy.wait("@updateCard");
+    cy.wait("@dataset");
+
+    cy.log("edit query metadata");
+    H.openQuestionActions("Edit metadata");
+    H.openColumnOptions("Product ID");
+    H.renameColumn("Product ID", "Product ID2");
+    H.saveMetadataChanges();
+
+    cy.log("make sure the query can run");
+    cy.wait("@dataset");
+    H.tableInteractive().should("be.visible");
+  });
+});
+
 describe("issue 55486", () => {
   const MODEL_NAME = "Model 55486";
 
