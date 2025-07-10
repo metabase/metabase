@@ -245,10 +245,6 @@ export const getRoutes = (store) => {
                 component={PLUGIN_DATA_APPS.LIST_APPS_PAGE_COMPONENT}
               />
               <Route
-                path="new"
-                component={PLUGIN_DATA_APPS.APP_PAGE_COMPONENT}
-              />
-              <Route
                 path="edit/:appId"
                 component={PLUGIN_DATA_APPS.APP_PAGE_COMPONENT}
               />

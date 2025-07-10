@@ -1,25 +1,38 @@
-import { slugify } from "metabase/lib/formatting/url";
+import { t } from "ttag";
 
-import type { DataApp } from "./types";
+import type { DataApp } from "metabase/data-apps/types";
+import type { GenericErrorResponse } from "metabase/lib/errors";
+import { slugify } from "metabase/lib/formatting/url";
 
 export function createMockDataApp(opts: Partial<DataApp> = {}): DataApp {
   return {
     id: "",
     name: "Untitled",
-    url: slugify(opts.name || "Untitled"),
+    slug: slugify(opts.name || "Untitled"),
     status: "private", // private, published, archived
     ...opts,
   };
 }
 
-export const DataAppsListMock = [
-  createMockDataApp({
-    id: "aaaaa",
-    name: "Super App",
-    url: "super-app",
-  }),
-];
+export const getUpdateApiErrorMessage = (
+  error: GenericErrorResponse | unknown,
+): string => {
+  const maybeError = error as GenericErrorResponse;
 
-export function getDataAppById(idToFind: string | undefined) {
-  return DataAppsListMock.find(({ id }) => id === idToFind);
-}
+  if (typeof maybeError.data === "string") {
+    return maybeError.data;
+  }
+
+  if (
+    Array.isArray(maybeError.data?.errors) &&
+    "error" in maybeError.data?.errors[0]
+  ) {
+    return maybeError.data.errors[0].error;
+  }
+
+  if (Array.isArray(maybeError.errors) && "error" in maybeError.errors[0]) {
+    return maybeError.errors[0].error;
+  }
+
+  return t`Unknown error`;
+};

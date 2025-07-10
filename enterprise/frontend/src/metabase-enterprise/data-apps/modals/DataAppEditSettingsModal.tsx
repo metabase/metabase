@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { DataApp } from "metabase/data-apps/types";
 import { Form, FormProvider, FormTextInput } from "metabase/forms";
 import { Box, Button, Modal, Stack } from "metabase/ui";
 
-import type { DataApp, DataAppEditSettings } from "../types";
+import type { DataAppEditSettings } from "../types";
 
 interface DataAppEditSettingsModalProps {
   dataApp: DataApp;
@@ -22,7 +23,7 @@ export const DataAppEditSettingsModal = ({
   const initialValues = useMemo(() => {
     const settings: DataAppEditSettings = {
       name: dataApp.name,
-      url: dataApp.url,
+      slug: dataApp.slug,
     };
 
     return settings;
@@ -34,7 +35,7 @@ export const DataAppEditSettingsModal = ({
         <Form as={Stack}>
           <FormTextInput label={t`Name`} name="name" required />
 
-          <FormTextInput label={t`Url slug`} name="url" required />
+          <FormTextInput label={t`Url slug`} name="slug" required />
 
           <Box>
             <Button variant="filled" type="submit">{t`Save`}</Button>
