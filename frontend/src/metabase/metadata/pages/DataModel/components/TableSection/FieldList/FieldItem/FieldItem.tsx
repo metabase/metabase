@@ -37,13 +37,13 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        message: t`Failed to update display name of ${field.display_name}`,
+        message: t`Failed to update name of ${field.display_name}`,
         toastColor: "error",
       });
     } else {
       sendToast({
         icon: "check",
-        message: t`Display name of ${field.display_name} updated`,
+        message: t`Name of ${field.display_name} updated`,
       });
     }
   };

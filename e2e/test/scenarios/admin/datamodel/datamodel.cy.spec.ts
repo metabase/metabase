@@ -640,7 +640,7 @@ describe("scenarios > admin > datamodel", () => {
 
         TableSection.getFieldNameInput("Tax").clear().type("New tax").blur();
         cy.wait("@updateField");
-        H.undoToast().should("contain.text", "Display name of Tax updated");
+        H.undoToast().should("contain.text", "Name of Tax updated");
         TableSection.getFieldNameInput("New tax").should("be.visible");
 
         cy.log("verify preview");
@@ -672,7 +672,7 @@ describe("scenarios > admin > datamodel", () => {
 
         TableSection.getFieldNameInput("Tax").clear().type("New tax").blur();
         cy.wait("@updateField");
-        H.undoToast().should("contain.text", "Display name of Tax updated");
+        H.undoToast().should("contain.text", "Name of Tax updated");
         TableSection.getFieldNameInput("New tax").should("be.visible");
         TableSection.getField("New tax").should("be.visible");
 
@@ -1016,7 +1016,7 @@ describe("scenarios > admin > datamodel", () => {
 
         FieldSection.getNameInput().clear().type("New tax").blur();
         cy.wait("@updateField");
-        H.undoToast().should("contain.text", "Display name of Tax updated");
+        H.undoToast().should("contain.text", "Name of Tax updated");
         TableSection.getFieldNameInput("New tax").should("be.visible");
 
         cy.log("verify preview");
@@ -1049,7 +1049,7 @@ describe("scenarios > admin > datamodel", () => {
 
         FieldSection.getNameInput().clear().type("New total").blur();
         cy.wait("@updateField");
-        H.undoToast().should("contain.text", "Display name of Total updated");
+        H.undoToast().should("contain.text", "Name of Total updated");
         FieldSection.getNameInput().should("have.value", "New total");
         TableSection.getFieldNameInput("New total")
           .scrollIntoView()
@@ -1159,10 +1159,7 @@ describe("scenarios > admin > datamodel", () => {
           .type("Remapped Product ID")
           .realPress("Tab");
         cy.wait("@updateField");
-        H.undoToast().should(
-          "contain.text",
-          "Display name of Product ID updated",
-        );
+        H.undoToast().should("contain.text", "Name of Product ID updated");
 
         cy.log("verify preview");
         FieldSection.getPreviewButton().click();
