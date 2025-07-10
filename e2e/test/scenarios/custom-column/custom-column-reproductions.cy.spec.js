@@ -2236,3 +2236,46 @@ describe("Issue 12938", () => {
     cy.findAllByTestId("header-cell").contains("MyCustom").should("be.visible");
   });
 });
+
+describe("Issue 26512", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  const TEST_CASES = [
+    'year("a string")',
+    'month("a string")',
+    'day("a string")',
+    'hour("a string")',
+    'minute("a string")',
+    'datetimeAdd("a string", 1, "day")',
+    'datetimeDiff("a string", 1, "day")',
+    "year(1)",
+    "month(42)",
+    "day(102)",
+    "hour(140)",
+    "minute(55)",
+    'datetimeAdd(42, 1, "day")',
+    'datetimeDiff(42, 1, "day")',
+    "year(true)",
+    "month(true)",
+    "day(true)",
+    "hour(true)",
+    "minute(true)",
+    'datetimeAdd(true, 1, "day")',
+    'datetimeDiff(true, 1, "day")',
+  ];
+
+  it("should validate types for date/time functions (metabase#26512)", () => {
+    H.addCustomColumn();
+
+    TEST_CASES.forEach((formula) => {
+      H.CustomExpressionEditor.clear()
+        .type(formula, { allowFastSet: true })
+        .blur();
+      H.popover().findByText("Types are incompatible.").should("be.visible");
+    });
+  });
+});
