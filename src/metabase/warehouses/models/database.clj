@@ -578,4 +578,3 @@
   "Batch hydrate `db_routing_info` for the given `Database`."
   [_model k databases]
   (hydrate-db-routing-info k databases))
-
