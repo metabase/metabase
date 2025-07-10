@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
@@ -33,30 +33,57 @@ export const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
   const adminEmail = useSelector((state) => getSetting(state, "admin-email"));
   const adminEmailElement = <b key="admin-email">{adminEmail}</b>;
 
-  const getAlertCopy = match(reason)
+  const getAlertCopy = match({ reason, adminEmail })
     .with(
-      "add-database",
+      { reason: "add-database", adminEmail: P.when((email) => !!email) },
       () =>
         c("{0} is admin's email address")
           .jt`To add a new database, please contact your administrator at ${adminEmailElement}.`,
     )
     .with(
-      "enable-csv-upload",
+      { reason: "add-database", adminEmail: P.when((email) => !email) },
+      () => t`To add a new database, please contact your administrator.`,
+    )
+    .with(
+      { reason: "enable-csv-upload", adminEmail: P.when((email) => !!email) },
       () =>
         c("{0} is admin's email address")
           .jt`To enable CSV file upload, please contact your administrator at ${adminEmailElement}.`,
     )
     .with(
-      "obtain-csv-upload-permission",
+      { reason: "enable-csv-upload", adminEmail: P.when((email) => !email) },
+      () => t`To enable CSV file upload, please contact your administrator.`,
+    )
+    .with(
+      {
+        reason: "obtain-csv-upload-permission",
+        adminEmail: P.when((email) => !!email),
+      },
       () =>
         c("{0} is admin's email address")
           .jt`You are not permitted to upload CSV files. To get proper permissions, please contact your administrator at ${adminEmailElement}.`,
     )
     .with(
-      "enable-google-sheets",
+      {
+        reason: "obtain-csv-upload-permission",
+        adminEmail: P.when((email) => !email),
+      },
+      () =>
+        t`You are not permitted to upload CSV files. To get proper permissions, please contact your administrator.`,
+    )
+    .with(
+      {
+        reason: "enable-google-sheets",
+        adminEmail: P.when((email) => !!email),
+      },
       () =>
         c("{0} is admin's email address")
           .jt`To enable Google Sheets import, please contact your administrator at ${adminEmailElement}.`,
+    )
+    .with(
+      { reason: "enable-google-sheets", adminEmail: P.when((email) => !email) },
+      () =>
+        t`To enable Google Sheets import, please contact your administrator.`,
     )
     .exhaustive();
 
