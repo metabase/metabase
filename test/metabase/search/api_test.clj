@@ -355,7 +355,7 @@
     (with-search-items-in-root-collection "test"
       (is (= #{} (get-available-models :q "noresults"))))))
 
-(deftest available-models-test
+(deftest ^:synchronized available-models-test
   ;; Porting these tests over earlier
   (doseq [engine ["in-place" "appdb"]]
     (let [search-term "query-model-set"
