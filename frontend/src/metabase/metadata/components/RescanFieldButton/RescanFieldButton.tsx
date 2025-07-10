@@ -19,7 +19,7 @@ export const RescanFieldButton = ({ fieldId }: Props) => {
 
     if (error) {
       sendToast({
-        icon: "warning",
+        icon: "warning_triangle_filled",
         message: t`Failed to start scan`,
         toastColor: "error",
       });

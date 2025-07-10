@@ -19,7 +19,7 @@ export const DiscardFieldValuesButton = ({ fieldId }: Props) => {
 
     if (error) {
       sendToast({
-        icon: "warning",
+        icon: "warning_triangle_filled",
         message: t`Failed to discard values`,
         toastColor: "error",
       });
