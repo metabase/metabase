@@ -2388,7 +2388,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       });
     });
 
-    it("should be possible to use nested aggregations in filter clause of a new question", () => {
+    it("should be possible to use nested aggregations in filter clause of a follow up stage", () => {
       H.getNotebookStep("summarize").within(() => {
         H.filter({ mode: "notebook" });
       });
@@ -2405,7 +2405,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       });
     });
 
-    it("should be possible to use nested aggregations in join clause of a new question", () => {
+    it("should be possible to use nested aggregations in join clause of a follow up stage", () => {
       H.getNotebookStep("summarize").within(() => {
         H.join();
       });
@@ -2427,7 +2427,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       });
     });
 
-    it("should be possible to use nested aggregations in order by clause of a new question", () => {
+    it("should be possible to use nested aggregations in order by clause of a follow up stage", () => {
       H.getNotebookStep("summarize").within(() => {
         H.sort();
       });
@@ -2440,7 +2440,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       });
     });
 
-    it("should be possible to use nested aggregations in breakout of a new question", () => {
+    it("should be possible to use nested aggregations in breakout of a follow up stage", () => {
       H.getNotebookStep("summarize").within(() => {
         H.summarize({ mode: "notebook" });
       });
