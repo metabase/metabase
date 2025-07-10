@@ -187,9 +187,22 @@
 
 (defmethod search.engine/update! :search.engine/semantic
   [_engine document-reducible]
-  ;; TODO: Update semantic index with new/changed documents
-  (log/info "Semantic search update called")
-  {})
+  (try
+    (let [documents (into [] document-reducible)
+          response (http/put (str external-index-base-url "update")
+                             {:headers {"Content-Type" "application/json"}
+                              :body    (json/encode {:documents documents})})
+          status (:status response)]
+      (if (= 200 status)
+        (do
+          (log/info "Successfully updated semantic search index with" (count documents) "documents")
+          {:status :success :document-count (count documents)})
+        (throw (ex-info "External semantic search service update failed"
+                        {:status status
+                         :response response}))))
+    (catch Exception e
+      (log/error e "Failed to update semantic search index")
+      (throw e))))
 
 (defmethod search.engine/delete! :search.engine/semantic
   [_engine model ids]
