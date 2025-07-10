@@ -1,9 +1,11 @@
-import { Flex, Text } from "metabase/ui";
+import { Flex } from "metabase/ui";
+
+import { ComponentPickPlaceholder } from "./ComponentPickPlaceholder";
 
 export function ComponentsEmtpyState() {
   return (
     <Flex w="100%" h="100%" align="center" justify="center">
-      <Text>{"Select a component from the sidebar to get started"}</Text>
+      <ComponentPickPlaceholder />
     </Flex>
   );
 }

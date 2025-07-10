@@ -22,6 +22,7 @@ export enum SystemComponentId {
   Divider = "system:divider",
   Card = "system:card",
   List = "system:list",
+  Placeholder = "system:placeholder",
 }
 
 export type StyleVariable = {
@@ -40,6 +41,7 @@ export type ComponentMetadata = {
   icon: React.ElementType;
   defaultValue?: string;
   styleVariables?: StyleVariable[];
+  hasChildren?: boolean;
 };
 
 const SPACING_OPTIONS = ["xs", "sm", "md", "lg", "xl"];
@@ -115,6 +117,7 @@ export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
     category: SystemComponentCategory.Layout,
     description: "Organize components by columns",
     icon: IconCarouselHorizontal,
+    hasChildren: true,
   },
   {
     id: SystemComponentId.Stack,
@@ -122,6 +125,7 @@ export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
     category: SystemComponentCategory.Layout,
     description: "Organize components by rows",
     icon: IconCarouselVertical,
+    hasChildren: true,
   },
   {
     id: SystemComponentId.Divider,
@@ -136,6 +140,7 @@ export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
     category: SystemComponentCategory.Data,
     description: "Organize data in a card",
     icon: IconSquare,
+    hasChildren: true,
     styleVariables: [
       {
         name: "Background Color",

@@ -4,17 +4,24 @@ import { Paper } from "metabase/ui";
 
 type Props = {
   component: ComponentDefinition;
+  ChildComponent: React.ComponentType<{ component: ComponentDefinition }>;
+  childComponentProps?: any;
 };
 
-export function CardSystemComponent({ component }: Props) {
+export function CardSystemComponent({
+  component,
+  ChildComponent,
+  childComponentProps,
+}: Props) {
+  const child = component.children?.[0];
   return (
     <Paper
       bg={getComponentStyleValue(component, "backgroundColor")}
       radius={getComponentStyleValue(component, "borderRadius")}
       p={getComponentStyleValue(component, "padding")}
-      bd={getComponentStyleValue(component, "border")}
+      bd="1px solid var(--mb-color-border)"
     >
-      {component.name}
+      {child && <ChildComponent component={child} {...childComponentProps} />}
     </Paper>
   );
 }

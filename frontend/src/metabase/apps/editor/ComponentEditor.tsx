@@ -1,46 +1,72 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { uuid } from "metabase/lib/uuid";
 import { Box, Group } from "metabase/ui";
 
-import type { ComponentMetadata } from "../const/systemComponents";
+import {
+  type ComponentMetadata,
+  SystemComponentId,
+} from "../const/systemComponents";
+import { TRAVERSE_STOP, traverseComponentTree } from "../helpers";
 import type { ComponentConfiguration, ComponentDefinition } from "../types";
 
 import { ComponentPreviewRoot } from "./ComponentPreviewRoot";
 import { ComponentSelectSidebar } from "./ComponentSelectSidebar";
 import { ComponentSettingsSidebar } from "./ComponentSettingsSidebar";
-import { ComponentsEmtpyState } from "./ComponentsEmtpyState";
 import { EditableComponentTreeNode } from "./EditableComponentTreeNode";
 
 export function ComponentEditor() {
+  const initialComponent = useMemo<ComponentDefinition>(() => {
+    return {
+      id: uuid(),
+      componentId: SystemComponentId.Placeholder,
+    };
+  }, []);
+
   const [selectedComponent, setSelectedComponent] =
-    useState<ComponentDefinition | null>(null);
+    useState<ComponentDefinition | null>(initialComponent);
 
   const [componentConfiguration, setComponentConfiguration] =
-    useState<ComponentConfiguration>({});
+    useState<ComponentConfiguration>({ root: initialComponent });
 
   const handleSelectInitialComponent = (component: ComponentMetadata) => {
-    setComponentConfiguration((state) => ({
-      ...state,
-      root: {
+    const componentDefinition: ComponentDefinition = {
+      id: uuid(),
+      componentId: component.id,
+      value: component.defaultValue
+        ? { type: "constant", value: component.defaultValue }
+        : undefined,
+    };
+
+    if (component.hasChildren) {
+      const placeholderComponent = {
         id: uuid(),
-        componentId: component.id,
-        name: component.name,
-        description: component.description,
-        value: component.defaultValue
-          ? { type: "constant", value: component.defaultValue }
-          : undefined,
-        style: {
-          ...component.styleVariables?.reduce(
-            (acc, variable) => {
-              acc[variable.key] = variable.defaultValue;
-              return acc;
-            },
-            {} as Record<string, any>,
-          ),
-        },
-      },
-    }));
+        componentId: SystemComponentId.Placeholder,
+      };
+
+      componentDefinition.children = [placeholderComponent];
+      setSelectedComponent(placeholderComponent);
+    } else {
+      setSelectedComponent(componentDefinition);
+    }
+
+    setComponentConfiguration((state) => {
+      const newState = { ...state };
+
+      traverseComponentTree(newState.root, (component) => {
+        if (component.id === selectedComponent?.id) {
+          component.id = componentDefinition.id;
+          component.componentId = componentDefinition.componentId;
+          component.value = componentDefinition.value;
+          component.style = componentDefinition.style;
+          component.children = componentDefinition.children;
+
+          return TRAVERSE_STOP;
+        }
+      });
+
+      return newState;
+    });
   };
 
   const handleSelectComponent = (component: ComponentDefinition) => {
@@ -51,10 +77,21 @@ export function ComponentEditor() {
     settings: Partial<ComponentDefinition>,
   ) => {
     setComponentConfiguration((state) => {
-      return {
-        ...state,
-        root: { ...state.root, ...settings } as ComponentDefinition,
-      };
+      const newState = { ...state };
+
+      traverseComponentTree(newState.root, (component) => {
+        if (component.id === selectedComponent?.id) {
+          for (const [key, value] of Object.entries(settings)) {
+            if (key in component) {
+              (component as any)[key] = value;
+            }
+          }
+
+          return TRAVERSE_STOP;
+        }
+      });
+
+      return newState;
     });
     setSelectedComponent((state) => {
       if (!state) {
@@ -67,17 +104,13 @@ export function ComponentEditor() {
   return (
     <Group gap="0" p="0" h="100%" align="flex-start" bg="white">
       <Box flex={1} h="100%" style={{ overflow: "auto" }}>
-        {componentConfiguration.root ? (
-          <ComponentPreviewRoot configuration={componentConfiguration}>
-            <EditableComponentTreeNode
-              selectedComponent={selectedComponent}
-              component={componentConfiguration.root}
-              onSelect={handleSelectComponent}
-            />
-          </ComponentPreviewRoot>
-        ) : (
-          <ComponentsEmtpyState />
-        )}
+        <ComponentPreviewRoot configuration={componentConfiguration}>
+          <EditableComponentTreeNode
+            selectedComponent={selectedComponent}
+            component={componentConfiguration.root}
+            onSelect={handleSelectComponent}
+          />
+        </ComponentPreviewRoot>
       </Box>
       <Box
         w="20rem"
@@ -88,14 +121,18 @@ export function ComponentEditor() {
         }}
       >
         {selectedComponent ? (
-          <ComponentSettingsSidebar
-            component={selectedComponent}
-            onComponentSettingsChange={handleComponentSettingsChange}
-          />
+          selectedComponent.componentId === SystemComponentId.Placeholder ? (
+            <ComponentSelectSidebar
+              onSelectComponent={handleSelectInitialComponent}
+            />
+          ) : (
+            <ComponentSettingsSidebar
+              component={selectedComponent}
+              onComponentSettingsChange={handleComponentSettingsChange}
+            />
+          )
         ) : (
-          <ComponentSelectSidebar
-            onSelectComponent={handleSelectInitialComponent}
-          />
+          <Box>{"Global Settings"}</Box>
         )}
       </Box>
     </Group>

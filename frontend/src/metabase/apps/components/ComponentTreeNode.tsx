@@ -9,9 +9,15 @@ import { TitleSystemComponent } from "./system/Title";
 
 type Props = {
   component: ComponentDefinition;
+  ChildComponent?: React.ComponentType<any>;
+  childComponentProps?: any;
 };
 
-export function ComponentTreeNode({ component }: Props) {
+export function ComponentTreeNode({
+  component,
+  ChildComponent = ComponentTreeNode,
+  childComponentProps,
+}: Props) {
   switch (component.componentId) {
     case SystemComponentId.Title:
       return <TitleSystemComponent component={component} />;
@@ -20,9 +26,15 @@ export function ComponentTreeNode({ component }: Props) {
       return <TextSystemComponent component={component} />;
 
     case SystemComponentId.Card:
-      return <CardSystemComponent component={component} />;
+      return (
+        <CardSystemComponent
+          component={component}
+          ChildComponent={ChildComponent}
+          childComponentProps={childComponentProps}
+        />
+      );
 
     default:
-      return <Text>{component.name}</Text>;
+      return <Text>{component.componentId}</Text>;
   }
 }

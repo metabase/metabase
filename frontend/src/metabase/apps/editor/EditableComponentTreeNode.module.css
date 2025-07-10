@@ -1,6 +1,7 @@
 .root {
   cursor: pointer;
   outline-offset: 1px;
+  position: relative;
 }
 
 .root:hover {
@@ -10,4 +11,48 @@
 
 .root.selected {
   outline: 1px solid blue;
+}
+
+.addSection {
+  position: absolute;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--mb-color-bg-medium);
+}
+
+.addSectionTop {
+  width: 50%;
+  left: 25%;
+  top: -20px;
+  height: 20px;
+}
+
+.addSectionBottom {
+  width: 50%;
+  left: 25%;
+  bottom: -20px;
+  height: 20px;
+}
+
+.addSectionLeft {
+  left: -20px;
+  top: 25%;
+  width: 20px;
+  height: 50%;
+}
+
+.addSectionRight {
+  top: 25%;
+  right: -20px;
+  width: 20px;
+  height: 50%;
+}
+
+.root:hover > .addSection {
+  display: flex;
+}
+
+.root:hover:has(.root:hover) > .addSection {
+  display: none;
 }

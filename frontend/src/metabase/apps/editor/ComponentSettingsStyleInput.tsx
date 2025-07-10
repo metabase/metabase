@@ -27,7 +27,10 @@ export function ComponentSettingsStyleInput({
     return (
       <Select
         label={styleVariable.name}
-        value={component.style?.[styleVariable.key]?.toString()}
+        value={
+          component.style?.[styleVariable.key]?.toString() ??
+          styleVariable.defaultValue.toString()
+        }
         onChange={(value) => {
           const valueToSave =
             styleVariable.type === "number" ? Number(value) : value;
@@ -45,7 +48,10 @@ export function ComponentSettingsStyleInput({
       return (
         <TextInput
           label={styleVariable.name}
-          value={component.style?.[styleVariable.key] as string}
+          value={
+            component.style?.[styleVariable.key]?.toString() ??
+            styleVariable.defaultValue.toString()
+          }
           onChange={(e) => handleChange(e.target.value)}
         />
       );
@@ -53,7 +59,10 @@ export function ComponentSettingsStyleInput({
       return (
         <TextInput
           label={styleVariable.name}
-          value={component.style?.[styleVariable.key] as number}
+          value={
+            component.style?.[styleVariable.key]?.toString() ??
+            styleVariable.defaultValue.toString()
+          }
           onChange={(e) => handleChange(Number(e.target.value))}
         />
       );
@@ -61,7 +70,11 @@ export function ComponentSettingsStyleInput({
       return (
         <Checkbox
           label={styleVariable.name}
-          checked={component.style?.[styleVariable.key] as boolean}
+          checked={
+            component.style?.[styleVariable.key]
+              ? Boolean(component.style?.[styleVariable.key])
+              : Boolean(styleVariable.defaultValue)
+          }
           onChange={(e) => handleChange(e.target.checked)}
         />
       );
@@ -74,7 +87,10 @@ export function ComponentSettingsStyleInput({
               paddingLeft: "2rem",
             },
           }}
-          value={component.style?.[styleVariable.key] as string}
+          value={
+            component.style?.[styleVariable.key]?.toString() ??
+            styleVariable.defaultValue.toString()
+          }
           onChange={(value) => handleChange(value)}
         />
       );

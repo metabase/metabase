@@ -1,5 +1,5 @@
 export type ComponentConfiguration = {
-  root?: ComponentDefinition;
+  root: ComponentDefinition;
 };
 
 export type ComponentValue = {
@@ -10,8 +10,6 @@ export type ComponentValue = {
 export type ComponentDefinition = {
   id: string;
   componentId: string;
-  name: string;
-  description: string;
   value?: ComponentValue;
   children?: ComponentDefinition[];
   style?: Record<string, string | number | boolean>;

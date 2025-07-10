@@ -23,7 +23,8 @@ export function ComponentSettingsSidebar({
           {"Component Settings"}
         </Title>
         <Text c="text-secondary" size="sm">
-          {component.name}: {component.id}
+          {component.componentId}
+          <br /> {component.id}
         </Text>
       </Box>
       <Tabs defaultValue="data" mt="md">
