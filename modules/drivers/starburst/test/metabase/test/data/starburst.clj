@@ -179,3 +179,5 @@
 (defmethod tx/bad-connection-details :starburst
   [_driver]
   {:port (dec (Integer/parseInt (tx/db-test-env-var :starburst :port "8080")))})
+
+(defmethod sql.tx/generated-column-sql :starburst [_ _] nil)
