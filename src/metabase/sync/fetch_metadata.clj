@@ -45,10 +45,9 @@
   (log-if-error "table-fields-metadata"
     (let [driver (driver.u/database->driver database)
           result (if (driver.u/supports? driver :describe-fields database)
-                   (set (driver/describe-fields driver
-                                                database
-                                                :table-names [(:name table)]
-                                                :schema-names [(:schema table)]))
+                   (let [schema-names (when (driver.u/supports? driver :schemas database)
+                                        [(:schema table)])]
+                     (set (driver/describe-fields driver database :table-names [(:name table)] :schema-names schema-names)))
                    (:fields (driver/describe-table driver database table)))]
       result)))
 
