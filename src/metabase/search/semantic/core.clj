@@ -196,7 +196,7 @@
       (if (= 200 status)
         (do
           (log/info "Successfully updated semantic search index with" (count documents) "documents")
-          {:status :success :document-count (count documents)})
+          (->> documents (map :model) frequencies))
         (throw (ex-info "External semantic search service update failed"
                         {:status status
                          :response response}))))
@@ -206,9 +206,21 @@
 
 (defmethod search.engine/delete! :search.engine/semantic
   [_engine model ids]
-  ;; TODO: Remove documents from semantic index
-  (log/info "Semantic search delete called for model:" model "ids:" ids)
-  {})
+  (try
+    (let [response (http/delete (str external-index-base-url "delete")
+                                {:headers {"Content-Type" "application/json"}
+                                 :body    (json/encode {:model model :ids ids})})
+          status (:status response)]
+      (if (= 200 status)
+        (do
+          (log/info "Successfully deleted documents from semantic search index for model:" model "ids:" ids)
+          {model (count ids)})
+        (throw (ex-info "External semantic search service delete failed"
+                        {:status status
+                         :response response}))))
+    (catch Exception e
+      (log/error e "Failed to delete documents from semantic search index")
+      (throw e))))
 
 (defmethod search.engine/init! :search.engine/semantic
   [_engine _opts]
