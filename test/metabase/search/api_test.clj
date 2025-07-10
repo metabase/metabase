@@ -357,41 +357,39 @@
 
 (deftest ^:synchronized available-models-test
   ;; Porting these tests over earlier
-  (doseq [engine ["in-place" "appdb"]]
-    (let [search-term "query-model-set"
-          get-available-models #(apply get-available-models :search_engine engine %&)]
-      (with-search-items-in-root-collection search-term
-        (testing "should returns a list of models that search result will return"
-          (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
-                 (get-available-models)))
-          (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
-                 (get-available-models :q search-term))))
-        (testing "return a subset of model for created-by filter"
-          (is (= #{"dashboard" "dataset" "card" "metric" "action"}
-                 (get-available-models :q search-term :created_by (mt/user->id :rasta)))))
-        (testing "return a subset of model for verified filter"
-          (mt/with-temp
-            [:model/Card       {v-card-id :id}   {:name (format "%s Verified Card" search-term)}
-             :model/Card       {v-model-id :id}  {:name (format "%s Verified Model" search-term) :type :model}
-             :model/Card       {v-metric-id :id} {:name (format "%s Verified Metric" search-term) :type :metric}
-             :model/Collection {_v-coll-id :id}  {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
-            (testing "when has both :content-verification features"
-              (mt/with-premium-features #{:content-verification}
-                (mt/with-verified-cards! [v-card-id v-model-id v-metric-id]
-                  (is (= #{"card" "dataset" "metric"}
-                         (get-available-models :q search-term :verified true))))))
-            (testing "when has :content-verification feature only"
-              (mt/with-premium-features #{:content-verification}
-                (mt/with-verified-cards! [v-card-id]
-                  (is (= #{"card"}
-                         (get-available-models :q search-term :verified true))))))))
-        (testing "return a subset of model for created_at filter"
-          (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
-                 (get-available-models :q search-term :created_at "today"))))
+  (let [search-term "query-model-set"]
+    (with-search-items-in-root-collection search-term
+      (testing "should returns a list of models that search result will return"
+        (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+               (get-available-models)))
+        (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+               (get-available-models :q search-term))))
+      (testing "return a subset of model for created-by filter"
+        (is (= #{"dashboard" "dataset" "card" "metric" "action"}
+               (get-available-models :q search-term :created_by (mt/user->id :rasta)))))
+      (testing "return a subset of model for verified filter"
+        (mt/with-temp
+          [:model/Card {v-card-id :id} {:name (format "%s Verified Card" search-term)}
+           :model/Card {v-model-id :id} {:name (format "%s Verified Model" search-term) :type :model}
+           :model/Card {v-metric-id :id} {:name (format "%s Verified Metric" search-term) :type :metric}
+           :model/Collection {_v-coll-id :id} {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
+          (testing "when has both :content-verification features"
+            (mt/with-premium-features #{:content-verification}
+              (mt/with-verified-cards! [v-card-id v-model-id v-metric-id]
+                (is (= #{"card" "dataset" "metric"}
+                       (get-available-models :q search-term :verified true))))))
+          (testing "when has :content-verification feature only"
+            (mt/with-premium-features #{:content-verification}
+              (mt/with-verified-cards! [v-card-id]
+                (is (= #{"card"}
+                       (get-available-models :q search-term :verified true))))))))
+      (testing "return a subset of model for created_at filter"
+        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
+               (get-available-models :q search-term :created_at "today"))))
 
-        (testing "return a subset of model for search_native_query filter"
-          (is (= #{"dataset" "action" "card" "metric"}
-                 (get-available-models :q search-term :search_native_query true))))))))
+      (testing "return a subset of model for search_native_query filter"
+        (is (= #{"dataset" "action" "card" "metric"}
+               (get-available-models :q search-term :search_native_query true)))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
