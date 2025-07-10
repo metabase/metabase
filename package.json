@@ -300,7 +300,7 @@
     "mutationobserver-shim": "^0.3.7",
     "mysql2": "^3.9.8",
     "node-fetch": "2.6.7",
-    "node-polyfill-webpack-plugin": "^3.0.0",
+    "node-polyfill-webpack-plugin": "4.0.0",
     "null-loader": "^4.0.1",
     "open": "^10.1.0",
     "open-cli": "^8.0.0",
