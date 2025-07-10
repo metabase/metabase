@@ -21,21 +21,35 @@ import type { DashCardId, Dataset } from "metabase-types/api";
 import type { DashCardMenuItem } from "./dashcard-menu";
 import { canDownloadResults, canEditQuestion } from "./utils";
 
-// Use color helper for transparent RGBA (browser's computed value for transparent backgrounds)
-const TRANSPARENT_BG = color("rgba-0-0-0-0");
+// This is the browser's computed value for transparent backgrounds, not a design color.
+// eslint-disable-next-line no-color-literals
+const BROWSER_TRANSPARENT = "rgba(0, 0, 0, 0)";
 const TRANSPARENT_LITERAL = color("transparent");
-function getEffectiveBackgroundColor(element: HTMLElement): string | null {
+function getEffectiveBackgroundColor(element: HTMLElement): string | undefined {
   let el: HTMLElement | null = element;
   while (el) {
     const bg = window.getComputedStyle(el).backgroundColor;
-    // Not a design color: this is the browser's computed value for transparent backgrounds
-    if (bg && bg !== TRANSPARENT_BG && bg !== TRANSPARENT_LITERAL) {
+    if (bg && bg !== BROWSER_TRANSPARENT && bg !== TRANSPARENT_LITERAL) {
       return bg;
     }
     el = el.parentElement;
   }
-  // If all backgrounds are transparent, let html2canvas use transparency
-  return null;
+  // Try dashboard container
+  const dashboard = document.querySelector(
+    '[data-testid="dashboard"]',
+  ) as HTMLElement | null;
+  if (dashboard) {
+    const dashBg = window.getComputedStyle(dashboard).backgroundColor;
+    if (
+      dashBg &&
+      dashBg !== BROWSER_TRANSPARENT &&
+      dashBg !== TRANSPARENT_LITERAL
+    ) {
+      return dashBg;
+    }
+  }
+  // If still transparent, return undefined so html2canvas uses the real rendered background
+  return undefined;
 }
 
 type DashCardMenuItemsProps = {
@@ -134,16 +148,18 @@ export const DashCardMenuItems = ({
           onClick: async () => {
             setCopying(true);
             try {
-              // Get the effective background color (first non-transparent up the tree)
               const effectiveBg = getEffectiveBackgroundColor(
                 cardRootRef.current!,
               );
-              const canvas = await html2canvas(cardRootRef.current!, {
-                backgroundColor: effectiveBg,
+              const options: any = {
                 useCORS: true,
                 logging: false,
                 scale: window.devicePixelRatio || 1,
-              });
+              };
+              if (effectiveBg !== undefined) {
+                options.backgroundColor = effectiveBg;
+              }
+              const canvas = await html2canvas(cardRootRef.current!, options);
               canvas.toBlob(async (blob) => {
                 if (blob) {
                   try {
