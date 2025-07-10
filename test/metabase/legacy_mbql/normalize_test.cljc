@@ -1675,3 +1675,13 @@
                                               :keyword-name                    ident2
                                               (keyword "keyword/with-slash")   ident3
                                               (keyword "namespaced" "keyword") ident4}}}))))))
+
+(t/deftest ^:parallel normalize-datetime-test
+  (t/is (= [:datetime ""]
+           (mbql.normalize/normalize-tokens [:datetime ""])))
+  (t/is (= [:datetime ""]
+           (mbql.normalize/normalize-tokens [:datetime "" {}])))
+  (t/is (= [:datetime "" {:mode :iso}]
+           (mbql.normalize/normalize-tokens [:datetime "" {:mode :iso}])))
+  (t/is (= [:datetime "" {:mode :iso}]
+           (mbql.normalize/normalize-tokens [:datetime "" {:mode "iso"}]))))
