@@ -1,3 +1,5 @@
+import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+
 export function expressionEditorWidget() {
   return cy.findByTestId("expression-editor");
 }
@@ -13,10 +15,16 @@ export function enterCustomColumnDetails({
   formula,
   name,
   blur = true,
+  clickDone = false,
 }: {
   formula: string;
   name?: string;
   blur?: boolean;
+
+  /**
+   * set to true to click the done button after setting the detauls to save the custom column.
+   */
+  clickDone?: boolean;
 }) {
   cy.get(".ace_text-input")
     .first()
@@ -35,6 +43,10 @@ export function enterCustomColumnDetails({
       .clear()
       .type(name)
       .blur();
+  }
+
+  if (clickDone) {
+    popover().button("Done").click();
   }
 }
 
