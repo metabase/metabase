@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 
+import { isStorybookActive } from "metabase/env";
+
 export function useLoadSdkBundle(metabaseInstanceUrl: string) {
   useEffect(() => {
     const existingScript = document.querySelector(
       '[data-embedding-sdk-bundle="true"]',
     );
 
-    if (existingScript) {
+    if (existingScript || isStorybookActive) {
       return;
     }
 

@@ -167,7 +167,8 @@ export const MetabaseProvider = memo(function MetabaseProvider(
   const storeRef = useRef<Store<SdkStoreState, Action> | null>(null);
 
   if (!storeRef.current) {
-    const existingStore = MetabaseProviderStore.getInstance()?.getSdkStore();
+    const existingStore =
+      window.METABASE_PROVIDER_STORE?.getInstance()?.getSdkStore();
 
     if (existingStore) {
       storeRef.current = existingStore;

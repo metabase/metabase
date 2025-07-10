@@ -9,10 +9,12 @@ export class MetabaseProviderStore {
 
   public static initialize(): void {
     MetabaseProviderStore.instance = new MetabaseProviderStore();
+    window.METABASE_PROVIDER_STORE = MetabaseProviderStore;
   }
 
   public static cleanup(): void {
     MetabaseProviderStore.instance = null;
+    window.METABASE_PROVIDER_STORE = undefined;
   }
 
   public static getInstance(): MetabaseProviderStore | null {
