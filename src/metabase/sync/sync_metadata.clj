@@ -76,3 +76,11 @@
     (sync-fields/sync-fields-for-table! database table)
     (sync-fks/sync-fks-for-table! database table)
     (sync-indexes/maybe-sync-indexes-for-table! database table)))
+
+(mu/defn sync-new-table-metadata!
+  "Sync the metadata for a new table in `database`"
+  [database :- i/DatabaseInstance {:keys [table-name schema]}]
+  (let [table (sync-tables/create-or-reactivate-table!
+               database
+               {:name table-name :schema (not-empty schema)})]
+    (doto table sync-table-metadata!)))
