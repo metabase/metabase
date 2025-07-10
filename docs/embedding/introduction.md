@@ -64,3 +64,4 @@ If you'd like to share your data with the good people of the internet, admins ca
 - [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).
 - [Multi-tenant self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+- [Securing embedded Metabase](./securing-embeds.md)
