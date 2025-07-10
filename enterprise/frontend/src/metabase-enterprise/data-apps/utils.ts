@@ -8,6 +8,8 @@ export function createMockDataApp(opts: Partial<DataApp> = {}): DataApp {
   return {
     id: "",
     name: "Untitled",
+    description: null,
+    definition: null,
     slug: slugify(opts.name || "Untitled"),
     status: "private", // private, published, archived
     ...opts,

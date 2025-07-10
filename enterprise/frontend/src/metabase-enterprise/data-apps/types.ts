@@ -1,4 +1,4 @@
-import type { DataApp } from "metabase/data-apps/types";
+import type { DataApp, DataAppDefinition } from "metabase/data-apps/types";
 import type { PaginationResponse } from "metabase-types/api";
 
 export type DataAppEditSettings = {
@@ -23,5 +23,5 @@ export type CreateDataAppRequest = Pick<DataApp, "name" | "slug">;
 
 export type UpdateDataAppDefinitionRequest = {
   id: DataApp["id"];
-  config: DataApp["definition"]["config"];
+  config: DataAppDefinition["config"];
 };

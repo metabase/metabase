@@ -3,8 +3,8 @@ export type DataApp = {
   name: string;
   slug: string;
   status: string; // private, published, archived
-  description: string;
-  definition: DataAppDefinition;
+  description: string | null;
+  definition: DataAppDefinition | null;
   entity_id?: string;
   created_at?: string;
   updated_at?: string;
