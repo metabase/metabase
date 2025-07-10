@@ -452,7 +452,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
 
   it("should allow enabling pagination in dashcard viz settings", () => {
     // Page rows count is based on the available space which can differ depending on the platform and scroll bar system settings
-    const rowsRegex = /Rows \d+-\d+ of first 2000/;
+    const rowsRegex = /Rows \d+-\d+ of first 2,000/;
     const idCellSelector = '[data-column-id="ID"]';
     const firstPageId = 6;
     const secondPageId = 12;
@@ -464,7 +464,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
       .findByText(rowsRegex)
       .should("not.exist");
 
-    cy.get("@tableDashcard").findByText("2000 rows");
+    cy.get("@tableDashcard").findByText("2,000 rows");
 
     // Enable pagination
     H.editDashboard();

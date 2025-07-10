@@ -16,7 +16,7 @@ const PRECISION_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
   maximumFractionDigits: 2,
 });
 
-type FormatNumberOptions = {
+export type FormatNumberOptions = {
   _numberFormatter?: Intl.NumberFormat;
   compact?: boolean;
   currency?: string;
@@ -77,7 +77,10 @@ export function formatNumber(
   number: number | bigint,
   options: FormatNumberJsxOptions = {},
 ): string | ReactNode {
-  options = { ...getDefaultNumberOptions(options), ...options };
+  options = {
+    ...getDefaultNumberOptions(options),
+    ...options,
+  };
 
   if (typeof options.scale === "number" && !isNaN(options.scale)) {
     number = multiply(number, options.scale);
@@ -178,7 +181,10 @@ export function formatChangeWithSign(
 }
 
 export function numberFormatterForOptions(options: FormatNumberOptions) {
-  options = { ...getDefaultNumberOptions(options), ...options };
+  options = {
+    ...getDefaultNumberOptions(options),
+    ...options,
+  };
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
   return new Intl.NumberFormat("en", {
