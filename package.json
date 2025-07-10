@@ -378,8 +378,8 @@
   },
   "scripts": {
     "build": "yarn build:cljs && yarn build:js",
-    "build-embedding-sdk-package": "yarn && yarn build-release:cljs && yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && yarn build-release:embedding-sdk-package && yarn build-embedding-sdk-cli && yarn embedding-sdk:fixup-types-imports",
-    "build-embedding-sdk-bundle": "yarn build-release:embedding-sdk-bundle",
+    "build-embedding-sdk-package": "yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && yarn build-release:embedding-sdk-package && yarn build-embedding-sdk-cli && yarn embedding-sdk:fixup-types-imports",
+    "build-embedding-sdk-bundle": "yarn && yarn build-release:cljs && yarn build-release:embedding-sdk-bundle",
     "build-embedding-sdk:watch": "yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && concurrently -n 'embedding-sdk,embedding-sdk-bundle' 'WEBPACK_BUNDLE=development webpack --config webpack.embedding-sdk.config.js --watch' 'WEBPACK_BUNDLE=development webpack --config webpack.embedding-sdk-bundle.config.js --watch'",
     "build-embedding-sdk-cli": "rspack --config rspack.embedding-sdk-cli.config.js",
     "build-embedding-sdk-cli:watch": "yarn build-embedding-sdk-cli --watch",
