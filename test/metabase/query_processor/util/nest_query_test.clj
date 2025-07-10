@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -227,7 +228,7 @@
                                             :fields [[:field %id #::add{:source-table  ::add/source
                                                                         :source-alias  "ID"
                                                                         :desired-alias "ID"}]
-                                                     [:field "x" {:base-type          :type/Float
+                                                     [:field "x" {:base-type          :type/Integer
                                                                   ::add/source-table  ::add/source
                                                                   ::add/source-alias  "x"
                                                                   ::add/desired-alias "x"}]
@@ -289,6 +290,34 @@
       (is (= [[:field 33 {:join-alias "Question 4918"}]
               [:field "count" {:join-alias "Question 4918"}]]
              (#'nest-query/joined-fields query))))))
+
+(deftest ^:parallel idempotence-test
+  (testing "A nested query should return the same set of columns as the original"
+    (mt/with-temp [:model/Card base {:dataset_query
+                                     (mt/mbql-query
+                                       reviews
+                                       {:breakout [$product_id]
+                                        :aggregation [[:count]]
+                                        ;; filter on an implicit join
+                                        :filter [:= $product_id->products.category "Doohickey"]})}]
+      (let [query   (mt/mbql-query orders
+                      {:joins [{:source-table (str "card__" (:id base))
+                                :alias (str "Question " (:id base))
+                                :condition [:=
+                                            $product_id
+                                            [:field
+                                             %reviews.product_id
+                                             {:join-alias (str "Question " (:id base))}]]
+                                :fields :all}]
+                       :expressions {"CC" [:+ 1 1]}
+                       :limit 2})
+            nested  (assoc query :query (nest-expressions query))
+            query*  (qp.store/with-metadata-provider (mt/id)
+                      (lib/query (qp.store/metadata-provider) query))
+            nested* (qp.store/with-metadata-provider (mt/id)
+                      (lib/query (qp.store/metadata-provider) nested))]
+        (is (= (map :lib/desired-column-alias (lib/returned-columns query*))
+               (map :lib/desired-column-alias (lib/returned-columns nested*))))))))
 
 (deftest ^:parallel nest-expressions-ignore-source-queries-from-joins-test-e2e-test
   (testing "Ignores source-query from joins (#20809)"

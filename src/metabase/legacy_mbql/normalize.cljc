@@ -192,6 +192,12 @@
   [[_ field amount unit]]
   [:datetime-subtract (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
 
+(defmethod normalize-mbql-clause-tokens :datetime
+  [[_ field mode]]
+  (if (nil? mode)
+    [:datetime (normalize-tokens field :ignore-path)]
+    [:datetime (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]))
+
 (defmethod normalize-mbql-clause-tokens :get-week
   [[_ field mode]]
   (if mode
@@ -223,11 +229,14 @@
 
 (defn- normalize-value-opts
   [opts]
-  (some-> opts
-          lib.schema.common/normalize-map
-          ;; `:value` in legacy MBQL expects `snake_case` keys for type info keys.
-          (m/update-existing :base_type keyword)
-          (m/update-existing :semantic_type keyword)))
+  (when opts
+    (-> opts
+        (update-keys (fn [k]
+                       (keyword (u/->snake_case_en k))))
+        (m/update-existing :base_type      keyword)
+        (m/update-existing :effective_type keyword)
+        (m/update-existing :semantic_type  keyword)
+        (m/update-existing :unit           keyword))))
 
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.
@@ -396,7 +405,10 @@
             :cljs (implements? cljs.core.IEditableCollection metadata))]}
   (let [m (transient metadata)]
     (-> (reduce #(update-existing! %1 %2 keyword) m
-                [:base_type :effective_type :semantic_type :visibility_type :source :unit])
+                [:base_type :effective_type :semantic_type :visibility_type :source :unit
+                 ;; HACK ! Not even a legacy key, but now that we keep `:lib/` keys around we should normalize it just
+                 ;; so test results don't get kooky
+                 :lib/source])
         (update-existing! :field_ref normalize-field-ref)
         (update-existing! :fingerprint #?(:clj perf/keywordize-keys :cljs walk/keywordize-keys))
         (update-existing! :binning_info #(m/update-existing % :binning_strategy keyword))
@@ -440,10 +452,8 @@
    :info            {:metadata/model-metadata identity
                      ;; the original query that runs through qp.pivot should be ignored here entirely
                      :pivot/original-query    (fn [_] nil)
-                     ;; don't try to normalize the keys in viz-settings or `:alias/escaped->original` passed in as
-                     ;; part of `:info`.
+                     ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
                      :visualization-settings  identity
-                     :alias/escaped->original identity
                      :context                 maybe-normalize-token}
    :parameters      {::sequence normalize-query-parameter}
    ;; TODO -- when does query ever have a top-level `:context` key??
@@ -534,14 +544,16 @@
   (canonicalize-mbql-clause (wrap-implicit-field-id clause)))
 
 (defmethod canonicalize-mbql-clause :field
-  [[_ id-or-name opts]]
-  {:pre [((some-fn map? nil?) opts)]}
-  (if (is-clause? :field id-or-name)
-    (let [[_ nested-id-or-name nested-opts] id-or-name]
-      (canonicalize-mbql-clause [:field nested-id-or-name (not-empty (merge nested-opts opts))]))
-    ;; remove empty stuff from the options map. The `remove-empty-clauses` step will further remove empty stuff
-    ;; afterwards
-    [:field id-or-name (not-empty opts)]))
+  [[_ id-or-name opts, :as clause]]
+  (if-not ((some-fn map? nil?) opts)
+    ;; this is an MBQL 5+ clause, ignore it.
+    clause
+    (if (is-clause? :field id-or-name)
+      (let [[_ nested-id-or-name nested-opts] id-or-name]
+        (canonicalize-mbql-clause [:field nested-id-or-name (not-empty (merge nested-opts opts))]))
+      ;; remove empty stuff from the options map. The `remove-empty-clauses` step will further remove empty stuff
+      ;; afterwards
+      [:field id-or-name (not-empty opts)])))
 
 (defmethod canonicalize-mbql-clause :aggregation
   [[_tag index opts]]
@@ -1038,57 +1050,54 @@
 ;;; |                                             REMOVING EMPTY CLAUSES                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(declare remove-empty-clauses)
+(declare remove-empty-clauses path->special-remove-empty-clauses-fn)
 
-(defn- remove-empty-clauses-in-map [m path]
-  (let [m (into (empty m) (for [[k v] m
-                                :let  [v (remove-empty-clauses v (conj path k))]
-                                :when (some? v)]
-                            [k v]))]
-    (when (seq m)
-      m)))
+(defn- remove-empty-clauses-in-map [m special-fns]
+  (not-empty (reduce-kv (fn [m k v]
+                          (let [v' (remove-empty-clauses v (get special-fns k))]
+                            (cond (nil? v') (dissoc m k)
+                                  (identical? v v') m
+                                  :else (assoc m k v'))))
+                        m m)))
 
-(defn- remove-empty-clauses-in-sequence* [xs path]
-  (let [xs (mapv #(remove-empty-clauses % (conj path ::sequence))
-                 xs)]
+(defn- remove-empty-clauses-in-sequence* [xs special-fns]
+  (let [special-fns (::sequence special-fns)
+        xs (#?(:clj perf/mapv :default mapv) #(remove-empty-clauses % special-fns) xs)]
     (when (some some? xs)
       xs)))
 
 (defmulti ^:private remove-empty-clauses-in-mbql-clause
-  {:arglists '([clause path])}
-  (fn [[tag] _path]
+  {:arglists '([clause special-fns])}
+  (fn [[tag] _special-fns]
     tag))
 
 (defmethod remove-empty-clauses-in-mbql-clause :default
-  [clause path]
-  (remove-empty-clauses-in-sequence* clause path))
+  [clause special-fns]
+  (remove-empty-clauses-in-sequence* clause special-fns))
 
 (defmethod remove-empty-clauses-in-mbql-clause :offset
-  [[_tag opts expr n] path]
-  [:offset opts (remove-empty-clauses expr (conj path :offset)) n])
+  [[_tag opts expr n] special-fns]
+  [:offset opts (remove-empty-clauses expr (:offset special-fns)) n])
 
-(defn- remove-empty-clauses-in-sequence [x path]
+(defn- remove-empty-clauses-in-sequence [x special-fns]
   (if (mbql-clause? x)
-    (remove-empty-clauses-in-mbql-clause x path)
-    (remove-empty-clauses-in-sequence* x path)))
+    (remove-empty-clauses-in-mbql-clause x special-fns)
+    (remove-empty-clauses-in-sequence* x special-fns)))
 
 (defn- remove-empty-clauses-in-join [join]
-  (remove-empty-clauses join [:query]))
+  (remove-empty-clauses join (:query path->special-remove-empty-clauses-fn)))
 
 (defn- remove-empty-clauses-in-source-query [{native? :native, :as source-query}]
   (if native?
-    (-> source-query
-        (set/rename-keys {:native :query})
-        (remove-empty-clauses [:native])
-        (set/rename-keys {:query :native}))
-    (remove-empty-clauses source-query [:query])))
+    source-query
+    (remove-empty-clauses source-query (:query path->special-remove-empty-clauses-fn))))
 
 (defn- remove-empty-clauses-in-parameter [parameter]
   (merge
    ;; don't remove `value: nil` from a parameter, the FE code (`haveParametersChanged`) is extremely dumb and will
    ;; consider the parameter to have changed and thus the query to be 'dirty' if we do this.
    (select-keys parameter [:value])
-   (remove-empty-clauses-in-map parameter [:parameters ::sequence])))
+   (remove-empty-clauses-in-map parameter (-> path->special-remove-empty-clauses-fn :parameters ::sequence))))
 
 (def ^:private path->special-remove-empty-clauses-fn
   {:native       identity
@@ -1102,21 +1111,21 @@
 (defn- remove-empty-clauses
   "Remove any empty or `nil` clauses in a query."
   ([query]
-   (remove-empty-clauses query []))
+   (remove-empty-clauses query path->special-remove-empty-clauses-fn))
 
-  ([x path]
+  ([x special-fns]
    (try
-     (let [special-fn (when (seq path)
-                        (get-in path->special-remove-empty-clauses-fn path))]
+     (let [special-fn (when (and special-fns (fn? special-fns))
+                        special-fns)]
        (cond
-         (fn? special-fn) (special-fn x)
+         special-fn       (special-fn x)
          (record? x)      x
-         (map? x)         (remove-empty-clauses-in-map x path)
-         (sequential? x)  (remove-empty-clauses-in-sequence x path)
+         (map? x)         (remove-empty-clauses-in-map x special-fns)
+         (sequential? x)  (remove-empty-clauses-in-sequence x special-fns)
          :else            x))
      (catch #?(:clj Throwable :cljs js/Error) e
        (throw (ex-info "Error removing empty clauses from form."
-                       {:form x, :path path}
+                       {:form x}
                        e))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -191,6 +191,12 @@ jobs:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: resources/embedding-sdk
 
+  # In order to check compatibility between Sample Apps and Embedding SDK, the job for each sample app:
+  # - pulls a Sample App
+  # - starts it
+  # - runs its Cypress tests against the local metabase.jar and local @metabase/embedding-sdk-react package.
+  # The job is not required, though if it's failing better to be sure that it's not caused by a breaking change.
+  # For more details see `Sample Apps compatibility with Embedding SDK tests` in `enterprise/frontend/src/embedding-sdk/dev.md`
   e2e-sample-apps-tests:
     needs: [get-build-requirements, get-sample-apps-data, build]
     strategy:
@@ -208,7 +214,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       PR_NUMBER: ${{ github.event.pull_request.number || '' }}
       HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
-      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
       CYPRESS_IS_EMBEDDING_SDK: true
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
@@ -308,6 +314,13 @@ jobs:
         run: |
           exit 1
 
+  # The job checks integration of the Embedding SDK with consumer's apps that use different frameworks/bundlers,
+  # or when we want to test some tricky integration cases like conflicting types.
+  # The job
+  # - starts an app
+  # - runs its Cypress tests against the e2e test metabase instance and local @metabase/embedding-sdk-react package.
+  # The job is not required, though if it's failing better to be sure that it's not caused by a breaking change.
+  # For more details see `Embedding SDK integration tests with Host Apps` in `enterprise/frontend/src/embedding-sdk/dev.md`
   e2e-host-apps-tests:
     needs: [ get-build-requirements, build ]
     strategy:
@@ -330,7 +343,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       PR_NUMBER: ${{ github.event.pull_request.number || '' }}
       HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
-      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
       CYPRESS_IS_EMBEDDING_SDK: true
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true

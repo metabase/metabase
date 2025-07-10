@@ -12,8 +12,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # This job will determine if the tier 3 driver tests should be skipped.
+  # It will always run first.
+  determine-driver-skips:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check_team_and_branch.outputs.skip }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Check if tier3 drivers should run
+        id: check_team_and_branch
+        run: |
+          IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}"
+          HAS_TEAM_LABEL="${{ contains(github.event.pull_request.labels.*.name, '.Team/Drivers') || contains(github.event.pull_request.labels.*.name, '.Team/Querying') || contains(github.event.pull_request.labels.*.name, '.Team/SemanticLayer') }}"
+
+
+          echo "Is master or release: ${IS_MASTER_OR_RELEASE}"
+          echo "Has '.Team/Drivers' or '.Team/Querying' or '.Team/SemanticLayer' label: ${HAS_TEAM_LABEL}"
+          if [[ "${IS_MASTER_OR_RELEASE}" == "true" ]]; then
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "Merging into master or a release branch. Tier 3 driver tests will run."
+          elif [[ "${HAS_TEAM_LABEL}" == "true" ]]; then
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "A relevant team label is present. Tier 3 driver tests will run."
+          else
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Not labeled with required team and not merging into master/release. Tier 3 driver tests will be skipped."
+          fi
+        shell: bash
   be-tests-athena-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -129,7 +159,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-druid-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -164,7 +195,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-druid-jdbc-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -199,7 +231,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-databricks-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -233,7 +266,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-databricks-multi-catalog-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -314,7 +348,7 @@ jobs:
               enable-ssl-tests: 'false'
           - name: MySQL 8.0
             junit-name: be-tests-mysql-8-0-ee
-            image: cimg/mysql:8.0
+            image: mysql:8.0
             env:
               enable-ssl-tests: 'false'
           - name: MySQL Latest
@@ -324,28 +358,8 @@ jobs:
               enable-ssl-tests: 'true'
         job:
           - name: Driver Tests
-            build-static-viz: false
             test-args: >-
               :only-tags [:mb/driver-tests]
-          - name: Enterprise Tests
-            build-static-viz: false
-            test-args: >-
-              :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests'
-          - name: EE App DB Tests (Part 1)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :partition/total 2
-              :partition/index 0
-            exclude-tag: ':mb/driver-tests'
-          - name: EE App DB Tests (Part 2)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :partition/total 2
-              :partition/index 1
-            exclude-tag: ':mb/driver-tests'
 
     services:
       mysql:
@@ -403,7 +417,6 @@ jobs:
       - name: Test ${{ matrix.version.name }}
         uses: ./.github/actions/test-driver
         with:
-          build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: ${{ matrix.version.junit-name }}
           test-args: >-
             ${{ matrix.job.test-args }}
@@ -421,7 +434,8 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mongo:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -470,7 +484,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mongo-ssl:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -534,7 +549,8 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mongo-sharded-cluster-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -567,7 +583,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-oracle:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -657,29 +674,8 @@ jobs:
               enable-ssl-tests: 'true'
         job:
           - name: Driver Tests
-            build-static-viz: false
             test-args: >-
               :only-tags [:mb/driver-tests]
-          - name: Enterprise Tests
-            build-static-viz: false
-            test-args: >-
-              :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests'
-          - name: EE App DB Tests (Part 1)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :exclude-tags [:mb/driver-tests]
-              :partition/total 2
-              :partition/index 0
-            exclude-tag: ':mb/driver-tests'
-          - name: EE App DB Tests (Part 2)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :partition/total 2
-              :partition/index 1
-            exclude-tag: ':mb/driver-tests'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
@@ -724,7 +720,6 @@ jobs:
       - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
         uses: ./.github/actions/test-driver
         with:
-          build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: 'be-tests-${{ matrix.version.junit-name }}'
           test-args: >-
             ${{ matrix.job.test-args }}
@@ -742,7 +737,8 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-presto-jdbc-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -898,7 +894,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-sparksql-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -931,7 +928,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-sqlite-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -959,7 +957,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-sqlserver:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     strategy:
@@ -1009,7 +1008,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-starburst-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -1046,7 +1046,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-vertica-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:

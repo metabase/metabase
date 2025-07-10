@@ -60,6 +60,9 @@
    {[:field 2 {"temporal-unit" "day"}]
     [:field 2 {:temporal-unit :day}]
 
+    [:field 2 {"inherited-temporal-unit" "day"}]
+    [:field 2 {:inherited-temporal-unit :day}]
+
     [:field 2 {"binning" {"strategy" "default"}}]
     [:field 2 {:binning {:strategy :default}}]}
 
@@ -613,7 +616,7 @@
              :fields      [[:expression "abc" {:base-type :type/Number}]]}}}
 
    "expressions can be a literal :value"
-   {{:query {:expressions {"abc" [:value 123 {"base_type" "type/Integer"}]}
+   {{:query {:expressions {"abc" [:value 123 {"base-type" "type/Integer"}]}
              :fields      [[:expression "abc" {"base-type" "type/Integer"}]]}}
     {:query {:expressions {"abc" [:value 123 {:base_type :type/Integer}]}
              :fields      [[:expression "abc" {:base-type :type/Integer}]]}}}))

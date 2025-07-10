@@ -36,6 +36,7 @@
 /coverage
 /crate-*
 /cypress
+cypress.env.json
 /deploy/artifacts/*
 /docs/**/node_modules
 /docs/**/package.json

@@ -56,6 +56,7 @@
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
    [dev.malli :as dev.malli]
+   [dev.h2 :as dev.h2]
    [dev.memory :as dev.memory]
    [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
@@ -96,7 +97,8 @@
 
 (comment
   debug-qp/keep-me
-  model-tracking/keep-me)
+  model-tracking/keep-me
+  dev.h2/keep-me)
 
 #_:clj-kondo/ignore
 (defn tap>-spy [x]

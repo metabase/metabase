@@ -22,6 +22,7 @@
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]))
@@ -59,6 +60,21 @@
     stage-number    :- :int
     expression-name :- ::lib.schema.common/non-blank-string]
    (or (maybe-resolve-expression query stage-number expression-name)
+       (log/warnf "Expression %s does not exist in stage %d" (pr-str expression-name) (lib.util/canonical-stage-index query stage-number))
+       (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+         (u/prog1 (resolve-expression query previous-stage-number expression-name)
+           (when <>
+             (log/warnf "Found expression %s in previous stage" (pr-str expression-name)))))
+       (when (lib.util/first-stage? query stage-number)
+         (when-let [source-card-id (lib.util/source-card-id query)]
+           (when-let [source-card (lib.metadata/card query source-card-id)]
+             (u/prog1 (resolve-expression ((#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.query/query)
+                                           (lib.metadata/->metadata-provider query)
+                                           (:dataset-query source-card))
+                                          expression-name)
+               (when <>
+                 (log/warnf "Found expression %s in source card %d. Next time, use a :field name ref!"
+                            (pr-str expression-name) source-card-id))))))
        (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                        {:expression-name expression-name
                         :query           query
@@ -617,11 +633,11 @@
                                   (-> nested name u/->camelCaseEn u/capitalize-first-char)))
              :friendly true})
           (when (and (= expression-mode :expression)
-                     (lib.util.match/match-one expr :offset))
+                     (lib.util.match/match-lite-recursive expr :offset true))
             {:message  (i18n/tru "OFFSET is not supported in custom columns")
              :friendly true})
           (when (and (= expression-mode :filter)
-                     (lib.util.match/match-one expr :offset))
+                     (lib.util.match/match-lite-recursive expr :offset true))
             {:message  (i18n/tru "OFFSET is not supported in custom filters")
              :friendly true})
           (when (and (lib.schema.common/is-clause? :value expr)

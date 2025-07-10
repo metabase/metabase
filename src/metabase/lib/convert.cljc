@@ -280,9 +280,8 @@
 
 (defmethod ->pMBQL :value
   [[_tag value opts]]
-  ;; `:value` uses `:snake_case` keys in legacy MBQL for some insane reason (actually this was to match the shape of
-  ;; the keys in Field metadata), at least for the three type keys enumerated below.
-  ;; See [[metabase.legacy-mbql.schema/ValueTypeInfo]].
+  ;; `:value` uses `:snake_case` keys in legacy MBQL (this was to match the shape of the keys in Field metadata), at
+  ;; least for the three type keys enumerated below. See [[metabase.legacy-mbql.schema/ValueTypeInfo]].
   (let [opts (set/rename-keys opts {:base_type     :base-type
                                     :semantic_type :semantic-type
                                     :database_type :database-type})
@@ -483,7 +482,7 @@
 (defn- stage-metadata->legacy-metadata [stage-metadata]
   (into []
         (comp (map #(update-keys % u/->snake_case_en))
-              (map ->legacy-MBQL))
+              (map #(dissoc % :lib/type)))
         (:columns stage-metadata)))
 
 (mu/defn- chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]
@@ -544,10 +543,13 @@
 (defmethod ->legacy-MBQL :value
   [[_tag opts value]]
   (let [opts (-> opts
+                 ;; remove effective type since it's not used/allowed in legacy MBQL
+                 (dissoc :effective-type)
                  ;; as mentioned above, `:value` in legacy MBQL expects `snake_case` keys for type info keys.
-                 (set/rename-keys  {:base-type     :base_type
-                                    :semantic-type :semantic_type
-                                    :database-type :database_type})
+                 (set/rename-keys  {:base-type      :base_type
+                                    :semantic-type  :semantic_type
+                                    :database-type  :database_type
+                                    :effective-type :effective_type})
                  options->legacy-MBQL)]
     ;; in legacy MBQL, `:value` has to be three args; `opts` has to be present, but it should can be `nil` if it is
     ;; empty.
@@ -576,14 +578,17 @@
     :always (set/rename-keys {pMBQL-key legacy-key})))
 
 (defmethod ->legacy-MBQL :mbql/join [join]
-  (let [base (cond-> (disqualify join)
-               (and *clean-query* (str/starts-with? (:alias join) legacy-default-join-alias)) (dissoc :alias))]
+  (let [base     (cond-> (disqualify join)
+                   (and *clean-query* (str/starts-with? (:alias join) legacy-default-join-alias)) (dissoc :alias))
+        metadata (:lib/stage-metadata (last (:stages join)))]
     (merge (-> base
                (dissoc :stages :conditions)
                (update-vals ->legacy-MBQL))
            (-> base
                (select-keys [:conditions])
                (update-list->legacy-boolean-expression :conditions :condition))
+           (when (seq (:columns metadata))
+             {:source-metadata (stage-metadata->legacy-metadata metadata)})
            (chain-stages base))))
 
 (defn- source-card->legacy-source-table

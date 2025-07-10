@@ -30,7 +30,12 @@
                           ;; It's possible this is to avoid
                           :from   [[:metabase_field :f]]
                           :join   [[:metabase_table :t] [:= :f.table_id :t.id]]
+                          :left-join [[:metabase_field_user_settings :u] [:= :f.id :u.field_id]]
                           :where  [:and
+                                   ;; ensure we are not overriding user-set fks
+                                   [:= :u.fk_target_field_id nil]
+                                   [:= :u.semantic_type nil]
+
                                    [:= :t.db_id db-id]
                                    [:= [:lower :f.name] (u/lower-case-en column-name)]
                                    [:= [:lower :t.name] (u/lower-case-en table-name)]
@@ -41,17 +46,22 @@
                                    [:= :t.visibility_type nil]]})
         fk-field-id-query (field-id-query db-id fk-table-schema fk-table-name fk-column-name)
         pk-field-id-query (field-id-query db-id pk-table-schema pk-table-name pk-column-name)
+
+        ;; Only update if either:
+        ;; - fk_target_field_id is NULL and the new target is not NULL
+        ;; - fk_target_field_id is not NULL but the new target is different and not NULL
+        valid-condition
+        (fn [k]
+          [:or
+           [:= :f.fk_target_field_id nil]
+           [:not= :f.fk_target_field_id k]])
+
         q (case (mdb/db-type)
             :mysql
             {:update [:metabase_field :f]
              :join   [[fk-field-id-query :fk] [:= :fk.id :f.id]
-                      ;; Only update if either:
-                      ;; - fk_target_field_id is NULL and the new target is not NULL
-                      ;; - fk_target_field_id is not NULL but the new target is different and not NULL
                       [pk-field-id-query :pk]
-                      [:or
-                       [:= :f.fk_target_field_id nil]
-                       [:not= :f.fk_target_field_id :pk.id]]]
+                      (valid-condition :pk.id)]
              :set    {:fk_target_field_id :pk.id
                       ;; We need to reset has_field_values when it is auto-list as FKs should not be marked as such
                       :has_field_values   [:case [:= :has_field_values "auto-list"] nil :else :has_field_values]
@@ -66,9 +76,7 @@
                       :semantic_type      "type/FK"}
              :where  [:and
                       [:= :fk.id :f.id]
-                      [:or
-                       [:= :f.fk_target_field_id nil]
-                       [:not= :f.fk_target_field_id :pk.id]]]}
+                      (valid-condition :pk.id)]}
             :h2
             {:update [:metabase_field :f]
              :set    {:fk_target_field_id pk-field-id-query
@@ -78,9 +86,7 @@
              :where  [:and
                       [:= :f.id fk-field-id-query]
                       [:not= pk-field-id-query nil]
-                      [:or
-                       [:= :f.fk_target_field_id nil]
-                       [:not= :f.fk_target_field_id pk-field-id-query]]]})]
+                      (valid-condition pk-field-id-query)]})]
     (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))))
 
 (mu/defn- mark-fk!

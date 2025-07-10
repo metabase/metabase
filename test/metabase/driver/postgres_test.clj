@@ -1024,20 +1024,16 @@
                       :native   {:query "select * from birds"
                                  :parameters []}}]
            (testing "results_metadata columns are correctly typed"
-             (is (=? [{:name  "name"
-                       :ident (lib/native-ident "name" eid)}
+             (is (=? [{:name "name"}
                       {:name "status"
-                       :ident (lib/native-ident "status" eid)
                        :base_type :type/PostgresEnum
                        :effective_type :type/PostgresEnum
                        :database_type "bird_status"}
                       {:name "other_status"
-                       :ident (lib/native-ident "other_status" eid)
                        :base_type :type/PostgresEnum
                        :effective_type :type/PostgresEnum
                        :database_type "\"bird_schema\".\"bird_status\""}
                       {:name "type"
-                       :ident (lib/native-ident "type" eid)
                        :base_type :type/PostgresEnum
                        :effective_type :type/PostgresEnum
                        :database_type "bird type"}]
@@ -1252,20 +1248,23 @@
                    (catch Throwable e
                      e)))))))))
 
+;;; see [[metabase.query-processor.middleware.annotate-test/native-query-infer-effective-type-test]] for a test that
+;;; just makes sure metadata is calculated correctly.
 (deftest ^:parallel pgobject-test
   (mt/test-driver :postgres
     (testing "Make sure PGobjects are decoded correctly"
-      (let [results (qp/process-query (mt/native-query {:query "SELECT pg_sleep(0.1) AS sleep;"}))]
+      (let [results (qp/process-query (mt/native-query {:query "SELECT pg_sleep(0.01) AS sleep;"}))]
         (testing "rows"
           (is (= [[""]]
                  (mt/rows results))))
         (testing "cols"
-          (is (=? [{:display_name "sleep"
-                    :base_type    :type/Text
+          (is (=? [{:display_name   "sleep"
+                    :base_type      :type/Text
                     :effective_type :type/Text
-                    :source       :native
-                    :field_ref    [:field "sleep" {:base-type :type/Text}]
-                    :name         "sleep"}]
+                    :database_type  "void"
+                    :source         :native
+                    :field_ref      [:field "sleep" {:base-type :type/Text}]
+                    :name           "sleep"}]
                   (mt/cols results))))))))
 
 (deftest ^:parallel id-field-parameter-test
@@ -1300,27 +1299,43 @@
                  (t2/select-fn-set :name :model/Table :db_id (:id database)))))))))
 
 (deftest json-operator-?-works
-  (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
-    (mt/test-driver :postgres
-      (tx/drop-if-exists-and-create-db! driver/*driver* "json-test")
-      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
-            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.json_table;"
-                           "CREATE TABLE PUBLIC.json_table (json_val JSON NOT NULL);"
-                           "INSERT INTO PUBLIC.json_table (json_val) VALUES ('{\"a\": 1, \"b\": 2}');"]]
-          (jdbc/execute! spec [statement])))
-      (let [json-db-details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
-            query           (str "SELECT json_val::jsonb ? 'a',"
-                                 "json_val::jsonb ?| array['c', 'd'],"
-                                 "json_val::jsonb ?& array['a', 'b']"
-                                 "FROM \"json_table\";")]
-        (mt/with-temp [:model/Database database {:engine :postgres, :details json-db-details}]
-          (mt/with-db database (sync/sync-database! database)
+  (mt/test-driver :postgres
+    (tx/drop-if-exists-and-create-db! driver/*driver* "json-test")
+    (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
+          spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+      (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.json_table;"
+                         "CREATE TABLE PUBLIC.json_table (json_val JSON NOT NULL);"
+                         "INSERT INTO PUBLIC.json_table (json_val) VALUES ('{\"a\": 1, \"b\": 2}');"]]
+        (jdbc/execute! spec [statement])))
+    (let [json-db-details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
+          query           (str "SELECT json_val::jsonb ? 'a',"
+                               "json_val::jsonb ?| array['c', 'd'],"
+                               "json_val::jsonb ?& array['a', 'b']"
+                               "FROM \"json_table\";")]
+      (mt/with-temp [:model/Database database {:engine :postgres, :details json-db-details}]
+        (mt/with-db database (sync/sync-database! database)
+          (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
             (is (= [[true false true]]
                    (-> {:query query}
                        (mt/native-query)
                        (qp/process-query)
-                       (mt/rows))))))))))
+                       (mt/rows)))))
+          (testing "Make sure we get a good error message when using ? with other parameters"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"It looks like you have a '\?' in your code which Postgres's JDBC driver interprets as a parameter\. You might need to escape it like '\?\?'\."
+                                  (-> {:query         (str "SELECT * FROM json_table "
+                                                           "WHERE json_val::jsonb ? 'a' "
+                                                           "AND json_val::jsonb ->> 'a' = {{val}}")
+                                       :template-tags {:val
+                                                       {:name         "val"
+                                                        :display_name "Val"
+                                                        :type         "text"}}}
+                                      mt/native-query
+                                      (assoc :parameters
+                                             [{:type   "number/="
+                                               :target ["variable" ["template-tag" "val"]]
+                                               :value  ["1"]}])
+                                      qp/process-query)))))))))
 
 (deftest sync-json-with-composite-pks-test
   (testing "Make sure sync a table with json columns that have composite pks works"
@@ -1509,8 +1524,8 @@
               get-privileges (fn []
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                 [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
-                                 (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                   (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
+                                (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                  (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
           (try
             (jdbc/execute! conn-spec (str
                                       "DROP SCHEMA IF EXISTS \"dotted.schema\" CASCADE;"

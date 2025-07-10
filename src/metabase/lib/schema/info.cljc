@@ -5,7 +5,7 @@
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]))
 
 ;;; Schema for `info.context`; used for informational purposes to record how a query was executed.
@@ -64,11 +64,15 @@
    [:card-entity-id          {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:card-name               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
-   [:alias/escaped->original {:optional true} [:maybe [:map-of ::lib.schema.join/alias ::lib.schema.join/alias]]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
-   [:metadata/model-metadata {:optional true} [:maybe [:sequential [:map-of :any :any]]]]
+   ;;
+   ;; This should match the shape of Card result-metadata
+   ;;
+   ;; TODO (Cam 6/13/25) -- weird to put this at the top-level of the query as opposed to in the stage to which this
+   ;; applies... I guess it's mostly only used to in [[metabase.lib.metadata.result-metadata]] tho
+   [:metadata/model-metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/card.result-metadata.map]]]
    ;; Pivot QP runs multiple queries, and in the dataset api, we need to have access to the original query
    ;; so that we can pass it to the pivot.qp for downloads on unsaved questions
    [:pivot/original-query    {:optional true} [:maybe [:map-of :any :any]]]

@@ -10,7 +10,7 @@ const mainAppStories = [
 
 const config: StorybookConfig = {
   stories: mainAppStories,
-  staticDirs: ["../resources/frontend_client"],
+  staticDirs: ["../resources/frontend_client", "./msw-public"],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
     "@storybook/addon-essentials",

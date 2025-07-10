@@ -61,16 +61,19 @@
             [:ref ::expression/temporal]]]) ;; truncate datetime to date
 
 (mbql-clause/define-catn-mbql-clause :datetime :- :type/DateTime
-  [:value [:schema [:ref ::expression/string]]] ;; need to support bytes type
-  [:modes [:?
+  [:value [:schema :any]] ;; need to support bytes type
+  [:mode [:?
+          [:schema
            [:enum {:error/message "datetime mode string"
                    :decode/normalize common/normalize-keyword-lower}
             :iso
             :simple
-            :unixMilliseconds
-            :unixSeconds
-            :unixMicroseconds
-            :unixNanoseconds]]])
+            :isobytes
+            :simplebytes
+            :unixmilliseconds
+            :unixseconds
+            :unixmicroseconds
+            :unixnanoseconds]]]])
 
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit

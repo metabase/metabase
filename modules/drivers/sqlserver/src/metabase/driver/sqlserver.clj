@@ -775,11 +775,11 @@
                  (in-source-query? path)))]
     (driver-api/replace inner-query
       ;; remove order by and then recurse in case we need to do more tranformations at another level
-                        (m :guard (partial remove-order-by? &parents))
-                        (fix-order-bys (dissoc m :order-by))
+      (m :guard (partial remove-order-by? &parents))
+      (fix-order-bys (dissoc m :order-by))
 
-                        (m :guard (partial add-limit? &parents))
-                        (fix-order-bys (assoc m :limit driver-api/absolute-max-results)))))
+      (m :guard (partial add-limit? &parents))
+      (fix-order-bys (assoc m :limit driver-api/absolute-max-results)))))
 
 (defmethod sql.qp/preprocess :sqlserver
   [driver inner-query]
@@ -923,10 +923,11 @@
 
 (defmethod driver.sql/default-database-role :sqlserver
   [_driver database]
-  ;; Use a "role" (sqlserver user) if it exists, otherwise use
-  ;; the user if it can be impersonated (ie not the 'sa' user).
-  (let [{:keys [role user]} (:details database)]
-    (or role (when-not (= (u/lower-case-en user) "sa") user))))
+  ;; Use a "role" (sqlserver user) if it exists. Do not fall back to the user
+  ;; field automatically, as it represents the login user which may not be a 
+  ;; valid database user for impersonation (see issue #60665).
+  (let [{:keys [role]} (:details database)]
+    role))
 
 (defmethod driver.sql/set-role-statement :sqlserver
   [_driver role]

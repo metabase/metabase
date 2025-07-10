@@ -82,7 +82,8 @@
                                       {:source-query inner-mbql}
                                       inner-mbql)]
                    (-> inner-mbql
-                       (dissoc :aggregation :order-by)
+                       (dissoc :aggregation :order-by :fields)
+                       (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins)))
                        (assoc :breakout        [value-field-ref]
                               :breakout-idents (lib.ident/indexed-idents 1))
                        (update :limit (fnil min *max-rows*) *max-rows*)

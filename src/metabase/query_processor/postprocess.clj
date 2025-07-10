@@ -34,8 +34,6 @@
               (vary-meta assoc :converted-form query))))
       (with-meta (meta middleware-fn))))
 
-;;; this WILL be used in the VERY near future.
-#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- ensure-pmbql [middleware-fn]
   (-> (fn [query rff]
         (let [query (cond->> query
@@ -65,7 +63,7 @@
    (ensure-legacy #'large-int/convert-large-int-to-string)
    (ensure-legacy #'viz-settings/update-viz-settings)
    (ensure-legacy #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns)
-   (ensure-legacy #'annotate/add-column-info)
+   (ensure-pmbql #'annotate/add-column-info)
    (ensure-legacy #'fetch-source-query/add-dataset-info)])
 ;; ↑↑↑ POST-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 

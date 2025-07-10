@@ -744,6 +744,7 @@
    [:parameter_mappings {:optional true} [:maybe [:sequential [:map
                                                                [:parameter_id ms/NonBlankString]
                                                                [:target       :any]]]]]
+   [:inline_parameters  {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series             {:optional true} [:maybe [:sequential map?]]]])
 
 (def ^:private UpdatedDashboardTab
