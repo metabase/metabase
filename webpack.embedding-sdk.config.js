@@ -76,9 +76,14 @@ module.exports = (env) => {
 
       minimize: !isDevMode,
       minimizer: mainConfig.optimization.minimizer,
+
+      splitChunks: false,
     },
 
     plugins: [
+      new webpack.optimize.LimitChunkCountPlugin({
+        maxChunks: 1,
+      }),
       new webpack.BannerPlugin({
         banner:
           "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",

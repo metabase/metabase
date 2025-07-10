@@ -5,6 +5,19 @@ const fs = require("fs");
 const path = require("path");
 
 const SDK_DIST_DIR = path.resolve("./resources/embedding-sdk");
+const DEPENDENCIES = [];
+
+function filterOuDependencies(object) {
+  const result = {};
+
+  Object.entries(object).forEach(([packageName, version]) => {
+    if (DEPENDENCIES.includes(packageName)) {
+      result[packageName] = version;
+    }
+  });
+
+  return result;
+}
 
 function generateSdkPackage() {
   let maybeCommitHash = process.argv[2];
@@ -13,6 +26,13 @@ function generateSdkPackage() {
     // get short commit hash
     maybeCommitHash = maybeCommitHash.slice(0, 7);
   }
+
+  const mainPackageJson = fs.readFileSync(
+    path.resolve("./package.json"),
+    "utf-8",
+  );
+
+  const mainPackageJsonContent = JSON.parse(mainPackageJson);
 
   const sdkPackageTemplateJson = fs.readFileSync(
     path.resolve(
@@ -29,6 +49,7 @@ function generateSdkPackage() {
     version: maybeCommitHash
       ? `${sdkPackageTemplateJsonContent.version}-${todayDate}-${maybeCommitHash}`
       : sdkPackageTemplateJsonContent.version,
+    dependencies: filterOuDependencies(mainPackageJsonContent.dependencies),
   };
 
   const mergedContentString = JSON.stringify(mergedContent, null, 2);

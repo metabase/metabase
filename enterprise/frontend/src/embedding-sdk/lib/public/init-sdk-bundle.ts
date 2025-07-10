@@ -3,10 +3,13 @@ import { defineGlobalEmbeddingSdk } from "embedding-sdk/lib/public/define-global
 export function initSdkBundle() {
   defineGlobalEmbeddingSdk();
 
-  const ev = new CustomEvent("metabase-embedding-sdk-loaded", {
+  const sdkLoadingEvent = new CustomEvent("metabase-embedding-sdk-loading", {
     bubbles: true,
     composed: true,
+    detail: {
+      status: "loaded",
+    },
   });
 
-  document.dispatchEvent(ev);
+  document.dispatchEvent(sdkLoadingEvent);
 }

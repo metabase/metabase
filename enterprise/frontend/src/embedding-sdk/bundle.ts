@@ -19,8 +19,10 @@ import "sdk-ee-plugins";
 // Imports which are only applicable to the embedding sdk, and not the new iframe embedding.
 import "sdk-specific-imports";
 
+// Components
 export * from "./components/public";
 
+// Exports needed for public Hooks that use sdk redux store
 export { getSdkStore } from "./store/index";
 export { getApplicationName } from "metabase/selectors/whitelabel";
 export { getSetting } from "metabase/selectors/settings";

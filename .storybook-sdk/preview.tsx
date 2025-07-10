@@ -1,12 +1,14 @@
-import { useEffect } from "react";
 import { GlobalTypes } from "@storybook/types";
 import { initialize, mswLoader } from "msw-storybook-addon";
-import type { StoryFn, StoryContext } from "@storybook/react";
 
 import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
 
 import { availableLocales } from "./constants";
-import { initSdkBundle } from "../enterprise/frontend/src/embedding-sdk/lib/public";
+import { defineGlobalReact } from "../enterprise/frontend/src/embedding-sdk/sdk-loader/lib/private/define-global-react";
+
+// To run initialization side effects like Mantine styles, dayjs plugins, etc
+import "embedding-sdk/bundle";
+defineGlobalReact();
 
 // @ts-expect-error: See metabase/lib/delay
 // This will skip the skippable delays in stories
@@ -22,19 +24,7 @@ const parameters = {
   },
 };
 
-// We simulate SDK bundle loading timeout
-const INIT_SDK_BUNDLE_TIMEOUT = 1000;
-const decorators = [
-  (Story: StoryFn, context: StoryContext) => {
-    useEffect(() => {
-      const handle = setTimeout(initSdkBundle, INIT_SDK_BUNDLE_TIMEOUT);
-
-      return () => clearTimeout(handle);
-    }, [context.name]);
-
-    return <Story />;
-  },
-];
+const decorators = [];
 
 const globalTypes: GlobalTypes = {
   sdkTheme: {

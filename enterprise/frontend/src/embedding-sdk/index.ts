@@ -1,10 +1,4 @@
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-
 import { defineGlobalReact } from "./sdk-loader/lib/private/define-global-react";
-
-// Enable SDK mode as we are in the SDK bundle
-// This applies to SDK derivatives such as new iframe embedding.
-EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
 defineGlobalReact();
 

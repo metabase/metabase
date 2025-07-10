@@ -2,6 +2,7 @@ import type { Action, Store } from "@reduxjs/toolkit";
 import { useEffect, useRef } from "react";
 
 import type { MetabaseProviderProps } from "embedding-sdk/components/public";
+import { useLoadSdkBundle } from "embedding-sdk/sdk-loader/hooks/private/use-load-sdk-bundle";
 import { useWaitForSdkBundle } from "embedding-sdk/sdk-loader/hooks/private/use-wait-for-sdk-bundle";
 import { MetabaseProviderStore } from "embedding-sdk/sdk-loader/lib/private/lazy-sdk-store";
 import type { SdkStoreState } from "embedding-sdk/store/types";
@@ -21,6 +22,7 @@ export const MetabaseProvider = (props: MetabaseProviderProps) => {
     MetabaseProviderStore.initialize();
   }
 
+  useLoadSdkBundle(props.authConfig.metabaseInstanceUrl);
   const { isLoading } = useWaitForSdkBundle();
 
   const Component = isLoading

@@ -13,7 +13,11 @@ const fs = require("fs");
 const path = require("path");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
-const BUILD_PATH = __dirname + "/resources/embedding-sdk-bundle";
+
+const BUILD_PATH = __dirname + "/resources/frontend_client";
+const TMP_BUILD_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
+const OUT_FILE_NAME = "embedding-sdk.js";
+
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 
@@ -63,15 +67,19 @@ module.exports = (env) => {
     entry: "./bundle.ts",
 
     output: {
-      path: BUILD_PATH + "/dist",
+      // we must use a different directory than the main rspack config,
+      // otherwise the path conflicts and the output bundle will not appear.
+      path: TMP_BUILD_PATH,
       publicPath: "",
-      filename: "bundle.bundle.js",
+      filename: OUT_FILE_NAME,
       library: {
         type: "umd",
         // eslint-disable-next-line no-literal-metabase-strings -- build config
         name: "MetabaseEmbeddingSDK",
       },
     },
+
+    devtool: false,
 
     module: {
       rules: [
@@ -191,6 +199,25 @@ module.exports = (env) => {
           analyzerMode: "static",
           reportFilename: BUILD_PATH + "/dist/report.html",
         }),
+      {
+        name: "copy-embedding-sdk-bundle-js-to-app-path",
+        apply(compiler) {
+          compiler.hooks.afterEmit.tap(
+            "copy-embedding-sdk-bundle-js-to-app-path",
+            () => {
+              const tempPath = path.join(TMP_BUILD_PATH, OUT_FILE_NAME);
+              const appPath = path.join(BUILD_PATH, "app/", OUT_FILE_NAME);
+
+              // copy embedding-sdk.js from the temp directory to the resources directory
+              fs.mkdirSync(path.dirname(appPath), { recursive: true });
+              fs.copyFileSync(tempPath, appPath);
+
+              // cleanup the temp directory to prevent bloat.
+              fs.rmSync(TMP_BUILD_PATH, { recursive: true });
+            },
+          );
+        },
+      },
     ].filter(Boolean),
   };
 
