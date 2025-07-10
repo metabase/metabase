@@ -2448,7 +2448,10 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.popover().findByText("Count of rows").click();
 
       H.visualize();
-      cy.findByTestId("scalar-value").should("have.text", "49");
+      H.assertTableData({
+        columns: ["Count"],
+        firstRows: [["49"]],
+      });
     });
 
     it("should be possible reference both aggregations with same name in follow up stage", () => {
