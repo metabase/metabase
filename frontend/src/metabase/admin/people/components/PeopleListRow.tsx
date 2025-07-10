@@ -29,7 +29,7 @@ import type {
 import { userToColor } from "../colors";
 
 import { MembershipSelect } from "./MembershipSelect";
-import S from "./PeopleListRow.module.css";
+import { ReactivateUserButton } from "./ReactivateUserButton";
 
 const enablePasswordLoginKey = "enable-password-login";
 
@@ -93,16 +93,18 @@ export const PeopleListRow = ({
       <td>{user.email}</td>
       {showDeactivated ? (
         <Fragment>
+          {isExternal && (
+            <td>
+              <PLUGIN_TENANTS.TenantDisplayName id={user.tenant_id} />
+            </td>
+          )}
           <td>{dayjs(user.updated_at).fromNow()}</td>
           <td>
-            <Tooltip label={t`Reactivate this account`}>
-              <ForwardRefLink
-                to={Urls.reactivateUser(user)}
-                className={S.refreshLink}
-              >
-                <Icon name="refresh" size={20} />
-              </ForwardRefLink>
-            </Tooltip>
+            {isExternal ? (
+              <PLUGIN_TENANTS.ReactivateExternalUserButton user={user} />
+            ) : (
+              <ReactivateUserButton user={user} />
+            )}
           </td>
         </Fragment>
       ) : (

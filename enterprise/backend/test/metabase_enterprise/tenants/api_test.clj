@@ -154,3 +154,30 @@
       (is (= "You cannot specify both `tenancy` and `tenant_id`"
              ;; even though this makes sense as a query (it's just redundant), let's just prohibit specifying both
              (mt/user-http-request :crowberto :get 400 (str "user?tenancy=external&tenant_id=" tenant-id)))))))
+
+(deftest users-are-deactivated-with-tenants
+  (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
+                 :model/User {user-id :id} {:tenant_id tenant-id}
+                 :model/User {other-user-id :id} {:tenant_id tenant-id}]
+    (let [active? (fn [user-id]
+                    (t2/select-one-fn :is_active :model/User :id user-id))]
+      ;; setup: deactivate "other user", do a sanity check to make sure one is active, one is not
+      (mt/user-http-request :crowberto :delete 200 (str "user/" other-user-id))
+      (testing "Sanity check, user starts activated"
+        (is (active? user-id))
+        (is (not (active? other-user-id))))
+      ;; deactivate the tenant
+      (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active false})
+      (testing "After deactivating the tenant, both users are deactivated"
+        (is (not (active? user-id)))
+        (is (not (active? other-user-id))))
+      (testing "After deactivating the tenant, it's not possible to reactivate either user"
+        (mt/user-http-request :crowberto :put 400 (str "user/" user-id "/reactivate"))
+        (mt/user-http-request :crowberto :put 400 (str "user/" other-user-id "/reactivate")))
+      ;; reactivate the tenant
+      (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active true})
+      (testing "After reactivating the tenant, only one user is reactivated"
+        (is (active? user-id))
+        (is (not (active? other-user-id))))
+      (testing "Now that the tenant is active, it's possible to reactivate a user"
+        (mt/user-http-request :crowberto :put 200 (str "user/" other-user-id "/reactivate"))))))

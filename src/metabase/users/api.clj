@@ -17,6 +17,7 @@
    [metabase.session.models.session :as session]
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
+   [metabase.tenants.core :as tenants]
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
@@ -544,13 +545,15 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-not-internal-user id)
-  (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source]
+  (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source :tenant_id]
                             :type :personal
                             :id id)]
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
                [400 {:message (tru "Not able to reactivate an active user")}])
+    (api/check (tenants/tenant-is-active? (:tenant_id user))
+               [400 {:message (tru "Not able to reactivate a user in a deactivated tenant")}])
     (events/publish-event! :event/user-reactivated {:object user :user-id api/*current-user-id*})
     (reactivate-user! (dissoc user [:email :first_name :last_name]))))
 

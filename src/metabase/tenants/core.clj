@@ -14,3 +14,10 @@
   metabase-enterprise.tenants.core
   []
   #{})
+
+(defenterprise tenant-is-active?
+  "OSS version of `tenant-is-active?`. Returns `true` only if you have no tenant, because no tenants are active on
+  OSS."
+  metabase-enterprise.tenants.core
+  [tenant-id]
+  (nil? tenant-id))

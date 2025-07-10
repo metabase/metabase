@@ -40,8 +40,15 @@ const DOOHICKEY_USER = {
   tenant: DOOHICKEY_TENANT.slug,
 };
 
+const SECOND_DOOHICKEY_USER = {
+  first_name: "donthickey",
+  last_name: "user",
+  email: "donthickey.user@email.com",
+  tenant: DOOHICKEY_TENANT.slug,
+};
+
 const TENANTS = [GIZMO_TENANT, DOOHICKEY_TENANT];
-const USERS = [GIZMO_USER, DOOHICKEY_USER];
+const USERS = [GIZMO_USER, DOOHICKEY_USER, SECOND_DOOHICKEY_USER];
 
 describe("Tenants - management OSS", { tags: "@OSS" }, () => {
   beforeEach(() => {
@@ -473,6 +480,86 @@ describe("tenant users", () => {
         },
       });
     });
+  });
+
+  it("should disable users on a tenant when disabling the tenant", () => {
+    cy.visit("/admin/tenants/people");
+
+    cy.findAllByRole("row")
+      .contains("tr", "donthickey user")
+      .findByRole("button", { name: /ellipsis/ })
+      .click();
+
+    H.popover().findByText("Deactivate user").click();
+    H.modal().button("Deactivate").click();
+
+    cy.findByRole("link", { name: /tenants/i }).click();
+
+    cy.findAllByRole("row")
+      .contains("tr", "doohickey")
+      .findByRole("button", { name: /ellipsis/ })
+      .click();
+
+    H.popover().findByText("Deactivate tenant").click();
+    H.modal().button("Deactivate").click();
+
+    cy.findByRole("link", { name: /external users/i }).click();
+
+    // assert that only gizmo users are still active
+    cy.findByTestId("admin-layout-content").findByText("1 person found");
+
+    cy.findAllByRole("row")
+      .contains("tr", "gizmo user")
+      .findByRole("button", { name: /ellipsis/ })
+      .click();
+
+    H.popover().findByText("Deactivate user").click();
+    H.modal().button("Deactivate").click();
+
+    cy.findByRole("radio", { name: /deactivated/i }).click({ force: true });
+
+    cy.findByTestId("admin-layout-content").findByText("3 people found");
+
+    // Disabled users should still show their tenant names
+    cy.findAllByRole("row")
+      .contains("tr", "donthickey user")
+      .findByRole("cell", { name: "Doohickey" })
+      .should("exist");
+
+    cy.findAllByRole("row")
+      .contains("tr", "donthickey user")
+      .findByRole("link", { name: /refresh/ })
+      .realHover();
+
+    H.tooltip().should(
+      "contain.text",
+      "Cannot reactivate users on a disabled tenant",
+    );
+
+    cy.findAllByRole("row")
+      .contains("tr", "gizmo user")
+      .findByRole("link", { name: /refresh/ })
+      .realHover();
+
+    H.tooltip().should("contain.text", "Reactivate this account");
+
+    cy.findByRole("link", { name: /tenants/i }).click();
+    cy.findByRole("radio", { name: /deactivated/i }).click({ force: true });
+
+    cy.findAllByRole("row")
+      .contains("tr", "doohickey")
+      .findByRole("button", { name: /ellipsis/ })
+      .click();
+
+    H.popover().findByText("Reactivate tenant").click();
+    H.modal().button("Reactivate").click();
+
+    cy.findByRole("link", { name: /external users/i }).click();
+
+    // Only 1 Doohickey user should have been re-activated
+    cy.findByTestId("admin-layout-content").findByText("1 person found");
+
+    cy.findAllByRole("row").contains("tr", "doohickey").should("exist");
   });
 
   it("should accept a tenant when provisioning a user via JWT", () => {

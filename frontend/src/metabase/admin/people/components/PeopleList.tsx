@@ -183,6 +183,7 @@ export const PeopleList = ({
               <th>{t`Email`}</th>
               {showDeactivated ? (
                 <Fragment>
+                  {external && <th>{t`Tenant`}</th>}
                   <th>{t`Deactivated`}</th>
                   <th />
                 </Fragment>

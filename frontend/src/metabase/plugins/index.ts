@@ -785,4 +785,6 @@ export const PLUGIN_TENANTS = {
   isExternalUser: (_user?: Pick<User, "tenant_id">) => false,
   isTenantCollection: (_collection: Collection) => false,
   PeopleNav: null as React.ReactElement | null,
+  ReactivateExternalUserButton: ({ user: _user }: { user: User }) =>
+    null as React.ReactElement | null,
 };
