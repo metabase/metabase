@@ -241,3 +241,30 @@
                      {:name "RATING", :display-name "Rating", :selected? false}
                      {:name "CREATED_AT", :display-name "Created At", :selected? false}]
                     marked))))))))
+
+(deftest ^:parallel breakout-on-nested-join-test
+  (testing "Should handle breakout on nested join column (#59918)"
+    (mt/with-driver :h2
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+        (mt/with-temp [:model/Card q1 {:dataset_query (mt/mbql-query orders
+                                                        {:joins [{:source-table $$products
+                                                                  :alias "p"
+                                                                  :condition [:= $product_id &p.products.id]
+                                                                  :fields :all}]})
+                                       :name "Q1"}
+                       :model/Card q2 {:dataset_query (mt/mbql-query people
+                                                        {:joins [{:source-table (str "card__" (:id q1))
+                                                                  :alias "j"
+                                                                  :condition
+                                                                  [:= $id [:field "USER_ID" {:base-type :type/Integer
+                                                                                             :join-alias "j"}]]
+                                                                  :fields :all}]})}]
+          (let [card-meta (lib.metadata/card mp (:id q2))
+                cat-col   (m/find-first (comp #{"CATEGORY"} :name)
+                                        (lib/returned-columns (lib/query mp card-meta)))
+                query     (-> (lib/query mp card-meta)
+                              (lib/aggregate (lib/count))
+                              (lib/breakout cat-col))]
+            ;; should return a row with category and count
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Column .*CATEGORY.* not found"
+                                  (qp/process-query query)))))))))
