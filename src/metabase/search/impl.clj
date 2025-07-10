@@ -423,19 +423,20 @@
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
-  (let [reducible-results (search.engine/results search-ctx)
-        scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
-        xf                (comp
-                           (take search.config/*db-max-results*)
-                           (map normalize-result)
-                           (filter (partial check-permissions-for-model search-ctx))
-                           (map (partial normalize-result-more search-ctx))
-                           (keep #(search.engine/score scoring-ctx %)))
-        total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
-                            true hydrate-dashboards
-                            true hydrate-user-metadata
-                            (:include-metadata? search-ctx) (add-metadata)
-                            (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
-                            true (add-collection-effective-location)
-                            true (map serialize))]
-    (search-results search-ctx search.engine/model-set total-results)))
+  (def search-ctx search-ctx) ; for debugging
+  (*let [reducible-results (search.engine/results search-ctx)
+         scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
+         xf                (comp
+                            (take search.config/*db-max-results*)
+                            (map normalize-result)
+                            (filter (partial check-permissions-for-model search-ctx))
+                            (map (partial normalize-result-more search-ctx))
+                            (keep #(search.engine/score scoring-ctx %)))
+         total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
+                             true hydrate-dashboards
+                             true hydrate-user-metadata
+                             (:include-metadata? search-ctx) (add-metadata)
+                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
+                             true (add-collection-effective-location)
+                             true (map serialize))]
+        (search-results search-ctx search.engine/model-set total-results)))

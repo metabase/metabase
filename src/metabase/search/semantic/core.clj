@@ -21,6 +21,9 @@
   (:import
    (java.time OffsetDateTime)))
 
+(def ^:private external-index-base-url
+  "http://localhost:3003/api/")
+
 ;;; ---------------------------------------- Engine Registration ----------------------------------------
 
 (defsetting semantic-search-enabled
@@ -122,27 +125,30 @@
 
 (defmethod search.engine/results :search.engine/semantic
   [{:keys [search-string] :as search-ctx}]
-  ;; Check whether there is a query-able index.
-  (when-not (semantic.index/active-table)
-    (throw (ex-info "Semantic Search Index not found."
-                    {:search-engine :search.engine/semantic
-                     :db-type       (app-db/db-type)})))
-
   (try
-    (->> (semantic-search-query search-string search-ctx)
-         (add-collection-join-and-where-clauses search-ctx)
-         (search.filter/with-filters search-ctx)
-         (add-table-where-clauses search-ctx)
-         t2/query
-         (map rehydrate))
+    (let [response (http/post (str external-index-base-url "query")
+                              {:headers {"Content-Type" "application/json"}
+                               :body    (json/encode {:query search-string})})
+          status (:status response)]
+      (if (= 200 status)
+        (let [results (-> (json/decode (:body response) true)
+                          :results)]
+          (map (fn [result]
+                 (-> result
+                     (update :created_at parse-datetime)
+                     (update :updated_at parse-datetime)
+                     (update :last_edited_at parse-datetime)))
+               results))
+        (throw (ex-info "External semantic search service query failed"
+                        {:status status
+                         :response response}))))
     (catch Exception e
-      ;; Rule out the error coming from stale index metadata.
-      (#'semantic.index/sync-tracking-atoms!)
+      (log/error e "Failed to query semantic search service")
       (throw e))))
 
 (comment
   (request/as-admin
-    (search.engine/results {:search-string "example search"
+    (search.engine/results {:search-string "how many chairs are in stock?"
                             :search-engine :search.engine/semantic})))
 
 (defmethod search.engine/model-set :search.engine/semantic
@@ -158,9 +164,6 @@
    :score  1})
 
 ;;; ---------------------------------------- Index Management ----------------------------------------
-
-(def ^:private external-index-base-url
-  "http://localhost:3003/api/")
 
 (defn populate-external-index!
   "Populate the external semantic search index with all searchable documents."
@@ -200,7 +203,7 @@
     (let [response (http/post (str external-index-base-url "init")
                               {:headers {"Content-Type" "application/json"}
                                :body    (json/encode {:force-reset? true})})
-          status (:status response)]
+          status   (:status response)]
       (if (= 200 status)
         (do
           (log/info "Successfully initialized semantic search service")
