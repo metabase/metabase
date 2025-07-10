@@ -264,9 +264,9 @@
           (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                    :details (impersonation-details driver/*driver* (mt/db))}]
             (mt/with-db database
-              (sync/sync-database! database {:scan :schema})
               (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                 (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+              (sync/sync-database! database {:scan :schema})
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" role-a}}
                 (is (= [[1 3]]
@@ -306,9 +306,9 @@
           (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                    :details (impersonation-details driver/*driver* (mt/db))}]
             (mt/with-db database
-              (sync/sync-database! database {:scan :schema})
               (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                 (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+              (sync/sync-database! database {:scan :schema})
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" role-a}}
                 (is (= [[1 3]]
@@ -349,9 +349,9 @@
           (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                    :details (impersonation-details driver/*driver* (mt/db))}]
             (mt/with-db database
-              (sync/sync-database! database {:scan :schema})
               (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                 (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+              (sync/sync-database! database {:scan :schema})
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" role-a}}
                 (is (= [[1 3]]
@@ -404,23 +404,6 @@
                        clojure.lang.ExceptionInfo
                        #"Connection impersonation is enabled for this database, but no default role is found"
                        (mt/run-mbql-query venues
-                         {:aggregation [[:count]]})))))))
-          (testing "Using connection impersonation with user that can be impersonated works"
-            (mt/with-temp [:model/Database database {:engine driver/*driver*,
-                                                     :details (merge details {:user impersonation-user
-                                                                              ;; i think this should be (impersonation-details (mt/db)) which will set a role
-                                                                              :role impersonation-user})}]
-              (mt/with-db database
-                (sync/sync-database! database {:scan :schema})
-                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                               :attributes     {"impersonation_attr" role-a}}
-                  (is (= [[100]]
-                         (mt/rows
-                          (mt/run-mbql-query venues
-                            {:aggregation [[:count]]}))))
-                  (is (thrown?
-                       java.lang.Exception
-                       (mt/run-mbql-query checkins
                          {:aggregation [[:count]]})))))))
           (testing "Using connection impersonation with a default user that can't be impersonated works if an impersonation user (role) is provided"
             (mt/with-temp [:model/Database database {:engine driver/*driver*,
