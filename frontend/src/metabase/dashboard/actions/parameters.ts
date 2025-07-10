@@ -63,6 +63,7 @@ import {
 } from "../selectors";
 import {
   findDashCardForInlineParameter,
+  hasInlineParameters,
   isDashcardInlineParameter,
   isQuestionDashCard,
   supportsInlineParameters,
@@ -141,6 +142,57 @@ export function duplicateParameters(
 
   return newParameters;
 }
+
+type MoveParameterOpts = {
+  parameterId: ParameterId;
+  destination:
+    | "top-nav"
+    | {
+        id: number;
+        type: "dashcard";
+      };
+};
+
+export const moveParameter =
+  ({ parameterId, destination }: MoveParameterOpts) =>
+  (dispatch: Dispatch, getState: GetState) => {
+    const dashcardMap = getDashcards(getState());
+    const parameterDashcard = findDashCardForInlineParameter(
+      parameterId,
+      Object.values(dashcardMap),
+    );
+
+    if (parameterDashcard) {
+      dispatch(
+        setDashCardAttributes({
+          id: parameterDashcard.id,
+          attributes: {
+            inline_parameters: parameterDashcard.inline_parameters.filter(
+              (id) => id !== parameterId,
+            ),
+          },
+        }),
+      );
+    }
+
+    if (typeof destination === "object" && destination.type === "dashcard") {
+      const dashcard = dashcardMap[destination.id];
+      if (!dashcard) {
+        throw new Error(`Dashcard with id ${destination.id} not found`);
+      }
+      const currentInlineParameters = hasInlineParameters(dashcard)
+        ? dashcard.inline_parameters
+        : [];
+      dispatch(
+        setDashCardAttributes({
+          id: destination.id,
+          attributes: {
+            inline_parameters: [...currentInlineParameters, parameterId],
+          },
+        }),
+      );
+    }
+  };
 
 export const setEditingParameter =
   (parameterId: ParameterId | null) => (dispatch: Dispatch) => {
