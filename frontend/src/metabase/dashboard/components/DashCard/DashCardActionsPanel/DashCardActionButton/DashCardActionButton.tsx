@@ -12,13 +12,27 @@ export const HEADER_ICON_SIZE = 16;
 interface Props extends HTMLAttributes<HTMLAnchorElement> {
   as?: ElementType;
   tooltip?: string;
+  disabled?: boolean;
 }
 
 const DashActionButton = forwardRef<HTMLAnchorElement, Props>(
   function DashActionButton(
-    { as: Component = "a", tooltip, children, ...props },
+    { as: Component = "a", tooltip, children, disabled, ...props },
     ref,
   ) {
+    if (disabled) {
+      return (
+        <span
+          className={cx(S.StyledAnchor, props.className, S.Disabled)}
+          aria-disabled="true"
+          tabIndex={-1}
+        >
+          <Tooltip label={tooltip} disabled={!tooltip}>
+            {children}
+          </Tooltip>
+        </span>
+      );
+    }
     return (
       <Component
         {...props}
