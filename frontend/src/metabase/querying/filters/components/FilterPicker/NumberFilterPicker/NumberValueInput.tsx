@@ -76,6 +76,7 @@ function NumberValueInput({
           value={values[0]}
           w="100%"
           placeholder={t`Start of range`}
+          aria-label={t`Start of range`}
           autoFocus
           onChange={(newValue) => onChange([newValue, values[1]])}
           leftSection={
@@ -96,6 +97,7 @@ function NumberValueInput({
         <NumberFilterInput
           value={values[1]}
           placeholder={t`End of range`}
+          aria-label={t`End of range`}
           onChange={(newValue) => onChange([values[0], newValue])}
           leftSection={
             <ToggleButton

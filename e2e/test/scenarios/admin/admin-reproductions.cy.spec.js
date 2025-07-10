@@ -238,14 +238,14 @@ describe("(metabase#46714)", () => {
     });
 
     cy.findByLabelText("Filter operator").should("have.text", "Range").click();
-    // eslint-disable-next-line no-unsafe-element-filtering
-    H.popover().last().findByText("Less than").click();
-    cy.findByLabelText("Filter operator").should("have.text", "Less than");
-    H.popover().findByPlaceholderText("Enter a number").clear().type("1000");
+    H.popover().findByText("Range").click();
+    cy.findByLabelText("Filter operator").should("have.text", "Range");
+    H.popover().findByPlaceholderText("End of range").clear().type("1000");
     H.popover().findByText("Add filter").click();
 
     cy.findByTestId("filter-pill").should(
       "have.text",
+      // broken
       "Total is less than 1000",
     );
   });

@@ -29,13 +29,11 @@ describe("issue 9339", () => {
     H.openOrdersTable();
 
     H.tableHeaderClick("Total");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter by this column").click();
-    H.selectFilterOperator("Greater than");
-    cy.findByPlaceholderText("Enter a number").type("9339,1234").blur();
+    H.popover().findByText("Filter by this column").click();
+    H.selectFilterOperator("Range");
+    cy.findByPlaceholderText("Start of range").type("9339,1234").blur();
     cy.findByDisplayValue("9339").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("1,234").should("not.exist");
+    H.popover().findByText("1,234").should("not.exist");
     cy.button("Add filter").should("be.enabled");
   });
 });
@@ -997,8 +995,7 @@ describe("issue 36508", () => {
       .eq(1)
       .within(() => {
         cy.findByText("Equal to").should("exist");
-        cy.findByText("Greater than").should("exist");
-        cy.findByText("Less than").should("exist");
+        cy.findByText("Range").should("exist");
       });
   });
 });
