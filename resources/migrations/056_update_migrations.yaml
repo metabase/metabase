@@ -233,7 +233,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v56.2025-07-03T16:00:00
+      id: v56.2025-09-01T16:00:00
       author: qnkhuat
       comment: Create data_app table for data apps functionality
       preConditions:
@@ -313,7 +313,7 @@ databaseChangeLog:
             tableName: data_app
 
   - changeSet:
-      id: v56.2025-07-03T16:00:10
+      id: v56.2025-09-01T16:00:10
       author: qnkhuat
       comment: Add index on data_app.creator_id
       preConditions:
@@ -334,7 +334,7 @@ databaseChangeLog:
       rollback: #no op, will be deleted with the table
 
   - changeSet:
-      id: v56.2025-07-03T16:01:00
+      id: v56.2025-09-01T16:01:00
       author: qnkhuat
       comment: Create data_app_definition table for data apps functionality
       preConditions:
@@ -398,7 +398,7 @@ databaseChangeLog:
             tableName: data_app_definition
 
   - changeSet:
-      id: v56.2025-07-03T16:02:00
+      id: v56.2025-09-01T16:02:00
       author: qnkhuat
       comment: Index for getting the latest definition
       preConditions:
@@ -422,7 +422,7 @@ databaseChangeLog:
       rollback: #no op, will be deleted with the table
 
   - changeSet:
-      id: v56.2025-07-03T16:02:10
+      id: v56.2025-09-01T16:02:10
       author: qnkhuat
       comment: Add index on data_app_definition.creator_id
       preConditions:
@@ -443,7 +443,7 @@ databaseChangeLog:
       rollback: #no op, will be deleted with the table
 
   - changeSet:
-      id: v56.2025-07-03T16:02:20
+      id: v56.2025-09-01T16:02:20
       author: qnkhuat
       comment: Add unique constraint on data_app_definition (app_id, revision_number)
       preConditions:
@@ -465,7 +465,7 @@ databaseChangeLog:
             constraintName: uniq_idx_data_app_definition_app_id_revision_number
 
   - changeSet:
-      id: v56.2025-07-03T16:03:00
+      id: v56.2025-09-01T16:03:00
       author: qnkhuat
       comment: Create data_app_release table for data apps functionality
       preConditions:
@@ -476,7 +476,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: data_app_release
-            remarks: App publishing records
+            remarks: App releasing records
             columns:
               - column:
                   name: id
@@ -540,7 +540,7 @@ databaseChangeLog:
             tableName: data_app_release
 
   - changeSet:
-      id: v56.2025-07-03T16:04:00
+      id: v56.2025-09-01T16:04:00
       author: qnkhuat
       comment: index data_app_release.app_definition_id
       preConditions:
@@ -559,7 +559,7 @@ databaseChangeLog:
       rollback: #no op, will be deleted with the table
 
   - changeSet:
-      id: v56.2025-07-03T16:07:00
+      id: v56.2025-09-01T16:07:00
       author: qnkhuat
       comment: Index to get the latest active release
       preConditions:
@@ -583,7 +583,7 @@ databaseChangeLog:
       rollback: #no op, will be deleted with the table
 
   - changeSet:
-      id: v56.2025-07-03T16:08:00
+      id: v56.2025-09-01T16:08:00
       author: qnkhuat
       comment: Add index on data_app_release.creator_id
       preConditions:
