@@ -1,17 +1,18 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { trackSMTPSetupClick } from "metabase/admin/settings/components/Email/analytics";
 import { useAdminSetting } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { Box, Button, Divider, Group, Icon, Radio, Text } from "metabase/ui";
 
 import S from "./CloudSMTPConnectionCard.module.css";
+import { SMTPOverrideConnectionForm } from "./SMTPOverrideConnectionForm";
 
-export const CloudSMTPConnectionCard = ({
-  onOpenCloudSMTPModal,
-}: {
-  onOpenCloudSMTPModal: () => void;
-}) => {
+export const CloudSMTPConnectionCard = () => {
+  const [showModal, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
   const isSMTPOverrideConfigured = Boolean(
     useSetting("email-smtp-host-override"),
   );
@@ -36,6 +37,11 @@ export const CloudSMTPConnectionCard = ({
     });
   };
 
+  const handleOpenModal = () => {
+    openModal();
+    trackSMTPSetupClick({ eventDetail: "cloud" });
+  };
+
   return (
     <div className={S.root} data-testid="cloud-smtp-connection-card">
       <Radio.Group
@@ -53,7 +59,9 @@ export const CloudSMTPConnectionCard = ({
                 )}
 
                 <div>
+                  {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
                   <Text className={S.label}>{t`Managed by Metabase`}</Text>
+                  {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
                   <Text>{t`Emails come from Metabase Cloud email server`}</Text>
                 </div>
               </Group>
@@ -75,7 +83,7 @@ export const CloudSMTPConnectionCard = ({
                 <Button
                   variant="subtle"
                   onClick={(e) => {
-                    onOpenCloudSMTPModal();
+                    handleOpenModal();
                     e.stopPropagation();
                   }}
                 >{t`Edit settings`}</Button>
@@ -87,11 +95,12 @@ export const CloudSMTPConnectionCard = ({
           <Box p="sm">
             <Button
               variant="subtle"
-              onClick={onOpenCloudSMTPModal}
+              onClick={handleOpenModal}
             >{t`Set up a custom SMTP server`}</Button>
           </Box>
         )}
       </Radio.Group>
+      {showModal && <SMTPOverrideConnectionForm onClose={closeModal} />}
     </div>
   );
 };

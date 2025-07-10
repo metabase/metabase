@@ -53,7 +53,7 @@ const setup = async (props: {
 
   renderWithProviders(
     <div>
-      <CloudSMTPConnectionCard onOpenCloudSMTPModal={() => {}} />
+      <CloudSMTPConnectionCard />
       <UndoListing />
     </div>,
     {
@@ -126,5 +126,25 @@ describe("CloudSMTPConnectionCard", () => {
       const toasts = screen.getAllByLabelText("check_filled icon");
       expect(toasts).toHaveLength(1);
     });
+  });
+
+  it("should open override connection form modal", async () => {
+    await setup({
+      hosted: true,
+      cloudCustomSMTPConfigured: true,
+    });
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: /Edit settings/i,
+      }),
+    );
+    expect(
+      screen.getByTestId("smtp-override-connection-form"),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText("Close"));
+
+    expect(
+      screen.queryByTestId("smtp-override-connection-form"),
+    ).not.toBeInTheDocument();
   });
 });
