@@ -9,7 +9,7 @@ on:
 
 jobs:
   files-changed:
-    name: "SDK e2e › Check which files changed"
+    name: "SDK e2e > Check which files changed"
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
@@ -25,7 +25,7 @@ jobs:
 
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
-    name: "SDK e2e › [Backport only] Get build requirements"
+    name: "SDK e2e > [Backport only] Get build requirements"
     if: |
       !cancelled() &&
       contains(github.base_ref || github.ref, 'release-x')
@@ -60,7 +60,7 @@ jobs:
             };
 
   build-uberjar:
-    name: "SDK e2e › Build uberjar"
+    name: "SDK e2e > Build uberjar"
     needs: [files-changed, get-build-requirements]
     if: |
       !cancelled() &&
@@ -95,7 +95,7 @@ jobs:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar-sdk-tests
 
   e2e-tests:
-    name: "SDK e2e › Run e2e tests (React ${{ matrix.react-version }})"
+    name: "SDK e2e > Run e2e tests (React ${{ matrix.react-version }})"
     needs: [get-build-requirements, build-uberjar]
     if: |
       !cancelled() &&
@@ -178,7 +178,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-      - name: "SDK e2e › Upload Cypress Artifacts upon failure"
+      - name: "SDK e2e > Upload Cypress Artifacts upon failure"
         uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -188,7 +188,7 @@ jobs:
             ./logs/test.log
           if-no-files-found: ignore
 
-      - name: "SDK e2e › Publish Summary"
+      - name: "SDK e2e > Publish Summary"
         if: failure()
         uses: actions/github-script@v7
         with:
