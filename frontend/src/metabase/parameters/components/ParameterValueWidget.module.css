@@ -1,18 +1,16 @@
 .parameter {
   align-items: center;
   display: flex;
-  font-weight: 600;
-  min-height: 30px;
+  font-weight: 700;
+  height: 32px;
   min-width: 150px;
-  color: var(--mb-color-text-secondary);
-
-  &.subtle {
-    font-weight: 400;
-    border: 1px solid var(--mb-color-border);
-    padding-left: 12px;
-    padding-right: 12px;
-    border-radius: 4px;
-  }
+  background-color: var(--mb-color-bg-white);
+  color: var(--mb-color-text-primary);
+  border: 1px solid var(--mb-color-border);
+  padding-left: 12px;
+  padding-right: 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease-in-out;
 
   &.selected {
     font-weight: bold;
@@ -26,6 +24,10 @@
   }
 
   &:hover {
+    background-color: var(--mb-color-brand-light);
+    border-color: var(--mb-color-brand);
+    color: var(--mb-base-color-brand-60);
+
     .Prefix {
       color: inherit;
     }
