@@ -922,7 +922,6 @@
                   :unit                                       :year
                   :lib/deduplicated-name                      "CREATED_AT"
                   :lib/desired-column-alias                   "CREATED_AT"
-                  :lib/hack-original-name                     "CREATED_AT"
                   :lib/original-display-name                  "Created At"
                   :lib/original-name                          "CREATED_AT"
                   :lib/source                                 :source/previous-stage
@@ -1047,3 +1046,24 @@
             "Count"
             "Sum of Total" "Average of Quantity"]
            (map :display-name (result-metadata/returned-columns query))))))
+
+(deftest ^:parallel return-correct-deduplicated-names-test
+  (testing "Deduplicated names from previous stage should be preserved even when excluding certain fields"
+    ;; e.g. a field called CREATED_AT_2 in the previous stage should continue to be called that. See ;; see
+    ;; https://metaboat.slack.com/archives/C0645JP1W81/p1750961267171999
+    (let [query (-> (lib/query
+                     meta/metadata-provider
+                     (lib.tu.macros/mbql-query orders
+                       {:source-query {:source-table $$orders
+                                       :aggregation  [[:count]]
+                                       :breakout     [[:field %created-at {:base-type :type/DateTime, :temporal-unit :year}]
+                                                      [:field %created-at {:base-type :type/DateTime, :temporal-unit :month}]]}
+                        :filter       [:>
+                                       [:field "count" {:base-type :type/Integer}]
+                                       0]}))
+                    lib/append-stage
+                    lib/append-stage
+                    (as-> query (lib/remove-field query -1 (first (lib/fieldable-columns query -1)))))]
+      (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month", :field-ref [:field "CREATED_AT_2" {}]}
+               {:name "count", :display-name "Count", :field-ref [:field "count" {}]}]
+              (result-metadata/returned-columns query))))))

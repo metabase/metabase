@@ -1040,7 +1040,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.dashboardParameterSidebar().button("Remove").click();
 
       H.getDashboardCard(0).within(() => {
-        cy.findByText("Heading Text").should("exist");
+        cy.findByDisplayValue("Heading Text").should("exist");
         cy.findByText("Count").should("not.exist");
 
         H.filterWidget({ isEditing: true }).contains("Category").click();
