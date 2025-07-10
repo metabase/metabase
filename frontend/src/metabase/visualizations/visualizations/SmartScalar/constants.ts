@@ -1,10 +1,10 @@
 export const SPACING = 8;
 
-export const ICON_SIZE = 13;
+export const ICON_SIZE = 16;
 
-export const TOOLTIP_ICON_SIZE = 11;
+export const TOOLTIP_ICON_SIZE = 12;
 
-export const ICON_MARGIN_RIGHT = SPACING;
+export const ICON_MARGIN_RIGHT = SPACING * 0.5;
 
 export const SCALAR_TITLE_LINE_HEIGHT = 23;
 

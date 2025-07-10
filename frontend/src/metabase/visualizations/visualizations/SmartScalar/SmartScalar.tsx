@@ -4,15 +4,14 @@ import innerText from "react-innertext";
 import { jt, t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { getIsNightMode } from "metabase/dashboard/selectors";
-import { color, lighten } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
-import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { Box, Flex, Text, Title, Tooltip, useMantineTheme } from "metabase/ui";
+import { Box, Flex, Text, Tooltip } from "metabase/ui";
 import {
   ScalarValue,
   ScalarWrapper,
@@ -36,7 +35,7 @@ import type {
 import { ScalarContainer } from "../Scalar/Scalar.styled";
 
 import { SmartScalarComparisonWidget } from "./SettingsComponents/SmartScalarSettingsWidgets";
-import { VariationIcon, VariationValue } from "./SmartScalar.styled";
+import { VariationIcon } from "./SmartScalar.styled";
 import {
   CHANGE_TYPE_OPTIONS,
   type ComparisonResult,
@@ -124,6 +123,7 @@ export function SmartScalar({
 
   return (
     <ScalarWrapper>
+      {isPeriodVisible(innerHeight) && <ScalarPeriod period={display.date} />}
       <ScalarContainer
         className={cx(
           DashboardS.fullscreenNormalText,
@@ -146,7 +146,6 @@ export function SmartScalar({
           />
         </span>
       </ScalarContainer>
-      {isPeriodVisible(innerHeight) && <ScalarPeriod period={display.date} />}
       {comparisons.map((comparison, index) => (
         <Box maw="100%" key={index} data-testid="scalar-previous-value">
           <PreviousValueComparison
@@ -173,7 +172,6 @@ function ScalarPeriod({ period, onClick }: ScalarPeriodProps) {
         component="h3"
         ta="center"
         style={{ overflow: "hidden", cursor: onClick && "pointer" }}
-        fw={700}
         size="0.875rem"
         className={cx(
           DashboardS.fullscreenNormalText,
@@ -189,27 +187,6 @@ function ScalarPeriod({ period, onClick }: ScalarPeriodProps) {
     </ScalarTitleContainer>
   );
 }
-
-const Separator = ({ inTooltip }: { inTooltip?: boolean }) => {
-  const theme = useMantineTheme();
-  const isNightMode = useSelector(getIsNightMode);
-
-  const separatorColor =
-    isNightMode || inTooltip
-      ? lighten(theme.fn.themeColor("text-medium"), 0.15)
-      : lighten(theme.fn.themeColor("text-light"), 0.25);
-
-  return (
-    <Text
-      mx="0.2rem"
-      style={{ transform: "scale(0.7)" }}
-      c={separatorColor}
-      component="span"
-    >
-      {" • "}
-    </Text>
-  );
-};
 
 interface PreviousValueComparisonProps {
   comparison: ComparisonResult;
@@ -236,9 +213,6 @@ function PreviousValueComparison({
     display,
   } = comparison;
 
-  const theme = useMantineTheme();
-  const isNightMode = useSelector(getIsNightMode);
-
   const fittedChangeDisplay =
     changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
       ? formatChangeAutoPrecision(percentChange as number, {
@@ -253,11 +227,6 @@ function PreviousValueComparison({
     4 * SPACING -
     ICON_SIZE -
     ICON_MARGIN_RIGHT -
-    measureTextWidth(innerText(<Separator />), {
-      size: fontSize,
-      family: fontFamily,
-      weight: 700,
-    }) -
     measureTextWidth(fittedChangeDisplay, {
       size: fontSize,
       family: fontFamily,
@@ -274,26 +243,21 @@ function PreviousValueComparison({
 
   const getDetailCandidate = (
     valueFormatted: string | number | JSX.Element | null,
-    { inTooltip }: { inTooltip?: boolean } = {},
   ) => {
     if (isEmpty(valueFormatted)) {
       return comparisonDescStr;
     }
 
-    const descColor = inTooltip
-      ? "var(--mb-color-tooltip-text-secondary)"
-      : "var(--mb-color-text-secondary)";
-
     if (isEmpty(comparisonDescStr)) {
       return (
-        <Text key={valueFormatted as string} c={descColor} component="span">
+        <Text key={valueFormatted as string} c="inherit" component="span">
           {valueFormatted}
         </Text>
       );
     }
 
     return jt`${comparisonDescStr}: ${(
-      <Text key="value-str" c={descColor} component="span">
+      <Text key="value-str" c="inherit" component="span">
         {valueFormatted}
       </Text>
     )}`;
@@ -312,47 +276,44 @@ function PreviousValueComparison({
       }) <= availableComparisonWidth,
   );
 
-  const tooltipFullDetailDisplay = getDetailCandidate(valueCandidates[0], {
-    inTooltip: true,
-  });
+  const tooltipFullDetailDisplay = getDetailCandidate(valueCandidates[0]);
 
   const VariationPercent = ({
     inTooltip,
     iconSize,
     children,
   }: PropsWithChildren<{ inTooltip?: boolean; iconSize: string | number }>) => {
-    const noChangeColor =
-      inTooltip || isNightMode
-        ? lighten(theme.fn.themeColor("text-medium"), 0.3)
-        : "text-light";
-
+    const isSame = changeType === CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE;
     return (
-      <Flex align="center" maw="100%" c={changeColor ?? noChangeColor}>
+      <Flex align="center" maw="100%" c={inTooltip ? undefined : changeColor}>
         {changeArrowIconName && (
-          <VariationIcon name={changeArrowIconName} size={iconSize} />
+          <VariationIcon
+            name={changeArrowIconName}
+            size={iconSize}
+            c={changeColor}
+          />
         )}
-        <VariationValue showTooltip={false}>{children}</VariationValue>
+        <Ellipsified
+          showTooltip={false}
+          className={cx({ [CS.textBold]: !isSame })}
+        >
+          {children}
+        </Ellipsified>
       </Flex>
     );
   };
 
   const VariationDetails = ({
-    inTooltip,
     children,
   }: PropsWithChildren<{ inTooltip?: boolean }>) => {
     if (!children) {
       return null;
     }
 
-    const detailColor = inTooltip
-      ? "var(--mb-color-tooltip-text-secondary)"
-      : "var(--mb-color-text-secondary)";
-
     return (
-      <Title order={5} style={{ whiteSpace: "pre", color: detailColor }}>
-        <Separator inTooltip={inTooltip} />
+      <Text pl={ICON_MARGIN_RIGHT} c="inherit" style={{ whiteSpace: "pre" }}>
         {children}
-      </Title>
+      </Text>
     );
   };
 
@@ -360,8 +321,10 @@ function PreviousValueComparison({
     <Tooltip
       disabled={fullDetailDisplay === fittedDetailDisplay}
       position="bottom"
+      fw="normal"
+      fz="md"
       label={
-        <Flex align="center">
+        <Flex align="center" c="var(--mb-color-text-white)">
           <VariationPercent iconSize={TOOLTIP_ICON_SIZE} inTooltip>
             {display.percentChange}
           </VariationPercent>
@@ -376,7 +339,8 @@ function PreviousValueComparison({
         align="center"
         justify="center"
         mx="sm"
-        lh="1.2rem"
+        lh="1.5rem"
+        c="var(--mb-color-text-secondary)"
         className={cx(
           DashboardS.fullscreenNormalText,
           DashboardS.fullscreenNightText,
