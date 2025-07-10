@@ -411,8 +411,8 @@
 
   data-apps
   {:team "Workflows"
-   :api  #{metabase.data-apps.core
-           metabase.data-apps.api}
+   :api  #{metabase.data-apps.api
+           metabase.data-apps.core}
    :uses #{api
            models
            request
