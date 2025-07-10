@@ -2704,10 +2704,17 @@ describe("scenarios > admin > datamodel", () => {
     });
   });
 
-  describe("Error handling", () => {
+  describe("Error handling", { tags: "@external" }, () => {
     beforeEach(() => {
-      const error = { statusCode: 500 };
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_data_types" });
+      cy.signInAsAdmin();
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: "many_data_types",
+      });
 
+      const error = { statusCode: 500 };
       cy.intercept("POST", "/api/dataset*", error);
       cy.intercept("PUT", "/api/field/*", error);
       cy.intercept("PUT", "/api/table/*/fields/order", error);
@@ -2729,41 +2736,49 @@ describe("scenarios > admin > datamodel", () => {
 
       cy.log("table section");
 
-      cy.log("table name");
+      cy.log("name");
       TableSection.getNameInput().type("a").blur();
       verifyAndCloseToast("Failed to update table name");
 
-      cy.log("table description");
+      cy.log("description");
       TableSection.getDescriptionInput().type("a").blur();
       verifyAndCloseToast("Failed to update table description");
 
-      cy.log("table predefined field order");
+      cy.log("predefined field order");
       TableSection.getSortButton().click();
       TableSection.getSortOrderInput()
         .findByLabelText("Alphabetical order")
         .click();
       verifyAndCloseToast("Failed to update field order");
 
-      cy.log("table custom field order");
+      cy.log("custom field order");
       H.moveDnDKitElement(TableSection.getSortableField("ID"), {
         vertical: 50,
       });
       verifyAndCloseToast("Failed to update field order");
       TableSection.get().button("Done").click();
 
-      cy.log("table sync");
+      cy.log("sync");
       TableSection.getSyncOptionsButton().click();
       H.modal().button("Sync table schema").click();
       verifyAndCloseToast("Failed to start sync");
 
-      cy.log("table scan");
+      cy.log("scan");
       H.modal().button("Re-scan table").click();
       verifyAndCloseToast("Failed to start scan");
 
-      cy.log("table discard field values");
+      cy.log("discard field values");
       H.modal().button("Discard cached field values").click();
       verifyAndCloseToast("Failed to discard values");
       cy.realPress("Escape");
+
+      cy.log("field name");
+      TableSection.getFieldNameInput("Quantity").type("a").blur();
+      verifyAndCloseToast("Failed to update name of Quantity");
+
+      cy.log("field description");
+      TableSection.getFieldDescriptionInput("Quantity").type("a").blur();
+      verifyAndCloseToast("Failed to update description of Quantity");
 
       cy.log("field section");
 
@@ -2803,7 +2818,17 @@ describe("scenarios > admin > datamodel", () => {
       H.popover().findByText("Custom mapping").click();
       verifyAndCloseToast("Failed to update display values of Quantity");
 
+      cy.log("JSON unfolding");
+      TablePicker.getDatabase("Writable Postgres12").click();
+      TablePicker.getTable("Many Data Types").click();
+      TableSection.clickField("Json");
+      FieldSection.getUnfoldJsonInput().click();
+      H.popover().findByText("No").click();
+      verifyAndCloseToast("Failed to disable JSON unfolding for Json");
+
       cy.log("formatting");
+      TablePicker.getTable("Orders").click();
+      TableSection.clickField("Quantity");
       FieldSection.getPrefixInput().type("5").blur();
       verifyAndCloseToast("Failed to update formatting of Quantity");
 
