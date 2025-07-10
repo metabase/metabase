@@ -46,6 +46,7 @@
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
+                              :connection-impersonation-requires-role true
                               :uuid-type                              true
                               :convert-timezone                       true
                               :datetime-diff                          true
@@ -56,10 +57,6 @@
                               :regex                                  false
                               :test/jvm-timezone-setting              false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
-
-(defmethod driver/database-supports? [:sqlserver :connection-impersonation-requires-role]
-  [_driver _feature _db]
-  true)
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
   [_ _ db]
