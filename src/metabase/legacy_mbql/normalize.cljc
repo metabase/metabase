@@ -198,7 +198,10 @@
   (if (empty? options)
     [:datetime (normalize-tokens field :ignore-path)]
     [:datetime (normalize-tokens field :ignore-path)
-     (update options :mode lib.schema.expression.temporal/normalize-datetime-mode)]))
+     (let [options (normalize-tokens options :ignore-path)]
+       (cond-> options
+         (contains? options :mode)
+         (update :mode lib.schema.expression.temporal/normalize-datetime-mode)))]))
 
 (defmethod normalize-mbql-clause-tokens :get-week
   [[_ field mode]]
