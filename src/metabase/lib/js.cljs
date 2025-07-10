@@ -1003,11 +1003,6 @@
         (= (:lib/type x) :mbql/expression-parts)
         (= (:type x) :mbql/expression-parts))))
 
-
-(defn log [name x]
-  (println name x)
-  x)
-
 (defn- expression-parts-js->cljs
   "When coming from js the expression parts will have no :lib/type, so we need to add
    it back in recursively for each node down the path."
