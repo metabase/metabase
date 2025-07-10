@@ -99,13 +99,13 @@ describe("useUpsellFlow", () => {
 
       screen.getByRole("button", { name: "Trigger Upsell Flow" }).click();
 
-      const encodedUrl = encodeURIComponent(window.location.href);
+      const encodedUrl = `return_url=${encodeURIComponent(window.location.href)}`;
       const userDetailsPart =
-        "&first_name=John&last_name=Coltrane&email=john.coltrane%40example.com&company=Basemeta";
+        "first_name=John&last_name=Coltrane&email=john.coltrane%40example.com&company=Basemeta";
       const utmParamsPart =
-        "&utm_source=product&utm_medium=upsell&utm_campaign=branding&utm_content=branding-upsell-admin-screen&source_plan=oss";
+        "utm_source=product&utm_medium=upsell&utm_campaign=branding&utm_content=branding-upsell-admin-screen&source_plan=oss";
       expect(mockWindowOpen).toHaveBeenCalledWith(
-        `https://store.metabase.com/checkout/upgrade/self-hosted?returnUrl=${encodedUrl}${userDetailsPart}${utmParamsPart}`,
+        `https://store.metabase.com/checkout/upgrade/self-hosted?${encodedUrl}&${userDetailsPart}&${utmParamsPart}`,
         "_blank",
       );
     });

@@ -151,7 +151,7 @@ function getStoreUrlWithParams({
   const returnUrlEncoded = encodeURIComponent(returnUrl);
   const siteNameEncoded = encodeURIComponent(siteName);
   const userDetails = `first_name=${encodeURIComponent(firstName)}&last_name=${encodeURIComponent(lastName)}&email=${encodeURIComponent(email)}`;
-  const storeUrlWithParams = `${storeUrl}?returnUrl=${returnUrlEncoded}&${userDetails}&company=${siteNameEncoded}`;
+  const storeUrlWithParams = `${storeUrl}?return_url=${returnUrlEncoded}&${userDetails}&company=${siteNameEncoded}`;
 
   return storeUrlWithParams;
 }
