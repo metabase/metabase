@@ -19,6 +19,15 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
+                  name: creator_id
+                  type: int
+                  remarks: Id of user who created or updated the transform
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_transform_view_creator_id
+              - column:
                   name: database_id
                   type: int
                   remarks: Id of metabase_database the view is created in
@@ -122,6 +131,19 @@ databaseChangeLog:
             columns:
               - column:
                   name: view_table_id
+      rollback: # Handled in rollback of "Add transform_view table" changeset
+
+  - changeSet:
+      id: v57.2025-07-10T16:56:27
+      author: lbrdnk
+      comment: Create index for creator_id of transform_view table
+      changes:
+        - createIndex:
+            tableName: transform_view
+            indexName: idx_transform_view_creator_id
+            columns:
+              - column:
+                  name: creator_id
       rollback: # Handled in rollback of "Add transform_view table" changeset
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
