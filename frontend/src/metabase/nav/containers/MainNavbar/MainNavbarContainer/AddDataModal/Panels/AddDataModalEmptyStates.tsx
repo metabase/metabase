@@ -85,7 +85,7 @@ export const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
       () =>
         t`To enable Google Sheets import, please contact your administrator.`,
     )
-    .exhaustive();
+    .otherwise(() => t`Please contact your administrator.`);
 
   return (
     <Alert icon={<Icon name="info_filled" />} maw={CONTENT_MAX_WIDTH}>
