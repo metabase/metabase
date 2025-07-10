@@ -26,12 +26,15 @@
     [:model/DataApp {app-id :id :as app} (merge
                                           {:name "Test Data App"}
                                           (dissoc data-app :definition))]
-    (let [app-with-definition (if definition
-                                (->> (merge definition {:creator_id (mt/user->id :crowberto)})
-                                     (data-apps.models/set-latest-definition! app-id)
-                                     (assoc app :definition))
-                                app)]
-      (thunk app-with-definition))))
+    (try
+      (let [app-with-definition (if definition
+                                  (->> (merge definition {:creator_id (mt/user->id :crowberto)})
+                                       (data-apps.models/set-latest-definition! app-id)
+                                       (assoc app :definition))
+                                  app)]
+        (thunk app-with-definition))
+      (finally
+        (t2/delete! :model/DataAppRelease :app_id app-id)))))
 
 (defn data-app-url
   "URL helper for data app endpoints"
@@ -76,8 +79,7 @@
                          (assoc :definition {:config     default-app-definition-config
                                              :creator_id (mt/user->id :crowberto)}))]
     (data-apps.models/release! (:id app) (mt/user->id :crowberto))
-    (thunk (data-apps.models/get-published-data-app (:slug app)))
-    (t2/delete! :model/DataAppRelease :app_id (:id app))))
+    (thunk (data-apps.models/get-published-data-app (:slug app)))))
 
 (defmacro with-released-app!
   "Macro that sets up temporary data apps with released definitions for testing. Supports both single and multiple app creation.
