@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import html2canvas from "html2canvas-pro";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
@@ -8,15 +9,34 @@ import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { editQuestion } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
 import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
+import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_DASHCARD_MENU } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, Dataset } from "metabase-types/api";
+// Note: 'rgba(0, 0, 0, 0)' is the browser's computed value for transparent backgrounds, not a design color.
 
 import type { DashCardMenuItem } from "./dashcard-menu";
 import { canDownloadResults, canEditQuestion } from "./utils";
+
+// Use color helper for transparent RGBA (browser's computed value for transparent backgrounds)
+const TRANSPARENT_BG = color("rgba-0-0-0-0");
+const TRANSPARENT_LITERAL = color("transparent");
+function getEffectiveBackgroundColor(element: HTMLElement): string | null {
+  let el: HTMLElement | null = element;
+  while (el) {
+    const bg = window.getComputedStyle(el).backgroundColor;
+    // Not a design color: this is the browser's computed value for transparent backgrounds
+    if (bg && bg !== TRANSPARENT_BG && bg !== TRANSPARENT_LITERAL) {
+      return bg;
+    }
+    el = el.parentElement;
+  }
+  // If all backgrounds are transparent, let html2canvas use transparency
+  return null;
+}
 
 type DashCardMenuItemsProps = {
   question: Question;
@@ -25,6 +45,7 @@ type DashCardMenuItemsProps = {
   onDownload: () => void;
   onEditVisualization?: () => void;
   dashcardId?: DashCardId;
+  cardRootRef?: React.RefObject<HTMLElement>;
 };
 export const DashCardMenuItems = ({
   question,
@@ -33,8 +54,11 @@ export const DashCardMenuItems = ({
   onDownload,
   onEditVisualization,
   dashcardId,
+  cardRootRef,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
+  const [copied, setCopied] = useState(false);
+  const [copying, setCopying] = useState(false);
 
   const {
     onEditQuestion = (question, mode = "notebook") =>
@@ -101,6 +125,49 @@ export const DashCardMenuItems = ({
         disabled: isDownloadingData,
         closeMenuOnClick: false,
       });
+      // Add Copy as image menu item after Download results
+      if (cardRootRef?.current) {
+        items.push({
+          key: "MB_COPY_AS_IMAGE",
+          iconName: "clipboard",
+          label: copied ? t`Copied!` : copying ? t`Copying…` : t`Copy as image`,
+          onClick: async () => {
+            setCopying(true);
+            try {
+              // Get the effective background color (first non-transparent up the tree)
+              const effectiveBg = getEffectiveBackgroundColor(
+                cardRootRef.current!,
+              );
+              const canvas = await html2canvas(cardRootRef.current!, {
+                backgroundColor: effectiveBg,
+                useCORS: true,
+                logging: false,
+                scale: window.devicePixelRatio || 1,
+              });
+              canvas.toBlob(async (blob) => {
+                if (blob) {
+                  try {
+                    await navigator.clipboard.write([
+                      new window.ClipboardItem({
+                        [blob.type]: blob,
+                      }),
+                    ]);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  } catch (err) {
+                    alert(
+                      "Failed to copy image to clipboard. Your browser may not support this feature.",
+                    );
+                  }
+                }
+              }, "image/png");
+            } finally {
+              setCopying(false);
+            }
+          },
+          disabled: copying,
+        });
+      }
     }
 
     items.push(
@@ -138,6 +205,9 @@ export const DashCardMenuItems = ({
     onEditVisualization,
     dashcardId,
     dispatch,
+    cardRootRef,
+    copied,
+    copying,
   ]);
 
   return menuItems.map((item) => {

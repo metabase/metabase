@@ -1,5 +1,4 @@
 import cx from "classnames";
-import html2canvas from "html2canvas-pro";
 import type { MouseEvent } from "react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -90,7 +89,6 @@ function DashCardActionsPanelInner({
   className,
   onAddParameter,
   onEditVisualization,
-  cardRootRef,
 }: Props) {
   const { disableSettingsConfig, supportPreviewing, disableClickBehavior } =
     getVisualizationRaw(series) ?? {};
@@ -98,8 +96,6 @@ function DashCardActionsPanelInner({
   const buttons = [];
 
   const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
-  const [copying, setCopying] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const handleOnUpdateVisualizationSettings = useCallback(
     (settings: VisualizationSettings) => {
@@ -138,40 +134,6 @@ function DashCardActionsPanelInner({
 
     onRemove(dashcard);
   }, [dashcard, onRemove]);
-
-  const handleCopyAsImage = useCallback(async () => {
-    if (!cardRootRef?.current) {
-      return;
-    }
-    setCopying(true);
-    try {
-      const canvas = await html2canvas(cardRootRef.current, {
-        backgroundColor: null,
-        useCORS: true,
-        logging: false,
-        scale: window.devicePixelRatio || 1,
-      });
-      canvas.toBlob(async (blob) => {
-        if (blob) {
-          try {
-            await navigator.clipboard.write([
-              new window.ClipboardItem({
-                [blob.type]: blob,
-              }),
-            ]);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          } catch (err) {
-            alert(
-              "Failed to copy image to clipboard. Your browser may not support this feature.",
-            );
-          }
-        }
-      }, "image/png");
-    } finally {
-      setCopying(false);
-    }
-  }, [cardRootRef]);
 
   if (dashcard) {
     buttons.push(
@@ -365,18 +327,6 @@ function DashCardActionsPanelInner({
       </DashCardActionButton>,
     );
   }
-
-  buttons.unshift(
-    <DashCardActionButton
-      key="copy-as-image"
-      onClick={handleCopyAsImage}
-      tooltip={copied ? t`Copied!` : t`Copy as image`}
-      aria-label={t`Copy as image`}
-      disabled={copying}
-    >
-      <DashCardActionButton.Icon name="clipboard" />
-    </DashCardActionButton>,
-  );
 
   return (
     <Box
