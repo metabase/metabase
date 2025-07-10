@@ -123,7 +123,7 @@ export const TEST_MODEL_CARD = createMockCard({
     },
   },
   type: "model",
-  display: "scalar",
+  display: "table",
   description: "Test description",
 });
 
