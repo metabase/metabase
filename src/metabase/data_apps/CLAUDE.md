@@ -8,6 +8,9 @@ This directory contains the core functionality for Metabase Data Apps - a featur
 
 - **core.clj** - Public API for the data apps module (all external interactions should go through this namespace)
 - **models.clj** - Internal database models and schema definitions for Apps, AppDefinitions, and AppRelease
+- **api/data-app.clj** - Admin/CRUD API endpoints under `/api/data-apps/` for managing data apps
+- **api/app.clj** - Consumer API endpoints under `/api/app/` for using published data apps
+- **enterprise/backend/src/metabase_enterprise/data_apps/** - Enterprise-specific features and extensions for data apps
 
 ## Data Model
 
@@ -50,6 +53,8 @@ data_app_release
 
 2. **DataApp → DataAppRelease** (1:N)
    - Each app can have multiple publishing records
+   - Only ONE release can be active at a time (retracted = false)
+   - When publishing a new release, all previous releases are automatically retracted
    - Multiple releases can exist without being retracted
    - Retracted status allows for simpler publishing and rollback
 
@@ -79,9 +84,46 @@ These functions form the public interface for the data apps module. All external
 ### Database Considerations
 
 - App definitions use `revision_number` (not version) that increments atomically
-- Multiple definitions can be published without needing to deactivate others
+- Only one release can be active per app (enforced by auto-retracting previous releases)
 - Validation occurs before insert/update operations
-- Retracted flag allows marking releases as unavailable when needed
+- The `retracted` field is the only updatable field on releases (append-only design)
+- Publishing automatically retracts all previous releases for that app
+
+## API Endpoints
+
+The data apps feature exposes two distinct sets of API endpoints:
+
+### Admin/Management APIs (`/api/data-app/`)
+
+Located in `api/data-apps.clj`, these endpoints support the manipulation of Data Apps by Creators.
+
+### Consumer APIs (`/api/app/`)
+
+Located in `api/app.clj`, these endpoints are used to run Data Apps for Consumers.
+
+### API Design Principles
+
+1. **Separation of Concerns**: Creator operations are clearly separated from Consumer operations
+2. **Published-Only Access**: Consumer endpoints only return published app versions
+3. **Permission Enforcement**: All endpoints check appropriate permissions (read/create/update/delete)
+4. **Version Control**: Admin APIs handle versioning, while consumer APIs only see published versions
+5. **Resource Safety**: Consumer endpoints cannot modify app definitions, only interact with them
+
+## Testing Guidelines
+
+### Test Utilities
+
+Use the testing utilities in `test/metabase/data_apps/test_util.clj`:
+
+- **`with-data-app-cleanup`** - Wraps tests that create data apps to prevent resource leakage
+- **`with-data-app`** - Creates temporary data app models using `with-temp` pattern
+
+### Testing Patterns
+
+1. **Flow tests** for CRUD operations (create → read → update → delete in one test)
+2. **Focused tests** for edge cases (validation errors, permissions, 404s)
+3. **Always use cleanup macros** to prevent test data leakage between runs
+4. **Use `=?` for response validation** instead of checking individual fields - more idiomatic and concise
 
 ### Common Patterns
 
@@ -103,6 +145,7 @@ Please update this CLAUDE.md file when:
 4. **Changing validation rules** - Document in the appropriate section
 5. **Introducing new patterns** - Add to Common Patterns
 6. **Adding new files** - Update the Key Components section
+7. **Adding or modifying API endpoints** - Update the API Endpoints section
 
 ### Files to Check for Updates
 

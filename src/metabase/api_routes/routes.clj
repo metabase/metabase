@@ -19,6 +19,7 @@
    [metabase.collections.api]
    [metabase.config.core :as config]
    [metabase.dashboards.api]
+   [metabase.data-apps.api]
    [metabase.eid-translation.api]
    [metabase.embedding.api]
    [metabase.geojson.api]
@@ -131,6 +132,7 @@
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
    "/api-key"              (+auth 'metabase.api-keys.api)
+   "/app"                  (+auth metabase.data-apps.api/consumer-routes)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
    "/bug-reporting"        (+auth 'metabase.bug-reporting.api)
@@ -141,6 +143,7 @@
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections.api)
    "/dashboard"            (+auth 'metabase.dashboards.api)
+   "/data-app"             (+auth metabase.data-apps.api/creator-routes)
    "/database"             (+auth 'metabase.warehouses.api)
    "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)

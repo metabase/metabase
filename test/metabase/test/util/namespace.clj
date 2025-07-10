@@ -5,9 +5,7 @@
    [clojure.string :as str]
    [clojure.tools.namespace.find :as ns.find]))
 
-;; This is made `^:const` so it will get calculated when the uberjar is compiled. `find-namespaces` won't work if
-;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.
-(defonce ^:const ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended
+(defonce ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended
   for use by various test routines that need to load related namespaces.
 
   DEPRECATED: Using this is an anti-pattern, it messes up our ability to analyze the code and find dependencies between
