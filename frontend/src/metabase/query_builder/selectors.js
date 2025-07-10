@@ -875,6 +875,7 @@ export const getVisibleTimelineEvents = createSelector(
     _.chain(timelines)
       .map((timeline) => timeline.events)
       .flatten()
+      .compact()
       .filter((event) => visibleTimelineEventIds.includes(event.id))
       .sortBy((event) => event.timestamp)
       .value(),

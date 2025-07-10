@@ -270,12 +270,18 @@ export function chartLegendItem(name: string) {
   return chartLegend().findByText(name);
 }
 
-export function showDashcardVisualizerModal(index = 0) {
+type ShowDashcardVisualizerModalOptions = {
+  buttonText?: "Edit visualization" | "Visualize another way";
+};
+
+export function showDashcardVisualizerModal(
+  index = 0,
+  options: ShowDashcardVisualizerModalOptions = {},
+) {
+  const { buttonText = "Edit visualization" } = options;
   showDashboardCardActions(index);
 
-  getDashboardCard(index)
-    .findByLabelText("Edit visualization")
-    .click({ force: true });
+  getDashboardCard(index).findByLabelText(buttonText).click({ force: true });
 
   modal().within(() => {
     cy.findByTestId("visualization-canvas-loader").should("not.exist");
@@ -283,8 +289,11 @@ export function showDashcardVisualizerModal(index = 0) {
   });
 }
 
-export function showDashcardVisualizerModalSettings(index = 0) {
-  showDashcardVisualizerModal(index);
+export function showDashcardVisualizerModalSettings(
+  index = 0,
+  options: ShowDashcardVisualizerModalOptions = {},
+) {
+  showDashcardVisualizerModal(index, options);
 
   return modal().within(() => {
     toggleVisualizerSettingsSidebar();
