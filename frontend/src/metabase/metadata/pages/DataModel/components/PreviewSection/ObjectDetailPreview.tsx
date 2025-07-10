@@ -2,6 +2,7 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import EmptyState from "metabase/common/components/EmptyState";
 import { Repeat, Skeleton, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -18,7 +19,7 @@ import type {
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { Error } from "./Error";
-import { getErrorMessage, is403Error } from "./utils";
+import { getDataErrorMessage, is403Error } from "./utils";
 
 interface Props {
   databaseId: DatabaseId;
@@ -88,7 +89,11 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
     _refetchDeps: field,
   });
 
-  const base = { ...rest, error: undefined, rawSeries: undefined };
+  const base = {
+    ...rest,
+    error: rest.error ? getErrorMessage(rest.error) : undefined,
+    rawSeries: undefined,
+  };
 
   if (rest?.status === "rejected" && is403Error(rest.error)) {
     return {
@@ -101,7 +106,7 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
   if (data?.status === "failed") {
     return {
       ...rest,
-      error: getErrorMessage(data),
+      error: getDataErrorMessage(data),
       isError: true,
       rawSeries: undefined,
     };

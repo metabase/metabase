@@ -70,16 +70,11 @@ function useDataSample({
 }: Props) {
   const datasetQuery = getPreviewQuery(databaseId, tableId, fieldId, pkFields);
 
-  const { data, refetch, ...rest } = useGetAdhocQueryQuery(
-    {
-      ...datasetQuery,
-      ignore_error: true,
-      _refetchDeps: field,
-    },
-    {
-      refetchOnMountOrArgChange: true,
-    },
-  );
+  const { data, refetch, ...rest } = useGetAdhocQueryQuery({
+    ...datasetQuery,
+    ignore_error: true,
+    _refetchDeps: field,
+  });
   const base = {
     ...rest,
     error: rest.error ? getErrorMessage(rest.error) : undefined,
