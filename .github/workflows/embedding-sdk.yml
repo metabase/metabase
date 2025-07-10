@@ -26,7 +26,7 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
-  build-uberjar:
+  build:
     needs: [files-changed]
     if: |
       !cancelled() &&
