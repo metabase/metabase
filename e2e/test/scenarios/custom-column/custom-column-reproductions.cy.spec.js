@@ -1765,6 +1765,7 @@ describe("Issue 12938", () => {
     });
 
     H.visualize();
+
     cy.get("main")
       .findByText("There was a problem with your question")
       .should("not.exist");
@@ -1779,6 +1780,113 @@ describe("Issue 12938", () => {
     });
 
     H.visualize();
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+});
+
+describe("Issue 25189", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be possible to use a custom column that just references a single column in filters in follow up question (metabase#25189)", () => {
+    H.createQuestion({
+      name: "Question with CCreated At",
+      query: {
+        "source-table": ORDERS_ID,
+        expressions: {
+          "CCreated At": [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+            },
+          ],
+        },
+        "expression-idents": {
+          "CCreated At": "fch45EQTl38tSb9N-zkvL",
+        },
+      },
+    }).then((res) => {
+      H.createQuestion(
+        {
+          query: {
+            "source-table": `card__${res.body.id}`,
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+    cy.findAllByTestId("header-cell")
+      .contains("CCreated At")
+      .should("be.visible");
+
+    H.filter();
+    H.popover().within(() => {
+      cy.findAllByText("CCreated At").should("have.length", 1).first().click();
+      cy.findByText("Today").click();
+    });
+
+    cy.findAllByTestId("header-cell")
+      .contains("CCreated At")
+      .should("be.visible");
+
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+
+  it("should be possible to use a custom column that just references a single column in filters in follow up question, when the custom column has the same name as the column (metabase#25189)", () => {
+    H.createQuestion({
+      name: "Question with Created At",
+      query: {
+        "source-table": ORDERS_ID,
+        expressions: {
+          "Created At": [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+            },
+          ],
+        },
+        "expression-idents": {
+          "Created At": "fch45EQTl38tSb9N-zkvL",
+        },
+      },
+    }).then((res) => {
+      H.createQuestion(
+        {
+          query: {
+            "source-table": `card__${res.body.id}`,
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+    cy.findAllByTestId("header-cell")
+      .contains("Created At")
+      .should("be.visible");
+
+    H.filter();
+    H.popover().within(() => {
+      cy.findAllByText("Created At").should("have.length", 2).first().click();
+      cy.findByText("Today").click();
+    });
+
+    H.filter();
+    H.popover().within(() => {
+      cy.findAllByText("Created At").should("have.length", 2).last().click();
+      cy.findByText("Today").click();
+    });
+
+    cy.findAllByTestId("header-cell")
+      .contains("Created At")
+      .should("be.visible");
+
     cy.get("main")
       .findByText("There was a problem with your question")
       .should("not.exist");
