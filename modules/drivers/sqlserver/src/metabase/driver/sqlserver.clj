@@ -923,10 +923,11 @@
 
 (defmethod driver.sql/default-database-role :sqlserver
   [_driver database]
-  ;; Use a "role" (sqlserver user) if it exists, otherwise use
-  ;; the user if it can be impersonated (ie not the 'sa' user).
-  (let [{:keys [role user]} (:details database)]
-    (or role (when-not (= (u/lower-case-en user) "sa") user))))
+  ;; Use a "role" (sqlserver user) if it exists. Do not fall back to the user
+  ;; field automatically, as it represents the login user which may not be a 
+  ;; valid database user for impersonation (see issue #60665).
+  (let [{:keys [role]} (:details database)]
+    role))
 
 (defmethod driver.sql/set-role-statement :sqlserver
   [_driver role]

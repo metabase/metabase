@@ -2630,13 +2630,15 @@ describe("issue 23449", () => {
 
   it("Remapped fields should work in a model (metabase#23449)", () => {
     cy.log("set the metadata for review");
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${SAMPLE_DATABASE.REVIEWS_ID}`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: SAMPLE_DATABASE.REVIEWS_ID,
+      fieldId: SAMPLE_DATABASE.REVIEWS.RATING,
+    });
 
-    cy.findByTestId("column-RATING").findByLabelText("Field settings").click();
-    cy.findAllByTestId("select-button").contains("Use original value").click();
-    cy.findByLabelText("Custom mapping").click();
+    H.DataModel.FieldSection.getDisplayValuesInput().click();
+    H.popover().findByText("Custom mapping").click();
 
     cy.findByDisplayValue("1").clear().type("A");
     cy.findByDisplayValue("2").clear().type("B");
@@ -2912,5 +2914,83 @@ describe("issue 33972", () => {
         .findByText("Showing first 2,000 rows")
         .should("exist");
     });
+  });
+});
+
+describe("Issue 33835", { tags: "@external" }, () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+
+    H.queryWritableDB("DROP TABLE IF EXISTS orders");
+    H.queryWritableDB(
+      "CREATE TABLE IF NOT EXISTS orders (id INT PRIMARY KEY, total real, discount real)",
+    );
+    H.queryWritableDB(
+      "INSERT INTO orders (id, total, discount) VALUES (1, 100, 20)",
+    );
+
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "orders" });
+
+    H.startNewQuestion();
+    H.entityPickerModal().findByText("Writable Postgres12").click();
+    H.entityPickerModal().findByText("Orders").click();
+
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().within(() => {
+      cy.findByText(/Average of/).click();
+      cy.findByText("Total").click();
+    });
+
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByText("Discount").click();
+
+    H.saveQuestion("Test Question", {
+      wrapId: true,
+      questionId: "questionId",
+      addToDashboard: false,
+    });
+  });
+
+  it("should be possible to remove an aggregation on a non-existent column (metabase#33835)", () => {
+    H.queryWritableDB("ALTER TABLE orders DROP COLUMN total");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+    H.visitQuestion("@questionId");
+    H.openNotebook();
+
+    H.getNotebookStep("summarize")
+      .findByText("Average of Unknown Field")
+      .should("be.visible")
+      .icon("close")
+      .click();
+
+    H.visualize();
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+
+  it("should be possible to remove a breakout on a non-existent column (metabase#33835)", () => {
+    H.queryWritableDB("ALTER TABLE orders DROP COLUMN discount");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+    H.visitQuestion("@questionId");
+    H.openNotebook();
+
+    H.getNotebookStep("summarize")
+      .findByText("Unknown Field: Auto binned")
+      .should("be.visible")
+      .icon("close")
+      .click();
+
+    H.visualize();
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
   });
 });

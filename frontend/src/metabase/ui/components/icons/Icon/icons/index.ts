@@ -169,6 +169,8 @@ import gauge_component from "./gauge.svg?component";
 import gauge_source from "./gauge.svg?source";
 import gear_component from "./gear.svg?component";
 import gear_source from "./gear.svg?source";
+import gear_settings_filled_component from "./gear_settings_filled.svg?component";
+import gear_settings_filled_source from "./gear_settings_filled.svg?source";
 import gem_component from "./gem.svg?component";
 import gem_source from "./gem.svg?source";
 import globe_component from "./globe.svg?component";
@@ -329,6 +331,8 @@ import ruler_component from "./ruler.svg?component";
 import ruler_source from "./ruler.svg?source";
 import sankey_component from "./sankey.svg?component";
 import sankey_source from "./sankey.svg?source";
+import schema_component from "./schema.svg?component";
+import schema_source from "./schema.svg?source";
 import search_component from "./search.svg?component";
 import search_source from "./search.svg?source";
 import section_component from "./section.svg?component";
@@ -770,6 +774,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: gear_component,
       source: gear_source,
     },
+    gear_settings_filled: {
+      component: gear_settings_filled_component,
+      source: gear_settings_filled_source,
+    },
     gem: {
       component: gem_component,
       source: gem_source,
@@ -1049,6 +1057,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     revert: {
       component: revert_component,
       source: revert_source,
+    },
+    schema: {
+      component: schema_component,
+      source: schema_source,
     },
     sankey: {
       component: sankey_component,
@@ -1414,6 +1426,7 @@ export type IconName =
   | "folder_filled"
   | "gauge"
   | "gear"
+  | "gear_settings_filled"
   | "gem"
   | "globe"
   | "grabber"
@@ -1503,6 +1516,7 @@ export type IconName =
   | "refresh_downstream"
   | "rocket"
   | "ruler"
+  | "schema"
   | "search"
   | "section"
   | "segment"
