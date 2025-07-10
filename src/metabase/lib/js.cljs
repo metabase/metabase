@@ -855,15 +855,6 @@
   [a-query stage-number]
   (to-array (lib.core/aggregations a-query stage-number)))
 
-(defn ^:export aggregation-column
-  "Given an `aggregation-clause` from [[aggregations]], returns the column corresponding to that aggregation.
-
-  Returns `nil` (JS `null`) if the aggregation is one like `:count` that doesn't have a column.
-
-  > **Code health:** Healthy"
-  [a-query stage-number aggregation-clause]
-  (lib.core/aggregation-column a-query stage-number aggregation-clause))
-
 (defn ^:export aggregation-clause
   "Returns a standalone aggregation clause for an `aggregation-operator` and a `column`.
 
@@ -1386,6 +1377,9 @@
                    ;; Unique names are required by the FE for compatibility.
                    ;; This applies only for JS; Clojure usage should prefer `:lib/desired-column-alias` to `:name`, and
                    ;; that's already unique by construction.
+                   ;;
+                   ;; TODO (Cam 7/8/25) -- shouldn't this use `:lib/deduplicate-name` or something?? Shouldn't we do
+                   ;; this generally everywhere? (Also, we're already doing this in the `returned-columns-method`
                    (update :name unique-name-fn)))
          to-array)))
 

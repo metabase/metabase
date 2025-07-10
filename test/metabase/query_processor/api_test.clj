@@ -19,7 +19,7 @@
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
-   [metabase.query-processor.pivot.test-util :as api.pivots]
+   [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -659,11 +659,11 @@
         (is (not (str/includes? (:error res) "\n\tat ")))))))
 
 (deftest ^:parallel pivot-dataset-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
-          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (api.pivots/pivot-query))
+          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (qp.pivot.test-util/pivot-query))
                 rows   (mt/rows result)]
             (is (= 1144 (:row_count result)))
             (is (= "completed" (:status result)))
@@ -676,7 +676,7 @@
 ;; historical test: don't do this going forward
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel pivot-dataset-with-added-expression-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
         ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
@@ -685,7 +685,7 @@
           (testing "with an added expression"
             ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
             ;; comments on [[metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test]].
-            (let [query  (-> (api.pivots/pivot-query)
+            (let [query  (-> (qp.pivot.test-util/pivot-query)
                              (assoc-in [:query :fields] [[:expression "test-expr"]])
                              (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
                   result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
@@ -711,10 +711,10 @@
               (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 
 (deftest ^:parallel pivot-dataset-row-totals-disabled-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot with row totals disabled"
-        (let [query (merge (api.pivots/pivot-query true)
+        (let [query (merge (qp.pivot.test-util/pivot-query true)
                            {:show_row_totals false
                             :show_column_totals true})
               result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
@@ -729,10 +729,10 @@
                       vec))))))))
 
 (deftest ^:parallel pivot-dataset-column-totals-disabled-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot with column totals disabled"
-        (let [query (merge (api.pivots/pivot-query true)
+        (let [query (merge (qp.pivot.test-util/pivot-query true)
                            {:show_row_totals true
                             :show_column_totals false})
               result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
@@ -747,10 +747,10 @@
                       vec))))))))
 
 (deftest ^:parallel pivot-dataset-both-totals-disabled-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot with row and column totals disabled"
-        (let [query (merge (api.pivots/pivot-query true)
+        (let [query (merge (qp.pivot.test-util/pivot-query true)
                            {:show_row_totals false
                             :show_column_totals false})
               result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
@@ -765,11 +765,11 @@
                       vec))))))))
 
 (deftest ^:parallel pivot-filter-dataset-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
-          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (api.pivots/filters-query))
+          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (qp.pivot.test-util/filters-query))
                 rows   (mt/rows result)]
             (is (= 140 (:row_count result)))
             (is (= "completed" (:status result)))
@@ -782,11 +782,11 @@
             (is (= [nil nil 3 7562] (last rows)))))))))
 
 (deftest ^:parallel pivot-parameter-dataset-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
-          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (api.pivots/parameters-query))
+          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (qp.pivot.test-util/parameters-query))
                 rows   (mt/rows result)]
             (is (= 137 (:row_count result)))
             (is (= "completed" (:status result)))

@@ -86,7 +86,7 @@ export function EmailSettingsPage() {
           </SettingsSection>
         )}
         <Center>
-          <UpsellHostingBanner source="settings-email-migrate_to_cloud" />
+          <UpsellHostingBanner location="settings-email-migrate_to_cloud" />
         </Center>
       </SettingsPageWrapper>
       {showModal && <SMTPConnectionForm onClose={closeModal} />}

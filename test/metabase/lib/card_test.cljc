@@ -136,7 +136,8 @@
           q                 (:dataset-query card)
           cols              (lib/returned-columns q)]
       (is (=? [{:name                         "CATEGORY"
-                :lib/source                   :source/breakouts
+                :lib/source                   :source/joins
+                :lib/breakout?                true
                 :lib/source-column-alias      "CATEGORY"
                 :metabase.lib.join/join-alias "Products"
                 :lib/desired-column-alias     "Products__CATEGORY"}
@@ -552,3 +553,12 @@
                   :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
                   :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}]
                 (f q2 card)))))))
+
+(deftest ^:parallel do-not-propagate-breakout?-test
+  (is (=? [{:name          "USER_ID"
+            :lib/source    :source/card
+            :lib/breakout? false}
+           {:name          "count"
+            :lib/source    :source/card
+            :lib/breakout? false}]
+          (lib/returned-columns (lib.tu/query-with-source-card)))))

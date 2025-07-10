@@ -90,12 +90,15 @@
      "Impl for [[defmethod]] for regular Clojure."
      [multifn dispatch-value & fn-tail]
      (let [dispatch-value-symb (gensym "dispatch-value-")
-           error-context-symb  (gensym "error-context-")]
+           error-context-symb  (gensym "error-context-")
+           instrument? (mu.fn/instrument-ns? *ns*)]
        `(let [~dispatch-value-symb ~dispatch-value
               ~error-context-symb  {:fn-name        '~(or (some-> (resolve multifn) symbol)
                                                           (symbol multifn))
                                     :dispatch-value ~dispatch-value-symb}
-              f#                   ~(mu.fn/instrumented-fn-form error-context-symb (mu.fn/parse-fn-tail fn-tail))]
+              f#                   ~(if instrument?
+                                      (mu.fn/instrumented-fn-form error-context-symb (mu.fn/parse-fn-tail fn-tail))
+                                      (mu.fn/deparameterized-fn-form (mu.fn/parse-fn-tail fn-tail)))]
           (.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)
                       ~dispatch-value-symb
                       f#)))))

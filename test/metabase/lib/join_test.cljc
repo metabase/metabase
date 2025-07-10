@@ -3,7 +3,6 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
@@ -214,15 +213,14 @@
                 "info about the source Field")
     (let [query (lib/query
                  meta/metadata-provider
-                 (lib.convert/->pMBQL
-                  {:database (meta/id)
-                   :type     :query
-                   :query    {:source-table (meta/id :venues)
-                              :fields       [[:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]]}}))]
+                 {:database (meta/id)
+                  :type     :query
+                  :query    {:source-table (meta/id :venues)
+                             :fields       [[:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]]}})]
       (is (=? [{:name        "NAME"
                 :id          (meta/id :categories :name)
                 :fk-field-id (meta/id :venues :category-id)
-                :lib/source  :source/fields}]
+                :lib/source  :source/table-defaults}]
               (lib/returned-columns query -1 query))))))
 
 (deftest ^:parallel col-info-explicit-join-test
@@ -254,7 +252,7 @@
       (is (=? [(merge (-> (m/filter-vals some? (meta/field-metadata :categories :name))
                           (dissoc :ident))
                       {:display-name         "Name"
-                       :lib/source           :source/fields
+                       :lib/source           :source/joins
                        ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
               metadata))
       (is (=? "CATEGORIES__via__CATEGORY_ID"
@@ -320,12 +318,12 @@
     (is (=? [{:name                     "ID"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "ID"
-              :lib/source               :source/fields}
+              :lib/source               :source/table-defaults}
              {:name                     "ID_2"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "Cat__ID"
               ::lib.join/join-alias     "Cat"
-              :lib/source               :source/fields}
+              :lib/source               :source/joins}
              {:name                     "NAME"
               :lib/source-column-alias  "NAME"
               :lib/desired-column-alias "Cat__NAME"
@@ -1260,14 +1258,12 @@
                     :source-alias                 "Cat"
                     :lib/source                   :source/joins
                     :lib/source-column-alias      "ID"
-                    :lib/desired-column-alias     "Cat__ID"
                     :selected?                    id-selected?}
                    {:name                         "NAME"
                     :metabase.lib.join/join-alias "Cat"
                     :source-alias                 "Cat"
                     :lib/source                   :source/joins
                     :lib/source-column-alias      "NAME"
-                    :lib/desired-column-alias     "Cat__NAME"
                     :selected?                    name-selected?}]
                   cols))
           (testing `lib/display-info
@@ -1664,7 +1660,7 @@
               {:id (meta/id :orders :tax),     :display-name "Card → Tax" #_"Tax"}
               {:id (meta/id :products :vendor) :display-name "Card → Vendor"}]
              (map #(select-keys % [:id :display-name])
-                  (lib.join/join-fields-to-add-to-parent-stage query -1 join {:unique-name-fn (lib.util/unique-name-generator)})))))))
+                  (lib.join/join-fields-to-add-to-parent-stage query -1 join {})))))))
 
 (deftest ^:parallel remapping-in-joins-test
   (testing "explicitly joined columns with remaps are added after their join"
@@ -1726,7 +1722,7 @@
                 ["sum"   "Orders__sum"   "sum"   "Orders → Sum of Quantity"]]
                (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
                     (lib.join/join-fields-to-add-to-parent-stage
-                     query -1 join {:unique-name-fn (lib.util/unique-name-generator), :include-remaps? true}))))))))
+                     query -1 join {:include-remaps? true}))))))))
 
 (deftest ^:parallel remapping-in-joins-test-3
   (testing "join-fields-to-add-to-parent-stage should include remapped columns"
@@ -1743,12 +1739,12 @@
                     :fields   [$title $category]}))
           join (first (lib/joins query -1))]
       (binding [lib.metadata.calculation/*display-name-style* :long]
-        (is (= [["PRODUCT_ID" "Orders__PRODUCT_ID" "PRODUCT_ID" "Orders → Product ID"]
+        (is (= [["PRODUCT_ID" "Orders" "PRODUCT_ID" "Orders → Product ID"]
                 ;; should get added because it is a remap
-                ["TITLE"      "Orders__TITLE"      "TITLE"      "Orders → Title"]]
-               (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
+                ["TITLE"      "Orders" "TITLE"      "Orders → Title"]]
+               (map (juxt :name :metabase.lib.join/join-alias :lib/source-column-alias :display-name)
                     (lib.join/join-fields-to-add-to-parent-stage
-                     query -1 join {:unique-name-fn (lib.util/unique-name-generator), :include-remaps? true}))))))))
+                     query -1 join {:include-remaps? true}))))))))
 
 (deftest ^:parallel remapping-in-joins-duplicates-test
   (testing "Remapped columns in joined source queries should not append duplicates (QUE-1410)"
@@ -1773,7 +1769,7 @@
                 ["TITLE"      "Orders__TITLE"      "TITLE"      "Orders → Title"]]
                (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
                     (lib.join/join-fields-to-add-to-parent-stage
-                     query -1 join {:unique-name-fn (lib.util/unique-name-generator), :include-remaps? true}))))))))
+                     query -1 join {:include-remaps? true}))))))))
 
 (deftest ^:parallel calculate-sane-join-aliases-test
   (testing "Don't strip ID for names like 'X → ID'"
