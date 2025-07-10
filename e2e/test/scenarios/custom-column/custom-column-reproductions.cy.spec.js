@@ -1822,18 +1822,21 @@ describe("issue 55300", () => {
     it("should be possible to disambiguate between segments and no-argument functions (metabase#55300)", () => {
       H.addCustomColumn();
 
-      H.CustomExpressionEditor.type("case(now, now(), 0)");
+      H.CustomExpressionEditor.type("case(now, now(), [Created At])");
 
       cy.log("Move cursor over now()");
-      H.CustomExpressionEditor.type("{leftarrow}".repeat(7));
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(17));
       H.CustomExpressionEditor.helpTextHeader().should("contain", "now()");
 
       cy.log("Move cursor over now");
-      H.CustomExpressionEditor.type("{leftarrow}".repeat(13));
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(7), { focus: false });
       H.CustomExpressionEditor.helpTextHeader().should("contain", "case");
 
       H.CustomExpressionEditor.format();
-      H.CustomExpressionEditor.value().should("equal", "case([now], now(), 0)");
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "case([now], now(), [Created At])",
+      );
     });
 
     it("should be possible to disambiguate between segments and no-argument aggregations (metabase#55300)", () => {
@@ -2054,6 +2057,40 @@ describe("Issue 58230", () => {
     H.CustomExpressionEditor.type("Average([Total])");
     H.CustomExpressionEditor.nameInput().type("Foo");
     H.popover().button("Done").should("be.enabled");
+  });
+});
+
+describe("issue 57674", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should show an error when using a case or if expression with mismatched types (metabase#57674)", () => {
+    H.getNotebookStep("data").button("Custom column").click();
+
+    H.CustomExpressionEditor.clear();
+    H.popover().findByText("Types are incompatible.").should("not.exist");
+
+    H.CustomExpressionEditor.type('case([Total] > 100, [Created At], "foo")', {
+      allowFastSet: true,
+    }).blur();
+
+    H.popover().findByText("Types are incompatible.").should("be.visible");
+  });
+
+  it("should not show an error when using a case or if expression with compatible types (metabase#57674)", () => {
+    H.getNotebookStep("data").button("Custom column").click();
+
+    H.CustomExpressionEditor.clear();
+    H.popover().findByText("Types are incompatible.").should("not.exist");
+
+    H.CustomExpressionEditor.type('case([Total] > 100, "foo", "bar")', {
+      allowFastSet: true,
+    }).blur();
+
+    H.popover().findByText("Types are incompatible.").should("not.exist");
   });
 });
 
