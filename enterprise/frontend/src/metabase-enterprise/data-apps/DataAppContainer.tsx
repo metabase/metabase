@@ -16,41 +16,38 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import {
+  useGetDataAppQuery,
+  useUpdateDataAppMutation,
+} from "metabase-enterprise/api";
 
 import { DataAppsComponentsList } from "./DataAppsComponentsList";
 import { DataAppEditSettingsModal } from "./modals/DataAppEditSettingsModal";
 import { DataAppPublishModal } from "./modals/DataAppPublishModal";
-import type { DataApp, DataAppEditSettings } from "./types";
-import { createMockDataApp, getDataAppById } from "./utils";
+import type { DataAppEditSettings } from "./types";
 
 type SettingsSectionKey = "components";
 
 type DataAppContainerProps = {
   params: {
     appId: string;
+    justCreated?: boolean;
   };
 };
 
 export const DataAppContainer = ({
-  params: { appId },
+  params: { appId, justCreated },
 }: DataAppContainerProps) => {
   const dispatch = useDispatch();
 
-  const isNewApp = !appId;
+  const isNewApp = !!justCreated;
 
   const [activeSettingsSection, setActiveSettingsSection] = useState<
     SettingsSectionKey | undefined
   >(isNewApp ? "components" : undefined); // show components list by default for new empty data app
 
-  const [dataApp, setDataApp] = useState<DataApp | undefined>(() => {
-    if (appId) {
-      return getDataAppById(appId);
-    }
-
-    return createMockDataApp();
-  });
-
-  const hasPublishButton = dataApp?.status !== "published";
+  const { data: dataApp } = useGetDataAppQuery({ id: appId });
+  const [updateDataApp] = useUpdateDataAppMutation();
 
   const [
     isOpenEditTitleModal,
@@ -66,20 +63,26 @@ export const DataAppContainer = ({
     dispatch(closeNavbar());
   });
 
+  useMount(() => {
+    if (justCreated) {
+      // remove "justCreated" query param
+    }
+  });
+
   const handleEditSettingsSubmit = useCallback(
-    (newSettings: DataAppEditSettings) => {
+    async (newSettings: DataAppEditSettings) => {
       if (!dataApp) {
         return;
       }
 
-      setDataApp({
-        ...dataApp,
+      await updateDataApp({
+        id: dataApp.id,
         ...newSettings,
       });
 
       closeEditTitleModal();
     },
-    [closeEditTitleModal, dataApp],
+    [closeEditTitleModal, dataApp, updateDataApp],
   );
 
   if (!dataApp) {
@@ -117,17 +120,15 @@ export const DataAppContainer = ({
               onClick={() => setActiveSettingsSection("components")}
             />
 
-            {hasPublishButton && (
-              <Button
-                data-testid="data-app-publish-button"
-                px="md"
-                py="sm"
-                variant="subtle"
-                onClick={openPublishModal}
-              >
-                {t`Share`}
-              </Button>
-            )}
+            <Button
+              data-testid="data-app-publish-button"
+              px="md"
+              py="sm"
+              variant="subtle"
+              onClick={openPublishModal}
+            >
+              {t`Share`}
+            </Button>
           </Group>
         </Group>
         <Group

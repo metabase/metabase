@@ -1,11 +1,13 @@
 import MetabaseSettings from "metabase/lib/settings";
 
-export function dataAppEdit(appId: string) {
-  return `/data-apps/edit/${appId}`;
-}
+export function dataAppEdit(appId: string, options: { isNew?: boolean } = {}) {
+  const siteUrl = MetabaseSettings.get("site-url");
 
-export function dataAppCreate() {
-  return `/data-apps/new`;
+  const query = options?.isNew
+    ? new URLSearchParams({ justCreated: "true" }).toString()
+    : "";
+
+  return `${siteUrl}/data-apps/edit/${appId}${query ? "?" + query : ""}`;
 }
 
 export function publishedDataApp(appUrl: string) {
