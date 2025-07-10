@@ -445,9 +445,10 @@ function computeTrendPeriodsAgo({
   currentMetricData,
   series,
 }: {
-  comparison:
+  comparison: (
     | SmartScalarComparisonPreviousPeriod
-    | SmartScalarComparisonPeriodsAgo;
+    | SmartScalarComparisonPeriodsAgo
+  ) & { value?: number };
   currentMetricData: MetricData;
   series: Series;
 }) {

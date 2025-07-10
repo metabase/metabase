@@ -27,7 +27,6 @@ export interface SmartScalarComparisonPeriodsAgo
 export interface SmartScalarComparisonPreviousPeriod
   extends BaseSmartScalarComparison {
   type: "previousPeriod";
-  value?: number;
 }
 
 export interface SmartScalarComparisonPreviousValue
