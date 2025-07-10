@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Repeat, Skeleton, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -19,7 +20,7 @@ import type {
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { Error } from "./Error";
-import { getErrorMessage, is403Error } from "./utils";
+import { getDataErrorMessage, is403Error } from "./utils";
 
 const PREVIEW_ROW_COUNT = 5;
 
@@ -75,9 +76,15 @@ function useDataSample({
       ignore_error: true,
       _refetchDeps: field,
     },
-    {},
+    {
+      refetchOnMountOrArgChange: true,
+    },
   );
-  const base = { ...rest, error: undefined, rawSeries: undefined };
+  const base = {
+    ...rest,
+    error: rest.error ? getErrorMessage(rest.error) : undefined,
+    rawSeries: undefined,
+  };
 
   if (rest?.status === "rejected" && is403Error(rest.error)) {
     return {
@@ -88,7 +95,7 @@ function useDataSample({
   }
 
   if (data?.status === "failed") {
-    return { ...base, isError: true, error: getErrorMessage(data) };
+    return { ...base, isError: true, error: getDataErrorMessage(data) };
   }
 
   if (!data?.data || data.data.cols.length === 0) {
