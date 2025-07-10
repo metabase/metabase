@@ -90,6 +90,7 @@
    "Secret"
    "Session"
    "TaskHistory"
+   "TransformView"
    "User"
    "UserKeyValue"
    "UserParameterValue"

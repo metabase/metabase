@@ -1245,6 +1245,12 @@
            models
            util}}
 
+  transform
+  {:team "Semantic Layer"
+   :api #{}
+   :uses #{api
+           models}}
+
   types
   {:team "Semantic Layer"
    :api  #{metabase.types.core
