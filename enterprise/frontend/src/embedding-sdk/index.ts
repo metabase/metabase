@@ -74,6 +74,3 @@ export type { EmbeddingEntityType } from "metabase-types/store/embedding-data-pi
 
 export type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 export type { IconName } from "metabase/embedding-sdk/types/icon";
-
-// eslint-disable-next-line no-console
-console.log("new code!");
