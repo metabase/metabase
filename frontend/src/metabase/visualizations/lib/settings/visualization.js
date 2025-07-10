@@ -94,6 +94,11 @@ export function getStoredSettingsForSeries(series) {
   return storedSettings;
 }
 
+/**
+ * @import { ComputedVisualizationSettings } from "metabase/visualizations/types";
+ *
+ * @returns {ComputedVisualizationSettings}
+ */
 export function getComputedSettingsForSeries(series) {
   if (!series) {
     return {};

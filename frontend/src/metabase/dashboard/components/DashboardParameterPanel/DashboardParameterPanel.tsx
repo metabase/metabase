@@ -6,15 +6,15 @@ import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboa
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
-import { isEmbeddingSdk } from "metabase/env";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
+import { Dashboard } from "../Dashboard";
 import DashboardS from "../Dashboard/Dashboard.module.css";
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
-import { DashboardParameterList } from "../DashboardParameterList";
 
 import S from "./DashboardParameterPanel.module.css";
 
@@ -52,7 +52,7 @@ export function DashboardParameterPanel() {
             S.isSticky,
             {
               [S.isNightMode]: shouldRenderAsNightMode,
-              [S.isEmbeddingSdk]: isEmbeddingSdk,
+              [S.isEmbeddingSdk]: isEmbeddingSdk(),
             },
           )}
           data-testid="edit-dashboard-parameters-widget-container"
@@ -61,7 +61,7 @@ export function DashboardParameterPanel() {
             isFixedWidth={dashboard?.width === "fixed"}
             data-testid="fixed-width-filters"
           >
-            <DashboardParameterList parameters={parameters} />
+            <Dashboard.ParametersList />
           </FixedWidthContainer>
         </FullWidthContainer>
       </span>
@@ -76,7 +76,7 @@ export function DashboardParameterPanel() {
           [S.allowSticky]: allowSticky,
           [S.isSticky]: isSticky,
           [S.isNightMode]: shouldRenderAsNightMode,
-          [S.isEmbeddingSdk]: isEmbeddingSdk,
+          [S.isEmbeddingSdk]: isEmbeddingSdk(),
         })}
         data-testid="dashboard-parameters-widget-container"
       >
@@ -86,7 +86,7 @@ export function DashboardParameterPanel() {
           isFixedWidth={dashboard?.width === "fixed"}
           data-testid="fixed-width-filters"
         >
-          <DashboardParameterList parameters={parameters} />
+          <Dashboard.ParametersList />
         </FixedWidthContainer>
       </FullWidthContainer>
     </span>

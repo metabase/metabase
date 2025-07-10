@@ -1,7 +1,11 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { NativeQuestionDetails } from "e2e/support/helpers";
+import type {
+  NativeQuestionDetails,
+  QuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 import type { IconName } from "metabase/ui";
 import type { Database, ListDatabasesResponse } from "metabase-types/api";
 
@@ -28,17 +32,17 @@ describe("issue 11727", { tags: "@external" }, () => {
   });
 
   it("should cancel the native query via the keyboard shortcut (metabase#11727)", () => {
-    H.withDatabase(PG_DB_ID, () => {
-      cy.visit("/question#" + H.adhocQuestionHash(questionDetails));
-      cy.wait("@getDatabases");
+    cy.visit("/question#" + H.adhocQuestionHash(questionDetails));
+    cy.wait("@getDatabases");
 
-      H.runNativeQuery({ wait: false });
-      cy.findByText("Doing science...").should("be.visible");
-      cy.get("body").type("{cmd}{enter}");
-      cy.findByText("Here's where your results will appear").should(
-        "be.visible",
-      );
-    });
+    H.runNativeQuery({ wait: false });
+    cy.findByTestId("query-builder-main")
+      .findByText("Doing science...")
+      .should("be.visible");
+    cy.get("body").type("{cmd}{enter}");
+    cy.findByTestId("query-builder-main")
+      .findByText("Here's where your results will appear")
+      .should("be.visible");
   });
 });
 
@@ -386,7 +390,7 @@ describe("issues 52811, 52812", () => {
 });
 
 describe("issue 52806", () => {
-  const questionDetails = {
+  const questionDetails: QuestionDetails = {
     name: "SQL",
     dataset_query: {
       database: SAMPLE_DB_ID,
@@ -733,6 +737,49 @@ describe("issue 59110", () => {
     H.NativeEditor.get().then((editor) => {
       const { height } = editor[0].getBoundingClientRect();
       expect(height).to.be.greaterThan(100);
+    });
+  });
+});
+
+describe("issue 60719", () => {
+  const question1Details: NativeQuestionDetails = {
+    name: "Q1",
+    native: {
+      query: "select 1 as num",
+      "template-tags": {},
+    },
+  };
+
+  function getQuestion2Details(card1Id: number): StructuredQuestionDetails {
+    return {
+      name: "Q2",
+      query: {
+        "source-table": `card__${card1Id}`,
+      },
+    };
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+  });
+
+  it("should prevent saving a native query with a circular reference (metabase#60719)", () => {
+    H.createNativeQuestion(question1Details).then(({ body: card1 }) => {
+      H.createQuestion(getQuestion2Details(card1.id)).then(
+        ({ body: card2 }) => {
+          H.visitQuestion(card1.id);
+          cy.findByTestId("visibility-toggler").click();
+          H.NativeEditor.clear().type(`select * from {{#${card2.id}-q2}}`);
+        },
+      );
+    });
+    H.queryBuilderHeader().button("Save").click();
+    H.modal().within(() => {
+      cy.button("Save").click();
+      cy.wait("@updateCard");
+      cy.findByText("Cannot save card with cycles.").should("be.visible");
     });
   });
 });

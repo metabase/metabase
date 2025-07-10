@@ -19,6 +19,7 @@ import ExplicitSize from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
@@ -27,7 +28,6 @@ import {
   getIsShowingRawTable,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconName, IconProps } from "metabase/ui";
@@ -83,7 +83,7 @@ import { EmptyVizState } from "../EmptyVizState";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
-import LoadingView from "./LoadingView";
+import LoadingView, { type LoadingViewProps } from "./LoadingView";
 import NoResultsView from "./NoResultsView";
 import {
   VisualizationActionButtonsContainer,
@@ -144,6 +144,7 @@ type VisualizationOwnProps = {
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
+  renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   onEditSummary?: () => void;
@@ -203,7 +204,7 @@ const mapStateToProps = (state: State): StateProps => ({
   hasDevWatermark: getTokenFeature(state, "development_mode"),
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
-  isEmbeddingSdk: getIsEmbeddingSdk(state),
+  isEmbeddingSdk: isEmbeddingSdk(),
   scrollToLastColumn: getUiControls(state)?.scrollToLastColumn,
 });
 
@@ -605,6 +606,7 @@ class Visualization extends PureComponent<
       rawSeries = [],
       visualizerRawSeries,
       renderEmptyMessage,
+      renderLoadingView = LoadingView,
       renderTableHeader,
       replacementContent,
       scrollToColumn,
@@ -794,10 +796,10 @@ class Visualization extends PureComponent<
           ) : genericError ? (
             <SmallGenericError bordered={false} />
           ) : loading ? (
-            <LoadingView
-              expectedDuration={expectedDuration}
-              isSlow={!!isSlow}
-            />
+            renderLoadingView({
+              expectedDuration,
+              isSlow,
+            })
           ) : isPlaceholder ? (
             <EmptyVizState
               chartType={visualization?.identifier}
