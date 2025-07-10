@@ -87,7 +87,7 @@ function visit({
     fieldId != null
   ) {
     cy.visit(
-      `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}/table/${tableId}/field/${fieldId}`,
+      `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`,
     );
 
     cy.wait([
@@ -102,7 +102,7 @@ function visit({
 
   if (databaseId != null && schemaId != null && tableId != null) {
     cy.visit(
-      `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}/table/${tableId}`,
+      `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}`,
     );
     cy.wait([
       "@datamodel/visit/databases",
@@ -114,9 +114,7 @@ function visit({
   }
 
   if (databaseId != null && schemaId != null) {
-    cy.visit(
-      `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}`,
-    );
+    cy.visit(`/admin/datamodel/database/${databaseId}/schema/${schemaId}`);
     cy.wait([
       "@datamodel/visit/databases",
       "@datamodel/visit/schemas",
