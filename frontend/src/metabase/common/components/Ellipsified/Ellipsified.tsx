@@ -56,10 +56,7 @@ export const Ellipsified = ({
       <Text
         c="inherit"
         ref={ref}
-        className={className}
-        style={style}
         data-testid={dataTestId}
-        id={id}
         fz="inherit"
         lh="inherit"
         {...truncatedProps}

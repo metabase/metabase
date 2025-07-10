@@ -18,9 +18,11 @@ import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
-import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
-import { useDashboardContext } from "metabase/dashboard/context";
+import {
+  type DashboardContextReturned,
+  useDashboardContext,
+} from "metabase/dashboard/context";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
@@ -43,9 +45,30 @@ enum Tab {
 }
 
 export function DashboardInfoSidebar() {
-  const { dashboard, closeSidebar } = useDashboardContext();
-  const setDashboardAttribute = useSetDashboardAttributeHandler();
+  const { dashboard, closeSidebar, setDashboardAttributes } =
+    useDashboardContext();
 
+  if (!dashboard) {
+    return null;
+  }
+
+  return (
+    <DashboardInfoSidebarInner
+      dashboard={dashboard}
+      closeSidebar={closeSidebar}
+      setDashboardAttributes={setDashboardAttributes}
+    />
+  );
+}
+
+export function DashboardInfoSidebarInner({
+  dashboard,
+  closeSidebar,
+  setDashboardAttributes,
+}: { dashboard: NonNullable<DashboardContextReturned["dashboard"]> } & Pick<
+  DashboardContextReturned,
+  "closeSidebar" | "setDashboardAttributes"
+>) {
   const [isOpen, setIsOpen] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
 
@@ -74,12 +97,18 @@ export function DashboardInfoSidebar() {
 
   const handleDescriptionChange = useCallback(
     (description: string) => {
-      if (description.length <= DASHBOARD_DESCRIPTION_MAX_LENGTH) {
-        setDashboardAttribute?.("description", description);
+      if (
+        dashboard?.id &&
+        description.length <= DASHBOARD_DESCRIPTION_MAX_LENGTH
+      ) {
+        setDashboardAttributes?.({
+          id: dashboard.id,
+          attributes: { description },
+        });
         dispatch(updateDashboard({ attributeNames: ["description"] }));
       }
     },
-    [dispatch, setDashboardAttribute],
+    [dashboard?.id, dispatch, setDashboardAttributes],
   );
 
   const handleDescriptionBlur = useCallback(

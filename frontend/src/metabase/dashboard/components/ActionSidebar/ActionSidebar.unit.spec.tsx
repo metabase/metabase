@@ -77,6 +77,7 @@ const setup = ({
 
 const navigateToActionCreatorModal = async () => {
   await userEvent.click(screen.getByText("Pick an action"));
+  await screen.findByTestId("action-dashcard-settings");
   await waitForLoaderToBeRemoved();
   await userEvent.click(screen.getByText(collectionItem.name));
   await userEvent.click(screen.getByText("Create new action"));

@@ -5,10 +5,8 @@ import { t } from "ttag";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
 import {
-  getEditingParameter,
   getEditingParameterInlineDashcard,
   getEmbeddedParameterVisibility,
-  getParameters,
 } from "metabase/dashboard/selectors";
 import { slugify } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
@@ -33,6 +31,8 @@ import { ParameterSettings } from "../ParameterSettings";
 export const ParameterSidebar = (): JSX.Element | null => {
   const {
     dashboard,
+    parameters,
+    editingParameter,
     closeSidebar,
     removeParameter,
     setParameterName,
@@ -47,8 +47,6 @@ export const ParameterSidebar = (): JSX.Element | null => {
     setParameterTemporalUnits,
   } = useDashboardContext();
 
-  const parameters = useSelector(getParameters);
-  const editingParameter = useSelector(getEditingParameter);
   const editingParameterInlineDashcard = useSelector(
     getEditingParameterInlineDashcard,
   );

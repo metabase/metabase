@@ -114,7 +114,7 @@ export function ActionSidebar() {
         </Box>
 
         <Modal.Root opened={opened} onClose={close} size="auto">
-          <Modal.Overlay></Modal.Overlay>
+          <Modal.Overlay />
           <Modal.Content>
             <ConnectedActionDashcardSettings
               dashboard={dashboard}
