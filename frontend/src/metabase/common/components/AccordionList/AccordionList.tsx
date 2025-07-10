@@ -286,6 +286,10 @@ export class AccordionList<
   };
 
   handleKeyDown = (event: KeyboardEvent) => {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
+
     const { cursor } = this.state;
     if (event.key === "ArrowUp") {
       event.preventDefault();

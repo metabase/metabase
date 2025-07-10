@@ -2630,13 +2630,15 @@ describe("issue 23449", () => {
 
   it("Remapped fields should work in a model (metabase#23449)", () => {
     cy.log("set the metadata for review");
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${SAMPLE_DATABASE.REVIEWS_ID}`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: SAMPLE_DATABASE.REVIEWS_ID,
+      fieldId: SAMPLE_DATABASE.REVIEWS.RATING,
+    });
 
-    cy.findByTestId("column-RATING").findByLabelText("Field settings").click();
-    cy.findAllByTestId("select-button").contains("Use original value").click();
-    cy.findByLabelText("Custom mapping").click();
+    H.DataModel.FieldSection.getDisplayValuesInput().click();
+    H.popover().findByText("Custom mapping").click();
 
     cy.findByDisplayValue("1").clear().type("A");
     cy.findByDisplayValue("2").clear().type("B");

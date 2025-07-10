@@ -11,7 +11,7 @@ import { UpsellBanner } from "./components";
  */
 export const BUY_STORAGE_URL = getStoreUrl("account/storage");
 
-export const UpsellStorage = ({ source }: { source: string }) => {
+export const UpsellStorage = ({ location }: { location: string }) => {
   const isHosted = useSetting("is-hosted?");
   const hasStorage = useHasTokenFeature("attached_dwh");
 
@@ -24,7 +24,7 @@ export const UpsellStorage = ({ source }: { source: string }) => {
       campaign="storage"
       buttonText={t`Add`}
       buttonLink={BUY_STORAGE_URL}
-      source={source}
+      location={location}
       title={t`Add Metabase Storage`}
       large
     >

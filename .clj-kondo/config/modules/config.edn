@@ -1357,6 +1357,7 @@
            api
            app-db
            audit-app
+           database-routing
            driver
            events
            lib

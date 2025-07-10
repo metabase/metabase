@@ -156,6 +156,9 @@ export const MetabotChatEmbedding = ({
           // @ts-expect-error - undocumented API for mantine Textarea - leverages the prop from react-textarea-autosize's TextareaAutosize component
           onHeightChange={handleMaybeExpandInput}
           onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing) {
+              return;
+            }
             if (e.key === "Enter") {
               // prevent event from inserting new line + interacting with other content
               e.preventDefault();

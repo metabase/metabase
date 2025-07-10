@@ -8,6 +8,7 @@
    [metabase.lib.card-test]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -363,3 +364,41 @@
               "Products → Price"]
              (map :display_name
                   (qp.preprocess/query->expected-cols query)))))))
+
+(deftest ^:parallel return-correct-deduplicated-names-test
+  (testing "Deduplicated names from previous stage should be preserved even when excluding certain fields"
+    ;; e.g. a field called CREATED_AT_2 in the previous stage should continue to be called that. See ;; see
+    ;; https://metaboat.slack.com/archives/C0645JP1W81/p1750961267171999
+    (let [q1    (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query orders
+                   {:source-query {:source-table $$orders
+                                   :aggregation  [[:count]]
+                                   :breakout     [[:field %created-at {:base-type :type/DateTime, :temporal-unit :year}]
+                                                  [:field %created-at {:base-type :type/DateTime, :temporal-unit :month}]]}
+                    :filter       [:>
+                                   [:field "count" {:base-type :type/Integer}]
+                                   0]}))
+          mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :dataset-query q1}]})
+          q2    (lib/query mp (lib.metadata/card mp 1))
+          mp    (lib.tu/mock-metadata-provider
+                 mp
+                 {:cards [{:id            2
+                           :dataset-query q2}]})
+          query (-> (lib/query mp (lib.metadata/card mp 2))
+                    (as-> query (lib/remove-field query -1 (first (lib/fieldable-columns query -1)))))]
+      (testing `lib/returned-columns
+        (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month"}
+                 {:name "count", :display-name "Count"}]
+                (lib/returned-columns query))))
+      (testing `lib.metadata.result-metadata/returned-columns
+        (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month", :field-ref [:field "CREATED_AT_2" {}]}
+                 {:name "count", :display-name "Count", :field-ref [:field "count" {}]}]
+                (lib.metadata.result-metadata/returned-columns query))))
+      (testing `qp.preprocess/query->expected-cols
+        (is (=? [{:name "CREATED_AT_2", :display_name "Created At: Month", :field_ref [:field "CREATED_AT_2" {}]}
+                 {:name "count", :display_name "Count", :field_ref [:field "count" {}]}]
+                (qp.preprocess/query->expected-cols query)))))))

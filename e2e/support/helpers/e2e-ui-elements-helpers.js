@@ -474,13 +474,19 @@ export function tableAllFieldsHiddenImage() {
   return cy.findByTestId("Table-all-fields-hidden-image");
 }
 
-export function tableHeaderColumn(headerString) {
-  // Apply horizontal scroll offset when targeting columns to prevent the sticky 'Object detail' column
-  // from obscuring the target column in the viewport
-  const objectDetailOffset = 50;
-  tableInteractiveHeader()
-    .findByText(headerString)
-    .scrollIntoView({ offset: { left: -objectDetailOffset } });
+export function tableHeaderColumn(
+  headerString,
+  { scrollIntoView = true } = {},
+) {
+  if (scrollIntoView) {
+    // Apply horizontal scroll offset when targeting columns to prevent the sticky 'Object detail' column
+    // from obscuring the target column in the viewport
+    const objectDetailOffset = 50;
+    tableInteractiveHeader()
+      .findByText(headerString)
+      .scrollIntoView({ offset: { left: -objectDetailOffset } });
+  }
+
   return tableInteractiveHeader().findByText(headerString);
 }
 
@@ -496,6 +502,11 @@ export function segmentEditorPopover() {
   return popover({ testId: "segment-popover" });
 }
 
+/**
+ * @param {Object} params
+ * @param {string[]} params.columns
+ * @param {string[][]} [params.firstRows=[]]
+ */
 export function assertTableData({ columns, firstRows = [] }) {
   tableInteractive()
     .findAllByTestId("header-cell")

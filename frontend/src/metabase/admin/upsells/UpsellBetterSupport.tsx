@@ -8,7 +8,7 @@ import { Text } from "metabase/ui";
 import { UpsellBanner } from "./components";
 import { UPGRADE_URL } from "./constants";
 
-export const UpsellBetterSupport = ({ source }: { source: string }) => {
+export const UpsellBetterSupport = ({ location }: { location: string }) => {
   const plan = useSelector((state) =>
     getPlan(getSetting(state, "token-features")),
   );
@@ -23,7 +23,7 @@ export const UpsellBetterSupport = ({ source }: { source: string }) => {
       campaign="better-hosting"
       buttonText={t`Try for free`}
       buttonLink={UPGRADE_URL}
-      source={source}
+      location={location}
     >
       <Text size="sm">
         {t`Unlimited support from success engineers whenever you need it with any paid plan.`}{" "}
