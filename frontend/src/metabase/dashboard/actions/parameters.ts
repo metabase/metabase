@@ -151,10 +151,11 @@ type MoveParameterOpts = {
         id: number;
         type: "dashcard";
       };
+  canUndo?: boolean;
 };
 
 export const moveParameter =
-  ({ parameterId, destination }: MoveParameterOpts) =>
+  ({ parameterId, destination, canUndo = true }: MoveParameterOpts) =>
   (dispatch: Dispatch, getState: GetState) => {
     const dashcardMap = getDashcards(getState());
     const parameterDashcard = findDashCardForInlineParameter(
@@ -189,6 +190,28 @@ export const moveParameter =
           attributes: {
             inline_parameters: [...currentInlineParameters, parameterId],
           },
+        }),
+      );
+    }
+
+    if (canUndo) {
+      dispatch(
+        addUndo({
+          message: t`Filter moved`,
+          undo: true,
+          action: () =>
+            dispatch(
+              moveParameter({
+                parameterId,
+                destination: parameterDashcard
+                  ? {
+                      type: "dashcard",
+                      id: parameterDashcard.id,
+                    }
+                  : "top-nav",
+                canUndo: false,
+              }),
+            ),
         }),
       );
     }
