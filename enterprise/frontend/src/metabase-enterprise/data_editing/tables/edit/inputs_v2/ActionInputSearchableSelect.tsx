@@ -55,6 +55,7 @@ export const ActionInputSearchableSelect = ({
     search,
     fieldId: fieldId,
     searchFieldId: searchFieldId,
+    skipSearchQuery: !combobox.dropdownOpened,
   });
 
   const handleOptionSubmit = useCallback(
@@ -70,10 +71,19 @@ export const ActionInputSearchableSelect = ({
   );
 
   const inputLabel = useMemo(() => {
-    if (isLoading) {
-      return (
-        <Input.Placeholder c="text-light">{t`Loading...`}</Input.Placeholder>
-      );
+    if (value) {
+      // Display remapped label if `searchFieldId` is provided
+      if (searchFieldId) {
+        const option = options.find((item) => item.value === value);
+        if (option) {
+          return <Text truncate="end">{option.label}</Text>;
+        }
+      }
+
+      // Display the raw value if `searchFieldId` is not provided (e.g. for FKs)
+      else {
+        return <Text truncate="end">{value}</Text>;
+      }
     }
 
     if (!value && inputProps?.placeholder) {
@@ -84,16 +94,14 @@ export const ActionInputSearchableSelect = ({
       );
     }
 
-    if (value) {
-      // If searchFieldId is provided, display the label instead of the value
-      if (searchFieldId) {
-        const option = options.find((item) => item.value === value);
-        if (option) {
-          return <Text truncate="end">{option.label}</Text>;
-        }
-      }
+    if (isLoading) {
+      return (
+        <Input.Placeholder c="text-light">{t`Loading...`}</Input.Placeholder>
+      );
+    }
 
-      // Fallback to the raw value instead of a label
+    // Fallback to the raw value instead of a label
+    if (value) {
       return <Text truncate="end">{value}</Text>;
     }
 

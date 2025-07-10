@@ -929,7 +929,7 @@
                      :visualization_settings {:table.enabled_actions
                                               [{:id         (str "card:unknown:" temp-id),
                                                 :action-id  1
-                                                :actionType "data-grid/row-action"
+                                                :actionType "data-grid/custom-action"
                                                 :enabled    true}]}}
                     (mt/user-http-request :crowberto :post 200 "card"
                                           (merge (mt/with-temp-defaults :model/Card)

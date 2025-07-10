@@ -236,3 +236,20 @@
           (is (= #{["parent.yaml"]
                    ["parent.child.yaml"]}
                  (file-set (io/file dump-dir "databases" "mydb" "tables" "table" "fields")))))))))
+
+(deftest name-too-long-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    ;; that's a char that takes 3 bytes in utf-8
+    (ts/with-temp-dpc [:model/Card card {:name (str/join (repeat 100 "ป"))}]
+      (let [export        (into [] (extract/extract {:no-settings   true
+                                                     :no-data-model true
+                                                     :targets       [["Card" (:id card)]]}))
+            ;; 66 is 'char-count * max-bytes / byte-count'
+            card-filename (format "%s_%s" (:entity_id card) (str/join (repeat 66 "ป")))]
+        (storage/store! export dump-dir)
+        ;; we could also test loading here, but file names do not play significant part in how everything's loaded,
+        ;; `:serdes/meta` does and that one is not shortened or anything
+        (testing "the right files in the right places"
+          (is (= #{["cards" (str card-filename ".yaml")]}
+                 (file-set (io/file dump-dir "collections")))
+              "collections form a tree, with same-named files"))))))

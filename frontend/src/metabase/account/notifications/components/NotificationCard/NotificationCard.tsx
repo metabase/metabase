@@ -14,7 +14,7 @@ import type {
   TableNotificationListItem,
 } from "metabase/account/notifications/types";
 import { isTableNotification } from "metabase/api/notification";
-import Link from "metabase/core/components/Link/Link";
+import Link from "metabase/common/components/Link/Link";
 import {
   canArchive,
   formatNotificationSchedule,

@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { Icon } from "metabase/ui";
 
 export const SkeletonRoot = styled.div`

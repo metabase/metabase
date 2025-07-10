@@ -1,4 +1,4 @@
-import { useModalOpen } from "metabase/hooks/use-modal-open";
+import { useModalOpen } from "metabase/common/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
 import type { SearchResultId } from "metabase-types/api";
 

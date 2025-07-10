@@ -7,8 +7,8 @@ import {
 } from "react-router";
 import { t } from "ttag";
 
-import useBeforeUnload from "metabase/hooks/use-before-unload";
-import { useConfirmRouteLeaveModal } from "metabase/hooks/use-confirm-route-leave-modal";
+import useBeforeUnload from "metabase/common/hooks/use-before-unload";
+import { useConfirmRouteLeaveModal } from "metabase/common/hooks/use-confirm-route-leave-modal";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 
 type UnsavedLeaveConfirmationModalProps = {

@@ -4,14 +4,14 @@ import { t } from "ttag";
 import type { ActionItem } from "metabase/common/components/DataPicker/types";
 import { ItemList, ListBox } from "metabase/common/components/EntityPicker";
 import { Box } from "metabase/ui";
-import type { DataGridWritebackAction } from "metabase-types/api";
+import type { ListActionItem } from "metabase-types/api";
 
 interface Props {
   error: unknown;
   isLoading: boolean;
   isCurrentLevel: boolean;
   selectedItem: ActionItem | null;
-  actions: DataGridWritebackAction[] | undefined;
+  actions: ListActionItem[] | undefined;
   onClick: (item: ActionItem) => void;
 }
 

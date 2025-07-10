@@ -17,6 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
    (java.sql Connection SQLException)))
@@ -305,6 +306,7 @@
   (correct-columns-name table-id (query-rows driver conn query)))
 
 (defn- row-delete!* [action database query]
+  (log/tracef "Deleting %s" query)
   (let [db-id      (u/the-id database)
         table-id   (-> query :query :source-table)
         row-before (atom nil)
@@ -320,9 +322,11 @@
            (query-rows-correct-name driver conn table-id)
            first
            (reset! row-before))
+      (log/tracef "hsql: %s" (u/pprint-to-str delete-hsql))
       (let [; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
             rows-deleted (with-auto-parse-sql-exception driver database action
                            (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
+        (log/tracef "deleted %s rows" rows-deleted)
         (when-not (= rows-deleted 1)
           (throw (ex-info (if (zero? rows-deleted)
                             (tru "Sorry, the row you''re trying to delete doesn''t exist")
@@ -333,7 +337,7 @@
          :before   @row-before
          :after    nil}))))
 
-(mu/defmethod driver-api/perform-action!* [:sql-jdbc :model.row/delete] :- (result-schema [:map [:rows-deleted :int]])
+(mu/defn- model-row-delete! :- (result-schema [:map [:rows-deleted :int]])
   [action context inputs]
   (let [database       (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
@@ -348,7 +352,12 @@
       {:context (record-mutations context diffs)
        :outputs [{:rows-deleted (count diffs)}]})))
 
+(methodical/defmethod driver-api/perform-action!* [:sql-jdbc :model.row/delete]
+  [action context inputs]
+  (model-row-delete! action context inputs))
+
 (defn- row-update!* [action database {:keys [update-row] :as query}]
+  (log/tracef "updating %s" query)
   (let [driver               (:engine database)
         source-table         (get-in query [:query :source-table])
         {:keys [from where]} (mbql-query->raw-hsql driver query)
@@ -357,6 +366,7 @@
                                   :where  where}
                                  (prepare-query driver action))
         sql-args             (sql.qp/format-honeysql driver update-hsql)]
+    (log/tracef "hsql: %s" (u/pprint-to-str update-hsql))
     (with-jdbc-transaction [conn (u/the-id database)]
       (let [table-id     (-> query :query :source-table)
             row-before   (->> (prepare-query {:select [:*] :from from :where where} driver action)
@@ -378,7 +388,7 @@
          :before   row-before
          :after    row-after}))))
 
-(mu/defmethod driver-api/perform-action!* [:sql-jdbc :model.row/update]
+(methodical/defmethod driver-api/perform-action!* [:sql-jdbc :model.row/update]
   [action context inputs]
   (let [database          (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
@@ -421,15 +431,17 @@
     (first (jdbc/query {:connection conn} select-sql-args {:identifiers identity, :transaction? false, :keywordize? false}))))
 
 (defn- row-create!* [action database {:keys [create-row] :as query}]
+  (log/tracef "creating %s" query)
   (let [db-id       (u/the-id database)
         driver      (:engine database)
         {:keys [from]} (mbql-query->raw-hsql driver query)
         create-hsql (-> {:insert-into (first from)
-                         :values      [(cast-values driver create-row db-id (get-in query [:query :source-table]))]}
+                         :values      (if-not (seq create-row)
+                                        :default
+                                        [(cast-values driver create-row db-id (get-in query [:query :source-table]))])}
                         (prepare-query driver action))
         sql-args    (sql.qp/format-honeysql driver create-hsql)]
-    (log/tracef ":model.row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
-    (log/tracef ":model.row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
+    (log/tracef "hsql: %s" (u/pprint-to-str create-hsql))
     (with-jdbc-transaction [conn db-id]
       (let [table-id (-> query :query :source-table)
             result (with-auto-parse-sql-exception driver database action
@@ -439,13 +451,13 @@
                                                                  :keywordize?  false}))
             _      (log/tracef ":model.row/create INSERT returned\n\n%s" (u/pprint-to-str result))
             row    (first (correct-columns-name table-id [(select-created-row driver create-hsql conn result)]))]
-        (log/tracef ":model.row/create returned row %s" (pr-str row))
+        (log/tracef "created row: %s" (pr-str row))
         {:table-id (-> query :query :source-table)
          :db-id    (u/the-id database)
          :before   nil
          :after    row}))))
 
-(mu/defmethod driver-api/perform-action!* [:sql-jdbc :model.row/create] :- (result-schema [:map [:created-row driver-api/schema.actions.args.row]])
+(mu/defn- model-create! :- (result-schema [:map [:created-row driver-api/schema.actions.args.row]])
   [action context inputs :- [:sequential driver-api/mbql.schema.Query]]
   (let [database (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
@@ -459,6 +471,10 @@
       (throw (:error (first errors)))
       {:context (record-mutations context diffs)
        :outputs (mapv #(array-map :created-row (:after %)) diffs)})))
+
+(methodical/defmethod driver-api/perform-action!* [:sql-jdbc :model.row/create]
+  [action context inputs]
+  (model-create! action context inputs))
 
 ;;;; Bulk actions
 
@@ -482,6 +498,7 @@
         (try
           ;; Note that each row action takes care of reverting itself.
           (let [result (do-nested-transaction (:engine database) conn #(proc action database query))]
+            (log/tracef "perform result: %s" result)
             [errors (conj results result)])
           (catch Throwable e
             (log/error e)
@@ -523,7 +540,7 @@
    :query      {:source-table table-id}
    :create-row row})
 
-(mu/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/create]
+(mu/defn- table-row-create!
   [_action context inputs :- [:sequential ::table-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
@@ -543,12 +560,24 @@
                        :row      after})
                     results)}))
 
+(methodical/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/create]
+  [action context inputs]
+  (table-row-create! action context inputs))
+
 ;;;; Shared stuff for both `:table.row/delete` and `:table.row/update`
+(mu/defn- table-id->pk-fields
+  "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
+  [table-id    :- driver-api/schema.id.table]
+  (driver-api/cached-value
+   [::table-id->pk-fields table-id]
+   (fn []
+     (filter #(isa? (:semantic_type %) :type/PK)
+             (t2/select :model/Field :table_id table-id)))))
 
 (mu/defn- table-id->pk-field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/schema.id.field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
   [database-id :- driver-api/schema.id.database
-   table-id    :- driver-api/schema.id.table]
+   table-id :- driver-api/schema.id.table]
   (driver-api/cached-value
    [::table-id->pk-field-name->id table-id]
    #(into {}
@@ -660,15 +689,15 @@
   (driver-api/cached-value
    [::table-fk-relationship table-id]
    (fn []
-     (let [table-fields   (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
+     (let [table-fields   (t2/select [:model/Field :id :name :semantic_type] :table_id table-id :active true)
            table-pks      (filter #(isa? (:semantic_type %) :type/PK) table-fields)
            pk-names       (map :name table-pks)
            fk-fields      (when-let [pk-ids (seq (map :id table-pks))]
-                            (t2/select :model/Field :fk_target_field_id [:in pk-ids]))
+                            (t2/select :model/Field :fk_target_field_id [:in pk-ids] :active true))
            ;; Pre-fetch table names to avoid repeated queries
            table-ids      (distinct (map :table_id fk-fields))
            table-id->ref  (when (seq table-ids)
-                            (t2/select-pk->fn table->ref :model/Table :id [:in table-ids]))
+                            (t2/select-pk->fn table->ref :model/Table :id [:in table-ids] :active true))
            field-id->name (u/index-by :id table-fields)]
        (for [{:keys [name table_id fk_target_field_id]} fk-fields]
          {:table-id   table_id
@@ -766,13 +795,13 @@
            :after            nil
            :deleted-children table-id->deleted-children})))))
 
-(mu/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/delete]
+(mu/defn- table-row-delete!
   [_action context inputs :- [:sequential ::table-row-input]]
   (when (< 1 (count (distinct (keep :delete-children inputs))))
     (throw (ex-info (tru "Cannot mix values of :delete-children, behavior would be ambiguous") {:status-code 400})))
   (let [delete-children?  (some :delete-children inputs)
         table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
-                            (let [database       (driver-api/cached-database-via-table-id table-id)
+                            (let [database (driver-api/cached-database-via-table-id table-id)
                                   field-name->id (table-id->pk-field-name->id (:id database) table-id)]
                               [table-id (keys field-name->id)]))
         [errors results]  (batch-execution-by-table-id!
@@ -802,6 +831,10 @@
                 {:table-id table-id
                  :op       :deleted
                  :row      (select-keys before (table-id->pk-keys table-id))})}))
+
+(methodical/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/delete]
+  [action context inputs]
+  (table-row-delete! action context inputs))
 
 ;;;; `bulk/update`
 
@@ -843,7 +876,7 @@
                   :filter       (row->mbql-filter-clause pk-name->id pk-column->value)}
      :update-row (apply dissoc row pk-names)}))
 
-(mu/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/update]
+(mu/defn table-row-update!
   [_action context inputs :- [:sequential ::table-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
@@ -869,6 +902,10 @@
                        :op       :updated
                        :row      after})
                     results)}))
+
+(methodical/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/update]
+  [action context inputs]
+  (table-row-update! action context inputs))
 
 (defn- ref->str [table-ref]
   (let [s (namespace table-ref)
@@ -912,12 +949,13 @@
                                :table-id   table-id})))))
 
         (= 1 before-count)
-        (assoc (row-update!* action database {:database   (u/the-id database)
-                                              :type       :query
-                                              :query      {:source-table table-id
-                                                           :filter       (row->mbql-filter-clause
-                                                                          (field-names->field-name->id table-id (keys row-key)) row-key)}
-                                              :update-row row})
+        (assoc (row-update!* action database
+                             {:database   (u/the-id database)
+                              :type       :query
+                              :query      {:source-table table-id
+                                           :filter       (row->mbql-filter-clause
+                                                          (field-names->field-name->id table-id (keys row-key)) row-key)}
+                              :update-row (apply dissoc row (keys row-key))})
                :op :updated)
 
         (> before-count 1)
@@ -931,7 +969,7 @@
                          :duplicates-count before-count
                          :table-id         table-id}))))))
 
-(mu/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/create-or-update]
+(mu/defn- table-row-create-or-update!
   [action context inputs :- [:sequential ::table-row-input]]
   (let [databases (into #{} (map (comp driver-api/cached-database-via-table-id :table-id)) inputs)
         _         (when-not (= 1 (count databases))
@@ -946,7 +984,7 @@
                            :action   action
                            :proc     create-or-update!*
                            :rows     inputs
-                           :xform    (map (fn [{:keys [database row-key row table-id] :as input}]
+                           :xform    (map (fn [{:keys [_database row-key row table-id] :as input}]
                                             ;; Currently we do not have any UX to configure which columns to use for
                                             ;; the row key. To compensate for this, we fall back to using the pk for now.
                                             ;; Ideally, this would be explicitly configured in the future.
@@ -960,8 +998,11 @@
                                             ;; to using the database PK (but first we'll need to track which columns
                                             ;; those are).
                                             (if (empty? row-key)
-                                              (let [pk-cols (keys (table-id->pk-field-name->id database table-id))]
-                                                (assoc input :row-key (select-keys row pk-cols)))
+                                              (let [pk-fields (table-id->pk-fields table-id)]
+                                                (-> input
+                                                    (assoc :row-key (select-keys row (map :name pk-fields)))
+                                                    ;; make sure the row doesn't include pk that's auto incremented
+                                                    (update :row (fn [row] (apply dissoc row (map :name (filter :database_is_auto_increment pk-fields)))))))
                                               input)))})]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) creating or updating rows.")
@@ -974,3 +1015,7 @@
                        :op       op
                        :row      after})
                     results)}))
+
+(methodical/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/create-or-update]
+  [action context inputs]
+  (table-row-create-or-update! action context inputs))

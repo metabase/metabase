@@ -7,12 +7,7 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitFor,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockActionDashboardCard,
   createMockCard,
@@ -65,14 +60,6 @@ const setup = (
   );
 
   return { vizUpdateSpy, closeSpy };
-};
-
-const navigateToActionCreatorModal = async () => {
-  await userEvent.click(screen.getByText("Pick an action"));
-  await waitForLoaderToBeRemoved();
-  await userEvent.click(screen.getByText(collectionItem.name));
-  await userEvent.click(screen.getByText("Create new action"));
-  await waitForLoaderToBeRemoved();
 };
 
 describe("Dashboard > ActionSidebar", () => {
@@ -128,36 +115,6 @@ describe("Dashboard > ActionSidebar", () => {
   it("changes the modal trigger button when an action is assigned already", async () => {
     setup({ dashcardId: 3 });
 
-    expect(screen.getByText("Change action")).toBeInTheDocument();
-  });
-
-  describe("ActionCreator Modal", () => {
-    it("should not close modal on outside click", async () => {
-      setup();
-      await navigateToActionCreatorModal();
-
-      await userEvent.click(document.body);
-
-      const mockNativeQueryEditor = screen.getByTestId(
-        "mock-native-query-editor",
-      );
-
-      expect(mockNativeQueryEditor).toBeInTheDocument();
-    });
-
-    it("should close modal when clicking 'Cancel'", async () => {
-      setup();
-      await navigateToActionCreatorModal();
-
-      const cancelButton = screen.getByRole("button", { name: "Cancel" });
-
-      await userEvent.click(cancelButton);
-
-      await waitFor(() =>
-        expect(
-          screen.queryByTestId("mock-native-query-editor"),
-        ).not.toBeInTheDocument(),
-      );
-    });
+    expect(screen.getByText("Change")).toBeInTheDocument();
   });
 });

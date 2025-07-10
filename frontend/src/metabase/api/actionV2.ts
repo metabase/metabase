@@ -1,8 +1,8 @@
 import type {
   DatabaseId,
   DatabasesWithActionsResponse,
+  ListActionsRequestParams,
   ListActionsResponse,
-  ListActionsResponseParams,
   ModelsWithActionsResponse,
   TablesWithActionsResponse,
 } from "metabase-types/api";
@@ -35,16 +35,15 @@ export const actionV2Api = Api.injectEndpoints({
         params,
       }),
     }),
-    listActionsV2: builder.query<
-      ListActionsResponse,
-      ListActionsResponseParams
-    >({
-      query: (params) => ({
-        method: "GET",
-        url: `/api/action/v2/`,
-        params,
-      }),
-    }),
+    listActionsV2: builder.query<ListActionsResponse, ListActionsRequestParams>(
+      {
+        query: (params) => ({
+          method: "GET",
+          url: `/api/action/v2/`,
+          params,
+        }),
+      },
+    ),
   }),
 });
 

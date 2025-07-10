@@ -1,11 +1,17 @@
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { Box } from "metabase/ui";
-import type { TableId } from "metabase-types/api";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { TableList } from "./TablePicker/TableList";
 
 interface AddTableSidebarProps {
-  onSelect: (cardId: TableId) => void;
+  onSelect: ({
+    tableId,
+    databaseId,
+  }: {
+    tableId: TableId;
+    databaseId: DatabaseId;
+  }) => void;
   onClose: () => void;
 }
 

@@ -2,8 +2,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
+import { InputWithSelectPrefix } from "metabase/common/components/InputWithSelectPrefix";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { InputWithSelectPrefix } from "metabase/components/InputWithSelectPrefix";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { Box, Text } from "metabase/ui";
 
@@ -38,7 +38,7 @@ export function SiteUrlWidget() {
     <Box data-testid="site-url-setting">
       <SettingHeader
         id="site-url"
-        title={t`Site Url`}
+        title={t`Site url`}
         description={
           <>
             <strong>{t`Only change this if you know what you're doing!`}</strong>{" "}

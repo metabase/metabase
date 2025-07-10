@@ -53,10 +53,10 @@
   [table-id pk-fields rows]
   (assert (seq pk-fields) "Table must have at least one primary key column")
   ;; TODO pass in the db-id from above rather
-  (let [{:keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))
-        row-pks (seq (map (partial get-row-pks pk-fields) rows))]
-    (assert (every? valid-pks row-pks) "All rows must have valid primary keys")
-    (when row-pks
+  (when (seq rows)
+    (let [{:keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))
+          row-pks (seq (map (partial get-row-pks pk-fields) rows))]
+      (assert (every? valid-pks row-pks) "All rows must have valid primary keys")
       (qp.store/with-metadata-provider db_id
         (let [mp    (qp.store/metadata-provider)
               query (lib/query mp (lib.metadata/table mp table-id))

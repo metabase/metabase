@@ -9,7 +9,8 @@ import { getDashCardById, getSidebar } from "../../selectors";
 
 import { ConfigureEditableTableColumns } from "./ConfigureEditableTableColumns";
 import { ConfigureEditableTableFilters } from "./ConfigureEditableTableFilters";
-import { ConfigureDashcardEditableTableActions } from "./actions/ConfigureDashcardEditableTableActions";
+import { ConfigureDashcardBuiltInTableActions } from "./actions/ConfigureDashcardBuiltInTableActions";
+import { ConfigureDashcardCustomTableActions } from "./actions/ConfigureDashcardCustomTableActions";
 
 interface ConfigureEditableTableSidebarProps {
   dashboard: Dashboard;
@@ -32,12 +33,13 @@ export function ConfigureEditableTableSidebar({
 
   return (
     <>
-      <Sidebar data-testid="add-table-sidebar">
+      <Sidebar data-testid="configure-editable-table-sidebar">
         <Tabs defaultValue="columns">
           <Tabs.List px="md" pt="sm">
             <Tabs.Tab value="columns">{t`Columns`}</Tabs.Tab>
             <Tabs.Tab value="filters">{t`Filters`}</Tabs.Tab>
             <Tabs.Tab value="actions">{t`Actions`}</Tabs.Tab>
+            <Tabs.Tab value="settings">{t`Settings`}</Tabs.Tab>
 
             <Flex flex="1" justify="flex-end" align="center">
               <ActionIcon onClick={onClose}>
@@ -54,10 +56,13 @@ export function ConfigureEditableTableSidebar({
               <ConfigureEditableTableFilters dashcard={dashcard} />
             </Tabs.Panel>
             <Tabs.Panel value="actions">
-              <ConfigureDashcardEditableTableActions
+              <ConfigureDashcardCustomTableActions
                 dashboard={dashboard}
                 dashcard={dashcard}
               />
+            </Tabs.Panel>
+            <Tabs.Panel value="settings">
+              <ConfigureDashcardBuiltInTableActions dashcard={dashcard} />
             </Tabs.Panel>
           </Box>
         </Tabs>

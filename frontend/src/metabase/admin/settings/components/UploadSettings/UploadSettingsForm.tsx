@@ -8,11 +8,11 @@ import {
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
+import ActionButton from "metabase/common/components/ActionButton";
+import Alert from "metabase/common/components/Alert";
+import Link from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting, useToast } from "metabase/common/hooks";
-import ActionButton from "metabase/components/ActionButton";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Alert from "metabase/core/components/Alert";
-import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import {
   Box,
@@ -165,7 +165,7 @@ export function UploadSettingsFormView({
     <Box component="form" aria-label={t`Upload Settings Form`} px="md">
       <SettingHeader
         id="upload-settings"
-        title={t`Allow people to upload data to Collections`}
+        title={t`Allow people to upload data to collections`}
         description={jt`People will be able to upload CSV files that will be stored in the ${(
           <Link
             className={CS.link}

@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { sortActionParams } from "metabase/actions/utils";
-import EmptyState from "metabase/components/EmptyState";
-import EditableText from "metabase/core/components/EditableText/EditableText";
+import EditableText from "metabase/common/components/EditableText";
+import EmptyState from "metabase/common/components/EmptyState";
 import { Form, FormProvider } from "metabase/forms";
 import { Box, Button, Stack, Title } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";

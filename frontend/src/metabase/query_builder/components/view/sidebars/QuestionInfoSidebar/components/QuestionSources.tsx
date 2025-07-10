@@ -1,8 +1,8 @@
 import { Fragment, useMemo } from "react";
 import { c } from "ttag";
 
+import Link from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
-import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { Flex, FixedSizeIcon as Icon } from "metabase/ui";

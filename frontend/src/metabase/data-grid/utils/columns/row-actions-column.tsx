@@ -13,7 +13,7 @@ import { Button, Stack } from "metabase/ui";
 
 export const getActionsIdColumn = <TRow, TValue>({
   actions,
-  onActionRun,
+  onActionClick: onActionRun,
 }: RowActionsColumnConfig<TRow>): ColumnDef<TRow, TValue> => {
   return {
     id: ROW_ACTIONS_COLUMN_ID,

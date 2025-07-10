@@ -2,10 +2,11 @@ import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import type React from "react";
 import { useCallback, useMemo } from "react";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import {
   type ColumnOptions,
   DataGrid,
+  type DataGridRowAction,
   type RowIdColumnOptions,
   useDataGridInstance,
 } from "metabase/data-grid";
@@ -14,7 +15,6 @@ import { formatValue } from "metabase/lib/formatting/value";
 import { Box, Icon } from "metabase/ui";
 import type { OrderByDirection } from "metabase-lib";
 import type {
-  DataGridWritebackAction,
   DatasetColumn,
   DatasetData,
   Field,
@@ -50,8 +50,9 @@ type EditTableDataGridProps = {
     column: DatasetColumn,
   ) => OrderByDirection | undefined;
   cellsWithFailedUpdatesMap?: Record<CellUniqKey, true>;
-  rowActions?: DataGridWritebackAction[];
-  onActionRun?: (action: DataGridWritebackAction, row: Row<RowValues>) => void;
+  rowActions?: DataGridRowAction[];
+  onActionClick?: (action: DataGridRowAction, row: Row<RowValues>) => void;
+  hasRowSelection: boolean;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
   onColumnSort?: (field: Field) => void;
@@ -66,7 +67,8 @@ export const EditTableDataGrid = ({
   getColumnSortDirection,
   cellsWithFailedUpdatesMap,
   rowActions,
-  onActionRun,
+  onActionClick,
+  hasRowSelection,
   rowSelection,
   onRowSelectionChange,
   onColumnSort,
@@ -175,7 +177,7 @@ export const EditTableDataGrid = ({
     [onRowExpandClick],
   );
 
-  const columnRowSelectOptions = useTableColumnRowSelect();
+  const columnRowSelectOptions = useTableColumnRowSelect(hasRowSelection);
 
   const tableProps = useDataGridInstance({
     data: rows,
@@ -185,13 +187,13 @@ export const EditTableDataGrid = ({
     columnsOptions,
     columnVisibility,
     columnPinning: { left: [ROW_SELECT_COLUMN_ID, ROW_ID_COLUMN_ID] },
-    enableRowSelection: true,
+    enableRowSelection: hasRowSelection,
     rowSelection,
     onRowSelectionChange,
     columnRowSelectOptions: columnRowSelectOptions,
     rowActionsColumn:
-      rowActions?.length && onActionRun
-        ? { actions: rowActions, onActionRun }
+      rowActions?.length && onActionClick
+        ? { actions: rowActions, onActionClick }
         : undefined,
   });
 

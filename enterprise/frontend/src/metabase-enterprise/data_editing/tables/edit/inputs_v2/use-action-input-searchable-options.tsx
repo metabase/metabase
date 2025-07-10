@@ -4,7 +4,7 @@ import {
   useGetRemappedFieldValueQuery,
   useSearchFieldValuesQuery,
 } from "metabase/api/field";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getFieldOptions } from "metabase/querying/filters/components/FilterValuePicker/utils";
 import type { FieldValue, RowValue } from "metabase-types/api";
 
@@ -17,6 +17,7 @@ type UseActionInputSearchableOptionsProps = {
   fieldId: number;
   searchFieldId?: number;
   limit?: number;
+  skipSearchQuery?: boolean;
 };
 
 export function useActionInputSearchableOptions({
@@ -25,6 +26,7 @@ export function useActionInputSearchableOptions({
   fieldId,
   searchFieldId = fieldId,
   limit = SEARCH_LIMIT_DEFAULT,
+  skipSearchQuery = false,
 }: UseActionInputSearchableOptionsProps) {
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE);
   const [searchValueToFetch, setSearchValueToFetch] = useState(debouncedSearch);
@@ -50,13 +52,16 @@ export function useActionInputSearchableOptions({
     data: fieldValues,
     isLoading,
     isFetching,
-  } = useSearchFieldValuesQuery({
-    fieldId: fieldId,
-    searchFieldId: searchFieldId,
-    // empty string is invalid from the API perspective
-    value: searchValueToFetch === "" ? undefined : searchValueToFetch,
-    limit: SEARCH_LIMIT_DEFAULT,
-  });
+  } = useSearchFieldValuesQuery(
+    {
+      fieldId: fieldId,
+      searchFieldId: searchFieldId,
+      // empty string is invalid from the API perspective
+      value: searchValueToFetch === "" ? undefined : searchValueToFetch,
+      limit: SEARCH_LIMIT_DEFAULT,
+    },
+    { skip: skipSearchQuery },
+  );
 
   const { data: initialFieldValue } = useGetRemappedFieldValueQuery(
     {
@@ -98,6 +103,10 @@ export function useActionInputSearchableOptions({
       }
 
       return options;
+    }
+
+    if (initialFieldValue) {
+      return getFieldOptions([initialFieldValue]);
     }
 
     return [];

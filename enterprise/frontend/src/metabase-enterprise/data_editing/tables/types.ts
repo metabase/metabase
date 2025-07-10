@@ -86,13 +86,13 @@ export type TableExecuteActionResponse = {
 };
 
 export enum BuiltInTableAction {
-  Create = "table.row/create",
-  Update = "table.row/update",
-  Delete = "table.row/delete",
+  Create = "data-grid.row/create",
+  Update = "data-grid.row/update",
+  Delete = "data-grid.row/delete",
 }
 
 export type DescribeActionFormRequest = {
-  action_id: BuiltInTableAction | number;
+  action_id: string;
   scope: ActionScope;
   input?: Record<string, unknown>;
 };
@@ -116,6 +116,7 @@ export type ActionFormParameter = {
   field_id?: number;
   human_readable_field_id?: number;
   database_default?: string;
+  value?: RowValue;
 };
 
 export type DescribeActionFormResponse = {

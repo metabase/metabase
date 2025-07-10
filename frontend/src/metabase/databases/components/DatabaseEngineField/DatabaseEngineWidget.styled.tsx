@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
 import { lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
@@ -26,7 +26,7 @@ interface EngineCardRootProps {
   isActive: boolean;
 }
 
-export const EngineCardRoot = styled.li<EngineCardRootProps>`
+export const EngineCardRoot = styled.button<EngineCardRootProps>`
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;

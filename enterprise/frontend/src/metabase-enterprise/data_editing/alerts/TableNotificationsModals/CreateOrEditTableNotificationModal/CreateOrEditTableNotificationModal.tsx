@@ -14,10 +14,10 @@ import {
   usePreviewNotificationTemplateQuery,
   useUpdateNotificationMutation,
 } from "metabase/api";
+import ButtonWithStatus from "metabase/common/components/ButtonWithStatus";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { AutoWidthSelect } from "metabase/common/components/Schedule/AutoWidthSelect";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
-import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
-import { AutoWidthSelect } from "metabase/components/Schedule/AutoWidthSelect";
 import CS from "metabase/css/core/index.css";
 import { openInBlankWindow } from "metabase/lib/dom";
 import { alertIsValid } from "metabase/lib/notifications";

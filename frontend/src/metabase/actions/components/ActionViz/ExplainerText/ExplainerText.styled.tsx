@@ -1,12 +1,10 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { space } from "metabase/styled-components/theme";
 
 export const ExplainerTextContainer = styled.p`
-  margin-left: ${space(3)};
-  margin-right: ${space(3)};
   color: var(--mb-color-text-medium);
 `;
 

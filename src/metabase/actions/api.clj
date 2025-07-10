@@ -9,7 +9,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
-   [metabase.permissions.validation :as validation]
+   [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.util :as u]
@@ -80,7 +80,7 @@
 (api.macros/defendpoint :get "/public"
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
 
@@ -201,7 +201,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   ;; check the /application/setting permission, not superuser because removing a public link is possible from /admin/settings
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
   (actions/check-actions-enabled! id)
@@ -325,7 +325,7 @@
      (api.macros/call-core-fn @(requiring-resolve ~var-sym) ~'route-params ~'query-params ~'body-params ~'request)))
 
 (evil-proxy :get  "/v2/tmp-action" 'metabase-enterprise.data-editing.api/tmp-action)
-(evil-proxy :post "/v2/configure" 'metabase-enterprise.data-editing.api/configure)
+(evil-proxy :post "/v2/config-form" 'metabase-enterprise.data-editing.api/config-form)
 (evil-proxy :post "/v2/execute" 'metabase-enterprise.data-editing.api/execute-single)
 (evil-proxy :post "/v2/execute-bulk" 'metabase-enterprise.data-editing.api/execute-bulk)
 (evil-proxy :post "/v2/tmp-modal" 'metabase-enterprise.data-editing.api/tmp-modal)

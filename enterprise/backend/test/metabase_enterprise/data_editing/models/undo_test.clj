@@ -73,14 +73,12 @@
         ;; Beware: h2 will not allow un-delete, we'll need to adjust the test not to include deletion in its history.
         ;;         and, we'll want to test the failure we get when we try to un-delete
         ;; Blocker for other drivers: https://linear.app/metabase/issue/WRK-223/pk-creation-for-non-h2-drivers
-        (with-open [table-ref (data-editing.tu/open-test-table! {:id             [:int]
-                                                                 :name           [:text]
-                                                                 :favourite_food [:text]}
-                                                                {:primary-key [:id]})]
-          (let [table-id   @table-ref
-                user-id    (mt/user->id :crowberto)
+        (data-editing.tu/with-test-tables! [table-id [{:id             [:int]
+                                                       :name           [:text]
+                                                       :favourite_food [:text]}
+                                                      {:primary-key [:id]}]]
+          (let [user-id    (mt/user->id :crowberto)
                 test-scope {:table-id table-id}]
-            (data-editing.tu/toggle-data-editing-enabled! true)
 
             (write-sequence! table-id {:id 1} [[user-id {:name "Snorkmaiden" :favourite_food "pork"}]
                                                [user-id {:name "Snorkmaiden" :favourite_food "orc"}]
@@ -142,15 +140,13 @@
   (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:table-data-editing}
       (testing "Multi-user chain"
-        (with-open [table-ref (data-editing.tu/open-test-table! {:id    [:int]
-                                                                 :name  [:text]
-                                                                 :power [:int]}
-                                                                {:primary-key [:id]})]
-          (let [table-id   @table-ref
-                user-1     (mt/user->id :crowberto)
+        (data-editing.tu/with-test-tables! [table-id [{:id    [:int]
+                                                       :name  [:text]
+                                                       :power [:int]}
+                                                      {:primary-key [:id]}]]
+          (let [user-1     (mt/user->id :crowberto)
                 user-2     (mt/user->id :rasta)
                 test-scope {:table-id table-id}]
-            (data-editing.tu/toggle-data-editing-enabled! true)
 
             ;; NOTE: this test relies on the "conflicts even when different columns changed" semantics
             ;; If we improve the semantics, we'll need to improve this test!
@@ -239,14 +235,12 @@
   (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:table-data-editing}
       (testing "Reverted changes have their snapshots deleted when there are further changes"
-        (with-open [table-ref (data-editing.tu/open-test-table! {:id     [:int]
-                                                                 :name   [:text]
-                                                                 :status [:text]}
-                                                                {:primary-key [:id]})]
-          (let [table-id   @table-ref
-                user-id    (mt/user->id :crowberto)
+        (data-editing.tu/with-test-tables! [table-id [{:id     [:int]
+                                                       :name   [:text]
+                                                       :status [:text]}
+                                                      {:primary-key [:id]}]]
+          (let [user-id    (mt/user->id :crowberto)
                 test-scope {:table-id table-id}]
-            (data-editing.tu/toggle-data-editing-enabled! true)
 
             ;; NOTE: this test relies on the "conflicts even when different columns changed" semantics
             ;; If we improve the semantics, we'll need to improve this test!
@@ -285,13 +279,10 @@
   (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:table-data-editing}
       (testing "We delete older batches when they exceed our retention limits"
-        (with-open [table-ref-1 (data-editing.tu/open-test-table! {:id [:int]} {:primary-key [:id]})
-                    table-ref-2 (data-editing.tu/open-test-table! {:id [:int]} {:primary-key [:id]})]
-          (let [table-1    @table-ref-1
-                table-2    @table-ref-2
-                user-1     (mt/user->id :crowberto)
+        (data-editing.tu/with-test-tables! [table-1 [{:id [:int]} {:primary-key [:id]}]
+                                            table-2 [{:id [:int]} {:primary-key [:id]}]]
+          (let [user-1     (mt/user->id :crowberto)
                 user-2     (mt/user->id :rasta)]
-            (data-editing.tu/toggle-data-editing-enabled! true)
 
             (testing "Total rows"
               (with-redefs [undo/retention-total-rows 17]
@@ -384,13 +375,11 @@
   (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:table-data-editing}
       (testing "Cannot undo a batch marked as undoable: false"
-        (with-open [table-ref (data-editing.tu/open-test-table! {:id   [:int]
-                                                                 :name [:text]}
-                                                                {:primary-key [:id]})]
-          (let [table-id   @table-ref
-                user-id    (mt/user->id :crowberto)
+        (data-editing.tu/with-test-tables! [table-id [{:id   [:int]
+                                                       :name [:text]}
+                                                      {:primary-key [:id]}]]
+          (let [user-id    (mt/user->id :crowberto)
                 test-scope {:table-id table-id}]
-            (data-editing.tu/toggle-data-editing-enabled! true)
 
             ;; Create a regular undoable change first
             (create-row! user-id table-id {:id 1, :name "Undoable change"})

@@ -1,30 +1,24 @@
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useListActionsV2Query,
-  useListModelsWithActionsQuery,
-} from "metabase/api";
+import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreator";
+import { skipToken, useListActionsV2Query, useSearchQuery } from "metabase/api";
 import type { ActionItem } from "metabase/common/components/DataPicker/types";
 import {
   AutoScrollBox,
   ItemList,
   ListBox,
 } from "metabase/common/components/EntityPicker";
+import Modal from "metabase/common/components/Modal";
 import { isNotNull } from "metabase/lib/types";
-import { Flex } from "metabase/ui";
+import { Box, Button, Divider, Flex, Icon, Stack } from "metabase/ui";
 import type {
   CardId,
   CollectionId,
   DataGridWritebackActionId,
+  SearchResult,
 } from "metabase-types/api";
 
 import { ActionList } from "./ActionList";
@@ -34,7 +28,6 @@ import type {
   ModelActionPickerFolderItem,
   ModelActionPickerItem,
   ModelActionPickerStatePath,
-  ModelActionPickerValue,
 } from "./types";
 import {
   generateModelActionKey,
@@ -45,26 +38,22 @@ import {
 
 interface Props {
   path: ModelActionPickerStatePath | undefined;
-  value: ModelActionPickerValue | undefined;
   onItemSelect: (value: ModelActionPickerItem) => void;
   onPathChange: (path: ModelActionPickerStatePath) => void;
-  children?: ReactNode;
 }
 
 const isFolderTrue = () => true;
 
 export const ModelActionPicker = ({
   path,
-  value,
   onItemSelect,
   onPathChange,
-  children,
 }: Props) => {
-  const defaultPath = useMemo<ModelActionPickerStatePath>(() => {
-    return [value?.collection_id, value?.model_id, value?.id];
-  }, [value]);
-  const [initialCollectionId, initialModelId, initialActionId] =
-    path ?? defaultPath;
+  const [initialCollectionId, initialModelId, initialActionId] = path ?? [
+    undefined,
+    undefined,
+    undefined,
+  ];
   const [collectionId, setCollectionId] = useState<CollectionId | undefined>(
     initialCollectionId,
   );
@@ -73,40 +62,46 @@ export const ModelActionPicker = ({
     DataGridWritebackActionId | undefined
   >(initialActionId);
 
+  const [showNewActionModal, { open, close }] = useDisclosure(false);
+
   const {
     data: modelsResponse,
-    error: errorModels,
     isFetching: isLoadingModels,
-  } = useListModelsWithActionsQuery();
+    error: errorModels,
+  } = useSearchQuery({
+    models: ["dataset"],
+    model_ancestors: false,
+    include_metadata: false,
+  }); // TODO: most likely we should handle pagination here, but for now we just reused the logic of a previous picker
 
-  const allModels = isLoadingModels ? undefined : modelsResponse?.models;
+  const allModels = isLoadingModels
+    ? undefined
+    : (modelsResponse?.data as SearchResult<CardId>[] | undefined);
 
   const collections = useMemo(() => {
     const result: CollectionListItem[] = [];
     const addedCollectionsSet = new Set();
 
-    allModels?.forEach(
-      ({ collection_id, collection_position, collection_name }) => {
-        const ensuredId = collection_id || "root";
+    allModels?.forEach(({ collection, collection_position }) => {
+      const ensuredId = collection.id || "root";
 
-        if (ensuredId && !addedCollectionsSet.has(ensuredId)) {
-          result.push({
-            id: ensuredId,
-            name: collection_name ?? t`Our Analytics`,
-            model: "collection",
-            position: collection_position,
-          });
-          addedCollectionsSet.add(ensuredId);
-        }
-      },
-    );
+      if (ensuredId && !addedCollectionsSet.has(ensuredId)) {
+        result.push({
+          id: ensuredId,
+          name: collection.name ?? t`Our Analytics`,
+          model: "collection",
+          position: collection_position,
+        });
+        addedCollectionsSet.add(ensuredId);
+      }
+    });
 
     return result;
   }, [allModels]);
 
   const models = useMemo(() => {
-    return allModels?.filter(({ collection_id: itemCollectionId }) => {
-      const ensuredId = itemCollectionId || "root";
+    return allModels?.filter((model) => {
+      const ensuredId = model.collection.id || "root";
       return ensuredId === collectionId;
     });
   }, [allModels, collectionId]);
@@ -115,6 +110,7 @@ export const ModelActionPicker = ({
     data: actionsResponse,
     error: errorActions,
     isFetching: isLoadingActions,
+    refetch: refetchActions,
   } = useListActionsV2Query(
     isNotNull(modelId) ? { "model-id": modelId } : skipToken,
   );
@@ -165,6 +161,10 @@ export const ModelActionPicker = ({
     [onItemSelect, onPathChange, collectionId, modelId],
   );
 
+  const handleActionCreate = useCallback(() => {
+    refetchActions();
+  }, [refetchActions]);
+
   const handleFolderSelectRef = useLatest(handleFolderSelect);
 
   useEffect(
@@ -207,51 +207,69 @@ export const ModelActionPicker = ({
 
   return (
     <>
-      <AutoScrollBox
-        contentHash={generateModelActionKey(
-          selectedModelItem,
-          selectedActionItem,
-        )}
-        data-testid="nested-item-picker"
-      >
-        <Flex h="100%" w="fit-content">
-          {collections?.length > 1 && (
-            <ListBox data-testid="item-picker-level-0">
-              <ItemList
-                error={errorModels}
-                isCurrentLevel={!modelId}
-                isFolder={isFolderTrue}
-                isLoading={isLoadingModels}
-                items={isLoadingModels ? undefined : collections}
-                selectedItem={selectedCollectionItem}
-                onClick={handleFolderSelect}
-              />
-            </ListBox>
+      <Stack gap={0} h="100%">
+        <AutoScrollBox
+          contentHash={generateModelActionKey(
+            selectedModelItem,
+            selectedActionItem,
           )}
+          data-testid="nested-item-picker"
+        >
+          <Flex h="100%" w="fit-content">
+            {collections?.length > 1 && (
+              <ListBox data-testid="item-picker-level-0">
+                <ItemList
+                  error={errorModels}
+                  isCurrentLevel={!modelId}
+                  isFolder={isFolderTrue}
+                  isLoading={isLoadingModels}
+                  items={isLoadingModels ? undefined : collections}
+                  selectedItem={selectedCollectionItem}
+                  onClick={handleFolderSelect}
+                />
+              </ListBox>
+            )}
 
-          <ModelList
-            error={errorModels}
-            isCurrentLevel={!actionId}
-            isLoading={isLoadingModels}
-            selectedItem={selectedModelItem}
-            models={isLoadingModels ? undefined : models}
-            onClick={handleFolderSelect}
-          />
-
-          {isNotNull(modelId) && (
-            <ActionList
-              error={errorActions}
-              isCurrentLevel
-              isLoading={isLoadingActions}
-              selectedItem={selectedActionItem}
-              actions={isLoadingActions ? undefined : actions}
-              onClick={handleActionSelect}
+            <ModelList
+              error={errorModels}
+              isCurrentLevel={!actionId}
+              isLoading={isLoadingModels}
+              selectedItem={selectedModelItem}
+              models={isLoadingModels ? undefined : models}
+              onClick={handleFolderSelect}
             />
-          )}
 
-          {children}
-        </Flex>
-      </AutoScrollBox>
+            {isNotNull(modelId) && (
+              <ActionList
+                error={errorActions}
+                isCurrentLevel
+                isLoading={isLoadingActions}
+                selectedItem={selectedActionItem}
+                actions={isLoadingActions ? undefined : actions}
+                onClick={handleActionSelect}
+              />
+            )}
+          </Flex>
+        </AutoScrollBox>
+        <Divider />
+        <Box p="1rem 2rem">
+          <Button
+            leftSection={<Icon name="add" />}
+            disabled={!modelId}
+            onClick={open}
+          >{t`Create a new action`}</Button>
+        </Box>
+      </Stack>
+      {showNewActionModal && (
+        <Modal wide data-testid="action-creator-modal" onClose={close}>
+          <ActionCreator
+            modelId={modelId}
+            databaseId={models?.find(({ id }) => id === modelId)?.database_id}
+            onSubmit={handleActionCreate}
+            onClose={close}
+          />
+        </Modal>
+      )}
     </>
   );
 };

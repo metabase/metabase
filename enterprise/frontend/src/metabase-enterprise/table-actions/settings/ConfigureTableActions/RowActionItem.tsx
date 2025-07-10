@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ActionIcon, Checkbox, Group, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Group, Icon, Menu, Text } from "metabase/ui";
 import type { TableActionDisplaySettings } from "metabase-types/api";
 
 import S from "./RowActionItem.module.css";
@@ -9,14 +9,12 @@ type RowActionItemProps = {
   action: TableActionDisplaySettings;
   onRemove: (id: TableActionDisplaySettings["id"]) => void;
   onEdit: (action: TableActionDisplaySettings) => void;
-  onEnable: (action: TableActionDisplaySettings) => void;
 };
 
 export const RowActionItem = ({
   action,
   onRemove,
   onEdit,
-  onEnable,
 }: RowActionItemProps) => {
   const { id, name } = action;
 
@@ -27,14 +25,10 @@ export const RowActionItem = ({
       align="center"
       className={S.rowActionItem}
     >
-      <Checkbox
-        key={action.actionId}
-        label={name}
-        checked={action.enabled}
-        onChange={(e) => {
-          onEnable({ ...action, enabled: e.target.checked });
-        }}
-      />
+      <Group gap="0.5rem">
+        <Icon name="unknown" /> <Text>{name}</Text>
+      </Group>
+
       <div className={S.iconGroup}>
         <Menu>
           <Menu.Target>

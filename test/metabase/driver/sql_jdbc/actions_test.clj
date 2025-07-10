@@ -76,6 +76,12 @@
      ["rasta"     2]
      ["lucky"     1]]]])
 
+(mt/defdataset action-nullable
+  [["thought"
+    [{:field-name "name" :base-type :type/Text :not-null? false}]
+    [["hungry"]
+     ["happy"]]]])
+
 (defn perform-action-ex-data
   "Calls [[actions/perform-action!]] and returns the `ex-data` of exception.
   Used to test error message when executing implicit action for SQL DBs."
@@ -377,6 +383,21 @@
                         :table-id (mt/id :group)
                         :row      {group-id-col created-group-id}}))))))))))
 
+(deftest create-all-nil-test
+  (testing "table.row/create with no optional fields provided"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.tu/with-actions-temp-db action-nullable
+        (mt/with-actions-enabled
+          (testing "creates new row with no populated columns"
+            (let [result (actions/perform-action-with-single-input-and-output
+                          :table.row/create
+                          {:table-id (mt/id :thought)
+                           :row      {}})]
+              (is (=? {:op       :created
+                       :table-id (mt/id :thought)
+                       :row      {"name" nil}}
+                      result)))))))))
+
 (deftest create-or-update-action-test
   (testing "table.row/create-or-update action"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -502,7 +523,6 @@
           (let [db-id             (mt/id)
                 user-name-col     (field-id->name (mt/id :user :name))
                 user-group-id-col (field-id->name (mt/id :user :group-id))]
-
             (testing "concurrent creation that result in more than 1 row throw an error and rollback"
               (let [original-row-create!* @#'sql-jdbc.actions/row-create!*
                     error-thrown? (atom false)]
@@ -511,33 +531,37 @@
                                                                 (last (for [_ (range 2)]
                                                                         (apply original-row-create!* args))))]
 
-                    (actions/perform-action-with-single-input-and-output
-                     :table.row/create-or-update
-                     {:database db-id
-                      :table-id (mt/id :user)
-                      :row      {user-name-col     "New User"
-                                 user-group-id-col 1}
-                      :row-key  {user-name-col "New User"}}))
+                    (mt/with-current-user (mt/user->id :crowberto)
+                      (actions/perform-action-with-single-input-and-output
+                       :table.row/create-or-update
+                       {:database db-id
+                        :table-id (mt/id :user)
+                        :row      {user-name-col     "New User"
+                                   user-group-id-col 1}
+                        :row-key  {user-name-col "New User"}})))
                   (catch Throwable e
                     (reset! error-thrown? true)
-                    (is (= (str "unintentionally created 2 duplicate rows for key: table \"public\".\"user\" with name = \"new user\". "
-                                "this suggests a concurrent modification. we recommend adding a uniqueness constraint to the table.")
-                           (-> e ex-data :errors first :error u/lower-case-en)))))
+                    (is (some? (re-find (re-pattern
+                                         (str "unintentionally created 2 duplicate rows for key: table .* with name = \"new user\". "
+                                              "this suggests a concurrent modification. we recommend adding a uniqueness constraint to the table."))
+                                        (-> e ex-data :errors first :error u/lower-case-en))))))
                 (is (true? @error-thrown?))))
 
             (testing "Update more than 1 row"
               (let [error-thrown? (atom false)]
                 (try
-                  (actions/perform-action-with-single-input-and-output
-                   :table.row/create-or-update
-                   {:database db-id
-                    :table-id (mt/id :user)
-                    :row      {user-name-col "New User"}
-                    :row-key  {user-group-id-col 1}})
+                  (mt/with-current-user (mt/user->id :crowberto)
+                    (actions/perform-action-with-single-input-and-output
+                     :table.row/create-or-update
+                     {:database db-id
+                      :table-id (mt/id :user)
+                      :row      {user-name-col "New User"}
+                      :row-key  {user-group-id-col 1}}))
                   (catch Throwable e
                     (reset! error-thrown? true)
-                    (is (= (str "found 2 duplicate rows in table \"public\".\"user\" with group-id = 1. unsure which row to update. "
-                                "only use this action with key combinations which are meant to be unique. "
-                                "we recommend adding a uniqueness constraint to the table.")
-                           (-> e ex-data :errors first :error u/lower-case-en)))))
+                    (is (some? (re-find
+                                (re-pattern (str "found 2 duplicate rows in table .* with group-id = 1. unsure which row to update. "
+                                                 "only use this action with key combinations which are meant to be unique. "
+                                                 "we recommend adding a uniqueness constraint to the table."))
+                                (-> e ex-data :errors first :error u/lower-case-en))))))
                 (is (true? @error-thrown?))))))))))

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Banner } from "metabase/components/Banner";
-import Link from "metabase/core/components/Link";
+import { Banner } from "metabase/common/components/Banner";
+import Link from "metabase/common/components/Link";
 import { adminLicense } from "metabase/lib/urls";
 import { Flex, Text } from "metabase/ui";
 
