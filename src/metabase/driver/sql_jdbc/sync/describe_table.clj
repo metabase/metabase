@@ -131,19 +131,20 @@
                  nil)
    (fn [^ResultSet rs]
       ;; https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getColumns(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String)
-     #(let [;; COLUMN_DEF = "" observed with clickhouse, "" is never a valid SQL expression, so treat as undefined
-            default            (not-empty (.getString rs "COLUMN_DEF"))
+     #(let [default            (.getString rs "COLUMN_DEF")
             no-default?        (contains? #{nil "NULL" "null"} default)
             ;; leave room for "", or other strings to be nil (unknown)
-            is-nullable        ({"YES" true, "NO" false} (.getString rs "IS_NULLABLE"))
-            is-generated       (when (driver/database-supports? driver :describe-is-generated nil) ; if not supported, we might get an inaccurate answer from IS_GENERATEDCOLUMN (e.g clickhouse)
+            nullable           ({"YES" true, "NO" false} (.getString rs "IS_NULLABLE"))
+            generated          (when (driver/database-supports? driver :describe-is-generated nil) ; if not supported, we might get an inaccurate answer from IS_GENERATEDCOLUMN (e.g clickhouse)
                                  ({"YES" true, "NO" false} (.getString rs "IS_GENERATEDCOLUMN")))
             ;; IS_AUTOINCREMENT could return nil
             auto-increment     (.getString rs "IS_AUTOINCREMENT")
             auto-increment?    (= "YES" auto-increment)
             no-auto-increment? (= "NO" auto-increment)
             column-name        (.getString rs "COLUMN_NAME")
-            required?          (and no-default? (not is-nullable) no-auto-increment?)]
+            ;; ambiguous, but preserves previous unknown == not nullable database-required behaviour
+            not-nullable       (= 0 (.getInt rs "NULLABLE"))
+            required?          (and no-default? not-nullable no-auto-increment?)]
         (merge
          {:name                       column-name
           :database-type              (.getString rs "TYPE_NAME")
@@ -153,9 +154,11 @@
          ;; in the same way drivers are free to not return these attributes, and leave them undefined
          ;; we should treat unknown values accordingly
          (u/remove-nils
-          {:database-default           default
-           :database-is-generated      is-generated
-           :database-is-nullable       is-nullable})
+          {;; COLUMN_DEF = "" observed with clickhouse, druid, "" is never a valid SQL expression, so treat as undefined
+           ;; we should probably not-empty for the purposes of required, but trying to retain existing behaviour for now
+           :database-default           (not-empty default)
+           :database-is-generated      generated
+           :database-is-nullable       nullable})
 
          (when-let [remarks (.getString rs "REMARKS")]
            (when-not (str/blank? remarks)
