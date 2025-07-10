@@ -8,7 +8,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: transform_view
-            remarks: Information on views in users' datawarehouses created and managed by Metabase.
+            remarks: Metabase managed views in user databases
             columns:
               - column:
                   name: id
