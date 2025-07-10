@@ -2,11 +2,7 @@ import { useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
-import type {
-  NumberOrEmptyValue,
-  UiCoordinateFilterOperator,
-  UiCoordinateFilterParts,
-} from "./types";
+import type { NumberOrEmptyValue, UiCoordinateFilterOperator } from "./types";
 import {
   canPickColumns,
   getAvailableColumns,
@@ -17,6 +13,7 @@ import {
   getFilterClause,
   getOptionByOperator,
   isValidFilter,
+  normalizeCoordinateFilterParts,
 } from "./utils";
 
 interface UseCoordinateFilterProps {
@@ -99,71 +96,5 @@ export function useCoordinateFilter({
     setValues,
     setSecondColumn,
     setInclusiveOptions: setOptions,
-  };
-}
-
-function normalizeCoordinateFilterParts({
-  operator,
-  column,
-  longitudeColumn,
-  values,
-}: Lib.CoordinateFilterParts): UiCoordinateFilterParts {
-  if (operator === ">") {
-    return {
-      operator: "between" as const,
-      column,
-      longitudeColumn,
-      values: [values[0], null],
-      options: {
-        minInclusive: false,
-        maxInclusive: false,
-      },
-    };
-  }
-
-  if (operator === "<") {
-    return {
-      operator: "between" as const,
-      column,
-      longitudeColumn,
-      values: [null, values[0]],
-      options: {
-        minInclusive: false,
-        maxInclusive: false,
-      },
-    };
-  }
-
-  if (operator === "<=") {
-    return {
-      operator: "between" as const,
-      column,
-      longitudeColumn,
-      values: [null, values[0]],
-      options: {
-        minInclusive: false,
-        maxInclusive: true,
-      },
-    };
-  }
-
-  if (operator === ">=") {
-    return {
-      operator: "between" as const,
-      column,
-      longitudeColumn,
-      values: [values[0], null],
-      options: {
-        minInclusive: true,
-        maxInclusive: false,
-      },
-    };
-  }
-
-  return {
-    operator,
-    column,
-    longitudeColumn,
-    values,
   };
 }

@@ -42,10 +42,8 @@ export function getDefaultOperator(
     fieldValuesInfo.hasFieldValues !== "none"
       ? "="
       : "between";
-  return getDefaultAvailableOperator(
-    availableOptions,
-    desiredOperator,
-  ) as UiNumberFilterOperator;
+
+  return getDefaultAvailableOperator(availableOptions, desiredOperator);
 }
 
 export function getDefaultValues(
@@ -156,4 +154,64 @@ function getBetweenFilterParts(
       },
     };
   }
+}
+
+export function normalizeNumberFilterParts({
+  operator,
+  column,
+  values,
+}: Lib.NumberFilterParts) {
+  if (operator === ">") {
+    return {
+      operator: "between" as const,
+      column,
+      values: [values[0], null],
+      options: {
+        minInclusive: false,
+        maxInclusive: false,
+      },
+    };
+  }
+
+  if (operator === "<") {
+    return {
+      operator: "between" as const,
+      column,
+      values: [null, values[0]],
+      options: {
+        minInclusive: false,
+        maxInclusive: false,
+      },
+    };
+  }
+
+  if (operator === "<=") {
+    return {
+      operator: "between" as const,
+      column,
+      values: [null, values[0]],
+      options: {
+        minInclusive: false,
+        maxInclusive: true,
+      },
+    };
+  }
+
+  if (operator === ">=") {
+    return {
+      operator: "between" as const,
+      column,
+      values: [values[0], null],
+      options: {
+        minInclusive: true,
+        maxInclusive: false,
+      },
+    };
+  }
+
+  return {
+    operator,
+    column,
+    values,
+  };
 }

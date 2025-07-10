@@ -16,7 +16,7 @@ export type UiCoordinateFilterOperator = Exclude<
 
 export type UiCoordinateFilterParts = Omit<
   Lib.CoordinateFilterParts,
-  "values"
+  "values" | "operator"
 > & {
   values: NumberOrEmptyValue[];
   operator: UiCoordinateFilterOperator;
