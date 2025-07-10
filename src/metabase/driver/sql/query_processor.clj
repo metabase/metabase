@@ -778,7 +778,7 @@
         (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
 
 (defmethod ->honeysql [:sql :datetime]
-  [driver [_ value mode]]
+  [driver [_ value {:keys [mode]}]]
   (let [honeysql-form (->honeysql driver value)
         coercion-strategy (case (or mode :iso)
                             ;; String
