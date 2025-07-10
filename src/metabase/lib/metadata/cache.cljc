@@ -32,14 +32,20 @@
     stage-number :- :int
     x            :- :any
     options      :- :any]
-   [unique-key
-    query
-    (lib.util/canonical-stage-index query stage-number)
-    ;; don't want `nil` versus `{}` to result in cache misses.
-    (-> x
-        (cond-> (map? x) not-empty))
-    (cond-> options
-      (map? options) not-empty)]))
+   (letfn [(update-map [m]
+             (-> m
+                 ;; use the hash of the metadata provider so only two queries with identical metadata providers get
+                 ;; the exact same cache key (see tests). This is mostly to satisfy tests that do crazy stuff and swap
+                 ;; out a query's metadata provider so we don't end up returning the wrong cached results for the same
+                 ;; query with a different MP
+                 (cond-> (:lib/metadata m) (update :lib/metadata hash))
+                 not-empty))]
+     [unique-key
+      (update-map query)
+      (lib.util/canonical-stage-index query stage-number)
+      ;; don't want `nil` versus `{}` to result in cache misses.
+      (cond-> x (map? x) update-map)
+      (cond-> options (map? options) update-map)])))
 
 (mu/defn- ->cached-metadata-provider :- [:maybe ::lib.metadata.protocols/cached-metadata-provider]
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable]

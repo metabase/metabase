@@ -33,9 +33,9 @@
                  (hash (cache-key query)))))))
     (testing "A different metadata provider should result in a different cache key"
       (let [query' (assoc query :lib/metadata (lib.metadata.cached-provider/cached-metadata-provider meta/metadata-provider))]
-        (is (= cache-key-1
-               (cache-key query'))
-            "These queries are 'equal' to one another since they both have Cached MPs wrapping the same base MP")
+        (is (not= cache-key-1
+                  (cache-key query'))
+            "Hash keys should NOT be equal to one another (even if queries are equal) since they have different MPs")
         (is (not= (hash cache-key-1)
                   (hash (cache-key query')))
             "BUT they should hash differently since the two MPs are different objects.")
