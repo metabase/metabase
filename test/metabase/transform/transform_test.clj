@@ -6,6 +6,7 @@
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -173,3 +174,27 @@
                         :base_type :type/Integer}]
                       (sort-by :position
                                (t2/select :model/Field :table_id (u/the-id table))))))))))))
+
+(deftest schema-qualified-view-names-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :view :schemas)
+    (testing "Can create views with schema-qualified names"
+      (mt/dataset users-db
+        (let [schema-name (sql.tx/session-schema driver/*driver*)
+              view-name "test_view"
+              qualified-view-name (str schema-name "." view-name)]
+
+          (driver/drop-view! driver/*driver* (u/the-id (mt/db)) qualified-view-name)
+          (is (driver/create-view! driver/*driver* (u/the-id (mt/db)) qualified-view-name "SELECT * FROM users"))
+
+          (is (= #{["Foo"] ["Bar"] ["Baz"]} (native-query-rows (format "SELECT name FROM \"%s\".\"%s\"" schema-name view-name)))))))))
+
+(deftest view-name-length-limit-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :view)
+    (testing "View name length limits are respected"
+      (when-let [limit (driver/view-name-length-limit driver/*driver*)]
+        (is (driver/create-view! driver/*driver* (u/the-id (mt/db))
+                                 (apply str (repeat limit "a"))
+                                 "SELECT * FROM users"
+                                 :replace? true))))))
