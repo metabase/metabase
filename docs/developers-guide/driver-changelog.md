@@ -22,6 +22,8 @@ title: Driver interface changelog
 
 - Added the driver multi-method `driver/db-routing-info` for drivers to provide info on how to configure database routing.
 
+- Added the driver multi-method `driver/extra-info` for drivers to provide extra info such as db routing flavors.
+
 ## Metabase 0.55.0
 
 - Add the multi-method `->date` that allows the driver to control how to cast strings and temporal types to dates.
