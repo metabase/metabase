@@ -393,10 +393,6 @@ export type CoordinateFilterParts = {
   column: ColumnMetadata;
   longitudeColumn: ColumnMetadata | null;
   values: NumberFilterValue[];
-  options?: {
-    minInclusive?: boolean;
-    maxInclusive?: boolean;
-  };
 };
 
 export type BooleanFilterParts = {

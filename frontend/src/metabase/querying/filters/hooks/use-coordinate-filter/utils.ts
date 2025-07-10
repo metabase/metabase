@@ -33,10 +33,7 @@ export function getOptionByOperator(operator: UiCoordinateFilterOperator) {
 export function getDefaultOperator(
   availableOptions: OperatorOption[],
 ): UiCoordinateFilterOperator {
-  return getDefaultAvailableOperator(
-    availableOptions,
-    "between",
-  ) as UiCoordinateFilterOperator;
+  return getDefaultAvailableOperator(availableOptions, "between");
 }
 
 export function getAvailableColumns(
@@ -200,5 +197,71 @@ function getInsideFilterParts(
       lowerLatitude < upperLatitude ? lowerLatitude : upperLatitude,
       leftLongitude < rightLongitude ? rightLongitude : leftLongitude,
     ],
+  };
+}
+
+export function normalizeCoordinateFilterParts({
+  operator,
+  column,
+  longitudeColumn,
+  values,
+}: Lib.CoordinateFilterParts) {
+  if (operator === ">") {
+    return {
+      operator: "between" as const,
+      column,
+      longitudeColumn,
+      values: [values[0], null],
+      options: {
+        minInclusive: false,
+        maxInclusive: false,
+      },
+    };
+  }
+
+  if (operator === "<") {
+    return {
+      operator: "between" as const,
+      column,
+      longitudeColumn,
+      values: [null, values[0]],
+      options: {
+        minInclusive: false,
+        maxInclusive: false,
+      },
+    };
+  }
+
+  if (operator === "<=") {
+    return {
+      operator: "between" as const,
+      column,
+      longitudeColumn,
+      values: [null, values[0]],
+      options: {
+        minInclusive: false,
+        maxInclusive: true,
+      },
+    };
+  }
+
+  if (operator === ">=") {
+    return {
+      operator: "between" as const,
+      column,
+      longitudeColumn,
+      values: [values[0], null],
+      options: {
+        minInclusive: true,
+        maxInclusive: false,
+      },
+    };
+  }
+
+  return {
+    operator,
+    column,
+    longitudeColumn,
+    values,
   };
 }
