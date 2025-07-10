@@ -331,9 +331,9 @@ export function saveDashcardVisualizerModalSettings() {
 }
 
 export function clickUndoButton() {
-  cy.findByLabelText("Back").click();
+  cy.findByLabelText("Undo").click();
 }
 
 export function clickRedoButton() {
-  cy.findByLabelText("Forward").click();
+  cy.findByLabelText("Redo").click();
 }

@@ -21,13 +21,11 @@ describe("scenarios > dashboard > visualizer > columns-mapping", () => {
 
     H.createQuestion(ACCOUNTS_COUNT_BY_COUNTRY, {
       idAlias: "accountsCountByCountryQuestionId",
-      entityIdAlias: "accountsCountByCountryQuestionEntityId",
       wrapId: true,
     });
 
     H.createQuestion(ORDERS_COUNT_BY_PRODUCT_CATEGORY, {
       idAlias: "ordersCountByProductCategoryQuestionId",
-      entityIdAlias: "ordersCountByProductCategoryQuestionEntityId",
       wrapId: true,
     });
   });
