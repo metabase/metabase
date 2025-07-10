@@ -12,4 +12,5 @@
 
 (t2/deftransforms :model/TransformView
   {:dataset_query mi/transform-metabase-query
-   :dataset_query_type mi/transform-keyword})
+   :dataset_query_type mi/transform-keyword
+   :status mi/transform-keyword})
