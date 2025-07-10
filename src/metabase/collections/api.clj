@@ -595,6 +595,7 @@
       (assoc :location (or (when parent-collection
                              (collection/children-location parent-collection))
                            "/"))
+      (assoc :is_tenant_dashboard (collection/is-tenant-collection? parent-collection))
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete)
