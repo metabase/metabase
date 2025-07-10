@@ -35,6 +35,7 @@ import {
   isExternalUsersGroup,
   isTenantCollection,
 } from "./utils/utils";
+import { TenantCollectionItemList } from "./components/TenantCollectionItemList";
 
 if (hasPremiumFeature("tenants")) {
   PLUGIN_TENANTS.userStrategyRoute = (
@@ -115,4 +116,5 @@ if (hasPremiumFeature("tenants")) {
   PLUGIN_TENANTS.isTenantCollection = isTenantCollection;
   PLUGIN_TENANTS.ReactivateExternalUserButton = ReactivateExternalUserButton;
   PLUGIN_TENANTS.MainNavSharedCollections = MainNavSharedCollections;
+  PLUGIN_TENANTS.TenantCollectionItemList = TenantCollectionItemList;
 }

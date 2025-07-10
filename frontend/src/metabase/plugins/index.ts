@@ -788,4 +788,5 @@ export const PLUGIN_TENANTS = {
   ReactivateExternalUserButton: ({ user: _user }: { user: User }) =>
     null as React.ReactElement | null,
   MainNavSharedCollections: PluginPlaceholder,
+  TenantCollectionItemList: PluginPlaceholder,
 };

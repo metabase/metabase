@@ -23,6 +23,7 @@ export type CollectionId =
   | "root"
   | "personal"
   | "users"
+  | "tenant"
   | "trash";
 
 export type CollectionContentModel = "card" | "dataset";

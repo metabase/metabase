@@ -1,11 +1,14 @@
 import type {
   CreateTenantInput,
+  ListCollectionItemsRequest,
+  ListCollectionItemsResponse,
   Tenant,
   UpdateTenantInput,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import { idTag, invalidateTags, listTag } from "./tags";
+import { provideCollectionItemListTags } from "metabase/api/tags";
 
 export const tenantsApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -48,6 +51,18 @@ export const tenantsApi = EnterpriseApi.injectEndpoints({
           listTag("user"),
         ]),
     }),
+    listTenantCollectionItems: builder.query<
+      ListCollectionItemsResponse,
+      ListCollectionItemsRequest
+    >({
+      query: ({ id: _id, ...params }) => ({
+        method: "GET",
+        url: `/api/ee/tenant/collection/root/items`,
+        params,
+      }),
+      providesTags: (response, _error, { models }) =>
+        provideCollectionItemListTags(response?.data ?? [], models),
+    }),
   }),
 });
 
@@ -56,4 +71,5 @@ export const {
   useGetTenantQuery,
   useListTenantsQuery,
   useUpdateTenantMutation,
+  useListTenantCollectionItemsQuery,
 } = tenantsApi;

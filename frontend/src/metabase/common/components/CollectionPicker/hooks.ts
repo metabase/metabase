@@ -14,6 +14,7 @@ import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection, Dashboard } from "metabase-types/api";
 
 import type { CollectionItemListProps, CollectionPickerItem } from "./types";
+import { getSetting } from "metabase/selectors/settings";
 
 const personalCollectionsRoot: CollectionPickerItem = {
   ...PERSONAL_COLLECTIONS,
@@ -36,6 +37,9 @@ export const useRootCollectionPickerItems = (
 ) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
+  const tenantsEnabled = useSelector((state) =>
+    getSetting(state, "use-tenants"),
+  );
 
   const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
     useGetCollectionQuery(
@@ -110,6 +114,18 @@ export const useRootCollectionPickerItems = (
       }
     }
 
+    if (tenantsEnabled && currentUser) {
+      collectionItems.push({
+        name: t`Tenant Collections`,
+        id: "tenant",
+        here: ["collection", "card"],
+        description: null,
+        can_write: true,
+        model: "collection",
+        location: "/",
+      });
+    }
+
     return collectionItems;
   }, [
     currentUser,
@@ -119,6 +135,7 @@ export const useRootCollectionPickerItems = (
     options,
     rootCollectionError,
     totalPersonalCollectionItems,
+    tenantsEnabled,
   ]);
 
   const isLoading =

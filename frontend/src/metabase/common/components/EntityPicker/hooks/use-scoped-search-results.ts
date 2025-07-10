@@ -59,7 +59,7 @@ export const useScopedSearchResults = <
 
   const { data: collectionItemsData, isFetching: isFetchingCollectionItems } =
     useListCollectionItemsQuery(
-      shouldUseCollectionItems
+      shouldUseCollectionItems && searchQuery
         ? {
             id: folder.id as CollectionId,
             models: searchModelsToCollectionItemModels(searchModels),
@@ -69,7 +69,9 @@ export const useScopedSearchResults = <
 
   const { data: dashboardItemsData, isFetching: isFetchingDashboardItems } =
     useListDashboardItemsQuery(
-      shouldUseDashboardItems ? { id: folder.id as DashboardId } : skipToken,
+      shouldUseDashboardItems && searchQuery
+        ? { id: folder.id as DashboardId }
+        : skipToken,
     );
 
   const dbId =
