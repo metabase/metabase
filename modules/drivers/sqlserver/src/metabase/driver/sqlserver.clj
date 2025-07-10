@@ -58,8 +58,8 @@
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :connection-impersonation-requires-role]
-  [_driver _feature db]
-  (= (u/lower-case-en (-> db :details :user)) "sa"))
+  [_driver _feature _db]
+  true)
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
   [_ _ db]
