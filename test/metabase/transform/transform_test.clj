@@ -1,12 +1,17 @@
 (ns ^:mb/driver-tests metabase.transform.transform-test
   "Test for transforms"
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -198,3 +203,76 @@
                                  (apply str (repeat limit "a"))
                                  "SELECT * FROM users"
                                  :replace? true))))))
+
+(mt/defdataset users-departments-with-score
+  [["users"
+    [{:field-name "name" :base-type :type/Text}
+     {:field-name "department_id" :base-type :type/Integer}
+     {:field-name "score" :base-type :type/Integer}]
+    [["Alice" 10 100]
+     ["Bob" 20 200]
+     ["Charlie" 10 300]]]
+   ["departments"
+    [{:field-name "idx" :base-type :type/Integer}
+     {:field-name "name" :base-type :type/Text}]
+    [[10 "Engineering"]
+     [20 "Sales"]]]])
+
+;; TODO: with-force-reload-dataset?
+#_(defmacro with-force-recreate-dataset
+    [dataset-sym & body]
+    `(try
+       (tx/destroy-db! (tx/get-dataset-definition ~dataset-sym))
+       (finally
+         (mt/dataset
+           ~dataset-sym
+           ~@body))))
+
+(defmacro with-no-transform-views
+  [& body]
+  `(do (when-some [tws# (t2/select [:model/TransformView :id :view_schema :view_name])]
+         (metabase.request.session/with-current-user (mt/user->id :rasta)
+           (doseq [{id# :id schema# :view_schema name# :view_name} tws#]
+             (driver/drop-view! driver/*driver* (mt/id) (str/join "." (filter some? [schema# name#])))
+             (t2/delete! :model/TransformView :id id#)))
+         (sync/sync-db-metadata! (mt/db)))
+       ~@body));; API tests
+
+(deftest can-create-transform-test ; create + overwrite
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :view)
+    (mt/dataset
+      users-departments-with-score
+      (with-no-transform-views
+        (let [dataset-query (let [mp (mt/metadata-provider)]
+                              (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                                  (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
+                                  (lib/breakout (lib.metadata/field mp (mt/id :users :score)))
+                                  (lib.convert/->legacy-MBQL)))
+              display-name "Test view 1"]
+          (testing "POST /transform creates new view in app db"
+            (is (=? {:view_table_id pos-int?
+                     :database_id (mt/id)
+                     :creator_id (mt/user->id :rasta)
+                     :status "view_synced"
+                     :view_display_name "Test view 1"}
+                    (mt/user-http-request :rasta :post 200 "transform"
+                                          {:display_name display-name
+                                           :dataset_query dataset-query}))))
+          (let [transform-view (t2/select-one :model/TransformView :view_display_name display-name)]
+            (testing "Transform generated view has user set display name"
+              (let [table (t2/select-one :model/Table :id (:view_table_id transform-view))]
+                (is (= (:view_name transform-view) (:name table)))
+                (is (= (:view_display_name transform-view) (:display_name table)))))
+            (testing "Transform generated view can be queried"
+              (let [mp (mt/metadata-provider)]
+                (is (=? {:status :completed}
+                        (-> (lib/query mp (lib.metadata/table mp (:view_table_id transform-view)))
+                            (qp/process-query))))))
+            (testing "POST /transform fails when display_name is in use"
+              (is (=? {:status 400
+                       :view_display_name "Test view 1"}
+                      (mt/user-http-request :rasta :post "transform"
+                                            {:display_name display-name
+                                             :dataset_query dataset-query})))
+              (is (= 1 (t2/count :model/TransformView :view_display_name display-name))))))))))

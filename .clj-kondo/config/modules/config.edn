@@ -1249,7 +1249,9 @@
   {:team "Semantic Layer"
    :api #{}
    :uses #{api
-           models}}
+           lib
+           models
+           util}}
 
   types
   {:team "Semantic Layer"
