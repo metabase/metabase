@@ -1,5 +1,6 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  ACCOUNTS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
   PRODUCTS_COUNT_BY_CREATED_AT,
@@ -36,6 +37,11 @@ describe("Snowplow tracking", () => {
         idAlias: "productsCountByCreatedAtQuestionId",
         wrapId: true,
       });
+
+      H.createQuestion(ACCOUNTS_COUNT_BY_CREATED_AT, {
+        idAlias: "accountsCountByCreatedAtQuestionId",
+        wrapId: true,
+      });
     });
 
     it("should track visualizer related events", () => {
@@ -43,6 +49,7 @@ describe("Snowplow tracking", () => {
 
       H.editDashboard();
       H.openQuestionsSidebar();
+      cy.log("open questions sidebar");
       H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
       // visualize another way from question list
       H.expectUnstructuredSnowplowEvent({
@@ -68,20 +75,11 @@ describe("Snowplow tracking", () => {
           triggered_from: "visualizer-modal",
         });
 
-        // deselect a dataset
         cy.log("deselect a dataset");
         H.deselectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
         H.expectUnstructuredSnowplowEvent({
           event: "visualizer_data_changed",
           event_detail: "visualizer_datasource_removed",
-          triggered_from: "visualizer-modal",
-        });
-
-        // select a dataset (i.e. replace other ones with a new one)
-        H.selectDataset(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name);
-        H.expectUnstructuredSnowplowEvent({
-          event: "visualizer_data_changed",
-          event_detail: "visualizer_datasource_replaced",
           triggered_from: "visualizer-modal",
         });
 
@@ -153,8 +151,9 @@ describe("Snowplow tracking", () => {
         cy.findByLabelText("Close").click();
       });
 
-      // resets a dataset
-      H.resetDataSourceButton(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name).click();
+      cy.log("resets a dataset");
+      H.selectVisualization("bar");
+      H.resetDataSourceButton(ORDERS_COUNT_BY_CREATED_AT.name).click();
       H.expectUnstructuredSnowplowEvent({
         event: "visualizer_data_changed",
         event_detail: "visualizer_datasource_reset",
@@ -162,7 +161,8 @@ describe("Snowplow tracking", () => {
       });
 
       // remove a dataset
-      H.removeDataSource(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name, {
+      cy.log("remove a dataset");
+      H.removeDataSource(ORDERS_COUNT_BY_CREATED_AT.name, {
         throughMenu: true,
       });
       H.expectUnstructuredSnowplowEvent(
@@ -171,7 +171,7 @@ describe("Snowplow tracking", () => {
           event_detail: "visualizer_datasource_removed",
           triggered_from: "visualizer-modal",
         },
-        3, // we already removed two datasets before
+        2, // we already removed two datasets before
       );
 
       // close the modal

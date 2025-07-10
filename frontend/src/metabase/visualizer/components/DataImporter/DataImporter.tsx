@@ -132,28 +132,12 @@ export const DataImporter = ({ className }: { className?: string }) => {
         }}
       >
         {dataSources.length > 0 ? (
-          <>
-            <ColumnsList
-              collapsedDataSources={collapsedDataSources}
-              toggleDataSource={toggleDataSource}
-              onRemoveDataSource={onRemoveDataSource}
-              onResetDataSource={onResetDataSource}
-            />
-            <Flex
-              direction="column"
-              pt="sm"
-              px="sm"
-              style={{
-                overflowY: "auto",
-                flex: 1,
-              }}
-            >
-              <DatasetsList
-                search={debouncedSearch}
-                setDataSourceCollapsed={setDataSourceCollapsed}
-              />
-            </Flex>
-          </>
+          <ColumnsList
+            collapsedDataSources={collapsedDataSources}
+            toggleDataSource={toggleDataSource}
+            onRemoveDataSource={onRemoveDataSource}
+            onResetDataSource={onResetDataSource}
+          />
         ) : (
           <Flex
             direction="column"
