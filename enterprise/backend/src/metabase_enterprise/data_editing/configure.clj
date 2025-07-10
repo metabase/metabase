@@ -1,5 +1,7 @@
 (ns metabase-enterprise.data-editing.configure
   (:require
+   [malli.core :as mc]
+   [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.models.humanization :as humanization]
@@ -10,22 +12,75 @@
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
+(defn- merge-option
+  [entry-schema new-options]
+  (if (= 2 (count entry-schema))
+    (let [[k s] entry-schema]
+      [k new-options s])
+    (let [[k o s] entry-schema]
+      [k (merge o new-options) s])))
+
+;; This schema is Order important, as it'll be the order UI elments will be shown.
 (mr/def ::param-configuration
   ;; TODO Yeah, gross. This is currently just mirroring the config in the FE.
   ;; They at least have defined it using a nicer dependently typed way! See ConstantRowActionFieldSettings.
   ;; We could do something like that with malli... but once this stuff is opaque to the frontend, we can go wild and
   ;; make the shape more idiomatically Clojure, and maybe we should just wait until we've finalized the shape.
   [:map {:closed true}
-   [:id                                 :string]
-   [:displayName                        :string]
+   [:id :string]
+   [:configure-details {:optional true} [:sequential [:tuple :keyword :map]]]
+   ;; omiited if we have visibility != null
+   (merge-option [:display-name :string]
+                 {:optional      true
+                  ::display-name "Field Name"
+                  ::input-type   :text})
+   (merge-option [:source-type [:enum "ask-user" "row-data" "constant"]]
+                 {:optional      true
+                  ::display-name "Source Type"
+                  ::default      "ask-user"
+                  ::input-type   :dropdown
+                  ::options      ["ask-user" "row-data" "constant"]})
    ;; omitted if we have visibility != null
-   [:sourceType       {:optional true}  [:enum "ask-user" "row-data" "constant"]]
-   ;; omitted if we have visibility != null
-   [:sourceValueTarget {:optional true} :string]
-   ;; would be much nicer if we have a "visible" option rather than this being optional, but just tracking FE
-   [:visibility       {:optional true}  [:enum "readonly" "hidden"]]
-   ;; should be present if and only if "sourceType" is "constant"
-   [:value            {:optional true}  [:or :string :int :boolean]]])
+   (merge-option [:source-value :string]
+                 {:optional      true
+                  ::display-name "Pick column"
+                  ::default      nil
+                  ::visible-if   [:source-type "row-data"]
+                  ::input-type   :column-picker})
+   (merge-option [:value [:or :string :int :boolean]]
+                 {:optional      true
+                  ::display-name "Value"
+                  ::input-type   :field-filter
+                  ::visible-if   [:source-type "constant"]
+                  ::default      nil})
+   (merge-option [:editable :boolean] ;; only when visible is true
+                 {:optional      true
+                  ::descripion   "Can you override"
+                  ::display-name "Editable"
+                  ::input-type   :select
+                  ::vislble-if   [[:source-type "ask-user"] [:source-type "constant"]]
+                  ::default      nil})
+   (merge-option [:required :boolean] ;; only show when the underline fields is nullable
+                 {:optional      true
+                  ::description  "Whether this field is required" ;; can't turn off if the underlying field is required
+                  ::display-name "Required"
+                  ::input-type   :select
+                  ::vislble-if   [[:source-type "ask-user"] [:source-type "constant"]]
+                  ::default      nil})
+   (merge-option [:visible :boolean] ;; can't be false if the field is required
+                 {:optional      true
+                  ::description  "Whether to show this field value in the form"
+                  ::display-name "Visible"
+                  ::input-type   :select
+                  ::default      true})])
+
+(def ^:private default-configuration-detais
+  (for [[k p _s] (mc/children (mr/resolve-schema ::param-configuration))
+        :let    [namespaced-opts (m/filter-keys namespace p)]
+        :when   (seq namespaced-opts)]
+    (-> namespaced-opts
+        (update-keys (comp keyword name))
+        (assoc :id k))))
 
 (mr/def ::action-configuration
   [:map {:closed true}
@@ -41,12 +96,11 @@
                    api/check-404)]
     {:title      (:name action)
      :parameters (for [param (:parameters action)]
-                   {:id          (:id param)
-                    :displayName (or (:displayName param)
-                                     (:display-name param)
-                                     (:name param)
-                                     (humanization/name->human-readable-name (:slug param)))
-                    :sourceType  "ask-user"})}))
+                   {:id                (case (:type action)
+                                         :query (:slug param)
+                                         :implicit (:id param))
+                    :source-type       "ask-user"
+                    :configure-details default-configuration-detais})}))
 
 ;; TODO handle exposing new inputs required by the inner-action
 (defn- configuration-for-pending-action [{:keys [param-map] :as action}]
@@ -68,9 +122,9 @@
                                :table.row/create (not (:database_is_auto_increment field))
                                :table.row/update true
                                :table.row/delete (isa? (:semantic_type field) :type/PK))]
-                   {:id               (:name field)
-                    :displayName      (:display_name field)
-                    :sourceType       "ask-user"})}))
+                   {:id                (:name field)
+                    :source            "ask-user"
+                    :configure-details default-configuration-detais})}))
 
 (defn- combine-configurations
   [saved-configuration raw-configuration]
