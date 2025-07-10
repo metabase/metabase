@@ -494,7 +494,7 @@ export function DashCardVisualization({
       : inlineParameters;
 
     return (
-      <Group mr="sm">
+      <Group>
         {effectiveParameters.length > 0 && (
           <CollapsibleDashboardParameterList
             className={S.InlineParametersList}
