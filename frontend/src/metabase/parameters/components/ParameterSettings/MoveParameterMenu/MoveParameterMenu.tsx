@@ -84,22 +84,33 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
   );
 
   const options = useMemo(() => {
-    if (tabs.length > 1) {
-      const tabGroups = tabs.map((tab) => ({
-        group: tab.name,
-        items: dashcardsByTab[tab.id]?.map((dc) => ({
+    const rootGroup = {
+      group: "",
+      items: [{ label: "", value: TOP_NAV_VALUE }],
+    };
+    const groups = [rootGroup];
+
+    if (tabs.length > 0) {
+      groups.push(
+        ...tabs.map((tab) => ({
+          group: tab.name,
+          items: dashcardsByTab[tab.id]?.map((dc) => ({
+            label: "",
+            value: String(dc.id),
+          })),
+        })),
+      );
+    } else {
+      rootGroup.items.push(
+        ...dashcards.map((dc) => ({
           label: "",
           value: String(dc.id),
         })),
-      }));
-      tabGroups.unshift({
-        group: "",
-        items: [{ label: "", value: TOP_NAV_VALUE }],
-      });
-      return tabGroups;
+      );
     }
-    return [];
-  }, [dashcardsByTab, tabs]);
+
+    return groups;
+  }, [dashcards, dashcardsByTab, tabs]);
 
   return (
     <Select
