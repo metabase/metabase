@@ -84,10 +84,12 @@
 
 (defn- next-revision-number-hsql
   [app-id]
-  [:coalesce [:+ [:inline 1]
-              {:select [:%max.revision_number]
-               :from [:data_app_definition]
-               :where [:= :app_id app-id]}]
+  [:coalesce
+   [:+
+    {:select [:%max.revision_number]
+     :from [[{:select [:*] :from [:data_app_definition]} :dumb_alias]]
+     :where [:= :app_id app-id]}
+    [:inline 1]]
    [:inline 1]])
 
 ;;------------------------------------------------------------------------------------------------;;

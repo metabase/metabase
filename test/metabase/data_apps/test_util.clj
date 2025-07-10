@@ -4,7 +4,8 @@
    [metabase.data-apps.models :as data-apps.models]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (defmacro with-data-app-cleanup!
   "Execute `body`, then delete any *new* data app-related rows created during execution.
@@ -15,7 +16,7 @@
       (create-data-app-via-api!)
       (is (= ...)))"
   [& body]
-  `(tu/with-model-cleanup [:model/DataApp :model/DataAppDefinition :model/DataAppRelease]
+  `(tu/with-model-cleanup [:model/DataAppRelease :model/DataAppDefinition :model/DataApp]
      ~@body))
 
 (defn do-with-data-app!
@@ -72,10 +73,11 @@
   [data-app thunk]
   (with-data-app! [app (cond-> data-app
                          (not (contains? data-app :definition))
-                         (assoc :definition {:config default-app-definition-config
+                         (assoc :definition {:config     default-app-definition-config
                                              :creator_id (mt/user->id :crowberto)}))]
     (data-apps.models/release! (:id app) (mt/user->id :crowberto))
-    (thunk (data-apps.models/get-published-data-app (:slug app)))))
+    (thunk (data-apps.models/get-published-data-app (:slug app)))
+    (t2/delete! :model/DataAppRelease :app_id (:id app))))
 
 (defmacro with-released-app!
   "Macro that sets up temporary data apps with released definitions for testing. Supports both single and multiple app creation.
