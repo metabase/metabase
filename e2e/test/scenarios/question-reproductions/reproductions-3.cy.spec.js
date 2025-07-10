@@ -2994,3 +2994,56 @@ describe("Issue 33835", { tags: "@external" }, () => {
       .should("not.exist");
   });
 });
+
+describe("Issue 42942", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.visitQuestionAdhoc({
+      display: "bar",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              ORDERS.TOTAL,
+              {
+                "base-type": "type/Float",
+                binning: { strategy: "num-bins", "num-bins": 100 },
+              },
+            ],
+          ],
+        },
+      },
+    });
+  });
+
+  it("should adapt the filter widths when changing the filter value (metabase#42942)", () => {
+    H.openNotebook();
+
+    H.getNotebookStep("data").findByLabelText("Filter").click();
+
+    H.popover().within(() => {
+      cy.findByText("Total").click();
+      cy.findByPlaceholderText("Min").type("90");
+      cy.button("Add filter").click();
+    });
+    H.visualize();
+
+    H.chartPathWithFillColor("#509EE3").first().click();
+    H.popover().findByText("See these Orders").click();
+
+    cy.log(
+      "Filters should be applied correctly with the bin width from the chart",
+    );
+    H.queryBuilderFiltersPanel().findByText(
+      "Total is greater than or equal to 90",
+    );
+    H.queryBuilderFiltersPanel().findByText("Total is less than 90.75");
+  });
+});
