@@ -60,8 +60,9 @@ export function FormattingWidget() {
     localValue?.["type/Currency"] || {};
 
   const [currencyOptions, currencyStyleOptions] = useMemo(() => {
-    const currencyOptions = (
-      getCurrencyOptions() as { name: string; value: string }[]
+    const currencyOptions = _.sortBy(
+      getCurrencyOptions() as { name: string; value: string }[],
+      "name",
     ).map(mapNameToLabel);
     const currencyStyleOptions =
       getCurrencyStyleOptions(currency).map(mapNameToLabel);
