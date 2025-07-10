@@ -1598,6 +1598,17 @@
            warehouse-schema
            warehouses}}
 
+
+  enterprise/email
+  {:team "Admin Webapp"
+   :api  #{metabase-enterprise.email.api}
+   :uses #{api
+           channel
+           permissions
+           premium-features
+           settings
+           util}}
+
   enterprise/gsheets
   {:team  "Cloud"
    :api  #{metabase-enterprise.gsheets.api

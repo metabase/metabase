@@ -61,10 +61,8 @@ export const CloudSMTPConnectionCard = () => {
                 <div>
                   {/* eslint-disable-next-line no-literal-metabase-strings -- Not user configurable */}
                   <Text className={S.label}>{t`Managed by Metabase`}</Text>
-                  <Text>
-                    {/* eslint-disable-next-line no-literal-metabase-strings -- Not user configurable */}
-                    {t`Emails come from Metabase (e.g. noreply@metabase.com)`}
-                  </Text>
+                  {/* eslint-disable-next-line no-literal-metabase-strings -- Not user configurable */}
+                  <Text>{t`Emails come from Metabase Cloud email server`}</Text>
                 </div>
               </Group>
             </Group>
@@ -79,7 +77,7 @@ export const CloudSMTPConnectionCard = () => {
                   <Radio.Indicator />
                   <div>
                     <Text className={S.label}>{t`Custom SMTP Server`}</Text>
-                    <Text>{t`Emails come from your organisation`}</Text>
+                    <Text>{t`Emails come from your email server`}</Text>
                   </div>
                 </Group>
                 <Button

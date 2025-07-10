@@ -11,7 +11,7 @@ export const smtpOverrideApi = EnterpriseApi.injectEndpoints({
     >({
       query: (emailSettingsOverride) => ({
         method: "PUT",
-        url: `/api/email/override`,
+        url: `/api/ee/email/override`,
         body: emailSettingsOverride,
       }),
       invalidatesTags: (_, error) =>
@@ -20,7 +20,7 @@ export const smtpOverrideApi = EnterpriseApi.injectEndpoints({
     deleteEmailSMTPOverrideSettings: builder.mutation<void, void>({
       query: () => ({
         method: "DELETE",
-        url: `/api/email/override`,
+        url: `/api/ee/email/override`,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),

@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.channel.api.email :as api.email]
    [metabase.channel.email :as email]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
@@ -371,9 +372,9 @@
       (tu/with-temporary-setting-values [email-from-address "standard@metabase.com"
                                          email-from-name "From Name"
                                          email-reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
-                                         override-email-smtp-host "cloud.metabase.com"
-                                         override-email-from-address "cloud@metabase.com"
-                                         override-smtp-enabled true]
+                                         email-smtp-host-override "cloud.metabase.com"
+                                         email-from-address-override "cloud@metabase.com"
+                                         smtp-override-enabled true]
         (testing "Sends to cloud email settings when enabled"
           (is (=
                [{:from     "From Name <cloud@metabase.com>"
@@ -390,7 +391,7 @@
                   :message "101. Metabase will make you a better person")
                  (@inbox "test@test.com")))))
         (testing "Sends to standard email settings when disabled, even if cloud settings are set"
-          (tu/with-temporary-setting-values [override-smtp-enabled false]
+          (tu/with-temporary-setting-values [smtp-override-enabled false]
             (is (=
                  [{:from     "From Name <standard@metabase.com>"
                    :to       ["test@test.com"]
@@ -483,3 +484,34 @@
                               :done?       some?
                               :timeout-ms  200
                               :interval-ms 10}))))))))
+
+(def ^:private mb-to-smtp-override-settings
+  {:email-smtp-host-override     :host
+   :email-smtp-username-override :user
+   :email-smtp-password-override :pass
+   :email-smtp-port-override     :port
+   :email-smtp-security-override :security})
+
+(deftest humanize-error-messages-test
+  (testing "host and port"
+    (is (= {:errors {:email-smtp-host "Wrong host or port", :email-smtp-port "Wrong host or port"}}
+           (#'email/humanize-error-messages @#'api.email/mb-to-smtp-settings
+                                            {::email/error (Exception. "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar")})))
+    (is (= {:errors {:email-smtp-host-override "Wrong host or port", :email-smtp-port-override "Wrong host or port"}}
+           (#'email/humanize-error-messages mb-to-smtp-override-settings
+                                            {::email/error (Exception. "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar")}))))
+  (is (= {:message "Sorry, something went wrong. Please try again. Error: Some unexpected message"}
+         (#'email/humanize-error-messages @#'api.email/mb-to-smtp-settings
+                                          {::email/error (Exception. "Some unexpected message")})))
+  (testing "Checks error classes for auth errors (#23918)"
+    (let [exception (javax.mail.AuthenticationFailedException.
+                     "" ;; Office365 returns auth exception with no message so we only saw "Read timed out" prior
+                     (javax.mail.MessagingException.
+                      "Exception reading response"
+                      (java.net.SocketTimeoutException. "Read timed out")))]
+      (is (= {:errors {:email-smtp-username "Wrong username or password"
+                       :email-smtp-password "Wrong username or password"}}
+             (#'email/humanize-error-messages @#'api.email/mb-to-smtp-settings {::email/error exception})))
+      (is (= {:errors {:email-smtp-username-override "Wrong username or password"
+                       :email-smtp-password-override "Wrong username or password"}}
+             (#'email/humanize-error-messages mb-to-smtp-override-settings {::email/error exception}))))))
