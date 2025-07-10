@@ -2157,9 +2157,45 @@ describe("Issue 25189", () => {
     cy.findAllByTestId("header-cell")
       .contains("Created At")
       .should("be.visible");
+  });
+});
 
+describe("Issue 12938", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openProductsTable({ mode: "notebook" });
+  });
+
+  it("should be possible to concat number with string (metabase#12938)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: "concat(floor([Rating]), [Title])",
+      name: "MyCustom",
+      clickDone: true,
+    });
+
+    H.visualize();
     cy.get("main")
       .findByText("There was a problem with your question")
       .should("not.exist");
+
+    cy.findAllByTestId("header-cell").contains("MyCustom").should("be.visible");
+  });
+
+  it("should be possible to concat number with string (metabase#12938)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: 'concat(hour([Created At]), ":", minute([Created At]))',
+      name: "MyCustom",
+      clickDone: true,
+    });
+
+    H.visualize();
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+
+    cy.findAllByTestId("header-cell").contains("MyCustom").should("be.visible");
   });
 });

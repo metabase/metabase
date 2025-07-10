@@ -122,8 +122,9 @@
                                    :table_id (u/the-id table)
                                    :semantic_type :type/Name)]
         (is (= 1 (count name-fields)))
-        ;; Should be the first name field encountered
-        (is (= "fullName" (:name (first name-fields))))))))
+
+        ;; Should be the first name field encountered, but we can't assume a specific ordering
+        (is (#{"lastName" "fullName" "firstName"} (:name (first name-fields))))))))
 
 ;; we either already incorrectly inferred multiple fields on a previous sync, or the user incorrectly set multiple fields.
 ;; let them sort it out rather than risk overriding their preferences

@@ -51,11 +51,6 @@ export const FormTextInput = forwardRef(function FormTextInput(
 
   return (
     <TextInput
-      styles={{
-        input: {
-          fontWeight: "bold",
-        },
-      }}
       {...props}
       ref={ref}
       name={name}
