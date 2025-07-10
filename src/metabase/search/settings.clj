@@ -17,7 +17,7 @@
   (i18n/deferred-tru "Which engine to use when performing search. Supported values are :in-place, :appdb, and :semantic")
   :visibility :internal
   :export?    false
-  :default    :semantic
+  :default    :appdb
   :type       :keyword)
 
 (defsetting experimental-search-weight-overrides
@@ -36,4 +36,12 @@
   :export?    false
   :encryption :no
   :default    nil
+  :type       :string)
+
+(defsetting semantic-search-base-url
+  (i18n/deferred-tru "Base URL for the external semantic search service API.")
+  :visibility :internal
+  :export?    false
+  :encryption :no
+  :default    "http://localhost:3003/api/"
   :type       :string)
