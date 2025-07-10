@@ -22,6 +22,7 @@ driver:
     - name: dataset-filters
       type: schema-filters
       display-name: Datasets
+    - db-routing-info-test
     - cloud-ip-address-info
     - advanced-options-start
     - name: use-jvm-timezone
@@ -45,6 +46,16 @@ driver:
       visible-if:
         advanced-options: true
     - default-advanced-options
+extra:
+  db-routing-info:
+    text: This is **bigquery** routing _info_.
+  flavors:
+    neon:
+      host-regex: neon
+      extra-information: neon is great. planet scale™
+    supabase:
+      host-regex: supabase
+      extra-information: use the host information found in ...
 init:
   - step: load-namespace
     namespace: metabase.driver.bigquery-cloud-sdk

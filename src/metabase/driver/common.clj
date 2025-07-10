@@ -244,10 +244,16 @@
                     "\n"
                     (str/join " - " ips))))})
 
-(def default-connection-info-fields
+(defn db-routing-info-test [driver]
+  {:name   "db-routing-info-test"
+   :type   :info
+   :getter (partial driver/db-routing-info driver)})
+
+(defn default-connection-info-fields-fn [driver key]
   "Default definitions for informational banners that can be included in a database connection form. These keys can be
   added to the plugin manifest as connection properties, similar to the keys in the `default-options` map."
-  {:cloud-ip-address-info cloud-ip-address-info})
+  (key {:cloud-ip-address-info cloud-ip-address-info
+        :db-routing-info-test (db-routing-info-test driver)}))
 
 (def auth-provider-options
   "Options for using an auth provider instead of a literal password."

@@ -281,9 +281,6 @@
       (driver.impl/registered? driver)
       (assoc :features (driver.u/features driver (t2.realize/realize database)))
 
-      (driver.impl/registered? driver)
-      (assoc :db_routing_info (driver/db-routing-info driver))
-
       (and (driver.impl/registered? driver)
            (map? (:details database))
            (not *normalizing-details*))
@@ -569,3 +566,16 @@
   "Batch hydrate `Tables` for the given `Database`."
   [_model k databases]
   (hydrate-router-user-attribute k databases))
+
+(defenterprise hydrate-db-routing-info
+  "OSS implementation. Hydrates db routing info on the databases."
+  metabase-enterprise.database-routing.model
+  [_k databases]
+  (for [database databases]
+    (assoc database :db_routing_info nil)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :db_routing_info]
+  "Batch hydrate `db_routing_info` for the given `Database`."
+  [_model k databases]
+  (hydrate-db-routing-info k databases))
+

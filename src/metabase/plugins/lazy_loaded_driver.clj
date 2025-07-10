@@ -20,18 +20,18 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- parse-connection-property [prop]
+(defn- parse-connection-property [driver prop]
   (cond
     (string? prop)
     (or (driver.common/default-options (keyword prop))
-        (driver.common/default-connection-info-fields (keyword prop))
+        (driver.common/default-connection-info-fields-fn driver (keyword prop))
         (throw (Exception. (trs "Default connection property {0} does not exist." prop))))
 
     (not (map? prop))
     (throw (Exception. (trs "Invalid connection property {0}: not a string or map." prop)))
 
     (:merge prop)
-    (into {} (map parse-connection-property) (:merge prop))
+    (into {} (map #(parse-connection-property driver %)) (:merge prop))
 
     :else
     prop))
@@ -40,8 +40,14 @@
   "Parse the connection properties included in the plugin manifest. These can be one of several things -- a key
   referring to one of the default maps in `driver.common`, a entire custom map, or a list of maps to `merge:` (e.g.
   for overriding part, but not all, of a default option)."
-  [{:keys [connection-properties]}]
-  (into [] (mapcat #(u/one-or-many (parse-connection-property %))) connection-properties))
+  [{:keys [connection-properties name]}]
+  (into [] (mapcat #(u/one-or-many (parse-connection-property (keyword name) %))) connection-properties))
+
+(defn- parse-extra-info
+  "parse driver extra info"
+  [{:keys [db-routing-info flavors]}]
+  {:db-routing-info (:text db-routing-info)
+   :flavors flavors})
 
 (defn- make-initialize! [driver add-to-classpath! init-steps]
   (fn [_]
@@ -93,17 +99,21 @@
     (log/debug (u/format-color :magenta "Registering lazy loading driver %s..." driver))
     (driver/register! driver, :parent (set (map keyword (u/one-or-many parent))), :abstract? abstract)))
 
+(defn- parse-yaml-section [manifest section parser]
+  (some-> manifest
+          yaml/parse-string
+          section
+          u/one-or-many
+          first
+          parser))
+
 (defn- load-connection-properties
   [driver]
-  (let [manifest (str (io/file "modules/drivers/" (name driver) "resources/metabase-plugin.yaml"))
-        properties (some->
-                    (slurp manifest)
-                    (yaml/parse-string)
-                    :driver
-                    u/one-or-many
-                    first
-                    (parse-connection-properties))]
-    (.addMethod ^MultiFn driver/connection-properties driver (constantly properties))))
+  (let [manifest (slurp (str (io/file "modules/drivers/" (name driver) "resources/metabase-plugin.yaml")))
+        properties (parse-yaml-section manifest :driver parse-connection-properties)
+        extras (parse-yaml-section manifest :extra parse-extra-info)]
+    (.addMethod ^MultiFn driver/connection-properties driver (constantly properties))
+    (.addMethod ^MultiFn driver/extra-info driver (constantly extras))))
 
 (comment
   (load-connection-properties :databricks))
