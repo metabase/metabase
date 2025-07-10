@@ -5,6 +5,7 @@ on:
     types: [auto_merge_enabled, review_requested, labeled, unlabeled, synchronize]
     branches:
       - "master"
+  merge_group:
 
 jobs:
   backport-reminder:

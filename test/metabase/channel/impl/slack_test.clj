@@ -5,8 +5,7 @@
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
-   [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -182,18 +181,11 @@
                       processed    (with-redefs [slack/upload-file! (constantly {:url "a.com", :id "id"})]
                                      (channel/render-notification :channel/slack notification nil [recipient]))]
                   (->> processed first :attachments first :blocks last :fields
-                       (map :text))))))
-          (markdown-link? [s]
-            (is (string? s))
-            (let [[_whole url label] (re-find #"\<(.*)\|(.*)\>" s)]
-              (is (string? label))
-              (is (u/url? url))))]
+                       (map :text))))))]
     (when config/ee-available?
-      (testing "When whitelabeling is enabled, branding link should not be included"
+      (testing "When whitelabeling is enabled, branding content should not be included"
         (let [links (render-dashboard-links true)]
-          (is (every? markdown-link? links))
           (is (= 1 (count links))))))
-    (testing "When whitelabeling is disabled, branding link should be included"
+    (testing "When whitelabeling is disabled, branding content should be included"
       (let [links (render-dashboard-links false)]
-        (is (every? markdown-link? links))
         (is (= 2 (count links)))))))

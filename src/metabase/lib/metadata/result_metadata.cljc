@@ -315,8 +315,7 @@
                            query
                            -1
                            (lib.util/query-stage query -1)
-                           {:unique-name-fn  (lib.util/non-truncating-unique-name-generator)
-                            :include-remaps? (not (get-in query [:middleware :disable-remaps?]))}))
+                           {:include-remaps? (not (get-in query [:middleware :disable-remaps?]))}))
           ;; generate barebones cols if lib was unable to calculate metadata here.
           lib-cols (if (empty? lib-cols)
                      (mapv basic-native-col initial-cols)

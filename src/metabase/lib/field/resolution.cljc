@@ -89,6 +89,10 @@
 ;;; in [[lib.equality/find-matching-column]], but until I get around to that I'm keeping the old stuff around as a
 ;;; fallback using the `fallback-match-` prefix.
 
+(def ^:private ^:dynamic *recursive-column-resolution-by-name*
+  "Whether we're in a recursive call to [[resolve-column-name]] or not. Prevent infinite recursion (#32063)"
+  false)
+
 (mu/defn- fallback-match-field-name :- [:maybe ::lib.metadata.calculation/column-metadata-with-source]
   "Find the column with `column-name` in a sequence of `column-metadatas`."
   [column-name :- ::lib.schema.common/non-blank-string
@@ -100,7 +104,7 @@
                         (cond-> *debug* (update ::debug.origin (fn [origin]
                                                                  (list (list 'resolve-column-name-in-metadata column-name :key k :=> origin)))))))
               resolution-keys)
-        (do
+        (when-not *recursive-column-resolution-by-name*
           ;; ideally we shouldn't hit this but if we do it's not the end of the world.
           (log/infof "Couldn't resolve column name %s."
                      (pr-str column-name))
@@ -152,10 +156,6 @@
               (fallback-match metadata-providerable field-ref cols))
           (cond-> *debug* (update ::debug.origin (fn [origin]
                                                    (list (list 'resolve-column-in-metadata field-ref :=> origin)))))))
-
-(def ^:private ^:dynamic *recursive-column-resolution-by-name*
-  "Whether we're in a recursive call to [[resolve-column-name]] or not. Prevent infinite recursion (#32063)"
-  false)
 
 (mu/defn- resolve-column-name :- [:maybe ::lib.metadata.calculation/column-metadata-with-source]
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
@@ -455,7 +455,8 @@
                                  ;; if we can't resolve the column with this name we probably won't be able to
                                  ;; calculate much metadata -- assume it comes from the previous stage so we at least
                                  ;; have a value for `:lib/source`.
-                                 (log/warnf "Failed to resolve field ref with name %s in stage %d" (pr-str id-or-name) stage-number)
+                                 (when-not *recursive-column-resolution-by-name*
+                                   (log/warnf "Failed to resolve field ref with name %s in stage %d" (pr-str id-or-name) stage-number))
                                  {:lib/source :source/previous-stage}))
          field-id          (if (integer? id-or-name)
                              id-or-name
