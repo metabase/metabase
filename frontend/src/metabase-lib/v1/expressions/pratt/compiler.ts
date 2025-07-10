@@ -229,20 +229,6 @@ function compileEqualityOp(node: Node, ctx: Context): Lib.ExpressionParts {
   return compileInfixOp(node.token.text, node, ctx);
 }
 
-// concat("foo", "bar")
-//
-// Node:
-//   type: CALL
-//   children:
-//    Node:
-//      type: ARG_LIST
-//      children:
-//        Node:
-//          type: STRING
-//          value: "foo"
-//        Node:
-//          type: STRING
-//          value: "bar"
 function compileFunctionCall(node: Node, ctx: Context): Lib.ExpressionParts {
   assert(node.type === CALL, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
