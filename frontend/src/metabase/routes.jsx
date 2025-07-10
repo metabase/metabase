@@ -62,6 +62,8 @@ import { EmbeddingSetup } from "metabase/setup/components/EmbeddingSetup/Embeddi
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
+import { getRoutes as getAppRoutes } from "./apps/routes";
+import { BrowseApps } from "./browse/apps/BrowseApps";
 import {
   CanAccessOnboarding,
   CanAccessSettings,
@@ -292,6 +294,7 @@ export const getRoutes = (store) => {
           <Route path="browse">
             <IndexRedirect to="/browse/models" />
             <Route path="metrics" component={BrowseMetrics} />
+            <Route path="apps" component={BrowseApps} />
             <Route path="models" component={BrowseModels} />
             <Route path="databases" component={BrowseDatabases} />
             <Route path="databases/:slug" component={BrowseSchemas} />
@@ -307,6 +310,9 @@ export const getRoutes = (store) => {
               to="databases/:dbId/schema/:schemaName"
             />
           </Route>
+
+          {/* APPS */}
+          {getAppRoutes()}
 
           {/* INDIVIDUAL DASHBOARDS */}
 

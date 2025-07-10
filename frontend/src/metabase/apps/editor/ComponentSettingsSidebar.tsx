@@ -1,0 +1,53 @@
+import { IconDatabase, IconPalette } from "@tabler/icons-react";
+
+import { Box, Tabs, Text, Title } from "metabase/ui";
+
+import type { ComponentDefinition } from "../types";
+
+import { ComponentSettingsData } from "./ComponentSettingsData";
+import { ComponentSettingsStyle } from "./ComponentSettingsStyle";
+
+type Props = {
+  component: ComponentDefinition;
+  onComponentSettingsChange: (settings: Partial<ComponentDefinition>) => void;
+};
+
+export function ComponentSettingsSidebar({
+  component,
+  onComponentSettingsChange,
+}: Props) {
+  return (
+    <Box p="md">
+      <Box>
+        <Title order={3} lh="1.5">
+          {"Component Settings"}
+        </Title>
+        <Text c="text-secondary" size="sm">
+          {component.name}: {component.id}
+        </Text>
+      </Box>
+      <Tabs defaultValue="data" mt="md">
+        <Tabs.List>
+          <Tabs.Tab value="data" leftSection={<IconDatabase size={12} />}>
+            {"Data"}
+          </Tabs.Tab>
+          <Tabs.Tab value="style" leftSection={<IconPalette size={12} />}>
+            {"Style"}
+          </Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="data" py="md">
+          <ComponentSettingsData
+            component={component}
+            onComponentSettingsChange={onComponentSettingsChange}
+          />
+        </Tabs.Panel>
+        <Tabs.Panel value="style" py="md">
+          <ComponentSettingsStyle
+            component={component}
+            onComponentSettingsChange={onComponentSettingsChange}
+          />
+        </Tabs.Panel>
+      </Tabs>
+    </Box>
+  );
+}

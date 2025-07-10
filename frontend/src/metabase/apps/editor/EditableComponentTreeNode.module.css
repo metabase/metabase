@@ -1,0 +1,13 @@
+.root {
+  cursor: pointer;
+  outline-offset: 1px;
+}
+
+.root:hover {
+  outline: 1px solid blue;
+  outline-style: dashed;
+}
+
+.root.selected {
+  outline: 1px solid blue;
+}
