@@ -380,9 +380,9 @@ describe("scenarios > admin > datamodel", () => {
 
           TableSection.getNameInput().should("have.value", "Birds");
           TablePicker.getTable("Birds").should(
-            "have.css",
-            "background-color",
-            "color(srgb 0.862745 0.923922 0.978039)",
+            "have.attr",
+            "aria-selected",
+            "true",
           );
         });
       },

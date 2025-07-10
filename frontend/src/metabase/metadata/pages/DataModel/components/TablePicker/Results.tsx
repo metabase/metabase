@@ -174,6 +174,7 @@ export function Results({
           return (
             <Flex
               key={key}
+              aria-selected={isActive}
               align="center"
               justify="space-between"
               gap="sm"
