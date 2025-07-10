@@ -35,6 +35,42 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const [sendToast] = useToast();
   const [isSorting, setIsSorting] = useState(false);
 
+  const handleNameChange = async (name: string) => {
+    const { error } = await updateTable({
+      id: table.id,
+      display_name: name,
+    });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        message: t`Failed to update table name`,
+        toastColor: "error",
+      });
+    } else {
+      sendToast({
+        icon: "check",
+        message: t`Table name updated`,
+      });
+    }
+  };
+
+  const handleDescriptionChange = async (description: string) => {
+    const { error } = await updateTable({ id: table.id, description });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        message: t`Failed to update table description`,
+        toastColor: "error",
+      });
+    } else {
+      sendToast({
+        icon: "check",
+        message: t`Table description updated`,
+      });
+    }
+  };
   return (
     <Stack data-testid="table-section" gap={0} pb="xl">
       <Box
@@ -53,22 +89,8 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           nameIcon="table2"
           nameMaxLength={254}
           namePlaceholder={t`Give this table a name`}
-          onDescriptionChange={async (description) => {
-            await updateTable({ id: table.id, description });
-
-            sendToast({
-              icon: "check",
-              message: t`Table description updated`,
-            });
-          }}
-          onNameChange={async (name) => {
-            await updateTable({ id: table.id, display_name: name });
-
-            sendToast({
-              icon: "check",
-              message: t`Table name updated`,
-            });
-          }}
+          onDescriptionChange={handleDescriptionChange}
+          onNameChange={handleNameChange}
         />
       </Box>
 

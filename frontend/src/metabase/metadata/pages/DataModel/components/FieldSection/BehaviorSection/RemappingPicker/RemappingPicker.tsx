@@ -26,7 +26,11 @@ import {
 } from "metabase/ui";
 import type { Database, Field, FieldId } from "metabase-types/api";
 
-import { CustomMappingModal } from "./CustomMappingModal";
+import {
+  type ChangeOptions,
+  CustomMappingModal,
+  type Mapping,
+} from "./CustomMappingModal";
 import {
   DisplayValuesPicker,
   type RemappingValue,
@@ -111,6 +115,21 @@ export const RemappingPicker = ({
   const [createFieldDimension] = useCreateFieldDimensionMutation();
   const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
 
+  const showToast = (error: unknown) => {
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        toastColor: "error",
+        message: t`Failed to updated display values of ${field.display_name}`,
+      });
+    } else {
+      sendToast({
+        icon: "check",
+        message: t`Display values of ${field.display_name} updated`,
+      });
+    }
+  };
+
   const handleDisplayValueChange = async (value: RemappingValue) => {
     setHasChanged(false);
     setIsChoosingInitialFkTarget(false);
@@ -118,11 +137,9 @@ export const RemappingPicker = ({
     if (value === "original") {
       const { error } = await deleteFieldDimension(id);
 
+      showToast(error);
+
       if (!error) {
-        sendToast({
-          icon: "check",
-          message: t`Display values for ${field.display_name} updated`,
-        });
         setHasChanged(false);
       }
     } else if (value === "foreign") {
@@ -137,12 +154,7 @@ export const RemappingPicker = ({
           human_readable_field_id: entityNameFieldId,
         });
 
-        if (!error) {
-          sendToast({
-            icon: "check",
-            message: t`Display values for ${field.display_name} updated`,
-          });
-        }
+        showToast(error);
       } else {
         // Enter a special state where we are choosing an initial value for FK target
         setHasChanged(true);
@@ -158,11 +170,9 @@ export const RemappingPicker = ({
         human_readable_field_id: null,
       });
 
+      showToast(error);
+
       if (!error) {
-        sendToast({
-          icon: "check",
-          message: t`Display values for ${field.display_name} updated`,
-        });
         setHasChanged(true);
         setIsCustomMappingOpen(true);
       }
@@ -181,11 +191,20 @@ export const RemappingPicker = ({
       human_readable_field_id: fkFieldId,
     });
 
-    if (!error) {
-      sendToast({
-        icon: "check",
-        message: t`Display values for ${field.display_name} updated`,
-      });
+    showToast(error);
+  };
+
+  const handleCustomMappingChange = async (
+    remappings: Mapping,
+    options: ChangeOptions | undefined,
+  ) => {
+    const { error } = await updateFieldValues({
+      id,
+      values: Array.from(remappings),
+    });
+
+    if (!options?.isAutomatic) {
+      showToast(error);
     }
   };
 
@@ -261,19 +280,7 @@ export const RemappingPicker = ({
               <CustomMappingModal
                 isOpen={isCustomMappingOpen}
                 value={mapping}
-                onChange={async (remappings, options) => {
-                  const { error } = await updateFieldValues({
-                    id,
-                    values: Array.from(remappings),
-                  });
-
-                  if (!error && !options?.isAutomatic) {
-                    sendToast({
-                      icon: "check",
-                      message: t`Display values for ${field.display_name} updated`,
-                    });
-                  }
-                }}
+                onChange={handleCustomMappingChange}
                 onClose={() => setIsCustomMappingOpen(false)}
               />
 

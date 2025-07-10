@@ -29,6 +29,23 @@ const FormattingSectionBase = ({ field }: Props) => {
       : new Set(["column_title"]);
   }, [field]);
 
+  const handleChange = async (settings: FieldSettings) => {
+    const { error } = await updateField({ id, settings });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        message: t`Failed to update formatting of ${field.display_name}`,
+        toastColor: "error",
+      });
+    } else {
+      sendToast({
+        icon: "check",
+        message: t`Formatting of ${field.display_name} updated`,
+      });
+    }
+  };
+
   return (
     <TitledSection title={t`Formatting`}>
       <ColumnSettings
@@ -38,14 +55,7 @@ const FormattingSectionBase = ({ field }: Props) => {
         inheritedSettings={inheritedSettings}
         style={{ maxWidth: undefined }}
         value={field.settings ?? {}}
-        onChange={async (settings: FieldSettings) => {
-          await updateField({ id, settings });
-
-          sendToast({
-            icon: "check",
-            message: t`Field formatting for ${field.display_name} updated`,
-          });
-        }}
+        onChange={handleChange}
       />
     </TitledSection>
   );
