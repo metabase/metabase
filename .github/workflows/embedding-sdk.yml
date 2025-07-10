@@ -153,16 +153,17 @@ jobs:
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk-cross-version.yml
     secrets: inherit
 
+  # Temporarily skipped because the cypress runner crashes
   # See `bin/backward-compatibility-test.js` for the documentation of this workflow.
-  cross-version-for-breaking-changes:
-    name: "[NOT REQUIRED - Experimental - Backport only] detect breaking changes with cross versions tests"
-    # run on: every pr that targets a release branch, it does NOT run for pr targeting master
-    if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.') }}
-    uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
-    secrets: inherit
-    with:
-      fe-ref: ${{ github.base_ref }}
-      be-ref: ${{ github.head_ref }}
+  # cross-version-for-breaking-changes:
+  # name: "[NOT REQUIRED - Experimental - Backport only] detect breaking changes with cross versions tests"
+  #   # run on: every pr that targets a release branch, it does NOT run for pr targeting master
+  #   if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.') }}
+  #   uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
+  #   secrets: inherit
+  #   with:
+  #     fe-ref: ${{ github.base_ref }}
+  #     be-ref: ${{ github.head_ref }}
 
   embedding-sdk-tests-result:
     needs:
