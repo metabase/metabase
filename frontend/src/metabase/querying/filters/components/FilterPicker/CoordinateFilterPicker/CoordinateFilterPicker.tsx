@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import {
   type UiCoordinateFilterOperator,
@@ -42,11 +42,13 @@ export function CoordinateFilterPicker({
     valueCount,
     hasMultipleValues,
     isValid,
+    inclusiveOptions,
     getDefaultValues,
     getFilterClause,
     setOperator,
     setSecondColumn,
     setValues,
+    setInclusiveOptions,
   } = useCoordinateFilter({
     query,
     stageIndex,
@@ -54,12 +56,16 @@ export function CoordinateFilterPicker({
     filter,
   });
 
-  const [leftInclusive, setLeftInclusive] = useState(true);
-  const [rightInclusive, setRightInclusive] = useState(true);
-
   const handleOperatorChange = (newOperator: UiCoordinateFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
+
+    if (newOperator === "between") {
+      setInclusiveOptions({
+        minInclusive: true,
+        maxInclusive: true,
+      });
+    }
   };
 
   const handleFilterChange = (opts: FilterChangeOpts) => {
@@ -114,10 +120,8 @@ export function CoordinateFilterPicker({
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
           onChange={setValues}
-          leftInclusive={leftInclusive}
-          rightInclusive={rightInclusive}
-          onLeftInclusiveChange={setLeftInclusive}
-          onRightInclusiveChange={setRightInclusive}
+          inclusiveOptions={inclusiveOptions}
+          onInclusiveOptionsChange={setInclusiveOptions}
         />
         <FilterPickerFooter
           isNew={isNew}

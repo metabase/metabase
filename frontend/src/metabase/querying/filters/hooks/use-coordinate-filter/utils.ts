@@ -140,8 +140,12 @@ function getBetweenFilterParts(
   operator: Lib.CoordinateFilterOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
+  options?: Lib.CoordinateFilterOptions,
 ): Lib.CoordinateFilterParts | undefined {
   const [startValue, endValue] = values;
+  const minInclusive = options?.minInclusive ?? true;
+  const maxInclusive = options?.maxInclusive ?? true;
+
   if (isNotNull(startValue) && isNotNull(endValue)) {
     const minValue = startValue < endValue ? startValue : endValue;
     const maxValue = startValue < endValue ? endValue : startValue;
@@ -151,23 +155,31 @@ function getBetweenFilterParts(
       column,
       longitudeColumn: null,
       values: [minValue, maxValue],
+      options: {
+        minInclusive,
+        maxInclusive,
+      },
     };
   } else if (isNotNull(startValue)) {
     return {
-      operator: ">=",
+      operator: minInclusive ? ">=" : ">",
       column,
       longitudeColumn: null,
       values: [startValue],
+      options: {
+        minInclusive,
+      },
     };
   } else if (isNotNull(endValue)) {
     return {
-      operator: "<=",
+      operator: maxInclusive ? "<=" : "<",
       column,
       longitudeColumn: null,
       values: [endValue],
+      options: {
+        maxInclusive,
+      },
     };
-  } else {
-    return undefined;
   }
 }
 

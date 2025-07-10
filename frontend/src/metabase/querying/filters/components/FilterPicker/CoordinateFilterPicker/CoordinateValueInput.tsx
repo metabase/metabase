@@ -19,10 +19,10 @@ interface CoordinateValueInputProps {
   valueCount: number;
   hasMultipleValues?: boolean;
   onChange: (values: NumberOrEmptyValue[]) => void;
-  leftInclusive?: boolean;
-  rightInclusive?: boolean;
-  onLeftInclusiveChange: (value: boolean) => void;
-  onRightInclusiveChange: (value: boolean) => void;
+  inclusiveOptions: Lib.CoordinateFilterOptions;
+  onInclusiveOptionsChange: (
+    inclusiveOptions: Lib.CoordinateFilterOptions,
+  ) => void;
 }
 
 function CoordinateValueInput({
@@ -33,10 +33,8 @@ function CoordinateValueInput({
   valueCount,
   hasMultipleValues,
   onChange,
-  leftInclusive = true,
-  rightInclusive = true,
-  onLeftInclusiveChange,
-  onRightInclusiveChange,
+  inclusiveOptions,
+  onInclusiveOptionsChange,
 }: CoordinateValueInputProps) {
   if (hasMultipleValues) {
     return (
@@ -81,10 +79,19 @@ function CoordinateValueInput({
           leftSection={
             <ToggleButton
               aria-label="toggle greater inclusiveness"
-              onChange={() => onLeftInclusiveChange(!leftInclusive)}
+              onChange={() =>
+                onInclusiveOptionsChange({
+                  minInclusive: !inclusiveOptions.minInclusive,
+                  maxInclusive: inclusiveOptions.maxInclusive,
+                })
+              }
             >
               <Icon
-                name={leftInclusive ? "greater_than_or_equal" : "greater_than"}
+                name={
+                  inclusiveOptions.minInclusive
+                    ? "greater_than_or_equal"
+                    : "greater_than"
+                }
               />
             </ToggleButton>
           }
@@ -100,10 +107,19 @@ function CoordinateValueInput({
           leftSection={
             <ToggleButton
               aria-label="toggle less inclusiveness"
-              onChange={() => onRightInclusiveChange(!rightInclusive)}
+              onChange={() =>
+                onInclusiveOptionsChange({
+                  minInclusive: inclusiveOptions.minInclusive,
+                  maxInclusive: !inclusiveOptions.maxInclusive,
+                })
+              }
             >
               <Icon
-                name={rightInclusive ? "less_than_or_equal" : "less_than"}
+                name={
+                  inclusiveOptions.maxInclusive
+                    ? "less_than_or_equal"
+                    : "less_than"
+                }
               />
             </ToggleButton>
           }

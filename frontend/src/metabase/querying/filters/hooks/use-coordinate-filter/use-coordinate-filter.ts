@@ -65,6 +65,13 @@ export function useCoordinateFilter({
     getDefaultSecondColumn(availableColumns, filterParts),
   );
 
+  const [options, setOptions] = useState<Lib.CoordinateFilterOptions>(
+    filterParts?.options ?? {
+      minInclusive: true,
+      maxInclusive: true,
+    },
+  );
+
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, secondColumn, values);
 
@@ -78,6 +85,7 @@ export function useCoordinateFilter({
     secondColumn,
     canPickColumns: canPickColumns(operator, availableColumns),
     isValid,
+    inclusiveOptions: options,
     getDefaultValues,
     getFilterClause: (
       operator: UiCoordinateFilterOperator,
@@ -87,5 +95,6 @@ export function useCoordinateFilter({
     setOperator,
     setValues,
     setSecondColumn,
+    setInclusiveOptions: setOptions,
   };
 }

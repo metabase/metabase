@@ -52,6 +52,13 @@ export function useNumberFilter({
       : getDefaultOperator(query, column, availableOptions),
   );
 
+  const [options, setOptions] = useState<Lib.NumberFilterOptions>(
+    filterParts?.options ?? {
+      minInclusive: true,
+      maxInclusive: true,
+    },
+  );
+
   const [values, setValues] = useState(() =>
     getDefaultValues(operator, filterParts ? filterParts.values : []),
   );
@@ -66,12 +73,14 @@ export function useNumberFilter({
     valueCount,
     hasMultipleValues,
     isValid,
+    inclusiveOptions: options,
     getDefaultValues,
     getFilterClause: (
       operator: UiNumberFilterOperator,
       values: NumberOrEmptyValue[],
-    ) => getFilterClause(operator, column, values),
+    ) => getFilterClause(operator, column, values, options),
     setOperator,
     setValues,
+    setInclusiveOptions: setOptions,
   };
 }

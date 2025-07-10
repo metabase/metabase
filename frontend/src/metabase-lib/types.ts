@@ -382,10 +382,21 @@ export type StringFilterOptions = {
 
 export type NumberFilterValue = number | bigint;
 
+export type NumberFilterOptions = {
+  minInclusive?: boolean;
+  maxInclusive?: boolean;
+};
+
+export type CoordinateFilterOptions = {
+  minInclusive?: boolean;
+  maxInclusive?: boolean;
+};
+
 export type NumberFilterParts = {
   operator: NumberFilterOperator;
   column: ColumnMetadata;
   values: NumberFilterValue[];
+  options?: NumberFilterOptions;
 };
 
 export type CoordinateFilterParts = {
@@ -393,6 +404,7 @@ export type CoordinateFilterParts = {
   column: ColumnMetadata;
   longitudeColumn: ColumnMetadata | null;
   values: NumberFilterValue[];
+  options?: CoordinateFilterOptions;
 };
 
 export type BooleanFilterParts = {
