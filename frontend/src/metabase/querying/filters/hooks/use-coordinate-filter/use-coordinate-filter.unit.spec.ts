@@ -5,30 +5,30 @@ import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { PEOPLE_ID } from "metabase-types/api/mocks/presets";
 
-import type { NumberOrEmptyValue } from "./types";
+import type { NumberOrEmptyValue, UiCoordinateFilterOperator } from "./types";
 import { useCoordinateFilter } from "./use-coordinate-filter";
 
 interface CreateFilterCase {
-  operator: Lib.CoordinateFilterOperator;
+  operator: UiCoordinateFilterOperator;
   values: number[];
   expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
-  operator: Lib.CoordinateFilterOperator;
+  operator: UiCoordinateFilterOperator;
   expression: Lib.ExpressionClause;
   values: number[];
   expectedDisplayName: string;
 }
 
 interface CoerceFilterCase {
-  operator: Lib.CoordinateFilterOperator;
+  operator: UiCoordinateFilterOperator;
   values: NumberOrEmptyValue[];
   expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
-  operator: Lib.CoordinateFilterOperator;
+  operator: UiCoordinateFilterOperator;
   values: NumberOrEmptyValue[];
 }
 
@@ -57,9 +57,9 @@ describe("useCoordinateFilter", () => {
       expectedDisplayName: "Latitude is not equal to 10",
     },
     {
-      operator: ">",
+      operator: "between",
       values: [10],
-      expectedDisplayName: "Latitude is greater than 10",
+      expectedDisplayName: "Latitude is greater than or equal to 10",
     },
   ])(
     'should allow to create a filter for "$operator" operator',
@@ -183,7 +183,7 @@ describe("useCoordinateFilter", () => {
       values: [],
     },
     {
-      operator: ">",
+      operator: "!=",
       values: [null],
     },
     {

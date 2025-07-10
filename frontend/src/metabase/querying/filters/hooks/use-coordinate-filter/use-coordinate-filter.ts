@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
-import type { NumberOrEmptyValue } from "./types";
+import type { NumberOrEmptyValue, UiCoordinateFilterOperator } from "./types";
 import {
   canPickColumns,
   getAvailableColumns,
@@ -13,6 +13,7 @@ import {
   getFilterClause,
   getOptionByOperator,
   isValidFilter,
+  normalizeCoordinateFilterParts,
 } from "./utils";
 
 interface UseCoordinateFilterProps {
@@ -28,11 +29,21 @@ export function useCoordinateFilter({
   column,
   filter,
 }: UseCoordinateFilterProps) {
-  const filterParts = useMemo(
-    () =>
-      filter ? Lib.coordinateFilterParts(query, stageIndex, filter) : null,
-    [query, stageIndex, filter],
-  );
+  const filterParts = useMemo(() => {
+    if (!filter) {
+      return null;
+    }
+
+    const filterParts = Lib.coordinateFilterParts(query, stageIndex, filter);
+
+    if (!filterParts) {
+      return null;
+    }
+
+    const normalizedFilterParts = normalizeCoordinateFilterParts(filterParts);
+
+    return normalizedFilterParts;
+  }, [query, stageIndex, filter]);
 
   const availableOptions = useMemo(
     () => getAvailableOptions(query, stageIndex, column),
@@ -69,7 +80,7 @@ export function useCoordinateFilter({
     isValid,
     getDefaultValues,
     getFilterClause: (
-      operator: Lib.CoordinateFilterOperator,
+      operator: UiCoordinateFilterOperator,
       secondColumn: Lib.ColumnMetadata | undefined,
       values: NumberOrEmptyValue[],
     ) => getFilterClause(operator, column, secondColumn, values),

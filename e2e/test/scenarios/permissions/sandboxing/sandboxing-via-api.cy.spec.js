@@ -147,9 +147,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         H.openNotebook();
         H.filter({ mode: "notebook" });
         H.popover().findByText("Total").click();
-        H.selectFilterOperator("Greater than");
+        H.selectFilterOperator("Range");
         H.popover().within(() => {
-          cy.findByPlaceholderText("Enter a number").type("100");
+          cy.findByPlaceholderText("Start of range").type("100");
           cy.button("Add filter").click();
         });
 
@@ -157,6 +157,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         cy.log("Make sure user is still sandboxed");
         H.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
+          // TODO: typo in param name
           columnAssetion: ATTRIBUTE_VALUE,
         });
         cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(

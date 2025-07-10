@@ -34,10 +34,10 @@ describe("scenarios > filters > bigint (metabase#5816)", () => {
     name: "SQL NUMBER",
     native: {
       query: `SELECT ${MIN_BIGINT_VALUE} AS NUMBER
-UNION ALL
-SELECT 0 AS NUMBER
-UNION ALL
-SELECT ${MAX_BIGINT_VALUE} AS NUMBER`,
+              UNION ALL
+              SELECT 0 AS NUMBER
+              UNION ALL
+              SELECT ${MAX_BIGINT_VALUE} AS NUMBER`,
       "template-tags": {},
     },
     display: "table",
@@ -47,10 +47,10 @@ SELECT ${MAX_BIGINT_VALUE} AS NUMBER`,
     name: "SQL NUMBER",
     native: {
       query: `SELECT CAST('${NEGATIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER
-UNION ALL
-SELECT CAST(0 AS DECIMAL) AS NUMBER
-UNION ALL
-SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
+              UNION ALL
+              SELECT CAST(0 AS DECIMAL) AS NUMBER
+              UNION ALL
+              SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       "template-tags": {},
     },
     display: "table",
@@ -151,8 +151,9 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
 
       cy.log("> operator");
       testFilter({
-        filterOperator: "Greater than",
-        setFilterValue: () => cy.findByLabelText("Filter value").type(minValue),
+        filterOperator: "Range",
+        setFilterValue: () =>
+          cy.findByLabelText("Start of range").type(minValue),
         filterDisplayName: `NUMBER is greater than ${minValue}`,
         filteredRowCount: 2,
       });
