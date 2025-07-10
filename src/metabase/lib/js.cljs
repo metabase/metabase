@@ -68,6 +68,7 @@
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
@@ -854,15 +855,6 @@
   [a-query stage-number]
   (to-array (lib.core/aggregations a-query stage-number)))
 
-(defn ^:export aggregation-column
-  "Given an `aggregation-clause` from [[aggregations]], returns the column corresponding to that aggregation.
-
-  Returns `nil` (JS `null`) if the aggregation is one like `:count` that doesn't have a column.
-
-  > **Code health:** Healthy"
-  [a-query stage-number aggregation-clause]
-  (lib.core/aggregation-column a-query stage-number aggregation-clause))
-
 (defn ^:export aggregation-clause
   "Returns a standalone aggregation clause for an `aggregation-operator` and a `column`.
 
@@ -1233,6 +1225,31 @@
       #js {:operator (name operator)
            :column   column})))
 
+(defn ^:export join-condition-clause
+  "Creates a join condition from the operator, LHS and RHS expressions. Expressions are opaque objects.
+
+  > **Code health:** Healthy."
+  [operator lhs-expression rhs-expression]
+  (lib.fe-util/join-condition-clause (keyword operator) lhs-expression rhs-expression))
+
+(defn ^:export join-condition-parts
+  "Destructures a join condition created by [[join-condition-clause]]. Expressions are opaque objects.
+
+  > **Code health:** Healthy."
+  [condition]
+  (when-let [parts (lib.fe-util/join-condition-parts condition)]
+    (let [{:keys [operator lhs-expression rhs-expression]} parts]
+      #js {:operator      (name operator)
+           :lhsExpression lhs-expression
+           :rhsExpression rhs-expression})))
+
+(defn ^:export join-condition-lhs-or-rhs-column?
+  "Whether this LHS or RHS expression is a column and not a custom expression.
+
+  > **Code health:** Single use. This is used in the notebook editor."
+  [lhs-or-rhs-expression]
+  (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs-expression))
+
 (defn ^:export column-metadata?
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.
 
@@ -1360,6 +1377,9 @@
                    ;; Unique names are required by the FE for compatibility.
                    ;; This applies only for JS; Clojure usage should prefer `:lib/desired-column-alias` to `:name`, and
                    ;; that's already unique by construction.
+                   ;;
+                   ;; TODO (Cam 7/8/25) -- shouldn't this use `:lib/deduplicate-name` or something?? Shouldn't we do
+                   ;; this generally everywhere? (Also, we're already doing this in the `returned-columns-method`
                    (update :name unique-name-fn)))
          to-array)))
 
@@ -1577,19 +1597,23 @@
   (This argument is actually ignored if it's not a join, but these types are accepted for consistency with
   [[join-condition-rhs-columns]] which does use the argument. See #32005.)
 
-  If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-column-or-nil` so we can
+  If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-expression-or-nil` so we can
   mark the current column as `:selected` in the return value.
 
-  If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
-  pass it as `rhs-column-or-nil`. In the future this may be used to restrict results to compatible columns; see #31174.
+  If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI), pass
+  it as `rhs-expression-or-nil`. In the future this may be used to restrict results to compatible columns; see #31174.
 
   Results will be returned in a 'somewhat smart' order, with PKs and FKs returned before other columns.
 
   Unlike most other things that return columns, implicitly joinable columns **are not** returned here.
 
   > **Code health:** Healthy"
-  [a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil]
-  (to-array (lib.core/join-condition-lhs-columns a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil)))
+  [a-query stage-number join-or-joinable lhs-expression-or-nil rhs-expression-or-nil]
+  (to-array (lib.core/join-condition-lhs-columns a-query
+                                                 stage-number
+                                                 join-or-joinable
+                                                 lhs-expression-or-nil
+                                                 rhs-expression-or-nil)))
 
 (defn ^:export join-condition-rhs-columns
   "Returns a JS array of columns which are valid as the right-hand side of a join condition. By \"right-hand side\" is
@@ -1599,17 +1623,21 @@
   model, etc.
 
   If the left-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
-  pass it as `lhs-column-or-nil`. (Currently this is ignored, but in the future it may be used to restrict results to
-  compatible columns; see #31174.)
+  pass it as `lhs-expression-or-nil`. (Currently this is ignored, but in the future it may be used to restrict results
+  to compatible columns; see #31174.)
 
-  If we're *editing* an existing join condition with the RHS column already chosen, pass it as `rhs-column-or-nil`, so
-  it can be marked as `:selected` in the returned list.
+  If we're *editing* an existing join condition with the RHS column already chosen, pass it as `rhs-expression-or-nil`,
+  so it can be marked as `:selected` in the returned list.
 
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
 
   > **Code health:** Healthy"
-  [a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil]
-  (to-array (lib.core/join-condition-rhs-columns a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil)))
+  [a-query stage-number join-or-joinable lhs-expression-or-nil rhs-expression-or-nil]
+  (to-array (lib.core/join-condition-rhs-columns a-query
+                                                 stage-number
+                                                 join-or-joinable
+                                                 lhs-expression-or-nil
+                                                 rhs-expression-or-nil)))
 
 (defn ^:export join-condition-operators
   "Returns a JS array of valid filter clause operators that can be used to build a join condition.
@@ -1619,8 +1647,11 @@
   See #31174.
 
   > **Code health:** Healthy"
-  [a-query stage-number lhs-column-or-nil rhs-column-or-nil]
-  (to-array (lib.core/join-condition-operators a-query stage-number lhs-column-or-nil rhs-column-or-nil)))
+  [a-query stage-number lhs-expression-or-nil rhs-expression-or-nil]
+  (to-array (map name (lib.core/join-condition-operators a-query
+                                                         stage-number
+                                                         lhs-expression-or-nil
+                                                         rhs-expression-or-nil))))
 
 ;; TODO: Move the join and expressions functions to be contiguous instead of interleaved.
 
@@ -2055,13 +2086,13 @@
 
   For a new join under construction, `join-or-joinable` should be the target entity, eg. table or card metadata.
 
-  If the join has a condition set, its LHS column should be passed as `condition-lhs-column-or-nil`. If not defined yet,
-  pass `nil` (JS `null` or `undefined`).
+  If the join has a condition set, its LHS column should be passed as `condition-lhs-expression-or-nil`. If not defined
+  yet, pass `nil` (JS `null` or `undefined`).
 
   > **Code health:** Smelly. Name should be updated, and docs expanded to explain how the name is calculated; see the
   docs on [[metabase.lib.join/join-lhs-display-name]]."
-  [a-query stage-number join-or-joinable condition-lhs-column-or-nil]
-  (lib.core/join-lhs-display-name a-query stage-number join-or-joinable condition-lhs-column-or-nil))
+  [a-query stage-number join-or-joinable condition-lhs-expression-or-nil]
+  (lib.core/join-lhs-display-name a-query stage-number join-or-joinable condition-lhs-expression-or-nil))
 
 (defn ^:export database-id
   "Get the Database ID (`:database`) associated with `a-query`.

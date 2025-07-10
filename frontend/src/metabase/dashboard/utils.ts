@@ -83,7 +83,10 @@ export function expandInlineCard(card?: Card | VirtualCard) {
 }
 
 export function isQuestionCard(card: Card | VirtualCard) {
-  return card.dataset_query != null;
+  // Some old virtual cards have dataset_query equal to {} so we need to check for null and empty object
+  return (
+    card.dataset_query != null && Object.keys(card.dataset_query).length > 0
+  );
 }
 
 export function isQuestionDashCard(
@@ -418,7 +421,6 @@ export function createDashCard(
 export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
   return {
     name: null,
-    dataset_query: {},
     display,
     visualization_settings: {},
     archived: false,

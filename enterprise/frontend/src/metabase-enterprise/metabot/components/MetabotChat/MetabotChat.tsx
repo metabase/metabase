@@ -252,6 +252,9 @@ export const MetabotChat = () => {
               placeholder={t`Tell me to do something, or ask a question`}
               onChange={(e) => metabot.setPrompt(e.target.value)}
               onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing) {
+                  return;
+                }
                 const isModifiedKeyPress =
                   e.shiftKey || e.ctrlKey || e.metaKey || e.altKey;
                 if (e.key === "Enter" && !isModifiedKeyPress) {

@@ -1,5 +1,10 @@
 import cx from "classnames";
-import { type PropsWithChildren, type ReactNode, useState } from "react";
+import {
+  type PropsWithChildren,
+  type ReactNode,
+  useMemo,
+  useState,
+} from "react";
 
 import { FieldSet } from "metabase/common/components/FieldSet";
 import { Sortable } from "metabase/common/components/Sortable";
@@ -17,7 +22,7 @@ import { ParameterValueWidget } from "../ParameterValueWidget";
 
 import S from "./ParameterWidget.module.css";
 
-type ParameterWidgetProps = PropsWithChildren<
+export type ParameterWidgetProps = PropsWithChildren<
   {
     parameter: UiParameter;
   } & Partial<
@@ -40,6 +45,8 @@ type ParameterWidgetProps = PropsWithChildren<
       variant?: "default" | "subtle";
       withinPortal?: boolean;
       fullWidth?: boolean;
+      hasTestId?: boolean;
+      popoverPosition: "bottom-start" | "bottom-end";
     } & Pick<DashboardFullscreenControls, "isFullscreen">
   >
 >;
@@ -63,7 +70,9 @@ export const ParameterWidget = ({
   dragHandle,
   variant = "default",
   withinPortal,
+  popoverPosition = "bottom-start",
   fullWidth,
+  hasTestId = true,
 }: ParameterWidgetProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const isEditingParameter = editingParameter?.id === parameter.id;
@@ -73,6 +82,16 @@ export const ParameterWidget = ({
   const maybeTranslatedParameterName = tc(parameter.name);
 
   const legend = fieldHasValueOrFocus ? maybeTranslatedParameterName : "";
+
+  const popoverOffset = useMemo(() => {
+    const crossAxisOffset = variant === "default" ? 16 : 0;
+    const mainAxis = variant === "default" ? 8 : 4;
+    return {
+      mainAxis,
+      crossAxis:
+        popoverPosition === "bottom-start" ? -crossAxisOffset : crossAxisOffset,
+    };
+  }, [popoverPosition, variant]);
 
   if (isEditing && setEditingParameter) {
     return (
@@ -94,6 +113,7 @@ export const ParameterWidget = ({
           onClick={() =>
             setEditingParameter?.(isEditingParameter ? null : parameter.id)
           }
+          data-testid={hasTestId ? "editing-parameter-widget" : undefined}
         >
           <div className={CS.mr1} onClick={(e) => e.stopPropagation()}>
             {dragHandle}
@@ -108,7 +128,7 @@ export const ParameterWidget = ({
   if (variant === "subtle") {
     return (
       <Flex
-        data-testid="parameter-widget"
+        data-testid={hasTestId ? "parameter-widget" : undefined}
         fz={isFullscreen ? "md" : undefined}
         align="center"
         className={cx(className, S.SubtleParameterWidget, {
@@ -116,10 +136,6 @@ export const ParameterWidget = ({
         })}
       >
         <ParameterValueWidget
-          offset={{
-            mainAxis: 8,
-            crossAxis: -16,
-          }}
           parameter={parameter}
           parameters={parameters}
           question={question}
@@ -137,6 +153,8 @@ export const ParameterWidget = ({
           variant={variant}
           withinPortal={withinPortal}
           prefix={legend ? legend + ":\u00a0" : undefined}
+          offset={popoverOffset}
+          position={popoverPosition}
         />
         {children}
       </Flex>
@@ -144,7 +162,10 @@ export const ParameterWidget = ({
   }
 
   return (
-    <Box fz={isFullscreen ? "md" : undefined} data-testid="parameter-widget">
+    <Box
+      fz={isFullscreen ? "md" : undefined}
+      data-testid={hasTestId ? "parameter-widget" : undefined}
+    >
       <FieldSet
         className={cx(
           className,
@@ -162,10 +183,6 @@ export const ParameterWidget = ({
         noPadding
       >
         <ParameterValueWidget
-          offset={{
-            mainAxis: 8,
-            crossAxis: -16,
-          }}
           parameter={parameter}
           parameters={parameters}
           question={question}
@@ -182,6 +199,8 @@ export const ParameterWidget = ({
           isSortable={isSortable && isEditing}
           variant={variant}
           withinPortal={withinPortal}
+          offset={popoverOffset}
+          position={popoverPosition}
         />
         {children}
       </FieldSet>

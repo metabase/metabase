@@ -86,7 +86,6 @@
  [lib.aggregation
   aggregate
   aggregation-clause
-  aggregation-column
   aggregation-ref
   aggregation-operator-columns
   aggregations

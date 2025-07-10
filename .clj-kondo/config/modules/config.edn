@@ -326,6 +326,7 @@
            driver
            events
            legacy-mbql
+           lib-be
            models
            notification
            permissions
@@ -1356,6 +1357,7 @@
            api
            app-db
            audit-app
+           database-routing
            driver
            events
            lib

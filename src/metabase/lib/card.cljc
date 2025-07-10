@@ -20,7 +20,8 @@
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/card
   [_query _stage-number card-metadata _style]
@@ -39,16 +40,15 @@
     (= (:type card-metadata) :metric) (assoc :metric? true)
     (= (lib.util/source-card-id query) (:id card-metadata)) (assoc :is-source-card true)))
 
-(defmethod lib.metadata.calculation/visible-columns-method :metadata/card
-  [query
-   stage-number
-   {:keys [fields result-metadata] :as card-metadata}
-   {:keys [include-implicitly-joinable? unique-name-fn] :as options}]
+(mu/defmethod lib.metadata.calculation/visible-columns-method :metadata/card :- ::lib.metadata.calculation/visible-columns
+  [query                                              :- ::lib.schema/query
+   stage-number                                       :- :int
+   {:keys [fields result-metadata] :as card-metadata} :- ::lib.schema.metadata/card
+   {:keys [include-implicitly-joinable?] :as options} :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (concat
    (lib.metadata.calculation/returned-columns query stage-number card-metadata options)
    (when include-implicitly-joinable?
-     (lib.metadata.calculation/implicitly-joinable-columns
-      query stage-number (concat fields result-metadata) unique-name-fn))))
+     (lib.metadata.calculation/implicitly-joinable-columns query stage-number (concat fields result-metadata)))))
 
 (mu/defn fallback-display-name :- ::lib.schema.common/non-blank-string
   "If for some reason the metadata is unavailable. This is better than returning nothing I guess."
@@ -114,12 +114,13 @@
               ;; accordingly.
               (not= (:semantic-type source-metadata-col) :type/FK)
               (assoc :fk-target-field-id nil))]
-    (as-> col col
-      ;; :effective-type is required, but not always set, see e.g.,
-      ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
-      (u/assoc-default col :effective-type (:base-type col))
-      ;; add original display name IF not already present AND we have a value
-      (lib.normalize/normalize ::lib.schema.metadata/column col))))
+    (-> col
+        lib.field.util/update-keys-for-col-from-previous-stage
+        ;; :effective-type is required, but not always set, see e.g.,
+        ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
+        (u/assoc-default :effective-type (:base-type col))
+        ;; add original display name IF not already present AND we have a value
+        (->> (lib.normalize/normalize ::lib.schema.metadata/column)))))
 
 (mu/defn ->card-metadata-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata."
@@ -144,14 +145,14 @@
            field-id->field   (m/index-by :id fields)]
        (mapv #(->card-metadata-column metadata-provider % card-id (get field-id->field (:id %))) cols)))))
 
-(def ^:private CardColumnMetadata
+(mr/def ::column
   [:merge
    ::lib.schema.metadata/column
    [:map
     [:lib/source [:= :source/card]]]])
 
-(def ^:private CardColumns
-  [:maybe [:sequential {:min 1} CardColumnMetadata]])
+(mr/def ::maybe-columns
+  [:maybe [:sequential {:min 1} ::column]])
 
 (def ^:private ^:dynamic *card-metadata-columns-card-ids*
   "Used to track the ID of Cards we're resolving columns for, to avoid inifinte recursion for Cards that have circular
@@ -218,7 +219,7 @@
                        binning       (update :display-name lib.binning/ensure-ends-with-binning binning semantic-type)))))))
             result-cols))))
 
-(mu/defn card-metadata-columns :- [:maybe CardColumns]
+(mu/defn card-metadata-columns :- [:maybe ::maybe-columns]
   "Get a normalized version of the saved metadata associated with Card metadata."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card                  :- ::lib.schema.metadata/card]
@@ -228,11 +229,13 @@
             ;; don't pull in metadata from parent model if we ourself are a model
             model-cols  (when-not (= (:type card) :model)
                           (source-model-cols metadata-providerable card))]
-        (-> result-cols
-            (cond-> (seq model-cols) (merge-model-metadata model-cols))
-            not-empty)))))
+        (not-empty
+         (into []
+               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable)
+               (cond-> result-cols
+                 (seq model-cols) (merge-model-metadata model-cols))))))))
 
-(mu/defn saved-question-metadata :- CardColumns
+(mu/defn saved-question-metadata :- ::maybe-columns
   "Metadata associated with a Saved Question with `card-id`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
@@ -241,13 +244,13 @@
   (when-let [card (lib.metadata/card metadata-providerable card-id)]
     (card-metadata-columns metadata-providerable card)))
 
-(defmethod lib.metadata.calculation/returned-columns-method :metadata/card
-  [query _stage-number card {:keys [unique-name-fn], :as options}]
+(mu/defmethod lib.metadata.calculation/returned-columns-method :metadata/card :- ::lib.metadata.calculation/returned-columns
+  [query         :- ::lib.schema/query
+   _stage-number :- :int
+   card          :- ::lib.schema.metadata/card
+   options       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (mapv (fn [col]
-          (-> col
-              lib.field.util/update-keys-for-col-from-previous-stage
-              (as-> col (assoc col :lib/desired-column-alias (unique-name-fn (:lib/source-column-alias col))))
-              (assoc :lib/source :source/card)))
+          (assoc col :lib/source :source/card))
         (if (= (:type card) :metric)
           (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
                                  (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]

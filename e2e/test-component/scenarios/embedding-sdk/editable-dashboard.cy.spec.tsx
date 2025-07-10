@@ -3,6 +3,7 @@ import { EditableDashboard } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -16,6 +17,34 @@ import type {
   DashboardCard,
   Parameter,
 } from "metabase-types/api";
+import {
+  createMockHeadingDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
+
+const categoryParameter = createMockParameter({
+  id: "1b9cd9f1",
+  name: "Category",
+  type: "string/=",
+  slug: "category",
+  sectionId: "string",
+});
+
+const textParameter = createMockParameter({
+  name: "Text",
+  slug: "string",
+  id: "5aefc726",
+  type: "string/=",
+  sectionId: "string",
+});
+
+const countParameter = createMockParameter({
+  id: "88a1257c",
+  name: "Count",
+  type: "number/<=",
+  slug: "count",
+  sectionId: "number",
+});
 
 describe("scenarios > embedding-sdk > editable-dashboard", () => {
   beforeEach(() => {
@@ -23,6 +52,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
 
     H.createDashboard({
       name: "Embedding SDK Test Dashboard",
+      parameters: [categoryParameter, textParameter, countParameter],
     }).then(({ body: dashboard }) => {
       cy.wrap(dashboard.id).as("dashboardId");
       cy.wrap(dashboard.entity_id).as("dashboardEntityId");
@@ -53,6 +83,49 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
     cy.findByRole("heading", { name: "Info" }).should("not.exist");
     cy.findByRole("tab", { name: "Overview" }).should("not.exist");
     cy.findByRole("tab", { name: "History" }).should("not.exist");
+  });
+
+  it("should allow clicking dashcard filters in edit mode (VIZ-1249)", () => {
+    cy.signInAsAdmin();
+    cy.get<number>("@dashboardId").then((dashboardId) => {
+      H.updateDashboardCards({
+        dashboard_id: dashboardId,
+        cards: [
+          createMockHeadingDashboardCard({
+            id: -1,
+            size_x: 6,
+            size_y: 1,
+            inline_parameters: [textParameter.id, countParameter.id],
+          }),
+          {
+            id: -2,
+            card_id: ORDERS_BY_YEAR_QUESTION_ID,
+            size_x: 18,
+            size_y: 6,
+            row: 1,
+            inline_parameters: [categoryParameter.id],
+          },
+        ],
+      });
+    });
+    cy.signOut();
+
+    cy.get<number>("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
+    });
+
+    H.editDashboard();
+
+    // Ensure can open collapsed filter list
+    H.getDashboardCard(0).findByTestId("show-filter-parameter-button").click();
+    H.popover().findByText("Count").click();
+    H.dashboardParameterSidebar().should("exist").button("Done").click();
+
+    // Ensure can click a regular card filter
+    H.getDashboardCard(1).within(() => {
+      H.filterWidget({ isEditing: true }).contains("Category").click();
+    });
+    H.dashboardParameterSidebar().should("exist");
   });
 
   describe("loading behavior for both entity IDs and number IDs (metabase#49581)", () => {

@@ -760,8 +760,9 @@
           (dispatch-fn {:id 3 :payload_type :notification/testing :test-value "C"})
           (dispatch-fn {:id 4 :payload_type :notification/testing :test-value "D"})
 
-          (testing "there are 2 notifications waiting in the queue"
-            (is (= 2 (notification.send/queue-size queue))))
+          ;; why "at least 2"? because popping items off the queue is in another thread, it may not have happened yet.
+          (testing "there are at least 2 notifications waiting in the queue"
+            (is (<= 2 (notification.send/queue-size queue))))
           (testing "sanity check that notifications were not processed"
             (is (= 0 (count @processed-notifications))
                 "No notifications should be processed before latch is released"))

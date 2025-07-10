@@ -51,7 +51,6 @@ export {
   MetabaseProvider,
   type MetabaseProviderProps,
 } from "./MetabaseProvider";
-export { ModifyQuestion } from "./ModifyQuestion";
 export { StaticQuestion, type StaticQuestionProps } from "./StaticQuestion";
 
 // These functions looks useless but it's a trick to have a way to type the config

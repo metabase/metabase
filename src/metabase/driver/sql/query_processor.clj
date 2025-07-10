@@ -1683,16 +1683,17 @@
       [:= field-honeysql (->honeysql driver value)])))
 
 (defn- correct-null-behaviour
-  [driver [op & args :as clause]]
-  (if-let [field-arg (driver-api/match-one args
-                       :field          &match
-                       :expression     &match)]
-    ;; We must not transform the head again else we'll have an infinite loop
-    ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
-    [:or
-     (into [op] (map (partial ->honeysql driver)) args)
-     [:= (->honeysql driver field-arg) nil]]
-    clause))
+  [driver [op & args :as _clause]]
+  ;; We must not transform the head again else we'll have an infinite loop
+  ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
+  (let [honeysql-clause (into [op] (map (partial ->honeysql driver)) args)]
+    (if-let [field-arg (driver-api/match-one args
+                         :field          &match
+                         :expression     &match)]
+      [:or
+       honeysql-clause
+       [:= (->honeysql driver field-arg) nil]]
+      honeysql-clause)))
 
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]

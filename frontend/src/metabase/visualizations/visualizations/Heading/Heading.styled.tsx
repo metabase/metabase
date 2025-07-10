@@ -72,12 +72,16 @@ interface HeadingContentProps {
   hasFilters?: boolean;
 }
 
+export const HEADING_FONT_SIZE = "1.375rem";
+export const HEADING_FONT_WEIGHT = 700;
+
 export const HeadingContent = styled.h2<HeadingContentProps>`
   flex: 1;
   max-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  font-size: 1.375rem;
+  font-size: ${HEADING_FONT_SIZE};
+  font-weight: ${HEADING_FONT_WEIGHT};
   padding: 0;
   margin: 0.25rem 0;
   pointer-events: all;

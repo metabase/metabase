@@ -1277,6 +1277,20 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       // );
     });
   });
+
+  it("should be possible to select custom expressions in the aggregation picker", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Find...").type("Distinc");
+      cy.findByText("Number of distinct values of ...").should("be.visible");
+      cy.findByText("DistinctIf").click();
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "DistinctIf(column, condition)",
+      );
+    });
+  });
 });
 
 function assertTableRowCount(expectedCount) {

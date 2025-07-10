@@ -1,4 +1,4 @@
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import { compileExpression } from "../compiler";
 import { query } from "../test/shared";
@@ -804,6 +804,7 @@ describe("resolve", () => {
       expressionMode,
       query,
       stageIndex,
+      availableColumns: Lib.expressionableColumns(query, stageIndex),
       resolver(type: ExpressionType, name: string) {
         if (type === "boolean") {
           segments.push(name);

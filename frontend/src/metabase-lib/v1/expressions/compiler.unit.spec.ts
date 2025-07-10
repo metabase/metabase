@@ -1,4 +1,4 @@
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import { compileExpression } from "./compiler";
 import {
@@ -23,6 +23,7 @@ function expr(
     expressionMode,
     query,
     stageIndex,
+    availableColumns: Lib.expressionableColumns(query, stageIndex),
   });
 
   if (error) {

@@ -15,6 +15,7 @@ const args = {
   campaign: "upsell-banner",
   source: "storybook",
   title: "Upgrade now",
+  large: false,
 };
 
 const argTypes = {
@@ -35,6 +36,9 @@ const argTypes = {
   },
   title: {
     control: { type: "text" },
+  },
+  large: {
+    control: { type: "boolean" },
   },
 };
 

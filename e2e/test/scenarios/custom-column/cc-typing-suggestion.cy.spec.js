@@ -209,6 +209,23 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     H.CustomExpressionEditor.type("Average([Price]){leftarrow}{leftarrow}");
     H.CustomExpressionEditor.helpText().should("not.exist");
   });
+
+  it("should not show an error when a snippet is still active", () => {
+    addCustomColumn();
+    H.CustomExpressionEditor.type("conca{tab}", {
+      delay: 50,
+    });
+    H.popover()
+      .findByText(/Unknown column/)
+      .should("not.exist");
+    H.CustomExpressionEditor.type("{tab}", {
+      focus: false,
+      delay: 50,
+    });
+    H.popover()
+      .findByText(/Unknown column/)
+      .should("be.visible");
+  });
 });
 
 const addCustomColumn = () => {

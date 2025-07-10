@@ -65,7 +65,7 @@ export function columnSettings({
   });
 }
 
-export function getGlobalSettingsForColumn(column) {
+export function getGlobalSettingsForColumn() {
   const columnSettings = {};
   const customFormatting = MetabaseSettings.get("custom-formatting") || {};
 
@@ -83,7 +83,7 @@ function getLocalSettingsForColumn(column) {
 
 function getInhertiedSettingsForColumn(column) {
   return {
-    ...getGlobalSettingsForColumn(column),
+    ...getGlobalSettingsForColumn(),
     ...getLocalSettingsForColumn(column),
   };
 }

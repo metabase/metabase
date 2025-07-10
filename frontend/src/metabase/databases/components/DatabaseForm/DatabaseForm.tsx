@@ -1,19 +1,18 @@
 import { useFormikContext } from "formik";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
-import Button from "metabase/common/components/Button";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import FormErrorMessage from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import { Form, FormProvider } from "metabase/forms";
+import { FormErrorMessage } from "metabase/forms/components/FormErrorMessage";
+import { FormSubmitButton } from "metabase/forms/components/FormSubmitButton";
 import { useSelector } from "metabase/lib/redux";
-import { Flex } from "metabase/ui";
+import { Button, Flex, Text } from "metabase/ui";
 import type { DatabaseData, Engine } from "metabase-types/api";
 
-import { getEngines, getIsHosted } from "../../selectors";
+import { getEngines } from "../../selectors";
 import { getDefaultEngineKey } from "../../utils/engine";
 import {
   getSubmitValues,
@@ -21,11 +20,9 @@ import {
   getVisibleFields,
 } from "../../utils/schema";
 import DatabaseDetailField from "../DatabaseDetailField";
-import DatabaseEngineField from "../DatabaseEngineField";
+import { DatabaseEngineField } from "../DatabaseEngineField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
 import DatabaseNameField from "../DatabaseNameField";
-
-import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
 
 export type EngineFieldState = "default" | "hidden" | "disabled";
 
@@ -33,7 +30,7 @@ export interface DatabaseFormConfig {
   /** present the form with advanced configuration options */
   isAdvanced?: boolean;
   engine?: {
-    /** present the enginge field as normal, disabled, or hidden */
+    /** present the engine field as normal, disabled, or hidden */
     fieldState?: EngineFieldState | undefined;
   };
   name?: {
@@ -65,7 +62,6 @@ export const DatabaseForm = ({
   const engineFieldState = config.engine?.fieldState;
 
   const engines = useSelector(getEngines);
-  const isHosted = useSelector(getIsHosted);
   const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
   const [engineKey, setEngineKey] = useState(initialEngineKey);
   const engine = getEngine(engines, engineKey);
@@ -109,7 +105,6 @@ export const DatabaseForm = ({
         engines={engines}
         engineFieldState={engineFieldState}
         autofocusFieldName={autofocusFieldName}
-        isHosted={isHosted}
         isAdvanced={isAdvanced}
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
@@ -126,7 +121,6 @@ interface DatabaseFormBodyProps {
   engines: Record<string, Engine>;
   engineFieldState?: "default" | "hidden" | "disabled";
   autofocusFieldName?: string;
-  isHosted: boolean;
   isAdvanced: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
@@ -140,7 +134,6 @@ const DatabaseFormBody = ({
   engines,
   engineFieldState = "default",
   autofocusFieldName,
-  isHosted,
   isAdvanced,
   onEngineChange,
   onCancel,
@@ -164,7 +157,6 @@ const DatabaseFormBody = ({
           <DatabaseEngineField
             engineKey={engineKey}
             engines={engines}
-            isHosted={isHosted}
             isAdvanced={isAdvanced}
             onChange={onEngineChange}
             disabled={engineFieldState === "disabled"}
@@ -217,6 +209,8 @@ const DatabaseFormFooter = ({
   // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup + admin pages only
   const { url: docsUrl } = useDocsUrl("databases/connecting");
 
+  const hasSampleDatabase = useSetting("has-sample-database?");
+
   const className = "database-form-footer";
 
   if (isAdvanced) {
@@ -237,33 +231,53 @@ const DatabaseFormFooter = ({
           )}
 
           <Flex gap="sm">
-            <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+            <Button onClick={onCancel}>{t`Cancel`}</Button>
             <FormSubmitButton
               disabled={!isDirty}
-              title={isNew ? t`Save` : t`Save changes`}
-              primary
+              variant="filled"
+              label={isNew ? t`Save` : t`Save changes`}
             />
           </Flex>
         </Flex>
       </FormFooter>
     );
-  } else if (values.engine) {
+  }
+
+  if (values.engine) {
     return (
       <FormFooter className={className}>
         <FormErrorMessage inline />
-        <Button type="button" onClick={onCancel}>{t`Skip`}</Button>
-        <FormSubmitButton title={t`Connect database`} primary />
+        <Button onClick={onCancel}>{t`Skip`}</Button>
+        <FormSubmitButton variant="filled" label={t`Connect database`} />
       </FormFooter>
     );
-  } else {
+  }
+
+  // This check happens only during setup where we cannot fetch databases.
+  // Unless someone explicitly set the environment variable MB_LOAD_SAMPLE_CONTENT
+  // to false, we can assume that the instance loads with the Sample Database.
+  // https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_load_sample_content
+  if (hasSampleDatabase !== false) {
     return (
-      <LinkFooter className={className}>
-        <LinkButton type="button" onClick={onCancel}>
-          {t`I'll add my data later`}
-        </LinkButton>
-      </LinkFooter>
+      <>
+        <Button variant="filled" mb="md" mt="lg" onClick={onCancel}>
+          {t`Continue with sample data`}
+        </Button>
+        <Text fz="sm">
+          {c("{0} is 'Sample Database'").jt`Use our ${(
+            <strong key="sample">{t`Sample Database`}</strong>
+          )} to explore and test the app.`}
+        </Text>
+        <Text fz="sm">{t`Add your own data at any time.`}</Text>
+      </>
     );
   }
+
+  return (
+    <Button variant="filled" mt="lg" onClick={onCancel}>
+      {t`I'll add my data later`}
+    </Button>
+  );
 };
 
 const getEngine = (engines: Record<string, Engine>, engineKey?: string) => {
@@ -275,7 +289,7 @@ const getEngineKey = (
   values?: Partial<DatabaseData>,
   isAdvanced?: boolean,
 ) => {
-  if (values?.engine) {
+  if (values?.engine && Object.keys(engines).includes(values.engine)) {
     return values.engine;
   } else if (isAdvanced) {
     return getDefaultEngineKey(engines);
