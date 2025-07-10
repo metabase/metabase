@@ -95,7 +95,7 @@ function createListener({
 
 interface LicenseTokenActivationMessage {
   source: "metabase-store";
-  type: "license-token-activation";
+  type: "license-token-activated";
   payload: {
     success: boolean;
   };
@@ -103,7 +103,7 @@ interface LicenseTokenActivationMessage {
 
 interface LicenseTokenMessage {
   source: "metabase-store";
-  type: "license-token";
+  type: "license-token-created";
   payload: {
     licenseToken: string;
   };
@@ -114,7 +114,7 @@ function handleMessageFromStore(event: MessageEvent<LicenseTokenMessage>) {
     return;
   }
 
-  if (event.data.type === "license-token") {
+  if (event.data.type === "license-token-created") {
     return event.data.payload.licenseToken;
   }
 }
@@ -126,7 +126,7 @@ function sendMessageTokenActivation(
   storeWindow.postMessage(
     {
       source: "metabase-store",
-      type: "license-token-activation",
+      type: "license-token-activated",
       payload: {
         success,
       },

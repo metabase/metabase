@@ -125,7 +125,7 @@ describe("useUpsellFlow", () => {
           source: window,
           origin: "https://store.metabase.com",
           data: {
-            type: "license-token",
+            type: "license-token-created",
             payload: {
               licenseToken: "token-abc-123",
             },
@@ -141,7 +141,7 @@ describe("useUpsellFlow", () => {
       await waitFor(() => {
         expect(mockPostMessage).toHaveBeenCalledWith(
           {
-            type: "license-token-activation",
+            type: "license-token-activated",
             payload: { success: true },
             source: "metabase-store",
           },
@@ -172,7 +172,7 @@ describe("useUpsellFlow", () => {
           source: window,
           origin: "https://store.metabase.com",
           data: {
-            type: "license-token",
+            type: "license-token-created",
             payload: {
               licenseToken: "token-abc-123",
             },
@@ -183,7 +183,7 @@ describe("useUpsellFlow", () => {
       await waitFor(() => {
         expect(mockPostMessage).toHaveBeenCalledWith(
           {
-            type: "license-token-activation",
+            type: "license-token-activated",
             payload: { success: false },
             source: "metabase-store",
           },
