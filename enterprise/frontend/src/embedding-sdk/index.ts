@@ -64,3 +64,6 @@ export type {
 export type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 export type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+
+// eslint-disable-next-line no-console
+console.log("new code!");
