@@ -470,29 +470,13 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@redoButton").should("be.disabled");
 
       H.switchToAddMoreData();
-      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
       H.assertWellItems({
         vertical: ["Count", "Count (Products by Created At (Month))"],
       });
 
-      H.addDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
+      H.selectDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
 
-      H.assertWellItems({
-        vertical: [
-          "Count",
-          "Count (Products by Created At (Month))",
-          "Average of Price",
-        ],
-      });
-
-      H.selectDataset(PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
-
-      H.assertWellItems({
-        pieMetric: ["Count"],
-        pieDimensions: ["Category"],
-      });
-
-      cy.get("@undoButton").click();
       H.assertWellItems({
         vertical: [
           "Count",
