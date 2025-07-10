@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { P, match } from "ts-pattern";
+import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
@@ -33,31 +33,33 @@ export const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
   const adminEmail = useSelector((state) => getSetting(state, "admin-email"));
   const adminEmailElement = <b key="admin-email">{adminEmail}</b>;
 
-  const getAlertCopy = match({ reason, adminEmail })
+  const hasAdminEmail = !!adminEmail;
+
+  const getAlertCopy = match({ reason, hasAdminEmail })
     .with(
-      { reason: "add-database", adminEmail: P.when((email) => !!email) },
+      { reason: "add-database", hasAdminEmail: true },
       () =>
         c("{0} is admin's email address")
           .jt`To add a new database, please contact your administrator at ${adminEmailElement}.`,
     )
     .with(
-      { reason: "add-database", adminEmail: P.when((email) => !email) },
+      { reason: "add-database", hasAdminEmail: false },
       () => t`To add a new database, please contact your administrator.`,
     )
     .with(
-      { reason: "enable-csv-upload", adminEmail: P.when((email) => !!email) },
+      { reason: "enable-csv-upload", hasAdminEmail: true },
       () =>
         c("{0} is admin's email address")
           .jt`To enable CSV file upload, please contact your administrator at ${adminEmailElement}.`,
     )
     .with(
-      { reason: "enable-csv-upload", adminEmail: P.when((email) => !email) },
+      { reason: "enable-csv-upload", hasAdminEmail: false },
       () => t`To enable CSV file upload, please contact your administrator.`,
     )
     .with(
       {
         reason: "obtain-csv-upload-permission",
-        adminEmail: P.when((email) => !!email),
+        hasAdminEmail: true,
       },
       () =>
         c("{0} is admin's email address")
@@ -66,7 +68,7 @@ export const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
     .with(
       {
         reason: "obtain-csv-upload-permission",
-        adminEmail: P.when((email) => !email),
+        hasAdminEmail: false,
       },
       () =>
         t`You are not permitted to upload CSV files. To get proper permissions, please contact your administrator.`,
@@ -74,18 +76,18 @@ export const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
     .with(
       {
         reason: "enable-google-sheets",
-        adminEmail: P.when((email) => !!email),
+        hasAdminEmail: true,
       },
       () =>
         c("{0} is admin's email address")
           .jt`To enable Google Sheets import, please contact your administrator at ${adminEmailElement}.`,
     )
     .with(
-      { reason: "enable-google-sheets", adminEmail: P.when((email) => !email) },
+      { reason: "enable-google-sheets", hasAdminEmail: false },
       () =>
         t`To enable Google Sheets import, please contact your administrator.`,
     )
-    .otherwise(() => t`Please contact your administrator.`);
+    .exhaustive();
 
   return (
     <Alert icon={<Icon name="info_filled" />} maw={CONTENT_MAX_WIDTH}>
