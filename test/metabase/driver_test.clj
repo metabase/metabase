@@ -298,7 +298,7 @@
                   (describe-fields-for-table (mt/db) table))))))))
 
 (deftest ^:parallel describe-fields-returns-nullability-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (let [db-name*    (str "db_" (System/nanoTime))
           table-name* "a"
           db-name     (ddl.i/format-name driver/*driver* db-name*)
@@ -322,7 +322,7 @@
               (is (= [nil nil nil] (mapv :database-is-nullable [a b c]))))))))))
 
 (deftest ^:parallel describe-fields-returns-default-expr-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (let [db-name*    (str "db_" (System/nanoTime))
           table-name* "a"
           db-name     (ddl.i/format-name driver/*driver* db-name*)
@@ -347,7 +347,7 @@
               (is (= [nil nil nil] (mapv :database-default [a b c]))))))))))
 
 (deftest ^:parallel describe-fields-returns-is-generated-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (let [db-name*    (str "db_" (System/nanoTime))
           table-name* "a"
           db-name     (ddl.i/format-name driver/*driver* db-name*)
