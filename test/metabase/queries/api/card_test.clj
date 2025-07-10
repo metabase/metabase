@@ -4247,7 +4247,7 @@
                                           {:dataset_query (lib/->legacy-MBQL query-cycle)
                                            :type card-type-c})))))))))))
 
-(deftest cannot-make-query-cycles-with-native-queries
+(deftest cannot-make-query-cycles-with-native-queries-test
   (testing "Cannot make query cycles that include native queries"
     (let [mp (mt/metadata-provider)
           query-a (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
