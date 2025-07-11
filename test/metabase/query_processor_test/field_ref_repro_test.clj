@@ -1,18 +1,18 @@
-(ns metabase.query-processor-test.field-ref-repro-test
-  "Reproduction tests for field ref(erence) issues. These are negative tests, if some fail,
+(ns metabase.query-processor-test.field-ref-repro-test) (ns metabase.query-processor-test.field-ref-repro-test
+                                                          "Reproduction tests for field ref(erence) issues. These are negative tests, if some fail,
   we might have actually fixed a bug."
-  (:require
-   [clojure.set :as set]
-   [clojure.test :refer :all]
-   [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.core :as lib]
-   [metabase.lib.equality :as lib.equality]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.util :as lib.util]
-   [metabase.query-processor :as qp]
-   [metabase.test :as mt]))
+                                                          (:require
+                                                           [clojure.set :as set]
+                                                           [clojure.test :refer :all]
+                                                           [medley.core :as m]
+                                                           [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+                                                           [metabase.lib.core :as lib]
+                                                           [metabase.lib.equality :as lib.equality]
+                                                           [metabase.lib.metadata :as lib.metadata]
+                                                           [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+                                                           [metabase.lib.util :as lib.util]
+                                                           [metabase.query-processor :as qp]
+                                                           [metabase.test :as mt]))
 
 (deftest ^:parallel native-query-model-remapped-column-join-test
   (testing "Should be able to join on remapped model column (#58314)"
@@ -268,3 +268,82 @@
             ;; should return a row with category and count
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Column .*CATEGORY.* not found"
                                   (qp/process-query query)))))))))
+
+(deftest ^:parallel self-join-in-card-test
+  (testing "Should handle self joins in cards (#44767)"
+    (mt/with-driver :h2
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+        (mt/with-temp [:model/Card q1 {:dataset_query (mt/mbql-query orders
+                                                        {:joins [{:source-table $$orders
+                                                                  :alias "j"
+                                                                  :condition [:= $id &j.orders.id]
+                                                                  :fields :all}]})
+                                       :name "Q1"}]
+          (let [card-meta (lib.metadata/card mp (:id q1))
+                query     (lib/query mp card-meta)
+                stage     (lib.util/query-stage query -1)
+                visible   (lib.metadata.calculation/visible-columns query -1 stage)
+                returned  (lib.metadata.calculation/returned-columns query -1 stage)
+                marked    (lib.equality/mark-selected-columns query -1 visible returned)]
+            (is (=? [{:name "ID",           :display-name "ID",              :selected? true}
+                     {:name "USER_ID",      :display-name "User ID",         :selected? true}
+                     {:name "PRODUCT_ID",   :display-name "Product ID",      :selected? true}
+                     {:name "SUBTOTAL",     :display-name "Subtotal",        :selected? true}
+                     {:name "TAX",          :display-name "Tax",             :selected? true}
+                     {:name "TOTAL",        :display-name "Total",           :selected? true}
+                     {:name "DISCOUNT",     :display-name "Discount",        :selected? true}
+                     {:name "CREATED_AT",   :display-name "Created At",      :selected? true}
+                     {:name "QUANTITY",     :display-name "Quantity",        :selected? true}
+                     {:name "ID_2",         :display-name "j → ID",          :selected? true}
+                     {:name "USER_ID_2",    :display-name "j → User ID",     :selected? true}
+                     {:name "PRODUCT_ID_2", :display-name "j → Product ID",  :selected? true}
+                     {:name "SUBTOTAL_2",   :display-name "j → Subtotal",    :selected? true}
+                     {:name "TAX_2",        :display-name "j → Tax",         :selected? true}
+                     {:name "TOTAL_2",      :display-name "j → Total",       :selected? true}
+                     {:name "DISCOUNT_2",   :display-name "j → Discount",    :selected? true}
+                     {:name "CREATED_AT_2", :display-name "j → Created At",  :selected? true}
+                     {:name "QUANTITY_2",   :display-name "j → Quantity",    :selected? true}
+                     ;; implicitly joinable fields from both Orders not selected
+                     {:name "ID",           :display-name "ID",              :selected? false}
+                     {:name "ADDRESS",      :display-name "Address",         :selected? false}
+                     {:name "EMAIL",        :display-name "Email",           :selected? false}
+                     {:name "PASSWORD",     :display-name "Password",        :selected? false}
+                     {:name "NAME",         :display-name "Name",            :selected? false}
+                     {:name "CITY",         :display-name "City",            :selected? false}
+                     {:name "LONGITUDE",    :display-name "Longitude",       :selected? false}
+                     {:name "STATE",        :display-name "State",           :selected? false}
+                     {:name "SOURCE",       :display-name "Source",          :selected? false}
+                     {:name "BIRTH_DATE",   :display-name "Birth Date",      :selected? false}
+                     {:name "ZIP",          :display-name "Zip",             :selected? false}
+                     {:name "LATITUDE",     :display-name "Latitude",        :selected? false}
+                     {:name "CREATED_AT",   :display-name "Created At",      :selected? false}
+                     {:name "ID",           :display-name "ID",              :selected? false}
+                     {:name "EAN",          :display-name "Ean",             :selected? false}
+                     {:name "TITLE",        :display-name "Title",           :selected? false}
+                     {:name "CATEGORY",     :display-name "Category",        :selected? false}
+                     {:name "VENDOR",       :display-name "Vendor",          :selected? false}
+                     {:name "PRICE",        :display-name "Price",           :selected? false}
+                     {:name "RATING",       :display-name "Rating",          :selected? false}
+                     {:name "CREATED_AT",   :display-name "Created At",      :selected? false}
+                     {:name "ID",           :display-name "ID",              :selected? false}
+                     {:name "ADDRESS",      :display-name "Address",         :selected? false}
+                     {:name "EMAIL",        :display-name "Email",           :selected? false}
+                     {:name "PASSWORD",     :display-name "Password",        :selected? false}
+                     {:name "NAME",         :display-name "Name",            :selected? false}
+                     {:name "CITY",         :display-name "City",            :selected? false}
+                     {:name "LONGITUDE",    :display-name "Longitude",       :selected? false}
+                     {:name "STATE",        :display-name "State",           :selected? false}
+                     {:name "SOURCE",       :display-name "Source",          :selected? false}
+                     {:name "BIRTH_DATE",   :display-name "Birth Date",      :selected? false}
+                     {:name "ZIP",          :display-name "Zip",             :selected? false}
+                     {:name "LATITUDE",     :display-name "Latitude",        :selected? false}
+                     {:name "CREATED_AT",   :display-name "Created At",      :selected? false}
+                     {:name "ID",           :display-name "ID",              :selected? false}
+                     {:name "EAN",          :display-name "Ean",             :selected? false}
+                     {:name "TITLE",        :display-name "Title",           :selected? false}
+                     {:name "CATEGORY",     :display-name "Category",        :selected? false}
+                     {:name "VENDOR",       :display-name "Vendor",          :selected? false}
+                     {:name "PRICE",        :display-name "Price",           :selected? false}
+                     {:name "RATING",       :display-name "Rating",          :selected? false}
+                     {:name "CREATED_AT",   :display-name "Created At",      :selected? false}]
+                    marked))))))))
