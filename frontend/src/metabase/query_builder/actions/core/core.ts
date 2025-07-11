@@ -42,10 +42,10 @@ import {
   getSubmittableQuestion,
   isBasedOnExistingQuestion,
 } from "../../selectors";
-import { updateUrl } from "../navigation";
-import { zoomInRow } from "../object-detail";
 import { clearQueryResult, runQuestionQuery } from "../querying";
 import { onCloseSidebars } from "../ui";
+import { updateUrl } from "../url";
+import { zoomInRow } from "../zoom";
 
 import { loadCard } from "./card";
 import { API_UPDATE_QUESTION, SOFT_RELOAD_CARD } from "./types";
