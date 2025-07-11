@@ -268,6 +268,9 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     if (this.props.onInputKeyDown) {
       this.props.onInputKeyDown(event);
     }
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
 
     const { key, keyCode } = event;
 

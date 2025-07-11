@@ -281,7 +281,7 @@
     stage-number :- :int]
    (not-empty (:aggregation (lib.util/query-stage query stage-number)))))
 
-(mu/defn aggregations-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
+(mu/defn aggregations-metadata :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
   "Get metadata about the aggregations in a given stage of a query."
   ([query]
    (aggregations-metadata query -1))
@@ -294,8 +294,7 @@
                               (-> metadata
                                   (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
                                   (assoc :lib/source      :source/aggregations
-                                         :lib/source-uuid (lib.options/uuid  aggregation)
-                                         :ident           (lib.options/ident aggregation))))))))))
+                                         :lib/source-uuid (lib.options/uuid  aggregation))))))))))
 
 (def ^:private OperatorWithColumns
   [:merge
@@ -431,15 +430,3 @@
   (let [ags (aggregations query stage-number)]
     (when (> (clojure.core/count ags) index)
       (nth ags index))))
-
-(mu/defn aggregation-column :- [:maybe ::lib.schema.metadata/column]
-  "Returns the column consumed by this aggregation, eg. the column being summed.
-
-  Returns nil for aggregations like `[:count]` that don't specify a column."
-  [query                                         :- ::lib.schema/query
-   stage-number                                  :- :int
-   [_operator _opts column-ref :as _aggregation] :- ::lib.schema.aggregation/aggregation]
-  (when column-ref
-    (->> (lib.util/query-stage query stage-number)
-         (lib.metadata.calculation/visible-columns query stage-number)
-         (lib.equality/find-matching-column column-ref))))

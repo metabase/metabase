@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import AccordionList from "metabase/common/components/AccordionList";
+import { AccordionList } from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import type {
   ParameterMappingOption,

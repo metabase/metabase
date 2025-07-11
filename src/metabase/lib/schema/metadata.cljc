@@ -49,9 +49,23 @@
 ;;; will this affect what MLv2 needs to know or does? Not clear at this point, but we'll probably want to abstract
 ;;; away dealing with Dimensions in the future so the FE QB GUI doesn't need to special case them.
 
-(mr/def ::column-source
+(mr/def ::column.source
+  "`:lib/source` -- where a column came from with respect to the current stage.
+
+  Traditionally, `:lib/source` meant something slightly different -- it denoted what part of the current stage a
+  column came from, and thus included two additional options -- `:source/fields`, for columns used by `:fields`, and
+  `:source/breakouts`, for columns used in `:breakout`. This was not really useful information and made `:lib/source`
+  itself useless for determining if a column was 'inherited' or not (i.e., whether it came from a previous stage,
+  source card, or a join, and should get field name refs instead of field ID refs --
+  see [[metabase.lib.field.util/inherited-column?]])."
   [:enum
-   {:decode/normalize lib.schema.common/normalize-keyword}
+   {:decode/normalize (fn [k]
+                        (when-let [k (lib.schema.common/normalize-keyword k)]
+                          ;; TODO (Cam 7/1/25) -- if we wanted, we could use `:source/breakouts` to populate
+                          ;; `:lib/breakout?` -- but I think that isn't really necessary since we can
+                          ;; recalculate that information anyway.
+                          (when-not (#{:source/fields :source/breakouts} k)
+                            k)))}
    ;; these are for things from some sort of source other than the current stage;
    ;; they must be referenced with string names rather than Field IDs
    :source/card
@@ -62,13 +76,11 @@
    ;;
    ;; default columns returned by the `:source-table` for the current stage.
    :source/table-defaults
-   ;; specifically introduced by the corresponding top-level clauses.
-   :source/fields
+   ;; Introduced by `:aggregation`(s) IN THE CURRENT STAGE. Aggregations by definition are always returned.
    :source/aggregations
-   :source/breakouts
    ;; introduced by a join, not necessarily ultimately returned.
    :source/joins
-   ;; Introduced by `:expressions`; not necessarily ultimately returned.
+   ;; Introduced by `:expressions` IN THE CURRENT STAGE; not necessarily ultimately returned.
    :source/expressions
    ;; Not even introduced, but 'visible' because this column is implicitly joinable.
    :source/implicitly-joinable])
@@ -179,6 +191,55 @@
                   (and (:id m) (not (pos-int? (:id m))))
                   (dissoc :id))))))
 
+(mr/def ::column.validate-expression-source
+  "Only allow `:lib/expression-name` when `:lib/source` is `:source/expressions`. If it's anything else, it probably
+  means it's getting incorrectly propagated from a previous stage (QUE-1342)."
+  [:fn
+   {:error/message ":lib/expression-name should only be set for expressions in the current stage (:lib/source = :source/expressions)"}
+   (fn [m]
+     (if (:lib/expression-name m)
+       (= (:lib/source m) :source/expressions)
+       true))])
+
+(mr/def ::column.validate-native-column
+  "Certain keys cannot possibly be set when a column comes from directly from native query results, for example
+  `:lib/breakout?` or join aliases"
+  (let [disallowed-keys [:lib/breakout?
+                         :metabase.lib.join/join-alias
+                         :lib/expression-name]]
+    [:fn
+     {:error/message "Invalid column metadata for a column with :lib/source :source/native"
+      :error/fn      (fn [{m :value} _]
+                       (some (fn [k]
+                               (when (k m)
+                                 (str "Column has :lib/source :source/native but also " k "; this is impossible")))
+                             disallowed-keys))}
+     (fn [m]
+       (if (= (:lib/source m) :source/native)
+         (every? (fn [k]
+                   (not (k m)))
+                 disallowed-keys)
+         true))]))
+
+(mr/def ::column.validate-table-defaults-column
+  "A column with :lib/source :source/table-defaults cannot possibly have a join alias."
+  [:fn
+   {:error/message "A column with :lib/source :source/table-defaults cannot possibly have a join alias"}
+   (fn [m]
+     (if (= (:lib/source m) :source/table-defaults)
+       (not (:metabase.lib.join/join-alias m))
+       true))])
+
+;;; TODO (Cam 7/1/25) -- disabled for now because of bugs like QUE-1496; once that's fixed we should re-enable this.
+#_(mr/def ::column.validate-join-alias
+    "`:metabase.lib.join/join-alias` SHOULD ONLY be set when `:lib/source` = `:source/joins`."
+    [:fn
+     {:error/message "current stage join alias (:metabase.lib.join/join-alias) should only be set for columns whose :lib/source is :source/joins"}
+     (fn [m]
+       (if (:metabase.lib.join/join-alias m)
+         (= (:lib/source m) :source/joins)
+         true))])
+
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
 
@@ -276,9 +337,15 @@
     ;;
     ;; the name of the expression where this column came from, if the column came from a previous stage of the query
     [:lib/original-expression-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-    ;; what top-level clause in the query this metadata originated from, if it is calculated (i.e., if this metadata
-    ;; was generated by [[metabase.lib.metadata.calculation/metadata]])
-    [:lib/source {:optional true} [:ref ::column-source]]
+    ;; where this column came from. See docstring for `::column.source`.
+    [:lib/source {:optional true} [:maybe [:ref ::column.source]]]
+    ;;
+    ;; whether this column metadata occurs in the `:breakout`(s) in the CURRENT STAGE or not. Previously this was
+    ;; signified by `:lib/source = :source/breakouts` (which has been removed)
+    ;;
+    ;; this SHOULD NOT get propagated to subsequent stages!
+    [:lib/breakout? {:optional true} [:maybe :boolean]]
+
     ;; ID of the Card this came from, if this came from Card results metadata. Mostly used for creating column groups.
     [:lib/card-id {:optional true} [:maybe ::lib.schema.id/card]]
     ;;
@@ -343,7 +410,11 @@
     [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
     [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]]
    ;; TODO (Cam 6/13/25) -- go add this to some of the other metadata schemas as well.
-   ::kebab-cased-map])
+   ::kebab-cased-map
+   ::column.validate-expression-source
+   ::column.validate-native-column
+   ::column.validate-table-defaults-column
+   #_::column.validate-join-alias])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."

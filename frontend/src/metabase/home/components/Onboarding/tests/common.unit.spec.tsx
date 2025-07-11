@@ -340,7 +340,7 @@ describe("Onboarding", () => {
 
       expect(
         within(commsSetup).getByRole("link", { name: "Set up email" }),
-      ).toHaveAttribute("href", "/admin/settings/email/smtp");
+      ).toHaveAttribute("href", "/admin/settings/email");
       expect(
         within(commsSetup).getByRole("link", { name: "Slack" }),
       ).toHaveAttribute("href", "/admin/settings/notifications");
@@ -384,7 +384,7 @@ describe("Onboarding", () => {
 
       expect(
         within(commsSetup).getByRole("link", { name: "Set up email" }),
-      ).toHaveAttribute("href", "/admin/settings/email/smtp");
+      ).toHaveAttribute("href", "/admin/settings/email");
       expect(
         within(commsSetup).getByRole("link", { name: "Slack" }),
       ).toHaveAttribute("href", "/admin/settings/notifications");

@@ -1,9 +1,7 @@
 import { snippetCompletion } from "@codemirror/autocomplete";
 import Fuse from "fuse.js";
+import _ from "underscore";
 
-import type Database from "metabase-lib/v1/metadata/Database";
-
-import { type HelpText, getHelpText } from "../help-text";
 import {
   CALL,
   END_OF_INPUT,
@@ -21,53 +19,37 @@ export function expressionClauseCompletion(
   clause: MBQLClauseFunctionConfig,
   {
     type,
-    database,
-    reportTimezone,
     matches,
   }: {
     type: string;
-    database: Database | null;
-    reportTimezone?: string;
     matches?: [number, number][];
   },
 ): Completion {
-  const helpText =
-    clause.name &&
-    database &&
-    getHelpText(clause.name, database, reportTimezone);
-
-  if (helpText) {
-    const completion = snippetCompletion(getSnippet(helpText), {
-      type,
-      label: clause.displayName,
-      displayLabel: clause.displayName,
-      detail: helpText.description,
-    });
-    return { ...completion, icon: "function", matches };
-  }
-
-  return {
+  const completion = snippetCompletion(expressionClauseSnippet(clause), {
     type,
     label: clause.displayName,
     displayLabel: clause.displayName,
-    icon: "function",
-    matches,
-  };
+  });
+  return { ...completion, icon: "function", matches };
 }
 
-function getSnippet(helpText: HelpText) {
+export function expressionClauseSnippet(clause: MBQLClauseFunctionConfig) {
   const args =
-    helpText.args
+    clause.args
       .filter((arg) => arg.name !== "…")
       .map((arg) => "${" + (arg.template ?? arg.name) + "}")
       .join(", ") ?? "";
 
-  return `${helpText.displayName}(${args})`;
+  return `${clause.displayName}(${args})`;
 }
 
-export function fuzzyMatcher(options: Completion[]) {
-  const keys = ["displayLabel"];
-
+export const fuzzyMatcher = _.memoize(function ({
+  options,
+  keys = ["displayLabel"],
+}: {
+  options: Completion[];
+  keys?: (string | { name: string; weight?: number })[];
+}) {
   const fuse = new Fuse(options, {
     keys,
     includeScore: true,
@@ -75,19 +57,26 @@ export function fuzzyMatcher(options: Completion[]) {
   });
 
   return function (word: string) {
-    return (
-      fuse
-        .search(word)
-        // .filter(result => (result.score ?? 0) <= 1)
-        .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
-        .map((result) => {
-          result.item.matches =
-            result.matches?.flatMap((match) => match.indices) ?? [];
-          return result.item;
-        })
-    );
+    return fuse
+      .search(word)
+      .filter((result) => (result.score ?? 0) <= 0.6)
+      .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
+      .map((result) => {
+        const { item, matches = [] } = result;
+        const key = matches[0]?.key;
+        const indices = matches[0]?.indices;
+
+        // We need to preserve item identity here, so we need to return the original item
+        // possible with updated values for displayLabel and matches
+        // item.displayLabel = displayLabel ?? item.displayLabel;
+        if (key === "displayLabel") {
+          item.matches = Array.from(indices ?? []);
+        }
+
+        return item;
+      });
   };
-}
+}, JSON.stringify);
 
 export function tokenAtPos(source: string, pos: number): Token | null {
   const tokens = lexify(source);

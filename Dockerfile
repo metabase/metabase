@@ -2,7 +2,7 @@
 # STAGE 1: builder
 ###################
 
-FROM node:22-bullseye as builder
+FROM node:22-bullseye AS builder
 
 ARG MB_EDITION=oss
 ARG VERSION
@@ -34,11 +34,10 @@ RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VER
 
 ## Remember that this runner image needs to be the same as bin/docker/Dockerfile with the exception that this one grabs the
 ## jar from the previous stage rather than the local build
-## we're not yet there to provide an ARM runner till https://github.com/adoptium/adoptium/issues/96 is ready
 
-FROM eclipse-temurin:21-jre-alpine as runner
+FROM eclipse-temurin:21-jre-alpine AS runner
 
-ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
+ENV FC_LANG=en-US LC_CTYPE=en_US.UTF-8
 
 # dependencies
 RUN apk add -U bash fontconfig curl font-noto font-noto-arabic font-noto-hebrew font-noto-cjk java-cacerts && \

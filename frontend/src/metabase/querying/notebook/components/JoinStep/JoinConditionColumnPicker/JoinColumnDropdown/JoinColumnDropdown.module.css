@@ -1,5 +1,6 @@
 .JoinColumnPicker {
   color: var(--mb-color-brand);
+  overflow: visible;
 }
 
 .JoinCellItem {

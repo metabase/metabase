@@ -33,7 +33,7 @@ export function InteractiveEmbeddingSettings() {
 
   return (
     <SettingsPageWrapper title={t`Interactive embedding`}>
-      <UpsellDevInstances source="embedding-page" />
+      <UpsellDevInstances location="embedding-page" />
       <SettingsSection>
         <EmbeddingToggle
           settingKey="enable-embedding-interactive"
