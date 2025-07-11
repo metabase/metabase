@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "stack",
+        "restack"
+      ],
+      "branch": "emb-513-persist-new-iframe-embed-flow-settings-to-user-settings"
+    }
+  ]
 }
