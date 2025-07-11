@@ -742,7 +742,7 @@
 
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
-  {:added "0.35.0", :arglists '([driver query context respond] [driver sql params max-rows context respond])}
+  {:added "0.35.0", :arglists '([driver query context respond])}
   [driver {{sql :query, params :params} :native, :as outer-query} _context respond]
   {:pre [(string? sql) (seq sql)]}
   (let [database (driver-api/database (driver-api/metadata-provider))
