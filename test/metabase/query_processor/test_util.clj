@@ -631,7 +631,5 @@
 
   If the optional `entity_id` is provided, it will be used for the `:ident`s. If missing, a placeholder ident will
   be used instead, as is done for ad-hoc native queries."
-  ([metadata]
-   (metadata->native-form metadata (lib/placeholder-card-entity-id-for-adhoc-query)))
-  ([metadata _card-entity-id]
-   (mapv #(dissoc % :id :ident :source) metadata)))
+  [metadata]
+  (mapv #(dissoc % :id :ident :source) metadata))

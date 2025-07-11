@@ -290,7 +290,7 @@
         (let [card-eid (u/generate-nano-id)
               metadata (-> (mt/mbql-query checkins)
                            qp.preprocess/query->expected-cols
-                           (mt/metadata->native-form card-eid))]
+                           mt/metadata->native-form)]
           (f (cond-> {:dataset_query   (mt/native-query {:native "SELECT * FROM CHECKINS"})
                       :result_metadata metadata
                       :entity_id       card-eid}
@@ -1513,17 +1513,6 @@
         (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id card-id)]
           (is (= [:= [:field (mt/id :venues :name) nil] "Test"]
                  (get-in updated-query [:query :filter]))))))))
-
-(deftest before-update-metadata-idents-normalization-test
-  (testing "normalize-result-metadata-idents is called when type changes"
-    (mt/with-temp [:model/Card {card-id :id} {:type :question
-                                              :dataset_query (mt/mbql-query venues)
-                                              :result_metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))}]
-      (t2/update! :model/Card card-id {:type :model})
-      (let [updated-card (t2/select-one :model/Card :id card-id)]
-        (is (= :model (:type updated-card)))
-        ;; Verify result_metadata was processed for model type
-        (is (some? (:result_metadata updated-card)))))))
 
 (deftest before-update-query-fields-population-test
   (testing "populate-query-fields is called"
