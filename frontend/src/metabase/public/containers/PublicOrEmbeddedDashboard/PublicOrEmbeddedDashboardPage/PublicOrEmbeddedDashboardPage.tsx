@@ -5,15 +5,19 @@ import {
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
-import { getDashboardComplete } from "metabase/dashboard/selectors";
-import { SetTitle } from "metabase/hoc/Title";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { LocaleProvider } from "metabase/public/LocaleProvider";
+import { setErrorPage } from "metabase/redux/app";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { Mode } from "metabase/visualizations/click-actions/Mode";
+import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 
 import { PublicOrEmbeddedDashboard } from "../PublicOrEmbeddedDashboard";
 import { usePublicDashboardEndpoints } from "../WithPublicDashboardEndpoints";
 
 export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
+  const dispatch = useDispatch();
+
   const { location, router } = props;
   const parameterQueryParams = props.location.query;
 
@@ -46,11 +50,11 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
 
   const canWhitelabel = useSelector(getCanWhitelabel);
 
-  const dashboard = useSelector(getDashboardComplete);
-
   return (
-    <>
-      <SetTitle title={dashboard?.name} />
+    <LocaleProvider
+      locale={canWhitelabel ? locale : undefined}
+      shouldWaitForLocale
+    >
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         isFullscreen={isFullscreen}
@@ -69,9 +73,13 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         titled={titled}
         parameterQueryParams={parameterQueryParams}
         cardTitled={true}
-        locale={canWhitelabel ? locale : undefined}
         withFooter={true}
+        getClickActionMode={({ question }) => new Mode(question, PublicMode)}
+        navigateToNewCardFromDashboard={null}
+        onError={(error) => {
+          dispatch(setErrorPage(error));
+        }}
       />
-    </>
+    </LocaleProvider>
   );
 };

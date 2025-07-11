@@ -3,7 +3,11 @@ import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import {
+  SdkLoader,
+  withPublicComponentWrapper,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import { Flex, Icon, Paper, Stack, Text } from "metabase/ui";
 import { METABOT_ERR_MSG } from "metabase-enterprise/metabot/constants";
 
@@ -12,8 +16,13 @@ import { QuestionDetails } from "./QuestionDetails";
 import { QuestionTitle } from "./QuestionTitle";
 
 const MetabotQuestionInner = () => {
+  const { isLocaleLoading } = useLocale();
   const [redirectUrl, setRedirectUrl] = useState<string>("");
   const [messages, setMessages] = useState<string[]>([]);
+
+  if (isLocaleLoading) {
+    return <SdkLoader />;
+  }
 
   return (
     <Flex direction="column" align="center" gap="md">

@@ -6,15 +6,25 @@ import {
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
-import { CollectionBrowserInner } from "embedding-sdk/components/public/CollectionBrowser/CollectionBrowser";
+import {
+  CollectionBrowser,
+  CollectionBrowserInner,
+} from "embedding-sdk/components/public/CollectionBrowser/CollectionBrowser";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
+
+jest.mock("metabase/common/hooks/use-locale", () => ({
+  useLocale: jest.fn(),
+}));
+
+const useLocaleMock = useLocale as jest.Mock;
 
 const BOBBY_TEST_COLLECTION = createMockCollection({
   archived: false,
@@ -36,6 +46,20 @@ const ROOT_TEST_COLLECTION = createMockCollection({
 const TEST_COLLECTIONS = [ROOT_TEST_COLLECTION, BOBBY_TEST_COLLECTION];
 
 describe("CollectionBrowser", () => {
+  it("should render a loader when a locale is loading", async () => {
+    useLocaleMock.mockReturnValue({ isLocaleLoading: true });
+    const state = setupSdkState();
+
+    renderWithSDKProviders(<CollectionBrowser collectionId="root" />, {
+      sdkProviderProps: {
+        authConfig: createMockSdkConfig(),
+      },
+      storeInitialState: state,
+    });
+
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+  });
+
   it("should render", async () => {
     await setup();
 
@@ -76,6 +100,8 @@ async function setup({
 }: {
   props?: Partial<ComponentProps<typeof CollectionBrowserInner>>;
 } = {}) {
+  useLocaleMock.mockReturnValue({ isLocaleLoading: false });
+
   setupCollectionsEndpoints({
     collections: TEST_COLLECTIONS,
     rootCollection: ROOT_TEST_COLLECTION,

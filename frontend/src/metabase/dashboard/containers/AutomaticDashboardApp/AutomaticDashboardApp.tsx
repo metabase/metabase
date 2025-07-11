@@ -1,8 +1,6 @@
-import { usePrevious } from "@mantine/hooks";
 import cx from "classnames";
 import { dissoc } from "icepick";
 import { useEffect, useState } from "react";
-import type { ConnectedProps } from "react-redux";
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
@@ -15,24 +13,23 @@ import Link from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { navigateToNewCardFromDashboard } from "metabase/dashboard/actions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { DashboardTitle } from "metabase/dashboard/components/DashboardTitle";
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import {
-  DashboardData,
-  type DashboardDataReturnedProps,
-} from "metabase/dashboard/hoc/DashboardData";
-import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
-import title from "metabase/hoc/Title";
-import { connect, useDispatch } from "metabase/lib/redux";
+  DashboardContextProvider,
+  useDashboardContext,
+} from "metabase/dashboard/context";
+import { SetTitle } from "metabase/hoc/Title";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { addUndo } from "metabase/redux/undo";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Dashboard, DashboardId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { FixedWidthContainer } from "../../components/Dashboard/DashboardComponents";
 import { useDashboardUrlQuery } from "../../hooks/use-dashboard-url-query";
@@ -45,43 +42,19 @@ const SIDEBAR_W = 346;
 
 type AutomaticDashboardAppRouterProps = WithRouterProps<{ splat: string }>;
 
-const getDashboardId = (
-  _state: State,
-  { params: { splat }, location: { hash } }: AutomaticDashboardAppRouterProps,
-) => `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
-
-const mapStateToProps = (
-  state: State,
-  props: AutomaticDashboardAppRouterProps,
-) => ({
-  metadata: getMetadata(state),
-  dashboardId: getDashboardId(state, props),
-  isHeaderVisible: getIsHeaderVisible(state),
-  tabs: getTabs(state),
-});
-
-const connector = connect(mapStateToProps);
-type ReduxProps = ConnectedProps<typeof connector>;
-
-type AutomaticDashboardAppInnerProps = ReduxProps &
-  AutomaticDashboardAppRouterProps &
-  DashboardDataReturnedProps;
-
-const AutomaticDashboardAppInner = ({
-  dashboard,
-  parameters,
-  parameterValues,
-  setParameterValue,
-  isHeaderVisible,
-  tabs,
-  selectedTabId,
-  slowCards,
-  navigateToNewCardFromDashboard,
-
-  location,
-  router,
-}: AutomaticDashboardAppInnerProps) => {
-  useDashboardUrlQuery(router, location);
+const AutomaticDashboardAppInner = () => {
+  const {
+    dashboard,
+    parameters,
+    parameterValues,
+    setParameterValue,
+    isHeaderVisible,
+    tabs,
+    selectedTabId,
+    slowCards,
+    navigateToNewCardFromDashboard,
+    downloadsEnabled,
+  } = useDashboardContext();
 
   const dispatch = useDispatch();
 
@@ -93,17 +66,11 @@ const AutomaticDashboardAppInner = ({
     null,
   );
 
-  const prevPathName = usePrevious(location.pathname);
-
   useEffect(() => {
-    if (prevPathName !== location.pathname) {
-      // scroll to the top when the pathname changes
-      window.scrollTo(0, 0);
-
-      // clear savedDashboardId if changing to a different dashboard
+    if (dashboard?.id) {
       setSavedDashboardId(null);
     }
-  }, [prevPathName, location.pathname]);
+  }, [dashboard?.id]);
 
   const save = async () => {
     if (dashboard) {
@@ -148,6 +115,8 @@ const AutomaticDashboardAppInner = ({
         "AutomaticDashboard--withSidebar": hasSidebar,
       })}
     >
+      {dashboard && <SetTitle title={dashboard.name} />}
+
       {isHeaderVisible && (
         <div
           className={cx(CS.bgWhite, CS.borderBottom)}
@@ -165,11 +134,9 @@ const AutomaticDashboardAppInner = ({
                     isFixedWidth={dashboard?.width === "fixed"}
                   >
                     <XrayIcon />
-                    <div>
-                      <h2 className={cx(CS.textWrap, CS.mr2)}>
-                        {dashboard && <TransientTitle dashboard={dashboard} />}
-                      </h2>
-                    </div>
+                    <DashboardTitle
+                      className={cx(CS.textWrap, CS.mr2, CS.h2)}
+                    />
                   </FixedWidthContainer>
                   <div
                     className={cx(CS.flex, CS.flexGrow1)}
@@ -191,7 +158,7 @@ const AutomaticDashboardAppInner = ({
                 </div>
                 {dashboard && tabs.length > 1 && (
                   <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
-                    <DashboardTabs dashboardId={dashboard.id} />
+                    <DashboardTabs />
                   </div>
                 )}
               </FixedWidthContainer>
@@ -236,11 +203,11 @@ const AutomaticDashboardAppInner = ({
                   selectedTabId={selectedTabId}
                   slowCards={slowCards}
                   clickBehaviorSidebarDashcard={null}
-                  downloadsEnabled={false}
+                  downloadsEnabled={downloadsEnabled}
                   autoScrollToDashcardId={undefined}
                   reportAutoScrolledToDashcard={_.noop}
                   navigateToNewCardFromDashboard={
-                    navigateToNewCardFromDashboard ?? undefined
+                    navigateToNewCardFromDashboard ?? null
                   }
                 />
               )
@@ -272,17 +239,26 @@ const AutomaticDashboardAppInner = ({
   );
 };
 
-export const AutomaticDashboardAppConnected = _.compose(
-  connector,
-  DashboardData,
-  title(
-    ({ dashboard }: { dashboard: Dashboard }) => dashboard && dashboard.name,
-  ),
-)(AutomaticDashboardAppInner);
+export const AutomaticDashboardApp = ({
+  router,
+  location,
+  params,
+}: AutomaticDashboardAppRouterProps) => {
+  useDashboardUrlQuery(router, location);
 
-const TransientTitle = ({ dashboard }: { dashboard: Dashboard }) =>
-  dashboard.transient_name ? (
-    <span>{dashboard.transient_name}</span>
-  ) : dashboard.name ? (
-    <span>{dashboard.name}</span>
-  ) : null;
+  const dispatch = useDispatch();
+
+  const dashboardId = `/auto/dashboard/${params.splat}${location.hash.replace(/^#?/, "?")}`;
+
+  return (
+    <DashboardContextProvider
+      dashboardId={dashboardId}
+      navigateToNewCardFromDashboard={(opts) =>
+        dispatch(navigateToNewCardFromDashboard(opts))
+      }
+      downloadsEnabled={{ pdf: false, results: false }}
+    >
+      <AutomaticDashboardAppInner />
+    </DashboardContextProvider>
+  );
+};

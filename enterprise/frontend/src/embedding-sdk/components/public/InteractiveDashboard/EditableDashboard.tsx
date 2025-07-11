@@ -1,8 +1,10 @@
 import { useEffect } from "react";
+import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
   DashboardNotFoundError,
+  SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/InteractiveDashboard/EditableDashboard.styled";
@@ -13,18 +15,29 @@ import {
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
+import { useLocale } from "metabase/common/hooks/use-locale";
+import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import {
   DASHBOARD_EDITING_ACTIONS,
   SDK_DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
-import { getIsEditing } from "metabase/dashboard/selectors";
-import { resetErrorPage } from "metabase/redux/app";
+import {
+  DashboardContextProvider,
+  useDashboardContext,
+} from "metabase/dashboard/context";
+import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
+import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
+import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
+import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
 
-import { ConnectedDashboard } from "./ConnectedDashboard";
-import { InteractiveDashboardProvider } from "./context";
+import {
+  type InteractiveDashboardContextType,
+  InteractiveDashboardProvider,
+} from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 /**
@@ -50,6 +63,28 @@ export type EditableDashboardProps = {
 } & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
   DashboardEventHandlersProps;
 
+const EditableDashboardInner = ({
+  drillThroughQuestionProps,
+  onEditQuestion,
+}: Pick<InteractiveDashboardContextType, "onEditQuestion"> &
+  Pick<EditableDashboardProps, "drillThroughQuestionProps">) => {
+  const { isEditing } = useDashboardContext();
+
+  const dashboardActions = isEditing
+    ? DASHBOARD_EDITING_ACTIONS
+    : SDK_DASHBOARD_VIEW_ACTIONS;
+
+  return (
+    <InteractiveDashboardProvider
+      plugins={drillThroughQuestionProps?.plugins}
+      onEditQuestion={onEditQuestion}
+      dashboardActions={dashboardActions}
+    >
+      <Dashboard />
+    </InteractiveDashboardProvider>
+  );
+};
+
 /**
  * A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard.
  *
@@ -58,7 +93,7 @@ export type EditableDashboardProps = {
  * @param props
  */
 export const EditableDashboard = ({
-  dashboardId: initialDashboardId,
+  dashboardId: dashboardIdProp,
   initialParameters = {},
   withDownloads = false,
   drillThroughQuestionHeight,
@@ -73,7 +108,14 @@ export const EditableDashboard = ({
     plugins: plugins,
   },
 }: EditableDashboardProps) => {
+  const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
+    onLoad,
+    onLoadWithoutCards,
+  });
+
+  const { isLocaleLoading } = useLocale();
   const {
+    displayOptions,
     ref,
     isFullscreen,
     onFullscreenChange,
@@ -83,7 +125,7 @@ export const EditableDashboard = ({
     isLoading,
     dashboardId,
   } = useSdkDashboardParams({
-    dashboardId: initialDashboardId,
+    dashboardId: dashboardIdProp,
     withDownloads,
     withTitle: true,
     hiddenParameters: undefined,
@@ -99,11 +141,6 @@ export const EditableDashboard = ({
     dashboardId,
   });
 
-  const isEditing = useSdkSelector(getIsEditing);
-  const dashboardActions = isEditing
-    ? DASHBOARD_EDITING_ACTIONS
-    : SDK_DASHBOARD_VIEW_ACTIONS;
-
   const errorPage = useSdkSelector(getErrorPage);
   const dispatch = useSdkDispatch();
   useEffect(() => {
@@ -112,45 +149,79 @@ export const EditableDashboard = ({
     }
   }, [dispatch, dashboardId]);
 
-  if (isLoading) {
-    return <SdkLoader />;
+  if (isLocaleLoading || isLoading) {
+    return (
+      <StyledPublicComponentWrapper className={className} style={style}>
+        <SdkLoader />
+      </StyledPublicComponentWrapper>
+    );
   }
 
   if (!dashboardId || errorPage?.status === 404) {
-    return <DashboardNotFoundError id={initialDashboardId} />;
+    return (
+      <StyledPublicComponentWrapper className={className} style={style}>
+        <DashboardNotFoundError id={dashboardIdProp} />
+      </StyledPublicComponentWrapper>
+    );
+  }
+
+  if (errorPage) {
+    return (
+      <StyledPublicComponentWrapper
+        className={className}
+        style={style}
+        ref={ref}
+      >
+        <SdkError
+          message={errorPage.data?.message ?? t`Something's gone wrong`}
+        />
+      </StyledPublicComponentWrapper>
+    );
   }
 
   return (
     <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
-      {adhocQuestionUrl ? (
-        <InteractiveAdHocQuestion
-          questionPath={adhocQuestionUrl}
-          onNavigateBack={onNavigateBackToDashboard}
-          {...drillThroughQuestionProps}
-        />
-      ) : (
-        <InteractiveDashboardProvider
-          plugins={plugins}
-          onEditQuestion={onEditQuestion}
-          dashboardActions={dashboardActions}
-        >
-          <ConnectedDashboard
-            dashboardId={dashboardId}
-            isLoading={isLoading}
-            parameterQueryParams={initialParameters}
-            refreshPeriod={refreshPeriod}
-            onRefreshPeriodChange={onRefreshPeriodChange}
-            setRefreshElapsedHook={setRefreshElapsedHook}
-            isFullscreen={isFullscreen}
-            onFullscreenChange={onFullscreenChange}
-            noLoaderWrapper
-            onNavigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
-            downloadsEnabled={withDownloads}
-            onLoad={onLoad}
-            onLoadWithoutCards={onLoadWithoutCards}
+      <DashboardContextProvider
+        dashboardId={dashboardId}
+        parameterQueryParams={initialParameters}
+        refreshPeriod={refreshPeriod}
+        onRefreshPeriodChange={onRefreshPeriodChange}
+        setRefreshElapsedHook={setRefreshElapsedHook}
+        isFullscreen={isFullscreen}
+        onFullscreenChange={onFullscreenChange}
+        navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
+        downloadsEnabled={displayOptions.downloadsEnabled}
+        background={displayOptions.background}
+        bordered={displayOptions.bordered}
+        hideParameters={displayOptions.hideParameters}
+        titled={displayOptions.titled}
+        cardTitled={displayOptions.cardTitled}
+        theme={displayOptions.theme}
+        onLoad={handleLoad}
+        onLoadWithoutCards={handleLoadWithoutCards}
+        onError={(error) => dispatch(setErrorPage(error))}
+        getClickActionMode={({ question }) =>
+          getEmbeddingMode({
+            question,
+            queryMode: EmbeddingSdkMode,
+            plugins:
+              drillThroughQuestionProps.plugins as InternalMetabasePluginsConfig,
+          })
+        }
+      >
+        {adhocQuestionUrl ? (
+          <InteractiveAdHocQuestion
+            questionPath={adhocQuestionUrl}
+            onNavigateBack={onNavigateBackToDashboard}
+            {...drillThroughQuestionProps}
           />
-        </InteractiveDashboardProvider>
-      )}
+        ) : (
+          <EditableDashboardInner
+            drillThroughQuestionProps={drillThroughQuestionProps}
+            onEditQuestion={onEditQuestion}
+          />
+        )}
+      </DashboardContextProvider>
     </StyledPublicComponentWrapper>
   );
 };
