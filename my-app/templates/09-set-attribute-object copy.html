@@ -1,0 +1,22 @@
+<script src="http://localhost:3000/app/embed.js"></script>
+
+<metabase-config
+  instance-url="http://localhost:3000"
+  use-existing-user-session="true"
+></metabase-config>
+
+<button id="change-via-attribute">change via attribute</button>
+<script>
+  document
+    .querySelector("#change-via-attribute")
+    .addEventListener("click", () => {
+      const embed = document.getElementById("embed");
+      embed.setAttribute("theme", { colors: { brand: "orange" } });
+    });
+</script>
+
+<metabase-dashboard
+  dashboard-id="1"
+  id="embed"
+  theme='{"colors": {"brand": "red"}}'
+></metabase-dashboard>

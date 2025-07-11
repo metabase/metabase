@@ -19,8 +19,19 @@ import type {
   SdkIframeEmbedTagMessage,
   SdkIframeEmbedTagSettings,
 } from "./types/embed";
+import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
 
 const EMBEDDING_ROUTE = "embed/sdk/v1";
+
+// BEGIN addition: global config & helper
+const _globalEmbedConfig: Partial<SdkIframeEmbedSettings> = {};
+
+export const defineMetabaseConfig = (
+  config: Partial<SdkIframeEmbedSettings>,
+) => {
+  Object.assign(_globalEmbedConfig, config);
+};
+// END addition
 
 class MetabaseEmbed {
   static readonly VERSION = "1.1.0";
@@ -56,12 +67,29 @@ class MetabaseEmbed {
       }
     }
 
+    // Merge incoming settings regardless of readiness so they're applied once the iframe signals ready.
+    const allowedSettings = Object.fromEntries(
+      Object.entries(settings).filter(([key]) =>
+        ALLOWED_EMBED_SETTING_KEYS.includes(key as AllowedEmbedSettingKey),
+      ),
+    );
+
+    // Update local cache first.
+    this._settings = { ...this._settings, ...allowedSettings };
+
+    // If the iframe isn't ready yet, don't send the message now.
     if (!this._isEmbedReady) {
-      warn("embed settings must be ready before updating the settings");
       return;
     }
 
-    this._setEmbedSettings(settings);
+    // Iframe is ready – propagate only the delta (allowedSettings)
+    if (Object.keys(allowedSettings).length > 0) {
+      this._validateEmbedSettings(this._settings);
+      this._sendMessage(
+        "metabase.embed.setSettings",
+        this._settings as SdkIframeEmbedSettings,
+      );
+    }
   }
 
   public destroy() {
@@ -125,6 +153,8 @@ class MetabaseEmbed {
     this._settings = { ...this._settings, ...allowedSettings };
 
     this._validateEmbedSettings(this._settings);
+    // don't remove this! it's for debug
+    console.log(">>>>>>this._settings", this._settings);
     this._sendMessage("metabase.embed.setSettings", this._settings);
   }
 
@@ -334,34 +364,6 @@ const warn = (...messages: unknown[]) =>
 
 // BEGIN web-component wrapper for convenient usage via <metabase-embed> tag
 
-// Convert kebab-case attribute names to their camelCase setting keys.
-const attributeToSettingKey = (attr: string): string =>
-  attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-
-// Naïve parsing of attribute values -> appropriate JS types (number, boolean, string)
-const parseAttributeValue = (value: string | null): unknown => {
-  if (value === null) {
-    return undefined;
-  }
-
-  // Boolean attributes:
-  if (value === "" || value === "true") {
-    return true;
-  }
-  if (value === "false") {
-    return false;
-  }
-
-  // Numeric attributes (e.g. ids)
-  const num = Number(value);
-  // Preserve leading zeros etc. by ensuring value is numeric and not NaN
-  if (!Number.isNaN(num) && /^\d+(\.\d+)?$/.test(value)) {
-    return num;
-  }
-
-  return value;
-};
-
 class MetabaseEmbedElement extends HTMLElement {
   private _embed: MetabaseEmbed | null = null;
 
@@ -381,7 +383,69 @@ class MetabaseEmbedElement extends HTMLElement {
       "api-key",
       "preferred-auth-method",
       "iframe-class-name",
+      "initial-parameters",
+      "theme",
     ];
+  }
+
+  // Property <-> attribute reflection for complex settings
+  /**
+   * An array of parameter ids that will be passed to the embedded dashboard.
+   *
+   * Example: element.initialParameters = ["param_1", "param_2"]
+   * This automatically serializes the value to JSON and sets the
+   * `initial-parameters` attribute so the attributeChangedCallback can handle
+   * updating the underlying embed instance.
+   */
+  get initialParameters(): Record<string, unknown> | undefined {
+    const attr = this.getAttribute("initial-parameters");
+    if (attr === null) {
+      return undefined;
+    }
+    try {
+      return JSON.parse(attr) as Record<string, unknown>;
+    } catch (error) {
+      console.error(
+        "[metabase.embed.error] Failed to parse initial-parameters attribute as JSON",
+        error,
+      );
+      return undefined;
+    }
+  }
+
+  set initialParameters(value: Record<string, unknown> | undefined) {
+    if (value === undefined) {
+      this.removeAttribute("initial-parameters");
+      return;
+    }
+
+    // Serialize to JSON for consistency with attribute parsing logic
+    this.setAttribute("initial-parameters", JSON.stringify(value));
+  }
+
+  get theme(): Record<string, unknown> | undefined {
+    const attr = this.getAttribute("theme");
+    if (attr === null) {
+      return undefined;
+    }
+    try {
+      return JSON.parse(attr) as Record<string, unknown>;
+    } catch (error) {
+      console.error(
+        "[metabase.embed.error] Failed to parse theme attribute as JSON",
+        error,
+      );
+      return undefined;
+    }
+  }
+
+  set theme(value: Record<string, unknown> | undefined) {
+    console.log("setting theme", value);
+    if (value === undefined) {
+      this.removeAttribute("theme");
+      return;
+    }
+    this.setAttribute("theme", JSON.stringify(value));
   }
 
   connectedCallback() {
@@ -395,6 +459,14 @@ class MetabaseEmbedElement extends HTMLElement {
       const key = attributeToSettingKey(name);
       settings[key] = parseAttributeValue(value);
     });
+
+    // BEGIN addition: apply global defaults
+    Object.entries(_globalEmbedConfig).forEach(([key, value]) => {
+      if (settings[key] === undefined) {
+        settings[key] = value;
+      }
+    });
+    // END addition
 
     // Fallback: if no instanceUrl attribute on element, look for it on the embedding script tag.
     if (!settings.instanceUrl) {
@@ -485,6 +557,28 @@ if (typeof window !== "undefined" && !customElements.get("metabase-embed")) {
   customElements.define("metabase-embed", MetabaseEmbedElement);
 }
 
+// BEGIN addition: <metabase-config> element to define global config via HTML tag
+class MetabaseConfigElement extends HTMLElement {
+  connectedCallback() {
+    const settings: Record<string, unknown> = {};
+    Array.from(this.attributes).forEach(({ name, value }) => {
+      const key = attributeToSettingKey(name);
+      settings[key] = parseAttributeValue(value);
+    });
+
+    try {
+      defineMetabaseConfig(settings as Partial<SdkIframeEmbedSettings>);
+    } catch (error) {
+      console.error("[metabase.embed.error]", error);
+    }
+  }
+}
+
+if (typeof window !== "undefined" && !customElements.get("metabase-config")) {
+  customElements.define("metabase-config", MetabaseConfigElement);
+}
+// END addition
+
 // Register aliases for convenience without reusing the same constructor (required by the spec)
 if (typeof window !== "undefined") {
   ["metabase-question", "metabase-dashboard"].forEach((tag) => {
@@ -504,8 +598,17 @@ if (typeof window !== "undefined") {
     // Preserve any existing exports placed there earlier.
     ...(window as any)["metabase.embed"],
     MetabaseEmbed,
+    defineMetabaseConfig,
   };
 }
 // END web-component wrapper
 
 export { MetabaseEmbed, MetabaseEmbedElement };
+
+// todo:
+/**
+ * - decide if we want to hoist up the shared configs not related to the individual embed
+ * - decide how to define themes etc
+ * - decide about plugins/callbacks
+ * - what to do with initialParams etc
+ */
