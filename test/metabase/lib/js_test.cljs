@@ -630,3 +630,112 @@
                         :keyword "too"
                         :value   nil}]
       (is (js= expected (lib.js/display-info->js input))))))
+
+(def ^:private js-created-at
+  #js {:active                  true
+       :base_type               "type/DateTime"
+       :breakout?               true
+       :database_type           "TIMESTAMP"
+       :deduplicated-name       "CREATED_AT"
+       :description             "CREATED_AT"
+       :desired-column-alias    "CREATED_AT"
+       :effective_type          "type/DateTime"
+       :field_ref               #js ["field" (meta/id :orders :created-at)
+                                     #js {:base-type     "type/DateTime"
+                                          :temporal-unit "month"}]
+       :id                      (meta/id :orders :created-at)
+       :inherited_temporal_unit "month"
+       :name                    "CREATED_AT"
+       :original-name           "CREATED_AT"
+       :source                  "breakout"
+       :source-column-alias     "CREATED_AT"
+       :table_id                (meta/id :orders)
+       :temporal-unit           "month"
+       :unit                    "month"})
+
+(def ^:private js-cat
+  #js {:base_type            "type/Text"
+       :breakout?            true
+       :database_type        "CHARACTER VARYING"
+       :deduplicated-name    "Cat"
+       :desired-column-alias "Cat"
+       :effective_type       "type/Text"
+       :field_ref            #js ["expression" "Cat"]
+       :name                 "Cat"
+       :original-name        "Cat"
+       :source               "breakout"
+       :source-column-alias  "Cat"})
+
+(def ^:private js-count
+  #js {:base_type            "type/BigInteger"
+       :database_type        "BIGINT"
+       :deduplicated-name    "count"
+       :desired-column-alias "count"
+       :effective_type       "type/BigInteger"
+       :field_ref            #js ["aggregation" 0]
+       :name                 "count"
+       :original-name        "count"
+       :source               "aggregation"
+       :source-column-alias  "count"})
+
+(deftest ^:parallel js-dimensions-columns-parsing-test
+  (testing "JS DatasetColumns are passed to lib.js/available-drill-thrus and parsed into CLJS lib :metadata/columns"
+    (let [base     (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          cols     (lib/expressionable-columns base -1)
+          category (m/find-first #(= (:name %) "CATEGORY") cols)
+          base2    (lib/expression base "Cat" category)
+          cat-col  (m/find-first #(= (:name %) "Cat") (lib/breakoutable-columns base2 -1))
+          query    (-> base2
+                       (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                       (lib/breakout cat-col)
+                       (lib/aggregate (lib/count)))
+          [count-col] (lib/aggregations-metadata query)
+          query       (lib/order-by query -1 count-col :desc)]
+      (is (=? [{:column    {:lib/type                         :metadata/column
+                            :base-type                        :type/DateTime
+                            :effective-type                   :type/DateTime
+                            :id                               (meta/id :orders :created-at)
+                            :table-id                         (meta/id :orders)
+                            :name                             "CREATED_AT"
+                            :lib/deduplicated-name            "CREATED_AT"
+                            :lib/original-name                "CREATED_AT"
+                            :lib/source-column-alias          "CREATED_AT"
+                            :lib/desired-column-alias         "CREATED_AT"
+                            :metabase.lib.field/temporal-unit :month
+                            :inherited-temporal-unit          :month
+                            :lib/source                       nil   ;; Breakouts don't have a source.
+                            :lib/breakout?                    true
+                            :field-ref                        #(js= % #js ["field" (meta/id :orders :created-at)
+                                                                           #js {:base-type     "type/DateTime"
+                                                                                :temporal-unit "month"}])}
+                :column-ref [:field {:base-type     :type/DateTime
+                                     :temporal-unit :month
+                                     :lib/uuid      string?}
+                             (meta/id :orders :created-at)]
+                :value      "2025-03-01T00:00:00Z"}
+               {:column    {:lib/type                 :metadata/column
+                            :base-type                :type/Text
+                            :effective-type           :type/Text
+                            :name                     "Cat"
+                            :lib/deduplicated-name    "Cat"
+                            :lib/original-name        "Cat"
+                            :lib/source-column-alias  "Cat"
+                            :lib/desired-column-alias "Cat"
+                            :lib/source               nil   ;; Breakouts don't have a source.
+                            :lib/breakout?            true
+                            :field-ref                #(js= % #js ["expression" "Cat"])}
+                :column-ref [:expression {:lib/uuid string?} "Cat"]
+                :value      "Widget"}]
+              (->> (lib.js/available-drill-thrus query -1 #_card-id 123 #_column nil #_value js/undefined
+                                                 #_row #js [#js {:col   js-created-at
+                                                                 :value "2025-03-01T00:00:00Z"}
+                                                            #js {:col   js-cat
+                                                                 :value "Widget"}
+                                                            #js {:col   js-count
+                                                                 :value 152}]
+                                                 #_dimensions #js [#js {:column js-created-at
+                                                                        :value  "2025-03-01T00:00:00Z"}
+                                                                   #js {:column js-cat
+                                                                        :value  "Widget"}])
+                   (m/find-first (comp #{:drill-thru/underlying-records} :type))
+                   :dimensions))))))

@@ -220,12 +220,18 @@
 
 (defmethod rename-key-fn :field
   [_object-type]
-  {:source          :lib/source
-   :unit            :metabase.lib.field/temporal-unit
-   :expression-name :lib/expression-name
-   :binning-info    :metabase.lib.field/binning
-   :dimensions      ::dimension
-   :values          ::field-values})
+  (merge
+    ;; Basic :foo -> :lib/foo mapping, since this is a common case
+   (into {} (map (juxt keyword #(keyword "lib" %)))
+         ["source" "expression-name" "breakout?"
+          "deduplicated-name" "original-name"
+          "desired-column-alias" "source-column-alias"])
+    ;; Custom remaps
+   {:unit              :metabase.lib.field/temporal-unit
+    :temporal-unit     :metabase.lib.field/temporal-unit
+    :binning-info      :metabase.lib.field/binning
+    :dimensions        ::dimension
+    :values            ::field-values}))
 
 (defn- parse-field-id
   [id]
