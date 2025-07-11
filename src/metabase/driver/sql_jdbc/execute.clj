@@ -855,11 +855,14 @@
   is closed and we're in [[driver/do-with-resilient-connection]] context,
   attempts to reuse an existing reconnection or establish a new one.
 
+  The `:force-local?` option forces creation of a new local connection even if
+  the current connection is still open.
+
   Not thread-safe."
 
-  [driver ^Connection connection]
+  ^Connection [driver ^Connection connection & {:keys [force-local?]}]
   (cond
-    (not (.isClosed connection))
+    (and (not force-local?) (not (.isClosed connection)))
     connection
 
     (not (thread-bound? #'*resilient-connection-ctx*))
@@ -870,7 +873,10 @@
 
     :else
     (binding [*connection-recursion-depth* -1]
-      (let [{:keys [db]} *resilient-connection-ctx*
-            conn (do-with-connection-with-options driver db {:keep-open? true} identity)]
-        (set! *resilient-connection-ctx* {:db db :conn conn})
-        conn))))
+      (try
+        (let [{:keys [db]} *resilient-connection-ctx*
+              conn (do-with-connection-with-options driver db {:keep-open? true} identity)]
+          (set! *resilient-connection-ctx* {:db db :conn conn})
+          conn)
+        (catch Throwable _
+          connection)))))

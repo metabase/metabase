@@ -84,7 +84,12 @@
   [driver ^Connection conn table-schema table-name]
   ;; Query completes = we have SELECT privileges
   ;; Query throws some sort of no permissions exception = no SELECT privileges
-  (let [sql-args (simple-select-probe-query driver table-schema table-name)]
+  (let [sql-args (simple-select-probe-query driver table-schema table-name)
+        ;; we must attempt to use a connection local to [[have-select-privilege?]],
+        ;; else if the connection closes, even if we manage to reopen it in this local context
+        ;; outer unrealized resultsets (like the [[all-schemas]] results) may get
+        ;; unrecoverably closed
+        conn (sql-jdbc.execute/try-ensure-open-conn! driver conn :force-local? true)]
     (log/debugf "have-select-privilege? sql-jdbc: Checking for SELECT privileges for %s with query\n%s"
                 (str (when table-schema
                        (str (pr-str table-schema) \.))
@@ -92,8 +97,7 @@
                 (pr-str sql-args))
     (try
       (log/debug "have-select-privilege? sql-jdbc: Attempt to execute probe query")
-      (let [conn (sql-jdbc.execute/try-ensure-open-conn! driver conn)]
-        (execute-select-probe-query driver conn sql-args))
+      (execute-select-probe-query driver conn sql-args)
       (log/infof "%s: SELECT privileges confirmed"
                  (str (when table-schema
                         (str (pr-str table-schema) \.))
