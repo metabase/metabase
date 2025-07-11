@@ -30,7 +30,7 @@ type Positionable =
   | undefined
   | null;
 
-function position(x: Positionable):
+export function position(x: Positionable):
   | {
       pos?: number;
       len?: number;
