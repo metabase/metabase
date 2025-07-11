@@ -1,9 +1,11 @@
 import cx from "classnames";
 import { useMount } from "react-use";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
+import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import {
   Box,
   Flex,
@@ -44,6 +46,7 @@ type UpsellBannerPropsBase = {
   large?: boolean;
   children: React.ReactNode;
   style?: React.CSSProperties;
+  onClick?: () => void;
 };
 
 export type UpsellBannerProps =
@@ -59,6 +62,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   location,
   large,
   children,
+  onClick,
   ...props
 }: UpsellBannerProps) => {
   const url = useUpsellLink({
@@ -98,23 +102,54 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       </Flex>
 
       <Flex align="center" gap="md">
-        {buttonLink !== undefined ? (
-          <ExternalLink
-            onClickCapture={() => trackUpsellClicked({ location, campaign })}
-            href={url}
-            className={S.UpsellCTALink}
-          >
-            {buttonText}
-          </ExternalLink>
-        ) : (
-          <Link
-            onClickCapture={() => trackUpsellClicked({ location, campaign })}
-            to={internalLink}
-            className={S.UpsellCTALink}
-          >
-            {buttonText}
-          </Link>
-        )}
+        {match({ onClick, buttonLink, internalLink })
+          .with(
+            { onClick: P.nonNullable, buttonLink: P.any, internalLink: P.any },
+            (args) => (
+              <UnstyledButton
+                onClick={() => {
+                  trackUpsellClicked({ location, campaign });
+                  args.onClick();
+                }}
+                className={S.UpsellCTALink}
+              >
+                {buttonText}
+              </UnstyledButton>
+            ),
+          )
+          .with(
+            { onClick: P.any, buttonLink: P.nonNullable, internalLink: P.any },
+            () => (
+              <ExternalLink
+                onClickCapture={() =>
+                  trackUpsellClicked({ location, campaign })
+                }
+                href={url}
+                className={S.UpsellCTALink}
+              >
+                {buttonText}
+              </ExternalLink>
+            ),
+          )
+          .with(
+            {
+              onClick: P.any,
+              buttonLink: P.any,
+              internalLink: P.nonNullable,
+            },
+            (args) => (
+              <Link
+                onClickCapture={() =>
+                  trackUpsellClicked({ location, campaign })
+                }
+                to={args.internalLink}
+                className={S.UpsellCTALink}
+              >
+                {buttonText}
+              </Link>
+            ),
+          )
+          .otherwise(() => null)}
 
         {dismissible && (
           <UnstyledButton
@@ -131,6 +166,16 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   );
 };
 
+function UpsellBannerWrapper(props: UpsellBannerProps) {
+  const { onClick, ...rest } = props;
+  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFow({
+    campaign: props.campaign,
+    location: props.location,
+  });
+
+  return <_UpsellBanner {...rest} onClick={onClick ?? triggerUpsellFlow} />;
+}
+
 export const UpsellBanner = UpsellWrapperDismissible(
-  UpsellWrapper(_UpsellBanner),
+  UpsellWrapper(UpsellBannerWrapper),
 );
