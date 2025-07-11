@@ -46,11 +46,6 @@
   [query]
   (update query :constraints (comp ensure-valid-constraints merge-default-constraints)))
 
-(defn- add-card-entity-id
-  "Userland queries are always associated with a `:card-entity-id`, so e generate and add a placeholder when missing."
-  [query]
-  (assoc-in query [:info :card-entity-id] (lib/placeholder-card-entity-id-for-adhoc-query)))
-
 (defn- should-add-userland-constraints? [query]
   (and (get-in query [:middleware :userland-query?])
        (get-in query [:middleware :add-default-userland-constraints?])))
@@ -61,6 +56,4 @@
   [query]
   (let [userland? (should-add-userland-constraints? query)]
     (cond-> query
-      userland?                                  add-constraints
-      (and userland?
-           (-> query :info :card-entity-id not)) add-card-entity-id)))
+      userland? add-constraints)))

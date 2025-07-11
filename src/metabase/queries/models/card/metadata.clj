@@ -17,8 +17,6 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(declare ^:private fix-incoming-idents)
-
 (mr/def ::future
   [:fn {:error/message "A future"} future?])
 
@@ -57,8 +55,6 @@ saved later when it is ready."
         result    (deref futur metadata-sync-wait-ms ::timed-out)
         combiner  (fn [result]
                     (-> result
-                        (fix-incoming-idents {:type      :model
-                                              :entity_id entity-id})
                         (qp.util/combine-metadata metadata')))]
     (if (= result ::timed-out)
       {:metadata-future (future
@@ -120,9 +116,7 @@ saved later when it is ready."
             valid-metadata?))
       (do
         (log/debug "Reusing provided metadata")
-        ;; TODO: Passing this synthetic `card` is pretty hacky. Better to refactor `fix-incoming-idents`.
-        {:metadata (fix-incoming-idents metadata {:entity_id entity-id
-                                                  :type      (if model? :model :question)})})
+        {:metadata metadata})
 
       ;; frontend always sends query. But sometimes programatic don't (cypress, API usage). Returning an empty channel
       ;; means the metadata won't be updated at all.
@@ -211,16 +205,6 @@ saved later when it is ready."
                  (->> (remove (comp old-names :name) new-metadata)
                       (map update-fn))))))
 
-(defn fix-incoming-idents
-  "Result metadata included with an insert or update should already be in its final form, but might:
-  - Have placeholders, if we didn't have an `:entity_id` for a new card when the query ran
-  - Be for an inner query, not for a model, and need to be wrapped with the [[lib/model-ident]]."
-  [results-metadata card]
-  ;; It's important that the placeholders are handled first, otherwise the check for double-wrapping will fail.
-  (into []
-        (map #(m/update-existing % :ident lib/replace-placeholder-idents (:entity_id card)))
-        results-metadata))
-
 (defn populate-result-metadata
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
   metadata from the query."
@@ -233,14 +217,14 @@ saved later when it is ready."
           (not (contains? changes :dataset_query)))
      (do
        (log/debug "Not inferring result metadata for Card: query was not updated")
-       (m/update-existing card :result_metadata fix-incoming-idents card))
+       card)
 
      ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
      (or (and (not-empty changes) (contains? changes :result_metadata))
          (and (empty? changes) metadata))
      (do
        (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
-       (update card :result_metadata fix-incoming-idents card))
+       card)
 
      ;; query has changed (or new Card) and this is a native query => set metadata to nil
      ;;
