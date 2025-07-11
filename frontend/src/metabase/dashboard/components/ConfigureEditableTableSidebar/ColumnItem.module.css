@@ -1,0 +1,10 @@
+/* copied from frontend/src/metabase/visualizations/components/settings/ColumnItem/ColumnItem.module.css */
+
+.ColumnItemRoot.dragging {
+  cursor: grabbing;
+  pointer-events: auto !important;
+}
+
+.ColumnItemRoot.Draggable:hover .ColumnItemDragHandle {
+  color: var(--mb-color-brand);
+}

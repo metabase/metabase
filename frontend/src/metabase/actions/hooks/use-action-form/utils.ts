@@ -108,7 +108,7 @@ export const getOrGenerateFieldSettings = (
   params: Parameter[],
   fields?: Record<
     ParameterId,
-    Partial<FieldSettings> & Pick<FieldSettings, "id" | "hidden">
+    Partial<FieldSettings> & Pick<FieldSettings, "id" | "hidden" | "readonly">
   >,
 ) => {
   if (!fields) {
@@ -124,8 +124,8 @@ export const getOrGenerateFieldSettings = (
 
     fieldValues.forEach((fieldValue) => {
       const singleFieldSettings = generatedFieldSettings[fieldValue.id];
-      // this is the only field we sync with BE
       singleFieldSettings.hidden = fieldValue.hidden;
+      singleFieldSettings.readonly = fieldValue.readonly;
     });
 
     return generatedFieldSettings;

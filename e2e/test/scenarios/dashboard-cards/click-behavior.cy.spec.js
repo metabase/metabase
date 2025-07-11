@@ -2187,12 +2187,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           ],
           expressions: ["Net"],
           filters: [
-            "Product → Title is Doohickey",
-            "Product → Vendor is Doohickey",
-            "ID is 7021",
-            "Net is equal to -80",
-            "Reviews - Product → Reviewer is Doohickey",
             "User → Longitude is equal to -80",
+            "Product → Vendor is Doohickey",
+            "Reviews - Product → Reviewer is Doohickey",
+            "ID is 7021",
+            "Product → Title is Doohickey",
+            "Net is equal to -80",
           ],
           aggregations: ["Count", "Sum of Total"],
           breakouts: [

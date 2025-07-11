@@ -7,6 +7,7 @@ import type {
   ActionDashboardCard,
   ActionParameterValue,
   ActionParametersMapping,
+  DataGridWritebackAction,
   ParameterId,
   ParameterValueOrArray,
   ParametersForActionExecution,
@@ -22,7 +23,7 @@ function formatParameterValue(value: ParameterValueOrArray) {
 
 function prepareParameter(
   mapping: ActionParametersMapping,
-  action: WritebackAction,
+  action: DataGridWritebackAction,
   parameterValues: { [id: string]: ParameterValueOrArray },
 ): ActionParameterTuple | undefined {
   if (!action?.parameters?.length) {

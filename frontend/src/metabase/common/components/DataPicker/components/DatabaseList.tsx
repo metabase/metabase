@@ -3,15 +3,15 @@ import { useMemo } from "react";
 import type { Database } from "metabase-types/api";
 
 import { ItemList, ListBox } from "../../EntityPicker";
-import type { DataPickerFolderItem } from "../types";
+import type { DatabaseItem } from "../types";
 
 interface Props {
   databases: Database[] | undefined;
   error: unknown;
   isCurrentLevel: boolean;
   isLoading: boolean;
-  selectedItem: DataPickerFolderItem | null;
-  onClick: (item: DataPickerFolderItem) => void;
+  selectedItem: DatabaseItem | null;
+  onClick: (item: DatabaseItem) => void;
 }
 
 const isFolder = () => true;
@@ -24,7 +24,7 @@ export const DatabaseList = ({
   selectedItem,
   onClick,
 }: Props) => {
-  const items: DataPickerFolderItem[] | undefined = useMemo(() => {
+  const items: DatabaseItem[] | undefined = useMemo(() => {
     return databases?.map((database) => ({
       id: database.id,
       model: "database",

@@ -1,0 +1,18 @@
+.filteredResult {
+  overflow: hidden;
+  width: 100%;
+  /* Providing % width for the second column to allow ellipsis. */
+  grid-template-columns: min-content minmax(90%, 1fr) !important;
+
+  &:hover {
+    color: var(--mb-color-text-white);
+
+    .tableLocationGroup {
+      color: inherit;
+    }
+  }
+}
+
+.tableLocationGroup {
+  color: var(--mb-color-text-light);
+}

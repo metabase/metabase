@@ -18,7 +18,7 @@ const MODEL_NAME = "Test Action Model";
     () => {
       beforeEach(() => {
         cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
-        cy.intercept("GET", "/api/action").as("getActions");
+        cy.intercept("GET", "/api/action/v2/tmp-action").as("getActions");
         cy.intercept("PUT", "/api/action/*").as("updateAction");
         cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
 
@@ -27,9 +27,7 @@ const MODEL_NAME = "Test Action Model";
           "/api/dashboard/*/dashcard/*/execute?parameters=*",
         ).as("prefetchValues");
 
-        cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
-          "executeAction",
-        );
+        cy.intercept("POST", "/api/action/v2/execute").as("executeAction");
       });
 
       H.describeWithSnowplow("adding and executing actions", () => {
@@ -1028,9 +1026,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.wait("@executeAction").then((interception) => {
             expect(
-              Object.values(interception.request.body.parameters)
-                .sort()
-                .join(","),
+              Object.values(interception.request.body.input).sort().join(","),
             ).to.equal("1,2020-01-01");
           });
 
@@ -1056,14 +1052,12 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
       modelName: MODEL_NAME,
     });
 
-    cy.intercept("GET", "/api/action").as("getActions");
+    cy.intercept("GET", "/api/action/v2/tmp-action").as("getActions");
     cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
     cy.intercept("GET", "/api/dashboard/*/dashcard/*/execute?parameters=*").as(
       "prefetchValues",
     );
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
-      "executeAction",
-    );
+    cy.intercept("POST", "/api/action/v2/execute").as("executeAction");
   });
 
   it("should show detailed form errors for constraint violations when executing model actions", () => {
@@ -1107,7 +1101,7 @@ describe(
   () => {
     beforeEach(() => {
       cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
-      cy.intercept("GET", "/api/action").as("getActions");
+      cy.intercept("GET", "/api/action/v2/tmp-action").as("getActions");
       cy.intercept("PUT", "/api/action/*").as("updateAction");
       cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
 
@@ -1227,6 +1221,7 @@ describe(
         waitForValidActions();
 
         cy.findByRole("dialog").within(() => {
+          cy.findByText("Models").click();
           cy.findByText(MODEL_NAME).click();
           cy.findByText(ACTION_NAME).click();
 
@@ -1289,6 +1284,7 @@ function createDashboardWithActionButton({
   waitForValidActions();
 
   cy.findByRole("dialog").within(() => {
+    cy.findByText("Models").click();
     cy.findByText(modelName).click();
     cy.findByText(actionName).click();
   });
@@ -1376,7 +1372,9 @@ function getActionParametersInputModal() {
 
 function waitForValidActions() {
   cy.wait("@getActions").then(({ response }) => {
-    const { body: actions } = response;
+    const {
+      body: { actions },
+    } = response;
 
     actions.forEach((action) => {
       expect(action.parameters).to.have.length.gt(0);

@@ -22,5 +22,6 @@ export const useEscapeToCloseModal = (
       handler(e);
     },
     { options: opts },
+    [handler],
   );
 };

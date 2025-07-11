@@ -1,0 +1,5 @@
+.filtersContainer {
+  background-color: color-mix(in srgb, var(--mb-color-filter) 20%, transparent);
+  border-radius: 0.5rem;
+  padding: 1rem 1.5rem;
+}

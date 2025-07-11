@@ -1,0 +1,1 @@
+export { CreateOrEditTableNotificationModal } from "./CreateOrEditTableNotificationModal";

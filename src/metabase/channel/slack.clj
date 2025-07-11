@@ -96,8 +96,8 @@
 
 (defn- oauth-scopes
   "Returns the set of scopes associated with the current token"
-  []
-  (let [{::keys [headers]} (GET "auth.test")
+  [auth-test-response]
+  (let [{::keys [headers]} auth-test-response
         {:strs [x-oauth-scopes]} headers]
     (set (str/split x-oauth-scopes #","))))
 
@@ -205,6 +205,7 @@
 (defn clear-channel-cache!
   "Clear the Slack channels cache, and reset its last-updated timestamp to its default value (the Unix epoch)."
   []
+  (channel.settings/slack-team-id! nil)
   (channel.settings/slack-channels-and-usernames-last-updated! channel.settings/zoned-time-epoch)
   (channel.settings/slack-cached-channels-and-usernames! {:channels []}))
 
@@ -215,8 +216,11 @@
   (when (slack-configured?)
     (log/info "Refreshing slack channels and usernames.")
     (let [users (future (vec (users-list)))
-          private-channels? #(contains? (oauth-scopes) "groups:read")
+          auth-test (GET "auth.test")
+          oauth-scope-set (oauth-scopes auth-test)
+          private-channels? #(contains? oauth-scope-set "groups:read")
           conversations (future (vec (conversations-list :private-channels (private-channels?))))]
+      (channel.settings/slack-team-id! (:team_id auth-test))
       (channel.settings/slack-cached-channels-and-usernames! {:channels (concat @conversations @users)})
       (channel.settings/slack-channels-and-usernames-last-updated! (t/zoned-date-time)))))
 
@@ -319,25 +323,19 @@
       (log/debug "Uploaded image" (:url <>)))))
 
 (mu/defn post-chat-message!
-  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. message-content if provided should be a map containing :blocks
-  e.g {:blocks [{:type \"section\", :text {:type \"plain_text\", :text \"Hello, world!\"}}"
-  [channel-id  :- ms/NonBlankString
-   text-or-nil :- [:maybe :string]
-   & [message-content]]
+  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.
+  message-blocks if provided should be a map containing slack message blocks
+  e.g [{:type \"section\", :text {:type \"plain_text\", :text \"Hello, world!\"}}]
+  See: https://app.slack.com/block-kit-builder"
+  [message-content :- [:map {:closed true}
+                       [:channel                      :string]
+                       [:blocks      {:optional true} [:sequential :map]]
+                       [:text        {:optional true} :string]
+                       [:attachments {:optional true} [:sequential :map]]]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
-  (let [base-params {:channel     channel-id
-                     :username    "MetaBot"
-                     :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-                     :text        text-or-nil}
-
-        message-content
-        (if (sequential? message-content)
-          {:blocks (mapcat :blocks message-content)}
-          message-content)
-
-        message-params
-        (if (seq (:blocks message-content))
-          {:blocks (json/encode (:blocks message-content))}
-          {})]
+  (let [base-params    {:username "MetaBot"
+                        :icon_url "http://static.metabase.com/metabot_slack_avatar_whitebg.png"}
+        message-params (update-vals message-content #(if (string? %) % (json/encode %)))]
+    ;; https://api.slack.com/methods/chat.postMessage
     (POST "chat.postMessage"
       {:form-params (merge base-params message-params)})))

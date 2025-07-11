@@ -130,7 +130,7 @@ function DashCardInner({
   isTrashedOnRemove,
   onRemove,
   onReplaceCard,
-  navigateToNewCardFromDashboard,
+  navigateToNewCardFromDashboard: navigateToNewCardFromDashboardProp,
   markNewCardSeen,
   showClickBehaviorSidebar,
   onChangeLocation,
@@ -145,11 +145,13 @@ function DashCardInner({
   const dashcardData = useSelector((state) =>
     getDashcardData(state, dashcard.id),
   );
+
   const store = useStore();
-  const getHref = useCallback(
-    () => getDashcardHref(store.getState(), dashcard.id),
-    [store, dashcard.id],
-  );
+  const getHref = useCallback(() => {
+    const result = getDashcardHref(store.getState(), dashcard.id);
+
+    return result;
+  }, [store, dashcard.id]);
   const [isPreviewingCard, setIsPreviewingCard] = useState(!dashcard.justAdded);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
@@ -210,6 +212,12 @@ function DashCardInner({
       };
     });
   }, [cards, dashcardData, slowCards]);
+
+  const { supportPreviewing, disableNavigateToNewCardFromDashboard } =
+    getVisualizationRaw(series) ?? {};
+  const navigateToNewCardFromDashboard = !disableNavigateToNewCardFromDashboard
+    ? navigateToNewCardFromDashboardProp
+    : undefined;
 
   const isLoading = useMemo(
     () => isDashcardLoading(dashcard, dashcardData),
@@ -287,7 +295,6 @@ function DashCardInner({
     }
   }, [dashcard, dashboard.collection_authority_level]);
 
-  const { supportPreviewing } = getVisualizationRaw(series) ?? {};
   const isEditingCardContent = supportPreviewing && !isPreviewingCard;
 
   const isEditingDashboardLayout =

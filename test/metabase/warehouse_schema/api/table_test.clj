@@ -85,7 +85,9 @@
    (select-keys
     field
     [:created_at :fingerprint :fingerprint_version :fk_target_field_id :id :last_analyzed :updated_at
-     :database_required :database_is_auto_increment :entity_id])))
+     :database_required :database_default
+     :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
+     :entity_id])))
 
 (defn- fk-field-details [field]
   (-> (field-details field)
@@ -278,6 +280,9 @@
                                      ;; Index sync is turned off across the application as it is not used ATM.
                                      #_#_:database_indexed           true
                                      :database_is_auto_increment true
+                                     :database_is_generated      false
+                                     :database_is_nullable       false
+                                     :database_default           nil
                                      :name_field                 {:base_type "type/Text",
                                                                   :display_name "Name",
                                                                   :fk_target_field_id nil,
@@ -302,6 +307,9 @@
                                      :database_position          1
                                      :database_required          false
                                      :database_is_auto_increment false
+                                     :database_is_generated      false
+                                     :database_is_nullable       true
+                                     :database_default           nil
                                      :name_field                 nil)
                               (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :last_login)))
                                      :table_id                   (mt/id :users)
@@ -318,6 +326,9 @@
                                      :database_position          2
                                      :database_required          false
                                      :database_is_auto_increment false
+                                     :database_is_generated      false
+                                     :database_is_nullable       true
+                                     :database_default           nil
                                      :name_field                 nil)
                               (assoc (field-details (t2/select-one :model/Field :table_id (mt/id :users), :name "PASSWORD"))
                                      :semantic_type              "type/Category"
@@ -333,6 +344,9 @@
                                      :database_position          3
                                      :database_required          false
                                      :database_is_auto_increment false
+                                     :database_is_generated      false
+                                     :database_is_nullable       true
+                                     :database_default           nil
                                      :name_field                 nil)]
                :id           (mt/id :users)})
              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
@@ -362,6 +376,9 @@
                                      #_#_:database_indexed  true
                                      :database_required false
                                      :database_is_auto_increment true
+                                     :database_is_generated      false
+                                     :database_is_nullable       false
+                                     :database_default           nil
                                      :name_field {:base_type "type/Text",
                                                   :display_name "Name",
                                                   :fk_target_field_id nil,
@@ -383,6 +400,9 @@
                                      :database_position 1
                                      :database_required false
                                      :database_is_auto_increment false
+                                     :database_is_generated      false
+                                     :database_is_nullable       true
+                                     :database_default           nil
                                      :name_field        nil)
                               (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
@@ -398,6 +418,9 @@
                                      :database_position        2
                                      :database_required        false
                                      :database_is_auto_increment false
+                                     :database_is_generated      false
+                                     :database_is_nullable       true
+                                     :database_default           nil
                                      :name_field               nil)]
                :id           (mt/id :users)})
              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users))))

@@ -29,10 +29,11 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
   const handleSubmit = async () => {
     try {
       await ActionsApi.execute({
-        id: actionId,
-        parameters: {
+        action_id: actionId,
+        input: {
           id: typeof objectId === "string" ? parseInt(objectId, 10) : objectId,
         },
+        scope: { unknown: "legacy-action" },
       });
 
       const message = t`Successfully deleted`;

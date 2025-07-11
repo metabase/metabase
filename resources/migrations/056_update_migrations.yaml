@@ -169,6 +169,25 @@ databaseChangeLog:
                   type: ${text.type}
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v56.2025-06-13T15:55:23
+      author: wotbrew
+      comment: Add metabase_field.database_is_pk
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_pk
+                  type: ${boolean.type}
+                  remarks: "Indicates whether the column is (itself) a primary key"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+
+#
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

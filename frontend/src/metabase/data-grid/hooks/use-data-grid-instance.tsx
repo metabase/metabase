@@ -20,6 +20,7 @@ import _ from "underscore";
 
 import {
   MIN_COLUMN_WIDTH,
+  ROW_ACTIONS_COLUMN_ID,
   ROW_ID_COLUMN_ID,
   TRUNCATE_LONG_CELL_WIDTH,
 } from "metabase/data-grid/constants";
@@ -34,6 +35,7 @@ import type {
   ExpandedColumnsState,
 } from "metabase/data-grid/types";
 import { getDataColumn } from "metabase/data-grid/utils/columns/data-column";
+import { getActionsIdColumn } from "metabase/data-grid/utils/columns/row-actions-column";
 import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { isNotNull } from "metabase/lib/types";
@@ -47,11 +49,28 @@ import { useExpandColumnsToMinGridWidth } from "./use-expand-columns-to-min-grid
 // Disable pagination by setting pageSize to -1
 const DISABLED_PAGINATION_STATE = { pageSize: -1, pageIndex: 0 };
 
-// Creates a column order array with row ID column first if present
-const getColumnOrder = (dataColumnsOrder: string[], hasRowIdColumn: boolean) =>
-  _.uniq(
-    hasRowIdColumn ? [ROW_ID_COLUMN_ID, ...dataColumnsOrder] : dataColumnsOrder,
-  );
+const getColumnOrder = (
+  dataColumnsOrder: string[],
+  {
+    hasRowIdColumn,
+    hasRowActionsColumn,
+  }: {
+    hasRowIdColumn: boolean;
+    hasRowActionsColumn: boolean;
+  },
+) => {
+  const resultColumnsOrder = [...dataColumnsOrder];
+
+  if (hasRowIdColumn) {
+    resultColumnsOrder.unshift(ROW_ID_COLUMN_ID);
+  }
+
+  if (hasRowActionsColumn) {
+    resultColumnsOrder.push(ROW_ACTIONS_COLUMN_ID);
+  }
+
+  return _.uniq(resultColumnsOrder);
+};
 
 /**
  * Main hook for creating and managing a data grid instance.
@@ -62,6 +81,7 @@ export const useDataGridInstance = <TData, TValue>({
   data,
   columnOrder: controlledColumnOrder,
   columnSizingMap: controlledColumnSizingMap,
+  columnVisibility: controlledColumnVisibility,
   columnPinning: controlledColumnPinning,
   sorting,
   defaultRowHeight = 36,
@@ -79,15 +99,21 @@ export const useDataGridInstance = <TData, TValue>({
   onColumnResize,
   onColumnReorder,
   measurementRenderWrapper,
+  rowActionsColumn,
 }: DataGridOptions<TData, TValue>): DataGridInstance<TData> => {
   const gridRef = useRef<HTMLDivElement>(null);
   const hasRowIdColumn = rowId != null;
+  const hasRowActionsColumn =
+    rowActionsColumn != null && rowActionsColumn.actions.length > 0;
 
   // Initialize column order (either controlled or from column options)
   const [columnOrder, setColumnOrder] = useState<string[]>(
     getColumnOrder(
       controlledColumnOrder ?? columnsOptions.map((column) => column.id),
-      hasRowIdColumn,
+      {
+        hasRowIdColumn,
+        hasRowActionsColumn,
+      },
     ),
   );
 
@@ -114,8 +140,13 @@ export const useDataGridInstance = <TData, TValue>({
 
   // Update column order when controlled value changes
   useLayoutEffect(() => {
-    setColumnOrder(getColumnOrder(controlledColumnOrder ?? [], hasRowIdColumn));
-  }, [controlledColumnOrder, hasRowIdColumn]);
+    setColumnOrder(
+      getColumnOrder(controlledColumnOrder ?? [], {
+        hasRowIdColumn,
+        hasRowActionsColumn,
+      }),
+    );
+  }, [controlledColumnOrder, hasRowActionsColumn, hasRowIdColumn]);
 
   // Handler for updating column expanded state
   const handleUpdateColumnExpanded = useCallback(
@@ -155,6 +186,11 @@ export const useDataGridInstance = <TData, TValue>({
     const rowIdColumnDefinition =
       rowId != null ? getRowIdColumn<TData, TValue>(rowId) : null;
 
+    const rowActionsColumnDefinition =
+      rowActionsColumn != null
+        ? getActionsIdColumn<TData, TValue>(rowActionsColumn)
+        : null;
+
     const dataColumns = columnsOptions.map((options) =>
       getDataColumn<TData, TValue>(
         options,
@@ -170,6 +206,7 @@ export const useDataGridInstance = <TData, TValue>({
       columnRowSelectOptions,
       rowIdColumnDefinition,
       ...dataColumns,
+      rowActionsColumnDefinition,
     ].filter(isNotNull);
   }, [
     rowId,
@@ -180,6 +217,7 @@ export const useDataGridInstance = <TData, TValue>({
     expandedColumnsMap,
     truncateLongCellWidth,
     handleExpandButtonClick,
+    rowActionsColumn,
   ]);
 
   // IDs of columns with fixed width that shouldn't be auto-resized
@@ -230,6 +268,7 @@ export const useDataGridInstance = <TData, TValue>({
       columnSizing: columnSizingMap,
       columnOrder,
       columnPinning: controlledColumnPinning ?? { left: [ROW_ID_COLUMN_ID] },
+      columnVisibility: controlledColumnVisibility,
       sorting,
       pagination,
       rowSelection: rowSelection ?? {},

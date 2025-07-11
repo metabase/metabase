@@ -70,7 +70,7 @@
     "collection" (urls/collection-url id)
     "dashboard"  (urls/dashboard-url id)
     "database"   (urls/database-url id)
-    "table"      (urls/table-url db_id id)))
+    "table"      (urls/view-table-url db_id id)))
 
 (defn- link-card->text-part
   [{:keys [entity url] :as _link-card}]
@@ -139,6 +139,17 @@
   rows-to-disk-threadhold
   1000)
 
+(def ^{:dynamic true
+       :doc "Control how many rows executing a card for notification will return.
+            Used when getting an example payload for UI."} *query-max-bare-rows*
+  nil)
+
+(defn- query-contraints
+  []
+  (cond-> {}
+    *query-max-bare-rows*
+    (assoc :max-results-bare-rows *query-max-bare-rows*)))
+
 (defn- data-rows-to-disk!
   [qp-result]
   (if (<= (:row_count qp-result) rows-to-disk-threadhold)
@@ -180,7 +191,7 @@
                                             :context       :dashboard-subscription
                                             :export-format :api
                                             :parameters    parameters
-                                            :constraints   {}
+                                            :constraints   (query-contraints)
                                             :middleware    {:process-viz-settings?             true
                                                             :js-int-to-string?                 false
                                                             :add-default-userland-constraints? false}
@@ -288,7 +299,7 @@
                   (qp.card/process-query-for-card card-id :api
                                                   ;; TODO rename to :notification?
                                                   :context     :pulse
-                                                  :constraints {}
+                                                  :constraints (query-contraints)
                                                   :middleware  {:skip-results-metadata?            false
                                                                 :process-viz-settings?             true
                                                                 :js-int-to-string?                 false
@@ -298,7 +309,6 @@
                                                                    (qp
                                                                     (qp/userland-query query info)
                                                                     nil))))))]
-
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)
      :result (data-rows-to-disk! result)

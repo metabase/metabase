@@ -341,9 +341,9 @@
   "Internal impl of [[metabase.test/with-temp-copy-of-db]]. Run `f` with a temporary Database that copies the details
   from the standard test database, and syncs it."
   [f]
-  (let [{old-db-id :id, :as old-db} (*db-fn*)
+  (let [{old-db-id :id :as old-db} (*db-fn*)
         original-db (-> old-db copy-secrets (select-keys [:details :engine :name :settings]))
-        {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! :model/Database original-db))]
+        {new-db-id :id :as new-db} (t2/insert-returning-instance! :model/Database original-db)]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
       (test.data.impl.get-or-create/set-test-db-permissions! new-db-id)

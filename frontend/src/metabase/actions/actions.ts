@@ -19,11 +19,12 @@ export const executeAction =
   async (dispatch: Dispatch): Promise<ActionFormSubmitResult> => {
     try {
       const result = await ActionsApi.execute({
-        id: action.id,
-        parameters,
+        action_id: action.id,
+        input: parameters,
+        scope: { unknown: "legacy-action" },
       });
 
-      const message = getActionExecutionMessage(action, result);
+      const message = getActionExecutionMessage(action, result?.outputs?.[0]);
       dispatch(addUndo({ message, toastColor: "success" }));
       return { success: true, message };
     } catch (error) {

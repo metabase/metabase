@@ -287,6 +287,9 @@
     (let [card (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
                            (update-keys u/->snake_case_en)
                            (vary-meta assoc :type :model/Card))
+                   ;; In the case of SQL actions, the query being executed might not act on the same database
+                   ;; used by the model upon which the action is defined.
+                   (t2/select-one :model/Card :id card-id :database_id [:!= database-id])
                    (throw (ex-info (tru "Card {0} does not exist." card-id)
                                    {:type    qp.error-type/invalid-query
                                     :card-id card-id})))]

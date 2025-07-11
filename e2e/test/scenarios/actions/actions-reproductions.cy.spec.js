@@ -252,6 +252,7 @@ describe("issue 51020", () => {
     cy.findByLabelText("Add action").click();
     cy.button("Pick an action").click();
     H.modal().within(() => {
+      cy.findByText("Models").click();
       cy.findByText(modelName).click();
       cy.findByText("Update").click();
       cy.findAllByText("Ask the user").eq(0).click();
@@ -430,7 +431,7 @@ describe("issue 32840", () => {
       H.visitModel(modelId);
     });
 
-    cy.intercept("POST", "/api/action/*/execute").as("executeAction");
+    cy.intercept("POST", "/api/action/v2/execute").as("executeAction");
   });
 
   it("uses correct timestamp when executing implicit update action (metabase#32840)", () => {

@@ -3,10 +3,11 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.render.js.svg :as js.svg]
+   [metabase.channel.slack :as slack]
+   [metabase.notification.condition :as notification.condition]
    [metabase.notification.core :as notification]
    [metabase.notification.events.notification :as events.notification]
    [metabase.notification.models :as models.notification]
@@ -38,12 +39,26 @@
   message)
 
 (defmethod channel/render-notification [:channel/metabase-test :notification/testing]
-  [_channel-type notification-info _template _recipients]
+  [_channel-type _payload-type notification-info _template _recipients]
   [notification-info])
 
-(defmethod notification.payload/payload :notification/testing
-  [_notification]
-  {::payload? true})
+(defmethod channel/render-notification [:channel/metabase-test :notification/system-event]
+  [_channel-type _payload-type notification-info _template _recipients]
+  [notification-info])
+
+(defmethod notification.send/should-queue-notification? :notification/testing
+  [notification-info]
+  (if-let [condition (not-empty (:condition notification-info))]
+    (notification.condition/evaluate-expression condition notification-info)
+    true))
+
+(defmethod notification.payload/notification-payload :notification/testing
+  [notification]
+  {:payload_type :notification/testing
+   :creator      (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification))
+   :condition    (:condition notification)
+   :context      (notification.payload/default-settings)
+   :payload      {::payload?    true}})
 
 (defmacro with-send-notification-sync
   "Notifications are sent async by default, wrap the body in this macro to send them synchronously."
@@ -172,21 +187,21 @@
   `(do-with-card-notification ~props (fn [~bindings] ~@body)))
 
 (defn do-with-system-event-notification!
-  [{:keys [event notification subscriptions handlers]} thunk]
-  (with-temporary-event-topics! [event]
-    (do-with-temp-notification
-     {:notification  (merge {:payload_type :notification/system-event
-                             :creator_id   (mt/user->id :crowberto)}
-                            notification)
-      :subscriptions subscriptions
-      :handlers      handlers}
-     thunk)))
+  [{:keys [notification subscriptions handlers notification-system-event]} thunk]
+  (do-with-temp-notification
+   {:notification  (merge {:payload_type :notification/system-event
+                           :creator_id   (mt/user->id :crowberto)
+                           :payload      notification-system-event}
+                          notification)
+    :subscriptions (map #(merge {:type :notification-subscription/system-event} %) subscriptions)
+    :handlers      handlers}
+   thunk))
 
 (defmacro with-system-event-notification!
   "Macro that sets up a system event notification for testing.
     (with-system-event-notification!
-      [notification {:event         :metabase/big-event
-                     :notification  {:creator_id 1}
+      [notification {:notification  {:creator_id 1}
+                     :notification-system-event {:event_name :event/notification-create}
                      :subscriptions []
                      :handlers      []}]"
   [[notification-binding props] & body]
@@ -195,9 +210,15 @@
 (def channel-type->fixture
   {:channel/email (fn [thunk] (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                                                  email-smtp-port 587
-                                                                 site-url        "https://testmb.com/"]
+                                                                 site-url        "https://testmb.com/"
+                                                                 site-name       "Metabase Test"]
                                 (thunk)))
-   :channel/slack (fn [thunk] (thunk))})
+   :channel/slack (fn [thunk] (mt/with-temporary-setting-values [site-url  "https://testmb.com/"
+                                                                 site-name "Metabase Test"]
+                                (mt/with-dynamic-fn-redefs [slack/upload-file! (fn [_file fname]
+                                                                                 {:url (format "https://uploaded.com/%s" fname)
+                                                                                  :id  fname})]
+                                  (thunk))))})
 
 (defn apply-channel-fixtures
   [channel-types thunk]
@@ -221,14 +242,6 @@
       (doseq [[channel-type assert-fn] channel-type->assert-fn]
         (testing (format "chanel-type = %s" channel-type)
           (assert-fn (get channel-type->captured-message channel-type)))))))
-
-(defn slack-message->boolean [{:keys [attachments] :as result}]
-  (assoc result :attachments (for [attachment-info attachments]
-                               (if (:rendered-info attachment-info)
-                                 (update attachment-info
-                                         :rendered-info
-                                         (fn [ri] (m/map-vals some? ri)))
-                                 attachment-info))))
 
 (defn do-with-mock-inbox-email!
   "Helper function that mocks email/send-email! to capture emails in a vector and returns them."
@@ -288,16 +301,26 @@
    :active      true})
 
 (def channel-template-email-with-handlebars-body
-  "A :model/ChannelTemplate for email channels that has a :event/handlebars-text template."
-  {:channel_type :channel/email
+  "A :model/ChannelTemplate for email channels that has a :email/handlebars-text template."
+  {:name         "Email template"
+   :channel_type :channel/email
    :details      {:type    :email/handlebars-text
-                  :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
-                  :body    "Hello {{payload.event_info.object.first_name}}! Welcome to {{context.site_name}}!"}})
+                  :subject "Welcome {{payload.object.first_name}} to {{context.site_name}}"
+                  :body    "Hello {{payload.object.first_name}}! Welcome to {{context.site_name}}!"}})
+
+(def channel-template-slack-with-handlebars-body
+  "A :model/ChannelTemplate for slack channels that has a :slack/handlebars-text template."
+  {:channel_type :channel/slack
+   :details      {:type    :slack/handlebars-text
+                  :body    "Hello {{payload.object.first_name}}! Welcome to {{context.site_name}}!"}})
 
 (def default-email-handler
   (delay {:channel_type :channel/email
           :recipients   [{:type    :notification-recipient/user
                           :user_id (mt/user->id :rasta)}]}))
+
+(def default-testing-handler
+  {:channel_type :channel/metabase-test})
 
 (def default-slack-handler
   {:channel_type :channel/slack

@@ -19,7 +19,7 @@ import {
 
 import type { EntityPickerTab, TypeWithModel } from "../../types";
 
-import type { EntityPickerModalOptions } from "./EntityPickerModal";
+import type { EntityPickerModalOptions } from "./EntityPickerContent";
 import { EntityPickerModal } from "./EntityPickerModal";
 
 type SampleId = number;

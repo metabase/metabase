@@ -92,6 +92,16 @@
   :setter (fn [channel-name]
             (setting/set-value-of-type! :string :slack-bug-report-channel (process-files-channel-name channel-name))))
 
+(defsetting slack-team-id
+  "A cache storing the team_id (workspace)"
+  :encryption :when-encryption-key-set
+  :visibility :internal
+  :cache?     false
+  :type       :string
+  :doc        false
+  :audit      :never
+  :export?    false)
+
 (defsetting attachment-table-row-limit
   (deferred-tru "Maximum number of rows to render in an alert or subscription image.")
   :visibility :internal

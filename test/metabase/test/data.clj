@@ -70,7 +70,7 @@
                 [:engine   :keyword]
                 [:name     :string]
                 [:settings [:map
-                            [:database-source-dataset-name :string]]]]
+                            [:database-source-dataset-name {:optional true} :string]]]]
   "Return the current database.
    Relies on the dynamic variable [[metabase.test.data.impl/*db-fn*]], which can be rebound with [[with-db]]."
   []

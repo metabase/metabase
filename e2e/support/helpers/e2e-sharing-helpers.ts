@@ -25,7 +25,11 @@ export const addNotificationHandlerChannel = (
   if (hasNoChannelsAdded) {
     modal().findByText("Add a destination").should("be.visible").click();
   } else {
-    modal().findByText("Add another destination").should("be.visible").click();
+    modal()
+      .findByText("Add another destination")
+      .scrollIntoView()
+      .should("be.visible")
+      .click();
   }
 
   popover().findByText(channel).click();

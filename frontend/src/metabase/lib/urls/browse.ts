@@ -3,7 +3,7 @@ import slugg from "slugg";
 import type DatabaseV1 from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { Database } from "metabase-types/api";
+import type { Database, Table as TableApiObject } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
 
@@ -30,7 +30,7 @@ export function browseSchema(table: {
   )}`;
 }
 
-export function browseTable(table: Table) {
-  const databaseId = table.db?.id || table.db_id;
-  return `/browse/databases/${databaseId}/schema/${table.schema_name}`;
+export function browseTable(table: Table | TableApiObject) {
+  const databaseId = table.db?.id ?? table.db_id;
+  return `/browse/databases/${databaseId}/tables/${table.id}`;
 }

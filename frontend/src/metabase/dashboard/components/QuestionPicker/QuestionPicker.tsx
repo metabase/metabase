@@ -5,7 +5,6 @@ import _ from "underscore";
 import { useListDatabasesQuery } from "metabase/api";
 import { isPublicCollection } from "metabase/collections/utils";
 import Breadcrumbs from "metabase/common/components/Breadcrumbs";
-import Input from "metabase/common/components/Input";
 import SelectList from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
@@ -17,7 +16,7 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
-import { Button, Flex, Icon, type IconProps } from "metabase/ui";
+import { Button, Flex, Icon, type IconProps, TextInput } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { QuestionList } from "./QuestionList";
@@ -73,14 +72,12 @@ function QuestionPickerInner({
 
   return (
     <div className={S.questionPickerRoot}>
-      <Input
+      <TextInput
         className={S.searchInput}
-        fullWidth
         autoFocus
         data-autofocus
         placeholder={t`Search…`}
         value={searchText}
-        onResetClick={() => setSearchText("")}
         onChange={handleSearchTextChange}
       />
 

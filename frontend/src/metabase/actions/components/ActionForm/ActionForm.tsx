@@ -1,5 +1,9 @@
-import type { FormikHelpers } from "formik";
-import { useCallback, useMemo } from "react";
+import {
+  type FormikContextType,
+  type FormikHelpers,
+  useFormikContext,
+} from "formik";
+import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import useActionForm from "metabase/actions/hooks/use-action-form";
@@ -38,6 +42,9 @@ interface ActionFormProps {
     actions: FormikHelpers<ParametersForActionExecution>,
   ) => void;
   onClose?: () => void;
+  onContextUpdate?: (
+    context: FormikContextType<ParametersForActionExecution>,
+  ) => void;
 }
 
 function ActionForm({
@@ -46,6 +53,7 @@ function ActionForm({
   hiddenFields = [],
   onSubmit,
   onClose,
+  onContextUpdate,
 }: ActionFormProps): JSX.Element {
   const { initialValues, form, validationSchema, getCleanValues } =
     useActionForm({
@@ -82,6 +90,7 @@ function ActionForm({
       enableReinitialize
     >
       <Form role="form" data-testid="action-form">
+        <ActionFormContext onContextUpdate={onContextUpdate} />
         {editableFields.map((field) => (
           <ActionFormFieldWidget key={field.name} formField={field} />
         ))}
@@ -101,3 +110,19 @@ function ActionForm({
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionForm;
+
+function ActionFormContext({
+  onContextUpdate,
+}: {
+  onContextUpdate?: (
+    context: FormikContextType<ParametersForActionExecution>,
+  ) => void;
+}) {
+  const context = useFormikContext<ParametersForActionExecution>();
+  useEffect(() => {
+    onContextUpdate?.(context);
+  }, [context, onContextUpdate]);
+
+  // This component is just for providing state updates to the parent component, so it renders nothing.
+  return null;
+}

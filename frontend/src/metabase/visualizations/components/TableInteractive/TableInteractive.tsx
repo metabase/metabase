@@ -42,9 +42,11 @@ import type {
 } from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { TABLE_ACTIONS_SETTING } from "metabase/lib/data_grid";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_TABLE_ACTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Flex, type MantineTheme } from "metabase/ui";
@@ -62,6 +64,7 @@ import type { ClickObject, OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ActionScope,
   DatasetColumn,
   RowValue,
   RowValues,
@@ -135,6 +138,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   {
     className,
     data,
+    dashcard,
     series,
     height,
     settings,
@@ -257,11 +261,28 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     });
   }, [cols, settings, getCellClickedObject, tc]);
 
+  const datasetData = series[0]?.data || data;
+  const {
+    rowActions,
+    selectedRowAction,
+    onRowActionButtonClick,
+    onRowActionFormClose,
+  } = PLUGIN_TABLE_ACTIONS.useDataGridRowActions({
+    actionSettings: settings[TABLE_ACTIONS_SETTING],
+    datasetData,
+  });
+
   const handleBodyCellClick = useCallback(
     (
       event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-      rowIndex: number,
-      columnId: string,
+      {
+        rowIndex,
+        columnId,
+      }: {
+        rowIndex: number;
+        columnId: string;
+        cellId: string;
+      },
     ) => {
       if (columnId === ROW_ID_COLUMN_ID) {
         if (!isDashboard) {
@@ -680,6 +701,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return isDashcardViewTable ? width : undefined;
   }, [isDashcardViewTable, width]);
 
+  const rowActionsColumn = useMemo(() => {
+    return rowActions?.length && onRowActionButtonClick
+      ? { actions: rowActions, onActionClick: onRowActionButtonClick }
+      : undefined;
+  }, [rowActions, onRowActionButtonClick]);
+
   const tableProps = useDataGridInstance({
     data: rows,
     rowId,
@@ -692,6 +719,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnReorder: handleColumnReordering,
     pageSize,
     minGridWidth,
+    rowActionsColumn,
   });
   const { virtualGrid } = tableProps;
 
@@ -748,12 +776,21 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [renderEmptyMessage],
   );
 
+  const actionScope = useMemo<ActionScope>(() => {
+    return dashcard
+      ? { "dashcard-id": dashcard.id }
+      : { "card-id": question.card().id ?? -1 };
+  }, [question, dashcard]);
+
   if (!width || !height) {
     return <div ref={ref} className={className} />;
   }
 
   const isColumnReorderingDisabled =
     (isDashboard || mode == null || isRawTable) && !isSettings;
+
+  const DataGridActionExecuteModal =
+    PLUGIN_TABLE_ACTIONS.DataGridActionExecuteModal;
 
   return (
     <div
@@ -776,6 +813,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         onAddColumnClick={handleAddColumnButtonClick}
         onHeaderCellClick={handleHeaderCellClick}
         onWheel={handleWheel}
+      />
+      <DataGridActionExecuteModal
+        scope={actionScope}
+        action={selectedRowAction?.action}
+        actionInput={selectedRowAction?.input}
+        onClose={onRowActionFormClose}
       />
     </div>
   );

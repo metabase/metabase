@@ -6,11 +6,9 @@
    [metabase.notification.payload.temp-storage :as notification.payload.temp-storage]
    [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [potemkin :as p]))
 
 (p/import-vars
  [notification.payload.execute
@@ -35,14 +33,17 @@
     ;;  the subscription that triggered this notification
     [:triggering_subscription {:optional true} ::models.notification/NotificationSubscription]]
    [:multi {:dispatch :payload_type}
-    ;; system event is a bit special in that part of the payload comes from the event itself
     [:notification/system-event
      [:map
       [:payload
-       [:map {:closed true}
-        ;; TODO: event-info schema for each event type
-        [:event_topic [:fn #(= "event" (-> % keyword namespace))]]
-        [:event_info  [:maybe :map]]]]]]
+       [:map
+        [:event_name [:fn #(= "event" (-> % keyword namespace))]]
+        [:action     {:optional true} [:maybe :keyword]]
+        [:table_id   {:optional true} [:maybe pos-int?]]]]
+      [:event_info {:optional true} [:maybe :map]]
+      ;; used to shortcut creating the payload from the event_info and using this payload as-is
+      ;; this is useful for send-now functionality.
+      [:notification/custom-payload {:optional true} [:maybe :map]]]]
     [:notification/card
      [:map
       [:payload    {:optional true} ::models.notification/NotificationCard]
@@ -77,11 +78,7 @@
     [:notification/system-event
      [:map
       ;; override the payload with extra context
-      [:payload
-       [:map {:closed true}
-        [:event_topic                   [:fn #(= "event" (-> % keyword namespace))]]
-        [:event_info                    [:maybe :map]]
-        [:custom       {:optional true} [:maybe :map]]]]]]
+      [:payload :map]]]
     [:notification/dashboard
      [:map
       [:payload [:map
@@ -97,7 +94,7 @@
                  [:card              :map]
                  [:style             :map]
                  [:notification_card ::models.notification/NotificationCard]
-                 [:subscriptions     [:sequential ::models.notification/NotificationSubscription]]]]]]
+                 [:subscriptions     [:maybe [:sequential ::models.notification/NotificationSubscription]]]]]]]
     [:notification/testing   :map]]])
 
 (defn- logo-url
@@ -126,7 +123,8 @@
        "background-color: " color "; "
        "border-radius: 4px;"))
 
-(defn- default-context
+(defn default-settings
+  "Return the default context for the notification."
   []
   ;; DO NOT delete or rename these fields, they are used in the notification templates
   {:application_name     (appearance/application-name)
@@ -138,21 +136,18 @@
    :admin_email          (system/admin-email)
    :style                {:button (button-style (appearance/application-color))}})
 
-(defmulti payload
+(defmulti notification-payload
   "Given a notification info, return the notification payload."
   {:arglists '([notification-info])}
   :payload_type)
 
-(mu/defn notification-payload :- ::NotificationPayload
-  "Realize notification-info with :context and :payload."
-  [notification :- ::Notification]
-  (assoc (select-keys notification [:payload_type])
-         :creator (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification))
-         :payload (payload notification)
-         :context (default-context)))
+(defmulti notification-payload-schema
+  "Given a notification info, return the notification payload schema."
+  {:arglists '([notification-info])}
+  :payload_type)
 
 (defmulti skip-reason
-  "Determine whether a notification should be sent. Default to true."
+  "Return the reason to skip the notification, or nil if it should be sent."
   {:arglists '([notification-payload])}
   :payload_type)
 

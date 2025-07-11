@@ -22,6 +22,7 @@ export * from "./e2e-embedding-sdk-assertion-helpers";
 export * from "./e2e-element-visibility-helpers";
 export * from "./e2e-enterprise-helpers";
 export * from "./e2e-filter-helpers";
+export * from "./e2e-internal-tools-helpers";
 export * from "./e2e-ldap-helpers";
 export * from "./e2e-misc-helpers";
 export * from "./e2e-mock-app-settings-helpers";

@@ -241,3 +241,10 @@
                     (ThreadContext/put (name k#) (val original#))
                     (ThreadContext/remove (name k#)))))))
     :cljs ~@body))
+
+(defn log-before-after
+  "Convient for logging the before after of data structure.
+  Return the after"
+  [level context before after]
+  (logf level "%s: %s => %s" context before after)
+  after)

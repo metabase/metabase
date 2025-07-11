@@ -26,6 +26,7 @@ const CHART_ANALYSIS_ENABLED = {
   scalar: false,
   smartscalar: false,
   table: false,
+  "table-editable": false,
   text: false,
 } as const satisfies { [display in VisualizationDisplay]: boolean };
 

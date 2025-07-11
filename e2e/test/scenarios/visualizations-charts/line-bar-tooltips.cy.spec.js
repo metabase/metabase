@@ -53,7 +53,7 @@ const SUM_OF_TOTAL_MONTH_EXCLUDE_MAY_AUG = {
       "!=",
       [
         "field",
-        "CREATED_AT",
+        ORDERS.CREATED_AT,
         {
           "base-type": "type/DateTime",
           "temporal-unit": "month-of-year",

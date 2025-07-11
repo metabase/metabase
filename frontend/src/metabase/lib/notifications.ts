@@ -16,7 +16,6 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   ChannelApiResponse,
   ChannelType,
-  CreateAlertNotificationRequest,
   Notification,
   NotificationCardSendCondition,
   NotificationChannelType,
@@ -27,8 +26,8 @@ import type {
   NotificationHandlerSlack,
   NotificationRecipient,
   NotificationRecipientRawValue,
+  NotificationTriggerEvent,
   ScheduleSettings,
-  UpdateAlertNotificationRequest,
   User,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -41,8 +40,28 @@ export const formatTitle = ({ item, type }: NotificationListItem) => {
       return item.name;
     case "question-notification":
       return item.payload.card?.name || t`Alert`;
+    case "table-notification": {
+      const payload = item.payload;
+      return (
+        t`${payload.table!.display_name} table - ${formatEventName(payload.event_name)}` ||
+        t`Table Notification`
+      );
+    }
   }
 };
+
+function formatEventName(event_name: NotificationTriggerEvent) {
+  switch (event_name) {
+    case "event/row.created":
+      return t`Rows created`;
+    case "event/row.updated":
+      return t`Rows updated`;
+    case "event/row.deleted":
+      return t`Rows deleted`;
+    default:
+      return event_name;
+  }
+}
 
 const getRecipientIdentity = (recipient: NotificationRecipient) => {
   if (recipient.type === "notification-recipient/user") {
@@ -126,11 +145,9 @@ const notificationHandlerTypeToChannelMap: Record<
 };
 
 export function alertIsValid(
-  notification: CreateAlertNotificationRequest | UpdateAlertNotificationRequest,
+  handlers: NotificationHandler[],
   channelSpec: ChannelApiResponse | undefined,
 ) {
-  const handlers = notification.handlers;
-
   return (
     channelSpec?.channels &&
     handlers.length > 0 &&

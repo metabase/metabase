@@ -34,8 +34,13 @@
    [metabase.util.malli.describe :as umd]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [potemkin :as p]
    [ring.middleware.multipart-params]
    [ring.util.codec]))
+
+(p/import-vars
+ [metabase.api.macros.defendpoint.open-api
+  schema->json-schema])
 
 ;;;;
 ;;;; Malli schema

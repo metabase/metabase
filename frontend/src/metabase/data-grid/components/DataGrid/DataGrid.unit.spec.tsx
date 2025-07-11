@@ -42,8 +42,11 @@ interface TestDataGridProps {
   ) => void;
   onBodyCellClick?: (
     event: MouseEvent<HTMLDivElement>,
-    rowIndex: number,
-    columnId: string,
+    cellProps: {
+      rowIndex: number;
+      columnId: string;
+      cellId: string;
+    },
   ) => void;
   onAddColumnClick?: () => void;
   onColumnResize?: (columnName: string, width: number) => void;
@@ -185,8 +188,11 @@ describe("DataGrid", () => {
     expect(onBodyCellClick).toHaveBeenCalledTimes(1);
     expect(onBodyCellClick).toHaveBeenCalledWith(
       expect.anything(), // event
-      0, // row index
-      "id", // column ID
+      {
+        rowIndex: 0,
+        columnId: "id",
+        cellId: "0_id",
+      },
     );
   });
 

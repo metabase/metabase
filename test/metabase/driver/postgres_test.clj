@@ -2,6 +2,7 @@
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
@@ -191,7 +192,7 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "hyphen-names-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         ;; create the postgres DB
-        (tx/drop-if-exists-and-create-db! driver/*driver*  "hyphen-names-test")
+        (tx/drop-if-exists-and-create-db! driver/*driver* "hyphen-names-test")
         ;; create the DB object
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
           (let [sync! #(sync/sync-database! database)]
@@ -261,7 +262,7 @@
   (mt/test-driver :postgres
     (testing (str "Check that we properly fetch materialized views. As discussed in #2355 they don't come back from "
                   "JDBC `DatabaseMetadata` so we have to fetch them manually.")
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "materialized_views_test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "materialized_views_test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "materialized_views_test"})]
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
                        ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
@@ -274,7 +275,7 @@
 (deftest foreign-tables-test
   (mt/test-driver :postgres
     (testing "Check that we properly fetch foreign tables."
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "fdw_test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "fdw_test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "fdw_test"})]
         ;; You need to set `MB_POSTGRESQL_TEST_USER` in order for this to work apparently.
         ;;
@@ -312,7 +313,7 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "dropped_views_test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         ;; create the postgres DB
-        (tx/drop-if-exists-and-create-db! driver/*driver*  "dropped_views_test")
+        (tx/drop-if-exists-and-create-db! driver/*driver* "dropped_views_test")
         ;; create the DB object
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
           (let [sync! #(sync/sync-database! database)]
@@ -345,7 +346,7 @@
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         ;; create the postgres DB
-        (tx/drop-if-exists-and-create-db! driver/*driver*  db-name)
+        (tx/drop-if-exists-and-create-db! driver/*driver* db-name)
         (let [major-v (sql-jdbc.execute/do-with-connection-with-options
                        :postgres
                        spec
@@ -541,7 +542,7 @@
 (deftest describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres
     (testing "sync goes and runs with identifier if there is a schema other than default public one"
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "describe-json-with-schema-test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "describe-json-with-schema-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "describe-json-with-schema-test"
                                                                  :json-unfolding true})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -566,7 +567,7 @@
 (deftest describe-funky-name-table-nested-field-columns-test
   (mt/test-driver :postgres
     (testing "sync goes and still works with funky schema and table names, including caps and special chars (#23026, #23027)"
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "describe-json-funky-names-test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "describe-json-funky-names-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "describe-json-funky-names-test"
                                                                  :json-unfolding true})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -715,7 +716,7 @@
                            :filter      [:= $ip "192.168.1.1"]}))))))))
 
 (defn- do-with-money-test-db! [thunk]
-  (tx/drop-if-exists-and-create-db! driver/*driver*  "money_columns_test")
+  (tx/drop-if-exists-and-create-db! driver/*driver* "money_columns_test")
   (let [details (mt/dbdef->connection-details :postgres :db {:database-name "money_columns_test"})]
     (sql-jdbc.execute/do-with-connection-with-options
      :postgres
@@ -803,7 +804,7 @@
   One of those types has a space in the name, which is legal when quoted, to make sure we handle such wackiness
   properly."
   []
-  (tx/drop-if-exists-and-create-db! driver/*driver*  "enums_test")
+  (tx/drop-if-exists-and-create-db! driver/*driver* "enums_test")
   (let [spec (sql-jdbc.conn/connection-details->spec :postgres (enums-test-db-details))]
     (jdbc/execute! spec [enums-db-sql])))
 
@@ -1067,7 +1068,7 @@
             :message "Ranking must have values."
             :errors {"ranking" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-not-null-constraint nil :row/created
+            :postgres actions.error/violate-not-null-constraint nil :model.row/created
             "ERROR: null value in column \"ranking\" violates not-null constraint\n  Detail: Failing row contains (3, admin, null).")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test-2
@@ -1076,7 +1077,7 @@
             :message "Ranking must have values."
             :errors {"ranking" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-not-null-constraint nil :row/created
+            :postgres actions.error/violate-not-null-constraint nil :model.row/created
             "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null).")))))
 
 (deftest actions-maybe-parse-sql-error-violate-unique-constraint-test
@@ -1104,7 +1105,7 @@
             :message "Unable to create a new record.",
             :errors {"group-id" "This Group-id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :row/create
+            :postgres actions.error/violate-foreign-key-constraint nil :model.row/create
             "ERROR: insert or update on table \"user\" violates foreign key constraint \"user_group-id_group_-159406530\"\n  Detail: Key (group-id)=(999) is not present in table \"group\".")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-2
@@ -1113,7 +1114,7 @@
             :message "Unable to update the record.",
             :errors {"id" "This Id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :row/update
+            :postgres actions.error/violate-foreign-key-constraint nil :model.row/update
             "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-3
@@ -1122,7 +1123,7 @@
             :message "Other tables rely on this row so it cannot be deleted.",
             :errors {}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :row/delete
+            :postgres actions.error/violate-foreign-key-constraint nil :model.row/delete
             "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
 
 ;; this contains specical tests case for postgres
@@ -1130,7 +1131,7 @@
 (deftest action-error-handling-test
   (mt/test-driver :postgres
     (testing "violate not-null constraints with multiple columns"
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "not-null-constraint-on-multiple-cols")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "not-null-constraint-on-multiple-cols")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "not-null-constraint-on-multiple-cols"})]
         (doseq [stmt ["CREATE TABLE mytable (id serial PRIMARY KEY,
                       column1 VARCHAR(50),
@@ -1151,12 +1152,12 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/create (mt/$ids {:create-row {"id"      3
-                                                           "column1" "A"
-                                                           "column2" "A"}
-                                              :database   (:id database)
-                                              :query      {:source-table $$mytable}
-                                              :type       :query})))))
+                        :model.row/create (mt/$ids {:create-row {"id"      3
+                                                                 "column1" "A"
+                                                                 "column2" "A"}
+                                                    :database   (:id database)
+                                                    :query      {:source-table $$mytable}
+                                                    :type       :query})))))
               (testing "when updating"
                 (is (= {:errors      {"column1" "This Column1 value already exists."
                                       "column2" "This Column2 value already exists."}
@@ -1164,12 +1165,12 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/update (mt/$ids {:update-row {"column1" "A"
-                                                           "column2" "A"}
-                                              :database   (:id database)
-                                              :query      {:source-table $$mytable
-                                                           :filter       [:= $mytable.id 2]}
-                                              :type       :query}))))))))))))
+                        :model.row/update (mt/$ids {:update-row {"column1" "A"
+                                                                 "column2" "A"}
+                                                    :database   (:id database)
+                                                    :query      {:source-table $$mytable
+                                                                 :filter       [:= $mytable.id 2]}
+                                                    :type       :query}))))))))))))
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
@@ -1196,7 +1197,7 @@
 (deftest fingerprint-time-fields-test
   (mt/test-driver :postgres
     (testing "Make sure we're able to fingerprint TIME fields (#5911)"
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "time_field_test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "time_field_test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "time_field_test"})]
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
                        [(str "CREATE TABLE toucan_sleep_schedule ("
@@ -1278,7 +1279,7 @@
 (deftest dont-sync-tables-with-no-select-permissions-test
   (testing "Make sure we only sync databases for which the current user has SELECT permissions"
     (mt/test-driver :postgres
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "no-select-test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "no-select-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "no-select-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         (doseq [statement ["CREATE TABLE PUBLIC.table_with_perms (x INTEGER NOT NULL);"
@@ -1301,7 +1302,7 @@
 (deftest json-operator-?-works
   (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
     (mt/test-driver :postgres
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "json-test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "json-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.json_table;"
@@ -1324,7 +1325,7 @@
 (deftest sync-json-with-composite-pks-test
   (testing "Make sure sync a table with json columns that have composite pks works"
     (mt/test-driver :postgres
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "composite-pks-test")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "composite-pks-test")
       (with-redefs [table-rows-sample/nested-field-sample-limit 4]
         (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite-pks-test"})
               spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
@@ -1702,6 +1703,518 @@
                                                                         nil))
                           (lib/limit 1))]
             (is (->> query qp/process-query mt/rows))))))))
+
+(deftest column-attributes-test
+  (mt/test-driver :postgres
+    (tx/drop-if-exists-and-create-db! driver/*driver* "column_attributes_test_db")
+    (let [details    (mt/dbdef->connection-details :postgres :db {:database-name "column_attributes_test_db"})
+          spec       (sql-jdbc.conn/connection-details->spec :postgres details)
+          table-name (str "column_attributes_test_" (System/currentTimeMillis))
+
+          drop-table!
+          (fn []
+            (jdbc/execute! spec [(format "DROP TABLE IF EXISTS %s" table-name)]))
+
+          create-table!
+          (fn [column-defs]
+            (jdbc/execute! spec [(->> (map #(format "col%d %s" %1 %2) (range) column-defs)
+                                      (str/join ",")
+                                      (format "CREATE TABLE %s (%s)" table-name))]))
+
+          describe
+          (fn [column-defs]
+            (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+              (try
+                (create-table! column-defs)
+                (->> (driver/describe-fields :postgres database {:table-names [table-name]})
+                     (mapv #(-> (select-keys % [:database-is-generated :database-is-nullable :database-default])
+                               ;; shorthand
+                                (set/rename-keys {:database-is-generated :g
+                                                  :database-is-nullable  :n
+                                                  :database-default      :d}))))
+                (finally
+                  (drop-table!)))))
+
+          do-test
+          (fn [& test-cases]
+            (let [test-cases' (partition 2 test-cases)
+                  results (describe (map first test-cases'))]
+              (is (= (count test-cases) (* 2 (count results))))
+              (doseq [[[col-def expected] result] (map vector test-cases' results)]
+                (testing col-def
+                  (if (set? expected)
+                    (is (contains? expected result))
+                    (is (= expected result)))))))]
+      (do-test
+       ;; we might want to later distinguish between user specified
+       ;; defaulting and those expressions introduced by SERIAL & BIGSERIAL
+       ;; but for now:
+       "SERIAL"
+       {:g false, :n false, :d (format "nextval('%s_col0_seq'::regclass)" table-name)}
+
+       "INT"
+       {:g false, :n true}
+
+       "INT GENERATED ALWAYS AS (col0 + 1) STORED"
+       {:g true,  :n true}
+
+       ;; note how postgres is permitted to rewrite the expression
+       "INT DEFAULT EXTRACT(EPOCH FROM NOW())"
+       ;; some versions of postgres only change the casing (e.g postgres:17)
+       #{{:g false, :n true, :d "EXTRACT(epoch FROM now())"}
+         ;; others completely rewrite the expression (e.g postgres:12)
+         {:g false, :n true, :d "date_part('epoch'::text, now())"}}
+
+       "INT NULL"
+       {:g false, :n true}
+
+       "INT NOT NULL"
+       {:g false, :n false}))))
+
+(defn- check-query
+  ([query db-type uncasted-field]
+   (check-query query db-type uncasted-field "\"subquery\".\"TEXTCAST\""))
+  ([query db-type uncasted-field casted-field]
+   (mt/native-query {:query (str "SELECT " casted-field ",
+                                 CAST(" casted-field " AS " db-type ") = " (name uncasted-field) ", "
+                                 (name uncasted-field) " "
+                                 "FROM ( "
+                                 (-> query qp.compile/compile :query)
+                                 " ) AS subquery "
+                                 "LIMIT 100")})))
+
+(deftest ^:parallel text-cast-table-fields
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:field :birth_date :db-type "DATE"}
+                                        {:field :name :db-type "TEXT"}]]
+                              [:orders [{:field :user_id :db-type "INTEGER"}
+                                        {:field :subtotal :db-type "FLOAT"}
+                                        {:field :created_at :db-type "TIMESTAMPTZ"}]]]
+              {:keys [field db-type]} fields]
+        (testing (str "casting " table "." field "(" db-type ") to text")
+          (let [field-md (lib.metadata/field mp (mt/id table field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [field-md])
+                          (lib/expression "TEXTCAST" (lib/text field-md))
+                          (lib/limit 100))
+                result (-> query (check-query db-type field) qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Text (-> cols first :base_type)))
+            (doseq [[casted-value equals?] rows]
+              (is (string? casted-value))
+              (is equals? (str "Not equal for: " casted-value)))))))))
+
+(deftest ^:parallel text-cast-custom-expressions
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table expressions] [[:people [{:expression (lib/concat
+                                                           (lib.metadata/field mp (mt/id :people :name))
+                                                           (lib.metadata/field mp (mt/id :people :name)))
+                                              :db-type "TEXT"}
+                                             {:expression (lib/get-day-of-week
+                                                           (lib.metadata/field mp (mt/id :people :birth_date)))
+                                              :db-type "INTEGER"}]]]
+              {:keys [expression db-type]} expressions]
+        (testing (str "Casting " db-type " to text")
+          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [])
+                          (lib/expression "UNCASTED" expression)
+                          (as-> q
+                                (lib/expression q "TEXTCAST" (lib/text (lib/expression-ref q "UNCASTED"))))
+                          (lib/limit 10))
+                result (-> query (check-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Text (-> cols first :base_type)))
+            (doseq [[casted-value equals?] rows]
+              (is (string? casted-value))
+              (is equals? (str "Not equal for: " casted-value)))))))))
+
+(deftest ^:parallel text-cast-nested-native-query
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[_table expressions] [[:people [{:expression 1 :db-type "INTEGER"}
+                                              {:expression "''" :db-type "TEXT"}
+                                              {:expression "'abc'" :db-type "TEXT"}
+                                              {:expression "DATE('2020-10-10')" :db-type "DATE"}
+                                              {:expression 4.5 :db-type "DECIMAL"}]]]
+              {:keys [expression db-type]} expressions]
+        (testing (str "Casting " db-type " to text from native query")
+          (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED")})]
+            (mt/with-temp
+              [:model/Card
+               {card-id :id}
+               (mt/card-with-source-metadata-for-query native-query)]
+              (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
+                              (as-> q
+                                    (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (filter #(= "uncasted" (:name %))) first)))))
+                    result (-> query (check-query db-type "\"uncasted\"") qp/process-query)
+                    cols (mt/cols result)
+                    rows (mt/rows result)]
+                (is (= :type/Text (-> cols first :base_type)))
+                (doseq [[casted-value equals?] rows]
+                  (is (string? casted-value))
+                  (is equals? (str "Not equal for: " casted-value)))))))))))
+
+(deftest ^:parallel text-cast-nested-query
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:field :birth_date :db-type "DATE"}
+                                        {:field :name :db-type "TEXT"}]]
+                              [:orders [{:field :user_id :db-type "INTEGER"}
+                                        {:field :subtotal :db-type "FLOAT"}
+                                        {:field :created_at :db-type "TIMESTAMPTZ"}]]]
+              {:keys [field db-type]} fields]
+        (let [nested-query (lib/query mp (lib.metadata/table mp (mt/id table)))]
+          (testing (str "Casting " db-type " to text")
+            (mt/with-temp
+              [:model/Card
+               {card-id :id}
+               (mt/card-with-source-metadata-for-query nested-query)]
+              (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
+                              (lib/with-fields [])
+                              (as-> q
+                                    (lib/expression q "TEXTCAST" (lib/text (lib.metadata/field mp (mt/id table field)))))
+                              (lib/limit 10))
+                    result (-> query (check-query db-type field) qp/process-query)
+                    cols (mt/cols result)
+                    rows (mt/rows result)]
+                (is (= :type/Text (-> cols first :base_type)))
+                (doseq [[casted-value equals?] rows]
+                  (is (string? casted-value))
+                  (is equals? (str "Not equal for: " casted-value)))))))))))
+
+(deftest ^:parallel text-cast-nested-query-custom-expressions
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table expressions] [[:people [{:expression (lib/concat
+                                                           (lib.metadata/field mp (mt/id :people :name))
+                                                           (lib.metadata/field mp (mt/id :people :name)))
+                                              :db-type "TEXT"}
+                                             {:expression (lib/get-day-of-week
+                                                           (lib.metadata/field mp (mt/id :people :birth_date)))
+                                              :db-type "INTEGER"}]]]
+              {:keys [expression db-type]} expressions]
+        (let [nested-query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                               (lib/with-fields [])
+                               (lib/expression "UNCASTED" expression)
+                               (lib/limit 10))]
+          (testing (str "Casting " db-type " to text")
+            (mt/with-temp
+              [:model/Card
+               {card-id :id}
+               (mt/card-with-source-metadata-for-query nested-query)]
+              (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
+                              (as-> q
+                                    (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first))))
+                              (lib/limit 10))
+                    result (-> query (check-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
+                    cols (mt/cols result)
+                    rows (mt/rows result)]
+                (is (= :type/Text (-> cols first :base_type)))
+                (doseq [[casted-value equals?] rows]
+                  (is (string? casted-value))
+                  (is equals? (str "Not equal for: " casted-value)))))))))))
+
+(deftest ^:parallel text-cast-nested-custom-expressions
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table expressions] [[:people [{:expression [(lib/concat
+                                                            (lib.metadata/field mp (mt/id :people :name))
+                                                            (lib.metadata/field mp (mt/id :people :name)))
+                                                           (lib/concat
+                                                            (lib.metadata/field mp (mt/id :people :name))
+                                                            (lib.metadata/field mp (mt/id :people :name)))]
+                                              :db-type "TEXT"}
+                                             {:expression [(lib/get-day-of-week
+                                                            (lib.metadata/field mp (mt/id :people :birth_date)))
+                                                           (lib/get-day-of-week
+                                                            (lib.metadata/field mp (mt/id :people :birth_date)))]
+                                              :db-type "INTEGER"}]]]
+              {db-type :db-type [e1 e2] :expression} expressions]
+        (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                        (lib/expression "UNCASTED" e1)
+                        (lib/expression "TEXTCAST" (lib/text e2))
+                        (lib/limit 10))
+              result (-> query (check-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
+              cols (mt/cols result)
+              rows (mt/rows result)]
+          (is (= :type/Text (-> cols first :base_type)))
+          (doseq [[casted-value equals?] rows]
+            (is (string? casted-value))
+            (is equals? (str "Not equal for: " casted-value))))))))
+
+(deftest ^:parallel text-cast-aggregations
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:field :birth_date :db-type "DATE"}
+                                        {:field :name :db-type "TEXT"}]]
+                              [:orders [{:field :user_id :db-type "INTEGER"}
+                                        {:field :subtotal :db-type "FLOAT"}
+                                        {:field :created_at :db-type "TIMESTAMPTZ"}]]]
+              {:keys [field db-type]} fields]
+        (testing (str "aggregating " table "." field "(" db-type ") and casting to text")
+          (let [field-md (lib.metadata/field mp (mt/id table field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/aggregate (lib/max field-md))
+                          (lib/aggregate (lib/max (lib/text field-md))))
+                result (-> query (check-query db-type "\"subquery\".\"max\"" "\"subquery\".\"max_2\"") qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Text (-> cols first :base_type)))
+            (doseq [[casted-value _equals? _uncasted-value] rows]
+              (is (string? casted-value)))))))))
+
+(defn- check-date-query
+  ([query db-type uncasted-field casted-field]
+   (let [compiled-query (qp.compile/compile query)]
+     (mt/native-query {:query (str "SELECT " casted-field ", " (name uncasted-field) ", "
+                                   (case db-type
+                                     "DATE" casted-field " = " (name uncasted-field)
+                                     "TEXT" casted-field " = CAST(" (name uncasted-field) " AS DATE)")
+                                   " FROM ( "
+                                   (:query compiled-query)
+                                   " ) AS subquery "
+                                   "LIMIT 100")
+                       :params (:params compiled-query)}))))
+
+(deftest ^:parallel date-parse-table-fields
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:field :birth_date}]]]
+              {:keys [field]} fields]
+        (testing (str "casting " table "." field " to date")
+          (let [field-md (lib.metadata/field mp (mt/id table field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [field-md])
+                          (lib/expression "DATECAST" (lib/date (lib/text field-md)))
+                          (lib/limit 100))
+                result (-> query (check-date-query "DATE" field "\"subquery\".\"DATECAST\"") qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Date (-> cols first :base_type)))
+            (doseq [[casted-value uncasted-value equals?] rows]
+              (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
+
+(deftest ^:parallel date-parse-custom-expressions
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table exprs] [[:people [(fn [] (lib/concat "2010" "-" "10" "-" "02"))]]]
+              ef exprs]
+        (testing "casting custom expression to date"
+          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [])
+                          (lib/expression "CUSTOMEXPR" (ef))
+                          (lib/expression "DATECAST" (lib/date (ef)))
+                          (lib/limit 100))
+                result (-> query (check-date-query "TEXT" "\"subquery\".\"CUSTOMEXPR\"" "\"subquery\".\"DATECAST\"") qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Date (-> cols first :base_type)))
+            (doseq [[casted-value uncasted-value equals?] rows]
+              (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
+
+(deftest ^:parallel date-parse-table-fields-aggregation
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:field :birth_date}]]]
+              {:keys [field]} fields]
+        (testing (str "casting " table "." field " to date in aggregation")
+          (let [field-md (lib.metadata/field mp (mt/id table field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [field-md])
+                          (lib/aggregate (lib/max field-md))
+                          (lib/aggregate (lib/max (lib/date (lib/text field-md))))
+                          (lib/limit 100))
+                result (-> query (check-date-query "DATE" "\"subquery\".\"max\"" "\"subquery\".\"max_2\"") qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Date (-> cols first :base_type)))
+            (doseq [[casted-value uncasted-value equals?] rows]
+              (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
+
+;; integer()
+
+(defn- check-integer-query
+  ([query db-type uncasted-field]
+   (check-integer-query query db-type uncasted-field "\"subquery\".\"INTCAST\""))
+  ([query db-type uncasted-field casted-field]
+   (mt/native-query {:query (str "SELECT " casted-field ", "
+                                 ;; need to do regex because some strings have 0 in front
+                                 (name uncasted-field) " ~ '^0*' || " "CAST(" casted-field " AS " db-type ") || '$'"
+                                 ", "
+                                 (name uncasted-field) " "
+                                 "FROM ( "
+                                 (-> query qp.compile/compile :query)
+                                 " ) AS subquery "
+                                 "LIMIT 100")})))
+
+(deftest ^:parallel integer-cast-table-fields
+  (mt/test-driver :postgres
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
+                {:keys [field db-type]} fields]
+          (testing (str "casting " table "." field "(" db-type ") to integer")
+            (let [field-md (lib.metadata/field mp (mt/id table field))
+                  query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                            (lib/with-fields [field-md])
+                            (lib/expression "INTCAST" (lib/integer field-md))
+                            (lib/limit 100))
+                  result (-> query (check-integer-query db-type field) qp/process-query)
+                  cols (mt/cols result)
+                  rows (mt/rows result)]
+              (is (= :type/BigInteger (-> cols first :base_type)))
+              (doseq [[casted-value equals? uncasted-value] rows]
+                (is (int? casted-value))
+                (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))
+
+(deftest ^:parallel integer-cast-custom-expressions
+  (mt/test-driver :postgres
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (doseq [[table expressions] [[:people [{:expression (lib/concat
+                                                             (lib.metadata/field mp (mt/id :people :id))
+                                                             (lib.metadata/field mp (mt/id :people :zip)))
+                                                :db-type "TEXT"}]]]
+                {:keys [expression db-type]} expressions]
+          (testing (str "Casting " db-type " to integer")
+            (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                            (lib/with-fields [])
+                            (lib/expression "UNCASTED" expression)
+                            (as-> q
+                                  (lib/expression q "INTCAST" (lib/integer (lib/expression-ref q "UNCASTED"))))
+                            (lib/limit 10))
+                  result (-> query (check-integer-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
+                  cols (mt/cols result)
+                  rows (mt/rows result)]
+              (is (= :type/BigInteger (-> cols first :base_type)))
+              (doseq [[casted-value equals? uncasted-value] rows]
+                (is (int? casted-value))
+                (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))
+
+(deftest ^:parallel integer-cast-nested-native-query
+  (mt/test-driver :postgres
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (doseq [[_table expressions] [[:people [{:expression "'123'" :db-type "TEXT"}
+                                                {:expression "'-123'" :db-type "TEXT"}]]]
+                {:keys [expression db-type]} expressions]
+          (testing (str "Casting " db-type " to integer from native query")
+            (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED")})]
+              (mt/with-temp
+                [:model/Card
+                 {card-id :id}
+                 (mt/card-with-source-metadata-for-query native-query)]
+                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
+                                (as-> q
+                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "uncasted" (:name %))) first)))))
+                      result (-> query (check-integer-query db-type "\"uncasted\"") qp/process-query)
+                      cols (mt/cols result)
+                      rows (mt/rows result)]
+                  (is (= :type/BigInteger (-> cols first :base_type)))
+                  (doseq [[casted-value equals? uncasted-value] rows]
+                    (is (int? casted-value))
+                    (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
+
+(deftest ^:parallel integer-cast-nested-query
+  (mt/test-driver :postgres
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
+                {:keys [field db-type]} fields]
+          (let [nested-query (lib/query mp (lib.metadata/table mp (mt/id table)))]
+            (testing (str "Casting " db-type " to integer")
+              (mt/with-temp
+                [:model/Card
+                 {card-id :id}
+                 (mt/card-with-source-metadata-for-query nested-query)]
+                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
+                                (lib/with-fields [])
+                                (as-> q
+                                      (lib/expression q "INTCAST" (lib/integer (lib.metadata/field mp (mt/id table field)))))
+                                (lib/limit 10))
+                      result (-> query (check-integer-query db-type field) qp/process-query)
+                      cols (mt/cols result)
+                      rows (mt/rows result)]
+                  (is (= :type/BigInteger (-> cols first :base_type)))
+                  (doseq [[casted-value equals? uncasted-value] rows]
+                    (is (int? casted-value))
+                    (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
+
+(deftest ^:parallel integer-cast-nested-query-custom-expressions
+  (mt/test-driver :postgres
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (doseq [[table expressions] [[:people [{:expression (lib/concat
+                                                             (lib.metadata/field mp (mt/id :people :id))
+                                                             (lib.metadata/field mp (mt/id :people :zip)))
+                                                :db-type "TEXT"}]]]
+                {:keys [expression db-type]} expressions]
+          (let [nested-query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                                 (lib/with-fields [])
+                                 (lib/expression "UNCASTED" expression)
+                                 (lib/limit 10))]
+            (testing (str "Casting " db-type " to integer")
+              (mt/with-temp
+                [:model/Card
+                 {card-id :id}
+                 (mt/card-with-source-metadata-for-query nested-query)]
+                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
+                                (as-> q
+                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first))))
+                                (lib/limit 10))
+                      result (-> query (check-integer-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
+                      cols (mt/cols result)
+                      rows (mt/rows result)]
+                  (is (= :type/BigInteger (-> cols first :base_type)))
+                  (doseq [[casted-value equals? uncasted-value] rows]
+                    (is (int? casted-value))
+                    (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
+
+(deftest ^:parallel integer-cast-nested-custom-expressions
+  (mt/test-driver :postgres
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (doseq [[table expressions] [[:people [{:expression [(lib/concat
+                                                              (lib.metadata/field mp (mt/id :people :id))
+                                                              (lib.metadata/field mp (mt/id :people :zip)))
+                                                             (lib/concat
+                                                              (lib.metadata/field mp (mt/id :people :id))
+                                                              (lib.metadata/field mp (mt/id :people :zip)))]
+                                                :db-type "TEXT"}]]]
+                {db-type :db-type [e1 e2] :expression} expressions]
+          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/expression "UNCASTED" e1)
+                          (lib/expression "INTCAST" (lib/integer e2))
+                          (lib/limit 10))
+                result (-> query (check-integer-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/BigInteger (-> cols first :base_type)))
+            (doseq [[casted-value equals? uncasted-value] rows]
+              (is (int? casted-value))
+              (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
+
+(deftest ^:parallel integer-cast-aggregations
+  (mt/test-driver :postgres
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)]
+        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
+                {:keys [field db-type]} fields]
+          (testing (str "aggregating " table "." field "(" db-type ") and casting to integer")
+            (let [field-md (lib.metadata/field mp (mt/id table field))
+                  query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                            (lib/aggregate (lib/max field-md))
+                            (lib/aggregate (lib/max (lib/integer field-md))))
+                  result (-> query (check-integer-query db-type "\"subquery\".\"max\"" "\"subquery\".\"max_2\"") qp/process-query)
+                  cols (mt/cols result)
+                  rows (mt/rows result)]
+              (is (= :type/BigInteger (-> cols first :base_type)))
+              (doseq [[casted-value _equals? _uncasted-value] rows]
+                (is (int? casted-value))))))))))
 
 (deftest have-select-privelege?-timeout-test
   (mt/test-driver :postgres

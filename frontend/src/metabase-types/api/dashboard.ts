@@ -6,7 +6,10 @@ import type {
   Collection,
   CollectionAuthorityLevel,
   CollectionId,
+  DataGridWritebackAction,
+  DataGridWritebackActionId,
   Database,
+  EditableTableActionsDisplaySettings,
   Field,
   FieldId,
   Parameter,
@@ -14,16 +17,13 @@ import type {
   ParameterTarget,
   ParameterValueOrArray,
   Table,
+  TableColumnOrderSetting,
   UserId,
   VirtualCardDisplay,
   VisualizerVizDefinition,
 } from "metabase-types/api";
 
-import type {
-  ActionDisplayType,
-  WritebackAction,
-  WritebackActionId,
-} from "./actions";
+import type { ActionDisplayType } from "./actions";
 import type { Card, CardId, VisualizationSettings } from "./card";
 import type { Dataset } from "./dataset";
 import type { ModerationReview } from "./moderation";
@@ -127,6 +127,11 @@ export type DashCardVisualizationSettings = {
   [key: string]: unknown;
   virtual_card?: VirtualCard;
   iframe?: string;
+
+  // "table-editable" specific settings
+  "table.columns"?: TableColumnOrderSetting[];
+  "table.editableColumns"?: string[]; // list of column names
+  "editableTable.enabledActions"?: EditableTableActionsDisplaySettings[];
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {
@@ -139,6 +144,7 @@ export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   entity_id: BaseEntityId;
   visualization_settings?: DashCardVisualizationSettings;
   justAdded?: boolean;
+  isAdded?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -156,8 +162,8 @@ export type ActionDashboardCard = Omit<
   BaseDashboardCard,
   "parameter_mappings"
 > & {
-  action_id: WritebackActionId;
-  action?: WritebackAction;
+  action_id: DataGridWritebackActionId;
+  action?: DataGridWritebackAction;
   card_id: CardId | null; // model card id for the associated action
   card: Card;
 

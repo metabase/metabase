@@ -27,15 +27,15 @@
 (deftest send-notification!*-test
   (testing "sending a notification will call render on all of its handlers"
     (notification.tu/with-notification-testing-setup!
-      (mt/with-temp [:model/Channel         chn-1 notification.tu/default-can-connect-channel
-                     :model/Channel         chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")
-                     :model/ChannelTemplate tmpl  {:channel_type notification.tu/test-channel-type}]
+      (mt/with-temp [:model/Channel chn-1 notification.tu/default-can-connect-channel
+                     :model/Channel chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")]
         (let [n                 (models.notification/create-notification!
-                                 {:payload_type :notification/system-event}
+                                 {:payload_type :notification/testing}
                                  nil
                                  [{:channel_type notification.tu/test-channel-type
                                    :channel_id   (:id chn-1)
-                                   :template_id  (:id tmpl)
+                                   :template     {:name "my template"
+                                                  :channel_type notification.tu/test-channel-type}
                                    :recipients   [{:type    :notification-recipient/user
                                                    :user_id (mt/user->id :crowberto)}]}
                                   {:channel_type notification.tu/test-channel-type
@@ -46,11 +46,11 @@
                                                    :event_topic :event/test})
               expected-notification-payload (mt/malli=?
                                              [:map
-                                              [:payload_type [:= :notification/system-event]]
+                                              [:payload_type [:= :notification/testing]]
                                               [:context :map]
                                               [:payload :map]])
               renders           (atom [])]
-          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [channel-type notification-payload template recipients]
+          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [channel-type _payload-type notification-payload template recipients]
                                                                     (swap! renders conj {:channel-type channel-type
                                                                                          :notification-payload notification-payload
                                                                                          :template template
@@ -66,7 +66,7 @@
             (testing "render-notification is called on all handlers with the correct channel and template"
               (is (=? [{:channel-type (keyword notification.tu/test-channel-type)
                         :notification-payload expected-notification-payload
-                        :template     tmpl
+                        :template     {:name "my template"}
                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}
                        {:channel-type (keyword notification.tu/test-channel-type)
                         :notification-payload expected-notification-payload
@@ -181,10 +181,11 @@
            :numberOfSuccessfulCallsWithoutRetryAttempt])))
 
 (def ^:private fake-email-notification
-  {:subject      "test-message"
-   :recipients   ["whoever@example.com"]
-   :message-type :text
-   :message      "test message body"})
+  {:subject "test-message"
+   :from    "hi@metabase.com"
+   :to      ["whoever@example.com"]
+   :body    [{:type "text/html"
+              :content "test message"}]})
 
 (def ^:private test-retry-configuration
   (assoc @#'notification.send/default-retry-config
@@ -242,8 +243,8 @@
           (is (= 1 (count @mt/inbox))))))))
 
 (def ^:private fake-slack-notification
-  {:channel-id  "#test-channel"
-   :attachments [{:blocks [{:type "section", :text {:type "plain_text", :text ""}}]}]})
+  {:channel  "#test-channel"
+   :blocks [{:type "section", :text {:type "plain_text", :text ""}}]})
 
 (deftest slack-notification-retry-test
   (notification.tu/with-send-notification-sync
@@ -675,6 +676,49 @@
                                    vals)]
           (is (> (count consumer-counts) 1))
           (is (every? pos? consumer-counts)))))))
+
+(deftest send-condition-queue-test
+  (doseq [[condition-passed? condition-creator-id] [[true (mt/user->id :crowberto)]
+                                                    [false (mt/user->id :rasta)]]]
+    (notification.tu/with-temp-notification
+      [notification {:notification {:payload_type :notification/testing
+                                    :creator_id   (mt/user->id :crowberto)
+                                    :condition    ["=" ["context" "creator_id"] condition-creator-id]}}]
+      (let [queued? (atom false)]
+        (with-redefs [notification.send/send-notification-sync! (fn [_notification] (reset! queued? true))]
+          (#'notification.send/send-notification!
+           notification
+           :notification/sync? true))
+        (if condition-passed?
+          (testing "queued when condition returns true"
+            (is (true? @queued?)))
+          (testing "not queued when condition returns false"
+            (is (false? @queued?))))))))
+
+(deftest cutoff-notification-env-test
+  (let [send-went-through? (fn [notification]
+                             (let [yes (atom false)]
+                               (with-redefs [notification.send/send-notification-sync! (fn [_notification]
+                                                                                         (reset! yes true))]
+                                 (#'notification.send/send-notification! notification :notification/sync? true))
+                               @yes))]
+    (testing "if not set, send any notifications"
+      (mt/with-temporary-setting-values [notification-suppression-cutoff nil]
+        (doseq [updated-at [(t/zoned-date-time)
+                            (t/plus (t/zoned-date-time) (t/days 1))
+                            (t/minus (t/zoned-date-time) (t/days 1))
+                            nil]]
+          (is (true? (send-went-through? {:updated_at updated-at}))))))
+    (testing "if set"
+      (let [cutoff (t/offset-date-time)]
+        (mt/with-temporary-setting-values [notification-suppression-cutoff (str cutoff)]
+          (doseq [[went-through? updated-at context]
+                  [[false (t/minus cutoff (t/seconds 1)) "skip if notifications were updated before cut off"]
+                   [true  (t/plus cutoff (t/seconds 1)) "send if notifications were updated after cut off"]
+                   ;; for unsaved notifications
+                   [true  nil "send if no updated_at"]]]
+            (testing context
+              (is (= went-through? (send-went-through? {:updated_at updated-at}))))))))))
 
 (deftest no-pool-exhasution-test
   (testing "if there are failure inside the notification thread pool, it should not exhaust the pool (#56379)"

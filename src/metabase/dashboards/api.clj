@@ -4,6 +4,7 @@
    [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
@@ -868,6 +869,111 @@
 
 ;;;;;;;;;;;;;;;;;;;;; End functions to handle broken subscriptions
 
+(defn create-editable-table-card!
+  "The implementation details of an editable table dashcard.
+  A quick solution, and a very extensible one, but perhaps overloading a core primitive too much, and could be leaky."
+  [dashboard-id dashcard table-id]
+  (let [tab-id  (:dashboard_tab_id dashcard)
+        table   (t2/select-one [:model/Table :db_id :display_name] table-id)
+        card    (some->> dashcard :card_id (t2/select-one [:model/Card :id :dataset_query :display :card_schema]))
+        ;; If the currently attached card is not editing the expected the table, then create a new one.
+        keep?    (and (= :table-editable (:display card))
+                      (= table-id (get-in card [:dataset_query :query :source-table])))
+        _        (when (and card (not keep?))
+                   (log/warnf "Detaching card %s from dashcard %s as it not editing the expected table (%s)"
+                              (:id card)
+                              (:id dashcard)
+                              table-id))
+        ;; To keep things simple for now, we don't make any attempt to further deduplicate these cards.
+        ;; This especially keeps things simple if we decide to promote them to a first class "editable", by saving them
+        ;; into a collection.
+        ;;
+        ;; We use dashboard cards, which helps keep them hidden and have their lifecycle handled implicitly.
+        ;; We need to watch out for other ways they could "leak", for example, in search.
+        ;; We've handled search for now by filtering on :display, but that's quite opinionated and coupled.
+        ;;
+        ;; Adding and removing tables can create a lot of garbage, but it shouldn't be a big problem in our PoC.
+        ;; We could also change from archiving to deleting them when they are orphaned.
+        card-map {:dashboard_id           dashboard-id
+                  :dashboard_tab_id       tab-id
+                  :collection_position    nil
+                  :dataset_query          {:database (:db_id table)
+                                           ;; TODO if we keep going down this road, we need to validate that this
+                                           ;;      is a coherent and sufficiently restricted query for the given table.
+                                           :query    (or (get-in dashcard [:visualization_settings :initial_dataset_query :query])
+                                                         {:source-table table-id})
+                                           :type     :query}
+                  :description            nil
+                  :display                "table-editable"
+                  :name                   (str (:display_name table) " (editable)")
+                  :result_metadata        nil
+                  :type                   "model"
+                  ;; Redundant with :display, but just in case it's useful. Revisit once FE is built.
+                  :visualization_settings {:editable? true}}
+        card-id (if keep?
+                  (:id card)
+                  (:id (queries/create-card! card-map @api/*current-user* true false)))]
+    (-> dashcard
+        ;; This is a downside to creating a new card. If we find more pockets like this, we should pivot to reusing
+        ;; the existing card.
+        (u/update-if-exists :parameter_mappings #(walk/postwalk (fn [x] (if (:card_id x) (assoc x :card_id card-id) x)) %))
+        (update :visualization_settings dissoc :initial_dataset_query)
+        (assoc :dashboard_id dashboard-id
+               :card_id card-id))))
+
+(defn- init-editable-table-cards!
+  "This method insulated the FE from knowing anything about the implementation details of editable-table dashcards.
+  Given some 'template' we return the fully realized dashcards, with their internal dependencies already in the db.
+  The template data is preserved, allowing the frontend end to further manipulate it in future."
+  [dashboard-id new-dashcards]
+  (for [dashcard new-dashcards]
+    ;; I was expecting dashcards to have some type, but it seems they're duck typed?
+    ;; We probably want to look into this more and have them more clearly differentiated.
+    (if-let [table-id (get-in dashcard [:visualization_settings :table_id])]
+      (create-editable-table-card! dashboard-id dashcard table-id)
+      dashcard)))
+
+(defn- save-id-actions
+  "Create or update nested actions, where relevant, replacing their definitions with a reference to them.
+   Well, not really, but one day - see WRK-544. For now, this just transforms their definitions in-place."
+  [dashcard]
+  (let [save-actions (partial map (partial actions/save-grid-action "dashcard" (:id dashcard)))]
+    (-> dashcard
+        (m/update-existing-in [:visualization_settings :table.enabled_actions] save-actions)
+        (m/update-existing-in [:visualization_settings :editableTable.enabledActions] save-actions))))
+
+(defn- unpack-dashcard-button
+  "There are three flavors of action we can link buttons to: saved, primitive, and encoded.
+  This transforms the dashcard so that each type is represented distinctly, with transparent parameters."
+  [dashcard]
+  (if-not (:action_id dashcard)
+    ;; Either this is not an action, or it has already been unpacked (and we don't want to mess with it)
+    dashcard
+    (let [action-id (:action_id dashcard)
+          dashcard  (-> dashcard
+                        ;; This field corresponds to an FK, so we can only keep values corresponding to saved actions.
+                        (u/update-some :action_id #(when (pos-int? %) %))
+                        ;; Delete any unpacked data, it may be stale, and will be recreated if necessary.
+                        (u/update-if-exists :visualization_settings dissoc :table_action :unsupported_action))]
+      (cond
+        ;; Saved actions, pass through.
+        (pos-int? action-id) dashcard
+        ;; Perhaps we will support primitive actions directly?
+        (or (keyword? action-id) (string? action-id))
+        (assoc-in dashcard [:visualization_settings :primitive_action] action-id)
+        ;; Unpack encoded actions
+        (neg-int? action-id)
+        (let [[op param] (actions/unpack-encoded-action-id action-id)
+              ;; very import we assoc nil rather than dissoc as otherwise shallow-updates will ignore this
+              dashcard   (assoc dashcard :action_id nil)]
+          ;; This would be much better handled as multimethod, but hopefully the hacks don't live much longer.
+          (if (isa? op :table.row/common)
+            (assoc-in dashcard [:visualization_settings :table_action] {:kind (u/qualified-name op), :table_id param})
+            ;; We should have matched exhaustively by now. At least make a noise and leave some debuggable data.
+            (let [info {:packed-id action-id, :op op, :param param}]
+              (log/warn "Unsupported packed action-id on dashcard: " (pr-str (assoc info :dashcard-id (:id dashcard))))
+              (assoc-in dashcard [:visualization_settings :unsupported_action] info))))))))
+
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
   [id {:keys [dashcards tabs parameters] :as dash-updates}]
@@ -940,12 +1046,16 @@
                                                                        (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))
                                                                      current-dashcards)
                    new-dashcards                             (cond->> dashcards
-                                                                ;; fixup the temporary tab ids with the real ones
+                                                                      ;; fixup the temporary tab ids with the real ones
                                                                (seq old->new-tab-id)
                                                                (map (fn [card]
                                                                       (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
                                                                         (assoc card :dashboard_tab_id real-tab-id)
-                                                                        card))))
+                                                                        card)))
+                                                               true
+                                                               (map (comp save-id-actions unpack-dashcard-button)))
+
+                   new-dashcards                             (init-editable-table-cards! id new-dashcards)
                    dashcards-changes-stats                   (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
                (reset! changes-stats
                        (merge

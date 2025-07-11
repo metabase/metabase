@@ -593,6 +593,7 @@
                check-allowed-to-modify-query
                check-allowed-to-change-embedding]]
       (f card-before-update card-updates))
+    ;; TODO if this is an "editable", validate that the :dataset_query is "simple enough" (e.g. no breakouts or joins)
     (let [{:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
                                               {:original-query    (:dataset_query card-before-update)
                                                :query             dataset_query
@@ -603,7 +604,8 @@
                                                                       (:entity_id card-before-update))})
           card-updates                       (merge card-updates
                                                     (when (and (some? type)
-                                                               is-model-after-update?)
+                                                               is-model-after-update?
+                                                               (not= :table-editable (some-> (:display card-updates (:display card-before-update)) keyword)))
                                                       {:display :table})
                                                     (when (and
                                                            (api/column-will-change? :dashboard_id

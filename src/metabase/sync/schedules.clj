@@ -39,8 +39,9 @@
 (defn randomly-once-an-hour
   "Schedule map for once an hour at a random minute of the hour."
   []
-  ;; avoid around near the hour because it's usually when notifications are scheduled.
-  (let [choices (remove #{50} (range 5 55))]
+  ;; avoid around zero marks since it's busy time
+  ;; prevent zeros and 50s which would appear as non-random choices
+  (let [choices (remove #{10 50} (range 5 55))]
     {:schedule_minute (rand-nth choices)
      :schedule_type   "hourly"}))
 
@@ -61,8 +62,8 @@
 ;; two because application and db each have defaults
 (def default-cache-field-values-schedule-cron-strings
   "Default `:cache_field_values_schedule`s (two as application and db have different defaults)."
-  #{"0 0 0 * * ? *" "0 50 0 * * ? *"})
+  #{"0 10 0 * * ? *" "0 50 0 * * ? *"})
 
 (def default-metadata-sync-schedule-cron-strings
   "Default `:metadata_sync_schedule`s (two as application and db have different defaults)."
-  #{"0 0 * * * ? *" "0 50 * * * ? *"})
+  #{"0 10 * * * ? *" "0 50 * * * ? *"})

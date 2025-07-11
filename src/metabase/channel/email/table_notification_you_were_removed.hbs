@@ -1,0 +1,3 @@
+{{> metabase/channel/email/_header.hbs }}
+    <p>Just letting you know that {{actor_name}} unsubscribed you from notifications about changes to the <a href="{{{table-url payload.table.db_id payload.table.id}}}">{{payload.table.display_name}}</a> table.</p>
+{{> metabase/channel/email/_footer.hbs }}

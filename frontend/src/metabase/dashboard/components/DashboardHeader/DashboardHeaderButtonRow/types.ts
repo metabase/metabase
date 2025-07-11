@@ -26,6 +26,7 @@ export type HeaderButtonProps = {
   isEditing: boolean;
   canEdit: boolean;
   hasModelActionsEnabled: boolean;
+  hasDataEditingEnabled: boolean;
   dashboard: Dashboard;
   canManageSubscriptions: boolean;
   formInput: any;

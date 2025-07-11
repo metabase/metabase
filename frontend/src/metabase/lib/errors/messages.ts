@@ -11,8 +11,21 @@ export function getResponseErrorMessage(error: unknown): string | undefined {
     if (typeof response.data?.message === "string") {
       return response.data.message;
     }
-    if (typeof response.data?.errors?._error === "string") {
+    if (
+      response.data?.errors &&
+      "_error" in response.data?.errors &&
+      typeof response.data?.errors?._error === "string"
+    ) {
       return response.data.errors?._error;
+    }
+
+    if (
+      Array.isArray(response.data?.errors) &&
+      response.data.errors.length > 0
+    ) {
+      const error =
+        response.data.errors[0]?.error || response.data.errors[0]?.message;
+      return error;
     }
   }
 
