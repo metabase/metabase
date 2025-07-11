@@ -1230,3 +1230,42 @@
                                                                    :dataset_query join-query}]
                       (binding [qp.perms/*card-id* join-card-id]
                         (is (= 2 (count (mt/rows (qp/process-query join-query)))))))))))))))))
+
+(deftest e2e-multi-stage-aggregation-source-card-permissions-test
+  (testing "Permissions are checked correctly for ad-hoc queries using source cards with multiple aggregation stages"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :reviews) :perms/view-data :blocked)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            ;; Create a card with an aggregated query (first stage of aggregation)
+            (let [source-card-query (mt/mbql-query nil
+                                      {:source-query (:query (mt/mbql-query checkins
+                                                               {:aggregation [[:count]]
+                                                                :breakout [[:field (mt/id :checkins :date) {:temporal-unit :month}]]}))
+                                       :aggregation [[:count]]
+                                       :limit 1
+                                       :breakout [[:field "DATE"
+                                                   {:base-type :type/DateTime
+                                                    :temporal-unit :month}]]})
+                  expected [["2013-01-01T00:00:00Z" 1]]]
+              (mt/with-temp [:model/Card {source-card-id :id} {:collection_id (u/the-id collection)
+                                                               :dataset_query source-card-query}]
+                (let [multi-stage-query (mt/mbql-query nil {:source-table (format "card__%d" source-card-id)})]
+                  (testing "Should be able to run ad-hoc query that adds second aggregation stage using source card"
+                    (mt/with-test-user :rasta
+                      ;; Create an ad-hoc query that uses the source card and adds another aggregation stage
+                      ;; Should successfully run the multi-stage aggregation query
+                      (is (= expected (mt/rows (qp/process-query (qp/userland-query multi-stage-query)))))))
+
+                  (testing "Should NOT be able to run the same query if source card permissions are revoked"
+                    ;; Remove collection permissions
+                    (perms/revoke-collection-permissions! (perms/all-users-group) collection)
+                    (mt/with-test-user :rasta
+                      ;; Should return failed result with permission error
+                      (let [result (qp/process-query (qp/userland-query multi-stage-query))]
+                        (is (= :failed (:status result)))
+                        (is (re-find #"You do not have permissions to view Card" (:error result)))))))))))))))
