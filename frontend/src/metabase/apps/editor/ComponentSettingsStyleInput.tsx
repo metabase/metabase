@@ -27,6 +27,7 @@ export function ComponentSettingsStyleInput({
     return (
       <Select
         label={styleVariable.name}
+        searchable={styleVariable.options.length > 10}
         value={
           component.style?.[styleVariable.key]?.toString() ??
           styleVariable.defaultValue.toString()

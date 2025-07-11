@@ -1,12 +1,15 @@
 import {
   IconCarouselHorizontal,
   IconCarouselVertical,
+  IconFavicon,
   IconH1,
   IconLetterT,
   IconList,
   IconSeparator,
   IconSquare,
 } from "@tabler/icons-react";
+
+import { Icons } from "metabase/ui";
 
 export enum SystemComponentCategory {
   Typography = "typography",
@@ -17,6 +20,7 @@ export enum SystemComponentCategory {
 export enum SystemComponentId {
   Title = "system:title",
   Text = "system:text",
+  Icon = "system:icon",
   Group = "system:group",
   Stack = "system:stack",
   Divider = "system:divider",
@@ -112,12 +116,56 @@ export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
     ],
   },
   {
+    id: SystemComponentId.Icon,
+    name: "Icon",
+    category: SystemComponentCategory.Typography,
+    description: "Display an icon",
+    icon: IconFavicon,
+    styleVariables: [
+      {
+        name: "Icon",
+        key: "icon",
+        defaultValue: "lock",
+        type: "string",
+        options: Object.keys(Icons),
+      },
+      {
+        name: "Size",
+        key: "size",
+        defaultValue: "32",
+        type: "number",
+      },
+      {
+        name: "Color",
+        key: "color",
+        defaultValue: "var(--mb-color-text-primary)",
+        type: "color",
+      },
+    ],
+  },
+  {
     id: SystemComponentId.Group,
     name: "Group",
     category: SystemComponentCategory.Layout,
     description: "Organize components by columns",
     icon: IconCarouselHorizontal,
     hasChildren: true,
+    styleVariables: [
+      {
+        name: "Gap",
+        key: "gap",
+        defaultValue: "sm",
+        type: "string",
+        options: SPACING_OPTIONS,
+      },
+      {
+        name: "Padding",
+        key: "padding",
+        defaultValue: "sm",
+        type: "string",
+        options: SPACING_OPTIONS,
+      },
+    ],
   },
   {
     id: SystemComponentId.Stack,
@@ -126,6 +174,22 @@ export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
     description: "Organize components by rows",
     icon: IconCarouselVertical,
     hasChildren: true,
+    styleVariables: [
+      {
+        name: "Gap",
+        key: "gap",
+        defaultValue: "sm",
+        type: "string",
+        options: SPACING_OPTIONS,
+      },
+      {
+        name: "Padding",
+        key: "padding",
+        defaultValue: "sm",
+        type: "string",
+        options: SPACING_OPTIONS,
+      },
+    ],
   },
   {
     id: SystemComponentId.Divider,

@@ -21,7 +21,13 @@ export function CardSystemComponent({
       p={getComponentStyleValue(component, "padding")}
       bd="1px solid var(--mb-color-border)"
     >
-      {child && <ChildComponent component={child} {...childComponentProps} />}
+      {child && (
+        <ChildComponent
+          parentComponent={component}
+          component={child}
+          {...childComponentProps}
+        />
+      )}
     </Paper>
   );
 }

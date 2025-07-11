@@ -101,6 +101,86 @@ export function ComponentEditor() {
     });
   };
 
+  const handleAddComponent = (
+    position: "top" | "bottom" | "left" | "right",
+    component: ComponentDefinition,
+    parentComponent?: ComponentDefinition,
+  ) => {
+    const placeholderComponent = {
+      id: uuid(),
+      componentId: SystemComponentId.Placeholder,
+    };
+
+    setComponentConfiguration((state) => {
+      const newState = { ...state };
+
+      if (!parentComponent) {
+        const newRoot = {
+          id: uuid(),
+          componentId:
+            position === "top" || position === "bottom"
+              ? SystemComponentId.Stack
+              : SystemComponentId.Group,
+          children: [newState.root],
+        };
+
+        if (position === "top" || position === "left") {
+          newRoot.children.unshift(placeholderComponent);
+        } else {
+          newRoot.children.push(placeholderComponent);
+        }
+
+        newState.root = newRoot;
+      } else {
+        traverseComponentTree(newState.root, (node) => {
+          if (node.id === parentComponent.id) {
+            if (
+              node.componentId === SystemComponentId.Stack ||
+              node.componentId === SystemComponentId.Group
+            ) {
+              const index = node.children?.findIndex(
+                (child) => child.id === component?.id,
+              );
+
+              if (index === undefined) {
+                return TRAVERSE_STOP;
+              }
+
+              if (position === "top" || position === "left") {
+                node.children!.splice(index, 0, placeholderComponent);
+              } else {
+                node.children!.splice(index + 1, 0, placeholderComponent);
+              }
+            } else {
+              const stackOrGroup = {
+                id: uuid(),
+                componentId:
+                  position === "top" || position === "bottom"
+                    ? SystemComponentId.Stack
+                    : SystemComponentId.Group,
+                children: [component],
+              };
+
+              if (position === "top" || position === "left") {
+                stackOrGroup.children.unshift(placeholderComponent);
+              } else {
+                stackOrGroup.children.push(placeholderComponent);
+              }
+
+              node.children = [stackOrGroup];
+            }
+
+            return TRAVERSE_STOP;
+          }
+        });
+      }
+
+      return newState;
+    });
+
+    setSelectedComponent(placeholderComponent);
+  };
+
   return (
     <Group gap="0" p="0" h="100%" align="flex-start" bg="white">
       <Box flex={1} h="100%" style={{ overflow: "auto" }}>
@@ -109,6 +189,7 @@ export function ComponentEditor() {
             selectedComponent={selectedComponent}
             component={componentConfiguration.root}
             onSelect={handleSelectComponent}
+            onAddComponent={handleAddComponent}
           />
         </ComponentPreviewRoot>
       </Box>

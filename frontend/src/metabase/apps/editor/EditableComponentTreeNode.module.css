@@ -13,6 +13,10 @@
   outline: 1px solid blue;
 }
 
+.selectedPlaceholder {
+  outline: 1px solid blue;
+}
+
 .addSection {
   position: absolute;
   display: none;
@@ -21,32 +25,32 @@
   background-color: var(--mb-color-bg-medium);
 }
 
-.addSectionTop {
-  width: 50%;
-  left: 25%;
+.add-top {
+  width: 90%;
+  left: 5%;
   top: -20px;
   height: 20px;
 }
 
-.addSectionBottom {
-  width: 50%;
-  left: 25%;
+.add-bottom {
+  width: 90%;
+  left: 5%;
   bottom: -20px;
   height: 20px;
 }
 
-.addSectionLeft {
+.add-left {
   left: -20px;
-  top: 25%;
+  top: 5%;
   width: 20px;
-  height: 50%;
+  height: 90%;
 }
 
-.addSectionRight {
-  top: 25%;
+.add-right {
+  top: 5%;
   right: -20px;
   width: 20px;
-  height: 50%;
+  height: 90%;
 }
 
 .root:hover > .addSection {

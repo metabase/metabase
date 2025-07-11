@@ -12,15 +12,23 @@ import { ComponentPickPlaceholder } from "./ComponentPickPlaceholder";
 import S from "./EditableComponentTreeNode.module.css";
 
 type Props = {
+  parentComponent?: ComponentDefinition;
   component: ComponentDefinition;
   selectedComponent: ComponentDefinition | null;
   onSelect: (component: ComponentDefinition) => void;
+  onAddComponent: (
+    position: "top" | "bottom" | "left" | "right",
+    component: ComponentDefinition,
+    parentComponent?: ComponentDefinition,
+  ) => void;
 };
 
 export function EditableComponentTreeNode({
+  parentComponent,
   component,
   selectedComponent,
   onSelect,
+  onAddComponent,
 }: Props) {
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -32,8 +40,25 @@ export function EditableComponentTreeNode({
   );
 
   if (component.componentId === SystemComponentId.Placeholder) {
-    return <ComponentPickPlaceholder />;
+    return (
+      <Box
+        onClick={handleClick}
+        className={cx({
+          [S.selectedPlaceholder]: selectedComponent?.id === component.id,
+        })}
+      >
+        <ComponentPickPlaceholder />
+      </Box>
+    );
   }
+
+  const canAddHorizontal =
+    !parentComponent ||
+    parentComponent?.componentId !== SystemComponentId.Stack;
+
+  const canAddVertical =
+    !parentComponent ||
+    parentComponent?.componentId !== SystemComponentId.Group;
 
   return (
     <Box
@@ -42,26 +67,81 @@ export function EditableComponentTreeNode({
         [S.selected]: selectedComponent?.id === component.id,
       })}
     >
-      <Box className={cx(S.addSection, S.addSectionTop)}>
-        <IconPlus size={12} color="var(--mb-color-brand)" />
-      </Box>
-      <Box className={cx(S.addSection, S.addSectionBottom)}>
-        <IconPlus size={12} color="var(--mb-color-brand)" />
-      </Box>
-      <Box className={cx(S.addSection, S.addSectionLeft)}>
-        <IconPlus size={12} color="var(--mb-color-brand)" />
-      </Box>
-      <Box className={cx(S.addSection, S.addSectionRight)}>
-        <IconPlus size={12} color="var(--mb-color-brand)" />
-      </Box>
+      {canAddVertical && (
+        <>
+          <AddSection
+            position="top"
+            component={component}
+            parentComponent={parentComponent}
+            onAddComponent={onAddComponent}
+          />
+          <AddSection
+            position="bottom"
+            component={component}
+            parentComponent={parentComponent}
+            onAddComponent={onAddComponent}
+          />
+        </>
+      )}
+      {canAddHorizontal && (
+        <>
+          <AddSection
+            position="left"
+            component={component}
+            parentComponent={parentComponent}
+            onAddComponent={onAddComponent}
+          />
+          <AddSection
+            position="right"
+            component={component}
+            parentComponent={parentComponent}
+            onAddComponent={onAddComponent}
+          />
+        </>
+      )}
       <ComponentTreeNode
         component={component}
         ChildComponent={EditableComponentTreeNode}
         childComponentProps={{
           selectedComponent,
           onSelect,
+          onAddComponent,
         }}
       />
+    </Box>
+  );
+}
+
+function AddSection({
+  position,
+  component,
+  parentComponent,
+  onAddComponent,
+}: {
+  position: "top" | "bottom" | "left" | "right";
+  component: ComponentDefinition;
+  parentComponent?: ComponentDefinition;
+  onAddComponent: (
+    position: "top" | "bottom" | "left" | "right",
+    component: ComponentDefinition,
+    parentComponent?: ComponentDefinition,
+  ) => void;
+}) {
+  const handleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.stopPropagation();
+      e.preventDefault();
+      onAddComponent(position, component, parentComponent);
+    },
+    [component, parentComponent, onAddComponent, position],
+  );
+
+  return (
+    <Box
+      className={cx(S.addSection, S[`add-${position}`])}
+      onClick={handleClick}
+    >
+      <IconPlus size={12} color="var(--mb-color-brand)" />
     </Box>
   );
 }
