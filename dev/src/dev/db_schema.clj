@@ -11,7 +11,7 @@
 ;; Default values that can be omitted from compact representation
 (def column-defaults
   {:is_nullable              false
-   :column_default           nil
+   :default                  nil
    :character_maximum_length nil
    :numeric_precision        nil
    :numeric_scale            nil
@@ -40,7 +40,7 @@
   {:column_name              "id"
    :type                     "int"
    :is_nullable              false
-   :column_default           nil
+   :default                  nil
    :character_maximum_length nil
    :numeric_precision        32
    :numeric_scale            0
@@ -55,7 +55,7 @@
 
 (def auto-timestamp-defaults
   {:type                     "timestamptz"
-   :column_default           "now()"
+   :default                  "now()"
    :character_maximum_length nil
    :numeric_precision        nil
    :numeric_scale            nil
@@ -65,7 +65,7 @@
 (def pk-defaults
   {:type                     "int"
    :is_nullable              false
-   :column_default           nil
+   :default                  nil
    :character_maximum_length nil
    :numeric_precision        32
    :numeric_scale            0
@@ -74,7 +74,7 @@
 (def fk-defaults
   {:type                     "int"
    :is_nullable              false
-   :column_default           nil
+   :default                  nil
    :character_maximum_length nil
    :numeric_precision        32
    :numeric_scale            0
@@ -188,11 +188,11 @@
 (defn normalize-column [col]
   (let [generic-type    (get type-mappings (:data_type col) (:data_type col))
         base-normalized (-> col
-                            (select-keys [:column_name :data_type :is_nullable :column_default
+                            (select-keys [:column_name :data_type :is_nullable
                                           :character_maximum_length :numeric_precision :numeric_scale
                                           :datetime_precision :udt_name])
                             (update :is_nullable #(= "YES" %))
-                            (update :column_default #(when % (str %)))
+                            (assoc :default (some-> (:column_default col) str))
                             (assoc :type generic-type)
                             (dissoc :data_type :udt_name))]
     (cond
@@ -431,7 +431,7 @@
                                        :target_column "id",
                                        :on_delete     :restrict}
                                       {:column_name "creator_id", :type "fk", :target_table "core_user", :target_column "id"}
-                                      {:column_name "retracted", :type "bool", :column_default "false"}
+                                      {:column_name "retracted", :type "bool", :default "false"}
                                       :created_at
                                       :updated_at],
                             :indexes [{:index_name "idx_data_app_release_app_id_retracted_id",
