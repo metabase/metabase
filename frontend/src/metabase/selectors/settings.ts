@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import { useSetting } from "metabase/common/hooks/use-setting";
 import { getPlan } from "metabase/common/utils/plan";
 import type { TokenStatus, Version } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -50,6 +51,11 @@ type StorePaths =
 export const getStoreUrl = (path: StorePaths = "") => {
   return `https://store.metabase.com/${path}`;
 };
+
+export function useStoreUrl(path: StorePaths = "") {
+  const storeUrl = useSetting("store-url");
+  return `${storeUrl}/${path}`;
+}
 
 export const migrateToCloudGuideUrl = () =>
   "https://www.metabase.com/cloud/docs/migrate/guide";
