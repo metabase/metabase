@@ -83,6 +83,16 @@ export const Secondary = {
   render: SecondaryTemplate,
 };
 
+export const WithOnClick = {
+  render: (args: UpsellBannerProps) => (
+    <ReduxProvider>
+      <Box>
+        <_UpsellBanner {...args} onClick={action("clicked")} />
+      </Box>
+    </ReduxProvider>
+  ),
+};
+
 export const Dismissible = {
   render: (args: UpsellBannerProps) => (
     <ReduxProvider>

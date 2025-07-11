@@ -8,7 +8,19 @@ import { useSelector } from "metabase/lib/redux";
 import { getStoreUrl } from "metabase/selectors/settings";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 
-const STORE_URL = getStoreUrl("checkout/upgrade/self-hosted");
+// Get store URL from query parameter or default to getStoreUrl
+const getStoreUrlFromParams = () => {
+  const params = new URLSearchParams(window.location.search);
+  const storeUrlParam = params.get("store_url");
+
+  if (storeUrlParam) {
+    return `${storeUrlParam}/checkout/upgrade/self-hosted`;
+  }
+
+  return getStoreUrl("checkout/upgrade/self-hosted");
+};
+
+const STORE_URL = getStoreUrlFromParams();
 const STORE_ORIGIN = new URL(STORE_URL).origin;
 
 /**
@@ -55,6 +67,11 @@ export function useUpsellFlow({
   }
 
   useEffect(() => {
+    const { name } = window;
+    if (name !== "metabase-instance") {
+      window.name = "metabase-instance";
+    }
+
     const listener = createListener({
       updateToken,
     });
@@ -62,6 +79,7 @@ export function useUpsellFlow({
     window.addEventListener("message", listener);
 
     return () => {
+      window.name = name;
       window.removeEventListener("message", listener);
     };
   }, [updateToken]);
