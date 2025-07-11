@@ -49,13 +49,17 @@ export const assertDashboard = ({ id, name }: { id: number; name: string }) => {
 };
 
 type NavigateToStepOptions =
-  | { experience: "dashboard" | "chart"; resourceName: string }
-  | { experience: "exploration"; resourceName?: never };
+  | { experience: "exploration"; resourceName?: never }
+  | ({ experience: "dashboard" | "chart" } & (
+      | { resourceName: string; skipResourceSelection?: never }
+      | { skipResourceSelection: true }
+    ));
 
-export const navigateToEntitySelectionStep = ({
-  experience,
-  resourceName,
-}: NavigateToStepOptions) => {
+export const navigateToEntitySelectionStep = (
+  options: NavigateToStepOptions,
+) => {
+  const { experience } = options;
+
   visitNewEmbedPage();
 
   cy.log("select an experience");
@@ -66,17 +70,24 @@ export const navigateToEntitySelectionStep = ({
     cy.findByText("Exploration").click();
   }
 
-  cy.log("navigate to the entity selection step");
-
   // exploration template does not have the entity selection step
   if (experience !== "exploration") {
+    cy.log("navigate to the entity selection step");
+    getEmbedSidebar().within(() => {
+      cy.findByText("Next").click(); // Entity selection step
+    });
+  }
+
+  if (experience !== "exploration" && !options.skipResourceSelection) {
+    const { resourceName } = options;
+
     const resourceType = match(experience)
       .with("dashboard", () => "Dashboards")
       .with("chart", () => "Questions")
       .otherwise(() => "");
 
+    cy.log(`searching for ${resourceType} via the picker modal`);
     getEmbedSidebar().within(() => {
-      cy.findByText("Next").click();
       cy.findByTestId("embed-browse-entity-button").click();
     });
 
@@ -85,7 +96,7 @@ export const navigateToEntitySelectionStep = ({
       cy.findAllByText(resourceName).first().click();
     });
 
-    cy.log("resource title should be visible by default");
+    cy.log(`${resourceType} title should be visible by default`);
     getEmbedSidebar().within(() => {
       cy.findByText(resourceName).should("be.visible");
     });

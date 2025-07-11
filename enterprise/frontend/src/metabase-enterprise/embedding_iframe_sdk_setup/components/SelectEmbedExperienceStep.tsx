@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Card, Radio, Stack, Text } from "metabase/ui";
-import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase-enterprise/embedding_iframe_sdk/constants";
 
 import {
   EMBED_EXPERIENCES,
@@ -18,7 +18,7 @@ export const SelectEmbedExperienceStep = () => {
   const {
     experience,
     settings,
-    setSettings,
+    replaceSettings,
     recentDashboards,
     recentQuestions,
   } = useSdkIframeEmbedSetupContext();
@@ -26,11 +26,10 @@ export const SelectEmbedExperienceStep = () => {
   const handleEmbedExperienceChange = (
     experience: SdkIframeEmbedSetupExperience,
   ) => {
-    const persistedSettings = _.pick(settings, [
-      "theme",
-      "instanceUrl",
-      "useExistingUserSession",
-    ]);
+    const persistedSettings = _.pick(
+      settings,
+      ALLOWED_EMBED_SETTING_KEYS_MAP.base,
+    );
 
     // Use the most recent item for the selected type.
     // If the activity log is completely empty, use the fallback.
@@ -43,13 +42,13 @@ export const SelectEmbedExperienceStep = () => {
       .with("exploration", () => 0) // resource id does not apply
       .exhaustive();
 
-    setSettings({
+    replaceSettings({
       // these settings do not change when the embed type changes
       ...persistedSettings,
 
       // these settings are overridden when the embed type changes
       ...getDefaultSdkIframeEmbedSettings(experience, defaultResourceId),
-    } as SdkIframeEmbedSettings);
+    });
   };
 
   return (
