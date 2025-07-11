@@ -102,7 +102,7 @@
                  :text {:type     "mrkdwn"
                         :text     (mkdwn-link-text title-link title)
                         :verbatim true}}]
-               (:inline_parameters :part))
+               (-> dashcard  :visualization_settings :inline_parameters))
               (if (:render/text rendered-info)
                 {:type "section"
                  :text {:type "plain_text"
@@ -188,11 +188,11 @@
   [_channel-type {:keys [payload creator]} _template recipients]
   (let [all-params       (:parameters payload)
         top-level-params (impl.util/remove-inline-parameters all-params (:dashboard_parts payload))
-        dashboard  (:dashboard payload)
-        blocks     (->> [(slack-dashboard-header dashboard (:common_name creator) all-params top-level-params)
-                         (mapcat part->sections! (:dashboard_parts payload))]
-                        flatten
-                        (remove nil?))]
+        dashboard        (:dashboard payload)
+        blocks           (->> [(slack-dashboard-header dashboard (:common_name creator) all-params top-level-params)
+                               (mapcat part->sections! (:dashboard_parts payload))]
+                              flatten
+                              (remove nil?))]
     (for [channel-id (map notification-recipient->channel recipients)]
       {:channel channel-id
        :blocks  blocks})))

@@ -569,6 +569,7 @@
                                      slack-branding-text]}
                            {:type "section",
                             :text {:type "mrkdwn", :text (format "<https://testmb.com/question/%d|Test card>" card-id), :verbatim true}}
+                           {:type "section", :fields [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}]}
                            {:type "section", :text {:type "plain_text", :text "1,000"}}]}
                 message))))}}))
 
