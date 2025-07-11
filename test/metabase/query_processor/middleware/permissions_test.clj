@@ -1236,11 +1236,11 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
         (mt/with-no-data-perms-for-all-users!
-          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
-          (perms/set-table-permission! (perms/all-users-group) (mt/id :reviews) :perms/view-data :blocked)
-          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :reviews) :perms/view-data :blocked)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
           (mt/with-temp [:model/Collection collection]
-            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             ;; Create a card with an aggregated query (first stage of aggregation)
             (let [source-card-query (mt/mbql-query nil
                                       {:source-query (:query (mt/mbql-query checkins
@@ -1263,7 +1263,7 @@
 
                   (testing "Should NOT be able to run the same query if source card permissions are revoked"
                     ;; Remove collection permissions
-                    (perms/revoke-collection-permissions! (perms/all-users-group) collection)
+                    (perms/revoke-collection-permissions! (perms-group/all-users) collection)
                     (mt/with-test-user :rasta
                       ;; Should return failed result with permission error
                       (let [result (qp/process-query (qp/userland-query multi-stage-query))]
