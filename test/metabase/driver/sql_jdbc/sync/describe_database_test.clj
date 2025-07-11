@@ -18,7 +18,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.sql ResultSet)))
+   (java.sql ResultSet Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -251,3 +251,26 @@
                  (set (keys field-name->field))))
           (is (= (get-in field-name->field ["humanraceid" :id])
                  (get-in field-name->field ["race\\id" :fk_target_field_id]))))))))
+
+(deftest resilient-to-conn-close?-test
+  (testing "checking sync is resilient to connections being closed during [have-select-privilege?]"
+    (let [have-select-privilege? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
+          default-have-select-privilege? #(identical? have-select-privilege? (get-method sql-jdbc.sync.interface/have-select-privilege? %))
+          jdbc-describe-database #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))]
+      (mt/test-drivers (into #{}
+                             (comp (filter default-have-select-privilege?)
+                                   (filter jdbc-describe-database)
+                                   (filter #(not (driver/database-supports? % :table-privileges nil))))
+                             (descendants driver/hierarchy :sql-jdbc))
+        (let [closed-first (volatile! nil)
+              all-tables (driver/describe-database driver/*driver* (mt/id))]
+          (with-redefs [sql-jdbc.sync.interface/have-select-privilege?
+                        (fn [driver ^Connection conn schema tbl-name]
+                          (when-not @closed-first
+                            (vreset! closed-first tbl-name)
+                            (.close conn))
+                          (have-select-privilege? driver conn schema tbl-name))]
+            (let [table-names #(->> % :tables (map :name) set)
+                  all-tables-sans-first (table-names (driver/do-with-resilient-connection driver/*driver* (mt/id) driver/describe-database))]
+              (is (or (= (-> all-tables table-names (disj @closed-first)) all-tables-sans-first)
+                      (= (-> all-tables table-names) all-tables-sans-first))))))))))
