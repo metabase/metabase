@@ -5,11 +5,10 @@ import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { getStoreUrl } from "metabase/selectors/settings";
+import { useStoreUrl } from "metabase/selectors/settings";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 
-const STORE_URL = getStoreUrl("checkout/upgrade/self-hosted");
-const STORE_ORIGIN = new URL(STORE_URL).origin;
+// const STORE_URL = useStoreUrl("checkout/upgrade/self-hosted");
 
 /**
  * This hook allows to create an upsell flow that listens to the events from the Store tab
@@ -22,15 +21,17 @@ export function useUpsellFlow({
   campaign: string;
   location: string;
 }) {
+  const storeUrl = useStoreUrl("checkout/upgrade/self-hosted");
   const storeWindowRef = useRef<WindowProxy | null>(null);
   const [sendToast] = useToast();
+  const storeOrigin = new URL(storeUrl).origin;
   const { updateToken, tokenStatus, error } = useLicense(() => {
     if (storeWindowRef.current) {
       sendToast({
         message: t`License activated successfully`,
         icon: "check_filled",
       });
-      sendMessageTokenActivation(true, storeWindowRef.current);
+      sendMessageTokenActivation(true, storeWindowRef.current, storeOrigin);
     }
   });
   const currentUser = useSelector(getCurrentUser);
@@ -38,6 +39,7 @@ export function useUpsellFlow({
 
   const upsellLink = useUpsellLink({
     url: getStoreUrlWithParams({
+      storeUrl,
       firstName: currentUser?.first_name ?? "",
       lastName: currentUser?.last_name ?? "",
       email: currentUser?.email ?? "",
@@ -57,6 +59,7 @@ export function useUpsellFlow({
   useEffect(() => {
     const listener = createListener({
       updateToken,
+      storeOrigin,
     });
 
     window.addEventListener("message", listener);
@@ -64,16 +67,16 @@ export function useUpsellFlow({
     return () => {
       window.removeEventListener("message", listener);
     };
-  }, [updateToken]);
+  }, [updateToken, storeOrigin]);
 
   useEffect(() => {
     if (error && storeWindowRef.current) {
-      sendMessageTokenActivation(false, storeWindowRef.current);
+      sendMessageTokenActivation(false, storeWindowRef.current, storeOrigin);
       sendToast({
         message: error,
       });
     }
-  }, [tokenStatus, error, sendToast]);
+  }, [tokenStatus, error, sendToast, storeOrigin]);
 
   return {
     triggerUpsellFlow: openStoresTab,
@@ -82,11 +85,13 @@ export function useUpsellFlow({
 
 function createListener({
   updateToken,
+  storeOrigin,
 }: {
   updateToken: (token: string) => Promise<void>;
+  storeOrigin: string;
 }) {
   return (event: MessageEvent<LicenseTokenMessage>) => {
-    const token = handleMessageFromStore(event);
+    const token = handleMessageFromStore(event, storeOrigin);
     if (token) {
       updateToken(token);
     }
@@ -109,8 +114,11 @@ interface LicenseTokenMessage {
   };
 }
 
-function handleMessageFromStore(event: MessageEvent<LicenseTokenMessage>) {
-  if (event.origin !== STORE_ORIGIN) {
+function handleMessageFromStore(
+  event: MessageEvent<LicenseTokenMessage>,
+  storeOrigin: string,
+) {
+  if (event.origin !== storeOrigin) {
     return;
   }
 
@@ -126,6 +134,7 @@ function handleMessageFromStore(event: MessageEvent<LicenseTokenMessage>) {
 function sendMessageTokenActivation(
   success: boolean,
   storeWindow: WindowProxy,
+  storeOrigin: string,
 ) {
   storeWindow.postMessage(
     {
@@ -135,7 +144,7 @@ function sendMessageTokenActivation(
         success,
       },
     } satisfies LicenseTokenActivationMessage,
-    STORE_ORIGIN,
+    storeOrigin,
   );
 }
 
@@ -144,13 +153,14 @@ function getStoreUrlWithParams({
   lastName,
   email,
   siteName,
+  storeUrl,
 }: {
   firstName: string;
   lastName: string;
   email: string;
   siteName: string;
+  storeUrl: string;
 }) {
-  const storeUrl = STORE_URL;
   const returnUrl = window.location.href;
   const returnUrlEncoded = encodeURIComponent(returnUrl);
   const siteNameEncoded = encodeURIComponent(siteName);

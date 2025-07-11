@@ -58,7 +58,10 @@ const setupContainer = ({
   });
 
   const state = createMockState({
-    settings: mockSettings({ "site-name": "Basemeta" }),
+    settings: mockSettings({
+      "site-name": "Basemeta",
+      "store-url": "https://test-store.metabase.com",
+    }),
     currentUser: createMockUser(currentUser),
   });
   setupTokenStatusEndpointEmpty();
@@ -105,7 +108,7 @@ describe("useUpsellFlow", () => {
       const utmParamsPart =
         "utm_source=product&utm_medium=upsell&utm_campaign=branding&utm_content=branding-upsell-admin-screen&source_plan=oss";
       expect(mockWindowOpen).toHaveBeenCalledWith(
-        `https://store.metabase.com/checkout/upgrade/self-hosted?${encodedUrl}&${userDetailsPart}&${utmParamsPart}`,
+        `https://test-store.metabase.com/checkout/upgrade/self-hosted?${encodedUrl}&${userDetailsPart}&${utmParamsPart}`,
         "_blank",
       );
     });
@@ -123,7 +126,7 @@ describe("useUpsellFlow", () => {
       window.dispatchEvent(
         new MessageEvent("message", {
           source: window,
-          origin: "https://store.metabase.com",
+          origin: "https://test-store.metabase.com",
           data: {
             type: "license-token-created",
             source: "metabase-store",
@@ -146,7 +149,7 @@ describe("useUpsellFlow", () => {
             payload: { success: true },
             source: "metabase-instance",
           },
-          "https://store.metabase.com",
+          "https://test-store.metabase.com",
         );
       });
 
@@ -171,7 +174,7 @@ describe("useUpsellFlow", () => {
       window.dispatchEvent(
         new MessageEvent("message", {
           source: window,
-          origin: "https://store.metabase.com",
+          origin: "https://test-store.metabase.com",
           data: {
             type: "license-token-created",
             source: "metabase-store",
@@ -189,7 +192,7 @@ describe("useUpsellFlow", () => {
             payload: { success: false },
             source: "metabase-instance",
           },
-          "https://store.metabase.com",
+          "https://test-store.metabase.com",
         );
       });
 
