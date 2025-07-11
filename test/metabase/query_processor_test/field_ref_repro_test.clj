@@ -1,18 +1,19 @@
-(ns metabase.query-processor-test.field-ref-repro-test) (ns metabase.query-processor-test.field-ref-repro-test
-                                                          "Reproduction tests for field ref(erence) issues. These are negative tests, if some fail,
+(ns metabase.query-processor-test.field-ref-repro-test
+  "Reproduction tests for field ref(erence) issues. These are negative tests, if some fail,
   we might have actually fixed a bug."
-                                                          (:require
-                                                           [clojure.set :as set]
-                                                           [clojure.test :refer :all]
-                                                           [medley.core :as m]
-                                                           [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-                                                           [metabase.lib.core :as lib]
-                                                           [metabase.lib.equality :as lib.equality]
-                                                           [metabase.lib.metadata :as lib.metadata]
-                                                           [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-                                                           [metabase.lib.util :as lib.util]
-                                                           [metabase.query-processor :as qp]
-                                                           [metabase.test :as mt]))
+  (:require
+   [clojure.set :as set]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.util :as lib.util]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel native-query-model-remapped-column-join-test
   (testing "Should be able to join on remapped model column (#58314)"
@@ -347,3 +348,38 @@
                      {:name "RATING",       :display-name "Rating",          :selected? false}
                      {:name "CREATED_AT",   :display-name "Created At",      :selected? false}]
                     marked))))))))
+
+(deftest stale-unsed-field-referenced-test
+  (testing "Should handle missing unused field (#60498)"
+    (mt/with-driver :h2
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+        (mt/with-temp [:model/Card m1 (-> {:dataset_query (mt/mbql-query orders)
+                                           :name "M1"
+                                           :type :model}
+                                          mt/card-with-metadata)
+                       :model/Card m2 (-> {:dataset_query (mt/mbql-query nil
+                                                            {:source-table (str "card__" (:id m1))})
+                                           :name "M2"
+                                           :type :model}
+                                          mt/card-with-metadata)
+                       :model/Card m3 (-> {:dataset_query (mt/mbql-query nil
+                                                            {:source-table (str "card__" (:id m2))})
+                                           :name "M3"
+                                           :type :model}
+                                          mt/card-with-metadata)
+                       :model/Card m4 (-> {:dataset_query (mt/mbql-query nil
+                                                            {:source-table (str "card__" (:id m3))
+                                                             :aggregation [[:count]]
+                                                             :breakout    [*QUANTITY/Integer]})
+                                           :name "M4"
+                                           :type :model}
+                                          mt/card-with-metadata)]
+          (t2/update! :model/Card (:id m1) {:result_metadata
+                                            (remove (comp #{"TAX"} :name)
+                                                    (t2/select-one-fn :result_metadata :model/Card (:id m1)))})
+          (let [card-meta (lib.metadata/card mp (:id m4))
+                query     (lib/query mp card-meta)]
+            (mt/with-native-query-testing-context query
+              ;; should get columns QUANTITY and count and 77 rows
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Column .*TAX.* not found"
+                                    (qp/process-query query))))))))))
