@@ -34,7 +34,10 @@ export const permissionApi = Api.injectEndpoints({
       providesTags: (group) =>
         group ? providePermissionsGroupTags(group) : [],
     }),
-    createPermissionsGroup: builder.mutation<BaseGroupInfo, { name: string }>({
+    createPermissionsGroup: builder.mutation<
+      BaseGroupInfo,
+      Pick<BaseGroupInfo, "name" | "is_tenant_group">
+    >({
       query: (body) => ({
         method: "POST",
         url: "/api/permissions/group",
