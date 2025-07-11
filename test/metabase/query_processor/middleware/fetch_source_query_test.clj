@@ -194,7 +194,7 @@
                                    :limit        50}}]))
         card     (lib.metadata/card base 1)
         eid      (lib/random-ident)
-        metadata (mapv #(update % :ident lib/model-ident eid) (:result-metadata card))]
+        metadata (:result-metadata card)]
     (lib.tu/merged-mock-metadata-provider base {:cards [{:id              1
                                                          :type            :model
                                                          :entity-id       eid
