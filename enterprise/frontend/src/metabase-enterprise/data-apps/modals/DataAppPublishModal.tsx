@@ -15,10 +15,10 @@ import {
   TextInput,
 } from "metabase/ui";
 import {
-  useArchiveDataAppMutation,
   useReleaseDataAppDefinitionMutation,
   useUpdateDataAppDefinitionMutation,
   useUpdateDataAppMutation,
+  useUpdateDataAppStatusMutation,
 } from "metabase-enterprise/api";
 
 interface DataAppPublishModalProps {
@@ -34,17 +34,21 @@ export const DataAppPublishModal = ({
 }: DataAppPublishModalProps) => {
   const fullAppUrl = Urls.publishedDataApp(dataApp.slug);
 
-  const [archiveDataApp] = useArchiveDataAppMutation();
+  const [updateDataAppStatus] = useUpdateDataAppStatusMutation();
 
   const needsToPublish =
     dataApp.status === "private" || dataApp.status === "archived";
 
   const handleArchive = useCallback(async () => {
-    await archiveDataApp({ id: dataApp.id });
-  }, [archiveDataApp, dataApp.id]);
+    await updateDataAppStatus({ id: dataApp.id, status: "archived" });
+  }, [updateDataAppStatus, dataApp.id]);
 
   return (
-    <Modal opened={opened} onClose={onClose}>
+    <Modal
+      opened={opened}
+      title={t`Your app is ${dataApp.status}`}
+      onClose={onClose}
+    >
       {needsToPublish ? (
         <DataAppFirstPublishContent dataApp={dataApp} />
       ) : (

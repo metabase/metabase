@@ -11,6 +11,7 @@ import type {
   DataAppsListResponse,
   UpdateDataAppDefinitionRequest,
   UpdateDataAppRequest,
+  UpdateDataAppStatusRequest,
 } from "metabase-enterprise/data-apps/types";
 import type { PaginationRequest } from "metabase-types/api";
 
@@ -61,10 +62,13 @@ export const dataAppsApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_result, _error, arg) => [idTag("data-app", arg.id)],
     }),
 
-    archiveDataApp: builder.mutation<void, { id: string }>({
-      query: ({ id }) => ({
-        method: "DELETE",
-        url: `/api/data-app/${id}`,
+    updateDataAppStatus: builder.mutation<DataApp, UpdateDataAppStatusRequest>({
+      query: ({ id, status }) => ({
+        method: "PUT",
+        url: `/api/data-app/${id}/status`,
+        body: {
+          status,
+        },
       }),
       invalidatesTags: (_result, _error, arg) => [idTag("data-app", arg.id)],
     }),
@@ -101,7 +105,7 @@ export const {
   useGetDataAppQuery,
   useCreateDataAppMutation,
   useUpdateDataAppMutation,
-  useArchiveDataAppMutation,
+  useUpdateDataAppStatusMutation,
   useUpdateDataAppDefinitionMutation,
   useReleaseDataAppDefinitionMutation,
 } = dataAppsApi;

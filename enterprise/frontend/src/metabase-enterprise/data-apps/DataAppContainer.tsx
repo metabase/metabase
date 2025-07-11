@@ -107,7 +107,10 @@ export const DataAppContainer = ({
           }}
         >
           <Group gap="xs" align="center">
-            <Title order={4}>{dataApp.name}</Title>
+            <Title order={4}>
+              {dataApp.name}{" "}
+              {dataApp.status === "archived" ? t`(Archived)` : ""}
+            </Title>
             <Tooltip label={t`Edit Data App Settings`}>
               <ActionIcon onClick={openEditTitleModal}>
                 <Icon name="pencil" />
