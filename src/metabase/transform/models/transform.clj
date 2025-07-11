@@ -1,6 +1,6 @@
 (ns metabase.transform.models.transform
   (:require
-
+   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u] [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
@@ -127,7 +127,7 @@
                            (as-> $ (assert (pos-int? $))))
             view-name (transform-view-name transform-id)]
         (assert-unique-name! database schema view-name)
-        (driver/create-view! driver database-id view-name native)
+        (driver/create-view! driver database-id (str/join "." (remove nil? [schema view-name])) native)
         ;; TODO: Is it reasonable to do the following in transaction?
         (sync-metadata/sync-new-table-metadata! database {:table-name view-name
                                                           :schema schema})
@@ -145,3 +145,25 @@
                        :initial_sync_status "complete"})
           (t2/select-one :model/TransformView :id transform-id))))))
 
+(defn update-transform!
+  [transform-id dataset-query creator]
+  (let [transform (t2/select-one :model/TransformView :id transform-id)
+        view-name (:view_name transform)
+        schema-name (:view_schema transform)
+        namespaced-view-name (str/join "." (remove nil? [schema-name view-name]))
+        query (dataset-query->query dataset-query)
+        database-id (:database query)
+        compiled (:query (qp.compile/compile-with-inline-parameters query))
+        database (t2/select-one :model/Database :id database-id)
+        driver (driver.u/database->driver database)]
+    ;; TODO: In transaction?
+    (driver/drop-view! driver database-id namespaced-view-name)
+    (driver/create-view! driver database-id namespaced-view-name compiled)
+    ;; If former successful
+    (t2/with-transaction [_conn]
+      ;; also shutdown the transaction?
+      (t2/update! :model/TransformView :id transform-id
+                  {:dataset_query dataset-query
+                   :creator_id (:id creator)})
+      ;; TODO: async
+      (sync-metadata/sync-table-metadata! (t2/select-one :model/Table :id (:view_table_id transform))))))

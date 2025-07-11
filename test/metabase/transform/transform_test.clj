@@ -256,7 +256,8 @@
                                   (lib.convert/->legacy-MBQL)))
               display-name "Test view 1"]
           (testing "POST /transform creates new view in app db"
-            (is (=? {:view_table_id pos-int?
+            (is (=? {:id pos-int?
+                     :view_table_id pos-int?
                      :database_id (mt/id)
                      :creator_id (mt/user->id :rasta)
                      :status "view_synced"
@@ -363,3 +364,50 @@
               (is (= "Changed!"
                      (t2/select-one-fn :view_display_name :model/TransformView
                                        :id (:id transform-view))))))))))
+
+(comment
+  (mt/with-db (toucan2.core/select-one :model/Database :name "users-departments-db (postgres)")
+    (mt/with-driver :postgres
+      (metabase.request.session/with-current-user (mt/user->id :rasta)
+        (driver/create-view! driver/*driver* (mt/id) "xix.wiwiw" "select * from public.users limit 2")))))
+
+(deftest put-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :view)
+    (mt/dataset
+      users-departments-db
+      (with-no-transform-views
+        (let [display-name "t r a n s"]
+          (let [transform (mt/user-http-request :rasta :post 200 "transform"
+                                                {:display_name display-name
+                                                 :dataset_query
+                                                 (let [mp (mt/metadata-provider)]
+                                                   (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                                                       (lib.convert/->legacy-MBQL)))})]
+            (testing "Base: view creation is successfull"
+              (is (= 1 (t2/count :model/Table :display_name display-name)))
+              (is (= 1 (t2/count :model/TransformView :view_display_name display-name)))
+              (is #{"id" "name" "department_id" "score"}
+                  (t2/select-fn-set :name :model/Field
+                                    :table_id (t2/select-one-fn :id :model/Table :display_name display-name)
+                                    :active true))
+              (let [mp (mt/metadata-provider)]
+                (is (= [[1 "Alice" 10 100] [2 "Bob" 20 200] [3 "Charlie" 10 300]]
+                       (mt/rows (-> (lib/query mp (lib.metadata/table mp (:view_table_id transform)))
+                                    (qp/process-query))))))
+              (testing "PUT / can modify the query"
+                (mt/user-http-request :rasta :put 200 (str "transform/" (:id transform))
+                                      {:dataset_query
+                                       (let [mp (mt/metadata-provider)]
+                                         (-> (lib/query mp (lib.metadata/table mp (mt/id :departments)))
+                                             (lib.convert/->legacy-MBQL)))})
+                (is (= 1 (t2/count :model/Table :display_name display-name)))
+                (is (= 1 (t2/count :model/TransformView :view_display_name display-name)))
+                (is (= #{"idx" "name" "id"}
+                       (t2/select-fn-set :name :model/Field
+                                         :table_id (t2/select-one-fn :id :model/Table :display_name display-name)
+                                         :active true)))
+                (let [mp (mt/metadata-provider)]
+                  (is (= [[1 10 "Engineering"] [2 20 "Sales"]]
+                         (mt/rows (-> (lib/query mp (lib.metadata/table mp (:view_table_id transform)))
+                                      (qp/process-query))))))))))))))
