@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "branch",
+        "restack"
+      ],
+      "branch": "emb-430-proof-of-concept-curation-and-review-template-for-new-iframe"
+    }
+  ]
 }
