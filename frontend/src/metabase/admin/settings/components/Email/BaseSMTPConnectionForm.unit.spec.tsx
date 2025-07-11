@@ -1,14 +1,27 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  setupEmailEndpoints,
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import type {
+  EnterpriseSettingKey,
+  SettingDefinition,
+} from "metabase-types/api";
+import {
+  createMockSettingDefinition,
+  createMockSettings,
+} from "metabase-types/api/mocks";
 
 import { BaseSMTPConnectionForm } from "./BaseSMTPConnectionForm";
 
 const setup = async ({
   secureMode = false,
   setEnvVars = "none",
-  settingValues,
-  settingsDetails,
+  useDefaultValues,
   onClose,
   updateMutation,
   deleteMutation,
@@ -16,6 +29,7 @@ const setup = async ({
   onTrackSuccess,
 }: {
   secureMode?: boolean;
+  useDefaultValues?: boolean;
   setEnvVars?: "none" | "all" | "host";
   settingValues?: any;
   settingsDetails?: any;
@@ -25,64 +39,78 @@ const setup = async ({
   dataTestId?: string;
   onTrackSuccess?: any;
 } = {}) => {
+  const settingsDefinitionsWithDefaults: {
+    [K in EnterpriseSettingKey]?: SettingDefinition;
+  } = {
+    "email-smtp-host": createMockSettingDefinition({
+      key: "email-smtp-host",
+      value: useDefaultValues ? "" : "smtp.example.com",
+      env_name: "MB_EMAIL_SMTP_HOST",
+      is_env_setting: setEnvVars === "all" || setEnvVars === "host",
+    }),
+    "email-smtp-port": createMockSettingDefinition({
+      key: "email-smtp-port",
+      value: useDefaultValues ? null : 587,
+      env_name: "MB_EMAIL_SMTP_PORT",
+      is_env_setting: setEnvVars === "all",
+    }),
+    "email-smtp-security": createMockSettingDefinition({
+      key: "email-smtp-security",
+      value: useDefaultValues ? null : "tls",
+      env_name: "MB_EMAIL_SMTP_SECURITY",
+      is_env_setting: setEnvVars === "all",
+    }),
+    "email-smtp-username": createMockSettingDefinition({
+      key: "email-smtp-username",
+      value: useDefaultValues ? "" : "red@example.com",
+      env_name: "MB_EMAIL_SMTP_USERNAME",
+      is_env_setting: setEnvVars === "all",
+    }),
+
+    "email-smtp-password": createMockSettingDefinition({
+      key: "email-smtp-password",
+      value: useDefaultValues ? "" : "password123",
+      env_name: "MB_EMAIL_SMTP_PASSWORD",
+      is_env_setting: setEnvVars === "all",
+    }),
+  };
+  setupEmailEndpoints();
+  setupSettingsEndpoints(Object.values(settingsDefinitionsWithDefaults));
+  const settingValues: any = {};
+  Object.entries(settingsDefinitionsWithDefaults).forEach(([key, setting]) => {
+    settingValues[key] = setting.value;
+  });
+  setupPropertiesEndpoints(createMockSettings(settingValues));
   renderWithProviders(
-    <BaseSMTPConnectionForm
-      onClose={onClose || jest.fn()}
-      settingValues={{
-        host: "smtp.example.com",
-        port: 587,
-        security: "tls",
-        username: "red@example.com",
-        password: "password123",
-        ...settingValues,
-      }}
-      settingsDetails={{
-        host: {
-          is_env_setting: setEnvVars === "all" || setEnvVars === "host",
-          env_name: "MB_EMAIL_SMTP_HOST",
-          description: "SMTP host server",
-          display_name: "SMTP Host",
-        },
-        port: {
-          is_env_setting: setEnvVars === "all",
-          env_name: "MB_EMAIL_SMTP_PORT",
-          description: "SMTP port number",
-          display_name: "SMTP Port",
-        },
-        security: {
-          is_env_setting: setEnvVars === "all",
-          env_name: "MB_EMAIL_SMTP_SECURITY",
-          description: "SMTP security protocol",
-          display_name: "SMTP Security",
-        },
-        username: {
-          is_env_setting: setEnvVars === "all",
-          env_name: "MB_EMAIL_SMTP_USERNAME",
-          description: "SMTP username",
-          display_name: "SMTP Username",
-        },
-        password: {
-          is_env_setting: setEnvVars === "all",
-          env_name: "MB_EMAIL_SMTP_PASSWORD",
-          description: "SMTP password",
-          display_name: "SMTP Password",
-        },
-        ...settingsDetails,
-      }}
-      secureMode={secureMode}
-      updateMutation={
-        updateMutation ||
-        jest.fn().mockReturnValue({ unwrap: jest.fn().mockResolvedValue({}) })
-      }
-      deleteMutation={deleteMutation || jest.fn().mockResolvedValue({})}
-      dataTestId={dataTestId || "test-smtp-form"}
-      onTrackSuccess={onTrackSuccess || jest.fn()}
-    />,
+    <>
+      <BaseSMTPConnectionForm
+        onClose={onClose || jest.fn()}
+        getFullFormKey={(shortFormKey) => {
+          const mapFormKeyToSettingKey = {
+            host: "email-smtp-host",
+            port: "email-smtp-port",
+            security: "email-smtp-security",
+            username: "email-smtp-username",
+            password: "email-smtp-password",
+          } as const;
+          return mapFormKeyToSettingKey[shortFormKey];
+        }}
+        secureMode={secureMode}
+        updateMutation={
+          updateMutation ||
+          jest.fn().mockReturnValue({ unwrap: jest.fn().mockResolvedValue({}) })
+        }
+        deleteMutation={deleteMutation || jest.fn().mockResolvedValue({})}
+        dataTestId={dataTestId || "test-smtp-form"}
+        onTrackSuccess={onTrackSuccess || jest.fn()}
+      />
+      <UndoListing />
+    </>,
   );
 
   if (setEnvVars === "all") {
     await screen.findByText("MB_EMAIL_SMTP_USERNAME");
-  } else if (settingValues?.username === "") {
+  } else if (useDefaultValues) {
     await screen.findByText("SMTP Configuration");
   } else {
     await screen.findByDisplayValue("red@example.com");
@@ -142,12 +170,46 @@ describe("BaseSMTPConnectionForm", () => {
       );
 
       expect(mockUpdate).toHaveBeenCalledWith({
-        host: "smtp.torchic.com",
-        port: 587,
-        security: "tls",
-        username: "red@example.com",
-        password: "password123",
+        "email-smtp-host": "smtp.torchic.com",
+        "email-smtp-port": 587,
+        "email-smtp-security ": "tls",
+        "email-smtp-username": "red@example.com",
+        "email-smtp-password": "password123",
       });
+    });
+
+    it("should display form errors when update fails", async () => {
+      const mockUpdate = jest.fn().mockReturnValue({
+        unwrap: jest.fn().mockRejectedValue({
+          status: 400,
+          data: {
+            errors: {
+              "email-smtp-host": "Wrong host or port",
+              "email-smtp-port": "Wrong host or port",
+            },
+          },
+          isCancelled: false,
+        }),
+      });
+
+      await setup({
+        secureMode: false,
+        updateMutation: mockUpdate,
+      });
+
+      const hostInput = screen.getByLabelText(/SMTP Host/i);
+      await userEvent.clear(hostInput);
+      await userEvent.type(hostInput, "smtp.torchic.com");
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /save changes/i }),
+      );
+      await waitFor(() => {
+        const toasts = screen.getAllByLabelText("warning icon");
+        expect(toasts).toHaveLength(1);
+      });
+
+      expect(await screen.findAllByText("Wrong host or port")).toHaveLength(2);
     });
   });
 
@@ -169,13 +231,7 @@ describe("BaseSMTPConnectionForm", () => {
     it("should default to secure values when secureMode=true", async () => {
       await setup({
         secureMode: true,
-        settingValues: {
-          host: "",
-          port: null,
-          security: null,
-          username: "",
-          password: "",
-        },
+        useDefaultValues: true,
       });
 
       // Should default to secure port and security
