@@ -324,7 +324,7 @@ interface InstanceSettings {
   "email-reply-to": string[] | null;
   "email-smtp-host": string | null;
   "email-smtp-port": number | null;
-  "email-smtp-security": "none" | "ssl" | "tls" | "starttls";
+  "email-smtp-security": "none" | "ssl" | "tls" | "starttls" | null;
   "email-smtp-username": string | null;
   "email-smtp-password": string | null;
   "enable-embedding": boolean;

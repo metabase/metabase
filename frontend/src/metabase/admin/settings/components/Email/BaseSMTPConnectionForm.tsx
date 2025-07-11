@@ -1,9 +1,13 @@
 import type { TypedMutationTrigger } from "@reduxjs/toolkit/query/react";
-import { type ReactNode, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
 import { isErrorWithMessage } from "metabase/admin/performance/utils";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import {
@@ -15,44 +19,29 @@ import {
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Box, Button, Chip, Flex, Modal, Stack } from "metabase/ui";
+import type { SettingDefinitionMap, SettingKey } from "metabase-types/api";
 
-import { SettingHeader } from "../SettingHeader";
-import { SetByEnvVar } from "../widgets/AdminSettingInput";
+import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
 
-interface SettingDetails {
-  is_env_setting?: boolean;
-  env_name?: string;
-  description?: string | ReactNode | null;
-  display_name?: string;
-}
+type GetFullFormKey = (
+  shortFormKey: "port" | "host" | "username" | "security" | "password",
+) => SettingKey;
 
 interface BaseSMTPConnectionFormProps {
   onClose: () => void;
-  settingValues: {
-    host: string | null;
-    port: number | string | null;
-    security: string | null;
-    username: string | null;
-    password: string | null;
-  };
-  settingsDetails: {
-    host?: SettingDetails;
-    port?: SettingDetails;
-    security?: SettingDetails;
-    username?: SettingDetails;
-    password?: SettingDetails;
-  };
   secureMode?: boolean;
   updateMutation: TypedMutationTrigger<any, any, any>;
   deleteMutation: TypedMutationTrigger<any, void, any>;
   dataTestId: string;
   onTrackSuccess: () => void;
+  getFullFormKey: GetFullFormKey;
 }
 
 const anySchema = Yup.mixed().nullable().default(null);
 
 const getFormValueSchema = (
-  settingsDetails: BaseSMTPConnectionFormProps["settingsDetails"],
+  settingsDetails: SettingDefinitionMap | undefined,
+  getFullFormKey: GetFullFormKey,
   secureMode?: boolean,
 ) => {
   const portSchema = secureMode
@@ -77,17 +66,24 @@ const getFormValueSchema = (
     : Yup.string().default("none");
 
   return Yup.object({
-    host: settingsDetails?.host?.is_env_setting
+    [getFullFormKey("host")]: settingsDetails?.[getFullFormKey("host")]
+      ?.is_env_setting
       ? anySchema
       : Yup.string().required(Errors.required).default(""),
-    port: settingsDetails?.port?.is_env_setting ? anySchema : portSchema,
-    security: settingsDetails?.security?.is_env_setting
+    [getFullFormKey("port")]: settingsDetails?.[getFullFormKey("port")]
+      ?.is_env_setting
+      ? anySchema
+      : portSchema,
+    [getFullFormKey("security")]: settingsDetails?.[getFullFormKey("security")]
+      ?.is_env_setting
       ? anySchema
       : securitySchema,
-    username: settingsDetails?.username?.is_env_setting
+    [getFullFormKey("username")]: settingsDetails?.[getFullFormKey("username")]
+      ?.is_env_setting
       ? anySchema
       : Yup.string().default(""),
-    password: settingsDetails?.password?.is_env_setting
+    [getFullFormKey("password")]: settingsDetails?.[getFullFormKey("password")]
+      ?.is_env_setting
       ? anySchema
       : Yup.string().default(""),
   });
@@ -95,25 +91,32 @@ const getFormValueSchema = (
 
 export const BaseSMTPConnectionForm = ({
   onClose,
-  settingValues,
-  settingsDetails,
   secureMode,
   updateMutation,
   deleteMutation,
   dataTestId,
   onTrackSuccess,
+  getFullFormKey,
 }: BaseSMTPConnectionFormProps) => {
   const [sendToast] = useToast();
+  const { data: settingValues } = useGetSettingsQuery();
+  const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
 
   const initialValues = useMemo(
     () => ({
-      host: settingValues?.host ?? "",
-      port: settingValues?.port ?? (secureMode ? "465" : null),
-      security: settingValues?.security ?? (secureMode ? "ssl" : "none"),
-      username: settingValues?.username ?? "",
-      password: settingValues?.password ?? "",
+      [getFullFormKey("host")]: settingValues?.[getFullFormKey("host")] ?? "",
+      [getFullFormKey("port")]:
+        settingValues?.[getFullFormKey("port")]?.toString() ??
+        (secureMode ? "465" : null),
+      [getFullFormKey("security")]:
+        settingValues?.[getFullFormKey("security")] ??
+        (secureMode ? "ssl" : "none"),
+      [getFullFormKey("username")]:
+        settingValues?.[getFullFormKey("username")] ?? "",
+      [getFullFormKey("password")]:
+        settingValues?.[getFullFormKey("password")] ?? "",
     }),
-    [settingValues, secureMode],
+    [getFullFormKey, settingValues, secureMode],
   );
 
   const handleClearEmailSettings = useCallback(async () => {
@@ -136,7 +139,10 @@ export const BaseSMTPConnectionForm = ({
   const handleUpdateEmailSettings = useCallback(
     async (formData: any) => {
       try {
-        await updateMutation(formData).unwrap();
+        await updateMutation({
+          ...formData,
+          [getFullFormKey("port")]: parseInt(formData[getFullFormKey("port")]),
+        }).unwrap();
         onTrackSuccess();
         sendToast({
           message: t`Email settings updated`,
@@ -149,23 +155,25 @@ export const BaseSMTPConnectionForm = ({
           message: getErrorMessage(error, t`Error updating email settings`),
         });
 
-        // throw to allow the form to handle the error
+        // If error doesn't have the expected structure, throw as-is
         throw error;
       }
     },
-    [updateMutation, onTrackSuccess, sendToast, onClose],
+    [updateMutation, getFullFormKey, onTrackSuccess, sendToast, onClose],
   );
 
   const allSetByEnvVars = useMemo(() => {
     return (
       settingsDetails &&
-      ["host", "port", "security", "username", "password"].every(
-        (field) =>
-          settingsDetails[field as keyof typeof settingsDetails]
-            ?.is_env_setting,
-      )
+      (["host", "port", "security", "username", "password"] as const)
+        .map((formKey) => getFullFormKey(formKey))
+        .every(
+          (field) =>
+            settingsDetails[field as keyof typeof settingsDetails]
+              ?.is_env_setting,
+        )
     );
-  }, [settingsDetails]);
+  }, [getFullFormKey, settingsDetails]);
 
   const securityOptions = useMemo(() => {
     const options = [
@@ -192,7 +200,11 @@ export const BaseSMTPConnectionForm = ({
       <Box data-testid="settings-updates" pt="lg">
         <FormProvider
           initialValues={initialValues}
-          validationSchema={getFormValueSchema(settingsDetails, secureMode)}
+          validationSchema={getFormValueSchema(
+            settingsDetails,
+            getFullFormKey,
+            secureMode,
+          )}
           onSubmit={handleUpdateEmailSettings}
           enableReinitialize
         >
@@ -200,24 +212,26 @@ export const BaseSMTPConnectionForm = ({
             <Form>
               <Stack gap="lg">
                 <SetByEnvVarWrapper
-                  settingKey="host"
-                  settingDetails={settingsDetails?.host}
+                  settingKey={getFullFormKey("host")}
+                  settingDetails={settingsDetails?.[getFullFormKey("host")]}
                 >
                   <FormTextInput
-                    name="host"
+                    name={getFullFormKey("host")}
                     label={t`SMTP Host`}
-                    description={settingsDetails?.host?.description}
+                    description={
+                      settingsDetails?.[getFullFormKey("host")]?.description
+                    }
                     placeholder={"smtp.yourservice.com"}
                   />
                 </SetByEnvVarWrapper>
 
                 <SetByEnvVarWrapper
-                  settingKey="port"
-                  settingDetails={settingsDetails?.port}
+                  settingKey={getFullFormKey("port")}
+                  settingDetails={settingsDetails?.[getFullFormKey("port")]}
                 >
                   {secureMode ? (
                     <FormChipGroup
-                      name="port"
+                      name={getFullFormKey("port")}
                       label={t`SMTP Port`}
                       groupProps={{ mt: "0.5rem" }}
                     >
@@ -233,7 +247,7 @@ export const BaseSMTPConnectionForm = ({
                     </FormChipGroup>
                   ) : (
                     <FormTextInput
-                      name="port"
+                      name={getFullFormKey("port")}
                       label={t`SMTP Port`}
                       placeholder={"587"}
                     />
@@ -241,11 +255,11 @@ export const BaseSMTPConnectionForm = ({
                 </SetByEnvVarWrapper>
 
                 <SetByEnvVarWrapper
-                  settingKey="security"
-                  settingDetails={settingsDetails?.security}
+                  settingKey={getFullFormKey("security")}
+                  settingDetails={settingsDetails?.[getFullFormKey("security")]}
                 >
                   <FormChipGroup
-                    name="security"
+                    name={getFullFormKey("security")}
                     label={t`SMTP Security`}
                     groupProps={{ mt: "0.5rem" }}
                   >
@@ -258,22 +272,22 @@ export const BaseSMTPConnectionForm = ({
                 </SetByEnvVarWrapper>
 
                 <SetByEnvVarWrapper
-                  settingKey="username"
-                  settingDetails={settingsDetails?.username}
+                  settingKey={getFullFormKey("username")}
+                  settingDetails={settingsDetails?.[getFullFormKey("username")]}
                 >
                   <FormTextInput
-                    name="username"
+                    name={getFullFormKey("username")}
                     label={t`SMTP Username`}
                     placeholder={"nicetoseeyou"}
                   />
                 </SetByEnvVarWrapper>
 
                 <SetByEnvVarWrapper
-                  settingKey="password"
-                  settingDetails={settingsDetails?.password}
+                  settingKey={getFullFormKey("password")}
+                  settingDetails={settingsDetails?.[getFullFormKey("password")]}
                 >
                   <FormTextInput
-                    name="password"
+                    name={getFullFormKey("password")}
                     type="password"
                     label={t`SMTP Password`}
                     placeholder={"Shhh..."}
@@ -302,31 +316,3 @@ export const BaseSMTPConnectionForm = ({
     </Modal>
   );
 };
-
-function SetByEnvVarWrapper({
-  settingKey,
-  settingDetails,
-  children,
-}: {
-  settingKey: string;
-  settingDetails: SettingDetails | undefined;
-  children: React.ReactNode;
-}) {
-  if (
-    settingDetails &&
-    settingDetails?.is_env_setting &&
-    settingDetails?.env_name
-  ) {
-    return (
-      <Box mb="lg">
-        <SettingHeader
-          id={settingKey}
-          title={settingDetails.display_name}
-          description={settingDetails.description}
-        />
-        <SetByEnvVar varName={settingDetails.env_name} />
-      </Box>
-    );
-  }
-  return <div>{children}</div>;
-}
