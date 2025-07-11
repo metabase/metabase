@@ -5,6 +5,7 @@ import {
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
+import EmptyState from "metabase/common/components/EmptyState";
 import { useToast } from "metabase/common/hooks";
 import {
   FieldOrderPicker,
@@ -34,6 +35,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const [sendToast] = useToast();
   const [isSorting, setIsSorting] = useState(false);
+  const hasFields = table.fields && table.fields.length > 0;
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateTable({
@@ -151,7 +153,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
                 <Loader size="xs" data-testid="loading-indicator" />
               )}
 
-              {!isSorting && (
+              {!isSorting && hasFields && (
                 <Button
                   h={32}
                   leftSection={<Icon name="sort_arrows" />}
@@ -192,7 +194,11 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             </Group>
           </Group>
 
-          {isSorting && (
+          {!hasFields && (
+            <EmptyState message={t`This table does not have any fields`} />
+          )}
+
+          {isSorting && hasFields && (
             <SortableFieldList
               activeFieldId={fieldId}
               table={table}
@@ -200,7 +206,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             />
           )}
 
-          {!isSorting && (
+          {!isSorting && hasFields && (
             <FieldList
               activeFieldId={fieldId}
               getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
