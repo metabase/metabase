@@ -299,6 +299,11 @@
   {:in  u/qualified-name
    :out keyword})
 
+(def transform-identity
+  "Identity transform, useful with validations."
+  {:in  identity
+   :out identity})
+
 (def transform-json-no-keywordization
   "Transform for json-no-keywordization"
   {:in  json-in
@@ -311,6 +316,15 @@
   (when-not (contains? enum value)
     (throw (ex-info (format "Invalid value %s. Must be one of %s" value (str/join ", " enum)) {:status-code 400
                                                                                                :value       value}))))
+
+(mu/defn assert-regex
+  "Assert that a value matches a regex."
+  [regex :- [:fn u/regexp?]
+   value]
+  (when-not (and value (re-find regex value))
+    (throw (ex-info (format "Value doesn't match the regex") {:status-code 400
+                                                              :value       value
+                                                              :regex       regex}))))
 
 (mu/defn assert-namespaced
   "Assert that a value is a namespaced keyword under `qualified-ns`."

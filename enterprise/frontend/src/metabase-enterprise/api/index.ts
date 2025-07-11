@@ -3,6 +3,7 @@ export * from "./ai-sql-generation";
 export * from "./audit-info";
 export * from "./api";
 export * from "./billing-info";
+export * from "./data-apps";
 export * from "./metabot";
 export * from "./content-translation";
 export * from "./gdrive";

@@ -5,6 +5,7 @@ export * from "./bookmarks";
 export * from "./browse";
 export * from "./collections";
 export * from "./dashboards";
+export * from "./data-apps";
 export * from "./indexed-entities";
 export * from "./modelToUrl";
 export * from "./misc";

@@ -410,7 +410,7 @@
   instaparse.core/defparser                                                             clojure.core/def
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
-metabase-enterprise.content-translation.routes-test/with-new-secret-key!                clojure.core/fn
+  metabase-enterprise.content-translation.routes-test/with-new-secret-key!              clojure.core/fn
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
@@ -421,6 +421,8 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
   metabase.channel.impl.http-test/with-captured-http-requests                           clojure.core/fn
   metabase.channel.impl.http-test/with-server                                           clojure.core/let
   metabase.collections.models.collection-test/with-collection-in-location               clojure.core/let
+  metabase.data-apps.test-util/with-data-app!                                           clojure.core/let
+  metabase.data-apps.test-util/with-released-app!                                       clojure.core/let
   metabase.driver.mongo.connection/with-mongo-client                                    clojure.core/let
   metabase.driver.mongo.connection/with-mongo-database                                  clojure.core/let
   metabase.driver.mongo.query-processor/mongo-let                                       clojure.core/let

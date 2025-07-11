@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import React, {
   type ComponentType,
   type Dispatch,
@@ -721,6 +722,22 @@ export type PluginDashcardMenu = {
 
 export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
   dashcardMenuItemGetters: [],
+};
+
+export const PLUGIN_DATA_APPS = {
+  isEnabled: () => false,
+  LIST_APPS_PAGE_COMPONENT: PluginPlaceholder,
+  APP_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      appId: string;
+    };
+    location: Location<{ justCreated?: string }>;
+  }>,
+  PUBLIC_APP_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      appUrl: string;
+    };
+  }>,
 };
 
 export const PLUGIN_CONTENT_TRANSLATION = {

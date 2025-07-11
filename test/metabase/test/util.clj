@@ -163,6 +163,22 @@
              :cache_field_values_schedule "0 50 0 * * ? *"
              :settings                    {:database-source-dataset-name "test-data"}}))
 
+   :model/DataApp
+   (fn [_] (default-timestamped
+            {:name        (u.random/random-name)
+             :slug        (u.random/random-name)
+             :description (str "Test description for " (u.random/random-name))
+             :status      :private
+             :creator_id  (user-id :crowberto)}))
+
+   :model/DataAppDefinition
+   (fn [_] {:created_at :%now
+            :creator_id (user-id :crowberto)})
+
+   :model/DataAppRelease
+   (fn [_] {:released_at :%now
+            :creator_id (user-id :crowberto)})
+
    :model/Dimension
    (fn [_] (default-timestamped
             {:name (u.random/random-name)
@@ -790,7 +806,9 @@
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (t2/query-one
            {:delete-from (t2/table-name model)
-            :where       [:and max-id-condition additional-conditions]}))
+            :where       (if (some? additional-conditions)
+                           [:and max-id-condition additional-conditions]
+                           max-id-condition)}))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
         (search/reindex! {:in-place? true})))))
 
