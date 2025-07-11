@@ -408,7 +408,7 @@
 
 (defmethod create-and-grant-roles! ::test-extensions
   [_driver _details _roles _db-user _default-role]
-  nil)
+  (ex-info (format "Creating roles hasn't been implemented or is not supported for %s" driver) {}))
 
 (defmulti drop-roles!
   "Drops the given roles, and drops the database user if necessary"
@@ -418,7 +418,7 @@
 
 (defmethod drop-roles! ::test-extensions
   [_driver _details _roles _db-user]
-  nil)
+  (ex-info (format "Dropping roles hasn't been implemented or is not supported for %s" driver) {}))
 
 (defn with-temp-roles-fn!
   "Creates the given roles and permissions for the database user, and drops them after execution"
@@ -448,7 +448,7 @@
 
 (defmethod create-user-with-pk! ::test-extensions
   [_driver _details _pk-user _pub-key]
-  nil)
+  (ex-info (format "Creating a user hasn't been implemented or is not supported for %s" driver) {}))
 
 (defmulti drop-user-if-exists!
   "Drops the database user if it exists"
@@ -457,8 +457,8 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod drop-user-if-exists! ::test-extensions
-  [_driver _details _db-user]
-  nil)
+  [driver _details _db-user]
+  (ex-info (format "Dropping a user hasn't been implemented or is not supported for %s" driver) {}))
 
 (defn with-temp-pk-user-fn!
   "Creates the given user with the default public key and drops it after execution."
