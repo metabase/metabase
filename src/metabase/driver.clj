@@ -1342,7 +1342,7 @@
 (defmethod table-known-to-not-exist? ::driver [_ _] false)
 
 (defmulti do-with-resilient-connection
-  "wip"
+  "Execute function `f` within a context that may recover (on-demand) from connection failures."
   {:added "0.55.0" :arglists '([driver database f])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
