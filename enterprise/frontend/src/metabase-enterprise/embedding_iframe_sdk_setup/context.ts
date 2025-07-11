@@ -1,11 +1,11 @@
 import { createContext, useContext } from "react";
 
-import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 import type { Parameter } from "metabase-types/api";
 
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
+  SdkIframeEmbedSetupSettings,
   SdkIframeEmbedSetupStep,
 } from "./types";
 
@@ -17,9 +17,9 @@ export interface SdkIframeEmbedSetupContextType {
   experience: SdkIframeEmbedSetupExperience;
 
   // Embed settings
-  settings: SdkIframeEmbedSettings;
-  setSettings: (settings: SdkIframeEmbedSettings) => void;
-  updateSettings: (nextSettings: Partial<SdkIframeEmbedSettings>) => void;
+  settings: SdkIframeEmbedSetupSettings;
+  updateSettings: (nextSettings: Partial<SdkIframeEmbedSetupSettings>) => void;
+  replaceSettings: (settings: SdkIframeEmbedSetupSettings) => void;
 
   // Recent items
   recentDashboards: SdkIframeEmbedSetupRecentItem[];

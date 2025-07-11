@@ -2,34 +2,46 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
-import type { SdkIframeEmbedTagSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
+import type { SdkIframeEmbedSetupSettings } from "../types";
+
+// Example target ID for the embed snippet.
+const SNIPPET_EMBED_TARGET = "metabase-embed";
 
 export function useSdkIframeEmbedSnippet() {
+  const instanceUrl = useSetting("site-url");
   const { settings } = useSdkIframeEmbedSetupContext();
 
-  const instanceUrl = useSetting("site-url");
-
-  return useMemo(() => {
-    return getSnippet({
-      target: "#metabase-embed",
-      ..._.omit(settings, ["useExistingUserSession"]),
-      instanceUrl,
-
-      // Only include useExistingUserSession if it is true.
-      ...(settings.useExistingUserSession
-        ? { useExistingUserSession: true }
-        : {}),
-    });
-  }, [settings, instanceUrl]);
+  return useMemo(
+    () => getSnippet({ settings, instanceUrl }),
+    [instanceUrl, settings],
+  );
 }
 
-function getSnippet(settings: SdkIframeEmbedTagSettings): string {
+function getSnippet({
+  settings,
+  instanceUrl,
+}: {
+  settings: SdkIframeEmbedSetupSettings;
+  instanceUrl: string;
+}): string {
+  const cleanedSettings = {
+    // Only include useExistingUserSession if it is true.
+    ..._.omit(settings, ["useExistingUserSession"]),
+    ...(settings.useExistingUserSession
+      ? { useExistingUserSession: true }
+      : {}),
+
+    // Append these settings that can't be controlled by users.
+    instanceUrl,
+    target: `#${SNIPPET_EMBED_TARGET}`,
+  };
+
   // filter out empty arrays, strings, objects, null and undefined.
   // this keeps the embed settings readable.
   const filteredSettings = Object.fromEntries(
-    Object.entries(settings).filter(([, value]) => {
+    Object.entries(cleanedSettings).filter(([, value]) => {
       if (Array.isArray(value)) {
         return value.length > 0;
       }
@@ -52,9 +64,9 @@ function getSnippet(settings: SdkIframeEmbedTagSettings): string {
     .trim();
 
   // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
-  return `<script src="${settings.instanceUrl}/app/embed.js"></script>
+  return `<script src="${instanceUrl}/app/embed.js"></script>
 
-<div id="metabase-embed"></div>
+<div id="${SNIPPET_EMBED_TARGET}"></div>
 
 <script>
   const { MetabaseEmbed } = window["metabase.embed"];

@@ -6,13 +6,16 @@ import type {
   QuestionEmbedOptions,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
-import type { SdkIframeEmbedSetupExperience } from "../types";
+import type {
+  SdkIframeEmbedSetupExperience,
+  SdkIframeEmbedSetupSettings,
+} from "../types";
 
 export const getDefaultSdkIframeEmbedSettings = (
   type: SdkIframeEmbedSetupExperience,
   defaultResourceId: string | number,
-) =>
-  match(type)
+): SdkIframeEmbedSetupSettings => {
+  const templateDefaults = match(type)
     .with(
       "dashboard",
       (): DashboardEmbedOptions => ({
@@ -39,3 +42,9 @@ export const getDefaultSdkIframeEmbedSettings = (
       }),
     )
     .exhaustive();
+
+  return {
+    ...templateDefaults,
+    useExistingUserSession: true,
+  };
+};
