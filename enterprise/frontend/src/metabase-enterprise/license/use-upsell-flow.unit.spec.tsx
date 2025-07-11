@@ -126,6 +126,7 @@ describe("useUpsellFlow", () => {
           origin: "https://store.metabase.com",
           data: {
             type: "license-token-created",
+            source: "metabase-store",
             payload: {
               licenseToken: "token-abc-123",
             },
@@ -143,7 +144,7 @@ describe("useUpsellFlow", () => {
           {
             type: "license-token-activated",
             payload: { success: true },
-            source: "metabase-store",
+            source: "metabase-instance",
           },
           "https://store.metabase.com",
         );
@@ -173,6 +174,7 @@ describe("useUpsellFlow", () => {
           origin: "https://store.metabase.com",
           data: {
             type: "license-token-created",
+            source: "metabase-store",
             payload: {
               licenseToken: "token-abc-123",
             },
@@ -185,7 +187,7 @@ describe("useUpsellFlow", () => {
           {
             type: "license-token-activated",
             payload: { success: false },
-            source: "metabase-store",
+            source: "metabase-instance",
           },
           "https://store.metabase.com",
         );
