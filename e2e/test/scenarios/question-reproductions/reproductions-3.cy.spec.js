@@ -641,7 +641,7 @@ describe("issue 33439", () => {
       name: "Date",
     });
     H.popover().within(() => {
-      cy.findByText("Unsupported function convert-timezone");
+      cy.findByText("Unsupported function convertTimezone");
       cy.button("Done").should("be.disabled");
     });
   });
