@@ -273,7 +273,7 @@ function DashCardInner({
     const authorityLevel = dashcard.collection_authority_level;
     if (isRegularDashboard && !isRegularQuestion && authorityLevel) {
       const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
-      const iconSize = 14;
+      const iconSize = 16;
       return {
         name: opts.icon,
         color: opts.color ? color(opts.color) : undefined,
