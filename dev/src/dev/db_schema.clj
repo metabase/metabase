@@ -155,7 +155,8 @@
    ["SELECT
        kcu.column_name,
        ccu.table_name AS foreign_table_name,
-       ccu.column_name AS foreign_column_name
+       ccu.column_name AS foreign_column_name,
+       rc.delete_rule
      FROM information_schema.table_constraints AS tc
      JOIN information_schema.key_column_usage AS kcu
        ON tc.constraint_name = kcu.constraint_name
@@ -163,9 +164,11 @@
      JOIN information_schema.constraint_column_usage AS ccu
        ON ccu.constraint_name = tc.constraint_name
        AND ccu.table_schema = tc.table_schema
+     JOIN information_schema.referential_constraints AS rc
+       ON tc.constraint_name = rc.constraint_name
+       AND tc.table_schema = rc.constraint_schema
      WHERE tc.constraint_type = 'FOREIGN KEY'
-       AND tc.table_name = ?"
-    table-name]))
+       AND tc.table_name = ?" table-name]))
 
 (defn- sort-column-keys [column]
   (merge (select-keys column [:column_name :type])
@@ -305,7 +308,9 @@
                     fk-map           (into {} (map (fn [fk]
                                                      [(:column_name fk)
                                                       {:target_table  (:foreign_table_name fk)
-                                                       :target_column (:foreign_column_name fk)}])
+                                                       :target_column (:foreign_column_name fk)
+                                                       :on_delete     (let [on-delete (str/lower-case (:delete_rule fk))]
+                                                                        (keyword ({"no action" :restrict} on-delete on-delete)))}])
                                                    foreign-keys))
                     ;; Update fk columns with actual targets
                     updated-columns  (map (fn [col]
@@ -316,7 +321,10 @@
                                                 (cond-> (assoc col :target_table target-table)
                                                   (and target-column
                                                        (not (= (:column_name col) (str target-table "_" target-column))))
-                                                  (assoc :target_column target-column)))
+                                                  (assoc :target_column target-column)
+
+                                                  (not (#{nil :cascade} (:on_delete fk-info)))
+                                                  (assoc :on_delete (:on_delete fk-info))))
                                               col))
                                           columns)
                     indexes          (map #(normalize-index % table) (get-table-indexes table))
