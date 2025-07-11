@@ -2,7 +2,7 @@ import { userEvent } from "@testing-library/user-event";
 
 import { setupUserEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { Form, FormProvider } from "metabase/forms";
+import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import type {
   StructuredUserAttributes,
   UserAttributeMap,
@@ -72,12 +72,10 @@ const setup = () => {
       initialValues={{ login_attributes: simpleAttributes }}
       onSubmit={onSubmit}
     >
-      {({ values }) => (
-        <Form>
-          <LoginAttributesWidget name="login_attributes" userId={1} />
-          <pre aria-label="values-output">{JSON.stringify(values)}</pre>
-        </Form>
-      )}
+      <Form>
+        <LoginAttributesWidget name="login_attributes" userId={1} />
+        <FormSubmitButton />
+      </Form>
     </FormProvider>,
   );
 
@@ -86,33 +84,32 @@ const setup = () => {
 
 describe("LoginAttributesWidget", () => {
   it("should not save system attributes", async () => {
-    setup();
+    const { onSubmit } = setup();
     await screen.findByText("Attributes");
     await changeInput("secret", "super");
+    await userEvent.click(screen.getByRole("button", { name: "Submit" }));
 
-    const outputElement = screen.getByLabelText("values-output");
-    expect(outputElement).toHaveTextContent(
-      JSON.stringify({
-        login_attributes: {
-          type: "insect",
-          personal: "super",
-        },
-      }),
-    );
+    const submittedValues = onSubmit.mock.calls[0][0];
+    expect(submittedValues).toEqual({
+      login_attributes: {
+        type: "insect",
+        personal: "super",
+      },
+    });
   });
 
   it("should not save a user attribute with the same key and value as a tenant attribute", async () => {
-    setup();
+    const { onSubmit } = setup();
+
     await screen.findByText("Attributes");
     await changeInput("insect", "bug");
+    await userEvent.click(screen.getByRole("button", { name: "Submit" }));
 
-    const outputElement = screen.getByLabelText("values-output");
-    expect(outputElement).toHaveTextContent(
-      JSON.stringify({
-        login_attributes: {
-          personal: "secret",
-        },
-      }),
-    );
+    const submittedValues = onSubmit.mock.calls[0][0];
+    expect(submittedValues).toEqual({
+      login_attributes: {
+        personal: "secret",
+      },
+    });
   });
 });
