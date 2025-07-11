@@ -52,7 +52,6 @@
     :features                    (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
     :refingerprint               nil
     :auto_run_queries            true
-    :db_routing_info             nil
     :settings                    {}
     :cache_ttl                   nil
     :is_audit                    false}))

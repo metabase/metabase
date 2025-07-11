@@ -87,7 +87,8 @@
      :settings              {}
      :features              (map u/qualified-name (driver.u/features driver db))
      :initial_sync_status   "complete"
-     :router_user_attribute nil})))
+     :router_user_attribute nil
+     :db_routing_info       nil})))
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults :model/Table))
@@ -501,8 +502,7 @@
                       :engine       :h2
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
-                      :features     (driver.u/features :h2 curr-db)
-                      :db_routing_info             nil}
+                      :features     (driver.u/features :h2 curr-db)}
                      (into {} curr-db)))))))))))
 
 (deftest update-database-test-2
@@ -873,7 +873,7 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute}
+        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :db_routing_info}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
                                 (disj :details))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
