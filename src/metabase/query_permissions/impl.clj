@@ -117,10 +117,10 @@
    (apply merge-with merge-source-ids
           (lib.util.match/match query
             (m :guard (every-pred map? :qp/stage-is-from-source-card))
-            (when-not parent-source-card-id
-              (merge-with merge-source-ids
-                          {:card-ids #{(:qp/stage-is-from-source-card m)}}
-                          (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m))))
+            (merge-with merge-source-ids
+                        (when-not parent-source-card-id
+                          {:card-ids #{(:qp/stage-is-from-source-card m)}})
+                        (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m)))
 
             (m :guard (every-pred map? :query-permissions/gtapped-table))
             (merge-with merge-source-ids

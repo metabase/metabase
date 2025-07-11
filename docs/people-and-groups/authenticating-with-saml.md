@@ -198,7 +198,7 @@ To _require_ people to log in with SSO, disable password authentication from **A
 
 ## New account notification emails
 
-When people log in to Metabase for the first time via SSO, Metabase will automatically create an account for them, which will trigger an email notification to Metabase administrators. If you don't want these notifications to be sent, you can toggle them off at the bottom of the Authentication page.
+When people log in to Metabase for the first time via SSO, Metabase will automatically create an account for them, which will trigger an email notification to Metabase administrators. If you don't want these notifications to be sent, go to **Admin settings > Authentication > User provisioning**, and toggle off **"Notify admins of new users provisioned from SSO"**
 
 ## Example code using SAML
 
