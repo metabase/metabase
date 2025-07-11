@@ -282,7 +282,7 @@ describe("diagnostics", () => {
       });
 
       expect(err(`percentile(1, 2)`, "expression", metadata)).toBe(
-        "Unsupported function percentile",
+        "Unsupported function Percentile",
       );
     });
 
