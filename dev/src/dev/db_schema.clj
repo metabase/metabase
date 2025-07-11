@@ -315,7 +315,6 @@
                                                     target-column (:target_column fk-info)]
                                                 (cond-> (assoc col :target_table target-table)
                                                   (and target-column
-                                                       (not (= target-column "id"))
                                                        (not (= (:column_name col) (str target-table "_" target-column))))
                                                   (assoc :target_column target-column)))
                                               col))
