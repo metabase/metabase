@@ -34,7 +34,7 @@ export const SdkIframeEmbedSetupProvider = ({
 }: SdkIframeEmbedSetupProviderProps) => {
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
 
-  const [rawSettings, setSettings] = useState<SdkIframeEmbedSetupSettings>();
+  const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
 
   const [persistedSettings, persistSetting] = useUserSetting(
     "sdk-iframe-embed-setup-settings",
@@ -86,7 +86,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const updateSettings = useCallback(
     (nextSettings: Partial<SdkIframeEmbedSetupSettings>) =>
-      setSettings((prev) => {
+      setRawSettings((prev) => {
         // Merging with a partial setting requires us to cast the type
         const mergedSettings = {
           ...(prev ?? defaultSettings),
@@ -102,7 +102,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const replaceSettings = useCallback(
     (nextSettings: SdkIframeEmbedSetupSettings) => {
-      setSettings(nextSettings);
+      setRawSettings(nextSettings);
       persistSetting(nextSettings);
     },
     [persistSetting],
@@ -135,7 +135,7 @@ export const SdkIframeEmbedSetupProvider = ({
         persistedSettings?.template;
 
       if (isPersistedSettingValid) {
-        setSettings(persistedSettings);
+        setRawSettings(persistedSettings);
       }
 
       setEmbedSettingsLoaded(true);
