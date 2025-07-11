@@ -299,79 +299,46 @@
 
 (deftest ^:parallel describe-fields-returns-nullability-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
-    (let [db-name*    (str "db_" (System/nanoTime))
-          table-name* "a"
-          db-name     (ddl.i/format-name driver/*driver* db-name*)
-          table-name  (ddl.i/format-name driver/*driver* table-name*)]
-      (mt/dataset
-        (mt/dataset-definition
-         db-name
-         [table-name [{:field-name "a" :base-type :type/Integer, :pk? true :not-null? true}
-                      {:field-name "b" :base-type :type/Integer, :not-null? false}
-                      {:field-name "c" :base-type :type/Integer, :not-null? true}]
-          []])
-        (let [table   (t2/select-one :model/Table :db_id (mt/id) :name table-name)
-              _       (assert table)
-              fields  (describe-fields-for-table (mt/db) table)
-              [a b c] (->> ["a" "b" "c"]
-                           (map #(ddl.i/format-name driver/*driver* %))
-                           (map (u/index-by :name fields)))]
-          (if (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
-            (testing ":database-is-nullable should be provided"
-              (is (= [false true false] (mapv :database-is-nullable [a b c]))))
-            (testing ":database-is-nullable should remain unspecified"
-              (is (= [nil nil nil] (mapv :database-is-nullable [a b c]))))))))))
+    (mt/dataset nullable-db
+      (let [table   (t2/select-one :model/Table :id (mt/id :nullable))
+            fields  (describe-fields-for-table (mt/db) table)
+            [a b c] (->> ["a" "b" "c"]
+                         (map #(ddl.i/format-name driver/*driver* %))
+                         (map (u/index-by :name fields)))]
+        (if (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
+          (testing ":database-is-nullable should be provided"
+            (is (= [false true false] (mapv :database-is-nullable [a b c]))))
+          (testing ":database-is-nullable should remain unspecified"
+            (is (= [nil nil nil] (mapv :database-is-nullable [a b c])))))))))
 
 (deftest ^:parallel describe-fields-returns-default-expr-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
-    (let [db-name*    (str "db_" (System/nanoTime))
-          table-name* "a"
-          db-name     (ddl.i/format-name driver/*driver* db-name*)
-          table-name  (ddl.i/format-name driver/*driver* table-name*)]
-      (mt/dataset
-        (mt/dataset-definition
-         db-name
-         [table-name [{:field-name "a" :base-type :type/Integer, :pk? true}
-                      {:field-name "b" :base-type :type/Integer, :default-expr "42"}
-                      {:field-name "c" :base-type :type/Integer}]
-          []])
-        (let [table   (t2/select-one :model/Table :db_id (mt/id) :name table-name)
-              _       (assert table)
-              fields  (describe-fields-for-table (mt/db) table)
-              [a b c] (->> ["a" "b" "c"]
-                           (map #(ddl.i/format-name driver/*driver* %))
-                           (map (u/index-by :name fields)))]
-          (if (driver/database-supports? driver/*driver* :describe-default-expr (mt/db))
-            (testing ":database-default should be provided"
-              ;; SQL Server likes to add some parens
-              (is (=? [nil #"\(*42\)*" nil] (mapv :database-default [a b c]))))
-            (testing ":database-default should remain unspecified"
-              (is (= [nil nil nil] (mapv :database-default [a b c]))))))))))
+    (mt/dataset default-expr-db
+      (let [table (t2/select-one :model/Table :id (mt/id :default_expr))
+            fields (describe-fields-for-table (mt/db) table)
+            [a b c] (->> ["a" "b" "c"]
+                         (map #(ddl.i/format-name driver/*driver* %))
+                         (map (u/index-by :name fields)))]
+        (if (driver/database-supports? driver/*driver* :describe-default-expr (mt/db))
+          (testing ":database-default should be provided"
+            ;; SQL Server likes to add some parens
+            (is (=? [nil #"\(*42\)*" nil] (mapv :database-default [a b c]))))
+          (testing ":database-default should remain unspecified"
+            (is (= [nil nil nil] (mapv :database-default [a b c])))))))))
 
 (deftest ^:parallel describe-fields-returns-is-generated-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
-    (let [db-name*    (str "db_" (System/nanoTime))
-          table-name* "a"
-          db-name     (ddl.i/format-name driver/*driver* db-name*)
-          table-name  (ddl.i/format-name driver/*driver* table-name*)]
-      (mt/dataset
-        (mt/dataset-definition
-         db-name
-         [table-name [{:field-name "a" :base-type :type/Integer, :pk? true}
-                      {:field-name "b" :base-type :type/Integer, :generated-expr "42"}
-                      {:field-name "c" :base-type :type/Integer}]
-          []])
-        (let [table   (t2/select-one :model/Table :db_id (mt/id) :name table-name)
-              _       (assert table)
-              fields  (describe-fields-for-table (mt/db) table)
-              [a b c] (->> ["a" "b" "c"]
-                           (map #(ddl.i/format-name driver/*driver* %))
-                           (map (u/index-by :name fields)))]
-          (if (driver/database-supports? driver/*driver* :describe-is-generated (mt/db))
-            (testing ":database-is-generated should be provided"
-              (is (= [false true false] (mapv :database-is-generated [a b c]))))
-            (testing ":database-is-generated should remain unspecified"
-              (is (= [nil nil nil] (mapv :database-is-generated [a b c]))))))))))
+    (mt/dataset generated-column-db
+      (let [table (t2/select-one :model/Table :id (mt/id :generated_column))
+            fields (describe-fields-for-table (mt/db) table)
+            [a b c] (->> ["a" "b" "c"]
+                         (map #(ddl.i/format-name driver/*driver* %))
+                         (map (u/index-by :name fields)))]
+        (if (driver/database-supports? driver/*driver* :describe-is-generated (mt/db))
+          (testing ":database-is-generated should be provided"
+            (is (= [false true false] (mapv :database-is-generated [a b c]))))
+          (testing ":database-is-generated should remain unspecified"
+            (is (= [nil nil nil] (mapv :database-is-generated [a b c])))))))))
 
 (deftest ^:parallel describe-table-fks-test
   (testing "`describe-table-fks` should work for drivers that do not support `describe-fks`"
