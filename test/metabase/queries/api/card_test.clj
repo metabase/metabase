@@ -3013,6 +3013,23 @@
                                                    :target [:dimension [:template-tag "NAME"]]
                                                    :name   "Name"
                                                    :slug   "NAME"}]}
+      :model/Card custom-filter-card {:dataset_query
+                                      {:database (mt/id)
+                                       :type     :native
+                                       :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
+                                                  :template-tags {"NAME" {:id             "name_param_id"
+                                                                          :name           "NAME"
+                                                                          :display_name   "Name"
+                                                                          :type           :dimension
+                                                                          :dimension      [:field (mt/id :venues :name) nil]
+                                                                          :effective-type :type/Text
+                                                                          :required       true}}}}
+                                      :name       "native card with field filter"
+                                      :parameters [{:id     "name_param_id"
+                                                    :type   :string/=
+                                                    :target [:variable [:template-tag "NAME"]]
+                                                    :name   "Name"
+                                                    :slug   "NAME"}]}
       :model/Card name-mapped-card  {:dataset_query
                                      {:database (mt/id)
                                       :type     :native
@@ -3053,15 +3070,16 @@
                                                                         :value_field (mt/$ids $venues.name)}}]
                                 :table_id      (mt/id :venues)}
                                card-values)]
-     (f {:source-card       source-card
-         :card              card
-         :field-filter-card field-filter-card
-         :name-mapped-card  name-mapped-card
-         :param-keys        {:static-list          "_STATIC_CATEGORY_"
-                             :static-list-label    "_STATIC_CATEGORY_LABEL_"
-                             :card                 "_CARD_"
-                             :field-values         "name_param_id"
-                             :labeled-field-values "id"}}))))
+     (f {:source-card        source-card
+         :card               card
+         :field-filter-card  field-filter-card
+         :custom-filter-card custom-filter-card
+         :name-mapped-card   name-mapped-card
+         :param-keys         {:static-list          "_STATIC_CATEGORY_"
+                              :static-list-label    "_STATIC_CATEGORY_LABEL_"
+                              :card                 "_CARD_"
+                              :field-values         "name_param_id"
+                              :labeled-field-values "id"}}))))
 
 (defmacro with-card-param-values-fixtures
   "Execute `body` with all needed setup to tests param values on card."
@@ -3196,6 +3214,43 @@
         (testing "with search query"
           (let [response (mt/user-http-request :crowberto :get 200
                                                (param-values-url field-filter-card
+                                                                 (:field-values param-keys)
+                                                                 "bar"))]
+            (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                             (-> response :values set)))
+            (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
+
+(deftest field-values-for-custom-filter-test
+  (with-card-param-values-fixtures [{:keys [param-keys custom-filter-card]}]
+    (testing "GET /api/card/:card-id/params/:param-key/values for custom-filter based params"
+      (testing "without search query"
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (param-values-url custom-filter-card (:field-values param-keys)))]
+          (is (false? (:has_more_values response)))
+          (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                           (-> response :values set)))))
+      (testing "with search query"
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (param-values-url custom-filter-card
+                                                               (:field-values param-keys)
+                                                               "bar"))]
+          (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                           (-> response :values set)))
+          (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))
+  (testing "Old style, inferred parameters from native template-tags"
+    (with-card-param-values-fixtures [{:keys [param-keys custom-filter-card]}]
+      ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
+      (t2/update! :model/Card (:id custom-filter-card) {:parameters []})
+      (testing "GET /api/card/:card-id/params/:param-key/values for custom-filter based params"
+        (testing "without search query"
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (param-values-url custom-filter-card (:field-values param-keys)))]
+            (is (false? (:has_more_values response)))
+            (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                             (-> response :values set)))))
+        (testing "with search query"
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (param-values-url custom-filter-card
                                                                  (:field-values param-keys)
                                                                  "bar"))]
             (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
