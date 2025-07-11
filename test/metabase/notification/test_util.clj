@@ -7,7 +7,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.render.js.svg :as js.svg]
-   [metabase.integrations.slack :as slack]
+   [metabase.channel.slack :as slack]
    [metabase.notification.core :as notification]
    [metabase.notification.events.notification :as events.notification]
    [metabase.notification.models :as models.notification]

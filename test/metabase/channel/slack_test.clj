@@ -213,15 +213,6 @@
         (mt/with-temporary-setting-values [slack-token "test-token"
                                            slack-app-token nil]
           (is (=? expected
-<<<<<<< HEAD:test/metabase/channel/slack_test.clj
-                  (slack/post-chat-message! "C94712B6X" ":wow:"))))
-        (mt/with-temporary-setting-values [slack-app-token "test-token"
-=======
-                  (slack/post-chat-message! {:channel "C94712B6X" :text ":wow:"}))))
-        (tu/with-temporary-setting-values [slack-app-token "test-token"
->>>>>>> 4b6e6e7faa (simplify slack impl (#57634)):test/metabase/integrations/slack_test.clj
-                                           slack-token nil]
-          (is (=? expected
                   (slack/post-chat-message! {:channel "C94712B6X" :text ":wow:"}))))))))
 
 (deftest slack-token-error-test
