@@ -311,6 +311,7 @@
                       {:field-name "c" :base-type :type/Integer, :not-null? true}]
           []])
         (let [table   (t2/select-one :model/Table :db_id (mt/id) :name table-name)
+              _       (assert table)
               fields  (describe-fields-for-table (mt/db) table)
               [a b c] (->> ["a" "b" "c"]
                            (map #(ddl.i/format-name driver/*driver* %))
@@ -335,6 +336,7 @@
                       {:field-name "c" :base-type :type/Integer}]
           []])
         (let [table   (t2/select-one :model/Table :db_id (mt/id) :name table-name)
+              _       (assert table)
               fields  (describe-fields-for-table (mt/db) table)
               [a b c] (->> ["a" "b" "c"]
                            (map #(ddl.i/format-name driver/*driver* %))
@@ -360,6 +362,7 @@
                       {:field-name "c" :base-type :type/Integer}]
           []])
         (let [table   (t2/select-one :model/Table :db_id (mt/id) :name table-name)
+              _       (assert table)
               fields  (describe-fields-for-table (mt/db) table)
               [a b c] (->> ["a" "b" "c"]
                            (map #(ddl.i/format-name driver/*driver* %))
