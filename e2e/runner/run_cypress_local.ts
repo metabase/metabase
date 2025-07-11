@@ -1,3 +1,5 @@
+import { seed } from "../support/db-seed";
+
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
 import runCypress from "./cypress-node-js-runner";
 import CypressBackend from "./cypress-runner-backend";
@@ -90,14 +92,15 @@ const init = async () => {
     shell("rm -f e2e/support/cypress_sample_instance_data.json");
 
     printBold("⏳ Generating app db snapshots");
-    process.env.CYPRESS_GUI = "false";
-    await runCypress({
-      configFile: "e2e/support/cypress-snapshots.config.js",
-      ...(options.CYPRESS_TESTING_TYPE === "component" && {
-        env: { grepTags: "-@external" }, // component tests do not need QA DB snapshots for now
-      }),
-    });
-    process.env.CYPRESS_GUI = `${options.CYPRESS_GUI}`;
+    await seed();
+    // process.env.CYPRESS_GUI = "false";
+    // await runCypress({
+    //   configFile: "e2e/support/cypress-snapshots.config.js",
+    //   ...(options.CYPRESS_TESTING_TYPE === "component" && {
+    //     env: { grepTags: "-@external" }, // component tests do not need QA DB snapshots for now
+    //   }),
+    // });
+    // process.env.CYPRESS_GUI = `${options.CYPRESS_GUI}`;
   } else {
     printBold("Skipping snapshot generation, beware of stale snapshot caches");
     shell("echo 'Existing snapshots:' && ls -1 e2e/snapshots");
