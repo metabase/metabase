@@ -5,10 +5,12 @@ import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { getStoreUrl } from "metabase/selectors/settings";
+// import { getStoreUrl } from "metabase/selectors/settings";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 
-const STORE_URL = getStoreUrl("checkout/upgrade/self-hosted");
+// const STORE_URL = getStoreUrl("checkout/upgrade/self-hosted");
+const STORE_URL =
+  "https://store-metabase-o3dnyg2g1-metaboat.vercel.app/checkout/upgrade/self-hosted";
 const STORE_ORIGIN = new URL(STORE_URL).origin;
 
 /**
