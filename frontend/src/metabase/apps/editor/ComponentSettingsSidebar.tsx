@@ -1,4 +1,4 @@
-import { IconDatabase, IconPalette } from "@tabler/icons-react";
+import { IconDatabase, IconListTree, IconPalette } from "@tabler/icons-react";
 
 import { Box, Tabs, Text, Title } from "metabase/ui";
 
@@ -35,6 +35,9 @@ export function ComponentSettingsSidebar({
           <Tabs.Tab value="style" leftSection={<IconPalette size={12} />}>
             {"Style"}
           </Tabs.Tab>
+          <Tabs.Tab value="tree" leftSection={<IconListTree size={12} />}>
+            {"Tree"}
+          </Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="data" py="md">
           <ComponentSettingsData
@@ -47,6 +50,9 @@ export function ComponentSettingsSidebar({
             component={component}
             onComponentSettingsChange={onComponentSettingsChange}
           />
+        </Tabs.Panel>
+        <Tabs.Panel value="tree" py="md">
+          {"TODO"}
         </Tabs.Panel>
       </Tabs>
     </Box>

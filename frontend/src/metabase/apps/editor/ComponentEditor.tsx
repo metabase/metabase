@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { uuid } from "metabase/lib/uuid";
-import { Box, Group } from "metabase/ui";
+import { Box, Group, Stack } from "metabase/ui";
 
 import {
   type ComponentMetadata,
@@ -10,6 +10,8 @@ import {
 import { TRAVERSE_STOP, traverseComponentTree } from "../helpers";
 import type { ComponentConfiguration, ComponentDefinition } from "../types";
 
+import { ComponentEditorHeader } from "./ComponentEditorHeader";
+import { ComponentMetadataSidebar } from "./ComponentMetadataSidebar";
 import { ComponentPreviewRoot } from "./ComponentPreviewRoot";
 import { ComponentSelectSidebar } from "./ComponentSelectSidebar";
 import { ComponentSettingsSidebar } from "./ComponentSettingsSidebar";
@@ -27,7 +29,13 @@ export function ComponentEditor() {
     useState<ComponentDefinition | null>(initialComponent);
 
   const [componentConfiguration, setComponentConfiguration] =
-    useState<ComponentConfiguration>({ root: initialComponent });
+    useState<ComponentConfiguration>({
+      root: initialComponent,
+      id: uuid(),
+      type: "component",
+      title: "Untitled Component",
+      context: "none",
+    });
 
   const handleSelectInitialComponent = (component: ComponentMetadata) => {
     const componentDefinition: ComponentDefinition = {
@@ -98,6 +106,14 @@ export function ComponentEditor() {
         return null;
       }
       return { ...state, ...settings };
+    });
+  };
+
+  const handleComponentConfigurationChange = (
+    configuration: Partial<ComponentConfiguration>,
+  ) => {
+    setComponentConfiguration((state) => {
+      return { ...state, ...configuration };
     });
   };
 
@@ -182,40 +198,49 @@ export function ComponentEditor() {
   };
 
   return (
-    <Group gap="0" p="0" h="100%" align="flex-start" bg="white">
-      <Box flex={1} h="100%" style={{ overflow: "auto" }}>
-        <ComponentPreviewRoot configuration={componentConfiguration}>
-          <EditableComponentTreeNode
-            selectedComponent={selectedComponent}
-            component={componentConfiguration.root}
-            onSelect={handleSelectComponent}
-            onAddComponent={handleAddComponent}
-          />
-        </ComponentPreviewRoot>
-      </Box>
-      <Box
-        w="20rem"
-        h="100%"
-        style={{
-          borderLeft: "1px solid var(--mb-color-border)",
-          overflow: "auto",
-        }}
-      >
-        {selectedComponent ? (
-          selectedComponent.componentId === SystemComponentId.Placeholder ? (
-            <ComponentSelectSidebar
-              onSelectComponent={handleSelectInitialComponent}
+    <Stack gap="0" p="0" h="100%" w="100%">
+      <ComponentEditorHeader
+        configuration={componentConfiguration}
+        onConfigureClick={() => setSelectedComponent(null)}
+      />
+      <Group gap="0" p="0" h="calc(100% - 73px)" align="flex-start" bg="white">
+        <Box flex={1} h="100%" style={{ overflow: "auto" }}>
+          <ComponentPreviewRoot configuration={componentConfiguration}>
+            <EditableComponentTreeNode
+              selectedComponent={selectedComponent}
+              component={componentConfiguration.root}
+              onSelect={handleSelectComponent}
+              onAddComponent={handleAddComponent}
             />
+          </ComponentPreviewRoot>
+        </Box>
+        <Box
+          w="20rem"
+          h="100%"
+          style={{
+            borderLeft: "1px solid var(--mb-color-border)",
+            overflow: "auto",
+          }}
+        >
+          {selectedComponent ? (
+            selectedComponent.componentId === SystemComponentId.Placeholder ? (
+              <ComponentSelectSidebar
+                onSelectComponent={handleSelectInitialComponent}
+              />
+            ) : (
+              <ComponentSettingsSidebar
+                component={selectedComponent}
+                onComponentSettingsChange={handleComponentSettingsChange}
+              />
+            )
           ) : (
-            <ComponentSettingsSidebar
-              component={selectedComponent}
-              onComponentSettingsChange={handleComponentSettingsChange}
+            <ComponentMetadataSidebar
+              configuration={componentConfiguration}
+              onConfigurationChange={handleComponentConfigurationChange}
             />
-          )
-        ) : (
-          <Box>{"Global Settings"}</Box>
-        )}
-      </Box>
-    </Group>
+          )}
+        </Box>
+      </Group>
+    </Stack>
   );
 }

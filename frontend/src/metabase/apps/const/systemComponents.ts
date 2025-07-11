@@ -48,7 +48,9 @@ export type ComponentMetadata = {
   hasChildren?: boolean;
 };
 
-const SPACING_OPTIONS = ["xs", "sm", "md", "lg", "xl"];
+export const DEFAULT_SPACING = "md";
+export const SPACING_OPTIONS = ["xs", "sm", "md", "lg", "xl"];
+export const SPACING_OPTIONS_WITH_ZERO = ["0", ...SPACING_OPTIONS];
 
 export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
   {
