@@ -8,7 +8,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  #?(:cljs (:require-macros [metabase.lib.metadata.cache])))
 
 (def ^:private ^:dynamic *cache-depth*
   "For debug logging purposes. Keep track of recursive call depth so we can print stuff in a tree."
