@@ -50,6 +50,8 @@ export const renderUserAttributesForSelect: SelectProps["renderOption"] = ({
   </Group>
 );
 
+// this needs to return a new array instead of mutating the original
+// in order to trigger a re-render
 export const addEntry = <T,>(entries: MappingEditorEntry<T>[]) => {
   return [...entries, { key: "", value: "" }];
 };
@@ -58,9 +60,7 @@ export const removeEntry = <T,>(
   entries: MappingEditorEntry<T>[],
   index: number,
 ) => {
-  const entriesCopy = [...entries];
-  entriesCopy.splice(index, 1);
-  return entriesCopy;
+  return entries.toSpliced(index, 1);
 };
 
 export const replaceEntryValue = <T,>(
