@@ -440,43 +440,42 @@
      ~default-role
      (fn [] ~@body)))
 
-(defmulti create-user-with-pk!
-  "Creates a database user with the given public key"
-  {:added "0.55.0" :arglists '([driver details pk-user pub-key])}
+(defmulti create-db-user!
+  "Creates a database user."
+  {:added "0.55.0" :arglists '([driver details db-user])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmethod create-user-with-pk! ::test-extensions
-  [_driver _details _pk-user _pub-key]
+(defmethod create-db-user! ::test-extensions
+  [_driver _details _db-user]
   (ex-info (format "Creating a user hasn't been implemented or is not supported for %s" driver) {}))
 
-(defmulti drop-user-if-exists!
+(defmulti drop-db-user-if-exists!
   "Drops the database user if it exists"
   {:added "0.55.0" :arglists '([driver details db-user])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmethod drop-user-if-exists! ::test-extensions
+(defmethod drop-db-user-if-exists! ::test-extensions
   [driver _details _db-user]
   (ex-info (format "Dropping a user hasn't been implemented or is not supported for %s" driver) {}))
 
-(defn with-temp-pk-user-fn!
+(defn with-temp-db-user-fn!
   "Creates the given user with the default public key and drops it after execution."
-  [driver details pk-user pub-key f]
+  [driver details db-user f]
   (try
-    (create-user-with-pk! driver details pk-user pub-key)
+    (create-db-user! driver details db-user)
     (f)
     (finally
-      (drop-user-if-exists! driver details pk-user))))
+      (drop-db-user-if-exists! driver details db-user))))
 
-(defmacro with-temp-pk-user!
-  "Creates the given user with the default public key and drops it after execution."
-  [driver details pk-user pub-key & body]
-  `(with-temp-pk-user-fn!
+(defmacro with-temp-db-user!
+  "Creates the given user drops it after execution."
+  [driver details db-user & body]
+  `(with-temp-db-user-fn!
      ~driver
      ~details
-     ~pk-user
-     ~pub-key
+     ~db-user
      (fn [] ~@body)))
 
 (defmulti dbdef->connection-details

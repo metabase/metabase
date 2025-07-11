@@ -335,24 +335,23 @@
                                 pk-user
                                 pub-key))))
 
-(defmethod tx/drop-user-if-exists! :snowflake
+(defmethod tx/drop-db-user-if-exists! :snowflake
   [driver details db-user]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (jdbc/execute! spec [(format "DROP USER IF EXISTS \"%s\"" db-user)])))
 
-(defmethod tx/create-user-with-pk! :snowflake
-  [driver details pk-user pub-key]
-  (tx/drop-user-if-exists! driver details pk-user)
+(defmethod tx/create-db-user! :snowflake
+  [driver details db-user]
+  (tx/drop-db-user-if-exists! driver details db-user)
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (jdbc/execute! spec "USE ROLE ACCOUNTADMIN")
     (jdbc/execute! spec (format "CREATE USER %s
                                  DEFAULT_ROLE = 'ACCOUNTADMIN'
                                  DEFAULT_WAREHOUSE = '%s'
                                  MUST_CHANGE_PASSWORD = FALSE;"
-                                pk-user
+                                db-user
                                 (tx/db-test-env-var-or-throw driver :warehouse)))
-    (jdbc/execute! spec (format "GRANT ROLE %s TO USER %s" "ACCOUNTADMIN" pk-user))
-    (set-user-public-key details pk-user pub-key)))
+    (jdbc/execute! spec (format "GRANT ROLE %s TO USER %s" "ACCOUNTADMIN" db-user))))
 
 (comment
   (old-dataset-names)
