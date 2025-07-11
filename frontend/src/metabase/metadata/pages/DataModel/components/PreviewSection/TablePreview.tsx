@@ -2,8 +2,9 @@ import { memo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useGetAdhocQueryQuery } from "metabase/api";
+import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import EmptyState from "metabase/common/components/EmptyState";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Repeat, Skeleton, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -33,7 +34,12 @@ interface Props {
 }
 
 const TablePreviewBase = (props: Props) => {
+  const { field } = props;
   const { error, isFetching, rawSeries } = useDataSample(props);
+
+  if (isFieldHidden(field)) {
+    return <EmptyState message={t`This field is hidden`} />;
+  }
 
   if (isFetching) {
     return (
@@ -70,11 +76,15 @@ function useDataSample({
 }: Props) {
   const datasetQuery = getPreviewQuery(databaseId, tableId, fieldId, pkFields);
 
-  const { data, refetch, ...rest } = useGetAdhocQueryQuery({
-    ...datasetQuery,
-    ignore_error: true,
-    _refetchDeps: field,
-  });
+  const { data, refetch, ...rest } = useGetAdhocQueryQuery(
+    isFieldHidden(field)
+      ? skipToken
+      : {
+          ...datasetQuery,
+          ignore_error: true,
+          _refetchDeps: field,
+        },
+  );
   const base = {
     ...rest,
     error: rest.error ? getErrorMessage(rest.error) : undefined,
@@ -139,6 +149,13 @@ function getPreviewQuery(
       "order-by": pkFieldRefs.map((pkFieldRef) => ["asc", pkFieldRef]),
     },
   };
+}
+
+function isFieldHidden(field: Field) {
+  return (
+    field.visibility_type === "sensitive" ||
+    field.visibility_type === "details-only"
+  );
 }
 
 export const TablePreview = memo(TablePreviewBase);
