@@ -3129,10 +3129,7 @@ describe("Issue 42817", () => {
   });
 
   it("should be possible to drill down into a question with datetime buckets and a native join (metabase#42817)", () => {
-    cy.findByTestId("visualization-root")
-      .get("path[fill='#fff']")
-      .first()
-      .click();
+    H.echartsContainer().get("path[fill='#fff']").first().click();
 
     H.popover().findByText("See this day by hour").click();
 
@@ -3140,6 +3137,6 @@ describe("Issue 42817", () => {
       .findByText("There was a problem with your question")
       .should("not.exist");
 
-    cy.findByTestId("visualization-root").should("be.visible");
+    H.echartsContainer().should("be.visible");
   });
 });
