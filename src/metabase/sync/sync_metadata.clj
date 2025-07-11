@@ -86,6 +86,7 @@
   (let [schema (not-empty schema)
         table (sync-tables/create-or-reactivate-table!
                database
+               ;; TODO: ideally we should get this from [[driver/describe-table]], once that has `:schema` and `:table` filter support
                {:name table-name :schema schema})]
     (when (and (driver.u/supports? (driver.u/database->driver database) :schemas database)
                (not schema))
