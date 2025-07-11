@@ -25,9 +25,12 @@
 
 ;; GET /permissions/group
 ;; Should *not* include inactive users in the counts.
-(defn- fetch-groups []
-  (set (mt/user-http-request
-        :crowberto :get 200 "permissions/group")))
+(defn- fetch-groups
+  ([]
+   (fetch-groups {}))
+  ([& query-params]
+   (set (apply mt/user-http-request
+               :crowberto :get 200 "permissions/group" query-params))))
 
 (deftest fetch-groups-test
   (testing "GET /api/permissions/group"
@@ -60,6 +63,71 @@
     (testing "requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "permissions/group"))))))
+
+(deftest groups-list-limit-test
+  (testing "GET /api/permissions/group?limit=1&offset=1"
+    (testing "Limit and offset pagination have defaults"
+      (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "0")
+             (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1")))
+      (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1" :limit 50)
+             (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1"))))
+    (testing "Limit and offset pagination works for permissions list"
+      (is (partial= [{:id (:id (perms-group/all-users)), :name "All Users"}]
+                    (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
+
+(deftest fetch-groups-tenancy-filter-test
+  (testing "GET /api/permissions/group with tenancy filter"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/PermissionsGroup regular-group {:name "Regular Group" :is_tenant_group false}
+                       :model/PermissionsGroup tenant-group {:name "Tenant Group" :is_tenant_group true}]
+          (let [all-groups (fetch-groups)
+                internal-groups #p (fetch-groups :tenancy "internal")
+                external-groups #p (fetch-groups :tenancy "external")
+                regular-id (:id regular-group)
+                tenant-id (:id tenant-group)]
+
+            (testing "default behavior (no tenancy param) returns all groups"
+              (is (some #(= regular-id (:id %)) all-groups))
+              (is (some #(= tenant-id (:id %)) all-groups)))
+
+            (testing "tenancy=internal returns only non-tenant groups"
+              (is (some #(= regular-id (:id %)) internal-groups))
+              (is (not (some #(= tenant-id (:id %)) internal-groups))))
+
+            (testing "tenancy=external returns only tenant groups"
+              (is (not (some #(= regular-id (:id %)) external-groups)))
+              (is (some #(= tenant-id (:id %)) external-groups)))
+
+            (testing "magic groups are handled correctly"
+              (let [all-internal-users-id (:id (perms-group/all-users))
+                    find-group-by-type (fn [groups magic-type]
+                                         (some #(when (= magic-type (:magic_group_type %)) %) groups))]
+                (testing "all-internal-users appears in internal filter"
+                  (is (some #(= all-internal-users-id (:id %)) internal-groups)))
+                (testing "all-external-users appears in external filter when available"
+                  (when-let [external-users-group (find-group-by-type all-groups "all-external-users")]
+                    (is (some #(= (:id external-users-group) (:id %)) external-groups))))))))))
+
+    (testing "when tenants feature is disabled"
+      (mt/with-temporary-setting-values [use-tenants false]
+        (mt/with-temp [:model/PermissionsGroup regular-group {:name "Regular Group" :is_tenant_group false}]
+          (let [all-groups (fetch-groups)
+                internal-groups (fetch-groups :tenancy "internal")
+                external-groups (fetch-groups :tenancy "external")
+                regular-id (:id regular-group)]
+
+            (testing "default behavior excludes tenant groups when tenants disabled"
+              (is (some #(= regular-id (:id %)) all-groups)))
+
+            (testing "tenancy=internal still works when tenants disabled"
+              (is (some #(= regular-id (:id %)) internal-groups)))
+
+            (testing "tenancy=external returns empty when tenants disabled"
+              (is (empty? external-groups)))))))
+
+    (testing "invalid tenancy value returns 400"
+      (:status (mt/user-http-request :crowberto :get 400 "permissions/group" :tenancy "invalid")))))
 
 (deftest groups-list-limit-test
   (testing "GET /api/permissions/group?limit=1&offset=1"

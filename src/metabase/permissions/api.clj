@@ -171,13 +171,20 @@
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.
   This API requires superuser or group manager of more than one group.
   Group manager is only available if `advanced-permissions` is enabled and returns only groups that user
-  is manager of."
-  []
+  is manager of.
+  
+  Optional query parameter `tenancy` can be used to filter groups:
+  - `tenancy=external`: Returns only tenant groups (where `is_tenant_group = true`)
+  - `tenancy=internal`: Returns only non-tenant groups (where `is_tenant_group = false`)
+  - No `tenancy` parameter: Returns all groups (default behavior)"
+  [_route_params
+   {:keys [tenancy]} :- [:map
+                         [:tenancy {:optional true} [:enum "external" "internal"]]]]
   (try
     (validation/check-group-manager)
     (catch clojure.lang.ExceptionInfo _e
       (validation/check-has-application-permission :setting)))
-  (let [where
+  (let [base-where
         [:and
          (when (and (not api/*is-superuser?*)
                     (premium-features/enable-advanced-permissions?)
@@ -188,7 +195,14 @@
                               [:= :user_id api/*current-user-id*]
                               [:= :is_group_manager true]]}])
          (when-not (setting/get :use-tenants)
-           [:not :is_tenant_group])]]
+           [:not :is_tenant_group])]
+        where (case tenancy
+                "external" (if (setting/get :use-tenants)
+                             [:and base-where [:= :is_tenant_group true]]
+                             [:= 1 0]) ; Return no results when tenants disabled but external requested
+                "internal" [:and base-where [:or [:= :is_tenant_group false]
+                                             [:= :is_tenant_group nil]]]
+                base-where)]
     (-> (ordered-groups (request/limit) (request/offset) where)
         (t2/hydrate :member_count)
         (maybe-fix-names))))
