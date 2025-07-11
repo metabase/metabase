@@ -1604,3 +1604,28 @@ describe("issue 55486", () => {
     checkIsShowingQueryEditorTab();
   });
 });
+
+describe("Issue 30712", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.startNewModel();
+
+    H.entityPickerModal().findByText("Orders").click();
+    H.join();
+    H.joinTable("Products");
+
+    H.join();
+    H.joinTable("People");
+  });
+
+  it("should not crash the editor when ordering by columns on joined tables (metabase#30712)", () => {
+    H.getNotebookStep("summarize").findByLabelText("Sort").click();
+    H.popover().findByText("Total").click();
+
+    cy.log("no error should be thrown");
+    cy.get("main").findByText("Something's gone wrong").should("not.exist");
+    cy.findByTestId("run-button").should("be.visible");
+  });
+});
