@@ -870,12 +870,14 @@
     f
     (do
       (set! *new-conn* connection)
-      (fn retrying-conn-thunk [& args]
+      (fn [& args]
         (try
           (apply (f *new-conn*) args)
           (catch Throwable e
             (if (.isClosed *new-conn*)
-              (do
-                (set! *new-conn* (do-with-connection-with-options driver *db* {:keep-open? true} identity))
+              ;; force a new conn, non recursive
+              (binding [*connection-recursion-depth* -1]
+                (set! *new-conn*
+                      (do-with-connection-with-options driver *db* {:keep-open? true} identity))
                 (apply (f *new-conn*) args))
               (throw e))))))))
