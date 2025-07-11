@@ -36,7 +36,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
 
-  const [persistedSettings, persistSetting] = useUserSetting(
+  const [persistedSettings, persistSettings] = useUserSetting(
     "sdk-iframe-embed-setup-settings",
     { debounceTimeout: USER_SETTINGS_DEBOUNCE_MS },
   );
@@ -93,19 +93,19 @@ export const SdkIframeEmbedSetupProvider = ({
           ...nextSettings,
         } as SdkIframeEmbedSetupSettings;
 
-        persistSetting(mergedSettings);
+        persistSettings(mergedSettings);
 
         return mergedSettings;
       }),
-    [defaultSettings, persistSetting],
+    [defaultSettings, persistSettings],
   );
 
   const replaceSettings = useCallback(
     (nextSettings: SdkIframeEmbedSetupSettings) => {
       setRawSettings(nextSettings);
-      persistSetting(nextSettings);
+      persistSettings(nextSettings);
     },
-    [persistSetting],
+    [persistSettings],
   );
 
   const value: SdkIframeEmbedSetupContextType = {
