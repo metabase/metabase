@@ -2,6 +2,18 @@
 /* eslint-disable no-console */
 /* global process */
 
+// This workflow is experimental POC, non-required, and is owned by team
+// Embedding. For the time being, unless you think you did a breaking change on
+// the backend, you can safely ignore this if it fails. If you're working on CI or
+// related work and can't get this to pass, please reach out to team Embedding.
+
+// This implements a POC of a way of testing for breaking changes explained in
+// https://www.notion.so/metabase/Tech-Run-e2e-with-different-versions-of-FE-and-BE-to-detect-breaking-changes-1b669354c9018068b55bc7f2ad4ca83a
+// It builds a uberjar with the frontend and a backend code from two different
+// commits, and runs the e2e tests from the frontend commit on the uberjar. The
+// goal is to try and detect breaking changes between the frontend and backend
+// code.
+
 const os = require("os");
 const fs = require("fs");
 const path = require("path");
@@ -27,6 +39,12 @@ const BE_FOLDER = path.join(TMP_FOLDER, "metabase-be");
 const JAR_PATH = path.join(BE_FOLDER, "target/uberjar/metabase.jar");
 
 const getTestFiles = () => {
+  // This is not ideal as we're "hardcoding" the path to the files. The
+  // alternative would have been to add a specific @tag to the tests we wanted
+  // to run, but because we're running the test files from the frontend commit,
+  // which is an "older" commit, that commit wouldn't have these tags. We went
+  // with this in this POC, but we should revisit this if we graduate this to
+  // "official" testing.
   const questionFiles = getFilesInsideFolder(
     path.join(FE_FOLDER, "e2e/test/scenarios/question"),
   ).map((file) => path.join("e2e/test/scenarios/question", file)); // make sure the path is how we expect, starting with "e2e/test..."
@@ -40,7 +58,7 @@ const getTestFiles = () => {
 // place to put files if we want to skip them
 const SKIPPED_FILES = [];
 
-console.log(`Using frontend from ${FE_GIT_REF}`);
+console.log(`Using frontend (and test files and helpers) from ${FE_GIT_REF}`);
 console.log(`Using backend from ${BE_GIT_REF}`);
 console.log("---");
 console.log("To test locally run:");
@@ -132,10 +150,10 @@ function start() {
 
   const dbFile = path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
 
-  const cypressToken = process.env.CYPRESS_ALL_FEATURES_TOKEN;
+  const cypressToken = process.env.CYPRESS_MB_ALL_FEATURES_TOKEN;
   if (typeof cypressToken === "undefined") {
     console.error(
-      "Error: CYPRESS_ALL_FEATURES_TOKEN environment variable is not set. This is required for the 'start' command.",
+      "Error: CYPRESS_MB_ALL_FEATURES_TOKEN environment variable is not set. This is required for the 'start' command.",
     );
     process.exit(1);
   }

@@ -14,7 +14,7 @@ redirect_from:
 
 By default, Metabase will automatically provision a domain name for your Metabase that ends in metabaseapp.com (e.g., yourcompany.metabaseapp.com).
 
-[Pro and Enterprise](/pricing/) plans allow you to add a custom domain. Setting a custom domain will update your instance's [Site URL](/docs/latest/configuring-metabase/settings#site-url). The Site URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios.
+[Pro and Enterprise](https://www.metabase.com/pricing/) plans allow you to add a custom domain. Setting a custom domain will update your instance's [Site URL](../configuring-metabase/settings.md#site-url). The Site URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios.
 
 ## How to add a custom domain to your Metabase
 
@@ -47,7 +47,7 @@ That's it. You may need to wait a bit for the CNAME to update (this delay is spe
 
 - the URL directs people to your Metabase,
 - your domain has SSL certificates set up to serve your instance over HTTPS to the new domain,
-- and that your [metabase.com/cloud/login](/cloud/login) works as expected.
+- and that your [metabase.com/cloud/login](https://www.metabase.com/cloud/login) works as expected.
 
 You'll still be able to access your original, automatically provisioned domain (e.g., yourcompany.metabaseapp.com), so existing embedded links should continue to work.
 

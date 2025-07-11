@@ -286,6 +286,7 @@
                        _
                        {:card_id      c1-id
                         :dashboard_id dash-id
+                        :inline_parameters ["12345678"]
                         :parameter_mappings
                         [{:parameter_id "12345678"
                           :card_id      c1-id
@@ -1005,6 +1006,38 @@
             (is (= 1
                    (t2/count :model/FieldValues)
                    (count (filter #{"FieldValues"} models))))))))))
+
+(deftest field-user-settings-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database {db-id        :id} {:name "My Database"}
+                       :model/Table    {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
+                       :model/Field    {field-id     :id} {:name "Some Field" :table_id no-schema-id}
+
+                       :model/FieldUserSettings {description :description}
+                       {:field_id              field-id
+                        :description "Some custom Description"}]
+      (testing "field values"
+        (let [ser (serdes/extract-one "FieldUserSettings" {} (t2/select-one :model/FieldUserSettings :field_id field-id))]
+          (is (=? {:serdes/meta [{:model "Database" :id "My Database"}
+                                 {:model "Table"    :id "Schemaless Table"}
+                                 {:model "Field"    :id "Some Field"}
+                                 {:model "FieldUserSettings" :id "1"}] ; Always 1.
+                   :created_at  string?
+                   :description description}
+                  ser))
+          (is (not (contains? ser :field_id))
+              ":field_id is dropped; its implied by the path")
+
+          (testing "depend on the parent Field"
+            (is (= #{[{:model "Database"   :id "My Database"}
+                      {:model "Table"      :id "Schemaless Table"}
+                      {:model "Field"      :id "Some Field"}]}
+                   (set (serdes/dependencies ser)))))))
+      (testing "extract-metabase behavior"
+        (let [models (->> {} (extract/extract) (map (comp :model last :serdes/meta)))]
+          (is (= 1
+                 (t2/count :model/FieldUserSettings)
+                 (count (filter #{"FieldUserSettings"} models)))))))))
 
 (deftest cards-test
   (mt/with-empty-h2-app-db!

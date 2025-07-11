@@ -178,11 +178,18 @@
 ;;; update [[metabase.lib.convert]] to convert `:parameters` back and forth and add UUIDs and what not. But parameters
 ;;; is not ported to MLv2 yet, so conversion isn't implemented YET.
 
+(defn- normalize-legacy-ref [legacy-ref]
+  ((#?(:clj requiring-resolve :cljs resolve) 'metabase.legacy-mbql.normalize/normalize-field-ref) legacy-ref))
+
 (mr/def ::legacy-field-ref
-  [:ref :metabase.legacy-mbql.schema/field])
+  [:ref
+   {:decode/normalize normalize-legacy-ref}
+   :metabase.legacy-mbql.schema/field])
 
 (mr/def ::legacy-expression-ref
-  [:ref :metabase.legacy-mbql.schema/expression])
+  [:ref
+   {:decode/normalize normalize-legacy-ref}
+   :metabase.legacy-mbql.schema/expression])
 
 (mr/def ::dimension.target
   [:multi {:dispatch lib.schema.common/mbql-clause-tag

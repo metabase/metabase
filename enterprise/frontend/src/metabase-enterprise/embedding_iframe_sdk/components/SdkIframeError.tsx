@@ -20,7 +20,12 @@ export const SdkIframeInvalidLicenseError = () => (
   <SdkIframeError message="A valid license is required for embedding." />
 );
 
-// Only shown when the app is running on production yet the license is invalid.
+// Only shown when the app is running on production yet they are using an API key.
 export const SdkIframeApiKeyInProductionError = () => (
   <SdkIframeError message="Using an API key in production is not allowed." />
+);
+
+// Only shown when the app is running on production yet they are using an existing user session.
+export const SdkIframeExistingUserSessionInProductionError = () => (
+  <SdkIframeError message="Using the existing user's session in production is not allowed." />
 );

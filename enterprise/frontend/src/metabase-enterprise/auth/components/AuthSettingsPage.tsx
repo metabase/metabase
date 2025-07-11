@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { GoogleAuthCard } from "metabase/admin/settings/auth/containers/GoogleAuthCard";
-import { LdapAuthCard } from "metabase/admin/settings/auth/containers/LdapAuthCard";
-import { ManageApiKeys } from "metabase/admin/settings/components/ApiKeys/ManageApiKeys";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
+import { GoogleAuthCard } from "metabase/admin/settings/auth/containers/GoogleAuthCard";
+import { LdapAuthCard } from "metabase/admin/settings/auth/containers/LdapAuthCard";
+import { ManageApiKeys } from "metabase/admin/settings/components/ApiKeys/ManageApiKeys";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";

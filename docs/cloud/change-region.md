@@ -21,7 +21,7 @@ You may want to change which region your Metabase is hosted in to bring it close
 
 Most region switches should take less than 30 minutes. Your Metabase will be offline and unavailable while it changes regions, so plan for some down time.
 
-If you're using a [custom domain](./custom-domain), that region change could take longer, maybe up to 24 hours. That delay is due to DNS propagation (which is out of our hands).
+If you're using a [custom domain](./custom-domain.md), that region change could take longer, maybe up to 24 hours. That delay is due to DNS propagation (which is out of our hands).
 
 ## Select a region
 
@@ -34,11 +34,11 @@ To change regions, go to your [Metabase Store page](https://store.metabase.com/)
 
 ## Add the relevant IP addresses to your whitelist
 
-If you're using a security group or firewall rules, you should add the relevant [IP addresses](./ip-addresses-to-whitelist) to your whitelist.
+If you're using a security group or firewall rules, you should add the relevant [IP addresses](./ip-addresses-to-whitelist.md) to your whitelist.
 
 ## If your Metabase uses a custom domain, update your CNAMES
 
-If your Metabase uses a [custom domain](./custom-domain), you'll need to update your CNAMES. DNS switches are generally fast these days, but it'll take some time to sign a new certificate for that domain once it's updated (up to 24 hours).
+If your Metabase uses a [custom domain](./custom-domain.md), you'll need to update your CNAMES. DNS switches are generally fast these days, but it'll take some time to sign a new certificate for that domain once it's updated (up to 24 hours).
 
 We recommend switching regions during a time when people are less likely to use your Metabase.
 

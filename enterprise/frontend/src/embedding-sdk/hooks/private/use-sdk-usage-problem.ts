@@ -40,7 +40,7 @@ export function useSdkUsageProblem({
       return false;
     }
 
-    return getTokenFeature(state, "development-mode");
+    return getTokenFeature(state, "development_mode");
   });
 
   const usageProblem = useMemo(() => {

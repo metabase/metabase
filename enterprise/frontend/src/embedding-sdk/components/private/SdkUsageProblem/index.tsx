@@ -1,6 +1,6 @@
 import { useSdkUsageProblem } from "embedding-sdk/hooks/private/use-sdk-usage-problem";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
-import { EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
+import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { Box, Portal } from "metabase/ui";
 
 import { SdkUsageProblemBanner } from "./SdkUsageProblemBanner";
@@ -22,7 +22,7 @@ export const SdkUsageProblemDisplay = ({
   }
 
   return (
-    <Portal target={`#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`}>
+    <Portal target={`#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`}>
       <Box pos="fixed" bottom="15px" left="15px" className={S.BannerContainer}>
         <SdkUsageProblemBanner problem={usageProblem} />
       </Box>

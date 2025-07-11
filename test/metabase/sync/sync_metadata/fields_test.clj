@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
@@ -14,6 +15,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
@@ -137,6 +139,30 @@
                                  :fk_target_field_id nil}}
                   {:before-sync field-before-sync
                    :after-sync  (get-field-to-update)})))))))
+
+(deftest base-type-change-test
+  (testing "when a column changes base type, coercion_strategy is reset"
+    (mt/with-temp-copy-of-db
+      (let [db (mt/db)
+            db-spec (sql-jdbc.conn/db->pooled-connection-spec db)]
+        (doseq [statement ["DROP TABLE IF EXISTS \"base_type_change_test\";"
+                           "CREATE TABLE \"base_type_change_test\" (\"string_tbc_int_col\" VARCHAR);"
+                           "INSERT INTO \"base_type_change_test\" (\"string_tbc_int_col\") VALUES ('1'), ('2'), ('3');"]]
+          (jdbc/execute! db-spec [statement]))
+        (sync/sync-database! db)
+        (let [field (t2/select-one [:model/Field :id] :name "string_tbc_int_col")]
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) {:coercion_strategy :Coercion/String->Integer})
+
+          (sync/sync-database! db)
+
+          (is (=? {:effective_type :type/Integer :coercion_strategy :Coercion/String->Integer}
+                  (t2/select-one :model/Field :name "string_tbc_int_col")))
+
+          (jdbc/execute! db-spec ["ALTER TABLE \"base_type_change_test\" ALTER COLUMN \"string_tbc_int_col\" TYPE int USING \"string_tbc_int_col\"::integer;"])
+          (sync/sync-database! db)
+
+          (is (=? {:coercion_strategy nil}
+                  (t2/select-one :model/Field :name "string_tbc_int_col"))))))))
 
 (deftest dont-show-deleted-fields-test
   (testing "make sure deleted fields doesn't show up in `:fields` of a table"
@@ -280,6 +306,32 @@
                   :fk-target-exists? true}
                  (state))))))))
 
+(deftest sync-table-fks-test2
+  (testing "Check that sync-table! causes FKs to be left alone if they'd override user-set values"
+    (mt/with-temp-copy-of-db
+      (letfn [(state []
+                (let [{:keys                  [step-info]
+                       {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
+                      {:keys [semantic_type fk_target_field_id]} (t2/select-one [:model/Field :semantic_type :fk_target_field_id]
+                                                                                :id (mt/id :checkins :user_id))]
+                  {:step-info         (sync.util-test/only-step-keys step-info)
+                   :task-details      task_details
+                   :semantic-type     semantic_type
+                   :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
+        (testing "before"
+          (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
+                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
+                  :semantic-type     :type/FK
+                  :fk-target-exists? true}
+                 (state))))
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :checkins :user_id)) {:semantic_type :type/Name})
+        (testing "after"
+          (is (= {:step-info         {:total-fks 6 :updated-fks 0, :total-failed 0}
+                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
+                  :semantic-type     :type/Name
+                  :fk-target-exists? false}
+                 (state))))))))
+
 (deftest case-sensitive-conflict-test
   (testing "Two columns with same lower-case name can be synced (#17387)"
     (one-off-dbs/with-blank-db
@@ -418,3 +470,74 @@
         (is (not= ::thrown
                   (try (sync-fields/sync-fields-for-table! (mt/db) table)
                        (catch Throwable _ ::thrown))))))))
+
+(deftest visibility-type-stays-normal-after-manual-change-test
+  (testing "visibility_type remains :normal after being manually changed from :details-only"
+    (mt/test-driver :postgres
+      (tx/drop-if-exists-and-create-db! driver/*driver* "visibility_type_json_test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "visibility_type_json_test"
+                                                                 :json-unfolding true})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+
+        (doseq [statement
+                ["CREATE TABLE IF NOT EXISTS test_table (
+                    id INT PRIMARY KEY,
+                    something JSONB);"
+                 "INSERT INTO test_table (id, something) VALUES (
+                    1,
+                    jsonb_build_object(
+                     'field1', repeat('Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ', 500),
+                     'field2', repeat('The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! ', 500)));"]]
+          (jdbc/execute! spec [statement]))
+        (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+          (mt/with-db database
+            (sync/sync-database! database)
+            (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
+                  field-after-first-sync (t2/select-one :model/Field :table_id table-id :name "something")]
+              (is (= :details-only (:visibility_type field-after-first-sync))
+                  "First sync should set visibility_type to :details-only for large JSONB"))
+
+            (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
+                  field-id (t2/select-one-pk :model/Field :table_id table-id :name "something")]
+
+              (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:visibility_type :normal})
+
+              (let [field-after-manual-change (t2/select-one :model/Field :id field-id)]
+                (is (= :normal (:visibility_type field-after-manual-change))
+                    "Manual change should set visibility_type to :normal")))
+
+            (sync/sync-database! database)
+            (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
+                  field-after-second-sync (t2/select-one :model/Field :table_id table-id :name "something")]
+              (is (= :normal (:visibility_type field-after-second-sync))
+                  "Second sync should preserve manually set :normal visibility_type"))))))))
+
+(deftest user-set-fks-are-preserved-by-sync-test
+  (testing "Check that sync-table! doesn't remove user-set FKs during normal sync operations"
+    (with-test-db
+      (doseq [statement ["CREATE TABLE \"flocks\" (\"id\" INTEGER PRIMARY KEY, \"example_bird_name\" VARCHAR);"
+                         (str "INSERT INTO \"flocks\" (\"id\", \"example_bird_name\") VALUES "
+                              "(1, 'Marshawn Finch'),  "
+                              "(2, 'Steven Seagull'), "
+                              "(3, 'Colin Fowl');")]]
+        (jdbc/execute! one-off-dbs/*conn* [statement]))
+      (sync/sync-database! (mt/db))
+
+      (let [tables (t2/select-pks-set :model/Table :db_id (mt/id))
+            birds-example-name-field (t2/select-one :model/Field :name "example_name" :table_id [:in tables])
+            flocks-example-bird-name-field (t2/select-one :model/Field :name "example_bird_name" :table_id [:in tables])]
+
+        (testing "should not have FK relationship"
+          (is (nil? (:fk_target_field_id flocks-example-bird-name-field)))
+          (is (not= :type/FK (:semantic_type flocks-example-bird-name-field))))
+
+        (t2/update! :model/Field (u/the-id flocks-example-bird-name-field)
+                    {:semantic_type :type/FK
+                     :fk_target_field_id (u/the-id birds-example-name-field)})
+
+        (testing "after sync, user-set FK is preserved"
+          (sync/sync-database! (mt/db))
+
+          (let [field-after-sync (t2/select-one :model/Field :id (u/the-id flocks-example-bird-name-field))]
+            (is (= :type/FK (:semantic_type field-after-sync)))
+            (is (= (u/the-id birds-example-name-field) (:fk_target_field_id field-after-sync)))))))))

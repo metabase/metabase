@@ -614,6 +614,45 @@
            (qp/process-query
             (mt/mbql-query times {:fields [$t]})))))))
 
+(deftest ^:parallel join-preserves-$$-variable-prefix-test
+  (mt/test-driver :mongo
+    (testing "$$variable references in join conditions are preserved when rhs is a literal value (QUE-1500)"
+      (let [query (mt/mbql-query users
+                    {:joins    [{:condition    [:and
+                                                [:= $id &c.checkins.user_id]
+                                                [:= $name [:value "Felipinho Asklepios" {:base_type :type/Text}]]]
+                                 :source-table $$checkins
+                                 :alias        "c"
+                                 :fields       [&c.checkins.date]}]
+                     :fields   [$id $name &c.checkins.date]
+                     :order-by [[:asc $id]
+                                [:asc &c.checkins.id]]
+                     :limit    3})]
+        (testing "qp.compile"
+          (is (= [{"$lookup"
+                   {:as "join_alias_c"
+                    :from "checkins"
+                    :let {"let__id___1" "$_id",
+                          "let_name___2" "$name"}
+                    :pipeline
+                    [{"$match"
+                      {"$and" [{"$expr" {"$eq" ["$$let__id___1" "$user_id"]}}
+                               {"$expr" {"$eq" ["$$let_name___2" "Felipinho Asklepios"]}}]}}]}}
+                  {"$unwind" {:path "$join_alias_c"
+                              :preserveNullAndEmptyArrays true}}
+                  {"$sort" {"_id" 1
+                            "join_alias_c._id" 1}}
+                  {"$project" {"_id" "$_id"
+                               "c__date" "$join_alias_c.date"
+                               "name" "$name"}}
+                  {"$limit" 3}]
+                 (:query (qp.compile/compile query)))))
+        (testing "qp.process-query"
+          (is (= [[1 "Plato Yeshua" nil]
+                  [2 "Felipinho Asklepios" "2013-11-19T00:00:00Z"]
+                  [2 "Felipinho Asklepios" "2015-03-06T00:00:00Z"]]
+                 (mt/rows (qp/process-query query)))))))))
+
 (deftest ^:parallel mongo-multiple-joins-test
   (testing "should be able to join multiple mongo collections"
     (mt/test-driver :mongo

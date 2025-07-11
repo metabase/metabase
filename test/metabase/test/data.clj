@@ -182,13 +182,14 @@
       (not (:native outer-query)) (-> (update :query mbql-query-impl/maybe-add-source-table table-name)
                                       (update :query mbql-query-impl/wrap-populate-idents))))))
 
-(defmacro native-query
+(declare id)
+
+(defn native-query
   "Like `mbql-query`, but for native queries."
-  {:style/indent 0}
   [inner-native-query]
-  `{:database (id)
-    :type     :native
-    :native   ~inner-native-query})
+  {:database (id)
+   :type     :native
+   :native   inner-native-query})
 
 (defn run-mbql-query* [query]
   ;; catch the Exception and rethrow with the query itself so we can have a little extra info for debugging if it fails.

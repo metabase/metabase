@@ -37,7 +37,7 @@ There are two ways to activate your license when self-hosting Metabase:
 
 OR
 
-- **Before you start Metabase**: you can also set the license token with the [`MB_PREMIUM_EMBEDDING_TOKEN` environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_premium_embedding_token). This environment variable must be set _before_ you start your Metabase.
+- **Before you start Metabase**: you can also set the license token with the [`MB_PREMIUM_EMBEDDING_TOKEN` environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token). This environment variable must be set _before_ you start your Metabase.
 
 ## Upgrading from a self-hosted Metabase Open Source Edition to a Pro or Enterprise plan
 

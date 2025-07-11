@@ -25,19 +25,19 @@
   "Smooth out any unimportant differences in metadata so we can do an easy equality check."
   [metadata]
   (letfn [(remove-underscore-nil-keys
-            ; Sometimes we get an underscore version of a key with a nil value which is a duplicate of a key with a dash. Remove the nil value
+            ;; Sometimes we get an underscore version of a key with a nil value which is a duplicate of a key with a
+            ;; dash. Remove the nil value
             [m]
             (reduce-kv
              (fn [acc k v]
-               (let [dash-key (when (str/includes? (name k) "_")
-                                (keyword (str/replace (name k) "_" "-")))]
-                 (if (and dash-key
+               (let [kebab-cased-key (when (str/includes? (name k) "_")
+                                       (keyword (str/replace (name k) "_" "-")))]
+                 (if (and kebab-cased-key
                           (nil? v)
-                          (contains? m dash-key))
+                          (contains? m kebab-cased-key))
                    acc
                    (assoc acc k v))))
              {} m))
-
           (standardize-metadata [m]
             (cond
               (keyword? m) (u/qualified-name m)

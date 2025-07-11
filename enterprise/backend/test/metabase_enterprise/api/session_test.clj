@@ -57,7 +57,7 @@
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
-            :development-mode               true
+            :development_mode               true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true

@@ -9,9 +9,9 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   AdminNavItem,
   AdminNavWrapper,
-} from "metabase/admin/settings/components/AdminNav";
+} from "metabase/admin/components/AdminNav";
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";

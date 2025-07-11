@@ -4,7 +4,8 @@
    #?@(:clj ([toucan2.core :as t2]))
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -167,7 +168,7 @@
 
 (declare populate-idents)
 
-(defn- populate-idents-join [join-clause]
+(mu/defn- populate-idents-join [join-clause :- map?]
   (-> join-clause
       (u/assoc-default :ident (u/generate-nano-id))
       populate-idents))

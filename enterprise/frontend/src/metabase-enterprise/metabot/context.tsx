@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import type React from "react";
-import { createContext, useCallback, useRef } from "react";
+import { createContext, useCallback, useRef, useState } from "react";
 
 import { useStore } from "metabase/lib/redux";
 import type {
@@ -9,6 +9,10 @@ import type {
 } from "metabase/metabot";
 
 export const defaultContext = {
+  prompt: "",
+  setPrompt: () => {},
+  promptInputRef: undefined,
+
   getChatContext: () =>
     Promise.resolve({
       user_is_viewing: [],
@@ -24,6 +28,11 @@ export const MetabotProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
+  /* Metabot input */
+  const [prompt, setPrompt] = useState("");
+  const promptInputRef = useRef<HTMLTextAreaElement>(null);
+
+  /* Metabot context */
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());
   const store = useStore();
 
@@ -58,7 +67,13 @@ export const MetabotProvider = ({
 
   return (
     <MetabotContext.Provider
-      value={{ getChatContext, registerChatContextProvider }}
+      value={{
+        prompt,
+        setPrompt,
+        promptInputRef,
+        getChatContext,
+        registerChatContextProvider,
+      }}
     >
       {children}
     </MetabotContext.Provider>

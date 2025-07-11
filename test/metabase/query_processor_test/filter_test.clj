@@ -122,6 +122,32 @@
                                 :aggregation [[:count]]}))
                             first)))))))
 
+(deftest ^:parallel comparison-test-6
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset places-cam-likes
+      (testing "Can we use != with literals on both sides: true != false (QUE-1499)"
+        (is (= [[1 "Tempest"     true]
+                [2 "Bullit"      true]
+                [3 "The Dentist" false]]
+               (mt/formatted-rows
+                [int str ->bool]
+                :format-nil-values
+                (mt/run-mbql-query places
+                  {:filter   [:!= true false]
+                   :order-by [[:asc $id]]}))))))))
+
+(deftest ^:parallel comparison-test-7
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset places-cam-likes
+      (testing "Can we use != with literals on both sides: false != false (QUE-1499)"
+        (is (= []
+               (mt/formatted-rows
+                [int str ->bool]
+                :format-nil-values
+                (mt/run-mbql-query places
+                  {:filter   [:!= false false]
+                   :order-by [[:asc $id]]}))))))))
+
 (deftest ^:parallel between-test
   (mt/test-drivers (mt/normal-drivers)
     (testing ":between filter, single subclause (neither :and nor :or)"

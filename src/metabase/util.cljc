@@ -1134,10 +1134,17 @@
 
 (defn index-by
   "(index-by first second [[1 3] [1 4] [2 5]]) => {1 4, 2 5}"
+  ([kf]
+   (map (fn [x]
+          [(kf x) x])))
   ([kf coll]
-   (reduce (fn [acc v] (assoc acc (kf v) v)) {} coll))
+   (into {} (index-by kf) coll))
   ([kf vf coll]
-   (reduce (fn [acc v] (assoc acc (kf v) (vf v))) {} coll)))
+   (into {}
+         (comp (index-by kf)
+               (map (fn [[k v]]
+                      [k (vf v)])))
+         coll)))
 
 (defn rfirst
   "Return first item from Reducible"

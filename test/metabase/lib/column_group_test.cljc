@@ -5,6 +5,7 @@
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -55,7 +56,7 @@
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
-              ::lib.column-group/columns    [{:display-name "Name", :lib/source :source/breakouts}
+              ::lib.column-group/columns    [{:display-name "Name", :lib/source :source/table-defaults, :lib/breakout? true}
                                              {:display-name "Sum of ID", :lib/source :source/aggregations}]}]
             groups))
     (testing `lib/display-info
@@ -353,7 +354,11 @@
                                                                 (meta/field-metadata :orders :id))])
                                        (lib/with-join-fields (for [field [:id :tax]]
                                                                (lib/ref (meta/field-metadata :orders field)))))))
-        columns      (lib/visible-columns query)
+        ;; [[lib/visible-columns]] no longer returns desired column alias (since it's a function of which columns get
+        ;; returned), however I don't feel like completely reworking this test so I'm just going to add them here.
+        columns      (into []
+                           (lib.field.util/add-source-and-desired-aliases-xform query)
+                           (lib/visible-columns query))
         marked       (lib.equality/mark-selected-columns query -1 columns (lib/returned-columns query))
         user-cols    ["ID" "ADDRESS" "EMAIL" "PASSWORD" "NAME" "CITY" "LONGITUDE"
                       "STATE" "SOURCE" "BIRTH_DATE" "ZIP" "LATITUDE" "CREATED_AT"]
@@ -400,7 +405,9 @@
                                                (first (lib/join-condition-rhs-columns query card nil nil)))])
 
           query (lib/join query clause)
-          cols (lib/visible-columns query)
+          cols (into []
+                     (lib.field.util/add-source-and-desired-aliases-xform query)
+                     (lib/visible-columns query))
           [_ _ _ product-1 _ product-2 :as groups] (lib/group-columns cols)]
       (is (=? [{:display-name "Mock Orders Card"
                 :is-from-join false,
@@ -415,10 +422,11 @@
                {:display-name "User"
                 :is-from-join false,
                 :is-implicitly-joinable true}
-               {:display-name "Product"
+               ;; we always use LONG display names when the column comes from a previous stage.
+               {:display-name "Mock orders card → Product"
                 :is-from-join false,
                 :is-implicitly-joinable true}
-               {:display-name "User"
+               {:display-name "Mock orders card → User"
                 :is-from-join false,
                 :is-implicitly-joinable true}]
               (map #(lib/display-info query %) groups)))

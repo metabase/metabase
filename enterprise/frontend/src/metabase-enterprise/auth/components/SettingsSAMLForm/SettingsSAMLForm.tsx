@@ -3,13 +3,13 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import {
   useGetAdminSettingsDetailsQuery,

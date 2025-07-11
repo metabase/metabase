@@ -221,7 +221,7 @@
                            (merge (meta/field-metadata :venues :name)
                                   {:table-id  1
                                    :name      "name"
-                                   :base_type :type/Text})]})))
+                                   :base-type :type/Text})]})))
           query {:database 1
                  :type     :query
                  :query    {:source-table 1

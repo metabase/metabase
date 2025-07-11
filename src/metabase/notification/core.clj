@@ -24,6 +24,7 @@
   seed-notification!]
  [metabase.notification.send
   send-notification!
+  shutdown!
   *default-options*]
  [metabase.notification.events.notification
   *skip-sending-notification?*

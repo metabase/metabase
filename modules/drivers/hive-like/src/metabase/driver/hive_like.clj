@@ -224,6 +224,10 @@
   [_driver _unit x y]
   [:- [:unix_timestamp y] [:unix_timestamp x]])
 
+(defmethod sql.qp/cast-temporal-string [:hive-like :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  [:to_timestamp expr (h2x/literal "yyyyMMddHHmmss")])
+
 (def ^:dynamic *inline-param-style*
   "How we should include inline params when compiling SQL. `:friendly` (the default) or `:paranoid`. `:friendly` makes a
   best-effort attempt to escape strings and generate SQL that is nice to look at, but should not be considered safe

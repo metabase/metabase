@@ -9,6 +9,7 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -702,3 +703,21 @@
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver :sqlserver
     (is (= "Z" (str (driver/db-default-timezone :sqlserver (mt/db)))))))
+
+(deftest ^:parallel default-database-role-test
+  (testing "SQL Server default database role handling"
+    (testing "returns role when explicitly configured"
+      (let [database {:details {:user "login_user" :role "db_user"}}]
+        (is (= "db_user" (driver.sql/default-database-role :sqlserver database)))))
+
+    (testing "returns nil when no role is configured"
+      (let [database {:details {:user "login_user"}}]
+        (is (nil? (driver.sql/default-database-role :sqlserver database)))))
+
+    (testing "returns nil even when user is 'sa'"
+      (let [database {:details {:user "sa"}}]
+        (is (nil? (driver.sql/default-database-role :sqlserver database)))))
+
+    (testing "ignores user field and only uses role field"
+      (let [database {:details {:user "login_user" :role "impersonation_user"}}]
+        (is (= "impersonation_user" (driver.sql/default-database-role :sqlserver database)))))))

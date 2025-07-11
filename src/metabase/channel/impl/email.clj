@@ -7,17 +7,17 @@
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.email.result-attachment :as email.result-attachment]
+   [metabase.channel.impl.util :as impl.util]
    [metabase.channel.models.channel :as models.channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.template.core :as channel.template]
    [metabase.channel.urls :as urls]
    [metabase.notification.models :as models.notification]
-   [metabase.parameters.shared :as shared.params]
-   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
@@ -64,6 +64,7 @@
          (codec/form-encode {:hash     (messages/generate-pulse-unsubscribe-hash dashboard-subscription-id non-user-email)
                              :email    non-user-email
                              :pulse-id dashboard-subscription-id}))))
+
 (defn- render-part
   [timezone part options]
   (case (:type part)
@@ -71,8 +72,18 @@
     (channel.render/render-pulse-section timezone (channel.shared/maybe-realize-data-rows part) options)
 
     :text
-    {:content (markdown/process-markdown (:text part) :html)}
+    (let [inline-params   (:inline_parameters part)
+          rendered-params (when (seq inline-params) (render.util/render-parameters inline-params))]
+      {:content (str (markdown/process-markdown (:text part) :html)
+                     rendered-params)})
 
+    :heading
+    (let [inline-params   (:inline_parameters part)
+          rendered-params (when (seq inline-params) (render.util/render-parameters inline-params))
+          heading-text    (:text part)
+          style           (style/style (if (seq inline-params) {:margin-bottom "4px"} {}))]
+      {:content (str (html [:h2 {:style style} heading-text])
+                     rendered-params)})
     :tab-title
     {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html)}))
 
@@ -210,54 +221,12 @@
 ;;                                    Dashboard Subscriptions                                      ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn- render-filters
-  [parameters]
-  (let [cells (map
-               (fn [filter]
-                 [:td {:class "filter-cell"
-                       :style (channel.render/style {:width "50%"
-                                                     :padding "0px"
-                                                     :vertical-align "baseline"})}
-                  [:table {:cellpadding "0"
-                           :cellspacing "0"
-                           :width "100%"
-                           :height "100%"}
-                   [:tr
-                    [:td
-                     {:style (channel.render/style {:color channel.render/color-text-medium
-                                                    :min-width "100px"
-                                                    :width "50%"
-                                                    :padding "4px 4px 4px 0"
-                                                    :vertical-align "baseline"})}
-                     (:name filter)]
-                    [:td
-                     {:style (channel.render/style {:color channel.render/color-text-dark
-                                                    :min-width "100px"
-                                                    :width "50%"
-                                                    :padding "4px 16px 4px 8px"
-                                                    :vertical-align "baseline"})}
-                     (shared.params/value-string filter (system/site-locale))]]]])
-               parameters)
-        rows  (partition-all 2 cells)]
-    (html
-     [:table {:style (channel.render/style {:table-layout    :fixed
-                                            :border-collapse :collapse
-                                            :cellpadding     "0"
-                                            :cellspacing     "0"
-                                            :width           "100%"
-                                            :font-size       "12px"
-                                            :font-weight     700
-                                            :margin-top      "8px"})}
-      (for [row rows]
-        [:tr {} row])])))
-
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
   [_channel-type _payload-type {:keys [payload payload_type] :as notification-payload} template recipients]
   (let [{:keys [dashboard_parts
                 dashboard_subscription
                 parameters
                 dashboard]} payload
-
         template            (or template (payload-type->default-template payload_type))
         timezone            (some->> dashboard_parts (some :card) channel.render/defaulted-timezone)
         ;; We want to walk dashboard_parts once and not retain Hiccup structures in memory to reduce memory water mark
@@ -290,8 +259,9 @@
                                                     :management_url     (if (nil? non-user-email)
                                                                           (urls/notification-management-url)
                                                                           (pulse-unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
-                                                    :filters           (when (seq parameters)
-                                                                         (render-filters parameters))})
+                                                    :filters            (some-> (seq parameters)
+                                                                                (impl.util/remove-inline-parameters dashboard_parts)
+                                                                                (render.util/render-parameters))})
                                   (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
     (construct-emails template message-context-fn attachments recipients)))
 

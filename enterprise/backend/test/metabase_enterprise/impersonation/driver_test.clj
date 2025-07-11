@@ -195,6 +195,10 @@
   [driver {:keys [details]}]
   (assoc details :user (impersonation-default-user driver)))
 
+(defmethod impersonation-details :sqlserver
+  [driver {:keys [details]}]
+  (assoc details :role (impersonation-default-user driver)))
+
 (doseq [driver [:postgres :snowflake]]
   (defmethod impersonation-details driver
     [_driver {:keys [details]}]
@@ -376,6 +380,8 @@
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             role-a (u/lower-case-en (mt/random-name))
+            ;; todo: this relies on the impersonation user being the login credential. This is not necessarilly true
+            ;; on sqlserver. see #60672
             impersonation-user (impersonation-default-user driver/*driver*)
             details (:details (mt/db))]
         (tx/with-temp-roles! driver/*driver*
@@ -397,7 +403,9 @@
                          {:aggregation [[:count]]})))))))
           (testing "Using connection impersonation with user that can be impersonated works"
             (mt/with-temp [:model/Database database {:engine driver/*driver*,
-                                                     :details (merge details {:user impersonation-user})}]
+                                                     :details (merge details {:user impersonation-user
+                                                                              ;; i think this should be (impersonation-details (mt/db)) which will set a role
+                                                                              :role impersonation-user})}]
               (mt/with-db database
                 (sync/sync-database! database {:scan :schema})
                 (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]

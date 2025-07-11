@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.ref :as lib.ref]
@@ -64,7 +63,8 @@
                                           :dataset-query   card-query
                                           :result-metadata results-metadata}]})
             query              (lib/query metadata-provider (lib.metadata/card metadata-provider 1))
-            longitude          (lib.field/resolve-column-name-in-metadata "LATITUDE" (lib/returned-columns query))
+            longitude          (m/find-first #(= (:name %) "LATITUDE")
+                                             (lib/returned-columns query))
             _                  (is (=? {:name           "LATITUDE"
                                         :effective-type :type/Float
                                         :fingerprint    {:type {:type/Number {:min number?, :max number?}}}}

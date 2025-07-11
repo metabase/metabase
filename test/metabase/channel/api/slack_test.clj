@@ -117,7 +117,7 @@
                               :url "https://files.slack.com/files-pri/123/diagnostic.json"}]}]]
 
       (testing "should post bug report to Slack with correct blocks"
-        (with-redefs [slack/upload-file! (constantly mock-file-info)
+        (with-redefs [slack/upload-file! (fn [_ _] mock-file-info)
                       slack/post-chat-message! (constantly nil)
                       slack/channel-exists? (constantly true)]
           (mt/with-temporary-setting-values [slack-bug-report-channel "test-bugs"]
@@ -129,7 +129,7 @@
                      response))))))
 
       (testing "should handle anonymous reports"
-        (with-redefs [slack/upload-file! (constantly mock-file-info)
+        (with-redefs [slack/upload-file! (fn [_ _] mock-file-info)
                       slack/post-chat-message! (constantly nil)
                       slack/channel-exists? (constantly true)]
           (mt/with-temporary-setting-values [slack-bug-report-channel "test-bugs"]

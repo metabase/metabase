@@ -160,7 +160,7 @@ GRANT metabase_uploads TO metabase;
 
 ## Multi-tenant permissions
 
-If you're setting up multi-tenant permissions for customers who need SQL access, you can [create one database connection per customer](https://www.metabase.com/learn/metabase-basics/administration/permissions/multi-tenant-permissions#granting-customers-native-sql-access-to-their-schema). That means each customer will connect to the database using their own database user.
+If you're setting up multi-tenant permissions for customers who need SQL access, you can [create one database connection per customer](../permissions/embedding.md#granting-customers-native-sql-access-to-their-schema). That means each customer will connect to the database using their own database user.
 
 Let's say you have customers named Tangerine and Lemon:
 

@@ -282,7 +282,7 @@
   with-discarded-collections-perms-changes
   with-discard-model-updates!
   with-env-keys-renamed-by
-  with-locale
+  with-locale!
   with-model-cleanup
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms

@@ -13,7 +13,7 @@
       (with-redefs [email/send-email! (fn [_ message]
                                         (reset! sent-message message))]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"
-                                           email-smtp-host    " ake_smtp_host"
+                                           email-smtp-host    "fake_smtp_host"
                                            email-smtp-port    587
                                            bcc-enabled?       false]
           (channel/send! {:type :channel/email} {:subject "Test"

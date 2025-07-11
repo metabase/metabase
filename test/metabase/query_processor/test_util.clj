@@ -22,7 +22,6 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.middleware.annotate :as qp.annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -85,18 +84,19 @@
 
     (qp.test/col :venues :id)"
   [table-kw field-kw]
-  (merge
-   (col-defaults)
-   (if (qp.store/initialized?)
-     (-> (lib.metadata/field (qp.store/metadata-provider) (data/id table-kw field-kw))
-         (select-keys [:lib/type :id :table-id :semantic-type :base-type :effective-type :coercion-strategy :name :display-name :fingerprint])
-         #_{:clj-kondo/ignore [:deprecated-var]}
-         qp.store/->legacy-metadata
-         (dissoc :lib/type))
-     (t2/select-one [:model/Field :id :table_id :semantic_type :base_type :effective_type
-                     :coercion_strategy :name :display_name :fingerprint]
-                    :id (data/id table-kw field-kw)))
-   {:field_ref [:field (data/id table-kw field-kw) nil]}))
+  (->> (merge
+        (col-defaults)
+        (if (qp.store/initialized?)
+          (-> (lib.metadata/field (qp.store/metadata-provider) (data/id table-kw field-kw))
+              (select-keys [:lib/type :id :table-id :semantic-type :base-type :effective-type :coercion-strategy :name :display-name :fingerprint])
+              #_{:clj-kondo/ignore [:deprecated-var]}
+              qp.store/->legacy-metadata
+              (dissoc :lib/type))
+          (t2/select-one [:model/Field :id :table_id :semantic_type :base_type :effective_type
+                          :coercion_strategy :name :display_name :fingerprint]
+                         :id (data/id table-kw field-kw)))
+        {:field_ref [:field (data/id table-kw field-kw) nil]})
+       (m/filter-vals some?)))
 
 (defn- expected-column-names
   "Get a sequence of keyword names of Fields belonging to a Table in the order they'd normally appear in QP results."
@@ -260,13 +260,12 @@
 
   Can be used with [[format-rows-by]] to normalize DB-specific bools in results."
   [x]
-  ;; The compiler warns about performance here since (= (hash 0) (hash 0M)), so the `case` will fallback to linear
-  ;; probing for those values. It shouldn't matter for this function, but if it becomes an issue or we want to silence
-  ;; the warning, it could be rewritten to avoid the `case`.
-  (case x
-    (0 0M false) false
-    (1 1M true)  true
-    (throw (ex-info "value is not boolish" {:value x}))))
+  (cond
+    (boolean? x) x
+    (zero? x)    false
+    (= x 1)      true
+    (= x 1M)     true
+    :else        (throw (ex-info "value is not boolish" {:value x}))))
 
 (defn format-rows-by
   "Format the values in result `rows` with the fns at the corresponding indecies in `format-fns`. `rows` can be a
@@ -640,6 +639,5 @@
   be used instead, as is done for ad-hoc native queries."
   ([metadata]
    (metadata->native-form metadata (lib/placeholder-card-entity-id-for-adhoc-query)))
-  ([metadata card-entity-id]
-   (qp.annotate/annotate-native-cols (mapv #(dissoc % :id :ident :source) metadata)
-                                     card-entity-id)))
+  ([metadata _card-entity-id]
+   (mapv #(dissoc % :id :ident :source) metadata)))

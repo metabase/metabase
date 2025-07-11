@@ -74,7 +74,7 @@
         metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         query             (lib/query metadata-provider dataset-query)
         breakouts         (into []
-                                (comp (filter (comp #{:source/breakouts} :lib/source)) (map :name))
+                                (comp (filter :lib/breakout?) (map :name))
                                 (lib/returned-columns query))]
     {:dataset_query dataset-query
      :visualization_settings

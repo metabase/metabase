@@ -18,9 +18,9 @@ There are some limitations that could impact your migration to Metabase Cloud. T
 
 Metabase Cloud only works with:
 
-- [Metabase's officially supported databases](/docs/latest/databases/connecting#connecting-to-supported-databases) (with the exception of SQLite and H2).
+- [Metabase's officially supported databases](../databases/connecting.md#connecting-to-supported-databases) (with the exception of SQLite and H2).
 
-Metabase Cloud doesn't support [community database drivers](/docs/latest/developers-guide/community-drivers), or file-based databases (SQLite and H2), because there's currently no file storage available.
+Metabase Cloud doesn't support [community database drivers](../developers-guide/community-drivers.md), or file-based databases (SQLite and H2), because there's currently no file storage available.
 
 ## Limited custom certificate support
 
@@ -32,7 +32,7 @@ Metabase Cloud does not support customization of the "from address" for emailed 
 
 ## No access to application database
 
-You won't be able to access the application database; if you want insights into how people are using your Metabase, check out [Usage analytics](/docs/latest/usage-and-performance-tools/usage-analytics).
+You won't be able to access the application database; if you want insights into how people are using your Metabase, check out [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
 ## Queries time out after ten minutes
 

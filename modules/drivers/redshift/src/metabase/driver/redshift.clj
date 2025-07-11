@@ -500,9 +500,9 @@
                   [(:name param) (:value param)]
 
                   (when-let [field-id (driver-api/match-one param
-                                                            [:field (field-id :guard integer?) _]
-                                                            (when (contains? (set &parents) :dimension)
-                                                              field-id))]
+                                        [:field (field-id :guard integer?) _]
+                                        (when (contains? (set &parents) :dimension)
+                                          field-id))]
                     [(:name (driver-api/field (driver-api/metadata-provider) field-id))
                      (:value param)]))))
         user-parameters))
@@ -614,6 +614,11 @@
 (defmethod sql.qp/cast-temporal-byte [:redshift :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:from_varbyte expr (h2x/literal "UTF8")]))
+
+(defmethod sql.qp/cast-temporal-byte [:redshift :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
                                [:from_varbyte expr (h2x/literal "UTF8")]))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :redshift

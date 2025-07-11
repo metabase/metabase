@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.client
   (:require
    [clj-http.client :as http]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
@@ -11,13 +12,15 @@
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]
+   [metabase.server.streaming-response :as sr]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.o11y :refer [with-span]])
+  (:import (java.io BufferedReader)))
 
 (set! *warn-on-reflection* true)
 
@@ -62,31 +65,34 @@
         (deliver response-status (some-> <> :status))))))
 
 (defn- agent-v2-endpoint-url []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v2/agent"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v2/agent"))
+
+(defn- agent-v2-streaming-endpoint-url []
+  (str (metabot-v3.settings/ai-service-base-url) "/v2/agent/stream"))
 
 (defn- metric-selection-endpoint-url []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/select-metric"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/select-metric"))
 
 (defn- find-outliers-endpoint-url []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/find-outliers"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/find-outliers"))
 
 (defn- fix-sql-endpoint []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/sql/fix"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/sql/fix"))
 
 (defn- generate-sql-endpoint []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/sql/generate"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/sql/generate"))
 
 (defn- analyze-chart-endpoint []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/analyze/chart"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/analyze/chart"))
 
 (defn- analyze-dashboard-endpoint []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/analyze/dashboard"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/analyze/dashboard"))
 
 (defn- example-question-generation-endpoint []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/example-question-generation/batch"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/example-question-generation/batch"))
 
-(mu/defn request :- ::metabot-v3.client.schema/ai-proxy.response
-  "Make a V2 request to the AI Proxy."
+(mu/defn request :- ::metabot-v3.client.schema/ai-service.response
+  "Make a V2 request to the AI Service."
   [{:keys [context messages profile-id conversation-id session-id state]}
    :- [:map
        [:context :map]
@@ -106,7 +112,7 @@
                         :user_id         api/*current-user-id*}
                        (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en))
           _        (metabot-v3.context/log body :llm.log/be->llm)
-          _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
+          _        (log/debugf "V2 request to AI Service:\n%s" (u/pprint-to-str body))
           options  (cond-> {:headers          {"Accept"                    "application/json"
                                                "Content-Type"              "application/json;charset=UTF-8"
                                                "x-metabase-instance-token" (premium-features/premium-embedding-token)
@@ -117,12 +123,77 @@
                      *debug* (assoc :debug true))
           response (post! url options)]
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
-      (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
+      (log/debugf "Response from AI Service:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (if (= (:status response) 200)
-        (u/prog1 (mc/decode ::metabot-v3.client.schema/ai-proxy.response
+        (u/prog1 (mc/decode ::metabot-v3.client.schema/ai-service.response
                             (:body response)
                             (mtx/transformer {:name :api-response}))
           (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
+        (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
+                        {:request (assoc options :body body)
+                         :response response}))))
+    (catch Throwable e
+      (throw (ex-info (format "Error in request to AI Service: %s" (ex-message e)) {} e)))))
+
+(mu/defn streaming-request :- :any
+  "Make a streaming V2 request to the AI Service
+
+   This implements the streaming support for Metabot
+
+   Clojure backend makes the request to the AI Service which respond immediately with a response and starts
+   streaming the response chunks back. We want to ship these to the frontend as soon as possible to give
+   the user the ability to consume the response before it's done.
+
+   Since we want to send the chunks to the frontend as soon as possible, we manually write to the output stream
+   and flush after every chunk. If we've just returned the `response` object, ring would handle it correctly
+   but would also buffer the response.
+
+   Response chunks are encoded in the format understood by the frontend and AI Service, Clojure backend doesn't
+   know anything about it and just shuttles them over.
+   "
+  [{:keys [context messages profile-id conversation-id session-id state]}
+   :- [:map
+       [:context :map]
+       [:messages ::metabot-v3.client.schema/messages]
+       [:profile-id :string]
+       [:conversation-id :string]
+       [:session-id :string]
+       [:state :map]]]
+  (premium-features/assert-has-feature :metabot-v3 "MetaBot")
+  (try
+    (let [url      (agent-v2-streaming-endpoint-url)
+          body     (-> {:messages        messages
+                        :context         context
+                        :conversation_id conversation-id
+                        :profile_id      profile-id
+                        :state           state
+                        :user_id         api/*current-user-id*}
+                       (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en))
+          _        (metabot-v3.context/log body :llm.log/be->llm)
+          _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
+          options  (cond-> {:headers          {"Accept"                    "text/event-stream"
+                                               "Content-Type"              "application/json;charset=UTF-8"
+                                               "x-metabase-instance-token" (premium-features/premium-embedding-token)
+                                               "x-metabase-session-token"  session-id
+                                               "x-metabase-url"            (system/site-url)}
+                            :body             (->json-bytes body)
+                            :throw-exceptions false
+                            :as :stream}
+                     *debug* (assoc :debug true))
+          response (post! url options)]
+      (metabot-v3.context/log (:body response) :llm.log/llm->be)
+      (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
+      (if (= (:status response) 200)
+        (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
+                               ;; Response from the AI Service will send response parts separated by newline
+          (with-open [response-lines ^BufferedReader (io/reader (:body response))]
+            (loop []
+                                   ;; Grab the next line and write it to the output stream with appended newline (frontend depends on it)
+                                   ;; Immediately flush so it get's sent to the frontend as soon as possible
+              (when-let [line (.readLine response-lines)]
+                (.write os (.getBytes (str line "\n") "UTF-8"))
+                (.flush os)
+                (recur)))))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))

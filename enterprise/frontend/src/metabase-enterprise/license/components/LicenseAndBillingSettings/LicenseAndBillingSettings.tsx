@@ -2,17 +2,17 @@ import dayjs from "dayjs";
 import { useCallback } from "react";
 import { jt, t } from "ttag";
 
-import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
+import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
 import { useGetAdminSettingsDetailsQuery } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useToast } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Box, Divider, Flex, Stack } from "metabase/ui";
@@ -27,7 +27,15 @@ const HOSTING_FEATURE_KEY = "hosting";
 const STORE_MANAGED_FEATURE_KEY = "metabase-store-managed";
 const NO_UPSELL_FEATURE_HEY = "no-upsell";
 
-const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
+const getDescription = ({
+  tokenStatus,
+  hasToken,
+  airgapEnabled,
+}: {
+  tokenStatus?: TokenStatus;
+  hasToken: boolean;
+  airgapEnabled: boolean;
+}) => {
   if (!hasToken) {
     return t`Bought a license to unlock advanced functionality? Please enter it below.`;
   }
@@ -49,6 +57,10 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
   }
 
   const daysRemaining = dayjs(tokenStatus["valid-thru"]).diff(dayjs(), "days");
+
+  if (tokenStatus.valid && airgapEnabled) {
+    return t`Your token expires in ${daysRemaining} days.`;
+  }
 
   if (tokenStatus.valid && tokenStatus.trial) {
     return t`Your trial ends in ${daysRemaining} days. If you already have a license, please enter it below.`;
@@ -78,6 +90,8 @@ export const LicenseAndBillingSettings = () => {
     isUpdating,
   } = useLicense(sendActivatedToast);
 
+  const airgapEnabled = useSetting("airgap-enabled");
+
   const isInvalidToken =
     !!licenseError || (tokenStatus != null && !tokenStatus.valid);
 
@@ -101,7 +115,7 @@ export const LicenseAndBillingSettings = () => {
   }
 
   const hasToken = Boolean(!!token || settingDetails?.is_env_setting);
-  const description = getDescription(tokenStatus, hasToken);
+  const description = getDescription({ tokenStatus, hasToken, airgapEnabled });
 
   const shouldShowLicenseInput =
     !tokenStatus?.features?.includes(HOSTING_FEATURE_KEY);

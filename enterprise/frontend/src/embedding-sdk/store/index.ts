@@ -38,7 +38,6 @@ export const getSdkStore = () =>
       options: {
         entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,
       },
-      isEmbeddingSdk: true,
     },
     app: {
       isDndAvailable: false,
