@@ -6,6 +6,7 @@ import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { getEmbeddedParameterVisibility } from "metabase/dashboard/selectors";
 import { slugify } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
+import { getParametersInSameContext } from "metabase/parameters/utils/parameter-context";
 import type { IconName } from "metabase/ui";
 import { Tabs, Text } from "metabase/ui";
 import { isFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
@@ -27,6 +28,7 @@ import { ParameterSettings } from "../ParameterSettings";
 export interface ParameterSidebarProps {
   parameter: Parameter;
   otherParameters: Parameter[];
+  dashcards: DashboardCard[];
   hasMapping: boolean;
   onChangeName: (parameterId: ParameterId, name: string) => void;
   onChangeType: (
@@ -68,6 +70,7 @@ export interface ParameterSidebarProps {
 export const ParameterSidebar = ({
   parameter,
   otherParameters,
+  dashcards,
   onChangeName,
   onChangeType,
   onChangeDefaultValue,
@@ -163,9 +166,18 @@ export const ParameterSidebar = ({
   }, [parameterId, onRemoveParameter, onClose]);
 
   const isParameterSlugUsed = useCallback(
-    (value: string) =>
-      otherParameters.some((parameter) => parameter.slug === slugify(value)),
-    [otherParameters],
+    (value: string) => {
+      const slug = slugify(value);
+
+      const parametersInSameContext = getParametersInSameContext(
+        otherParameters,
+        editingParameterInlineDashcard,
+        dashcards,
+      );
+
+      return parametersInSameContext.some((param) => param.slug === slug);
+    },
+    [otherParameters, editingParameterInlineDashcard, dashcards],
   );
 
   const handleChangeRequired = (value: boolean) =>

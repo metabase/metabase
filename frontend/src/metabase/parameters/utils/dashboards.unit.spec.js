@@ -80,6 +80,76 @@ describe("metabase/parameters/utils/dashboards", () => {
         type: "category",
       });
     });
+
+    it("should allow duplicate names in different contexts", () => {
+      const dashboardParam = {
+        id: "param1",
+        name: "foo bar",
+        type: "category",
+        sectionId: "abc",
+        slug: "foo_bar",
+      };
+      const inlineParam1 = {
+        id: "param2",
+        name: "foo bar",
+        type: "category",
+        sectionId: "abc",
+        slug: "foo_bar",
+      };
+      const inlineParam2 = {
+        id: "param3",
+        name: "foo bar",
+        type: "category",
+        sectionId: "abc",
+        slug: "foo_bar",
+      };
+
+      const dashcard1 = {
+        id: 1,
+        inline_parameters: [inlineParam1.id],
+      };
+
+      const dashcard2 = {
+        id: 2,
+        inline_parameters: [inlineParam2.id],
+      };
+
+      // Creating a parameter for dashcard2 when dashcard1 already has same name
+      // but dashcard2 is empty, so no conflict
+      const emptyDashcard2 = {
+        id: 2,
+        inline_parameters: [],
+      };
+
+      const newInlineParam = createParameter(
+        {
+          name: "foo bar",
+          type: "category",
+          sectionId: "abc",
+        },
+        [dashboardParam, inlineParam1],
+        emptyDashcard2,
+        [dashcard1, emptyDashcard2],
+      );
+
+      // Should not add index because it's in a different context
+      expect(newInlineParam.name).toEqual("foo bar");
+
+      // Creating a dashboard-level parameter when inline params have same name
+      const newDashboardParam = createParameter(
+        {
+          name: "foo bar",
+          type: "category",
+          sectionId: "abc",
+        },
+        [dashboardParam, inlineParam1, inlineParam2],
+        null,
+        [dashcard1, dashcard2],
+      );
+
+      // Should add index because dashboardParam already exists at dashboard level
+      expect(newDashboardParam.name).toEqual("foo bar 1");
+    });
   });
 
   describe("setParameterName", () => {

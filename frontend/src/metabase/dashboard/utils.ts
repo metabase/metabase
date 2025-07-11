@@ -161,11 +161,14 @@ export function findDashCardForInlineParameter(
   parameterId: ParameterId,
   dashcards: BaseDashboardCard[],
 ): DashboardCardWithInlineFilters | undefined {
-  return dashcards.find((dashcard) => {
+  const dashcard = dashcards.find((dashcard) => {
     if (hasInlineParameters(dashcard)) {
       return dashcard.inline_parameters.some((id) => id === parameterId);
     }
-  }) as DashboardCardWithInlineFilters | undefined;
+    return false;
+  });
+
+  return dashcard && hasInlineParameters(dashcard) ? dashcard : undefined;
 }
 
 export function isDashcardInlineParameter(
