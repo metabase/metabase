@@ -328,7 +328,7 @@
                             :dashboard-id           dashboard-id
                             :visualization-settings merged-viz}
                      (and (= (:type card) :model)
-                          (not= :table-editable (:display card))
+                          #_(not= :table-editable (:display card))
                           (seq (:result_metadata card)))
                      (assoc :metadata/model-metadata (:result_metadata card)))]
     (when (seq parameters)
