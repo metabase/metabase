@@ -395,8 +395,9 @@
                       {:joins [{:source-table $$orders
                                 :alias "j"
                                 :condition
-                                [:= $id &j.orders.id]
+                                [:= $id &j.orders.product_id]
                                 :fields :all}]})]
+          ;; should return 20 columns and 37320 rows
           (mt/with-native-query-testing-context query
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"column number mismatch"
-                                  (qp/process-query query)))))))))
+                                  (-> query qp/process-query mt/rows count)))))))))
