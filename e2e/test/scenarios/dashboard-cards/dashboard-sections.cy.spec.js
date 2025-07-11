@@ -151,7 +151,7 @@ function selectQuestion(question) {
 
 function overwriteDashCardTitle(index, originalTitle, newTitle) {
   H.showDashcardVisualizerModalSettings(index, {
-    buttonText: "Visualize another way",
+    isVisualizerCard: false,
   });
   cy.findByDisplayValue(originalTitle).clear().type(newTitle).blur();
   H.saveDashcardVisualizerModalSettings();
