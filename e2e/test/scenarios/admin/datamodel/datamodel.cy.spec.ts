@@ -2215,65 +2215,66 @@ describe("scenarios > admin > datamodel", () => {
         });
 
         it("should allow 'Custom mapping' null values", () => {
-          const databaseId = 2;
           const remappedNullValue = "nothin";
 
-          H.restore("withSqlite");
           cy.signInAsAdmin();
+          H.addSqliteDatabase();
 
-          H.withDatabase(
-            databaseId,
-            ({ NUMBER_WITH_NULLS: { NUM }, NUMBER_WITH_NULLS_ID }) => {
-              cy.request("GET", `/api/database/${databaseId}/schemas`).then(
-                ({ body }) => {
-                  const [schemaName] = body;
+          cy.get<number>("@sqliteID").then((databaseId) => {
+            H.withDatabase(
+              databaseId,
+              ({ NUMBER_WITH_NULLS: { NUM }, NUMBER_WITH_NULLS_ID }) => {
+                cy.request("GET", `/api/database/${databaseId}/schemas`).then(
+                  ({ body }) => {
+                    const [schemaName] = body;
 
-                  H.DataModel.visit({
-                    databaseId,
-                    schemaId: `${databaseId}:${schemaName}`,
-                    tableId: NUMBER_WITH_NULLS_ID,
-                    fieldId: NUM,
-                  });
-                },
-              );
+                    H.DataModel.visit({
+                      databaseId,
+                      schemaId: `${databaseId}:${schemaName}`,
+                      tableId: NUMBER_WITH_NULLS_ID,
+                      fieldId: NUM,
+                    });
+                  },
+                );
 
-              cy.log("Change `null` to custom mapping");
-              FieldSection.getDisplayValuesInput().scrollIntoView().click();
-              H.popover().findByText("Custom mapping").click();
-              cy.wait("@updateFieldValues");
-              H.undoToast().should(
-                "contain.text",
-                "Display values of Num updated",
-              );
-              H.undoToast().icon("close").click({
-                force: true, // it's behind a modal
-              });
-
-              H.modal()
-                .should("be.visible")
-                .within(() => {
-                  cy.findAllByPlaceholderText("Enter value")
-                    .filter("[value='null']")
-                    .clear()
-                    .type(remappedNullValue);
-                  cy.button("Save").click();
+                cy.log("Change `null` to custom mapping");
+                FieldSection.getDisplayValuesInput().scrollIntoView().click();
+                H.popover().findByText("Custom mapping").click();
+                cy.wait("@updateFieldValues");
+                H.undoToast().should(
+                  "contain.text",
+                  "Display values of Num updated",
+                );
+                H.undoToast().icon("close").click({
+                  force: true, // it's behind a modal
                 });
-              cy.wait("@updateFieldValues");
-              H.undoToast().should(
-                "contain.text",
-                "Display values of Num updated",
-              );
 
-              cy.log("Make sure custom mapping appears in QB");
-              H.openTable({
-                database: databaseId,
-                table: NUMBER_WITH_NULLS_ID,
-              });
-              cy.findAllByRole("gridcell", { name: remappedNullValue }).should(
-                "be.visible",
-              );
-            },
-          );
+                H.modal()
+                  .should("be.visible")
+                  .within(() => {
+                    cy.findAllByPlaceholderText("Enter value")
+                      .filter("[value='null']")
+                      .clear()
+                      .type(remappedNullValue);
+                    cy.button("Save").click();
+                  });
+                cy.wait("@updateFieldValues");
+                H.undoToast().should(
+                  "contain.text",
+                  "Display values of Num updated",
+                );
+
+                cy.log("Make sure custom mapping appears in QB");
+                H.openTable({
+                  database: databaseId,
+                  table: NUMBER_WITH_NULLS_ID,
+                });
+                cy.findAllByRole("gridcell", {
+                  name: remappedNullValue,
+                }).should("be.visible");
+              },
+            );
+          });
         });
 
         it("should correctly show remapped column value", () => {
