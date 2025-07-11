@@ -127,12 +127,12 @@
         column-settings      (-> (get viz-settings ::mb.viz/column-settings)
                                  (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
         column-settings      (merge
+                              global-type-settings
                               (when (= :field ref-type)
                                 (get column-settings {::mb.viz/field-id col-id-or-name}))
                               (or (get column-settings {::mb.viz/column-name col-name})
                                   (get column-settings {::mb.viz/column-name col-id-or-name}))
-                              (qualify-keys col-settings)
-                              global-type-settings)
+                              (qualify-keys col-settings))
         global-settings      (merge
                               global-type-settings
                               (::mb.viz/global-column-settings viz-settings))
