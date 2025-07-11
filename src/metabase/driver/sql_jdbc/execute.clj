@@ -883,7 +883,7 @@
     (not (thread-bound? #'*resilient-connection-ctx*))
     connection
 
-    (some-> *resilient-connection-ctx* :conn .isClosed not)
+    (some-> *resilient-connection-ctx* ^Connection (:conn) .isClosed not)
     (:conn *resilient-connection-ctx*)
 
     :else
