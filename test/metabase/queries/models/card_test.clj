@@ -1,7 +1,5 @@
 (ns metabase.queries.models.card-test
   (:require
-   [clojure.data :as data]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.audit-app.impl :as audit]
@@ -10,7 +8,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-metadata :as meta]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.queries.models.card :as card]
@@ -1048,89 +1045,6 @@
                              lib.convert/->legacy-MBQL)}]
         (is (= "Orders, Count"
                (:query_description (t2/select-one :model/Card :id id))))))))
-
-(defn- bare-query []
-  (mt/$ids orders
-    {:database (mt/id)
-     :type     :query
-     :query    {:source-query {:source-table $$orders
-                               :aggregation  [[:count] [:sum $subtotal]]
-                               :breakout     [$subtotal [:expression "yo"]]
-                               :expressions  {"yo" [:+ $subtotal 7]}}
-                :joins        [{:alias        "a_join"
-                                :condition    [:= $product_id &a_join.products.id]
-                                :source-table $$products}
-                               {:alias        "another_join"
-                                :condition    [:= $user_id &another_join.people.id]
-                                :source-table $$people}]}}))
-
-(defn- bare-query-exp [eid]
-  (mt/$ids orders
-    {:source-query {:source-table       $$orders
-                    :aggregation        [[:count] [:sum $subtotal]]
-                    :aggregation-idents {0 (str "aggregation_" eid "@0__0")
-                                         1 (str "aggregation_" eid "@0__1")}
-                    :breakout           [$subtotal [:expression "yo"]]
-                    :breakout-idents    {0 (str "breakout_" eid "@0__0")
-                                         1 (str "breakout_" eid "@0__1")}
-                    :expressions        {"yo" [:+ $subtotal 7]}
-                    :expression-idents  {"yo" (str "expression_" eid "@0__yo")}}
-     :joins        [{:alias "a_join"
-                     :ident (str "join_" eid "@1__a_join")}
-                    {:alias "another_join"
-                     :ident (str "join_" eid "@1__another_join")}]}))
-
-(defn- store-bare-query!
-  "`:idents` on the query are populated on initial insert.
-
-  This does a **raw** `t2/update!` to remove them again for testing."
-  ([card-id query]
-   (store-bare-query! card-id query nil))
-  ([card-id query changes]
-   (t2/update! :report_card card-id (merge {:dataset_query ((:in mi/transform-metabase-query) query)}
-                                           changes))))
-
-(deftest ^:sequential idents-populated-on-insert
-  (mt/with-temp [:model/Card {eid   :entity_id
-                              query :dataset_query} {:name          "A card"
-                                                     :dataset_query (bare-query)}]
-    (testing "on insert, a :dataset_query with missing idents gets them filled in"
-      (is (string? eid))
-      (is (=? {:source-query {:aggregation-idents {0 string?}
-                              :breakout-idents    {0 string?}
-                              :expression-idents  {"yo" string?}}
-               :joins        [{:alias "a_join"
-                               :ident string?}
-                              {:alias "another_join"
-                               :ident string?}]}
-              (:query query))))))
-
-(deftest ^:sequential entity-id-used-for-idents-if-missing-test
-  (mt/with-temp [:model/Card {id :id} {:name          "A card"
-                                       :dataset_query (bare-query)}]
-    (store-bare-query! id (bare-query))
-    ;; Can't use the one from `with-temp` since it came before the above edit.
-    (let [{eid   :entity_id
-           query :dataset_query} (t2/select-one :model/Card :id id)]
-      (testing "on read, a :dataset_query with missing idents gets them filled in based on entity_id"
-        ;; These idents are: kind_EID@stage__index, eg. "aggregation_4QsLuEnriHKkXCWqbPMQ8@0__0"
-        (is (string? eid))
-        (is (=? (bare-query-exp eid)
-                (:query query)))))))
-
-(deftest ^:sequential fall-back-to-hashing-entity-id-test
-  (mt/with-temp [:model/Card {id :id} {:name          "A card"
-                                       :dataset_query (bare-query)}]
-    (store-bare-query! id (bare-query) {:entity_id nil})
-    ;; Can't use the one from `with-temp` since it came before the above edit.
-    (let [{eid   :entity_id
-           query :dataset_query} (t2/select-one :model/Card :id id)]
-      (testing "on read, a :dataset_query with missing idents AND :entity_id gets a hashed entity_id and idents"
-        ;; These idents are: kind_EID@stage__index, eg. "aggregation_4QsLuEnriHKkXCWqbPMQ8@0__0"
-        ;; The entity_id is hashed based on created_at, so it's still always different!
-        (is (string? eid))
-        (is (=? (bare-query-exp eid)
-                (:query query)))))))
 
 (deftest before-update-card-schema-test
   (testing "card_schema gets set to current-schema-version on update"

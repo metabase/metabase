@@ -9,8 +9,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
-   [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.test :as mt]))
 
 (deftest ^:parallel quick-filter-on-bucketed-date-test
   (testing "a quick-filter drill on a bucketed DATE should produce valid results (#18769)"
