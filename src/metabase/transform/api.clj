@@ -19,13 +19,15 @@
    _query-params
    {dataset-query :dataset_query
     display-name :display_name
+    schema :schema
     :as _body} :- ::create]
   (def bbb _body)
   ;; TODO: check whether user is eligible to create transform view -- admin?
   (query-perms/check-run-permissions-for-query dataset-query)
   (models.transform/insert-returning-instance!
    ;; Temporary, api callers should pick the schema
-   (models.transform/top-schema (models.transform/dataset-query->query dataset-query))
+   (or schema
+       (models.transform/top-schema (:database (models.transform/dataset-query->query dataset-query))))
    display-name
    dataset-query
    @api/*current-user*))
