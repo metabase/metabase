@@ -357,7 +357,8 @@
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
-(mu/defn- get-database
+(mu/defn get-database
+  "Retrieve database respecting `include-editable-data-model?`, `exclude-uneditable-details?` and `include-mirror-databases?`"
   ([id] (get-database id {}))
   ([id :- ms/PositiveInt
     {:keys [include-editable-data-model?
@@ -1111,9 +1112,10 @@
   "Returns a list of all syncable schemas found for the database `id`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [db (get-database id {:exclude-uneditable-details? true})]
+  (let [db (get-database id)]
     (api/check-403 (or (:is_attached_dwh db)
-                       (mi/can-write? db)))
+                       (and (mi/can-write? db)
+                            (mi/can-read? db))))
     (->> db
          (driver/syncable-schemas (:engine db))
          (vec)

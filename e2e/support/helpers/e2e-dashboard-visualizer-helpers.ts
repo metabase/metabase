@@ -43,12 +43,42 @@ export function showUnderlyingQuestion(index: number, title: string) {
  * Only works in "ColumnList" mode, despite the name...
  *
  * @param dataSourceName the data source name
+ * @param opts options
+ * @param opts.throughMenu if true, will open the data source actions menu and select
+ * "Remove data source" from there, otherwise will click the "Remove" button directly.
  */
-export function removeDataSource(dataSourceName: string) {
+export function removeDataSource(
+  dataSourceName: string,
+  opts: { throughMenu?: boolean } = {},
+) {
+  if (opts.throughMenu) {
+    dataSource(dataSourceName)
+      .realHover()
+      .findByLabelText("Datasource actions")
+      .click({ force: true });
+    cy.document()
+      .its("body")
+      .findByTestId("datasource-actions-dropdown")
+      .findByLabelText("Remove data source")
+      .click({ force: true });
+  } else {
+    dataSource(dataSourceName)
+      .findAllByLabelText("Remove")
+      .first()
+      .click({ force: true });
+  }
+}
+
+export function resetDataSourceButton(dataSourceName: string) {
   dataSource(dataSourceName)
-    .findAllByLabelText("Remove")
-    .first()
+    .realHover()
+    .findByLabelText("Datasource actions")
     .click({ force: true });
+  return cy
+    .document()
+    .its("body")
+    .findByTestId("datasource-actions-dropdown")
+    .findByLabelText("Reset data source");
 }
 
 export function dataSourceColumn(dataSourceName: string, columnName: string) {
@@ -240,11 +270,21 @@ export function chartLegendItem(name: string) {
   return chartLegend().findByText(name);
 }
 
-export function showDashcardVisualizerModal(index = 0) {
+type ShowDashcardVisualizerModalOptions = {
+  isVisualizerCard?: boolean;
+};
+
+export function showDashcardVisualizerModal(
+  index = 0,
+  options: ShowDashcardVisualizerModalOptions = {},
+) {
+  const { isVisualizerCard = true } = options;
   showDashboardCardActions(index);
 
   getDashboardCard(index)
-    .findByLabelText("Edit visualization")
+    .findByLabelText(
+      isVisualizerCard ? "Edit visualization" : "Visualize another way",
+    )
     .click({ force: true });
 
   modal().within(() => {
@@ -253,8 +293,11 @@ export function showDashcardVisualizerModal(index = 0) {
   });
 }
 
-export function showDashcardVisualizerModalSettings(index = 0) {
-  showDashcardVisualizerModal(index);
+export function showDashcardVisualizerModalSettings(
+  index = 0,
+  options: ShowDashcardVisualizerModalOptions = {},
+) {
+  showDashcardVisualizerModal(index, options);
 
   return modal().within(() => {
     toggleVisualizerSettingsSidebar();

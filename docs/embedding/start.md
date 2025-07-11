@@ -41,3 +41,7 @@ You can pass parameters between Metabase and your website via the embedding URL 
 ## [Public embeds](./public-links.md)
 
 Admins can also create unsecured public links or embeds of questions and dashboards.
+
+## [Securing embedded Metabase](./securing-embeds.md)
+
+How to make sure the right people can see the right data in your embedded Metabase.

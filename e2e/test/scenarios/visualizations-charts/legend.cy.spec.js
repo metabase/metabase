@@ -388,7 +388,9 @@ describe("scenarios > visualizations > legend", () => {
       H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
     }
 
-    H.showDashcardVisualizerModal(0);
+    H.showDashcardVisualizerModal(0, {
+      isVisualizerCard: false,
+    });
 
     H.modal().within(() => {
       ensureCanNotToggleSeriesVisibility();

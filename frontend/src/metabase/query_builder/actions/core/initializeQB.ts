@@ -31,8 +31,8 @@ import type {
 } from "metabase-types/store";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
-import { updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
+import { updateUrl } from "../url";
 
 import { loadCard } from "./card";
 import { resetQB } from "./core";

@@ -8,7 +8,6 @@ export type SuggestOptions = {
   query: Lib.Query;
   stageIndex: number;
   metadata: Metadata;
-  reportTimezone?: string;
   expressionMode: Lib.ExpressionMode;
   availableColumns: Lib.ColumnMetadata[];
 };
