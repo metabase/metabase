@@ -15,7 +15,7 @@ import { SortableFieldItem } from "../SortableFieldItem";
 interface Props {
   activeFieldId?: FieldId;
   table: Table;
-  onChange: (fieldOrder: DragEndEvent["itemIds"]) => void;
+  onChange: (fieldOrder: FieldId[]) => void;
 }
 
 export const SortableFieldList = ({
@@ -35,7 +35,8 @@ export const SortableFieldList = ({
   const isDragDisabled = fields.length <= 1;
 
   const handleSortEnd = ({ itemIds }: DragEndEvent) => {
-    onChange(itemIds);
+    // in this context field id will never be a string because it's a raw table field, so it's ok to cast
+    onChange(itemIds as FieldId[]);
   };
 
   return (

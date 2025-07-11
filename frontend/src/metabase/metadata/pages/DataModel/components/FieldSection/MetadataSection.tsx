@@ -27,6 +27,33 @@ const MetadataSectionBase = ({ databaseId, field }: Props) => {
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
 
+  const handleUpdateField = async (
+    field: Field,
+    updates: Partial<
+      Pick<Field, "settings" | "semantic_type" | "fk_target_field_id">
+    >,
+  ) => {
+    const { id: _id, ...fieldAttributes } = field;
+    const { error } = await updateField({
+      id,
+      ...fieldAttributes,
+      ...updates,
+    });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to update semantic type of ${field.display_name}`,
+      });
+    } else {
+      sendToast({
+        icon: "check",
+        message: t`Semantic type of ${field.display_name} updated`,
+      });
+    }
+  };
+
   return (
     <TitledSection title={t`Metadata`}>
       <SemanticTypeAndTargetPicker
@@ -34,15 +61,7 @@ const MetadataSectionBase = ({ databaseId, field }: Props) => {
         field={field}
         idFields={idFields}
         label={t`Semantic type`}
-        onUpdateField={async (field, updates) => {
-          const { id: _id, ...fieldAttributes } = field;
-          await updateField({ id, ...fieldAttributes, ...updates });
-
-          sendToast({
-            icon: "check",
-            message: t`Semantic type for ${field.display_name} updated`,
-          });
-        }}
+        onUpdateField={handleUpdateField}
       />
     </TitledSection>
   );

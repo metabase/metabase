@@ -26,10 +26,11 @@ export function TableVisibilityToggle({
       id: table.id,
       visibility_type: "hidden",
     });
+
     if (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "warning",
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to hide ${table.display_name}`,
       });
     } else {
@@ -46,10 +47,11 @@ export function TableVisibilityToggle({
       id: table.id,
       visibility_type: null,
     });
+
     if (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "warning",
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to unhide ${table.display_name}`,
       });
     } else {

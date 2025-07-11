@@ -14,6 +14,7 @@ export interface Undo {
   showProgress?: boolean;
   icon?: IconName | null;
   toastColor?: string;
+  iconColor?: string;
   actionLabel?: string;
   canDismiss?: boolean;
   startedAt?: number;

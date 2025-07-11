@@ -5,9 +5,9 @@ import { useSelector } from "metabase/lib/redux";
 import { ViewFooterDownloadWidget } from "metabase/query_builder/components/view/ViewFooter/ViewFooterDownloadWidget";
 import {
   getFirstQueryResult,
-  getIsObjectDetail,
   getIsTimeseries,
 } from "metabase/query_builder/selectors";
+import { getIsObjectDetail } from "metabase/query_builder/selectors/mode";
 import { Group } from "metabase/ui";
 
 import { ExecutionTime } from "../ExecutionTime";

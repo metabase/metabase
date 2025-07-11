@@ -22,7 +22,7 @@ import {
 } from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
-import { updateUrl } from "metabase/query_builder/actions";
+import { updateUrl } from "metabase/query_builder/actions/url";
 import {
   getQuestion,
   getVisualizationSettings,

@@ -5,16 +5,12 @@ import { t } from "ttag";
 import { Box, Button, Group, Modal, Text, TextInput } from "metabase/ui";
 
 import S from "./CustomMappingModal.module.css";
-import type { Mapping } from "./types";
+import type { ChangeOptions, Mapping } from "./types";
 import {
   areMappingsEqual,
   fillMissingMappings,
   getHasEmptyValues,
 } from "./utils";
-
-interface ChangeOptions {
-  isAutomatic?: boolean;
-}
 
 interface Props {
   isOpen: boolean;

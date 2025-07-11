@@ -282,8 +282,28 @@ describe("diagnostics", () => {
       });
 
       expect(err(`percentile(1, 2)`, "expression", metadata)).toBe(
-        "Unsupported function percentile",
+        "Unsupported function Percentile",
       );
+    });
+
+    it("should correctly pass along the position of the error", () => {
+      const metadata = createMockMetadata({
+        databases: [
+          createSampleDatabase({
+            id: 1,
+            features: ["left-join"],
+          }),
+        ],
+      });
+
+      const error = setup({
+        expression: `10 + percentile(1, 2)`,
+        expressionMode: "expression",
+        metadata,
+      });
+
+      expect(error?.pos).toBe(5);
+      expect(error?.len).toBe(10);
     });
 
     it("should reject comparison operator with non-field operand", () => {

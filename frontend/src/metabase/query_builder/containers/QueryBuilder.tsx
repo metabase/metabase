@@ -57,13 +57,11 @@ import {
   getIsLiveResizable,
   getIsLoadingComplete,
   getIsNativeEditorOpen,
-  getIsObjectDetail,
   getIsResultDirty,
   getIsRunnable,
   getIsTimeseries,
   getLastRunCard,
   getModalSnippet,
-  getMode,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getOriginalCard,
@@ -88,6 +86,7 @@ import {
   getVisualizationSettings,
   isResultsMetadataDirty,
 } from "../selectors";
+import { getIsObjectDetail, getMode } from "../selectors/mode";
 import { isNavigationAllowed } from "../utils";
 
 import { useCreateQuestion } from "./use-create-question";

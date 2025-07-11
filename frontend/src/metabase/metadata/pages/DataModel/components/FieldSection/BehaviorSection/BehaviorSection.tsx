@@ -14,7 +14,12 @@ import {
   isFieldJsonUnfolded,
 } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type { DatabaseId, Field } from "metabase-types/api";
+import type {
+  DatabaseId,
+  Field,
+  FieldValuesType,
+  FieldVisibilityType,
+} from "metabase-types/api";
 
 import { TitledSection } from "../../TitledSection";
 
@@ -34,44 +39,88 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
 
+  const handleVisibilityChange = async (
+    visibilityType: FieldVisibilityType,
+  ) => {
+    const { error } = await updateField({
+      id,
+      visibility_type: visibilityType,
+    });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to update visibility of ${field.display_name}`,
+      });
+    } else {
+      sendToast({
+        icon: "check",
+        message: t`Visibility of ${field.display_name} updated`,
+      });
+    }
+  };
+
+  const handleFilteringChange = async (hasFieldValues: FieldValuesType) => {
+    const { error } = await updateField({
+      id,
+      has_field_values: hasFieldValues,
+    });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to update filtering of ${field.display_name}`,
+      });
+    } else {
+      sendToast({
+        icon: "check",
+        message: t`Filtering of ${field.display_name} updated`,
+      });
+    }
+  };
+
+  const handleUnfoldJsonChange = async (
+    jsonUnfolding: boolean,
+  ): Promise<void> => {
+    const { error } = await updateField({
+      id,
+      json_unfolding: jsonUnfolding,
+    });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: jsonUnfolding
+          ? t`Failed to enable JSON unfolding for ${field.display_name}`
+          : t`Failed to disable JSON unfolding for ${field.display_name}`,
+      });
+    } else {
+      sendToast({
+        icon: "check",
+        message: jsonUnfolding
+          ? t`JSON unfolding enabled for ${field.display_name}`
+          : t`JSON unfolding disabled for ${field.display_name}`,
+      });
+    }
+  };
+
   return (
     <TitledSection title={t`Behavior`}>
       <FieldVisibilityPicker
         description={t`Where this field should be displayed`}
         label={t`Visibility`}
         value={field.visibility_type}
-        onChange={async (visibilityType) => {
-          const { error } = await updateField({
-            id,
-            visibility_type: visibilityType,
-          });
-
-          if (!error) {
-            sendToast({
-              icon: "check",
-              message: t`Visibility for ${field.display_name} updated`,
-            });
-          }
-        }}
+        onChange={handleVisibilityChange}
       />
 
       <FieldValuesTypePicker
         description={t`How this field should be filtered`}
         label={t`Filtering`}
         value={field.has_field_values}
-        onChange={async (hasFieldValues) => {
-          const { error } = await updateField({
-            id,
-            has_field_values: hasFieldValues,
-          });
-
-          if (!error) {
-            sendToast({
-              icon: "check",
-              message: t`Filtering for ${field.display_name} updated`,
-            });
-          }
-        }}
+        onChange={handleFilteringChange}
       />
 
       {database != null && (
@@ -88,21 +137,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
           description={t`Unfold JSON into component fields, where each JSON key becomes a column. You can turn this off if performance is slow.`}
           label={t`Unfold JSON`}
           value={isFieldJsonUnfolded(field, database)}
-          onChange={async (jsonUnfolding) => {
-            const { error } = await updateField({
-              id,
-              json_unfolding: jsonUnfolding,
-            });
-
-            if (!error) {
-              sendToast({
-                icon: "check",
-                message: jsonUnfolding
-                  ? t`JSON unfolding for ${field.display_name} enabled`
-                  : t`JSON unfolding for ${field.display_name} disabled`,
-              });
-            }
-          }}
+          onChange={handleUnfoldJsonChange}
         />
       )}
     </TitledSection>

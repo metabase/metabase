@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { onCloseQuestionInfo } from "metabase/query_builder/actions";
 import { syncVizSettingsWithQuery } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as Lib from "metabase-lib";
@@ -38,7 +37,11 @@ export function getAdHocQuestionWithVizSettings(options: {
   shouldStartAdHocQuestion?: boolean;
   onCloseQuestionInfo?: () => void;
 }) {
-  const { shouldStartAdHocQuestion = false, currentQuestion } = options;
+  const {
+    shouldStartAdHocQuestion = false,
+    currentQuestion,
+    onCloseQuestionInfo,
+  } = options;
   let { question } = options;
 
   const { isEditable } = Lib.queryDisplayInfo(question.query());

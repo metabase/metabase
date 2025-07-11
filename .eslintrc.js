@@ -316,6 +316,12 @@ module.exports = {
       },
     },
     {
+      files: ["frontend/src/metabase/query_builder/**/*"],
+      rules: {
+        "import/no-cycle": "error",
+      },
+    },
+    {
       files: ["docs/**/snippets/**/*.{ts,tsx,js,jsx}"],
       rules: {
         "@typescript-eslint/no-unused-vars": "off",
