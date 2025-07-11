@@ -265,7 +265,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
 
     H.showDashcardVisualizerModal(1, {
-      buttonText: "Visualize another way",
+      isVisualizerCard: false,
     });
 
     H.modal().within(() => {
@@ -604,7 +604,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
       H.editDashboard();
       H.showDashcardVisualizerModal(0, {
-        buttonText: "Visualize another way",
+        isVisualizerCard: false,
       });
 
       H.modal().within(() => {
