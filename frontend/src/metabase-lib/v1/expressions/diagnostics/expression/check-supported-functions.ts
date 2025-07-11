@@ -36,7 +36,7 @@ export function checkSupportedFunctions({
       return;
     }
     if (!database?.hasFeature(clause.requiresFeature)) {
-      error(node, t`Unsupported function ${operator}`);
+      error(node, t`Unsupported function ${clause.displayName}`);
     }
   });
 }
