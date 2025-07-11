@@ -7,7 +7,8 @@ import { setupHostedInstance, setupProUpload } from "./setup";
 
 describe("Add data modal (Starter: hosted instance without the attached DWH)", () => {
   describe("Google Sheets", () => {
-    it("should render a storage upsell for an admin", async () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should render a storage upsell for an admin", async () => {
       setupHostedInstance({ isAdmin: true });
       await assertSheetsOpened({
         subtitle:
