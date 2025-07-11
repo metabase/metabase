@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata.calculation
   (:require
-   #?(:clj [metabase.config.core :as config])
+   #?(:clj  [metabase.config.core :as config]
+      :cljs [metabase.lib.cache :as lib.cache])
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -286,7 +287,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     x]
-   (lib.metadata.cache/with-cached-metadata query (cache-key ::metadata query stage-number x {})
+   (lib.metadata.cache/with-cached-value query (cache-key ::metadata query stage-number x {})
      (metadata-method query stage-number x))))
 
 (mu/defn describe-query :- ::lib.schema.common/non-blank-string
@@ -373,14 +374,24 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     x]
-   (try
-     (display-info-method query stage-number x)
-     (catch #?(:clj Throwable :cljs js/Error) e
-       (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
-                                 (lib.dispatch/dispatch-value x)
-                                 (ex-message e))
-                       {:query query, :stage-number stage-number, :x x}
-                       e))))))
+   (letfn [(display-info* [x]
+             (try
+               (display-info-method query stage-number x)
+               (catch #?(:clj Throwable :cljs js/Error) e
+                 (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
+                                           (lib.dispatch/dispatch-value x)
+                                           (ex-message e))
+                                 {:query query, :stage-number stage-number, :x x}
+                                 e)))))]
+     #?(:clj
+        (display-info* x)
+        :cljs
+        (lib.cache/side-channel-cache
+         ;; TODO: Caching by stage here is probably unnecessary - it's already a mistake to have an `x` from a different
+         ;; stage than `stage-number`. But it also doesn't hurt much, since a given `x` will only ever have `display-info`
+         ;; called with one `stage-number` anyway.
+         (keyword "display-info" (str "stage-" stage-number)) x
+         display-info*)))))
 
 (mu/defn default-display-info :- ::display-info
   "Default implementation of [[display-info-method]], available in case you want to use this in a different
@@ -513,7 +524,7 @@
     x
     options        :- [:maybe ::returned-columns.options]]
    (binding [*propagate-binning-and-bucketing* true]
-     (lib.metadata.cache/with-cached-metadata query (cache-key ::returned-columns query stage-number x options)
+     (lib.metadata.cache/with-cached-value query (cache-key ::returned-columns query stage-number x options)
        (returned-columns-method query stage-number x options)))))
 
 (mr/def ::visible-column
@@ -594,7 +605,7 @@
     x
     options        :- [:maybe ::visible-columns.options]]
    (let [options (merge (default-visible-columns-options) options)]
-     (lib.metadata.cache/with-cached-metadata query (cache-key ::visible-columns query stage-number x options)
+     (lib.metadata.cache/with-cached-value query (cache-key ::visible-columns query stage-number x options)
        (visible-columns-method query stage-number x options)))))
 
 (mu/defn remapped-columns :- [:maybe ::visible-columns]

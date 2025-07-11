@@ -2,6 +2,7 @@
   "General value caching for metadata using the CachedMetadataProvider's general caching facilities."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.util :as lib.util]
@@ -21,7 +22,7 @@
    [:+ :any]])
 
 (mu/defn cache-key :- ::cache-key
-  "Calculate a cache key to use with [[with-cached-metadata]]. Prefer the 5 arity, which ensures unserializable keys
+  "Calculate a cache key to use with [[with-cached-value]]. Prefer the 5 arity, which ensures unserializable keys
   like `:lib/metadata` are removed."
   ([unique-key
     x]
@@ -39,7 +40,7 @@
                  ;; the exact same cache key (see tests). This is mostly to satisfy tests that do crazy stuff and swap
                  ;; out a query's metadata provider so we don't end up returning the wrong cached results for the same
                  ;; query with a different MP
-                 (cond-> (:lib/metadata m) (update :lib/metadata hash))
+                 (m/update-existing :lib/metadata hash)
                  not-empty))]
      [unique-key
       (update-map query)
@@ -54,18 +55,18 @@
     (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
       metadata-provider)))
 
-(mu/defn- cached-value :- :some
+(mu/defn- cached-value
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
    k                     :- ::cache-key
    not-found]
   (if-let [metadata-provider (->cached-metadata-provider metadata-providerable)]
     (lib.metadata.protocols/cached-value metadata-provider k not-found)
-    ::not-found))
+    not-found))
 
 (mu/defn- cache-value! :- :nil
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
    k                     :- ::cache-key
-   v                     :- :some]
+   v]
   (when-let [metadata-provider (->cached-metadata-provider metadata-providerable)]
     (lib.metadata.protocols/cache-value! metadata-provider k v))
   nil)
@@ -82,8 +83,8 @@
   [k]
   (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/format-color :yellow "Calculating %s" (pr-str k)))))
 
-(mu/defn do-with-cached-metadata :- :some
-  "Impl for [[with-cached-metadata]]."
+(mu/defn do-with-cached-value :- :some
+  "Impl for [[with-cached-value]]."
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
    k                     :- ::cache-key
    thunk                 :- [:=> [:cat] :some]]
@@ -99,9 +100,9 @@
           (cache-value! metadata-providerable k v)
           v)))))
 
-(defmacro with-cached-metadata
+(defmacro with-cached-value
   "Return the cached value for [[cache-key]] `k` if one already exists in the CachedMetadataProvider's general cache;
   otherwise calculate the value by executing `body`, save it the cache, then return it."
   {:style/indent 2}
   [metadata-providerable k & body]
-  `(do-with-cached-metadata ~metadata-providerable ~k (fn [] ~@body)))
+  `(do-with-cached-value ~metadata-providerable ~k (fn [] ~@body)))
