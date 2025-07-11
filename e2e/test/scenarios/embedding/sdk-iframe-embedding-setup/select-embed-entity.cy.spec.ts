@@ -18,14 +18,24 @@ const SECOND_DASHBOARD_NAME = "Acme Inc";
 const FIRST_QUESTION_NAME = "Orders, Count";
 const SECOND_QUESTION_NAME = "Orders, Count, Grouped by Created At (year)";
 
-describe("scenarios > embedding > sdk iframe embed setup > select embed entity", () => {
+const suiteTitle =
+  "scenarios > embedding > sdk iframe embed setup > select embed entity";
+
+H.describeWithSnowplow(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.enableTracking();
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   it("can select a recent dashboard to embed", () => {
@@ -35,6 +45,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
       ({ body: { id: secondDashboardId } }) => {
         logRecent("dashboard", secondDashboardId);
         logRecent("dashboard", ORDERS_DASHBOARD_ID);
+        cy.wrap(secondDashboardId).as("secondDashboardId");
       },
     );
 
@@ -55,6 +66,15 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
 
       cy.log("second dashboard can be selected");
       cy.findByText(SECOND_DASHBOARD_NAME).click();
+
+      cy.get("@secondDashboardId").then((secondDashboardId) => {
+        H.expectUnstructuredSnowplowEvent({
+          event: "embed_wizard_resource_selected",
+          target_id: secondDashboardId,
+          event_detail: "dashboard",
+        });
+      });
+
       getRecentItemCards().eq(1).should("have.attr", "data-selected", "true");
     });
 
@@ -89,6 +109,13 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
 
       cy.log("second question can be selected");
       cy.findByText(SECOND_QUESTION_NAME).click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_resource_selected",
+        target_id: ORDERS_BY_YEAR_QUESTION_ID,
+        event_detail: "chart",
+      });
+
       getRecentItemCards().eq(1).should("have.attr", "data-selected", "true");
     });
 
@@ -100,7 +127,11 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
   });
 
   it("can search and select a dashboard", () => {
-    H.createDashboard({ name: SECOND_DASHBOARD_NAME });
+    H.createDashboard({ name: SECOND_DASHBOARD_NAME }).then(
+      ({ body: { id: dashboardId } }) => {
+        cy.wrap(dashboardId).as("secondDashboardId");
+      },
+    );
     visitNewEmbedPage();
 
     getEmbedSidebar().within(() => {
@@ -112,6 +143,14 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
       cy.findByText("Select a dashboard").should("be.visible");
       cy.findByText("Dashboards").click();
       cy.findByText(SECOND_DASHBOARD_NAME).click();
+    });
+
+    cy.get("@secondDashboardId").then((secondDashboardId) => {
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_resource_selected",
+        target_id: secondDashboardId,
+        event_detail: "dashboard",
+      });
     });
 
     cy.log("dashboard is added to the top of recents list and selected");
@@ -142,6 +181,12 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
       cy.findByText("Select a chart").should("be.visible");
       cy.findByText("Questions").click();
       cy.findByText(FIRST_QUESTION_NAME).click();
+    });
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_resource_selected",
+      target_id: ORDERS_COUNT_QUESTION_ID,
+      event_detail: "chart",
     });
 
     cy.log("question is added to the top of recents list and selected");

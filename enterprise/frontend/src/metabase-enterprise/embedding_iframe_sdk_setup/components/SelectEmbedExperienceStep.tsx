@@ -5,6 +5,7 @@ import _ from "underscore";
 import { Card, Radio, Stack, Text } from "metabase/ui";
 import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase-enterprise/embedding_iframe_sdk/constants";
 
+import { trackEmbedWizardExperienceSelected } from "../analytics";
 import {
   EMBED_EXPERIENCES,
   EMBED_FALLBACK_DASHBOARD_ID,
@@ -26,6 +27,8 @@ export const SelectEmbedExperienceStep = () => {
   const handleEmbedExperienceChange = (
     experience: SdkIframeEmbedSetupExperience,
   ) => {
+    trackEmbedWizardExperienceSelected(experience);
+
     const persistedSettings = _.pick(
       settings,
       ALLOWED_EMBED_SETTING_KEYS_MAP.base,

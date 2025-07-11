@@ -9,14 +9,23 @@ const { H } = cy;
 const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
 
-describe("scenarios > embedding > sdk iframe embed setup > select embed options", () => {
+const suiteTitle =
+  "scenarios > embedding > sdk iframe embed setup > select embed options";
+
+H.describeWithSnowplow(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.enableTracking();
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   it("toggles drill-throughs for dashboards", () => {
@@ -40,6 +49,11 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       .findByLabelText("Allow users to drill through on data points")
       .click()
       .should("not.be.checked");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "isDrillThroughEnabled",
+    });
 
     cy.log("drill-through should be disabled in the preview");
     H.getIframeBody().within(() => {
@@ -70,6 +84,11 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       .click()
       .should("be.checked");
 
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "withDownloads",
+    });
+
     H.getIframeBody().findByTestId("export-as-pdf-button").should("be.visible");
 
     cy.log("snippet should be updated");
@@ -94,6 +113,11 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       .findByLabelText("Show dashboard title")
       .click()
       .should("not.be.checked");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "withTitle",
+    });
 
     H.getIframeBody().findByText("Orders in a dashboard").should("not.exist");
 
@@ -123,6 +147,11 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       .findByLabelText("Allow users to drill through on data points")
       .click()
       .should("not.be.checked");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "isDrillThroughEnabled",
+    });
 
     cy.log("drill-through should be disabled in chart preview");
     H.getIframeBody().within(() => {
@@ -155,6 +184,11 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       .click()
       .should("be.checked");
 
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "withDownloads",
+    });
+
     H.getIframeBody()
       .findByTestId("question-download-widget-button")
       .should("be.visible");
@@ -179,6 +213,11 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       .findByLabelText("Show chart title")
       .click()
       .should("not.be.checked");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "withTitle",
+    });
 
     H.getIframeBody().findByText("Orders, Count").should("not.exist");
 
@@ -208,6 +247,11 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       .click()
       .should("not.be.checked");
 
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "isSaveEnabled",
+    });
+
     H.getIframeBody().findByText("Save").should("not.exist");
 
     cy.log("snippet should be updated");
@@ -235,6 +279,11 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
         .should("be.visible")
         .clear()
         .type("rgb(255, 0, 0)");
+    });
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "theme",
     });
 
     cy.log("table header cell should now be red");

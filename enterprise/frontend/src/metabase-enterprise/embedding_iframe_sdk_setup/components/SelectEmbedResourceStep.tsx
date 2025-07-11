@@ -6,6 +6,7 @@ import { DashboardPickerModal } from "metabase/common/components/DashboardPicker
 import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
 import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
 
+import { trackEmbedWizardResourceSelected } from "../analytics";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import type {
   SdkIframeEmbedSetupExperience,
@@ -44,6 +45,8 @@ export const SelectEmbedResourceStep = () => {
     experience: SdkIframeEmbedSetupExperience,
     id: string | number,
   ) => {
+    trackEmbedWizardResourceSelected(Number(id), experience);
+
     if (experience === "dashboard") {
       updateSettings({
         dashboardId: id,
