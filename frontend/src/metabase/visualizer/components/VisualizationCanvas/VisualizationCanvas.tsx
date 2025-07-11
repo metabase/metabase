@@ -106,7 +106,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           <Visualization
             rawSeries={rawSeries}
             // TableInteractive crashes when trying to use metabase-lib
-            isDashboard={display === "table"}
+            isDashboard
           />
         </Box>
 

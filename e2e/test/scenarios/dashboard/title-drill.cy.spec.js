@@ -549,6 +549,99 @@ describe("scenarios > dashboard > title drill", () => {
       cy.get(elementAlias).should("have.attr", "href", href);
     }
   });
+
+  describe("multiple series", () => {
+    const question1Details = {
+      name: "Q1",
+      query: {
+        "source-table": PEOPLE_ID,
+        aggregation: [["count"]],
+        breakout: [["field", PEOPLE.CREATED_AT, { "temporal-unit": "year" }]],
+      },
+      display: "line",
+    };
+
+    const question2Details = {
+      name: "Q2",
+      query: {
+        "source-table": PEOPLE_ID,
+        aggregation: [["count"]],
+        breakout: [["field", PEOPLE.BIRTH_DATE, { "temporal-unit": "year" }]],
+      },
+      display: "line",
+    };
+
+    const dateParameter = {
+      id: "date",
+      name: "Date",
+      slug: "date",
+      type: "date/all-options",
+      default: "1970-01-01~2025-01-01",
+    };
+
+    const dashboardDetails = {
+      parameters: [dateParameter],
+    };
+
+    function createDashboard() {
+      H.createQuestionAndDashboard({
+        questionDetails: question1Details,
+        dashboardDetails,
+      }).then(({ body: { id, card_id, dashboard_id } }) => {
+        H.createQuestion(question2Details).then(
+          ({ body: { id: card_2_id } }) => {
+            cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+              dashcards: [
+                {
+                  id,
+                  card_id,
+                  series: [{ id: card_2_id }],
+                  row: 0,
+                  col: 0,
+                  size_x: 16,
+                  size_y: 8,
+                  parameter_mappings: [
+                    {
+                      parameter_id: dateParameter.id,
+                      card_id,
+                      target: ["dimension", ["field", PEOPLE.CREATED_AT, null]],
+                    },
+                    {
+                      parameter_id: dateParameter.id,
+                      card_id: card_2_id,
+                      target: ["dimension", ["field", PEOPLE.BIRTH_DATE, null]],
+                    },
+                  ],
+                },
+              ],
+            });
+          },
+        );
+        H.visitDashboard(dashboard_id);
+      });
+    }
+
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsNormalUser();
+    });
+
+    it("should use parameters mapped to each card for a multi-series dashcard", () => {
+      createDashboard();
+
+      cy.log("click on a dot in the second series and drill thru");
+      H.cartesianChartCircle().eq(20).click();
+      H.popover().findByText("See these People").click();
+
+      cy.log("make sure the parameter mapping for the second series was used");
+      H.queryBuilderFiltersPanel().within(() => {
+        cy.findByText("Birth Date is Jan 1, 1970 – Jan 1, 2025").should(
+          "be.visible",
+        );
+        cy.findByText(/Created At/).should("not.exist");
+      });
+    });
+  });
 });
 
 function checkFilterLabelAndValue(label, value) {

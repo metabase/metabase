@@ -27,7 +27,7 @@ export function suggestMetrics({ expressionMode, query, stageIndex }: Options) {
     return null;
   }
 
-  const matcher = fuzzyMatcher(metrics);
+  const matcher = fuzzyMatcher({ options: metrics });
 
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();

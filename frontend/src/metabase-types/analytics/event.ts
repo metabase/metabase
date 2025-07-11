@@ -3,7 +3,7 @@ import type {
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
-import type { Engine } from "metabase-types/api";
+import type { Engine, VisualizationDisplay } from "metabase-types/api";
 
 type SimpleEventSchema = {
   event: string;
@@ -142,9 +142,9 @@ export type VisualizerModalEvent = ValidateEvent<
         | "visualizer_datasource_removed"
         | "visualizer_datasource_added"
         | "visualizer_datasource_replaced"
+        | "visualizer_datasource_reset"
         | "visualizer_column_removed"
         | "visualizer_column_added";
-      event_data: string | null;
       triggered_from: "visualizer-modal";
     }
 >;
@@ -176,6 +176,13 @@ export type AddDataModalTabEvent = ValidateEvent<{
   triggered_from: "add-data-modal";
 }>;
 
+export type DashboardFilterCreatedEvent = ValidateEvent<{
+  event: "dashboard_filter_created";
+  target_id: number | null;
+  triggered_from: VisualizationDisplay | null;
+  event_detail: string | null;
+}>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -199,4 +206,5 @@ export type SimpleEvent =
   | EmbeddingSetupStepSeenEvent
   | EventsClickedEvent
   | AddDataModalOpenedEvent
-  | AddDataModalTabEvent;
+  | AddDataModalTabEvent
+  | DashboardFilterCreatedEvent;

@@ -6,7 +6,7 @@ import type {
 } from "@dnd-kit/core";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import _ from "underscore";
 
@@ -73,7 +73,8 @@ export const SortableList = <T,>({
     }, new Map<number, SortableDivider>());
   }, [dividers]);
 
-  useEffect(() => {
+  // layout effect to prevent layout shift on mount
+  useLayoutEffect(() => {
     setItemIds(items.map(getId));
     setIndexedItems(_.indexBy(items, getId));
   }, [items, getId]);
