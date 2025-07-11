@@ -19,6 +19,11 @@ export type UpdateDataAppRequest = {
   id: DataApp["id"];
 } & Partial<UpdatableDataAppSettings>;
 
+export type UpdateDataAppStatusRequest = {
+  id: DataApp["id"];
+  status: DataApp["status"];
+};
+
 export type CreateDataAppRequest = Pick<DataApp, "name" | "slug">;
 
 export type UpdateDataAppDefinitionRequest = {

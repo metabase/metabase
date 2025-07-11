@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import React, {
   type ComponentType,
   type Dispatch,
@@ -730,6 +731,7 @@ export const PLUGIN_DATA_APPS = {
     params: {
       appId: string;
     };
+    location: Location<{ justCreated?: string }>;
   }>,
   PUBLIC_APP_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
     params: {

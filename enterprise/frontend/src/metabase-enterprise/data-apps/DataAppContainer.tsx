@@ -1,5 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { Location } from "history";
 import { useCallback, useState } from "react";
+import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -31,16 +33,17 @@ type SettingsSectionKey = "components";
 type DataAppContainerProps = {
   params: {
     appId: string;
-    justCreated?: boolean;
   };
+  location: Location<{ justCreated?: string }>;
 };
 
 export const DataAppContainer = ({
-  params: { appId, justCreated },
+  params: { appId },
+  location,
 }: DataAppContainerProps) => {
   const dispatch = useDispatch();
 
-  const isNewApp = !!justCreated;
+  const isNewApp = !!location.query.justCreated;
 
   const [activeSettingsSection, setActiveSettingsSection] = useState<
     SettingsSectionKey | undefined
@@ -64,8 +67,9 @@ export const DataAppContainer = ({
   });
 
   useMount(() => {
-    if (justCreated) {
+    if (location.query.justCreated) {
       // remove "justCreated" query param
+      dispatch(replace(window.location.pathname));
     }
   });
 
@@ -103,7 +107,10 @@ export const DataAppContainer = ({
           }}
         >
           <Group gap="xs" align="center">
-            <Title order={4}>{dataApp.name}</Title>
+            <Title order={4}>
+              {dataApp.name}{" "}
+              {dataApp.status === "archived" ? t`(Archived)` : ""}
+            </Title>
             <Tooltip label={t`Edit Data App Settings`}>
               <ActionIcon onClick={openEditTitleModal}>
                 <Icon name="pencil" />
