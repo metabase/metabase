@@ -402,7 +402,7 @@
 (comment
   (output)
   (= (output "data_app%")
-     {:data_app            {:columns (:id
+     {:data_app            {:columns [:id
                                       {:column_name "name", :type "text"}
                                       {:column_name "description", :type "text", :is_nullable true}
                                       {:column_name "slug", :type "varchar"}
@@ -410,20 +410,20 @@
                                       {:column_name "status", :type "varchar(32)"}
                                       {:column_name "entity_id", :type "character", :is_nullable true}
                                       :created_at
-                                      :updated_at),
-                            :indexes ({:index_name "data_app_slug_key", :columns ["slug"], :is_unique true})},
-      :data_app_definition {:columns (:id
+                                      :updated_at],
+                            :indexes [{:index_name "data_app_slug_key", :columns ["slug"], :is_unique true}]},
+      :data_app_definition {:columns [:id
                                       {:column_name "app_id", :type "fk", :target_table "data_app", :target_column "id"}
                                       {:column_name "creator_id", :type "fk", :target_table "core_user", :target_column "id"}
                                       {:column_name "revision_number", :type "int"}
                                       {:column_name "config", :type "text"}
-                                      :created_at),
-                            :indexes ({:index_name "idx_data_app_definition_app_id_revision_numer",
+                                      :created_at],
+                            :indexes [{:index_name "idx_data_app_definition_app_id_revision_numer",
                                        :columns    ["app_id" ["revision_number" :desc]]}
                                       {:index_name "uniq_idx_data_app_definition_app_id_revision_number",
                                        :columns    ["app_id" "revision_number"],
-                                       :is_unique  true})},
-      :data_app_release    {:columns (:id
+                                       :is_unique  true}]},
+      :data_app_release    {:columns [:id
                                       {:column_name "app_id", :type "fk", :target_table "data_app", :target_column "id"}
                                       {:column_name   "app_definition_id",
                                        :type          "fk",
@@ -433,6 +433,6 @@
                                       {:column_name "creator_id", :type "fk", :target_table "core_user", :target_column "id"}
                                       {:column_name "retracted", :type "bool", :column_default "false"}
                                       :created_at
-                                      :updated_at),
-                            :indexes ({:index_name "idx_data_app_release_app_id_retracted_id",
-                                       :columns    ["app_id" "retracted" ["id" :desc]]})}}))
+                                      :updated_at],
+                            :indexes [{:index_name "idx_data_app_release_app_id_retracted_id",
+                                       :columns    ["app_id" "retracted" ["id" :desc]]}]}}))
