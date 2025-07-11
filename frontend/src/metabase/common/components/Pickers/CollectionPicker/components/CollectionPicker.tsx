@@ -7,9 +7,10 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Collection, Dashboard } from "metabase-types/api";
 
+import { LoadingSpinner, NestedItemPicker } from "../../../EntityPicker";
 import { handleNewDashboard as handleNewDashboardUtil } from "../../DashboardPicker/utils";
-import { LoadingSpinner, NestedItemPicker } from "../../EntityPicker";
-import { useEnsureCollectionSelected, useGetInitialContainer } from "../hooks";
+import { useGetInitialContainer } from "../../hooks";
+import { useEnsureCollectionSelected } from "../hooks";
 import type {
   CollectionPickerItem,
   CollectionPickerModel,

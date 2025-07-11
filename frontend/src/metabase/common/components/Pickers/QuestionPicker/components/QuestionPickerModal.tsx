@@ -3,12 +3,12 @@ import { t } from "ttag";
 
 import type { RecentItem } from "metabase-types/api";
 
-import type { EntityPickerTab } from "../../EntityPicker";
+import type { EntityPickerTab } from "../../../EntityPicker";
 import {
   EntityPickerModal,
   defaultOptions as defaultEntityPickerOptions,
-} from "../../EntityPicker";
-import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
+} from "../../../EntityPicker";
+import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-item";
 import type {
   QuestionPickerItem,
   QuestionPickerModel,

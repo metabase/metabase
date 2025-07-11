@@ -8,11 +8,11 @@ import type {
   ListCollectionItemsRequest,
 } from "metabase-types/api";
 
+import type { PickerState } from "../../EntityPicker";
 import {
   getParentCollectionId,
   getPathLevelForItem,
 } from "../CollectionPicker/utils";
-import type { PickerState } from "../EntityPicker";
 
 import type {
   DashboardPickerInitialValueItem,

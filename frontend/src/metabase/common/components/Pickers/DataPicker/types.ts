@@ -7,7 +7,7 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import type { EntityPickerModalOptions } from "../EntityPicker";
+import type { EntityPickerModalOptions } from "../../EntityPicker";
 import type { QuestionPickerOptions } from "../QuestionPicker";
 
 export type CollectionItem = {

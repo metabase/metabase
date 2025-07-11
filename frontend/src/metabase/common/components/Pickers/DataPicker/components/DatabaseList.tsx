@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import type { Database } from "metabase-types/api";
 
-import { ItemList, ListBox } from "../../EntityPicker";
+import { ItemList, ListBox } from "../../../EntityPicker";
 import type { DataPickerFolderItem } from "../types";
 
 interface Props {

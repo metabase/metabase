@@ -6,10 +6,13 @@ import { useToggle } from "metabase/common/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 
+import {
+  EntityPickerModal,
+  type EntityPickerTab,
+  defaultOptions,
+} from "../../../EntityPicker";
+import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-item";
 import { NewDashboardDialog } from "../../DashboardPicker/components/NewDashboardDialog";
-import type { EntityPickerTab } from "../../EntityPicker";
-import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
-import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
   CollectionPickerItem,
   CollectionPickerModel,

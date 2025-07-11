@@ -1,6 +1,6 @@
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 
-import { ItemList } from "../../EntityPicker";
+import { ItemList } from "../../../EntityPicker";
 import type { CollectionItemListProps, CollectionPickerItem } from "../types";
 
 export const CollectionItemList = ({

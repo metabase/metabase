@@ -1,21 +1,15 @@
 import { useCallback, useMemo } from "react";
 import { useDeepCompareEffect } from "react-use";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useGetCollectionQuery,
-  useGetDashboardQuery,
-} from "metabase/api";
-import { isValidCollectionId } from "metabase/collections/utils";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { CollectionItemModel } from "metabase-types/api";
 
+import { DelayedLoadingSpinner, NestedItemPicker } from "../../../EntityPicker";
 import { useEnsureCollectionSelected } from "../../CollectionPicker";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
-import { DelayedLoadingSpinner, NestedItemPicker } from "../../EntityPicker";
+import { useGetInitialContainer } from "../../hooks";
 import type {
   QuestionPickerItem,
   QuestionPickerOptions,
@@ -45,55 +39,6 @@ interface QuestionPickerProps {
   onPathChange: (path: QuestionPickerStatePath) => void;
 }
 
-const useGetInitialCollection = (
-  initialValue?: Pick<QuestionPickerItem, "model" | "id">,
-) => {
-  const isQuestion =
-    initialValue && ["card", "dataset", "metric"].includes(initialValue.model);
-  const isCollection = initialValue?.model === "collection";
-  const cardId = isQuestion ? Number(initialValue.id) : undefined;
-  const collectionId = isCollection
-    ? isValidCollectionId(initialValue.id)
-      ? initialValue.id
-      : "root"
-    : undefined;
-
-  const { data: currentCollection, isLoading: isCollectionLoading } =
-    useGetCollectionQuery(collectionId ? { id: collectionId } : skipToken);
-
-  const { data: currentQuestion, isLoading: isQuestionLoading } =
-    useGetCardQuery(cardId ? { id: cardId } : skipToken);
-
-  const {
-    data: currentQuestionCollection,
-    isLoading: isCurrentQuestionCollectionLoading,
-  } = useGetCollectionQuery(
-    currentQuestion
-      ? { id: currentQuestion.collection_id ?? "root" }
-      : skipToken,
-  );
-
-  const {
-    data: currentQuestionDashboard,
-    isLoading: isCurrentQuestionDashboardLoading,
-  } = useGetDashboardQuery(
-    currentQuestion?.dashboard_id
-      ? { id: currentQuestion.dashboard_id }
-      : skipToken,
-  );
-
-  return {
-    currentQuestion: currentQuestion,
-    currentCollection: currentQuestionCollection ?? currentCollection,
-    currentDashboard: currentQuestionDashboard,
-    isLoading:
-      isCollectionLoading ||
-      isQuestionLoading ||
-      isCurrentQuestionCollectionLoading ||
-      isCurrentQuestionDashboardLoading,
-  };
-};
-
 export const QuestionPicker = ({
   initialValue,
   models = ["dataset", "card"],
@@ -110,7 +55,7 @@ export const QuestionPicker = ({
   const path = pathProp ?? defaultPath;
 
   const { currentDashboard, currentCollection, currentQuestion, isLoading } =
-    useGetInitialCollection(initialValue);
+    useGetInitialContainer(initialValue);
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
 

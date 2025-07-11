@@ -12,7 +12,7 @@ import type {
   ListProps,
   PickerState,
   TypeWithModel,
-} from "../EntityPicker";
+} from "../../EntityPicker";
 
 export type CollectionItemId = CollectionId | CardId | DashboardId;
 

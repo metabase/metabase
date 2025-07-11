@@ -12,9 +12,9 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import type { EntityPickerTab } from "../../EntityPicker";
-import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
-import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
+import type { EntityPickerTab } from "../../../EntityPicker";
+import { EntityPickerModal, defaultOptions } from "../../../EntityPicker";
+import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-item";
 import {
   QuestionPicker,
   type QuestionPickerStatePath,

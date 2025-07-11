@@ -1,4 +1,4 @@
-import { ItemList } from "../../EntityPicker";
+import { ItemList } from "../../../EntityPicker";
 import { useRootCollectionPickerItems } from "../hooks";
 import type { CollectionItemListProps } from "../types";
 

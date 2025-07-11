@@ -11,7 +11,7 @@ import { isNotNull } from "metabase/lib/types";
 import { Flex } from "metabase/ui";
 import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
-import { AutoScrollBox } from "../../EntityPicker";
+import { AutoScrollBox } from "../../../EntityPicker";
 import type {
   DataPickerFolderItem,
   DataPickerItem,

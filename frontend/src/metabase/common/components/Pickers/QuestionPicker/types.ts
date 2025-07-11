@@ -5,14 +5,14 @@ import type {
 } from "metabase-types/api";
 
 import type {
-  CollectionItemId,
-  CollectionPickerItem,
-} from "../CollectionPicker";
-import type {
   EntityPickerModalOptions,
   ListProps,
   PickerState,
-} from "../EntityPicker";
+} from "../../EntityPicker";
+import type {
+  CollectionItemId,
+  CollectionPickerItem,
+} from "../CollectionPicker";
 
 export type QuestionPickerModel = Extract<
   CollectionPickerItem["model"],

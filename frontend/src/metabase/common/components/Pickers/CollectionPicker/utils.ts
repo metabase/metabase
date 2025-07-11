@@ -5,7 +5,7 @@ import type {
   ListCollectionItemsRequest,
 } from "metabase-types/api";
 
-import type { PickerState } from "../EntityPicker";
+import type { PickerState } from "../../EntityPicker";
 import type { QuestionPickerItem } from "../QuestionPicker";
 
 import type {

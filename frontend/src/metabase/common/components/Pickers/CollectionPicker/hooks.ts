@@ -4,10 +4,8 @@ import { t } from "ttag";
 import {
   skipToken,
   useGetCollectionQuery,
-  useGetDashboardQuery,
   useListCollectionItemsQuery,
 } from "metabase/api";
-import { isValidCollectionId } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -182,37 +180,4 @@ export const useEnsureCollectionSelected = ({
       setIsEnabled(false); // ensure this effect runs only once
     }
   }, [isEnabled, defaultCollectionItem, onInit]);
-};
-
-export const useGetInitialContainer = (
-  initialValue?: Pick<CollectionPickerItem, "id" | "model"> | undefined,
-) => {
-  const isDashboard = initialValue?.model === "dashboard";
-
-  const dashboardId = isDashboard ? Number(initialValue.id) : undefined;
-
-  const { data: currentDashboard, error: dashboardError } =
-    useGetDashboardQuery(dashboardId ? { id: dashboardId } : skipToken);
-
-  const collectionId =
-    isDashboard && currentDashboard
-      ? currentDashboard?.collection_id
-      : initialValue?.id;
-
-  const requestCollectionId =
-    (isValidCollectionId(collectionId) && collectionId) || "root";
-
-  const { data: currentCollection, error: collectionError } =
-    useGetCollectionQuery(
-      !isDashboard || !!currentDashboard
-        ? { id: requestCollectionId }
-        : skipToken,
-    );
-
-  return {
-    currentDashboard: currentDashboard,
-    currentCollection,
-    isLoading: !currentCollection && !collectionError,
-    error: dashboardError ?? collectionError,
-  };
 };

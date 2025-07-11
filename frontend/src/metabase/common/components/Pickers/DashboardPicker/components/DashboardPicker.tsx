@@ -2,20 +2,15 @@ import type { Ref } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useMemo } from "react";
 import { useDeepCompareEffect } from "react-use";
 
-import {
-  skipToken,
-  useGetCollectionQuery,
-  useGetDashboardQuery,
-} from "metabase/api";
-import { isValidCollectionId } from "metabase/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { CollectionItemModel, Dashboard } from "metabase-types/api";
 
+import { LoadingSpinner, NestedItemPicker } from "../../../EntityPicker";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
-import { LoadingSpinner, NestedItemPicker } from "../../EntityPicker";
+import { useGetInitialContainer } from "../../hooks";
 import type {
   DashboardPickerItem,
   DashboardPickerOptions,
@@ -44,45 +39,6 @@ interface DashboardPickerProps {
   onPathChange: (path: DashboardPickerStatePath) => void;
 }
 
-const useGetInitialCollection = (
-  initialValue?: Pick<DashboardPickerItem, "model" | "id">,
-) => {
-  const isDashboard = initialValue?.model === "dashboard";
-
-  const dashboardId = isDashboard ? Number(initialValue.id) : undefined;
-
-  const { data: currentDashboard, error: dashboardError } =
-    useGetDashboardQuery(
-      dashboardId
-        ? {
-            id: dashboardId,
-          }
-        : skipToken,
-    );
-
-  const collectionId =
-    isDashboard && currentDashboard
-      ? currentDashboard?.collection_id
-      : initialValue?.id;
-
-  const requestCollectionId =
-    (isValidCollectionId(collectionId) && collectionId) || "root";
-
-  const { data: currentCollection, error: collectionError } =
-    useGetCollectionQuery(
-      !isDashboard || !!currentDashboard
-        ? { id: requestCollectionId }
-        : skipToken,
-    );
-
-  return {
-    currentDashboard: currentDashboard,
-    currentCollection,
-    isLoading: !currentCollection,
-    error: dashboardError ?? collectionError,
-  };
-};
-
 const DashboardPickerInner = (
   {
     initialValue,
@@ -105,7 +61,7 @@ const DashboardPickerInner = (
     currentDashboard,
     error,
     isLoading: loadingCurrentCollection,
-  } = useGetInitialCollection(initialValue);
+  } = useGetInitialContainer(initialValue);
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
 

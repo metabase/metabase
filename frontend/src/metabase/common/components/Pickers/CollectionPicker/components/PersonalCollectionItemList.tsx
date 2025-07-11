@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useListCollectionsQuery } from "metabase/api";
 import type { Collection } from "metabase-types/api";
 
-import { ItemList } from "../../EntityPicker";
+import { ItemList } from "../../../EntityPicker";
 import type { CollectionItemListProps, CollectionPickerItem } from "../types";
 
 export const PersonalCollectionsItemList = ({

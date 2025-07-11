@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 
-import { ItemList, ListBox } from "../../EntityPicker";
+import { ItemList, ListBox } from "../../../EntityPicker";
 import type { DataPickerFolderItem } from "../types";
 import { getSchemaDisplayName } from "../utils";
 
