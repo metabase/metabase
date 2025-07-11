@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { LeaveConfirmationModal } from "metabase/common/components/LeaveConfirmationModal";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
@@ -55,7 +55,7 @@ const UpdateSegmentFormInner = ({
         onIsDirtyChange={setIsDirty}
         onSubmit={handleSubmit}
       />
-      <LeaveConfirmationModal isEnabled={isDirty} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
     </>
   );
 };
@@ -108,7 +108,7 @@ const CreateSegmentForm = ({
         onIsDirtyChange={setIsDirty}
         onSubmit={handleSubmit}
       />
-      <LeaveConfirmationModal isEnabled={isDirty} route={route} />
+      <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
     </>
   );
 };
