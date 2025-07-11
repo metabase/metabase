@@ -407,6 +407,8 @@
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
+(defmethod extra-info ::driver [_] nil)
+
 (defmulti execute-reducible-query
   "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`.
 
@@ -1343,11 +1345,3 @@
   :hierarchy #'hierarchy)
 
 (defmethod table-known-to-not-exist? ::driver [_ _] false)
-
-(defmulti db-routing-info
-  "Driver specific info for configuring database routing."
-  {:added "0.56.0" :arglists '([driver])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod db-routing-info ::driver [_driver] nil)

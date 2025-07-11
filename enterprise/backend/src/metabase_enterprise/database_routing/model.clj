@@ -27,14 +27,14 @@
    {:default nil}))
 
 (defenterprise hydrate-db-routing-info
-  "Enterprise implementation. Hydrates the database routing info for each database by calling driver/db-routing-info with the driver engine"
+  "Enterprise implementation. Hydrates the db routing info attribute on the databases"
   :feature :database-routing
   [k databases]
   (mi/instances-with-hydrated-data
    databases k
    (fn [] (into {}
                 (for [db databases]
-                  [(:id db) (driver/db-routing-info (:engine db))])))
+                  [(:id db) (:db-routing-info (driver/extra-info (:engine db)))])))
    :id
    {:default nil}))
 
