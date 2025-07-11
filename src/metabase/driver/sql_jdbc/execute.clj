@@ -831,3 +831,33 @@
  [sql-jdbc.execute.old
   connection-with-timezone
   set-timezone-sql])
+
+(declare ^:private ^:dynamic *db*)
+(declare ^:private ^:dynamic ^Connection *new-conn*)
+
+(defmethod driver/do-with-resilient-connection :sql-jdbc
+  [driver db f]
+  (binding [*db* db *new-conn* nil]
+    (try
+      (f driver db)
+      (finally
+        (when-let [conn *new-conn*]
+          (try (.close conn)
+               (catch Throwable _)))))))
+
+(defn wrap-with-retry-conn
+  "WIP"
+  [driver connection f]
+  (if-not (thread-bound? #'*new-conn* #'*db*)
+    f
+    (do
+      (set! *new-conn* connection)
+      (fn retrying-conn-thunk [& args]
+        (try
+          (apply (f *new-conn*) args)
+          (catch Throwable e
+            (if (.isClosed *new-conn*)
+              (do
+                (set! *new-conn* (do-with-connection-with-options driver *db* {:keep-open? true} identity))
+                (apply (f *new-conn*) args))
+              (throw e))))))))
