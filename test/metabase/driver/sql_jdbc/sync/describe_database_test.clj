@@ -254,23 +254,22 @@
 
 (deftest resilient-to-conn-close?-test
   (testing "checking sync is resilient to connections being closed during [have-select-privilege?]"
-    (let [have-select-privilege? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
-          default-have-select-privilege? #(identical? have-select-privilege? (get-method sql-jdbc.sync.interface/have-select-privilege? %))
-          jdbc-describe-database #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))]
+    (let [jdbc-describe-database #(identical? (get-method driver/describe-database :sql-jdbc)
+                                              (get-method driver/describe-database %))]
       (mt/test-drivers (into #{}
-                             (comp (filter default-have-select-privilege?)
-                                   (filter jdbc-describe-database)
+                             (comp (filter jdbc-describe-database)
                                    (filter #(not (driver/database-supports? % :table-privileges nil))))
                              (descendants driver/hierarchy :sql-jdbc))
-        (let [closed-first (volatile! nil)
+        (let [closed-first (volatile! false)
+              execute-select-probe-query @#'sql-jdbc.describe-database/execute-select-probe-query
               all-tables (driver/describe-database driver/*driver* (mt/id))]
-          (with-redefs [sql-jdbc.sync.interface/have-select-privilege?
-                        (fn [driver ^Connection conn schema tbl-name]
+          (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
+                        (fn [driver ^Connection conn query]
                           (when-not @closed-first
-                            (vreset! closed-first tbl-name)
+                            (vreset! closed-first true)
                             (.close conn))
-                          (have-select-privilege? driver conn schema tbl-name))]
+                          (execute-select-probe-query driver conn query))]
             (let [table-names #(->> % :tables (map :name) set)
-                  all-tables-sans-first (table-names (driver/do-with-resilient-connection driver/*driver* (mt/id) driver/describe-database))]
-              (is (or (= (-> all-tables table-names (disj @closed-first)) all-tables-sans-first)
-                      (= (-> all-tables table-names) all-tables-sans-first))))))))))
+                  all-tables-sans-one (table-names (driver/do-with-resilient-connection driver/*driver* (mt/id) driver/describe-database))]
+              ;; there is at maximum one missing table
+              (is (>= 1 (count (set/difference all-tables all-tables-sans-one)))))))))))
