@@ -547,6 +547,7 @@
     :enhancements
     :llm-autodescription
     :query-reference-validation
+    :cloud-custom-smtp
     :session-timeout-config})
 
 (deftest every-feature-is-accounted-for-test

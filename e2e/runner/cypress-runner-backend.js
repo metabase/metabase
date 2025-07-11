@@ -31,6 +31,7 @@ const CypressBackend = {
         "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
         "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
         "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
+        "-Dmail.smtps.ssl.trust=*", // trust self signed certs for testing
         "-Duser.timezone=US/Pacific",
         process.env.SHOW_BACKEND_LOGS === "true"
           ? null

@@ -16,6 +16,7 @@
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.database-routing.api]
+   [metabase-enterprise.email.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.metabot-v3.api]
@@ -48,7 +49,8 @@
    :scim                       (deferred-tru "SCIM configuration")
    :serialization              (deferred-tru "Serialization")
    :upload-management          (deferred-tru "Upload Management")
-   :database-routing           (deferred-tru "Database Routing")})
+   :database-routing           (deferred-tru "Database Routing")
+   :cloud-custom-smtp          (deferred-tru "Custom SMTP")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -78,6 +80,7 @@
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
+   "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))

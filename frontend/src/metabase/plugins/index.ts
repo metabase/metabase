@@ -770,3 +770,8 @@ export const PLUGIN_API = {
   ) =>
     `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
 };
+
+export const PLUGIN_SMTP_OVERRIDE = {
+  CloudSMTPConnectionCard: PluginPlaceholder,
+  SMTPOverrideConnectionForm: PluginPlaceholder,
+};
