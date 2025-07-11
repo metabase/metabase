@@ -63,7 +63,7 @@ export const dataAppsApi = EnterpriseApi.injectEndpoints({
 
     archiveDataApp: builder.mutation<void, { id: string }>({
       query: ({ id }) => ({
-        method: "POST",
+        method: "DELETE",
         url: `/api/data-app/${id}`,
       }),
       invalidatesTags: (_result, _error, arg) => [idTag("data-app", arg.id)],
@@ -101,6 +101,7 @@ export const {
   useGetDataAppQuery,
   useCreateDataAppMutation,
   useUpdateDataAppMutation,
+  useArchiveDataAppMutation,
   useUpdateDataAppDefinitionMutation,
   useReleaseDataAppDefinitionMutation,
 } = dataAppsApi;

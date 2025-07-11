@@ -21,7 +21,7 @@ export const getRoutes = (store) => {
         />
         {PLUGIN_DATA_APPS.isEnabled() && (
           <Route
-            path="data-app/:appUrl"
+            path="app/:appUrl"
             component={PLUGIN_DATA_APPS.PUBLIC_APP_PAGE_COMPONENT}
           />
         )}

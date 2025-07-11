@@ -47,18 +47,12 @@ export const DataAppsList = () => {
   }
 
   return (
-    <Stack mt="1rem">
-      <Box>
+    <Box mt="1rem" p="0 2.5rem">
+      <Stack>
         <BrowseSection>
-          <Flex
-            w="100%"
-            h="2.25rem"
-            direction="row"
-            justify="space-between"
-            align="center"
-          >
+          <Flex w="100%" direction="row" justify="space-between" align="center">
             <Title order={2} c="text-dark">
-              <Group gap="sm">
+              <Group gap="sm" align="center">
                 <Icon
                   size={24}
                   color="var(--mb-color-brand)"
@@ -67,10 +61,11 @@ export const DataAppsList = () => {
                 {t`Data Apps`}
               </Group>
             </Title>
+
+            <AddDataAppButton />
           </Flex>
         </BrowseSection>
-      </Box>
-      <Box p="0 2.5rem">
+
         <BrowseSection direction="column">
           <BrowseGrid data-testid="database-browser">
             {dataApps &&
@@ -86,14 +81,13 @@ export const DataAppsList = () => {
                 />
               ))}
           </BrowseGrid>
-          {isAdmin && <AddAppCard />}
         </BrowseSection>
-      </Box>
-    </Stack>
+      </Stack>
+    </Box>
   );
 };
 
-const AddAppCard = () => {
+const AddDataAppButton = () => {
   const [createDataAppMutation] = useCreateDataAppMutation();
 
   const dispatch = useDispatch();
@@ -130,10 +124,6 @@ const AddAppCard = () => {
   return (
     <Button
       variant="outline"
-      style={{
-        alignSelf: "flex-start",
-        marginTop: "1rem",
-      }}
       onClick={handleCreate}
     >{t`Create Data App`}</Button>
   );

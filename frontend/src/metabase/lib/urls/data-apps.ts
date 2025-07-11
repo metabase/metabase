@@ -12,5 +12,5 @@ export function dataAppEdit(appId: string, options: { isNew?: boolean } = {}) {
 
 export function publishedDataApp(appUrl: string) {
   const siteUrl = MetabaseSettings.get("site-url");
-  return `${siteUrl}/public/data-app/${appUrl}`;
+  return `${siteUrl}/public/app/${appUrl}`;
 }
