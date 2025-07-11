@@ -17,6 +17,8 @@ JAR download: {{oss-download-url}}
 Docker image: {{ee-docker-tag}}
 JAR download: {{ee-download-url}}
 
+## Changelog
+
 [Full Changelog]({{changelog-url}})
 
 `;
