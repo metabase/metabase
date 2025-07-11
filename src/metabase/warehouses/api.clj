@@ -1112,9 +1112,10 @@
   "Returns a list of all syncable schemas found for the database `id`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [db (get-database id {:exclude-uneditable-details? true})]
+  (let [db (get-database id)]
     (api/check-403 (or (:is_attached_dwh db)
-                       (mi/can-write? db)))
+                       (and (mi/can-write? db)
+                            (mi/can-read? db))))
     (->> db
          (driver/syncable-schemas (:engine db))
          (vec)
