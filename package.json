@@ -510,7 +510,7 @@
       "prettier --write"
     ],
     "**/*": [
-      "./bin/mage token-scan"
+      "./bin/mage -token-scan"
     ]
   },
   "browserslist": [

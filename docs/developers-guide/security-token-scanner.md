@@ -23,16 +23,16 @@ The scanner runs automatically via `lint-staged` on staged files during git comm
 
 ```bash
 # Scan specific files
-./bin/mage token-scan file1.txt file2.txt
+./bin/mage -token-scan file1.txt file2.txt
 
 # Scan all files in the project
-./bin/mage token-scan -a
+./bin/mage -token-scan -a
 
 # Run with verbose output
-./bin/mage token-scan -v file1.txt file2.txt
+./bin/mage -token-scan -v file1.txt file2.txt
 
 # Scan without showing line details
-./bin/mage token-scan --no-lines file1.txt file2.txt
+./bin/mage -token-scan --no-lines file1.txt file2.txt
 ```
 
 ### Example output
@@ -88,7 +88,7 @@ To add a new token pattern, edit `mage/mage/token_scan.clj` and add an entry to 
 - **Include length constraints**: Use `{min,max}` quantifiers to avoid false positives
 - **Add comments**: Explain the token format and expected length
 - **Test thoroughly**: Run the scanner on the codebase to check for false positives
-    - Run it on everything with: `mage token-scan -a`
+    - Run it on everything with: `mage -token-scan -a`
 
 Example of a good pattern:
 ```clojure
@@ -165,5 +165,5 @@ Use this sparingly and only when absolutely necessary.
 For issues with the scanner:
 
 1. Check the git hook output for detailed error messages
-2. Run the scanner locally to debug: `./bin/mage token-scan -v file1.txt file2.txt`
+2. Run the scanner locally to debug: `./bin/mage -token-scan -v file1.txt file2.txt`
 3. Ask in the #security or #dev channels for help with patterns or exclusions

@@ -147,18 +147,6 @@
                     (str "\n\nnote: If you get an error about 'Invalid or corrupt jarfile', run this command again with --delete.")))
    :task       (task! (jar-download/jar-download parsed))}
 
-  token-scan
-  {:doc        "Security token scanner for detecting leaked API keys and secrets"
-   :examples   [["./bin/mage token-scan file1.txt file2.txt" "Scan specific files"]
-                ["./bin/mage token-scan -a" "Scan all files in the project"]
-                ["./bin/mage token-scan -v file1.txt" "Scan with verbose output"]]
-   :requires   [[mage.token-scan :as token-scan]]
-   :options    [["-a" "--all-files" "Scan all files in the project"]
-                ["-v" "--verbose" "Verbose output"]
-                ["-n" "--no-lines" "Don't show line details, just file paths"]]
-   :arg-schema [:sequential [:string {:description "Files to scan"}]]
-   :task       (task! (token-scan/run-scan parsed))}
-
   setup-stats-repl
   {:doc "Connect to the stats repl"
    :examples [["./bin/mage connect-stats-repl" "Connects to the stats repl"]]
@@ -167,8 +155,20 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
-  ;; - hidden from `./bin/mage` listing and `bb tasks`
-  ;; - start with a `-`
+  ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
+  ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
+
+  -token-scan
+  {:doc        "Security token scanner for detecting leaked API keys and secrets"
+   :examples   [["./bin/mage -token-scan file1.txt file2.txt" "Scan specific files"]
+                ["./bin/mage -token-scan -a" "Scan all files in the project"]
+                ["./bin/mage -token-scan -v file1.txt" "Scan with verbose output"]]
+   :requires   [[mage.token-scan :as token-scan]]
+   :options    [["-a" "--all-files" "Scan all files in the project"]
+                ["-v" "--verbose" "Verbose output"]
+                ["-n" "--no-lines" "Don't show line details, just file paths"]]
+   :arg-schema [:sequential [:string {:description "Files to scan"}]]
+   :task       (task! (token-scan/run-scan parsed))}
 
   -repl
   {:doc      "Eval a string of clojure code in the backend dev server"
