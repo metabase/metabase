@@ -42,7 +42,9 @@ describe("Content translation hooks (other than useTranslateContent)", () => {
             {series[0].data.rows.map((row, index) => (
               <tr key={index}>
                 {row.map((value, colIndex) => (
-                  <td key={colIndex}>{JSON.stringify(value)}</td>
+                  <td key={colIndex}>
+                    {typeof value === "object" ? JSON.stringify(value) : value}
+                  </td>
                 ))}
               </tr>
             ))}
@@ -114,7 +116,9 @@ describe("Content translation hooks (other than useTranslateContent)", () => {
             {series[0].data.rows.map((row, index) => (
               <tr key={index}>
                 {row.map((value, colIndex) => (
-                  <td key={colIndex}>{JSON.stringify(value)}</td>
+                  <td key={colIndex}>
+                    {typeof value === "object" ? JSON.stringify(value) : value}
+                  </td>
                 ))}
               </tr>
             ))}
@@ -197,7 +201,9 @@ describe("Content translation hooks (other than useTranslateContent)", () => {
           <tbody>
             <tr>
               {hoveredObject?.data?.map(({ value }, index) => (
-                <td key={index}>{JSON.stringify(value)}</td>
+                <td key={index}>
+                  {typeof value === "object" ? JSON.stringify(value) : value}
+                </td>
               ))}
             </tr>
           </tbody>
