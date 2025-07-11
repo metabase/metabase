@@ -1,28 +1,45 @@
 (ns metabase-enterprise.tenants.api
   (:require
+   [malli.util]
    [metabase-enterprise.tenants.model :as tenant]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.events.core :as events]
    [metabase.request.core :as request]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def ^:private Slug (mu/with-api-error-message tenant/Slug
                                                (deferred-tru "invalid slug")))
 
+(def ^:private CreateTenantArguments [:map {:closed true}
+                                      [:name ms/NonBlankString]
+                                      [:slug Slug]])
+
+(defn create-tenant!
+  "Creates a new tenant, validating it, verifying that it does not already exist and publishing audit events as
+  necessary."
+  [tenant]
+  (when-not (mr/validate CreateTenantArguments tenant)
+    (throw (ex-info "Invalid Tenant"
+                    {:status-code 400
+                     :errors (mr/explain CreateTenantArguments tenant)})))
+  (api/check-400 (not (tenant/tenant-exists? tenant))
+                 "This tenant name or slug is already taken.")
+  (u/prog1 (t2/insert-returning-instance! :model/Tenant (dissoc tenant ::is-verified?))
+    (events/publish-event! :event/tenant-create {:object <>})))
+
 (api.macros/defendpoint :post "/"
   "Create a new Tenant"
   [_route-params
    _query-params
-   tenant :- [:map {:closed true}
-              [:name ms/NonBlankString]
-              [:slug Slug]]]
-  (api/check-400 (not (tenant/tenant-exists? tenant))
-                 "This tenant name or slug is already taken.")
-  (t2/insert! :model/Tenant tenant))
+   tenant :- CreateTenantArguments]
+  (create-tenant! tenant))
 
 (defn- present-tenants [tenants]
   (->> (t2/hydrate tenants :member_count)
@@ -58,7 +75,12 @@
   (when (true? is_active)
     (t2/update! :model/User {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
                 {:is_active true :deactivated_with_tenant nil}))
-  (t2/update! :model/Tenant :id tenant-id tenant))
+  (let [tenant-before-update (t2/select-one :model/Tenant tenant-id)
+        _                    (t2/update! :model/Tenant {:id tenant-id} tenant)
+        tenant-after-update  (t2/select-one :model/Tenant tenant-id)]
+    (events/publish-event! :event/tenant-update {:object          tenant-after-update
+                                                 :previous-object tenant-before-update})
+    tenant-after-update))
 
 (api.macros/defendpoint :put ["/:id" :id #"[^/]+"]
   "Update a tenant (right now, only name)"
@@ -69,7 +91,7 @@
     (api/check-400 (not (t2/exists? :model/Tenant :name (:name tenant)))
                    "This name is already taken."))
   (update-tenant! id tenant)
-  (present-tenant (t2/select-one :model/Tenant :id id)))
+  (present-tenant (update-tenant! id tenant)))
 
 (api.macros/defendpoint :get "/:id"
   "Get info about a tenant"

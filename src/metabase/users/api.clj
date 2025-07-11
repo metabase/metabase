@@ -11,6 +11,7 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
@@ -416,7 +417,9 @@
     (let [new-user-data (u/select-keys-when body
                                             :non-nil [:first_name :last_name :email :password :login_attributes :tenant_id])
           create-user-fn (if (:tenant_id body)
-                           #(user/insert-new-user! new-user-data)
+                           ;; don't send user invited emails for tenant users
+                           #(notification/with-skip-sending-notification true
+                              (user/create-and-invite-user! new-user-data @api/*current-user* false))
                            #(user/create-and-invite-user! new-user-data @api/*current-user* false))
           new-user-id (u/the-id (create-user-fn))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)

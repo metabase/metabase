@@ -248,3 +248,11 @@
 (methodical/defmethod events/publish-event! ::channel-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::tenant-event ::event)
+(derive :event/tenant-create ::tenant-event)
+(derive :event/tenant-update ::tenant-event)
+
+(methodical/defmethod events/publish-event! ::tenant-event
+  [topic event]
+  (audit-log/record-event! topic event))
