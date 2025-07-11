@@ -194,6 +194,7 @@
   lower
   offset
   text
+  today
   split-part
   integer
   float]

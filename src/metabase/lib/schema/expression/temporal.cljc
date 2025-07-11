@@ -62,6 +62,8 @@
             [:ref ::expression/string]      ;; parse string as date
             [:ref ::expression/temporal]]]) ;; truncate datetime to date
 
+(mbql-clause/define-tuple-mbql-clause :today :- :type/Date)
+
 (def datetime-string-modes
   "String modes supported by datetime() custom expression function."
   #{:iso

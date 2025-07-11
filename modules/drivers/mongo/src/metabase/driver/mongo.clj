@@ -419,6 +419,7 @@
                               :expressions/date                true
                               :expressions/text                true
                               :expressions/datetime            true
+                              :expressions/today               true
                               ;; Index sync is turned off across the application as it is not used ATM.
                               :index-info                      false
                               :database-routing                true}]
