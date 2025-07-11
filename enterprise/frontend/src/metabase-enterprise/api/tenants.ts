@@ -42,7 +42,12 @@ export const tenantsApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("tenant"), idTag("tenant", id)]),
+        invalidateTags(error, [
+          listTag("tenant"),
+          idTag("tenant", id),
+          // since users inherit tenant attributes, we can get stale caches
+          "user",
+        ]),
     }),
   }),
 });
