@@ -22,7 +22,8 @@ export const LegendLabel = styled(BaseLegendLabel)`
 `;
 
 export const LegendLabelIcon = styled(Icon)`
-  padding-right: 0.25rem;
+  flex-shrink: 0;
+  margin-right: 0.25rem;
 `;
 
 export const LegendDescriptionIcon = styled(
