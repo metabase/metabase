@@ -23,6 +23,7 @@ type Positionable =
   | Lib.ExpressionParts
   | Lib.ExpressionArg
   | { node?: Node }
+  | { token?: Token }
   | { pos: number; len: number }
   | Node
   | Token
