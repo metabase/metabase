@@ -86,9 +86,19 @@ const getCollections = (state: State) =>
     }) ?? []
   ).filter(nonPersonalOrArchivedCollection);
 
+const getTenantCollections = (state: State) =>
+  Collections.selectors.getList(state, {
+    entityQuery: { ...collectionsQuery, "include-tenant-collections": true },
+  }) ?? [];
+
 const getCollectionsTree = createSelector([getCollections], (collections) => {
   return [getRootCollectionTreeItem(), ...buildCollectionTree(collections)];
 });
+
+const getTenantCollectionsTree = createSelector(
+  [getTenantCollections],
+  (collections) => buildCollectionTree(collections),
+);
 
 export function buildCollectionTree(
   collections: Collection[] | null,
@@ -111,18 +121,23 @@ export function buildCollectionTree(
 export type CollectionSidebarType = {
   selectedId?: CollectionId;
   title: string;
-  entityGroups: [CollectionTreeItem[]];
+  entityGroups: CollectionTreeItem[][];
   filterPlaceholder: string;
 };
 
 export const getCollectionsSidebar = createSelector(
   getCollectionsTree,
+  getTenantCollectionsTree,
   getCurrentCollectionId,
-  (collectionsTree, collectionId): CollectionSidebarType => {
+  (
+    collectionsTree,
+    tenantCollectionsTree,
+    collectionId,
+  ): CollectionSidebarType => {
     return {
       selectedId: collectionId,
       title: t`Collections`,
-      entityGroups: [collectionsTree || []],
+      entityGroups: [collectionsTree || [], tenantCollectionsTree || []],
       filterPlaceholder: t`Search for a collection`,
     };
   },
@@ -154,8 +169,8 @@ const findCollection = (
 };
 
 const getCollection = createSelector(
-  [getCurrentCollectionId, getCollections],
-  (collectionId, collections) => {
+  [getCurrentCollectionId, getCollections, getTenantCollections],
+  (collectionId, collections, tenantCollections) => {
     if (collectionId == null) {
       return null;
     }
@@ -167,7 +182,7 @@ const getCollection = createSelector(
       };
     }
 
-    return findCollection(collections, collectionId);
+    return findCollection([...collections, ...tenantCollections], collectionId);
   },
 );
 
@@ -235,11 +250,15 @@ export const getCollectionsPermissionEditor = createSelector(
 
     const hasChildren = collection.children?.length > 0;
     const toggleLabel = hasChildren ? getToggleLabel(namespace) : null;
-    const defaultGroup = _.find(groups, isDefaultGroup);
+    const isTenantCollection = PLUGIN_TENANTS.isTenantCollection(collection);
 
     const entities = groups.map((group: GroupType) => {
       const isAdmin = isAdminGroup(group);
       const isExternal = PLUGIN_TENANTS.isExternalUsersGroup(group);
+      const defaultGroup = _.find(
+        groups,
+        isExternal ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
+      );
 
       const defaultGroupPermission = getCollectionPermission(
         permissions,
@@ -258,15 +277,15 @@ export const getCollectionsPermissionEditor = createSelector(
       ];
 
       const isIACollection = isInstanceAnalyticsCollection(collection);
-      const isTenantCollection = PLUGIN_TENANTS.isTenantCollection(collection);
 
-      const options = isIACollection
-        ? [COLLECTION_OPTIONS.read, COLLECTION_OPTIONS.none]
-        : [
-            COLLECTION_OPTIONS.write,
-            COLLECTION_OPTIONS.read,
-            COLLECTION_OPTIONS.none,
-          ];
+      const options =
+        isIACollection || (isTenantCollection && isExternal)
+          ? [COLLECTION_OPTIONS.read, COLLECTION_OPTIONS.none]
+          : [
+              COLLECTION_OPTIONS.write,
+              COLLECTION_OPTIONS.read,
+              COLLECTION_OPTIONS.none,
+            ];
 
       const disabledTooltip = isIACollection
         ? PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE
@@ -274,8 +293,7 @@ export const getCollectionsPermissionEditor = createSelector(
           ? Messages.EXTERNAL_USERS_NO_ACCESS_COLLECTION
           : Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
 
-      const disabled =
-        (isTenantCollection && !isExternal) || isAdmin || isExternal;
+      const disabled = (!isTenantCollection && isExternal) || isAdmin;
 
       return {
         id: group.id,

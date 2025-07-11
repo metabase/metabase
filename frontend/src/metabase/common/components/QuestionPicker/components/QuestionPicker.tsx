@@ -120,6 +120,7 @@ export const QuestionPicker = ({
         idPath: getCollectionIdPath(folder, userPersonalCollectionId),
         models,
       });
+
       onItemSelect(folder);
       onPathChange(newPath);
     },
@@ -156,6 +157,8 @@ export const QuestionPicker = ({
             ...currentDashboard,
             model: "dashboard",
             location,
+            is_tenant_dashboard:
+              currentDashboard.collection.type === "shared-tenant-collection",
           },
           userPersonalCollectionId,
         );

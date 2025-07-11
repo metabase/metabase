@@ -21,8 +21,13 @@ export const getCollectionIdPath = (
   >,
   userPersonalCollectionId?: CollectionId,
 ): CollectionId[] => {
+  console.log({ collection });
   if (collection.id === null || collection.id === "root") {
     return ["root"];
+  }
+
+  if (collection.id === "tenant") {
+    return ["tenant"];
   }
 
   if (collection.id === PERSONAL_COLLECTIONS.id) {
@@ -47,6 +52,8 @@ export const getCollectionIdPath = (
     return [...pathFromRoot, collection.id];
   } else if (collection.is_personal) {
     return ["personal", ...pathFromRoot, collection.id];
+  } else if (collection.is_tenant_collection) {
+    return ["tenant", ...pathFromRoot, collection.id];
   } else {
     return ["root", ...pathFromRoot, collection.id];
   }

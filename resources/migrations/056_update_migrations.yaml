@@ -303,7 +303,6 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.MoveExistingAtSymbolUserAttributes"
 
-
   - changeSet:
       id: v56.2025-07-07T07:13:58
       author: johnswanson
@@ -321,7 +320,6 @@ databaseChangeLog:
                   type: ${boolean.type}
                   constraints:
                     nullable: true
-
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

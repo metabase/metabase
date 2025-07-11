@@ -23,6 +23,7 @@ export type CollectionId =
   | "root"
   | "personal"
   | "users"
+  | "tenant"
   | "trash";
 
 export type CollectionContentModel = "card" | "dataset";
@@ -68,7 +69,7 @@ export interface Collection {
   archived: boolean;
   children?: Collection[];
   authority_level?: CollectionAuthorityLevel;
-  type?: "instance-analytics" | "trash" | "tenant" | null;
+  type?: "instance-analytics" | "trash" | "shared-tenant-collection" | null;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
@@ -187,10 +188,11 @@ export interface UpdateCollectionRequest {
 
 export interface CreateCollectionRequest {
   name: string;
-  description?: string;
+  description?: string | null;
   parent_id?: CollectionId | null;
   namespace?: string;
   authority_level?: CollectionAuthorityLevel;
+  type?: "shared-tenant-collection";
 }
 
 export interface ListCollectionsRequest {
@@ -205,6 +207,7 @@ export interface ListCollectionsTreeRequest {
   namespace?: string;
   shallow?: boolean;
   "collection-id"?: RegularCollectionId | null;
+  "include-tenant-collections"?: boolean;
 }
 
 export interface DeleteCollectionRequest {
