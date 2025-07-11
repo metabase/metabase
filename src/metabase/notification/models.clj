@@ -507,24 +507,6 @@
                          [:payload ::NotificationCard]]]
     [::mc/default       :map]]])
 
-(mr/def ::FullyHydratedNotification
-  "Fully hydrated notification."
-  [:merge
-   ::Notification
-   [:map
-    [:creator       {:optional true} [:maybe :map]]
-    [:subscriptions {:optional true} [:sequential ::NotificationSubscription]]
-    [:handlers      {:optional true} [:sequential [:merge
-                                                   ::NotificationHandler
-                                                   [:map
-                                                    [:template   {:optional true} [:maybe ::models.channel/ChannelTemplate]]
-                                                    [:channel    {:optional true} [:maybe ::models.channel/Channel]]
-                                                    [:recipients {:optional true} [:sequential ::NotificationRecipient]]]]]]]
-   [:multi {:dispatch (comp keyword :payload_type)}
-    [:notification/card [:map
-                         [:payload ::NotificationCard]]]
-    [::mc/default       :map]]])
-
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
   [notification-or-notifications]
@@ -563,12 +545,10 @@
   (validate-email-handlers! handlers+recipients)
   (t2/with-transaction [_conn]
     (let [payload-id      (case (:payload_type notification)
-                            (:notification/testing)
+                            (:notification/system-event :notification/testing)
                             nil
                             :notification/card
-                            (t2/insert-returning-pk! :model/NotificationCard (:payload notification))
-                            :notification/system-event
-                            (t2/insert-returning-pk! :model/NotificationSystemEvent (:payload notification)))
+                            (t2/insert-returning-pk! :model/NotificationCard (:payload notification)))
           notification    (-> notification
                               (assoc :payload_id payload-id)
                               (dissoc :payload))

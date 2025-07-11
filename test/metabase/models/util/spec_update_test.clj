@@ -530,25 +530,6 @@
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data complex-ref-in-parent-spec)))))))
 
-#_(deftest complex-ref-in-parent-change-test
-    (testing "Changing processor reference with ref-in-parent"
-      (let [existing-data {:id 1
-                           :number "ORD-123"
-                           :customer_id 10
-                           :payment_id 20
-                           :customer {:id 10
-                                      :name "Customer"}
-                           :payment {:id 20
-                                     :amount 100.00
-                                     :processor_id 30
-                                     :processor {:id 30
-                                                 :name "PayCo"}}}
-            new-data (assoc-in existing-data [:payment :processor] {:name "New Processor"})]
-        (is (= [[:insert-returning-pk! :payment_processor {:name "New Processor"}]
-                [:update! :payment 20 {:processor_id 2}]]
-               (with-tracked-operations!
-                 (spec-update/do-update! existing-data new-data complex-ref-in-parent-spec)))))))
-
 (spec-update/define-spec multi-row-with-ref-spec
   "A spec with ref-in-parent inside a multi-row spec"
   {:model :project
