@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useDeepCompareEffect } from "react-use";
+import { useDeepCompareEffect, useLatest } from "react-use";
+import _ from "underscore";
 
 import {
   skipToken,
@@ -66,16 +67,29 @@ export function getUrl(value: TreePath) {
  * This works by fetching the data and then recursively merging the results into the tree of data that was already fetched.
  */
 export function useTableLoader(path: TreePath) {
-  const [fetchDatabases] = useLazyListDatabasesQuery();
-  const [fetchSchemas] = useLazyListDatabaseSchemasQuery();
+  const [fetchDatabases, databases] = useLazyListDatabasesQuery();
+  const [fetchSchemas, schemas] = useLazyListDatabaseSchemasQuery();
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
+  const databasesRef = useLatest(databases);
+  const schemasRef = useLatest(schemas);
+  const tablesRef = useLatest(tables);
 
   const [tree, setTree] = useState<TreeNode>(rootNode());
 
   const getDatabases = useCallback(async () => {
-    const res = await fetchDatabases({}, true);
+    const response = await fetchDatabases(
+      { include_editable_data_model: true },
+      true,
+    );
+
+    if (databasesRef.current.isError) {
+      // Do not refetch when this call failed previously.
+      // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
+      return [];
+    }
+
     return (
-      res.data?.data.map((database) =>
+      response.data?.data.map((database) =>
         node<DatabaseNode>({
           type: "database",
           label: database.name,
@@ -83,7 +97,7 @@ export function useTableLoader(path: TreePath) {
         }),
       ) ?? []
     );
-  }, [fetchDatabases]);
+  }, [fetchDatabases, databasesRef]);
 
   const getTables = useCallback(
     async (
@@ -93,17 +107,27 @@ export function useTableLoader(path: TreePath) {
       if (databaseId === undefined || schemaName === undefined) {
         return [];
       }
-      const res = await fetchTables(
-        {
-          id: databaseId,
-          schema: schemaName,
-          include_hidden: true,
-          include_editable_data_model: true,
-        },
-        true,
-      );
+
+      const newArgs = {
+        id: databaseId,
+        schema: schemaName,
+        include_hidden: true,
+        include_editable_data_model: true,
+      };
+
+      if (
+        tablesRef.current.isError &&
+        _.isEqual(tablesRef.current.originalArgs, newArgs)
+      ) {
+        // Do not refetch when this call failed previously.
+        // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
+        return [];
+      }
+
+      const response = await fetchTables(newArgs, true);
+
       return (
-        res?.data?.map((table) =>
+        response?.data?.map((table) =>
           node<TableNode>({
             type: "table",
             label: table.display_name,
@@ -114,7 +138,7 @@ export function useTableLoader(path: TreePath) {
         ) ?? []
       );
     },
-    [fetchTables],
+    [fetchTables, tablesRef],
   );
 
   const getSchemas = useCallback(
@@ -122,32 +146,41 @@ export function useTableLoader(path: TreePath) {
       if (databaseId === undefined) {
         return [];
       }
-      const res = await fetchSchemas(
-        {
-          id: databaseId,
-          include_hidden: true,
-          include_editable_data_model: true,
-        },
-        true,
-      );
+
+      const newArgs = {
+        id: databaseId,
+        include_hidden: true,
+        include_editable_data_model: true,
+      };
+
+      if (
+        schemasRef.current.isError &&
+        _.isEqual(schemasRef.current.originalArgs, newArgs)
+      ) {
+        // Do not refetch when this call failed previously.
+        // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
+        return [];
+      }
+
+      const response = await fetchSchemas(newArgs, true);
       return Promise.all(
-        res.data?.map(async (schema, _, schemas) => {
-          const res = node<SchemaNode>({
+        response.data?.map(async (schemaName, _, schemas) => {
+          const schema = node<SchemaNode>({
             type: "schema",
-            label: schema,
-            value: { databaseId, schemaName: schema },
+            label: schemaName,
+            value: { databaseId, schemaName },
           });
 
           // If the schema is unnamed, or if it's the only schema in the database,
           // fetch the tables immediately so we can render a flattened tree.
-          if (schema === UNNAMED_SCHEMA_NAME || schemas.length === 1) {
-            res.children = await getTables(databaseId, schema);
+          if (schemaName === UNNAMED_SCHEMA_NAME || schemas.length === 1) {
+            schema.children = await getTables(databaseId, schemaName);
           }
-          return res;
+          return schema;
         }) ?? [],
       );
     },
-    [fetchSchemas, getTables],
+    [fetchSchemas, getTables, schemasRef],
   );
 
   const load = useCallback(
@@ -174,14 +207,24 @@ export function useTableLoader(path: TreePath) {
                 })),
         })),
       );
-      setTree((current) => merge(current, newTree));
+      setTree((current) => {
+        const merged = merge(current, newTree);
+        return _.isEqual(current, merged) ? current : merged;
+      });
     },
     [getDatabases, getSchemas, getTables],
   );
 
   useDeepCompareEffect(() => {
     load(path);
-  }, [load, path, tables.isFetching]);
+  }, [
+    load,
+    path,
+    // When a table is modified, e.g. we change display_name with PUT /api/table/:id
+    // we need to manually call the lazy RTK hooks, so that the the updated table
+    // is refetched here. We detect this modification with tables.isFetching.
+    tables.isFetching,
+  ]);
 
   return { tree };
 }
