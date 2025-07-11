@@ -39,9 +39,9 @@ For impersonation access to work, you'll first need to set up roles in your data
 
 ### Set up Metabase database connection for impersonation
 
-Impersonation uses database roles to run queries on your database, but there still needs to be a default role that that will be used to run operations like [sync, scans, and fingerprinting](../databases/sync-scan.md). So the user account that Metabase uses Metabase uses to [connect to your database](../databases/connecting.md) should access to everything in database that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information to
+Impersonation uses database roles to run queries on your database, but there still needs to be a default role that that will be used to run operations like [sync, scans, and fingerprinting](../databases/sync-scan.md). So the user account that Metabase uses to [connect to your database](../databases/connecting.md) should have access to everything in that database that any Metabase group may need access to, as that database user account is what Metabase uses to sync table information.
 
-You can then create roles in the database that have more restrictive access to the database (like row level or table level security) so when the role is passed to the database using impersonation, then the engine returns a subset of the data, or it restricts the query altogether.
+You can then create roles in the database that have more restrictive access to the database (like row-level or table-level security). When the role is passed to the database using impersonation, the engine will return a subset of the data, or restrict the query altogether.
 
 > For **Redshift** databases, the user account Metabase uses to [connect to your Redshift database](../databases/connections/redshift.md) must be a superuser, as Metabase will need to be able to run the [SET SESSION AUTHORIZATION](https://docs.aws.amazon.com/redshift/latest/dg/r_SET_SESSION_AUTHORIZATION) command, which can only be run by a database superuser.
 
@@ -156,9 +156,9 @@ So if a person is in two groups with different permissions for the same database
 
 Blue group's more permissive access would override the impersonated access.
 
-## Admins will not see effects of impersonation
+## Admins won't see the effects of impersonation
 
-People who are in Administrators group will never be able to see the impersonation effects, regardless of any additional group they are in.
+Admins won't ever see the effects of impersonation effects, because their privileges will override those of any other group they're a member of.
 
 Metabase's default Administrators group has "Can view" access to all databases, and Metabase uses the most permissive access for any person in multple groups, so any admin will have "Can view" - not "Impersonated" - access to the database.
 
