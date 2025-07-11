@@ -11,14 +11,13 @@ import { LoadingSpinner, NestedItemPicker } from "../../../EntityPicker";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
 import { useGetInitialContainer } from "../../hooks";
-import { getCollectionIdPath } from "../../utils";
+import { getCollectionIdPath, getStateFromIdPath } from "../../utils";
 import type {
   DashboardPickerItem,
   DashboardPickerOptions,
   DashboardPickerStatePath,
 } from "../types";
 import {
-  getStateFromIdPath,
   handleNewDashboard as handleNewDashboardUtil,
   isFolder,
 } from "../utils";

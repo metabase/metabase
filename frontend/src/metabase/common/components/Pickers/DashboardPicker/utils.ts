@@ -1,13 +1,7 @@
 import _ from "underscore";
 
-import type {
-  CollectionId,
-  CollectionItemModel,
-  Dashboard,
-  ListCollectionItemsRequest,
-} from "metabase-types/api";
+import type { CollectionId, Dashboard } from "metabase-types/api";
 
-import type { PickerState } from "../../EntityPicker";
 import {
   getParentCollectionId,
   getPathLevelForItem,
@@ -18,50 +12,6 @@ import type {
   DashboardPickerItem,
   DashboardPickerStatePath,
 } from "./types";
-
-export const getStateFromIdPath = ({
-  idPath,
-  namespace,
-  models = ["card", "dataset"],
-}: {
-  idPath: CollectionId[];
-  namespace?: "snippets";
-  models?: CollectionItemModel[];
-}): DashboardPickerStatePath => {
-  const statePath: PickerState<
-    DashboardPickerItem,
-    ListCollectionItemsRequest
-  > = [
-    {
-      selectedItem: {
-        name: "",
-        model: "collection",
-        id: idPath[0],
-      },
-    },
-  ];
-
-  idPath.forEach((id, index) => {
-    const nextLevelId = idPath[index + 1] ?? null;
-
-    statePath.push({
-      query: {
-        id,
-        models: ["collection", ...models],
-        namespace,
-      },
-      selectedItem: nextLevelId
-        ? {
-            name: "",
-            model: "collection",
-            id: nextLevelId,
-          }
-        : null,
-    });
-  });
-
-  return statePath;
-};
 
 export const getCollectionId = (
   item: DashboardPickerItem | DashboardPickerInitialValueItem | null,

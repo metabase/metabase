@@ -10,7 +10,7 @@ import type { Collection, Dashboard } from "metabase-types/api";
 import { LoadingSpinner, NestedItemPicker } from "../../../EntityPicker";
 import { handleNewDashboard as handleNewDashboardUtil } from "../../DashboardPicker/utils";
 import { useGetInitialContainer } from "../../hooks";
-import { getCollectionIdPath } from "../../utils";
+import { getCollectionIdPath, getStateFromIdPath } from "../../utils";
 import { useEnsureCollectionSelected } from "../hooks";
 import type {
   CollectionPickerItem,
@@ -21,7 +21,6 @@ import type {
 import {
   getParentCollectionId,
   getPathLevelForItem,
-  getStateFromIdPath,
   isFolderFactory,
 } from "../utils";
 

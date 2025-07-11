@@ -7,59 +7,7 @@ import type {
 import type { PickerState } from "../../EntityPicker";
 import type { QuestionPickerItem } from "../QuestionPicker";
 
-import type {
-  CollectionPickerItem,
-  CollectionPickerModel,
-  CollectionPickerStatePath,
-} from "./types";
-
-export const getStateFromIdPath = ({
-  idPath,
-  namespace,
-  models,
-}: {
-  idPath: CollectionId[];
-  namespace?: "snippets";
-  models: CollectionPickerModel[];
-}): CollectionPickerStatePath => {
-  const statePath: PickerState<
-    CollectionPickerItem,
-    ListCollectionItemsRequest
-  > = [
-    {
-      selectedItem: {
-        name: "",
-        model: "collection",
-        id: idPath[0],
-        here: ["collection"],
-        below: ["collection"],
-      },
-    },
-  ];
-
-  idPath.forEach((id, index) => {
-    const nextLevelId = idPath[index + 1] ?? null;
-
-    statePath.push({
-      query: {
-        id,
-        models,
-        namespace,
-      },
-      selectedItem: nextLevelId
-        ? {
-            name: "",
-            model: "collection",
-            id: nextLevelId,
-            here: ["collection"],
-            below: ["collection"],
-          }
-        : null,
-    });
-  });
-
-  return statePath;
-};
+import type { CollectionPickerItem } from "./types";
 
 export const isFolderFactory =
   (models: CollectionItemModel[]) =>
