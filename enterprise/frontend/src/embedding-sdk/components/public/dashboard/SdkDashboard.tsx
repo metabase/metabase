@@ -15,9 +15,9 @@ import { InteractiveQuestionProvider } from "embedding-sdk/components/private/In
 import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   DashboardNotFoundError,
-  PublicComponentWrapper,
   SdkError,
   SdkLoader,
+  withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
@@ -30,20 +30,6 @@ import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { setEditingDashboard, toggleSidebar } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
-import { Grid } from "metabase/dashboard/components/Dashboard/components/Grid";
-import {
-  DashboardInfoButton,
-  ExportAsPdfButton,
-  FullscreenToggle,
-  NightModeToggleButton,
-} from "metabase/dashboard/components/DashboardHeader/buttons";
-import {
-  DashboardParameterList,
-  type DashboardParameterListProps,
-} from "metabase/dashboard/components/DashboardParameterList";
-import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
-import { DashboardTitle } from "metabase/dashboard/components/DashboardTitle";
-import { RefreshWidget } from "metabase/dashboard/components/RefreshWidget";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   type DashboardContextProps,
@@ -51,10 +37,7 @@ import {
   type DashboardContextProviderHandle,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import {
-  getDashboardComplete,
-  getDashboardHeaderValuePopulatedParameters,
-} from "metabase/dashboard/selectors";
+import { getDashboardComplete } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
@@ -317,29 +300,33 @@ const SdkDashboardInner = ({
   );
 };
 
-export const SdkDashboard = ({ ...props }: SdkDashboardInnerProps) => (
-  <PublicComponentWrapper>
-    <SdkDashboardInner {...props} />
-  </PublicComponentWrapper>
-);
+export const SdkDashboard = withPublicComponentWrapper(
+  SdkDashboardInner,
+) as typeof SdkDashboardInner &
+  Pick<
+    typeof Dashboard,
+    | "Grid"
+    | "Header"
+    | "Title"
+    | "Tabs"
+    | "ParametersList"
+    | "FullscreenButton"
+    | "ExportAsPdfButton"
+    | "InfoButton"
+    | "NightModeButton"
+    | "RefreshPeriod"
+  >;
 
-SdkDashboard.Grid = Grid;
-SdkDashboard.ParameterList = SdkDashboardParameterList;
-SdkDashboard.Title = DashboardTitle;
-SdkDashboard.Tabs = DashboardTabs;
-SdkDashboard.FullscreenButton = FullscreenToggle;
-SdkDashboard.ExportAsPdfButton = ExportAsPdfButton;
-SdkDashboard.InfoButton = DashboardInfoButton;
-SdkDashboard.NightModeButton = NightModeToggleButton;
-SdkDashboard.RefreshPeriod = RefreshWidget;
-
-function SdkDashboardParameterList(
-  props: Omit<DashboardParameterListProps, "parameters">,
-) {
-  const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
-
-  return <DashboardParameterList parameters={parameters} {...props} />;
-}
+SdkDashboard.Grid = Dashboard.Grid;
+SdkDashboard.Header = Dashboard.Header;
+SdkDashboard.Title = Dashboard.Title;
+SdkDashboard.Tabs = Dashboard.Tabs;
+SdkDashboard.ParametersList = Dashboard.ParametersList;
+SdkDashboard.FullscreenButton = Dashboard.FullscreenButton;
+SdkDashboard.ExportAsPdfButton = Dashboard.ExportAsPdfButton;
+SdkDashboard.InfoButton = Dashboard.InfoButton;
+SdkDashboard.NightModeButton = Dashboard.NightModeButton;
+SdkDashboard.RefreshPeriod = Dashboard.RefreshPeriod;
 
 type DashboardQueryBuilderProps = {
   targetDashboardId: DashboardId;

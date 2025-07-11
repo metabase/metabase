@@ -34,10 +34,16 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
 
     const { error } = await updateField({ id, display_name: name });
 
-    if (!error) {
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to update name of ${field.display_name}`,
+      });
+    } else {
       sendToast({
         icon: "check",
-        message: t`Display name for ${field.display_name} updated`,
+        message: t`Name of ${field.display_name} updated`,
       });
     }
   };
@@ -55,10 +61,16 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
       description: newDescription.length === 0 ? null : newDescription,
     });
 
-    if (!error) {
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to update description of ${field.display_name}`,
+      });
+    } else {
       sendToast({
         icon: "check",
-        message: t`Description for ${field.display_name} updated`,
+        message: t`Description of ${field.display_name} updated`,
       });
     }
   };

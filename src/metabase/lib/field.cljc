@@ -389,7 +389,7 @@
    {:metabase.lib.field/binning       :binning
     :metabase.lib.field/temporal-unit :temporal-unit}))
 
-(def ^:private field-ref-propagated-keys-for-non-inherited-colums
+(def ^:private field-ref-propagated-keys-for-non-inherited-columns
   "Keys that should get copied into `:field` ref options from column metadata ONLY when the column is not inherited.
 
     key-in-col-metadata => key-in-opts"
@@ -432,7 +432,7 @@
                                                               (:source-alias metadata))]
                                    {:join-alias source-alias})
                                  (when-not inherited-column?
-                                   (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-colums)))
+                                   (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-columns)))
         id-or-name        (or (lib.field.util/inherited-column-name metadata)
                               ((some-fn :id :lib/deduplicated-name :lib/original-name :name) metadata))]
     [:field options id-or-name]))
@@ -491,7 +491,7 @@
     stage-number :- :int]
    (:fields (lib.util/query-stage query stage-number))))
 
-(mu/defn fieldable-columns :- [:sequential ::lib.schema.metadata/column]
+(mu/defn fieldable-columns :- ::lib.metadata.calculation/visible-columns
   "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query. This is
   basically just the columns returned by the source Table/Saved Question/Model or previous query stage.
 

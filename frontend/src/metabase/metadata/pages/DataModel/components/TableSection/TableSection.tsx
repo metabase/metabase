@@ -12,7 +12,7 @@ import {
   SortableFieldList,
 } from "metabase/metadata/components";
 import { Box, Button, Group, Icon, Loader, Stack, Text } from "metabase/ui";
-import type { FieldId, Table } from "metabase-types/api";
+import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
@@ -35,6 +35,83 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const [sendToast] = useToast();
   const [isSorting, setIsSorting] = useState(false);
 
+  const handleNameChange = async (name: string) => {
+    const { error } = await updateTable({
+      id: table.id,
+      display_name: name,
+    });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to update table name`,
+      });
+    } else {
+      sendToast({
+        icon: "check",
+        message: t`Table name updated`,
+      });
+    }
+  };
+
+  const handleDescriptionChange = async (description: string) => {
+    const { error } = await updateTable({ id: table.id, description });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to update table description`,
+      });
+    } else {
+      sendToast({
+        icon: "check",
+        message: t`Table description updated`,
+      });
+    }
+  };
+
+  const handleFieldOrderTypeChange = async (fieldOrder: TableFieldOrder) => {
+    const { error } = await updateTableSorting({
+      id: table.id,
+      field_order: fieldOrder,
+    });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to update field order`,
+      });
+    } else {
+      sendToast({
+        icon: "check",
+        message: t`Field order updated`,
+      });
+    }
+  };
+
+  const handleCustomFieldOrderChange = async (fieldOrder: FieldId[]) => {
+    const { error } = await updateTableFieldsOrder({
+      id: table.id,
+      field_order: fieldOrder,
+    });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to update field order`,
+      });
+    } else {
+      sendToast({
+        icon: "check",
+        message: t`Field order updated`,
+      });
+    }
+  };
+
   return (
     <Stack data-testid="table-section" gap={0} pb="xl">
       <Box
@@ -53,22 +130,8 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           nameIcon="table2"
           nameMaxLength={254}
           namePlaceholder={t`Give this table a name`}
-          onDescriptionChange={async (description) => {
-            await updateTable({ id: table.id, description });
-
-            sendToast({
-              icon: "check",
-              message: t`Table description updated`,
-            });
-          }}
-          onNameChange={async (name) => {
-            await updateTable({ id: table.id, display_name: name });
-
-            sendToast({
-              icon: "check",
-              message: t`Table name updated`,
-            });
-          }}
+          onDescriptionChange={handleDescriptionChange}
+          onNameChange={handleNameChange}
         />
       </Box>
 
@@ -113,19 +176,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
               {isSorting && (
                 <FieldOrderPicker
                   value={table.field_order}
-                  onChange={async (fieldOrder) => {
-                    const { error } = await updateTableSorting({
-                      id: table.id,
-                      field_order: fieldOrder,
-                    });
-
-                    if (!error) {
-                      sendToast({
-                        icon: "check",
-                        message: t`Field order updated`,
-                      });
-                    }
-                  }}
+                  onChange={handleFieldOrderTypeChange}
                 />
               )}
 
@@ -145,20 +196,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             <SortableFieldList
               activeFieldId={fieldId}
               table={table}
-              onChange={async (fieldOrder) => {
-                const { error } = await updateTableFieldsOrder({
-                  id: table.id,
-                  // in this context field id will never be a string because it's a raw table field, so it's ok to cast
-                  field_order: fieldOrder as FieldId[],
-                });
-
-                if (!error) {
-                  sendToast({
-                    icon: "check",
-                    message: t`Field order updated`,
-                  });
-                }
-              }}
+              onChange={handleCustomFieldOrderChange}
             />
           )}
 
