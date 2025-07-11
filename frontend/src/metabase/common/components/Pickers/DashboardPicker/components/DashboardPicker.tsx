@@ -11,13 +11,13 @@ import { LoadingSpinner, NestedItemPicker } from "../../../EntityPicker";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
 import { useGetInitialContainer } from "../../hooks";
+import { getCollectionIdPath } from "../../utils";
 import type {
   DashboardPickerItem,
   DashboardPickerOptions,
   DashboardPickerStatePath,
 } from "../types";
 import {
-  getCollectionIdPath,
   getStateFromIdPath,
   handleNewDashboard as handleNewDashboardUtil,
   isFolder,
@@ -134,6 +134,7 @@ const DashboardPickerInner = (
             id: currentCollection.id,
             location: currentCollection.effective_location,
             is_personal: currentCollection.is_personal,
+            model: "collection",
           },
           userPersonalCollectionId,
         );

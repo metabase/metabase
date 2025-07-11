@@ -10,13 +10,13 @@ import { useEnsureCollectionSelected } from "../../CollectionPicker";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
 import { useGetInitialContainer } from "../../hooks";
+import { getCollectionIdPath } from "../../utils";
 import type {
   QuestionPickerItem,
   QuestionPickerOptions,
   QuestionPickerStatePath,
 } from "../types";
 import {
-  getCollectionIdPath,
   getQuestionPickerValueModel,
   getStateFromIdPath,
   isFolder,

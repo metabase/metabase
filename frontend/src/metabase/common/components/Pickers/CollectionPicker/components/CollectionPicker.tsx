@@ -10,6 +10,7 @@ import type { Collection, Dashboard } from "metabase-types/api";
 import { LoadingSpinner, NestedItemPicker } from "../../../EntityPicker";
 import { handleNewDashboard as handleNewDashboardUtil } from "../../DashboardPicker/utils";
 import { useGetInitialContainer } from "../../hooks";
+import { getCollectionIdPath } from "../../utils";
 import { useEnsureCollectionSelected } from "../hooks";
 import type {
   CollectionPickerItem,
@@ -18,7 +19,6 @@ import type {
   CollectionPickerStatePath,
 } from "../types";
 import {
-  getCollectionIdPath,
   getParentCollectionId,
   getPathLevelForItem,
   getStateFromIdPath,
@@ -188,6 +188,7 @@ export const CollectionPickerInner = (
               ...currentDashboard.collection,
               location: currentDashboard.collection?.effective_location,
               is_personal: currentDashboard.collection?.is_personal,
+              model: "collection",
             },
             userPersonalCollectionId,
           ),
@@ -222,6 +223,7 @@ export const CollectionPickerInner = (
               id: currentCollection.id,
               location: currentCollection.effective_location,
               is_personal: currentCollection.is_personal,
+              model: "collection",
             },
             userPersonalCollectionId,
           ),

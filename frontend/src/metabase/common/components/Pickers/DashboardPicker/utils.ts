@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import type {
   CollectionId,
   CollectionItemModel,
@@ -19,44 +18,6 @@ import type {
   DashboardPickerItem,
   DashboardPickerStatePath,
 } from "./types";
-
-export const getCollectionIdPath = (
-  collection: Pick<
-    DashboardPickerItem,
-    "id" | "location" | "is_personal" | "effective_location"
-  >,
-  userPersonalCollectionId?: CollectionId,
-): CollectionId[] => {
-  if (collection.id === "root" || collection.id === null) {
-    return ["root"];
-  }
-
-  if (collection.id === PERSONAL_COLLECTIONS.id) {
-    return ["personal"];
-  }
-
-  if (typeof collection.id === "string") {
-    console.error("Invalid collection id", collection.id);
-    return [];
-  }
-
-  const location = collection?.effective_location ?? collection?.location;
-  const pathFromRoot: CollectionId[] =
-    location?.split("/").filter(Boolean).map(Number) ?? [];
-
-  const isInUserPersonalCollection =
-    userPersonalCollectionId &&
-    (collection.id === userPersonalCollectionId ||
-      pathFromRoot.includes(userPersonalCollectionId));
-
-  if (isInUserPersonalCollection) {
-    return [...pathFromRoot, collection.id];
-  } else if (collection.is_personal) {
-    return ["personal", ...pathFromRoot, collection.id];
-  } else {
-    return ["root", ...pathFromRoot, collection.id];
-  }
-};
 
 export const getStateFromIdPath = ({
   idPath,
