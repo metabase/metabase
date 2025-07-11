@@ -2,7 +2,6 @@
   "Middleware that adds default constraints to limit the maximum number of rows returned to queries that specify the
   `:add-default-userland-constraints?` `:middleware` option."
   (:require
-   [metabase.lib.core :as lib]
    [metabase.query-processor.settings :as qp.settings]))
 
 ;; The following "defaults" are not applied to the settings themselves - why not? Because the existing behavior is

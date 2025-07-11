@@ -5,7 +5,6 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
@@ -51,9 +50,7 @@
       (let [metadata-provider  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             card-query         (lib/native-query metadata-provider "SELECT * FROM PEOPLE ORDER BY ID DESC LIMIT 100;")
             results            (qp/process-query card-query)
-            card-eid           (u/generate-nano-id)
-            results-metadata   (for [col (get-in results [:data :results_metadata :columns])]
-                                 (assoc col :ident (lib.metadata.ident/native-ident (:name col) card-eid)))
+            results-metadata   (get-in results [:data :results_metadata :columns])
             _                  (is (seq results-metadata))
             metadata-provider  (lib.tu/mock-metadata-provider
                                 metadata-provider

@@ -1,7 +1,6 @@
 (ns metabase.queries.models.card.metadata
   "Code related to Card metadata (re)calculation and saving updated metadata asynchronously."
   (:require
-   [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -171,9 +170,7 @@ saved later when it is ready."
 (defn infer-metadata
   "Infer the default result_metadata to store for MBQL cards.
 
-  Ignores any that might be present already.
-
-  If the card is provided and is a model, this will wrap [[lib/model-ident]] around the `:ident`s from the inner query."
+  Ignores any that might be present already."
   [query]
   (not-empty (request/with-current-user nil
                (u/ignore-exceptions

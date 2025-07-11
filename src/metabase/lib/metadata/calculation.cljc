@@ -606,8 +606,7 @@
                         (not (existing-ids (:id remapped))))]
         (assoc remapped
                :lib/source              (:lib/source column) ; TODO: What's the right source for a remap?
-               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) remapped)
-               :ident                   (lib.metadata.ident/remap-ident (:ident remapped) (:ident column)))))))
+               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) remapped))))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
