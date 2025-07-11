@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { HTMLAttributes } from "react";
+import { type HTMLAttributes, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,6 +11,7 @@ import type { GroupId, Member } from "metabase-types/api";
 
 interface FormGroupsWidgetProps extends HTMLAttributes<HTMLDivElement> {
   name: string;
+  external?: boolean;
 }
 
 export const FormGroupsWidget = ({
@@ -18,11 +19,19 @@ export const FormGroupsWidget = ({
   className,
   style,
   title = t`Groups`,
+  external,
 }: FormGroupsWidgetProps) => {
   const [{ value: formValue }, , { setValue }] =
     useField<{ id: GroupId; is_group_manager?: boolean }[]>(name);
 
-  const { data: groups, isLoading } = useListPermissionsGroupsQuery();
+  const { data, isLoading } = useListPermissionsGroupsQuery();
+
+  const groups = useMemo(() => {
+    if (external && data) {
+      return data?.filter((group) => group.is_tenant_group);
+    }
+    return data;
+  }, [data, external]);
 
   if (isLoading || !groups) {
     return null;

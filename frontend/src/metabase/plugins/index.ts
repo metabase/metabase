@@ -816,6 +816,7 @@ export const PLUGIN_TENANTS = {
   FormTenantWidget: (_props: any) => null as React.ReactElement | null,
   TenantDisplayName: (_props: any) => null as React.ReactElement | null,
   isExternalUsersGroup: (_group: Pick<Group, "magic_group_type">) => false,
+  isTenantGroup: (_group: Pick<Group, "is_tenant_group">) => false,
   isExternalUser: (_user?: Pick<User, "tenant_id">) => false,
   isTenantCollection: (_collection: Collection) => false,
   PeopleNav: null as React.ReactElement | null,

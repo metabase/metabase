@@ -6,6 +6,10 @@ export const isExternalUsersGroup = (
   return group.magic_group_type === "all-external-users";
 };
 
+export const isTenantGroup = (group: Pick<Group, "is_tenant_group">) => {
+  return !!group.is_tenant_group;
+};
+
 export const isExternalUser = (user?: Pick<User, "tenant_id">) => {
   return user?.tenant_id !== null;
 };

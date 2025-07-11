@@ -2,7 +2,6 @@ import { Fragment } from "react";
 import { IndexRedirect, IndexRoute } from "react-router";
 import { t } from "ttag";
 
-import { PeopleNavItem } from "metabase/admin/people/components/PeopleNav";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
@@ -15,12 +14,12 @@ import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import { Divider } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import * as Urls from "metabase-enterprise/urls";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
+import { ExternalGroupDetailApp } from "./components/ExternalGroupDetailApp/ExternalGroupDetailApp";
+import { ExternalGroupsListingApp } from "./components/ExternalGroupsListingApp/ExternalGroupsListingApp";
 import { ExternalPeopleListingApp } from "./components/ExternalPeopleListingApp/ExternalPeopleListingApp";
 import { ReactivateExternalUserButton } from "./components/ReactivateExternalUserButton";
 import { TenantDisplayName } from "./components/TenantDisplayName";
@@ -33,6 +32,7 @@ import {
   isExternalUser,
   isExternalUsersGroup,
   isTenantCollection,
+  isTenantGroup,
 } from "./utils/utils";
 
 if (hasPremiumFeature("tenants")) {
@@ -46,6 +46,10 @@ if (hasPremiumFeature("tenants")) {
         <IndexRoute component={TenantsListingApp} />
         <Route path="" component={TenantsListingApp}>
           <ModalRoute path="new" modal={NewTenantModal} noWrap />
+        </Route>
+        <Route path="groups">
+          <IndexRoute component={ExternalGroupsListingApp} />
+          <Route path=":groupId" component={ExternalGroupDetailApp} />
         </Route>
         <Route path="people" component={ExternalPeopleListingApp}>
           <ModalRoute
@@ -86,30 +90,13 @@ if (hasPremiumFeature("tenants")) {
     </>
   );
 
-  PLUGIN_TENANTS.PeopleNav = (
-    <>
-      <Divider my="sm" />
-      <PeopleNavItem
-        path={Urls.viewTenants()}
-        data-testid="nav-item"
-        label={t`Tenants`}
-        icon="globe"
-      />
-      <PeopleNavItem
-        path={Urls.viewTenantUsers()}
-        data-testid="nav-item"
-        label={t`External Users`}
-        icon="group"
-      />
-    </>
-  );
-
   PLUGIN_TENANTS.EditUserStrategySettingsButton =
     EditUserStrategySettingsButton;
 
   PLUGIN_TENANTS.FormTenantWidget = FormTenantWidget;
   PLUGIN_TENANTS.TenantDisplayName = TenantDisplayName;
   PLUGIN_TENANTS.isExternalUsersGroup = isExternalUsersGroup;
+  PLUGIN_TENANTS.isTenantGroup = isTenantGroup;
   PLUGIN_TENANTS.isExternalUser = isExternalUser;
   PLUGIN_TENANTS.isTenantCollection = isTenantCollection;
   PLUGIN_TENANTS.ReactivateExternalUserButton = ReactivateExternalUserButton;

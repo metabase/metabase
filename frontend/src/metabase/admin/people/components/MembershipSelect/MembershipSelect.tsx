@@ -9,7 +9,7 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
-import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
+import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { Box, Flex, Icon, Popover } from "metabase/ui";
 import type { GroupInfo, Member } from "metabase-types/api";
 
@@ -18,11 +18,16 @@ import { GroupSummary } from "../GroupSummary";
 import S from "./MembershipSelect.module.css";
 
 const getGroupSections = (groups: GroupInfo[]) => {
-  const defaultGroup = groups.find(isDefaultGroup);
+  const defaultGroup = groups.find(
+    (g) => isDefaultGroup(g) || PLUGIN_TENANTS.isExternalUsersGroup(g),
+  );
   const adminGroup = groups.find(isAdminGroup);
   const pinnedGroups = [defaultGroup, adminGroup].filter(isNotNull);
   const regularGroups = groups.filter(
-    (group) => !isAdminGroup(group) && !isDefaultGroup(group),
+    (group) =>
+      !isAdminGroup(group) &&
+      !isDefaultGroup(group) &&
+      !PLUGIN_TENANTS.isExternalUsersGroup(group),
   );
 
   if (pinnedGroups.length > 0) {
@@ -119,12 +124,14 @@ export const MembershipSelect = ({
                 {section.groups.map((group) => {
                   const isDisabled =
                     (isAdminGroup(group) && isCurrentUser) ||
-                    isDefaultGroup(group);
+                    isDefaultGroup(group) ||
+                    PLUGIN_TENANTS.isExternalUsersGroup(group);
                   const isMember = memberships.has(group.id);
                   const canEditMembershipType =
                     isMember &&
                     !isUserAdmin &&
                     !isDisabled &&
+                    !PLUGIN_TENANTS.isTenantGroup(group) &&
                     !isAdminGroup(group);
 
                   return (
