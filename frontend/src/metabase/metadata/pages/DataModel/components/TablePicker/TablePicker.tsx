@@ -98,7 +98,7 @@ function Tree({
   }, [databaseId, schemaName, tree, toggle, isExpanded, onChange]);
 
   if (isEmpty) {
-    return <EmptyState title={t`No data to show.`} />;
+    return <EmptyState title={t`No data to show`} />;
   }
 
   return (

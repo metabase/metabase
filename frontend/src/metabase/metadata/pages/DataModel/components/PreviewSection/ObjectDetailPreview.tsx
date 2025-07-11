@@ -41,10 +41,6 @@ const ObjectDetailPreviewBase = ({
     tableId,
   });
 
-  if (error) {
-    return <Error message={error} />;
-  }
-
   const data = rawSeries?.[0]?.data;
   const zoomedRow = data?.rows[0];
 
@@ -58,10 +54,14 @@ const ObjectDetailPreviewBase = ({
     );
   }
 
+  if (error) {
+    return <Error message={error} />;
+  }
+
   if (!data || !zoomedRow) {
     return (
       <Stack h="100%" justify="center" p="md">
-        <EmptyState title={t`No data to show.`} />
+        <EmptyState title={t`No data to show`} />
       </Stack>
     );
   }
