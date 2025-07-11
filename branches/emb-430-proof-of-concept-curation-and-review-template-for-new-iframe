@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "master",
-    "hash": "ad608ccc914809305c68b6a0bd00bee3ea30da59"
+    "hash": "1783247861e65973eaae9342221cd7941c07c17c"
   },
   "upstream": {
     "branch": "emb-430-proof-of-concept-curation-and-review-template-for-new-iframe"
