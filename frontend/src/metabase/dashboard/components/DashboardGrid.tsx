@@ -30,7 +30,7 @@ import { connect } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { addUndo } from "metabase/redux/undo";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, type FlexProps } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
@@ -163,13 +163,13 @@ export type DashboardGridProps = {
   autoScrollToDashcardId?: DashCardId;
   reportAutoScrolledToDashcard?: () => void;
   handleSetEditing?: (dashboard: Dashboard | null) => void;
-};
+} & Pick<FlexProps, "className" | "style" | "p">;
 
 type DashboardGridInnerProps = Required<DashboardGridProps> &
   DashboardGridReduxProps &
   ExplicitSizeProps & {
     forwardedRef?: ForwardedRef<HTMLDivElement>;
-  };
+  } & Pick<FlexProps, "className" | "style" | "p">;
 
 class DashboardGridInner extends Component<
   DashboardGridInnerProps,
@@ -692,19 +692,25 @@ class DashboardGridInner extends Component<
   }
 
   render() {
-    const { dashboard, width, forwardedRef } = this.props;
+    const { dashboard, width, forwardedRef, className, style, p } = this.props;
     return (
       <Flex
         align="center"
         justify="center"
-        className={cx(S.DashboardGridContainer, {
-          [S.isFixedWidth]: dashboard?.width === "fixed",
-        })}
+        className={cx(
+          S.DashboardGridContainer,
+          {
+            [S.isFixedWidth]: dashboard?.width === "fixed",
+          },
+          className,
+        )}
         ref={forwardedRef}
         data-testid="dashboard-grid"
         style={{
           "--dashboard-fixed-width": FIXED_WIDTH,
+          ...style,
         }}
+        p={p}
       >
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderReplaceCardModal()}

@@ -1,8 +1,7 @@
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -12,38 +11,27 @@ import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
-import type {
-  DashboardCard,
-  Dashboard as IDashboard,
-} from "metabase-types/api";
+import type { DashboardCard } from "metabase-types/api";
 
-import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
-import { DashboardGridConnected } from "../DashboardGrid";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "../../constants";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
 
 import S from "./Dashboard.module.css";
-import {
-  DashboardEmptyState,
-  DashboardEmptyStateWithoutAddPrompt,
-} from "./DashboardEmptyState/DashboardEmptyState";
+import { Grid } from "./components/Grid";
 
 function Dashboard() {
   const {
-    autoScrollToDashcardId,
     dashboard,
     isEditing,
     isFullscreen,
     isSharing,
     onRefreshPeriodChange,
-    reportAutoScrolledToDashcard,
     selectedTabId,
     setSharing,
     parameterQueryParams = {},
-    downloadsEnabled,
     shouldRenderAsNightMode,
     setArchivedDashboard,
     moveDashboardToCollection,
@@ -57,9 +45,6 @@ function Dashboard() {
     refreshPeriod,
     setRefreshElapsedHook,
 
-    isEditingParameter,
-    slowCards,
-    navigateToNewCardFromDashboard,
     removeParameter,
     addCardToDashboard,
     clickBehaviorSidebarDashcard,
@@ -78,8 +63,6 @@ function Dashboard() {
     setParameterTemporalUnits,
     sidebar,
     closeSidebar,
-    toggleSidebar,
-    setEditingDashboard,
   } = useDashboardContext();
 
   const canWrite = Boolean(dashboard?.can_write);
@@ -104,69 +87,6 @@ function Dashboard() {
 
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
-
-  const { data: databasesResponse } = useListDatabasesQuery();
-  const databases = useMemo(
-    () => databasesResponse?.data ?? [],
-    [databasesResponse],
-  );
-  const hasDataAccess = useMemo(() => getHasDataAccess(databases), [databases]);
-  const hasNativeWrite = useMemo(
-    () => getHasNativeWrite(databases),
-    [databases],
-  );
-  const canCreateQuestions = hasDataAccess || hasNativeWrite;
-
-  const handleSetEditing = useCallback(
-    (dashboard: IDashboard | null) => {
-      if (!isEditing) {
-        onRefreshPeriodChange(null);
-        setEditingDashboard(dashboard);
-      }
-    },
-    [isEditing, onRefreshPeriodChange, setEditingDashboard],
-  );
-
-  const handleAddQuestion = useCallback(() => {
-    handleSetEditing(dashboard);
-    toggleSidebar(SIDEBAR_NAME.addQuestion);
-  }, [handleSetEditing, dashboard, toggleSidebar]);
-
-  const renderEmptyStates = () => {
-    if (!dashboardHasCards) {
-      return canWrite ? (
-        <DashboardEmptyState
-          canCreateQuestions={canCreateQuestions}
-          addQuestion={handleAddQuestion}
-          isDashboardEmpty={true}
-          isEditing={isEditing}
-          isNightMode={shouldRenderAsNightMode}
-        />
-      ) : (
-        <DashboardEmptyStateWithoutAddPrompt
-          isDashboardEmpty={true}
-          isNightMode={shouldRenderAsNightMode}
-        />
-      );
-    }
-
-    if (dashboardHasCards && !tabHasCards) {
-      return canWrite ? (
-        <DashboardEmptyState
-          canCreateQuestions={canCreateQuestions}
-          addQuestion={handleAddQuestion}
-          isDashboardEmpty={false}
-          isEditing={isEditing}
-          isNightMode={shouldRenderAsNightMode}
-        />
-      ) : (
-        <DashboardEmptyStateWithoutAddPrompt
-          isDashboardEmpty={false}
-          isNightMode={shouldRenderAsNightMode}
-        />
-      );
-    }
-  };
 
   if (!dashboard) {
     return (
@@ -263,30 +183,9 @@ function Dashboard() {
           data-testid="dashboard-parameters-and-cards"
         >
           <DashboardParameterPanel />
-          {isEmpty ? (
-            renderEmptyStates()
-          ) : (
-            <FullWidthContainer
-              className={S.CardsContainer}
-              data-element-id="dashboard-cards-container"
-            >
-              <DashboardGridConnected
-                clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
-                isNightMode={shouldRenderAsNightMode}
-                isFullscreen={isFullscreen}
-                isEditingParameter={isEditingParameter}
-                isEditing={isEditing}
-                dashboard={dashboard}
-                slowCards={slowCards}
-                navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-                selectedTabId={selectedTabId}
-                downloadsEnabled={downloadsEnabled}
-                autoScrollToDashcardId={autoScrollToDashcardId}
-                reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
-                handleSetEditing={handleSetEditing}
-              />
-            </FullWidthContainer>
-          )}
+          <FullWidthContainer data-element-id="dashboard-cards-container">
+            <Grid />
+          </FullWidthContainer>
         </Box>
 
         <DashboardSidebars

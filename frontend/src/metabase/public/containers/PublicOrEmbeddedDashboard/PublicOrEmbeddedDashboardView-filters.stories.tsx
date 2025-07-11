@@ -1,5 +1,6 @@
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
+import { HttpResponse, http } from "msw";
 
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
@@ -24,6 +25,7 @@ import {
   createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDatabase,
   createMockDataset,
   createMockDatasetData,
   createMockParameter,
@@ -61,6 +63,13 @@ export default {
   ],
   parameters: {
     layout: "fullscreen",
+    msw: {
+      handlers: [
+        http.get("*/api/database", () =>
+          HttpResponse.json(createMockDatabase()),
+        ),
+      ],
+    },
   },
   argTypes: {
     parameterType: {
@@ -223,7 +232,9 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<MockDashboardContextProps> = (args) => {
+const Template: StoryFn<MockDashboardContextProps> = (
+  args: MockDashboardContextProps,
+) => {
   // @ts-expect-error -- custom prop to support non JSON-serializable value as args
   const parameterType: ParameterType = args.parameterType;
   const dashboard = args.dashboard;

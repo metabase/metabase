@@ -1,3 +1,4 @@
+import { assoc } from "icepick";
 import {
   type PropsWithChildren,
   createContext,
@@ -14,8 +15,9 @@ import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { fetchEntityId } from "metabase/lib/entity-id/fetch-entity-id";
 import { useDispatch } from "metabase/lib/redux";
 import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
-import type { Dashboard, DashboardId } from "metabase-types/api";
+import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
 
+import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
 import {
   useDashboardFullscreen,
@@ -47,9 +49,12 @@ export type DashboardContextOwnProps = {
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
   onLoadWithoutCards?: (dashboard: Dashboard) => void;
+  onAddQuestion?: (dashboard: Dashboard | null) => void;
   navigateToNewCardFromDashboard:
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
     | null;
+  dashcardMenu?: DashboardCardMenu | null;
+  isDashcardVisible?: (dc: DashboardCard) => boolean;
 };
 
 export type DashboardContextOwnResult = {
@@ -66,7 +71,7 @@ export type DashboardContextProps = DashboardContextOwnProps &
 
 type ContextProps = DashboardContextProps & ReduxProps;
 
-export type ContextReturned = DashboardContextOwnResult &
+export type DashboardContextReturned = DashboardContextOwnResult &
   Omit<DashboardContextOwnProps, "dashboardId"> &
   ReduxProps &
   Required<DashboardControls> &
@@ -76,9 +81,9 @@ export type ContextReturned = DashboardContextOwnResult &
   } & DashboardRefreshPeriodControls &
   EmbedThemeControls;
 
-export const DashboardContext = createContext<ContextReturned | undefined>(
-  undefined,
-);
+export const DashboardContext = createContext<
+  DashboardContextReturned | undefined
+>(undefined);
 
 const DashboardContextProviderInner = ({
   dashboardId: dashboardIdProp,
@@ -86,6 +91,8 @@ const DashboardContextProviderInner = ({
   onLoad,
   onLoadWithoutCards,
   onError,
+  dashcardMenu,
+  isDashcardVisible,
 
   children,
 
@@ -318,15 +325,30 @@ const DashboardContextProviderInner = ({
   const hideParameters = !isEditing
     ? [hide_parameters, hiddenParameterSlugs].filter(Boolean).join(",")
     : null;
+  // For public/static dashboards, we want to make sure that we don't show action cards
+  // so we have a filter function here to remove those. We can/will also add this
+  // functionality in the SDK in the future, which is why it's a generic prop
+  const dashboardWithFilteredCards = useMemo(() => {
+    if (dashboard && isDashcardVisible) {
+      return assoc(
+        dashboard,
+        "dashcards",
+        dashboard.dashcards.filter(isDashcardVisible),
+      );
+    }
+    return dashboard;
+  }, [dashboard, isDashcardVisible]);
 
   return (
     <DashboardContext.Provider
       value={{
         dashboardIdProp: dashboardIdProp,
         dashboardId,
+        dashboard: dashboardWithFilteredCards,
         parameterQueryParams,
         onLoad,
         onError,
+        dashcardMenu,
 
         navigateToNewCardFromDashboard,
         isLoading,
@@ -358,7 +380,6 @@ const DashboardContextProviderInner = ({
         withFooter,
 
         // redux selectors
-        dashboard,
         selectedTabId,
         isEditing,
         isNavigatingBackToDashboard,
