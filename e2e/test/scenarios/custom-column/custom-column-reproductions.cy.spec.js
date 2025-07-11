@@ -2279,3 +2279,24 @@ describe("Issue 26512", () => {
     });
   });
 });
+
+describe("Issue 38498", { tags: "@external" }, () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("Orders").click();
+    });
+  });
+
+  it("should not be possible to use convertTimezone with an invalid timezone (metabse#38498)", () => {
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type(
+      'convertTimezone([Created At], "Asia/Ho_Chi_Mihn", "UTC")',
+    );
+    H.popover().findByText("Types are incompatible.").should("be.visible");
+  });
+});
