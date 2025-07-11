@@ -782,6 +782,12 @@ export const applyVisualizationSettingsDataTransformations = (
       }),
     },
     {
+      condition: isCategoryAxis(xAxisModel),
+      fn: applyXAxisTransformations((value) =>
+        typeof value === "object" ? JSON.stringify(value) : value,
+      ),
+    },
+    {
       condition: isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel),
       fn: applyXAxisTransformations((value) => {
         return isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel)

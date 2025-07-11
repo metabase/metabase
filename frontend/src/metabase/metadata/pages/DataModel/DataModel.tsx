@@ -5,7 +5,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
-import { useGetTableQueryMetadataQuery } from "metabase/api";
+import {
+  useGetTableQueryMetadataQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -15,6 +18,7 @@ import S from "./DataModel.module.css";
 import {
   FieldSection,
   FieldValuesModal,
+  NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
   RouterTablePicker,
@@ -34,6 +38,9 @@ interface Props {
 
 export const DataModel = ({ children, location, params }: Props) => {
   const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
+  const { data: databasesData } = useListDatabasesQuery({
+    include_editable_data_model: true,
+  });
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
   const [isPreviewOpen, { close: closePreview, open: openPreview }] =
     useDisclosure();
@@ -78,6 +85,10 @@ export const DataModel = ({ children, location, params }: Props) => {
       capture: true,
     },
   );
+
+  if (databasesData?.data?.length === 0) {
+    return <NoDatabasesEmptyState />;
+  }
 
   return (
     <Flex bg="accent-gray-light" h="100%">
