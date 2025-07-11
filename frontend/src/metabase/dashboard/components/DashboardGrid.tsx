@@ -151,7 +151,6 @@ export type DashboardGridProps = {
   isXray?: boolean;
   isFullscreen?: boolean;
   isNightMode?: boolean;
-  withCardTitle?: boolean;
   clickBehaviorSidebarDashcard: DashboardCard | null;
   getClickActionMode?: ClickActionModeGetter;
   // public dashboard passes it explicitly
@@ -529,7 +528,6 @@ class DashboardGridInner extends Component<
         isMobile={isMobile}
         isPublicOrEmbedded={this.props.isPublicOrEmbedded}
         isXray={this.props.isXray}
-        withTitle={this.props.withCardTitle}
         onRemove={this.onDashCardRemove}
         onReplaceCard={this.onReplaceCard}
         onUpdateVisualizationSettings={
@@ -743,7 +741,6 @@ const DashboardGrid = forwardRef<HTMLDivElement, DashboardGridInnerProps>(
     {
       isEditing = false,
       isEditingParameter = false,
-      withCardTitle = true,
       isNightMode = false,
       width = 0,
       ...restProps
@@ -755,7 +752,6 @@ const DashboardGrid = forwardRef<HTMLDivElement, DashboardGridInnerProps>(
         width={width}
         isEditing={isEditing}
         isEditingParameter={isEditingParameter}
-        withCardTitle={withCardTitle}
         isNightMode={isNightMode}
         {...restProps}
         forwardedRef={ref}

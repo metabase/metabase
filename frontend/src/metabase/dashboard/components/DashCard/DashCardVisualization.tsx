@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { getDashcardData } from "metabase/dashboard/selectors";
 import {
@@ -94,7 +95,6 @@ interface DashCardVisualizationProps {
   /** If public sharing or static/public embed */
   isPublicOrEmbedded?: boolean;
   isXray?: boolean;
-  withTitle?: boolean;
 
   error?: { message?: string; icon?: IconName };
   headerIcon?: IconProps;
@@ -141,7 +141,6 @@ export function DashCardVisualization({
   isFullscreen = false,
   isMobile = false,
   isEditingParameter,
-  withTitle = true,
   onChangeCardAndRun,
   onTogglePreviewing,
   showClickBehaviorSidebar,
@@ -150,6 +149,8 @@ export function DashCardVisualization({
   downloadsEnabled,
   onEditVisualization,
 }: DashCardVisualizationProps) {
+  const { cardTitled } = useDashboardContext();
+
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
   const metadata = useSelector(getMetadata);
@@ -483,7 +484,7 @@ export function DashCardVisualization({
       expectedDuration={expectedDuration}
       error={error?.message}
       errorIcon={error?.icon}
-      showTitle={withTitle}
+      showTitle={cardTitled}
       canToggleSeriesVisibility={!isEditing}
       isAction={isAction}
       isDashboard

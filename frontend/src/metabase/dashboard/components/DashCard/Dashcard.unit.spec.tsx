@@ -10,6 +10,7 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
 import {
@@ -82,29 +83,31 @@ function setup({
   const onReplaceCard = jest.fn();
 
   renderWithProviders(
-    <DashCard
-      dashboard={dashboard}
-      dashcard={dashcard}
-      gridItemWidth={4}
-      totalNumGridCols={24}
-      slowCards={{}}
-      isEditing={false}
-      isEditingParameter={false}
-      {...props}
-      onReplaceCard={onReplaceCard}
-      isTrashedOnRemove={false}
-      onRemove={jest.fn()}
-      markNewCardSeen={jest.fn()}
-      navigateToNewCardFromDashboard={jest.fn()}
-      onReplaceAllDashCardVisualizationSettings={jest.fn()}
-      onUpdateVisualizationSettings={jest.fn()}
-      showClickBehaviorSidebar={jest.fn()}
-      onChangeLocation={jest.fn()}
-      downloadsEnabled={{ results: true }}
-      autoScroll={false}
-      reportAutoScrolledToDashcard={jest.fn()}
-      onEditVisualization={jest.fn()}
-    />,
+    <MockDashboardContext dashboardId={dashboard.id}>
+      <DashCard
+        dashboard={dashboard}
+        dashcard={dashcard}
+        gridItemWidth={4}
+        totalNumGridCols={24}
+        slowCards={{}}
+        isEditing={false}
+        isEditingParameter={false}
+        {...props}
+        onReplaceCard={onReplaceCard}
+        isTrashedOnRemove={false}
+        onRemove={jest.fn()}
+        markNewCardSeen={jest.fn()}
+        navigateToNewCardFromDashboard={jest.fn()}
+        onReplaceAllDashCardVisualizationSettings={jest.fn()}
+        onUpdateVisualizationSettings={jest.fn()}
+        showClickBehaviorSidebar={jest.fn()}
+        onChangeLocation={jest.fn()}
+        downloadsEnabled={{ results: true }}
+        autoScroll={false}
+        reportAutoScrolledToDashcard={jest.fn()}
+        onEditVisualization={jest.fn()}
+      />
+    </MockDashboardContext>,
     {
       storeInitialState: {
         dashboard: createMockDashboardState({
