@@ -8,6 +8,13 @@
 
 (set! *warn-on-reflection* true)
 
+(defn strip-nils
+  "Remove any keys corresponding to nil values from the given map."
+  [m]
+  (if (some (comp nil? val) m)
+    (with-meta (into {} (remove nil-val?) m) (meta m))
+    m))
+
 ;; Default values that can be omitted from compact representation
 (def column-defaults
   {:is_nullable              false
@@ -369,7 +376,7 @@
 (defn expand-schema [compact-schema]
   (reduce-kv (fn [acc table-key table-def]
                (let [table-name       (name table-key)
-                     expanded-columns (map expand-column (:columns table-def))
+                     expanded-columns (map (comp strip-nils expand-column) (:columns table-def))
                      ;; Add implicit indexes for pk and fk columns
                      pk-indexes       (map (fn [col]
                                              (when (= col :id)
@@ -386,13 +393,13 @@
                                                 :is_primary false}))
                                            (:columns table-def))
                      explicit-indexes (map #(expand-index % table-name) (:indexes table-def))
-                     all-indexes      (concat (remove nil? pk-indexes)
-                                              (remove nil? fk-indexes)
-                                              explicit-indexes)]
+                     all-indexes      (map strip-nils (concat (remove nil? pk-indexes)
+                                                              (remove nil? fk-indexes)
+                                                              explicit-indexes))]
                  (assoc acc table-key
                         {:columns expanded-columns
                          :indexes all-indexes})))
-             {}
+             (sorted-map)
              compact-schema))
 
 (defn output [& args]
@@ -435,4 +442,33 @@
                                       :created_at
                                       :updated_at],
                             :indexes [{:index_name "idx_data_app_release_app_id_retracted_id",
-                                       :columns    ["app_id" "retracted" ["id" :desc]]}]}}))
+                                       :columns    ["app_id" "retracted" ["id" :desc]]}]}})
+
+  (= (expand-schema (output "data_app"))
+     '{:data_app {:columns ({:column_name "id", :type "int", :is_nullable false, :numeric_precision 32, :numeric_scale 0}
+                            {:is_nullable false, :datetime_precision 6, :column_name "name", :type "text"}
+                            {:is_nullable true, :datetime_precision 6, :column_name "description", :type "text"}
+                            {:is_nullable false, :datetime_precision 6, :column_name "slug", :type "varchar"}
+                            {:type              "fk",
+                             :is_nullable       false,
+                             :numeric_precision 32,
+                             :numeric_scale     0,
+                             :column_name       "creator_id"}
+                            {:is_nullable false, :datetime_precision 6, :column_name "status", :type "varchar(32)"}
+                            {:is_nullable true, :datetime_precision 6, :column_name "entity_id", :type "character"}
+                            {:type               "timestamptz",
+                             :default            "now()",
+                             :is_nullable        false,
+                             :datetime_precision 6,
+                             :column_name        "created_at"}
+                            {:type               "timestamptz",
+                             :default            "now()",
+                             :is_nullable        false,
+                             :datetime_precision 6,
+                             :column_name        "updated_at"}),
+                  :indexes ({:index_name "data_app_pkey", :columns ["id"], :is_unique true, :is_primary true}
+                            {:index_name "idx_data_app_creator_id",
+                             :columns    ["creator_id"],
+                             :is_unique  false,
+                             :is_primary false}
+                            {:is_unique true, :is_primary false, :index_name "data_app_slug_key", :columns ["slug"]})}}))
