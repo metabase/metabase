@@ -227,12 +227,12 @@ export const DataModel = ({ children, location, params }: Props) => {
                 <EmptyState
                   illustrationElement={<img src={EmptyDashboardBot} />}
                   title={
-                    tableId
+                    table
                       ? t`Edit the table and fields`
                       : t`Start by selecting data to model`
                   }
                   message={
-                    tableId
+                    table
                       ? t`Select a field to edit it. Then change the display name, semantic type or filtering behavior.`
                       : t`Browse your databases to find the table you’d like to edit.`
                   }

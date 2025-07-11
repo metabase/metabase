@@ -91,7 +91,7 @@ describe("scenarios > admin > datamodel", () => {
         "eq",
         `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/12345`,
       );
-      verifyFieldSectionEmptyState();
+      verifyTableSectionEmptyState();
     });
 
     it("should show 404 if field does not exist", () => {
