@@ -8,7 +8,6 @@
    [metabase.channel.core :as channel]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.body :as body]
-   [metabase.channel.render.core :as channel.render]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
@@ -51,10 +50,10 @@
     {:type "section"
      :text
      {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}]
-    include-image?
-    (conj {:type "image"
-           :slack_file {:id "Test card.png"}
-           :alt_text "Test card"})))
+   include-image?
+   (conj {:type "image"
+          :slack_file {:id "Test card.png"}
+          :alt_text "Test card"})))
 
 (defn do-with-pulse-for-card
   "Creates a Pulse and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if specified), then
