@@ -1,0 +1,86 @@
+<script src="http://localhost:3000/app/embed.js"></script>
+
+<metabase-config
+  instance-url="http://localhost:3000"
+  use-existing-user-session="true"
+></metabase-config>
+
+<!-- Simple playground -->
+<div id="playground" style="margin-top: 2rem; font-family: sans-serif">
+  <h2 style="margin: 0 0 0.5rem 0">Playground</h2>
+  <label style="display: block; margin-bottom: 0.5rem">
+    Dashboard&nbsp;ID:
+    <input
+      type="number"
+      id="dashboardIdInput"
+      value="1"
+      style="width: 6rem; margin-left: 0.5rem"
+    />
+  </label>
+
+  <button id="toggleTitleBtn" style="margin-right: 0.5rem">
+    Toggle withTitle
+  </button>
+  <button id="toggleDownloadsBtn">Toggle withDownloads</button>
+
+  <label style="display: block; margin-top: 1rem">
+    Theme&nbsp;JSON:
+    <textarea
+      id="themeInput"
+      rows="6"
+      cols="50"
+      style="display: block; margin-top: 0.25rem"
+    >
+{ "colors": { "brand": "red" } }</textarea
+    >
+  </label>
+  <button id="updateThemeBtn" style="margin-top: 0.5rem">Update Theme</button>
+</div>
+
+<metabase-dashboard
+  dashboard-id="1"
+  id="embed"
+  theme='{"colors": {"brand": "red"}}'
+  with-title="true"
+  with-downloads="true"
+></metabase-dashboard>
+
+<script>
+  (function () {
+    const dashboard = document.getElementById("embed");
+    const dashboardIdInput = document.getElementById("dashboardIdInput");
+    const themeInput = document.getElementById("themeInput");
+    const toggleTitleBtn = document.getElementById("toggleTitleBtn");
+    const toggleDownloadsBtn = document.getElementById("toggleDownloadsBtn");
+    const updateThemeBtn = document.getElementById("updateThemeBtn");
+
+    // Update dashboard-id attribute when the value changes
+    dashboardIdInput.addEventListener("input", () => {
+      dashboard.setAttribute("dashboard-id", dashboardIdInput.value);
+    });
+
+    // Update theme JSON with basic validation on button click
+    updateThemeBtn.addEventListener("click", () => {
+      try {
+        JSON.parse(themeInput.value);
+        dashboard.setAttribute("theme", themeInput.value);
+        themeInput.style.borderColor = "";
+      } catch {
+        // Highlight textarea border red on invalid JSON
+        themeInput.style.borderColor = "red";
+      }
+    });
+
+    // Toggle withTitle attribute
+    toggleTitleBtn.addEventListener("click", () => {
+      const current = dashboard.getAttribute("with-title") === "true";
+      dashboard.setAttribute("with-title", (!current).toString());
+    });
+
+    // Toggle withDownloads attribute
+    toggleDownloadsBtn.addEventListener("click", () => {
+      const current = dashboard.getAttribute("with-downloads") === "true";
+      dashboard.setAttribute("with-downloads", (!current).toString());
+    });
+  })();
+</script>
