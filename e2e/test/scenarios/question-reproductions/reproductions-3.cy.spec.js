@@ -3047,3 +3047,99 @@ describe("Issue 42942", () => {
     H.queryBuilderFiltersPanel().findByText("Total is less than 90.75");
   });
 });
+
+describe("Issue 42817", () => {
+  const NATIVE_QUESTION_NAME = "NativeOrders";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion({
+      name: NATIVE_QUESTION_NAME,
+      database: SAMPLE_DB_ID,
+      native: {
+        query: "SELECT ID, CREATED_AT FROM orders",
+      },
+    }).then(({ body: question }) => {
+      H.visitQuestionAdhoc({
+        display: "line",
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                fields: "all",
+                alias: NATIVE_QUESTION_NAME,
+                "source-table": `card__${question.id}`,
+                strategy: "left-join",
+                condition: [
+                  "=",
+                  [
+                    "field",
+                    ORDERS.ID,
+                    {
+                      "base-type": "type/BigInteger",
+                    },
+                  ],
+                  [
+                    "field",
+                    "ID",
+                    {
+                      "base-type": "type/BigInteger",
+                      "join-alias": NATIVE_QUESTION_NAME,
+                    },
+                  ],
+                ],
+              },
+            ],
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                "CREATED_AT",
+
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "day",
+                  "join-alias": "NativeOrders",
+                },
+              ],
+            ],
+            filter: [
+              "between",
+              [
+                "field",
+                "CREATED_AT",
+                {
+                  "base-type": "type/Date",
+                  "inherited-temporal-unit": "day",
+                  "temporal-unit": "day",
+                  "join-alias": "NativeOrders",
+                },
+              ],
+              "2023-06-23T00:00Z",
+              "2023-07-03T00:00Z",
+            ],
+          },
+        },
+      });
+    });
+  });
+
+  it("should be possible to drill down into a question with datetime buckets and a native join (metabase#42817)", () => {
+    cy.findByTestId("visualization-root")
+      .get("path[fill='#fff']")
+      .first()
+      .click();
+
+    H.popover().findByText("See this day by hour").click();
+
+    cy.findByTestId("query-visualization-root")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+
+    cy.findByTestId("visualization-root").should("be.visible");
+  });
+});
