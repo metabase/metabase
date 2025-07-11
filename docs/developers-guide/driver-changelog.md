@@ -20,7 +20,8 @@ title: Driver interface changelog
   replace existing keys like `:alias`, `:join-alias`, or `:name`; make sure you use `driver-api/qp.add.alias`,
   `driver-api/qp.add.source-table`, and `driver-api/qp.add.source-alias` respectively.
 
-- Added the driver multi-method `driver/extra-info` for drivers to provide extra info such as db routing configuration details.
+- Added the driver multi-method `driver/extra-info` for drivers to provide info such as db routing configuration details
+  from their `metabase-plugin.yaml` file.
 
 ## Metabase 0.55.0
 

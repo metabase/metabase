@@ -16,7 +16,6 @@ import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
   Button,
@@ -45,12 +44,12 @@ export const DatabaseRoutingSection = ({
   const dispatch = useDispatch();
 
   const isAdmin = useSelector(getUserIsAdmin);
-  const applicationName = useSelector(getApplicationName);
   const userAttribute = database.router_user_attribute ?? undefined;
   const dbSupportsRouting = database.features?.includes("database-routing");
   const dbRoutingInfo =
     database.db_routing_info ??
-    t`When someone views a question using data from this database, ${applicationName} will send the queries to the destination database set by the person's user attribute. Each destination database must have identical schemas.`;
+    // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+    t`When someone views a question using data from this database, Metabase will send the queries to the destination database set by the person's user attribute. Each destination database must have identical schemas.`;
   const shouldHideSection =
     database.is_attached_dwh || database.is_sample || !dbSupportsRouting;
 

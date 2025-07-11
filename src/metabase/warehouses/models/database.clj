@@ -563,7 +563,7 @@
     (assoc database :router_user_attribute nil)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Database :router_user_attribute]
-  "Batch hydrate `Tables` for the given `Database`."
+  "Batch hydrate `router_user_attribute` for the given `Database`s."
   [_model k databases]
   (hydrate-router-user-attribute k databases))
 
@@ -575,6 +575,6 @@
     (assoc database :db_routing_info nil)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Database :db_routing_info]
-  "Batch hydrate `db_routing_info` for the given `Database`."
+  "Batch hydrate `db_routing_info` for the given `Database`s."
   [_model k databases]
   (hydrate-db-routing-info k databases))
