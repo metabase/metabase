@@ -11,10 +11,10 @@ import type { ChangeOptions, TreePath } from "./types";
 import { flatten, useExpandedState, useSearch, useTableLoader } from "./utils";
 
 export function TablePicker({
-  value,
+  path,
   onChange,
 }: {
-  value: TreePath;
+  path: TreePath;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -32,24 +32,24 @@ export function TablePicker({
       </Box>
 
       {deferredQuery === "" ? (
-        <Tree value={value} onChange={onChange} />
+        <Tree path={path} onChange={onChange} />
       ) : (
-        <Search query={deferredQuery} path={value} onChange={onChange} />
+        <Search query={deferredQuery} path={path} onChange={onChange} />
       )}
     </Stack>
   );
 }
 
 function Tree({
-  value,
+  path,
   onChange,
 }: {
-  value: TreePath;
+  path: TreePath;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
 }) {
-  const { databaseId, schemaName } = value;
-  const { isExpanded, toggle } = useExpandedState(value);
-  const { tree } = useTableLoader(value);
+  const { databaseId, schemaName } = path;
+  const { isExpanded, toggle } = useExpandedState(path);
+  const { tree } = useTableLoader(path);
 
   const items = flatten(tree, {
     isExpanded,
@@ -103,12 +103,7 @@ function Tree({
   }
 
   return (
-    <Results
-      items={items}
-      toggle={toggle}
-      path={value}
-      onItemClick={onChange}
-    />
+    <Results items={items} toggle={toggle} path={path} onItemClick={onChange} />
   );
 }
 

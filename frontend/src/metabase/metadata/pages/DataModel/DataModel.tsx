@@ -18,6 +18,7 @@ import S from "./DataModel.module.css";
 import {
   FieldSection,
   FieldValuesModal,
+  NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
   RouterTablePicker,
@@ -87,6 +88,10 @@ export const DataModel = ({ children, location, params }: Props) => {
       capture: true,
     },
   );
+
+  if (databasesData?.data?.length === 0) {
+    return <NoDatabasesEmptyState />;
+  }
 
   return (
     <Flex bg="accent-gray-light" data-testid="data-model" h="100%">
