@@ -23,7 +23,7 @@
    :dataset_query_type mi/transform-keyword
    :status mi/transform-keyword})
 
-;; TODO: This is temporary
+;; TODO: This is temporary, mysql app db compatible
 (defn top-schema
   [database-id]
   (-> (t2/query ["select count(id) c, `schema` s from metabase_table where db_id = ? group by `schema` order by count(id) desc, `schema` limit 1" database-id])
@@ -71,32 +71,35 @@
   [database schema name]
   ;; Deliberately not checking :model/TransformView. It is guaranteed the name is unique across that table
   ;; as the table ids are used to ensure uniqueness.
-  (when-some [table-ids (seq (t2/select :model/Table
-                                        :database_id (:id database)
-                                        :schema schema
-                                        :name name))]
+  (when-some [table-ids (not-empty (t2/select-fn-vec :id :model/Table
+                                                     :active true
+                                                     :db_id (:id database)
+                                                     :schema schema
+                                                     :name name))]
+    ;; TODO: exceptions thrown from here should be handled on API level, decorated with appropriate codes.
     (throw (ex-info (i18n/tru "View name in use. `{0}<numbers>+` names are reserved." view-name-prefix)
                     {:status-code 400
-                     :body {:database_id (:id database)
-                            :database_name (:name database)
-                            :schema schema
-                            :name name
-                            :same_name_table_ids table-ids}}))))
+                     :database-id (:id database)
+                     :database-name (:name database)
+                     :schema schema
+                     :name name
+                     :same-name-table-ids table-ids}))))
 
 (defn- assert-unique-display-name!
   [database schema display-name]
   ;; Deliberately not checking TransformView -- TODO: remove view_display_name from that table
-  (when-some [table-ids (seq (t2/select-fn-vec :id :model/Table
-                                               :database_id (:id database)
-                                               :schema schema
-                                               :display_name display-name))]
+  (when-some [table-ids (not-empty (t2/select-fn-vec :id :model/Table
+                                                     :active true
+                                                     :db_id (:id database)
+                                                     :schema schema
+                                                     :display_name display-name))]
     (throw (ex-info (i18n/tru "View display name in use. Display name of a transform must be unique.")
                     {:status-code 400
-                     :body {:database_id (:id database)
-                            :database_name (:name database)
-                            :schema schema
-                            :display_name display-name
-                            :same_display_name_table_ids table-ids}}))))
+                     :database-id (:id database)
+                     :database-name (:name database)
+                     :schema schema
+                     :display-name display-name
+                     :same-display-name-table-ids table-ids}))))
 
 ;; this should take the schema
 (defn insert-returning-instance!
@@ -123,7 +126,7 @@
             transform-id (doto (:id transform)
                            (as-> $ (assert (pos-int? $))))
             view-name (transform-view-name transform-id)]
-        (assert-unique-name! database-id schema view-name)
+        (assert-unique-name! database schema view-name)
         (driver/create-view! driver database-id view-name native)
         ;; TODO: Is it reasonable to do the following in transaction?
         (sync-metadata/sync-new-table-metadata! database {:table-name view-name
