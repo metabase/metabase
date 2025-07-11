@@ -2750,6 +2750,7 @@
                                                            :type    :string/contains
                                                            :options {:case-sensitive false}}
                                                           {:name "Name", :slug "name", :id "_name_", :type :string/=}
+                                                          {:name "Custom Name", :slug "custom_name", :id "_custom_name_", :type :string/=}
                                                           {:name "Not Name", :slug "notname", :id "_notname_", :type :string/!=}
                                                           {:name "Contains", :slug "contains", :id "_contains_", :type :string/contains}]}
                                             dashboard-values)
@@ -2762,7 +2763,7 @@
                                   :creator_id    (mt/user->id :crowberto)
                                   :dataset_query {:database (mt/id)
                                                   :type     :native
-                                                  :native   {:query "SELECT COUNT(*) FROM categories WHERE {{name}} AND {{noname}}"
+                                                  :native   {:query "SELECT COUNT(*) FROM categories WHERE {{name}} AND {{noname}} AND {{mb.filter('custom_name', 'name')}}"
                                                              :template-tags
                                                              {"name"     {:name         "name"
                                                                           :display-name "Name"
@@ -2782,7 +2783,13 @@
                                                                           :type         :dimension
                                                                           :dimension    [:field (mt/id :categories :name) nil]
                                                                           :widget-type  :string/contains
-                                                                          :options      {:case-sensitive false}}}}}}
+                                                                          :options      {:case-sensitive false}}
+                                                              "custom_name" {:name         "custom_name"
+                                                                             :display-name "Custom Name"
+                                                                             :id           "_CARD_CUSTOM_ID_"
+                                                                             :type         :custom-filter
+                                                                             :dimension    [:field (mt/id :categories :name)]
+                                                                             :widget-type  :string/=}}}}}
       :model/DashboardCard dashcard {:card_id            (:id card)
                                      :dashboard_id       (:id dashboard)
                                      :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
@@ -2817,7 +2824,8 @@
                                       :parameter_mappings
                                       [{:parameter_id "_name_", :card_id (:id card2), :target [:dimension [:template-tag "name"]]}
                                        {:parameter_id "_notname_", :card_id (:id card2), :target [:dimension [:template-tag "notname"]]}
-                                       {:parameter_id "_contains_", :card_id (:id card2), :target [:dimension [:template-tag "contains"]]}]}]
+                                       {:parameter_id "_contains_", :card_id (:id card2), :target [:dimension [:template-tag "contains"]]}
+                                       {:parameter_id "_custom_name_", :card_id (:id card2), :target [:dimension [:template-tag "custom_name"]]}]}]
      (f {:dashboard  dashboard
          :card       card
          :dashcard   dashcard
@@ -3324,6 +3332,10 @@
   (testing "Chain filtering works for a native query with template tags"
     (with-chain-filter-fixtures [{:keys [dashboard]}]
       (mt/let-url [url (chain-filter-values-url dashboard "_name_")]
+        (is (= {:values          [["African"] ["American"] ["Artisan"]]
+                :has_more_values false}
+               (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
+      (mt/let-url [url (chain-filter-values-url dashboard "_custom_name_")]
         (is (= {:values          [["African"] ["American"] ["Artisan"]]
                 :has_more_values false}
                (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
