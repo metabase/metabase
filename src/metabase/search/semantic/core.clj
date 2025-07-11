@@ -97,7 +97,8 @@
 
 (defmethod search.engine/init! :search.engine/semantic
   [_engine _opts]
-  (semantic-search-request! :post "init" {:force-reset? false})
+  ;; TODO: -- handle existing indexes instead of always resetting
+  (semantic-search-request! :post "init" {:force-reset? true})
   (log/info "Successfully initialized semantic search service")
   (populate-external-index!))
 
