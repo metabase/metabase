@@ -45,7 +45,7 @@ export const useGetInitialContainer = (
     error: currentDashboardError,
   } = useGetDashboardQuery(dashboardId ? { id: dashboardId } : skipToken);
 
-  // If the initial value was a card, fetch it's container
+  // If the initial value was a card or dashboard, fetch it's container
   const {
     data: currentQuestionCollection,
     isLoading: isCurrentQuestionCollectionLoading,
@@ -66,21 +66,38 @@ export const useGetInitialContainer = (
       : skipToken,
   );
 
+  // This is bad, and should be fixed. This shouldn't really be required (collections come back with dashboards),
+  // And note how we swap the ID out for root
+  const {
+    data: currentDashboardCollection,
+    isLoading: isCurrentDashboardCollectionLoading,
+    error: CurrentDashboardCollectionError,
+  } = useGetCollectionQuery(
+    currentDashboard
+      ? { id: currentDashboard.collection_id ?? "root" }
+      : skipToken,
+  );
+
   return {
     currentQuestion: currentQuestion,
-    currentCollection: currentQuestionCollection ?? currentCollection,
+    currentCollection:
+      currentQuestionCollection ??
+      currentDashboardCollection ??
+      currentCollection,
     currentDashboard: currentQuestionDashboard ?? currentDashboard,
     isLoading:
       isCollectionLoading ||
       isQuestionLoading ||
       isDashboardLoading ||
       isCurrentQuestionCollectionLoading ||
-      isCurrentQuestionDashboardLoading,
+      isCurrentQuestionDashboardLoading ||
+      isCurrentDashboardCollectionLoading,
     error:
       currentCollectionError ??
       currentDashboardError ??
       currentQuestionError ??
       currentQuestionCollectionError ??
+      CurrentDashboardCollectionError ??
       currentQuestionDashboardError,
   };
 };
