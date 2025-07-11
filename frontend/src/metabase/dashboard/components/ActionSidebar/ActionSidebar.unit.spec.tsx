@@ -116,7 +116,7 @@ describe("Dashboard > ActionSidebar", () => {
 
     const dropdown = screen.getByLabelText("Button variant");
 
-    expect(screen.getByText("Primary")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Primary")).toBeInTheDocument();
     await userEvent.click(dropdown);
     await userEvent.click(screen.getByText("Danger"));
 
