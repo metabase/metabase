@@ -168,8 +168,8 @@
     table-name]))
 
 (defn- sort-column-keys [column]
-  (merge {:column_name (:column_name column)}
-         (into (sorted-map) (dissoc column :column_name))))
+  (merge (select-keys column [:column_name :type])
+         (into (sorted-map) (dissoc column :column_name :type))))
 
 (defn compact-type [col]
   (let [type (:type col)]
