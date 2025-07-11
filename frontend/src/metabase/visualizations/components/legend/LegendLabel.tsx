@@ -51,6 +51,8 @@ export const LegendLabel = forwardRef(
           onClick={onClick}
           onFocus={onFocus}
           onMouseEnter={onMouseEnter}
+          data-testid="legend-label"
+          data-is-clickable={!!onClick}
         >
           {children}
         </div>
@@ -67,6 +69,8 @@ export const LegendLabel = forwardRef(
           onClick={handleLinkClick}
           onFocus={onFocus}
           onMouseEnter={onMouseEnter}
+          data-testid="legend-label"
+          data-is-clickable={!!onClick}
         >
           {children}
         </Box>
@@ -81,6 +85,8 @@ export const LegendLabel = forwardRef(
         onClick={handleLinkClick}
         onFocus={onFocus}
         onMouseEnter={onMouseEnter}
+        data-testid="legend-label"
+        data-is-clickable={!!onClick}
       >
         {children}
       </Link>

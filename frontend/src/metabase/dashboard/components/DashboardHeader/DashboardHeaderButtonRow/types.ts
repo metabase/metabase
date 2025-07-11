@@ -1,10 +1,6 @@
 import type { ComponentType } from "react";
 
-import type {
-  DashboardFullscreenControls,
-  DashboardNightModeControls,
-  DashboardRefreshPeriodControls,
-} from "metabase/dashboard/types";
+import type { DashboardContextReturned } from "metabase/dashboard/context";
 import type { Collection, Dashboard } from "metabase-types/api";
 
 import type { DASHBOARD_ACTION } from "./dashboard-action-keys";
@@ -17,9 +13,7 @@ export type DashboardHeaderButtonRowProps = {
   collection?: Collection;
   isPublic?: boolean;
   isAnalyticsDashboard?: boolean;
-} & DashboardRefreshPeriodControls &
-  DashboardFullscreenControls &
-  DashboardNightModeControls;
+};
 
 export type HeaderButtonProps = {
   canResetFilters: boolean;
@@ -37,5 +31,15 @@ export type HeaderButtonProps = {
 
 export type DashboardActionButton = {
   component: ComponentType<HeaderButtonProps>;
-  enabled: (props: HeaderButtonProps) => boolean;
+  enabled: (
+    props: HeaderButtonProps &
+      Pick<
+        DashboardContextReturned,
+        | "downloadsEnabled"
+        | "isFullscreen"
+        | "onFullscreenChange"
+        | "onNightModeChange"
+        | "hasNightModeToggle"
+      >,
+  ) => boolean;
 };

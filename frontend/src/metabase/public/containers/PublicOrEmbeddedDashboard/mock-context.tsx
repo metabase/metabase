@@ -75,6 +75,8 @@ export const MockDashboardContext = ({
   cardTitled = true,
   getClickActionMode = undefined,
   withFooter = true,
+  dashboardActions = undefined,
+  dashcardMenu = undefined,
   ...reduxProps
 }: PropsWithChildren<MockDashboardContextProps>) => {
   const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
@@ -109,6 +111,8 @@ export const MockDashboardContext = ({
       cardTitled={cardTitled}
       getClickActionMode={getClickActionMode}
       withFooter={withFooter}
+      dashboardActions={dashboardActions}
+      dashcardMenu={dashcardMenu}
       {...reduxProps}
     >
       {children}

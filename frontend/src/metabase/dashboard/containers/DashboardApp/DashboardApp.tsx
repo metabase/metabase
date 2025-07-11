@@ -19,7 +19,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { useAutoScrollToDashcard } from "metabase/dashboard/hooks/use-auto-scroll-to-dashcard";
-import { parseHashOptions } from "metabase/lib/browser";
+import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
@@ -89,13 +89,20 @@ export const DashboardApp = ({
   useRegisterDashboardMetabotContext();
   useDashboardUrlQuery(router, location);
 
+  const extractAndRemoveHashOption = (key: string) => {
+    const { [key]: removed, ...restHashOptions } = options;
+    const hash = stringifyHashOptions(restHashOptions);
+    dispatch(push({ ...location, hash: hash ? "#" + hash : "" }));
+  };
+
   const onLoadDashboard = (dashboard: IDashboard) => {
     try {
       if (editingOnLoad) {
         dispatch(setEditingDashboard(dashboard));
-        dispatch(push({ ...location, hash: "" }));
+        extractAndRemoveHashOption("edit");
       }
       if (addCardOnLoad != null) {
+        extractAndRemoveHashOption("add");
         const searchParams = new URLSearchParams(window.location.search);
         const tabParam = searchParams.get("tab");
         const tabId = tabParam ? parseInt(tabParam, 10) : null;

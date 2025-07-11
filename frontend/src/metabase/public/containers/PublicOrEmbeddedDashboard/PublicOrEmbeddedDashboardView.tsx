@@ -23,14 +23,8 @@ export function PublicOrEmbeddedDashboardView() {
     setParameterValue,
     setParameterValueToDefault,
     dashboard,
-    hasNightModeToggle,
     isFullscreen,
     isNightMode,
-    onFullscreenChange,
-    onNightModeChange,
-    onRefreshPeriodChange,
-    refreshPeriod,
-    setRefreshElapsedHook,
     selectedTabId,
     parameters,
     parameterValues,
@@ -50,14 +44,6 @@ export function PublicOrEmbeddedDashboardView() {
       canResetFilters={false}
       onResetFilters={_.noop}
       dashboardActionKeys={DASHBOARD_DISPLAY_ACTIONS}
-      refreshPeriod={refreshPeriod}
-      onRefreshPeriodChange={onRefreshPeriodChange}
-      onFullscreenChange={onFullscreenChange}
-      setRefreshElapsedHook={setRefreshElapsedHook}
-      isFullscreen={isFullscreen}
-      hasNightModeToggle={hasNightModeToggle}
-      onNightModeChange={onNightModeChange}
-      isNightMode={isNightMode}
       isPublic={true}
     />
   ) : null;

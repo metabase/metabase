@@ -40,7 +40,7 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
     cy.wait("@getDashboard");
 
     frame.within(() => {
-      cy.get(".mb-wrapper").should(
+      cy.findByTestId("dashboard").should(
         "have.css",
         "background-color",
         DARK_THEME.colors.background,
@@ -92,6 +92,18 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
     cy.log("1. verify colors in light theme");
 
     frame.within(() => {
+      cy.findByTestId("dashboard").should(
+        "have.css",
+        "background-color",
+        "rgb(255, 255, 255)",
+      );
+
+      cy.findByTestId("dashboard-header-container").should(
+        "have.css",
+        "background-color",
+        "rgb(255, 255, 255)",
+      );
+
       cy.findByText("Product ID").should(
         "have.css",
         "color",
@@ -112,7 +124,13 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
     });
 
     frame.within(() => {
-      cy.get(".mb-wrapper").should(
+      cy.findByTestId("dashboard").should(
+        "have.css",
+        "background-color",
+        DARK_THEME.colors.background,
+      );
+
+      cy.findByTestId("dashboard-header-container").should(
         "have.css",
         "background-color",
         DARK_THEME.colors.background,
@@ -138,6 +156,18 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
     });
 
     frame.within(() => {
+      cy.findByTestId("dashboard").should(
+        "have.css",
+        "background-color",
+        "rgb(255, 255, 255)",
+      );
+
+      cy.findByTestId("dashboard-header-container").should(
+        "have.css",
+        "background-color",
+        "rgb(255, 255, 255)",
+      );
+
       cy.findByText("Product ID").should(
         "have.css",
         "color",

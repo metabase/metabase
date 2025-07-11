@@ -8,14 +8,15 @@ import type {
   HeaderButtonProps,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { useDashboardContext } from "metabase/dashboard/context";
 import {
   getDashboardComplete,
   getHasModelActionsEnabled,
   getIsEditing,
 } from "metabase/dashboard/selectors";
-import { isEmbeddingSdk } from "metabase/env";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
@@ -37,7 +38,16 @@ export const DashboardHeaderButtonRow = ({
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   const dashboard = useSelector(getDashboardComplete);
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const canEdit = Boolean(dashboard?.can_write && !dashboard?.archived);
+
+  const {
+    isFullscreen,
+    onFullscreenChange,
+    hasNightModeToggle,
+    onNightModeChange,
+    downloadsEnabled,
+  } = useDashboardContext();
 
   const hasModelActionsEnabled = useSelector(getHasModelActionsEnabled);
 
@@ -77,7 +87,16 @@ export const DashboardHeaderButtonRow = ({
             ...props,
           };
 
-          if (config.enabled(buttonComponentProps)) {
+          if (
+            config.enabled({
+              isFullscreen,
+              onFullscreenChange,
+              hasNightModeToggle,
+              onNightModeChange,
+              downloadsEnabled,
+              ...buttonComponentProps,
+            })
+          ) {
             const Component = config.component;
             return (
               <Box

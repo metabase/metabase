@@ -161,18 +161,19 @@ const setup = ({
         <MockDashboardContext
           dashboardId={MOCK_DASHBOARD.id}
           navigateToNewCardFromDashboard={null}
+          refreshPeriod={null}
+          onRefreshPeriodChange={jest.fn()}
+          setRefreshElapsedHook={jest.fn()}
+          isFullscreen={isFullscreen}
+          onFullscreenChange={jest.fn()}
+          hasNightModeToggle={hasNightModeToggle}
+          onNightModeChange={jest.fn()}
+          isNightMode={isNightMode}
+          downloadsEnabled={{ pdf: false }}
         >
           <DashboardHeaderButtonRow
             canResetFilters
             onResetFilters={jest.fn()}
-            refreshPeriod={null}
-            onRefreshPeriodChange={jest.fn()}
-            setRefreshElapsedHook={jest.fn()}
-            isFullscreen={isFullscreen}
-            onFullscreenChange={jest.fn()}
-            hasNightModeToggle={hasNightModeToggle}
-            onNightModeChange={jest.fn()}
-            isNightMode={isNightMode}
             isPublic={isPublic}
             isAnalyticsDashboard={isAnalyticsDashboard}
           />
