@@ -92,7 +92,7 @@
                 (pr-str sql-args))
     (try
       (log/debug "have-select-privilege? sql-jdbc: Attempt to execute probe query")
-      (execute-select-probe-query driver conn sql-args)
+      ((sql-jdbc.execute/wrap-with-retry-conn driver conn execute-select-probe-query) sql-args)
       (log/infof "%s: SELECT privileges confirmed"
                  (str (when table-schema
                         (str (pr-str table-schema) \.))
