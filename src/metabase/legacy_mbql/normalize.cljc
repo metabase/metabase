@@ -194,10 +194,14 @@
   [:datetime-subtract (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
 
 (defmethod normalize-mbql-clause-tokens :datetime
-  [[_ field mode]]
-  (if (nil? mode)
+  [[_ field options]]
+  (if (empty? options)
     [:datetime (normalize-tokens field :ignore-path)]
-    [:datetime (normalize-tokens field :ignore-path) (lib.schema.expression.temporal/normalize-datetime-mode mode)]))
+    [:datetime (normalize-tokens field :ignore-path)
+     (let [options (normalize-tokens options :ignore-path)]
+       (cond-> options
+         (contains? options :mode)
+         (update :mode lib.schema.expression.temporal/normalize-datetime-mode)))]))
 
 (defmethod normalize-mbql-clause-tokens :get-week
   [[_ field mode]]

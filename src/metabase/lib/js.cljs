@@ -1051,7 +1051,7 @@
          (let [{:keys [operator options args]} node]
            #js {:operator (name operator)
                 :options (fix-namespaced-values
-                          (clj->js (select-keys options [:case-sensitive :include-current :base-type]) :keyword-fn u/qualified-name))
+                          (clj->js (select-keys options [:case-sensitive :include-current :base-type :mode]) :keyword-fn u/qualified-name))
                 :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))})
          node))
      parts)))

@@ -730,7 +730,7 @@ function(bin) {
 (defmethod ->rvalue :today [[_]]
   (->rvalue [:date [:now]]))
 
-(defmethod ->rvalue :datetime [[_ expr mode]]
+(defmethod ->rvalue :datetime [[_ expr {:keys [mode]}]]
   (let [rvalue (->rvalue expr)]
     (case (or mode :iso)
       :iso

@@ -731,8 +731,8 @@
         lib.schema.expression.temporal/datetime-modes))
 
 (defclause ^{:requires-features #{:expressions :expressions/datetime}} datetime
-  value  :any ;;StringExpressionArg ;; normally a string, number, or bytes
-  mode   (optional LiteralDatetimeModeString))
+  value  :any ;; normally a string, number, or bytes
+  options (optional [:map [:mode {:optional true} LiteralDatetimeModeString]]))
 
 (mr/def ::DatetimeExpression
   (one-of + datetime-add datetime-subtract convert-timezone now date datetime today))
