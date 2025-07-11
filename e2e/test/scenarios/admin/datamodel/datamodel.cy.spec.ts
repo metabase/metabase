@@ -1409,7 +1409,7 @@ describe("scenarios > admin > datamodel", () => {
           FieldSection.getCoercionInput().click({ scrollBehavior: "center" });
           H.popover().findByText("UNIX seconds → Datetime").click();
           cy.wait("@updateField");
-          verifyAndCloseToast("Casting enabled for Rating");
+          verifyAndCloseToast("Casting updated for Rating");
 
           cy.log("disable casting");
           FieldSection.getCoercionToggle()
