@@ -384,18 +384,23 @@
     ;; TODO -- for `write?` connections, we should probably disable autoCommit and then manually call `.commit` at after
     ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
     ;; manually. (metabase#40014)
-    (if-not (or write?
-                (and (-> options :download?) (= driver :postgres)))
-      (try
-        (log/trace (pr-str '(.setAutoCommit conn true)))
-        (.setAutoCommit conn true)
-        (catch Throwable e
-          (log/debug e "Error enabling connection autoCommit")))
-      (try
-        (log/trace (pr-str '(.setAutoCommit conn false)))
-        (.setAutoCommit conn false)
-        (catch Throwable e
-          (log/debug e "Error setting connection autoCommit to false"))))
+    (cond (not (or write?
+                   (and (-> options :download?) (= driver :postgres))))
+          (try
+            (log/trace (pr-str '(.setAutoCommit conn true)))
+            (.setAutoCommit conn true)
+            (catch Throwable e
+              (log/debug e "Error enabling connection autoCommit")))
+
+          ;; todo (dan 7/11/25): fixing straightforward postgres oom on downloads in #60733, but seems like write? is
+          ;; not set here. Note this is explicitly silent when `write?`. Lots of tests fail with autocommit false
+          ;; there.
+          (and (-> options :download?) (= driver :postgres))
+          (try
+            (log/trace (pr-str '(.setAutoCommit conn false)))
+            (.setAutoCommit conn false)
+            (catch Throwable e
+              (log/debug e "Error setting connection autoCommit to false"))))
     (try
       (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
