@@ -38,7 +38,11 @@ const TablePreviewBase = (props: Props) => {
   const { error, isFetching, rawSeries } = useDataSample(props);
 
   if (isFieldHidden(field)) {
-    return <EmptyState message={t`This field is hidden`} />;
+    return (
+      <Stack h="100%" justify="center" p="md">
+        <EmptyState message={t`This field is hidden`} />
+      </Stack>
+    );
   }
 
   if (isFetching) {
