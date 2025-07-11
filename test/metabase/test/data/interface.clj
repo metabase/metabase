@@ -1119,5 +1119,5 @@
   false)
 
 (def ^:dynamic *use-routing-dataset*
-  "Used to override the name of a dataset for routing tests."
+  "Used to override the dataset name for routing tests."
   false)

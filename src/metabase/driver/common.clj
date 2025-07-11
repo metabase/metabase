@@ -244,20 +244,10 @@
                     "\n"
                     (str/join " - " ips))))})
 
-(defn db-routing-info-test
-  "Map of the `db-routing-info` info field. The getter is invoked and converted to a `:placeholder` value prior
-  to being returned to the client, in [[metabase.driver.util/connection-props-server->client]]."
-  [driver]
-  {:name   "db-routing-info-test"
-   :type   :info
-   :getter (partial driver/db-routing-info driver)})
-
-(defn default-connection-info-fields-fn
+(def default-connection-info-fields
   "Default definitions for informational banners that can be included in a database connection form. These keys can be
   added to the plugin manifest as connection properties, similar to the keys in the `default-options` map."
-  [driver info-field]
-  (info-field {:cloud-ip-address-info cloud-ip-address-info
-               :db-routing-info-test (db-routing-info-test driver)}))
+  {:cloud-ip-address-info cloud-ip-address-info})
 
 (def auth-provider-options
   "Options for using an auth provider instead of a literal password."
