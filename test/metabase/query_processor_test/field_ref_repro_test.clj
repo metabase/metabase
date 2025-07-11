@@ -383,3 +383,20 @@
               ;; should get columns QUANTITY and count and 77 rows
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Column .*TAX.* not found"
                                     (qp/process-query query))))))))))
+
+(deftest self-join-with-external-remapping-test
+  (testing "Should handle self joins with external remapping (#60444)"
+    (mt/with-driver :h2
+      (mt/with-temp [:model/Dimension _ {:field_id (mt/id :orders :user_id)
+                                         :name "User ID"
+                                         :type :external
+                                         :human_readable_field_id (mt/id :people :email)}]
+        (let [query (mt/mbql-query orders
+                      {:joins [{:source-table $$orders
+                                :alias "j"
+                                :condition
+                                [:= $id &j.orders.id]
+                                :fields :all}]})]
+          (mt/with-native-query-testing-context query
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"column number mismatch"
+                                  (qp/process-query query)))))))))
