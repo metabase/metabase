@@ -57,6 +57,11 @@ export function useUpsellFlow({
   }
 
   useEffect(() => {
+    const { name } = window;
+    if (name !== "metabase-instance") {
+      window.name = "metabase-instance";
+    }
+
     const listener = createListener({
       updateToken,
     });
@@ -64,6 +69,7 @@ export function useUpsellFlow({
     window.addEventListener("message", listener);
 
     return () => {
+      window.name = name;
       window.removeEventListener("message", listener);
     };
   }, [updateToken]);
