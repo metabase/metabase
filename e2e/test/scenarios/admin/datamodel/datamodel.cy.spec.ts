@@ -2750,87 +2750,112 @@ describe("scenarios > admin > datamodel", () => {
   });
 
   describe("Preview section", () => {
-    it("should allow closing the preview with Esc key", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-        fieldId: ORDERS.PRODUCT_ID,
+    describe("Esc key", () => {
+      it("should allow closing the preview with Esc key", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.PRODUCT_ID,
+        });
+
+        PreviewSection.get().should("not.exist");
+
+        FieldSection.getPreviewButton().click();
+        FieldSection.getPreviewButton().should("not.exist");
+        PreviewSection.get().should("be.visible");
+
+        cy.realPress("Escape");
+        PreviewSection.get().should("not.exist");
+        FieldSection.getPreviewButton().should("be.visible");
       });
 
-      PreviewSection.get().should("not.exist");
+      it("should not close the preview when hitting Esc key while modal is open", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.PRODUCT_ID,
+        });
 
-      FieldSection.getPreviewButton().click();
-      FieldSection.getPreviewButton().should("not.exist");
-      PreviewSection.get().should("be.visible");
+        FieldSection.getPreviewButton().click();
+        PreviewSection.get().should("be.visible");
 
-      cy.realPress("Escape");
-      PreviewSection.get().should("not.exist");
-      FieldSection.getPreviewButton().should("be.visible");
+        TableSection.getSyncOptionsButton().click();
+        H.modal().should("be.visible");
+
+        cy.realPress("Escape");
+        H.modal().should("not.exist");
+        PreviewSection.get().should("be.visible");
+
+        FieldSection.getFieldValuesButton().click();
+        H.modal().should("be.visible");
+
+        cy.realPress("Escape");
+        H.modal().should("not.exist");
+        PreviewSection.get().should("be.visible");
+      });
+
+      it("should not close the preview when hitting Esc key while popover is open", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.PRODUCT_ID,
+        });
+
+        FieldSection.getPreviewButton().click();
+        PreviewSection.get().should("be.visible");
+
+        FieldSection.getSemanticTypeInput().click();
+        H.popover().should("be.visible");
+
+        cy.realPress("Escape");
+        H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
+        PreviewSection.get().should("be.visible");
+      });
+
+      it("should not close the preview when hitting Esc key while command palette is open", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.PRODUCT_ID,
+        });
+
+        FieldSection.getPreviewButton().click();
+        PreviewSection.get().should("be.visible");
+
+        H.openCommandPalette();
+        H.commandPalette().should("be.visible");
+
+        cy.realPress("Escape");
+        H.commandPalette().should("not.exist");
+        PreviewSection.get().should("be.visible");
+      });
     });
 
-    it("should not close the preview when hitting Esc key while modal is open", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-        fieldId: ORDERS.PRODUCT_ID,
+    describe("Empty states", { tags: "@external" }, () => {
+      beforeEach(() => {
+        H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+        H.queryWritableDB('delete from "Domestic"."Animals"');
       });
 
-      FieldSection.getPreviewButton().click();
-      PreviewSection.get().should("be.visible");
+      it("should show empty state when there is no data", () => {
+        H.DataModel.visit();
 
-      TableSection.getSyncOptionsButton().click();
-      H.modal().should("be.visible");
+        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getSchema("Domestic").click();
+        TablePicker.getTable("Animals").click();
+        TableSection.clickField("Name");
+        FieldSection.getPreviewButton().click();
 
-      cy.realPress("Escape");
-      H.modal().should("not.exist");
-      PreviewSection.get().should("be.visible");
-
-      FieldSection.getFieldValuesButton().click();
-      H.modal().should("be.visible");
-
-      cy.realPress("Escape");
-      H.modal().should("not.exist");
-      PreviewSection.get().should("be.visible");
-    });
-
-    it("should not close the preview when hitting Esc key while popover is open", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-        fieldId: ORDERS.PRODUCT_ID,
+        PreviewSection.get().findByText("No data to show").should("be.visible");
+        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+        PreviewSection.get().findByText("No data to show").should("be.visible");
       });
-
-      FieldSection.getPreviewButton().click();
-      PreviewSection.get().should("be.visible");
-
-      FieldSection.getSemanticTypeInput().click();
-      H.popover().should("be.visible");
-
-      cy.realPress("Escape");
-      H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
-      PreviewSection.get().should("be.visible");
-    });
-
-    it("should not close the preview when hitting Esc key while command palette is open", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-        fieldId: ORDERS.PRODUCT_ID,
-      });
-
-      FieldSection.getPreviewButton().click();
-      PreviewSection.get().should("be.visible");
-
-      H.openCommandPalette();
-      H.commandPalette().should("be.visible");
-
-      cy.realPress("Escape");
-      H.commandPalette().should("not.exist");
-      PreviewSection.get().should("be.visible");
     });
   });
 

@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import EmptyState from "metabase/common/components/EmptyState";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Repeat, Skeleton, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -34,6 +35,7 @@ interface Props {
 
 const TablePreviewBase = (props: Props) => {
   const { error, isFetching, rawSeries } = useDataSample(props);
+  const data = rawSeries?.[0]?.data?.rows;
 
   if (isFetching) {
     return (
@@ -49,6 +51,14 @@ const TablePreviewBase = (props: Props) => {
 
   if (error) {
     return <Error message={error} />;
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <Stack h="100%" justify="center" p="md">
+        <EmptyState title={t`No data to show`} />
+      </Stack>
+    );
   }
 
   return (
