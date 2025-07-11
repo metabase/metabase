@@ -52,7 +52,7 @@ const DataSectionBase = ({ field }: Props) => {
       if (error) {
         sendToast({
           icon: "warning_triangle_filled",
-          toastColor: "error",
+          iconColor: "var(--mb-color-warning)",
           message: t`Failed to disable casting for ${field.display_name}`,
         });
       } else {
@@ -73,7 +73,7 @@ const DataSectionBase = ({ field }: Props) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        toastColor: "error",
+        iconColor: "var(--mb-color-warning)",
         message:
           field.coercion_strategy == null
             ? t`Failed to enable casting for ${field.display_name}`

@@ -44,8 +44,8 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to update table name`,
-        toastColor: "error",
       });
     } else {
       sendToast({
@@ -61,8 +61,8 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to update table description`,
-        toastColor: "error",
       });
     } else {
       sendToast({
@@ -81,8 +81,8 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to update field order`,
-        toastColor: "error",
       });
     } else {
       sendToast({
@@ -101,8 +101,8 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to update field order`,
-        toastColor: "error",
       });
     } else {
       sendToast({

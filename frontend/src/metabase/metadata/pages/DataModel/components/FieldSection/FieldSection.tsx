@@ -47,8 +47,8 @@ const FieldSectionBase = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to update name of ${field.display_name}`,
-        toastColor: "error",
       });
     } else {
       sendToast({
@@ -74,8 +74,8 @@ const FieldSectionBase = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to update description of ${field.display_name}`,
-        toastColor: "error",
       });
     } else {
       sendToast({

@@ -37,8 +37,8 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to update name of ${field.display_name}`,
-        toastColor: "error",
       });
     } else {
       sendToast({
@@ -64,8 +64,8 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to update description of ${field.display_name}`,
-        toastColor: "error",
       });
     } else {
       sendToast({

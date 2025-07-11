@@ -30,7 +30,7 @@ export function TableVisibilityToggle({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        toastColor: "error",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to hide ${table.display_name}`,
       });
     } else {
@@ -51,7 +51,7 @@ export function TableVisibilityToggle({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        toastColor: "error",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to unhide ${table.display_name}`,
       });
     } else {

@@ -119,7 +119,7 @@ export const RemappingPicker = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        toastColor: "error",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to update display values of ${field.display_name}`,
       });
     } else {

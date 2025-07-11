@@ -50,8 +50,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to update visibility of ${field.display_name}`,
-        toastColor: "error",
       });
     } else {
       sendToast({
@@ -70,8 +70,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to update filtering of ${field.display_name}`,
-        toastColor: "error",
       });
     } else {
       sendToast({
@@ -92,10 +92,10 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: jsonUnfolding
           ? t`Failed to enable JSON unfolding for ${field.display_name}`
           : t`Failed to disable JSON unfolding for ${field.display_name}`,
-        toastColor: "error",
       });
     } else {
       sendToast({
