@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
@@ -20,7 +20,6 @@ import { useSelector } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import type { DisplayTheme } from "metabase/public/lib/types";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import { useSyncUrlParameters } from "metabase/query_builder/hooks/use-sync-url-parameters";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
@@ -54,6 +53,7 @@ import {
   TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
 import { LogoBadge } from "./LogoBadge";
+import { useGlobalTheme } from "./useGlobalTheme";
 
 export type EmbedFrameBaseProps = Partial<{
   className: string;
@@ -306,32 +306,6 @@ export const EmbedFrame = ({
     </Root>
   );
 };
-
-function useGlobalTheme(theme: DisplayTheme | undefined) {
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
-  useEffect(() => {
-    // We don't want to modify user application DOM when using the SDK.
-    if (isEmbeddingSdk || theme == null) {
-      return;
-    }
-
-    const originalTheme = document.documentElement.getAttribute(
-      "data-metabase-theme",
-    );
-    document.documentElement.setAttribute("data-metabase-theme", theme);
-
-    return () => {
-      if (originalTheme == null) {
-        document.documentElement.removeAttribute("data-metabase-theme");
-      } else {
-        document.documentElement.setAttribute(
-          "data-metabase-theme",
-          originalTheme,
-        );
-      }
-    };
-  }, [isEmbeddingSdk, theme]);
-}
 
 function isParametersWidgetContainersSticky(parameterCount: number) {
   if (!isSmallScreen()) {

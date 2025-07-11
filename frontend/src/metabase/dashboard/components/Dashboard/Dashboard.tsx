@@ -11,6 +11,7 @@ import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
@@ -22,28 +23,18 @@ import { DashboardSidebars } from "../DashboardSidebars";
 import S from "./Dashboard.module.css";
 import { Grid } from "./components/Grid";
 
-function Dashboard() {
+function Dashboard({ className }: { className?: string }) {
   const {
     dashboard,
     isEditing,
     isFullscreen,
     isSharing,
-    onRefreshPeriodChange,
     selectedTabId,
     setSharing,
-    parameterQueryParams = {},
     shouldRenderAsNightMode,
     setArchivedDashboard,
     moveDashboardToCollection,
     deletePermanently,
-
-    dashboardBeforeEditing,
-    onFullscreenChange,
-    isAdditionalInfoVisible,
-    hasNightModeToggle,
-    onNightModeChange,
-    refreshPeriod,
-    setRefreshElapsedHook,
 
     removeParameter,
     addCardToDashboard,
@@ -102,17 +93,23 @@ function Dashboard() {
 
   return (
     <Flex
-      className={cx(DashboardS.Dashboard, S.DashboardLoadingAndErrorWrapper, {
-        [DashboardS.DashboardFullscreen]: isFullscreen,
-        [DashboardS.DashboardNight]: shouldRenderAsNightMode,
-        [ParametersS.DashboardNight]: shouldRenderAsNightMode,
-        [ColorS.DashboardNight]: shouldRenderAsNightMode,
-        [S.isFullHeight]: isFullHeight,
-      })}
+      className={cx(
+        className,
+        DashboardS.Dashboard,
+        S.DashboardLoadingAndErrorWrapper,
+        {
+          [DashboardS.DashboardFullscreen]: isFullscreen,
+          [DashboardS.DashboardNight]: shouldRenderAsNightMode,
+          [ParametersS.DashboardNight]: shouldRenderAsNightMode,
+          [ColorS.DashboardNight]: shouldRenderAsNightMode,
+          [S.isFullHeight]: isFullHeight,
+        },
+      )}
       direction="column"
       mih="100%"
       w="100%"
       flex="1 0 auto"
+      data-testid="dashboard"
     >
       {dashboard.archived && (
         <ArchivedEntityBanner
@@ -136,10 +133,15 @@ function Dashboard() {
 
       <Box
         component="header"
-        className={cx(S.DashboardHeaderContainer, {
-          [S.isFullscreen]: isFullscreen,
-          [S.isNightMode]: shouldRenderAsNightMode,
-        })}
+        className={cx(
+          S.DashboardHeaderContainer,
+          "testing123",
+          EmbedFrameS.EmbedFrameHeader,
+          {
+            [S.isFullscreen]: isFullscreen,
+            [S.isNightMode]: shouldRenderAsNightMode,
+          },
+        )}
         data-element-id="dashboard-header-container"
         data-testid="dashboard-header-container"
       >
@@ -148,20 +150,7 @@ function Dashboard() {
          * `useDashboardTabs` under the hood. This hook sets `selectedTabId`
          * in Redux state which kicks off a fetch for the dashboard cards.
          */}
-        <DashboardHeader
-          parameterQueryParams={parameterQueryParams}
-          dashboard={dashboard}
-          isNightMode={shouldRenderAsNightMode}
-          isFullscreen={isFullscreen}
-          onRefreshPeriodChange={onRefreshPeriodChange}
-          dashboardBeforeEditing={dashboardBeforeEditing}
-          onFullscreenChange={onFullscreenChange}
-          isAdditionalInfoVisible={isAdditionalInfoVisible}
-          hasNightModeToggle={hasNightModeToggle}
-          onNightModeChange={onNightModeChange}
-          refreshPeriod={refreshPeriod}
-          setRefreshElapsedHook={setRefreshElapsedHook}
-        />
+        <DashboardHeader />
       </Box>
 
       <Flex

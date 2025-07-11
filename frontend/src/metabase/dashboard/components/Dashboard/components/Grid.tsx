@@ -24,24 +24,18 @@ export const Grid = ({
   const {
     dashboard,
     selectedTabId,
-    slowCards,
-    clickBehaviorSidebarDashcard,
     navigateToNewCardFromDashboard,
-    downloadsEnabled,
     isEditing,
-    isEditingParameter,
-    isFullscreen,
-    isNightMode,
-    getClickActionMode,
-    autoScrollToDashcardId,
-    reportAutoScrolledToDashcard,
     onRefreshPeriodChange,
     shouldRenderAsNightMode,
     isLoadingWithoutCards,
     onAddQuestion,
   } = useDashboardContext();
 
-  const canWrite = Boolean(dashboard?.can_write);
+  // if users can't navigate to new cards or drill down, then they shouldn't
+  // be able to use the `Add question` button. Used in static and public dashboards
+  const canWrite =
+    navigateToNewCardFromDashboard && Boolean(dashboard?.can_write);
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
       return [];
@@ -128,19 +122,6 @@ export const Grid = ({
 
   return (
     <DashboardGridConnected
-      dashboard={dashboard}
-      selectedTabId={selectedTabId}
-      slowCards={slowCards}
-      clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
-      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-      downloadsEnabled={downloadsEnabled}
-      isEditing={isEditing}
-      isEditingParameter={isEditingParameter}
-      isFullscreen={isFullscreen}
-      isNightMode={isNightMode}
-      getClickActionMode={getClickActionMode}
-      autoScrollToDashcardId={autoScrollToDashcardId}
-      reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
       handleSetEditing={handleSetEditing}
       className={className}
       style={style}
