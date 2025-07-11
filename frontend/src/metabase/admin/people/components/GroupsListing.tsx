@@ -244,6 +244,12 @@ function GroupRow({
     !PLUGIN_TENANTS.isExternalUsersGroup(group);
   const editing = groupBeingEdited && groupBeingEdited.id === group.id;
 
+  const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
+
+  const membersLink = isTenantGroup
+    ? `/admin/tenants/groups/${group.id}`
+    : `/admin/people/groups/${group.id}`;
+
   return editing ? (
     <EditingGroupRow
       group={groupBeingEdited}
@@ -258,7 +264,7 @@ function GroupRow({
         <Flex
           component={Link}
           align="center"
-          to={"/admin/people/groups/" + group.id}
+          to={membersLink}
           className={CS.link}
           gap="md"
         >
@@ -378,6 +384,7 @@ interface GroupsListingProps {
   create: (group: { name: string }) => Promise<void>;
   update: (group: { id: number; name: string }) => Promise<void>;
   delete: (group: GroupInfo, groupCount: number) => Promise<void>;
+  description?: string;
 }
 
 export const GroupsListing = (props: GroupsListingProps) => {
@@ -512,7 +519,10 @@ export const GroupsListing = (props: GroupsListingProps) => {
           >{t`Create a group`}</Button>
         )
       }
-      description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
+      description={
+        props.description ??
+        t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`
+      }
     >
       <GroupsTable
         groups={filteredGroups}

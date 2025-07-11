@@ -28,14 +28,6 @@ export function newMetabotConversation({ prompt }: { prompt: string }) {
   return `/metabot/new?q=${encodeURIComponent(prompt)}`;
 }
 
-export function viewTenants() {
-  return `/admin/tenants`;
-}
-
-export function viewTenantUsers() {
-  return `/admin/tenants`;
-}
-
 export function newTenant() {
   return `/admin/tenants/new`;
 }
