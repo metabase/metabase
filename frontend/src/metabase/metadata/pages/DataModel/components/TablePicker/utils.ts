@@ -116,8 +116,8 @@ export function useTableLoader(path: TreePath) {
       };
 
       if (
-        _.isEqual(tablesRef.current.originalArgs, newArgs) &&
-        tablesRef.current.isError
+        tablesRef.current.isError &&
+        _.isEqual(tablesRef.current.originalArgs, newArgs)
       ) {
         // Do not refetch when this call failed previously.
         // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
@@ -154,8 +154,8 @@ export function useTableLoader(path: TreePath) {
       };
 
       if (
-        _.isEqual(schemasRef.current.originalArgs, newArgs) &&
-        schemasRef.current.isError
+        schemasRef.current.isError &&
+        _.isEqual(schemasRef.current.originalArgs, newArgs)
       ) {
         // Do not refetch when this call failed previously.
         // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
