@@ -10,7 +10,8 @@
 (mr/def ::create
   [:map
    [:display_name ms/NonBlankString]
-   [:dataset_query ms/Map]])
+   [:dataset_query ms/Map]
+   [:schema {:optional true} ms/NonBlankString]])
 
 (api.macros/defendpoint :post "/"
   "Create a transform"
@@ -23,6 +24,8 @@
   ;; TODO: check whether user is eligible to create transform view -- admin?
   (query-perms/check-run-permissions-for-query dataset-query)
   (models.transform/insert-returning-instance!
+   ;; Temporary, api callers should pick the schema
+   (models.transform/top-schema (models.transform/dataset-query->query dataset-query))
    display-name
    dataset-query
    @api/*current-user*))
