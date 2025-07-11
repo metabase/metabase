@@ -115,7 +115,7 @@
                  :alt_text   title})))
 
       :heading
-      [(maybe-append-params-block (text->markdown-section (:text part)) (:inline_parameters part))]
+      [(maybe-append-params-block (text->markdown-section (format "## %s" (:text part))) (:inline_parameters part))]
 
       :text
       [(maybe-append-params-block (text->markdown-section (:text part)) (:inline_parameters part))]

@@ -436,7 +436,8 @@
          (is (= {:channel "#general"
                  :blocks [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
                           {:type "section"
-                           :fields [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}]}
+                           :fields [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}
+                                    slack-branding-text]}
                           {:type "section"
                            :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}
                           {:type "section" :text {:type "plain_text" :text "1,000"}}
@@ -673,7 +674,8 @@
       :assert
       {:slack
        (fn [_object-ids [message]]
-         (is (= {:type "section", :fields [{:type "mrkdwn", :text "(URL exce…"}]}
+         (is (= {:type "section", :fields [{:type "mrkdwn", :text "(URL exce…"}
+                                           slack-branding-text]}
                 (second (:blocks message)))))}})))
 
 (deftest archived-dashboard-test
@@ -1281,15 +1283,13 @@
                                                            :pulse_channel_id pc-id}]
               (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
                                     (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
-                ;; Test email channel
                 (is (= (rasta-dashsub-message
-                        {:body [{pulse.test-util/card-name true}
-                                pulse.test-util/png-attachment]})
+                        {:message [{"Aviary KPIs" true}
+                                   pulse.test-util/png-attachment]})
                        (mt/summarize-multipart-single-email
                         (first (:channel/email pulse-results))
-                        #"Test card")))
+                        #"Aviary KPIs")))
 
-                ;; Test slack channel
                 (is (=? {:channel "#general",
                          :blocks (default-slack-blocks dashboard-id [card-id])}
                         (pulse.test-util/thunk->boolean (first (:channel/slack pulse-results)))))))))))))
