@@ -32,7 +32,7 @@ import {
   within,
 } from "__support__/ui";
 import NewItemMenu from "metabase/common/components/NewItemMenu";
-import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/use-favicon";
+import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
@@ -123,7 +123,7 @@ export const TEST_MODEL_CARD = createMockCard({
     },
   },
   type: "model",
-  display: "scalar",
+  display: "table",
   description: "Test description",
 });
 

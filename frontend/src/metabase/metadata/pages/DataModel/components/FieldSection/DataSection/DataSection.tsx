@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from "react";
+import { type ChangeEvent, memo, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
@@ -38,6 +38,58 @@ const DataSectionBase = ({ field }: Props) => {
     setAutoFocusCoercionPicker(false);
   }, [field.coercion_strategy]);
 
+  const handleCastingChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    setIsCasting(event.target.checked);
+    setAutoFocusCoercionPicker(event.target.checked);
+    setIsCoercionPickerOpen(true);
+
+    if (!event.target.checked && field.coercion_strategy !== null) {
+      const { error } = await updateField({
+        id,
+        coercion_strategy: null,
+      });
+
+      if (error) {
+        sendToast({
+          icon: "warning_triangle_filled",
+          iconColor: "var(--mb-color-warning)",
+          message: t`Failed to disable casting for ${field.display_name}`,
+        });
+      } else {
+        sendToast({
+          icon: "check",
+          message: t`Casting disabled for ${field.display_name}`,
+        });
+      }
+    }
+  };
+
+  const handleCoercionStrategyChange = async (coercionStrategy: string) => {
+    const { error } = await updateField({
+      id,
+      coercion_strategy: coercionStrategy,
+    });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message:
+          field.coercion_strategy == null
+            ? t`Failed to enable casting for ${field.display_name}`
+            : t`Failed to update casting for ${field.display_name}`,
+      });
+    } else {
+      sendToast({
+        icon: "check",
+        message:
+          field.coercion_strategy == null
+            ? t`Casting enabled for ${field.display_name}`
+            : t`Casting updated for ${field.display_name}`,
+      });
+    }
+  };
+
   return (
     <TitledSection title={t`Data`}>
       <LabeledValue label={t`Field name`}>
@@ -65,23 +117,7 @@ const DataSectionBase = ({ field }: Props) => {
                 label={t`Cast to a specific data type`}
                 mt="md"
                 size="xs"
-                onChange={async (event) => {
-                  setIsCasting(event.target.checked);
-                  setAutoFocusCoercionPicker(event.target.checked);
-                  setIsCoercionPickerOpen(true);
-
-                  if (
-                    !event.target.checked &&
-                    field.coercion_strategy !== null
-                  ) {
-                    await updateField({ id, coercion_strategy: null });
-
-                    sendToast({
-                      icon: "check",
-                      message: t`Casting disabled for ${field.display_name}`,
-                    });
-                  }
-                }}
+                onChange={handleCastingChange}
               />
             </Flex>
 
@@ -91,17 +127,7 @@ const DataSectionBase = ({ field }: Props) => {
                 baseType={field.base_type}
                 dropdownOpened={isCoercionPickerOpen}
                 value={field.coercion_strategy ?? undefined}
-                onChange={async (coercionStrategy) => {
-                  await updateField({
-                    id,
-                    coercion_strategy: coercionStrategy,
-                  });
-
-                  sendToast({
-                    icon: "check",
-                    message: t`Casting enabled for ${field.display_name}`,
-                  });
-                }}
+                onChange={handleCoercionStrategyChange}
                 onDropdownClose={() => setIsCoercionPickerOpen(false)}
                 onDropdownOpen={() => setIsCoercionPickerOpen(true)}
               />

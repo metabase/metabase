@@ -11,7 +11,7 @@ export function getPreviewTypeData() {
   ];
 }
 
-export function getErrorMessage(data: Dataset): string {
+export function getDataErrorMessage(data: Dataset): string {
   const error = typeof data.error === "string" ? data.error : data.error?.data;
 
   if (data.error_type === "invalid-query") {
