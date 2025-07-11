@@ -58,9 +58,10 @@
    [:map
     ;; a string like 'US/Pacific' or something like that.
     [:session-timezone {:optional true} [:maybe [:ref driver-api/schema.expression.temporal.timezone-id]]]
-    ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.
     [:write? {:optional true} [:maybe :boolean]]
-    [:download? {:optional true} [:maybe :boolean]]]])
+    [:download? {:optional true} [:maybe :boolean]]
+    ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.
+    [:keep-open? {:optional true} [:maybe :boolean]]]])
 
 (defmulti do-with-connection-with-options
   "Fetch a [[java.sql.Connection]] from a `driver`/`db-or-id-or-spec`, and invoke
@@ -343,8 +344,11 @@
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (if-let [conn (:connection db-or-id-or-spec)]
       (f conn)
-      (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
-        (f conn)))))
+      (let [get-conn (^:once fn* [] (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options)))]
+        (if (:keep-open? options)
+          (f (get-conn))
+          (with-open [conn ^Connection (get-conn)]
+            (f conn)))))))
 
 (mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
