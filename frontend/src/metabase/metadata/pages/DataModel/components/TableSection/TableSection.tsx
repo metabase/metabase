@@ -194,9 +194,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             </Group>
           </Group>
 
-          {!hasFields && (
-            <EmptyState message={t`This table does not have any fields`} />
-          )}
+          {!hasFields && <EmptyState message={t`This table has no fields`} />}
 
           {isSorting && hasFields && (
             <SortableFieldList
