@@ -142,7 +142,6 @@
 (defmethod driver/create-view! :sql-jdbc
   [driver database-id view-name view-definition & {:keys [replace?] :or {replace? false}}]
   (let [sql (create-view!-sql driver view-name view-definition :replace? replace?)]
-
     (driver-api/execute-write-sql! database-id sql)))
 
 (defmethod driver/drop-view! :sql-jdbc

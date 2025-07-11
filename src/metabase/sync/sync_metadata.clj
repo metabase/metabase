@@ -7,6 +7,7 @@
    3.  Sync FKs    (`metabase.sync.sync-metadata.fks`)
    4.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
   (:require
+   [metabase.driver.util :as driver.u]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
@@ -18,6 +19,7 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.table :as table]))
 
@@ -80,7 +82,11 @@
 (mu/defn sync-new-table-metadata!
   "Sync the metadata for a new table in `database`"
   [database :- i/DatabaseInstance {:keys [table-name schema]}]
-  (let [table (sync-tables/create-or-reactivate-table!
+  (let [schema (not-empty schema)
+        table (sync-tables/create-or-reactivate-table!
                database
-               {:name table-name :schema (not-empty schema)})]
+               {:name table-name :schema schema})]
+    (when (and (driver.u/supports? (driver.u/database->driver database) :schemas database)
+               (not schema))
+      (log/warnf "Schema not provided for table ''%s'' during sync-new-table-metadata!" table-name))
     (doto table sync-table-metadata!)))
