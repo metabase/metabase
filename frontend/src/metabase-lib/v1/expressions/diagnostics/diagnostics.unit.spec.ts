@@ -286,6 +286,26 @@ describe("diagnostics", () => {
       );
     });
 
+    it("should correctly pass along the position of the error", () => {
+      const metadata = createMockMetadata({
+        databases: [
+          createSampleDatabase({
+            id: 1,
+            features: ["left-join"],
+          }),
+        ],
+      });
+
+      const error = setup({
+        expression: `10 + percentile(1, 2)`,
+        expressionMode: "expression",
+        metadata,
+      });
+
+      expect(error?.pos).toBe(5);
+      expect(error?.len).toBe(10);
+    });
+
     it("should reject comparison operator with non-field operand", () => {
       expect(err("1 < 2")).toBe("Expecting field but found 1");
       expect(err("1 <= 2")).toBe("Expecting field but found 1");
