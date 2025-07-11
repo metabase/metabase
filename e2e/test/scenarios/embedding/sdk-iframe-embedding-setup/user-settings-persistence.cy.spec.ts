@@ -33,7 +33,10 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
     cy.log("1. set embed settings to non-default values");
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Allow downloads").click().should("be.checked");
+      cy.findByLabelText("Allow downloads")
+        .should("not.be.checked")
+        .click()
+        .should("be.checked");
 
       cy.findByLabelText("Show dashboard title")
         .should("be.checked")
@@ -68,8 +71,15 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
     cy.log("1. set chart embed settings to non-default values");
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Allow downloads").click().should("be.checked");
-      cy.findByLabelText("Show chart title").click().should("not.be.checked");
+      cy.findByLabelText("Allow downloads")
+        .should("not.be.checked")
+        .click()
+        .should("be.checked");
+
+      cy.findByLabelText("Show chart title")
+        .should("be.checked")
+        .click()
+        .should("not.be.checked");
     });
 
     cy.log("2. reload the page");
@@ -97,6 +107,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     cy.log("1. set exploration settings to non-default values");
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow users to save new questions")
+        .should("be.checked")
         .click()
         .should("not.be.checked");
     });
@@ -214,12 +225,9 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
     cy.log("1. hide one parameter and set default value for another");
     getEmbedSidebar().within(() => {
-      parameterVisibilityToggle("id").click();
-      parameterVisibilityToggle("id").should(
-        "have.attr",
-        "data-hidden",
-        "true",
-      );
+      parameterVisibilityToggle("id")
+        .click()
+        .should("have.attr", "data-hidden", "true");
 
       cy.findByLabelText("Product ID").type("456").blur();
     });
