@@ -2,34 +2,24 @@ import type { ComponentType, PropsWithChildren } from "react";
 import { noop } from "underscore";
 
 import {
+  type ContextReturned,
   DashboardContext,
-  type DashboardContextErrorState,
-  type DashboardContextOwnProps,
-  type DashboardContextOwnResult,
-  type DashboardContextProps,
-  type DashboardControls,
 } from "metabase/dashboard/context";
 import {
-  type ReduxProps,
   mapDispatchToProps,
   mapStateToProps,
 } from "metabase/dashboard/context/context.redux";
 import { connect } from "metabase/lib/redux";
 
-export type MockDashboardContextProps = Partial<DashboardContextProps> &
-  Partial<ReduxProps> &
-  Partial<DashboardContextErrorState>;
+export type MockDashboardContextProps = Partial<
+  PropsWithChildren<ContextReturned>
+>;
 
 // Create a component that accepts all redux props and passes them into DashboardContext
 const DashboardContextWithReduxProps = (
-  props: PropsWithChildren<
-    ReduxProps &
-      DashboardContextOwnProps &
-      DashboardContextOwnResult &
-      DashboardControls
-  >,
+  props: PropsWithChildren<ContextReturned>,
 ) => (
-  <DashboardContext.Provider value={{ error: null, ...props }}>
+  <DashboardContext.Provider value={props}>
     {props.children}
   </DashboardContext.Provider>
 );
@@ -44,15 +34,8 @@ const ConnectedDashboardContextWithReduxProps = connect(
       ...stateProps,
       ...dispatchProps,
       ...ownProps,
-    }) as unknown as ReduxProps &
-      DashboardContextOwnProps &
-      DashboardContextOwnResult &
-      DashboardControls,
-)(DashboardContextWithReduxProps) as ComponentType<
-  PropsWithChildren<
-    MockDashboardContextProps & DashboardContextOwnResult & Partial<ReduxProps>
-  >
->;
+    }) as unknown as ContextReturned,
+)(DashboardContextWithReduxProps) as ComponentType<MockDashboardContextProps>;
 
 /*
  * NOTE: DO NOT USE THIS IN REAL COMPONENTS. This is specifically for the storybook stories for the
@@ -98,7 +81,7 @@ export const MockDashboardContext = ({
 
   return (
     <ConnectedDashboardContextWithReduxProps
-      dashboardIdProp={dashboardId}
+      dashboardIdProp={dashboardId ?? undefined}
       dashboardId={dashboardId}
       parameterQueryParams={parameterQueryParams}
       onLoad={onLoad}
