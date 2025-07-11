@@ -529,7 +529,7 @@
                             :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}
                            {:type "section", :text {:type "plain_text", :text "1,000"}}
                            {:type "section",
-                            :text {:type "mrkdwn", :text "*Dashboard Header*"},
+                            :text {:type "mrkdwn", :text "*## Dashboard Header*"},
                             :fields [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}]}]}
                 message))))}}))
 
