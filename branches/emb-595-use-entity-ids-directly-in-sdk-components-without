@@ -1,7 +1,7 @@
 {
   "base": {
-    "name": "emb-590-accept-entity-ids-in-all-sdk-related-endpoints-and-handle-it",
-    "hash": "6c2b208b6a99fd46852c8017b290eb57db92d41b"
+    "name": "master",
+    "hash": "1783247861e65973eaae9342221cd7941c07c17c"
   },
   "upstream": {
     "branch": "emb-595-use-entity-ids-directly-in-sdk-components-without"
