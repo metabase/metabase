@@ -37,6 +37,11 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
         visibility: hidden;
         white-space: pre-wrap;
         word-wrap: break-word;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        line-clamp: inherit;
+        -webkit-line-clamp: inherit;
+        user-select: none;
       }
     `}
 `;

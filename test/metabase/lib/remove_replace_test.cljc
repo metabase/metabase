@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -1737,7 +1738,10 @@
                      (lib/join (meta/table-metadata :products))
                      (lib/aggregate (lib/count))
                      (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal))))
-          cols   (m/index-by :lib/desired-column-alias (lib/breakoutable-columns base1))
+          cols   (m/index-by :lib/desired-column-alias
+                             (into []
+                                   (lib.field.util/add-source-and-desired-aliases-xform base1)
+                                   (lib/breakoutable-columns base1)))
           base2  (-> base1
                      (lib/breakout (get cols "Products__CATEGORY"))           ; Explicitly joined
                      (lib/breakout (get cols "PEOPLE__via__USER_ID__SOURCE")) ; Implicitly joined
@@ -1761,7 +1765,11 @@
                                         (lib/join (meta/table-metadata :products))
                                         (lib/aggregate (lib/count))
                                         (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal))))
-          cols                      (m/index-by :lib/desired-column-alias (lib/breakoutable-columns base1))
+          cols                      (m/index-by
+                                     :lib/desired-column-alias
+                                     (into []
+                                           (lib.field.util/add-source-and-desired-aliases-xform base1)
+                                           (lib/breakoutable-columns base1)))
           base2                     (-> base1
                                         (lib/breakout (get cols "Products__CATEGORY"))             ; Explicitly joined
                                         (lib/breakout (get cols "PEOPLE__via__USER_ID__SOURCE"))   ; Implicitly joined

@@ -15,7 +15,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.query-processor.pivot.test-util :as api.pivots]
+   [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
@@ -141,7 +141,7 @@
                                                                {:pivot-rows :pivot_rows, :pivot-cols :pivot_cols})))))))
 
 (deftest ^:parallel generate-queries-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           query             (lib/query
                              metadata-provider
@@ -204,8 +204,8 @@
 
 (deftest ^:parallel pivot-options-test
   (testing "`pivot-options` correctly generates pivot-rows and pivot-cols from a card's viz settings"
-    (let [query         (api.pivots/pivot-query false)
-          viz-settings  (:visualization_settings (api.pivots/pivot-card))
+    (let [query         (qp.pivot.test-util/pivot-query false)
+          viz-settings  (:visualization_settings (qp.pivot.test-util/pivot-card))
           pivot-options {:pivot-rows [1 0], :pivot-cols [2] :pivot-measures nil :column-sort-order {}}]
       (let [actual-pivot-options (#'qp.pivot/pivot-options query viz-settings)]
         (is (= (assoc pivot-options :show-row-totals true :show-column-totals true)
@@ -415,7 +415,7 @@
        set))
 
 (deftest ^:parallel return-correct-columns-test
-  (let [results (qp.pivot/run-pivot-query (api.pivots/pivot-query))
+  (let [results (qp.pivot/run-pivot-query (qp.pivot.test-util/pivot-query))
         rows    (mt/rows results)]
     (testing "Columns should come back in the expected order"
       (is (= ["User → State"
@@ -459,14 +459,14 @@
               ([] 0)
               ([acc] acc)
               ([acc _] (inc acc))))]
-    (is (= (count (mt/rows (qp.pivot/run-pivot-query (api.pivots/pivot-query))))
-           (qp.pivot/run-pivot-query (api.pivots/pivot-query) rff)))))
+    (is (= (count (mt/rows (qp.pivot/run-pivot-query (qp.pivot.test-util/pivot-query))))
+           (qp.pivot/run-pivot-query (qp.pivot.test-util/pivot-query) rff)))))
 
 (deftest ^:parallel parameters-query-test
   (mt/dataset test-data
     (is (=? {:status    :completed
              :row_count 137}
-            (qp.pivot/run-pivot-query (api.pivots/parameters-query))))))
+            (qp.pivot/run-pivot-query (qp.pivot.test-util/parameters-query))))))
 
 (defn- clean-pivot-results [results]
   (let [no-uuid #(cond-> (dissoc % :lib/source_uuid)

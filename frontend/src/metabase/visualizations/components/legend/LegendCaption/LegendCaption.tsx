@@ -89,7 +89,6 @@ export const LegendCaption = ({
         DashboardS.fullscreenNormalText,
         DashboardS.fullscreenNightText,
         EmbedFrameS.fullscreenNightText,
-        CS.h3,
 
         // html2canvas doesn't support `text-overflow: ellipsis` (#45499) https://github.com/niklasvh/html2canvas/issues/324
         SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS,
