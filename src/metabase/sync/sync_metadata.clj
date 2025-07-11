@@ -79,6 +79,7 @@
     (sync-fks/sync-fks-for-table! database table)
     (sync-indexes/maybe-sync-indexes-for-table! database table)))
 
+;; NOTE: won't perform full analysis, so async we should `(-> table sync/sync-table! sync-util/set-initial-table-sync-complete!)`
 (mu/defn sync-new-table-metadata!
   "Sync the metadata for a new table in `database`"
   [database :- i/DatabaseInstance {:keys [table-name schema]}]
