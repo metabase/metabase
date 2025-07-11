@@ -69,38 +69,38 @@ jobs:
     uses: ./.github/workflows/backend.yml
     secrets: inherit
     with:
-      skip: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
+      skip: ${{ github.ref_name != 'master' && needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
 
   app-db-tests:
     needs: files-changed
     uses: ./.github/workflows/app-db.yml
     secrets: inherit
     with:
-      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
+      skip: ${{ github.ref_name != 'master' && needs.files-changed.outputs.backend_all != 'true' }}
 
   driver-tests:
     needs: files-changed
     uses: ./.github/workflows/drivers.yml
     secrets: inherit
     with:
-      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
+      skip: ${{ github.ref_name != 'master' && needs.files-changed.outputs.backend_all != 'true' }}
 
   frontend-tests:
     needs: files-changed
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
     with:
-      skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
-      skip-lint: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_specs != 'true' }}
+      skip: ${{ github.ref_name != 'master' && needs.files-changed.outputs.frontend_all != 'true' }}
+      skip-lint: ${{ github.ref_name != 'master' && needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_specs != 'true' }}
 
   e2e-tests:
     needs: files-changed
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
     with:
-      skip: ${{ needs.files-changed.outputs.e2e_all != 'true' }}
+      skip: ${{ github.ref_name != 'master' && needs.files-changed.outputs.e2e_all != 'true' }}
       # here we pass result from files-changed, which is a list of files, comma separated
       # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
       # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
       # list of changed specs files, then only specs are changed and we can run only those specs
-      specs: ${{ needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files && needs.files-changed.outputs.e2e_specs_files || '' }}
+      specs: ${{ github.ref_name == 'master' && '' || (needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files && needs.files-changed.outputs.e2e_specs_files || '') }}
