@@ -124,7 +124,35 @@
     (testing "group name is required"
       (is (= {:errors          {:name "value must be a non-blank string."},
               :specific-errors {:name ["should be a string, received: nil" "non-blank string, received: nil"]}}
-             (mt/user-http-request :crowberto :post 400 "permissions/group" {:name nil}))))))
+             (mt/user-http-request :crowberto :post 400 "permissions/group" {:name nil}))))
+
+    (testing "creates regular group by default"
+      (mt/with-model-cleanup [:model/PermissionsGroup]
+        (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Regular Group"})
+        (let [group (t2/select-one :model/PermissionsGroup :name "Regular Group")]
+          (is (some? group))
+          (is (false? (:is_tenant_group group))))))
+
+    (testing "creates regular group when is_tenant_group is explicitly false"
+      (mt/with-model-cleanup [:model/PermissionsGroup]
+        (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Explicit Regular Group" :is_tenant_group false})
+        (let [group (t2/select-one :model/PermissionsGroup :name "Explicit Regular Group")]
+          (is (some? group))
+          (is (false? (:is_tenant_group group))))))
+
+    (testing "creates regular group when is_tenant_group is nil"
+      (mt/with-model-cleanup [:model/PermissionsGroup]
+        (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Nil Tenant Group" :is_tenant_group nil})
+        (let [group (t2/select-one :model/PermissionsGroup :name "Nil Tenant Group")]
+          (is (some? group))
+          (is (false? (:is_tenant_group group))))))))
+
+(deftest create-group-test-enterprise-features
+  (testing "POST /permissions/group enterprise feature enforcement"
+    (testing "throws ee-feature-error when trying to create tenant group without tenants feature"
+      (mt/with-premium-features #{}
+        (is (=? {:message "Tenants is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"}
+                (mt/user-http-request :crowberto :post 402 "permissions/group" {:name "Tenant Group" :is_tenant_group true})))))))
 
 (deftest delete-group-test
   (testing "DELETE /permissions/group/:id"

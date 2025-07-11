@@ -207,11 +207,15 @@
   "Create a new `PermissionsGroup`."
   [_route-params
    _query-params
-   {:keys [name]} :- [:map
-                      [:name ms/NonBlankString]]]
+   {:keys [name is_tenant_group]} :- [:map
+                                      [:name ms/NonBlankString]
+                                      [:is_tenant_group {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
+  (when (and is_tenant_group (not (premium-features/enable-tenants?)))
+    (throw (premium-features/ee-feature-error (tru "Tenants"))))
   (first (t2/insert-returning-instances! :model/PermissionsGroup
-                                         :name name)))
+                                         :name name
+                                         :is_tenant_group (or is_tenant_group false))))
 
 (api.macros/defendpoint :put "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
