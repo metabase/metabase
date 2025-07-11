@@ -1842,11 +1842,10 @@ describe("scenarios > admin > datamodel", () => {
           cy.log("verify preview");
           TableSection.clickField("Tax");
           FieldSection.getPreviewButton().click();
-
-          // TODO: assert table preview shows empty state
-          // https://linear.app/metabase/issue/SEM-433/empty-table-preview-of-columns-with-hidden-visibility
-          // Currently works incorrectly because of metabase#60487
-
+          PreviewSection.get()
+            .findByText("This field is hidden")
+            .should("be.visible");
+          cy.get("@dataset.all").should("have.length", 0);
           PreviewSection.getPreviewTypeInput().findByText("Detail").click();
           cy.wait("@dataset");
           PreviewSection.get().findByText("Tax").should("not.exist");
@@ -1889,11 +1888,10 @@ describe("scenarios > admin > datamodel", () => {
           cy.log("verify preview");
           TableSection.clickField("Tax");
           FieldSection.getPreviewButton().click();
-          cy.wait("@dataset");
-          // TODO: https://linear.app/metabase/issue/SEM-433/empty-table-preview-of-columns-with-hidden-visibility
           PreviewSection.get()
-            .findByText("Every field is hidden right now")
+            .findByText("This field is hidden")
             .should("be.visible");
+          cy.get("@dataset.all").should("have.length", 0);
           verifyObjectDetailPreview({
             index: 4,
             row: ["Tax", "2.07"],
