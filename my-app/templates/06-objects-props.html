@@ -1,0 +1,29 @@
+<script src="http://localhost:3000/app/embed.js"></script>
+
+<metabase-config
+  instance-url="http://localhost:3000"
+  use-existing-user-session="true"
+>
+</metabase-config>
+
+<metabase-dashboard dashboard-id="1" id="embed"></metabase-dashboard>
+
+<script>
+  const embed = document.getElementById("embed");
+  embed.theme = {
+    colors: {
+      brand: "red",
+    },
+  };
+</script>
+
+<!--
+vue and angular have some magic syntax that you declarately bind js values to properties
+so you can do something like this
+
+<metabase-dashboard
+  dashboard-id="1"
+  id="embed"
+  .theme="{ colors: { brand: 'red' } }" / <-- can use js values in here
+/>
+-->
