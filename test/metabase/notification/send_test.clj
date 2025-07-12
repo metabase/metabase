@@ -246,8 +246,8 @@
           (is (= 1 (count @mt/inbox))))))))
 
 (def ^:private fake-slack-notification
-  {:channel-id  "#test-channel"
-   :attachments [{:blocks [{:type "section", :text {:type "plain_text", :text ""}}]}]})
+  {:channel  "#test-channel"
+   :blocks [{:type "section", :text {:type "plain_text", :text ""}}]})
 
 (deftest slack-notification-retry-test
   (notification.tu/with-send-notification-sync
