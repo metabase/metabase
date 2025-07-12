@@ -19,7 +19,12 @@ export function addMongoDatabase(displayName = "QA Mongo") {
   return addQADatabase({
     engine: "mongo",
     displayName,
-    port: QA_MONGO_PORT,
+    details: {
+      "advanced-options": false,
+      "use-conn-uri": true,
+      "conn-uri": `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}/sample?authSource=admin`,
+      "tunnel-enabled": false,
+    },
   });
 }
 
@@ -60,6 +65,7 @@ function addQADatabase({
   port,
   enable_actions = false,
   idAlias,
+  details,
 }) {
   const PASS_KEY = engine === "mongo" ? "pass" : "password";
   const AUTH_DB = engine === "mongo" ? "admin" : null;
@@ -80,7 +86,7 @@ function addQADatabase({
     .request("POST", "/api/database", {
       engine: engine,
       name: displayName,
-      details: {
+      details: details ?? {
         dbname: db_name,
         host: credentials.host,
         port: port,
