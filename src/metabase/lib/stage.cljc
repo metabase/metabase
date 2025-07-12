@@ -33,25 +33,6 @@
   (throw (ex-info "You can't calculate a metadata map for a stage! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
 
-(mu/defn ensure-previous-stages-have-metadata :- ::lib.schema/query
-  "Recursively calculate the metadata for the previous stages and add it to them, we'll need it for metadata
-  calculations for [[lib.metadata.calculation/returned-columns]] and [[lib.metadata.calculation/visible-columns]], and
-  we don't want to have to calculate it more than once..."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
-  (reduce
-   (fn [query stage-number]
-     (lib.util/update-query-stage query
-                                  stage-number
-                                  assoc ::cached-metadata
-                                  (lib.metadata.calculation/returned-columns query
-                                                                             stage-number
-                                                                             (lib.util/query-stage query stage-number)
-                                                                             options)))
-   query
-   (range 0 (lib.util/canonical-stage-index query stage-number))))
-
 (mu/defn- existing-stage-metadata :- [:maybe ::lib.metadata.calculation/returned-columns]
   "Return existing stage metadata attached to a stage if is already present: return it as-is, but only if this is a
   native stage or a source-Card or a metric stage. If it's any other sort of stage then ignore the metadata, it's
@@ -59,18 +40,17 @@
   [query        :- ::lib.schema/query
    stage-number :- :int]
   (let [{stage-type :lib/type, :keys [source-card] :as stage} (lib.util/query-stage query stage-number)]
-    (or (::cached-metadata stage)
-        (when-let [metadata (:lib/stage-metadata stage)]
-          (when (or (= stage-type :mbql.stage/native)
-                    source-card)
-            (let [source-type (case stage-type
-                                :mbql.stage/native :source/native
-                                :mbql.stage/mbql   :source/card)]
-              (not-empty
-               (into []
-                     (comp (map #(assoc % :lib/source source-type))
-                           (lib.field.util/add-source-and-desired-aliases-xform query))
-                     (:columns metadata)))))))))
+    (when-let [metadata (:lib/stage-metadata stage)]
+      (when (or (= stage-type :mbql.stage/native)
+                source-card)
+        (let [source-type (case stage-type
+                            :mbql.stage/native :source/native
+                            :mbql.stage/mbql   :source/card)]
+          (not-empty
+           (into []
+                 (comp (map #(assoc % :lib/source source-type))
+                       (lib.field.util/add-source-and-desired-aliases-xform query))
+                 (:columns metadata))))))))
 
 (mu/defn- breakouts-columns :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
   [query        :- ::lib.schema/query
@@ -245,8 +225,7 @@
    stage-number                                        :- :int
    _stage                                              :- ::lib.schema/stage
    {:keys [include-implicitly-joinable?], :as options} :- ::lib.metadata.calculation/visible-columns.options]
-  (let [query            (ensure-previous-stages-have-metadata query stage-number options)
-        existing-columns (existing-visible-columns query stage-number options)]
+  (let [existing-columns (existing-visible-columns query stage-number options)]
     (->> (concat
           existing-columns
            ;; add implicitly joinable columns if desired
@@ -308,8 +287,7 @@
    {:keys [include-remaps?], :as options} :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (or
    (existing-stage-metadata query stage-number)
-   (let [query        (ensure-previous-stages-have-metadata query stage-number options)
-         summary-cols (summary-columns query stage-number options)
+   (let [summary-cols (summary-columns query stage-number options)
          field-cols   (fields-columns query stage-number options)
          ;; ... then calculate metadata for this stage
          cols         (cond
@@ -367,22 +345,21 @@
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/mbql
   [query stage-number _stage style]
-  (let [query (ensure-previous-stages-have-metadata query stage-number nil)]
-    (or
-     (not-empty
-      (let [part->description  (into {}
-                                     (comp cat
-                                           (map (fn [k]
-                                                  [k (lib.metadata.calculation/describe-top-level-key query stage-number k)])))
-                                     [display-name-source-parts display-name-other-parts])
-            source-description (str/join " + " (remove str/blank? (map part->description display-name-source-parts)))
-            other-descriptions (map part->description display-name-other-parts)]
-        (str/join ", " (remove str/blank? (cons source-description other-descriptions)))))
-     (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-       (lib.metadata.calculation/display-name query
-                                              previous-stage-number
-                                              (lib.util/query-stage query previous-stage-number)
-                                              style)))))
+  (or
+   (not-empty
+    (let [part->description  (into {}
+                                   (comp cat
+                                         (map (fn [k]
+                                                [k (lib.metadata.calculation/describe-top-level-key query stage-number k)])))
+                                   [display-name-source-parts display-name-other-parts])
+          source-description (str/join " + " (remove str/blank? (map part->description display-name-source-parts)))
+          other-descriptions (map part->description display-name-other-parts)]
+      (str/join ", " (remove str/blank? (cons source-description other-descriptions)))))
+   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+     (lib.metadata.calculation/display-name query
+                                            previous-stage-number
+                                            (lib.util/query-stage query previous-stage-number)
+                                            style))))
 
 (mu/defn has-clauses? :- :boolean
   "Does given query stage have any clauses?"

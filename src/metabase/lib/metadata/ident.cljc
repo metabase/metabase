@@ -1,4 +1,4 @@
-(ns metabase.lib.metadata.ident
+(ns ^:deprecated metabase.lib.metadata.ident
   "Helpers for working with `:ident` fields on columns."
   (:require
    [clojure.string :as str]

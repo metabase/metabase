@@ -137,6 +137,8 @@
                      (-> new-clause
                          (top-level-expression-clause (or (custom-name new-clause)
                                                           (expression-name target-clause)))
+                         ;; TODO (Cam 7/10/25) -- remove soon. Not removing now so I don't need to update 1000 tests
+                         #_{:clj-kondo/ignore [:deprecated-var]}
                          (lib.common/preserve-ident-of target-clause))
                      new-clause)]
     (m/update-existing-in
@@ -492,6 +494,13 @@
       (truncate-alias)))
 
 (mr/def ::unique-name-generator
+  "Stateful function with the signature
+
+    (f)        => 'fresh' unique name generator
+    (f str)    => unique-str
+    (f id str) => unique-str
+
+  i.e. repeated calls with the same string should return different unique strings."
   [:function
    ;; (f) => generates a new instance of the unique name generator for recursive generation without 'poisoning the
    ;; well'.

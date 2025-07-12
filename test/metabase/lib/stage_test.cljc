@@ -8,7 +8,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.stage :as lib.stage]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -18,18 +17,6 @@
 
 #?(:cljs
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
-
-(deftest ^:parallel ensure-previous-stages-have-metadata-test
-  (let [query (-> (lib.tu/venues-query)
-                  (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)])
-                  lib/append-stage
-                  lib/append-stage)]
-    (is (=? {:stages [{::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/table-defaults}
-                                                    {:name "NAME", :lib/source :source/table-defaults}]}
-                      {::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/previous-stage}
-                                                    {:name "NAME", :lib/source :source/previous-stage}]}
-                      {}]}
-            (#'lib.stage/ensure-previous-stages-have-metadata query -1 {})))))
 
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are coming back the way we'd expect for :field clauses"

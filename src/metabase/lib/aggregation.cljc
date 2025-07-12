@@ -229,6 +229,8 @@
      ;; here for its type!
      (select-keys (lib.metadata.calculation/metadata query stage-number first-arg) [:settings :semantic-type]))
    ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)
+   ;; TODO (Cam 7/10/25) -- remove soon. Not removing now so I don't need to update 1000 tests
+   #_{:clj-kondo/ignore [:deprecated-var]}
    {:ident (lib.options/ident clause)}))
 
 (lib.common/defop count       [] [x])

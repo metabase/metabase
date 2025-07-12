@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cache :as lib.metadata.cache]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.test-metadata :as meta]
@@ -944,3 +945,25 @@
       ["GH_USERS__via__AUTHOR_ID__ID" :source/implicitly-joinable]
       ["GH_USERS__via__AUTHOR_ID__BIRTHDAY" :source/implicitly-joinable]
       ["GH_USERS__via__AUTHOR_ID__EMAIL" :source/implicitly-joinable]])))
+
+(deftest ^:parallel caching-test
+  (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                       (lib/join (meta/table-metadata :categories)))
+        call-count (atom {:hits 0, :misses 0})]
+    (doseq [f [#'lib/returned-columns
+               #'lib/visible-columns]]
+      (testing f
+        (binding [lib.metadata.cache/*cache-hit-hook*  (fn [_v]
+                                                         (swap! call-count update :hits inc))
+                  lib.metadata.cache/*cache-miss-hook* (fn [_v]
+                                                         (swap! call-count update :misses inc))]
+          (is (seq (f query)))
+          (let [num-misses (:misses @call-count)]
+            (is (pos-int? num-misses)
+                "The first call should result in some cache misses")
+            (is (pos-int? (:hits @call-count))
+                "The first call should result in some cache hits for recursive metadata calculation")
+            (is (seq (f query)))
+            (is (= num-misses
+                   (:misses @call-count))
+                "Another call should result in ZERO additional cache misses -- we should be returning the cached value")))))))
