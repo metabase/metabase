@@ -26,7 +26,7 @@ jobs:
 
   cross-version-testing:
     needs: files-changed
-    if: ${{ needs.files-changed.outputs.e2e_cross_version == 'true' || github.event_name == 'schedule'}}
+    if: ${{ github.ref_name == 'master' || needs.files-changed.outputs.e2e_cross_version == 'true' || github.event_name == 'schedule'}}
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     strategy:

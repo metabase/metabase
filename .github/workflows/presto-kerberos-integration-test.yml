@@ -33,7 +33,7 @@ jobs:
 
   run-presto-kerberos-test:
     needs: files-changed
-    if: needs.files-changed.outputs.backend_presto_kerberos == 'true'
+    if: github.ref_name == 'master' || needs.files-changed.outputs.backend_presto_kerberos == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     steps:

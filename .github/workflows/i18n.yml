@@ -29,7 +29,7 @@ jobs:
 
   verify-i18n-files:
     needs: files-changed
-    if: needs.files-changed.outputs.i18n == 'true'
+    if: github.ref_name == 'master' || needs.files-changed.outputs.i18n == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:

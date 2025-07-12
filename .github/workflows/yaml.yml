@@ -25,7 +25,7 @@ jobs:
 
   yaml-linter:
     runs-on: ubuntu-22.04
-    if: needs.files-changed.outputs.yaml == 'true'
+    if: github.ref_name == 'master' || needs.files-changed.outputs.yaml == 'true'
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4

@@ -35,7 +35,8 @@ jobs:
     needs: [files-changed]
     if: |
       !cancelled() &&
-      (needs.files-changed.outputs.e2e_embedding_sdk == 'true' ||
+      (github.ref_name == 'master' ||
+      needs.files-changed.outputs.e2e_embedding_sdk == 'true' ||
       needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
       needs.files-changed.outputs.embedding_documentation == 'true')
     runs-on: ubuntu-22.04
@@ -59,7 +60,7 @@ jobs:
   embedding-sdk-cli-snippets-type-check:
     needs: [files-changed, build]
     if: |
-      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
+      (github.ref_name == 'master' || needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true') &&
       needs.build.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
@@ -78,7 +79,7 @@ jobs:
   embedding-sdk-docs-snippets-type-check:
     needs: [files-changed, build]
     if: |
-      needs.files-changed.outputs.embedding_documentation == 'true' &&
+      (github.ref_name == 'master' || needs.files-changed.outputs.embedding_documentation == 'true') &&
       needs.build.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
@@ -97,7 +98,7 @@ jobs:
   embedding-sdk-api-documentation-generation-validation:
     needs: [files-changed, build]
     if: |
-      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
+      (github.ref_name == 'master' || needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true') &&
       needs.build.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20

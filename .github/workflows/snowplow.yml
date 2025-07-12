@@ -23,7 +23,7 @@ jobs:
 
   lint:
     needs: files-changed
-    if: needs.files-changed.outputs.snowplow == 'true'
+    if: github.ref_name == 'master' || needs.files-changed.outputs.snowplow == 'true'
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
