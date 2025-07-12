@@ -4,6 +4,16 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.57.0
+
+- Add the feature `:view` for drivers that support views
+
+- Add the multi-method `metabase.driver/view-name-length-limit`, like `table-name-length-limit` but for views
+
+- Add the multi-method `metabase.driver/create-view!` that allows the driver to create or replace a view
+
+- Add the multi-method `metabase.driver/drop-view!` that allows the driver to delete a view
+
 ## Metabase 0.56.0
 
 - Add the testing multi-method `tx/track-dataset` for shared cloud dbs to track loaded datasets for more efficient sharing.

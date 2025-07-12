@@ -132,6 +132,10 @@
            ;; TODO: decouple nested field columns sync from field sync. This will allow
            ;; describe-fields to be used for field sync for databases with nested field columns
            ;; Also this should be a driver method, not a sql-jdbc.sync method
-           db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table)]
-       {:total-fields   (count db-metadata)
+           db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table)
+           total-fields (count db-metadata)]
+       (when (zero? total-fields)
+         ;; there can legit exist tables with no fields, so we can't warn about it
+         (log/debugf "Zero total fields sync'd for table ''%s''" (sync-util/name-for-logging table)))
+       {:total-fields   total-fields
         :updated-fields (sync-and-update! database table db-metadata)}))))
