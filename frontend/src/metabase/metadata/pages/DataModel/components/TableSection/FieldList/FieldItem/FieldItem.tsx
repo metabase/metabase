@@ -111,6 +111,7 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
     >
       <Flex
         align="flex-start"
+        className={S.link}
         component={Link}
         direction="column"
         draggable={false} // this + onClick handler is required, otherwise interaction is broken on macOS
