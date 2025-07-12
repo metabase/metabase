@@ -208,4 +208,33 @@ describe("QuestionDownloadWidget", () => {
       screen.queryByLabelText("Keep the data pivoted"),
     ).not.toBeInTheDocument();
   });
+
+  it("should show maximum download size text only for xlsx format when results are truncated", async () => {
+    const truncatedResult = createMockDataset({
+      data: {
+        rows: [],
+        cols: [],
+        rows_truncated: 1000000,
+      },
+    });
+
+    setup({ result: truncatedResult });
+
+    // Initially on csv format - should not show the text
+    expect(
+      screen.queryByText(/maximum download size is 1 million rows/),
+    ).not.toBeInTheDocument();
+
+    // Switch to xlsx format - should show the text
+    await userEvent.click(screen.getByLabelText(".xlsx"));
+    expect(
+      screen.getByText(/maximum download size is 1 million rows/),
+    ).toBeInTheDocument();
+
+    // Switch back to csv format - should hide the text
+    await userEvent.click(screen.getByLabelText(".csv"));
+    expect(
+      screen.queryByText(/maximum download size is 1 million rows/),
+    ).not.toBeInTheDocument();
+  });
 });
