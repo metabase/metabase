@@ -62,3 +62,33 @@ describe("formatNumber", () => {
     ).toEqual("1.000015e+0");
   });
 });
+
+describe("formatNumber with scale (multiply function)", () => {
+  it("should multiply regular numbers with scale", () => {
+    expect(formatNumber(5, { scale: 3 })).toBe("15");
+    expect(formatNumber(2.5, { scale: 4 })).toBe("10");
+  });
+
+  it("should multiply bigint with integer scale", () => {
+    expect(formatNumber(BigInt(5), { scale: 3 })).toBe("15");
+    expect(formatNumber(BigInt(100), { scale: 7 })).toBe("700");
+  });
+
+  it("should convert bigint to number when scaling with float", () => {
+    expect(formatNumber(BigInt(5), { scale: 2.5 })).toBe("12.5");
+    expect(formatNumber(BigInt(10), { scale: 1.5 })).toBe("15");
+  });
+
+  it("should handle edge cases with scale", () => {
+    expect(formatNumber(0, { scale: 5 })).toBe("0");
+    expect(formatNumber(BigInt(0), { scale: 3 })).toBe("0");
+    expect(formatNumber(BigInt(5), { scale: 0 })).toBe("0");
+    expect(formatNumber(BigInt(5), { scale: 0.5 })).toBe("2.5");
+  });
+
+  it("should handle negative numbers with scale", () => {
+    expect(formatNumber(-5, { scale: 3 })).toBe("-15");
+    expect(formatNumber(BigInt(-5), { scale: 3 })).toBe("-15");
+    expect(formatNumber(BigInt(-5), { scale: 2.5 })).toBe("-12.5");
+  });
+});
