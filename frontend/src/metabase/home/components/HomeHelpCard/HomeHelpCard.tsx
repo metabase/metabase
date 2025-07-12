@@ -1,14 +1,16 @@
+import cx from "classnames";
 import { t } from "ttag";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import {
   getApplicationName,
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
-
-import { CardIcon, CardRoot, CardTitle } from "./HomeHelpCard.styled";
+import { Card, Flex, Icon, Text } from "metabase/ui";
 
 export const HomeHelpCard = (): JSX.Element | null => {
   const cardTitleId = useUniqueId();
@@ -20,9 +22,34 @@ export const HomeHelpCard = (): JSX.Element | null => {
   }
 
   return (
-    <CardRoot href={getLearnUrl()} aria-labelledby={cardTitleId}>
-      <CardIcon name="reference" />
-      <CardTitle id={cardTitleId}>{t`${applicationName} tips`}</CardTitle>
-    </CardRoot>
+    <Card
+      component={ExternalLink}
+      href={getLearnUrl()}
+      aria-labelledby={cardTitleId}
+      withBorder
+      shadow="none"
+      py="md"
+      px="lg"
+      classNames={{
+        root: cx(
+          CS.bgBrandLighterHover,
+          CS.hoverParent,
+          CS.hoverDisplay,
+          CS.textBrandHover,
+        ),
+      }}
+    >
+      <Flex align="center" h="100%" gap="md">
+        <Icon name="reference" />
+        <Text
+          id={cardTitleId}
+          fw="bold"
+          fz="md"
+          style={{
+            color: "inherit",
+          }}
+        >{t`${applicationName} tips`}</Text>
+      </Flex>
+    </Card>
   );
 };
