@@ -46,7 +46,6 @@
   If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
   column index)."
   (:require
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -62,7 +61,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]))
 
 (defn- prefix-field-alias
   "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
@@ -88,21 +88,22 @@
 ;; [[unique-alias-fn]] below.
 
 (defn- remove-namespaced-options [options]
-  (when options
-    (not-empty (into {}
-                     (remove (fn [[k _]]
-                               (qualified-keyword? k)))
-                     options))))
+  (not-empty
+   (reduce-kv (fn [m k _]
+                (if (qualified-keyword? k)
+                  (dissoc m k)
+                  m))
+              options options)))
 
 (defn normalize-clause
   "Normalize a `:field`/`:expression`/`:aggregation` clause by removing extra info so it can serve as a key for
   `:qp/refs`. This removes `:source-field` if it is present -- don't use the output of this for anything but internal
   key/distinct comparison purposes."
   [clause]
-  (lib.util.match/match-one clause
+  (lib.util.match/match-lite clause
     ;; optimization: don't need to rewrite a `:field` clause without any options
     [:field _ nil]
-    &match
+    clause
 
     [:field id-or-name opts]
     ;; this doesn't use [[mbql.u/update-field-options]] because this gets called a lot and the overhead actually adds up
@@ -122,7 +123,7 @@
       [:aggregation index])
 
     _
-    &match))
+    clause))
 
 (defn- selected-clauses
   "Get all the clauses that are returned by this level of the query as a map of normalized-clause -> index of that
@@ -564,7 +565,7 @@
                                                  lib.util/unique-name-generator)]
      (as-> query-or-inner-query $q
        ;; first escape all the join aliases
-       (walk/postwalk
+       (perf/postwalk
         (fn [form]
           (if (and (map? form)
                    (seq (:joins form)))
@@ -579,7 +580,7 @@
             form))
         $q)
        ;; then add alias info
-       (walk/postwalk
+       (perf/postwalk
         (fn [form]
           (if (and (map? form)
                    ((some-fn :source-query :source-table) form)

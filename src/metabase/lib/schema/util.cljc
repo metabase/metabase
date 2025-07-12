@@ -1,7 +1,8 @@
 (ns metabase.lib.schema.util
   (:refer-clojure :exclude [ref])
   (:require
-   [clojure.walk :as walk]
+   #?(:clj [metabase.util.performance :refer [postwalk]]
+      :default [clojure.walk :refer [postwalk]])
    [metabase.lib.options :as lib.options]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
@@ -76,7 +77,7 @@
 (defn remove-randomized-idents
   "Recursively remove all uuids, `:ident`s and `:entity_id`s from x."
   [x]
-  (walk/postwalk
+  (postwalk
    (fn [x]
      (if (map? x)
        (dissoc x :lib/uuid :ident :entity_id :entity-id)
