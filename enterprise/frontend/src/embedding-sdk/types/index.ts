@@ -7,3 +7,4 @@ export type * from "./plugins";
 export type * from "./question";
 export type * from "./ui";
 export type * from "./user";
+export type * from "./web-components";

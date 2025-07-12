@@ -33,6 +33,7 @@ export interface DownloadQueryResultsOpts {
   token?: string;
   params?: Record<string, unknown>;
   visualizationSettings?: VisualizationSettings;
+  rootElement: HTMLElement;
 }
 
 interface DownloadQueryResultsParams {
@@ -135,13 +136,15 @@ const downloadChart = async ({
   opts: DownloadQueryResultsOpts;
   includeBranding: boolean;
 }) => {
-  const { question, dashcardId } = opts;
+  const { rootElement, question, dashcardId } = opts;
   const fileName = getChartFileName(question, includeBranding);
   const chartSelector =
     dashcardId != null
       ? `[data-dashcard-key='${dashcardId}']`
       : `[data-card-key='${getCardKey(question.id())}']`;
+
   await saveChartImage({
+    rootElement,
     selector: chartSelector,
     fileName,
     includeBranding,

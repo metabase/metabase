@@ -10,6 +10,7 @@ import React, { useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import _ from "underscore";
 
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import { isNotNull } from "metabase/lib/types";
@@ -60,6 +61,7 @@ export const SortableList = <T,>({
   useDragOverlay = true,
   dividers,
 }: SortableListProps<T>) => {
+  const rootElement = useRootElement();
   const [itemIds, setItemIds] = useState<ItemId[]>([]);
   const [indexedItems, setIndexedItems] = useState<Partial<Record<ItemId, T>>>(
     {},
@@ -109,7 +111,7 @@ export const SortableList = <T,>({
   };
 
   const handleDragStart = (event: DragStartEvent) => {
-    document.body.classList.add(GrabberS.grabbing);
+    rootElement.classList.add(GrabberS.grabbing);
 
     onSortStart?.(event);
 
@@ -120,7 +122,7 @@ export const SortableList = <T,>({
   };
 
   const handleDragEnd = () => {
-    document.body.classList.remove(GrabberS.grabbing);
+    rootElement.classList.remove(GrabberS.grabbing);
     if (activeItem && onSortEnd) {
       onSortEnd({
         id: getId(activeItem),
@@ -158,7 +160,7 @@ export const SortableList = <T,>({
                 })
               : null}
           </DragOverlay>,
-          getPortalRootElement(),
+          getPortalRootElement(rootElement),
         )}
     </DndContext>
   );
