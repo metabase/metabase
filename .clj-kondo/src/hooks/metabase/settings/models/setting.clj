@@ -139,6 +139,7 @@
      saml-keystore-password
      saml-keystore-path
      saml-user-provisioning-enabled?
+     sdk-iframe-embed-setup-settings
      send-email-on-first-login-from-new-device
      send-new-sso-user-admin-email?
      session-cookie-samesite

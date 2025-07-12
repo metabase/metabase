@@ -364,5 +364,6 @@ export const createMockSettings = (
   "update-channel": "latest",
   "trial-banner-dismissal-timestamp": null,
   "license-token-missing-banner-dismissal-timestamp": [],
+  "sdk-iframe-embed-setup-settings": null,
   ...opts,
 });
