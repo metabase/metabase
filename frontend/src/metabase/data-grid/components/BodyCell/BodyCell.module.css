@@ -14,6 +14,10 @@
   overflow: visible;
 }
 
+.formatNewlines {
+  white-space: pre-wrap;
+}
+
 .noWrap {
   white-space: nowrap;
   overflow: hidden;
