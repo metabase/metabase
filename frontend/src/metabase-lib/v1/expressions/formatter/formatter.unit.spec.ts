@@ -644,6 +644,24 @@ describe("if printWidth = Infinity, it should return the same results as the sin
     });
   });
 
+  it("should format the mode options for datetime functions", async () => {
+    await all({
+      'datetime(55, "unixSeconds")': opt(
+        "datetime",
+        { mode: "unix-seconds" },
+        55,
+      ),
+    });
+
+    await all({
+      'datetime("2025-03-20", "iso")': opt(
+        "datetime",
+        { mode: "iso" },
+        "2025-03-20",
+      ),
+    });
+  });
+
   it("should format expressions", async () => {
     await all({
       "[bool]": expressions.BOOL,

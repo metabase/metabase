@@ -282,6 +282,7 @@ export type ExpressionOptions = {
   "include-current"?: boolean;
   "base-type"?: string;
   "effective-type"?: string;
+  mode?: DatetimeMode;
 };
 
 declare const FilterOperatorSymbol: unique symbol;
@@ -350,6 +351,16 @@ export type ExcludeDateFilterUnit =
   | "day-of-week"
   | "month-of-year"
   | "quarter-of-year";
+
+export type DatetimeMode =
+  | "iso"
+  | "simple"
+  | "iso-bytes"
+  | "simple-bytes"
+  | "unix-seconds"
+  | "unix-milliseconds"
+  | "unix-microseconds"
+  | "unix-nanoseconds";
 
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;

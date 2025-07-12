@@ -250,3 +250,10 @@
         (are [schema] (not (me/humanize (mr/explain schema field-ref)))
           ::mbql.s/Reference
           ::mbql.s/field)))))
+
+(deftest ^:parallel datetime-schema-test
+  (doseq [expr [[:datetime ""]
+                [:datetime "" {}]
+                [:datetime "" {:mode :iso}]
+                [:datetime 10 {:mode :unix-seconds}]]]
+    (is (mr/validate mbql.s/datetime expr))))

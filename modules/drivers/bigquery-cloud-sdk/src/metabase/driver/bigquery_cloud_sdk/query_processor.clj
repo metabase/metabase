@@ -545,6 +545,10 @@
         (h2x/with-database-type-info "timestamp")
         (with-temporal-type :timestamp))))
 
+(defmethod sql.qp/unix-timestamp->honeysql [:bigquery-cloud-sdk :nanoseconds]
+  [driver _ expr]
+  (sql.qp/unix-timestamp->honeysql driver :microseconds [:div expr 1000]))
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [datetime     (fn [x target-timezone]
