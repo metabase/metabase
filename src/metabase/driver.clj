@@ -708,7 +708,16 @@
     :test/uuids-in-create-table-statements
 
     ;; Does this driver support Metabase's database routing feature?
-    :database-routing})
+    :database-routing
+
+    ;; Does this driver provide :database-default on (describe-fields) or (describe-table)
+    :describe-default-expr
+
+    ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
+    :describe-is-generated
+
+    ;; Does this driver provide :database-is-nullable on (describe-fields) or (describe-table)
+    :describe-is-nullable})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
