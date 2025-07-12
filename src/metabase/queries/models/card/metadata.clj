@@ -144,23 +144,6 @@ saved later when it is ready."
   minutes."
   (u/minutes->ms 15))
 
-;; TODO: Bring this back once we can count on idents again.
-#_(defn- valid-ident?
-    "Validates that model columns have idents that always start with `model[CardEntityId]__`, and that all idents are
-    nonempty strings.
-
-    Note that this **does not** check that `:type :native` queries have native idents - SQL-based sandboxing stores
-    `:native` queries but returns MBQL-like metadata with IDs and the Field `entity_id`s as idents."
-    ;; TODO: That limitation that prevents checking native queries have native-looking :idents is unfortunate.
-    ;; At least this checks that we never store `native[]__`, ie. native queries without a card entity_id.
-    ([column card]
-     (valid-ident? column (= (:type card) :model) (:entity_id card)))
-    ([column model? entity-id]
-     (let [valid-fn (cond
-                      model?               lib/valid-model-ident?
-                      :else                lib/valid-basic-ident?)]
-       (valid-fn column entity-id))))
-
 (mu/defn save-metadata-async!
   "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up
   to [[metadata-async-timeout-ms]] for the metadata, and then saves it if the query of the card has not changed."
@@ -202,20 +185,6 @@ saved later when it is ready."
                (u/ignore-exceptions
                  (qp.preprocess/query->expected-cols query)))))
 
-(defn- xform-maybe-fix-idents-for-model
-  "Returns a transducer that will conditionally wrap `:ident`s with [[lib/model-ident]] if they are not already wrapped
-  for this model.
-
-  If the provided card is not a model, returns [[identity]]."
-  [card]
-  (if (= (:type card) :model)
-    (let [eid (:entity_id card)]
-      (map (fn [col]
-             (cond-> col
-               (and (lib/valid-basic-ident? col eid)
-                    (not (lib/valid-model-ident? col eid))) (lib/add-model-ident eid)))))
-    identity))
-
 (defn infer-metadata-with-model-overrides
   "Does a fresh [[infer-metadata]] for the provided query.
 
@@ -228,7 +197,7 @@ saved later when it is ready."
         ;; If this is a model, include that model metadata so QP will infer correctly overridden metadata.
         query          (cond-> query
                          model-metadata (update :info merge {:metadata/model-metadata model-metadata}))]
-    (into [] (xform-maybe-fix-idents-for-model card) (infer-metadata query))))
+    (infer-metadata query)))
 
 ;; TODO: Refactor this to use idents rather than names, so it's more robust.
 (defn refresh-metadata
@@ -248,8 +217,8 @@ saved later when it is ready."
   - Be for an inner query, not for a model, and need to be wrapped with the [[lib/model-ident]]."
   [results-metadata card]
   ;; It's important that the placeholders are handled first, otherwise the check for double-wrapping will fail.
-  (into [] (comp (map #(m/update-existing % :ident lib/replace-placeholder-idents (:entity_id card)))
-                 (xform-maybe-fix-idents-for-model card))
+  (into []
+        (map #(m/update-existing % :ident lib/replace-placeholder-idents (:entity_id card)))
         results-metadata))
 
 (defn populate-result-metadata
@@ -288,14 +257,3 @@ saved later when it is ready."
      (do
        (log/debug "Attempting to infer result metadata for Card")
        (assoc card :result_metadata (infer-metadata-with-model-overrides query card))))))
-
-(defn assert-valid-idents!
-  "Given a card (or updates being made to a card) check the `:result_metadata` has correctly formed idents."
-  [{_cols :result_metadata :as _card}]
-  ;; TODO: Bring back these safety checks when we can rely on card having `:ident`s.
-  #_(lib/assert-idents-present! cols {:card-id (:id card)})
-  #_(when-let [invalid (seq (remove #(or (nil? (:ident %))
-                                         (valid-ident? % card))
-                                    cols))]
-      (log/warnf "Some columns in :result_metadata (card %d %s %s) have bad :idents! Query %s and bad columns %s"
-                 (:id card) (:entity_id card) (str (:type card)) (:dataset_query card) invalid)))

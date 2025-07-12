@@ -530,7 +530,6 @@
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
       (assert-valid-type card)
-      (card.metadata/assert-valid-idents! card)
       (params/assert-valid-parameters card)
       (params/assert-valid-parameter-mappings card)
       (collection/check-collection-namespace :model/Card (:collection_id card)))))
@@ -650,7 +649,6 @@
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints card changes)
-      (card.metadata/assert-valid-idents! (merge old-card-info changes))
       (assert-valid-type (merge old-card-info changes)))))
 
 (defn- add-query-description-to-metric-card

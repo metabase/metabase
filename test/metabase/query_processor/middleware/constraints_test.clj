@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.constraints-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.middleware.constraints :as qp.constraints]))
 
 (deftest ^:parallel no-op-without-middleware-options-test
@@ -13,7 +12,6 @@
   (testing "if it is *truthy* add the constraints"
     (is (=? {:middleware  {:add-default-userland-constraints? true
                            :userland-query?                   true}
-             :info        {:card-entity-id        lib.tu/placeholder-entity-id?}
              :constraints {:max-results           @#'qp.constraints/default-aggregated-query-row-limit
                            :max-results-bare-rows @#'qp.constraints/default-unaggregated-query-row-limit}}
             (qp.constraints/maybe-add-default-userland-constraints

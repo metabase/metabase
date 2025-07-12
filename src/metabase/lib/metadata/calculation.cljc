@@ -589,11 +589,7 @@
     x
     options        :- [:maybe ::visible-columns.options]]
    (let [options (merge (default-visible-columns-options) options)]
-     (u/prog1 (visible-columns-method query stage-number x options)
-       (lib.metadata.ident/assert-idents-present! <> {:query        query
-                                                      :stage-number stage-number
-                                                      :target       x
-                                                      :options      options})))))
+     (visible-columns-method query stage-number x options))))
 
 (mu/defn remapped-columns :- [:maybe ::visible-columns]
   "Given a seq of columns, return metadata for any remapped columns, if the `:include-remaps?` option is set."
