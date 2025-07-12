@@ -168,16 +168,22 @@ export const addParameter = createThunkAction(
   ADD_PARAMETER,
   ({ options, dashcardId }: AddParameterPayload) =>
     (dispatch, getState) => {
-      const parameter = createParameter(options, getParameters(getState()));
+      const dashcard = dashcardId
+        ? getDashCardById(getState(), dashcardId)
+        : null;
+      const dashcards = Object.values(getDashcards(getState()));
+
+      const parameter = createParameter(
+        options,
+        getParameters(getState()),
+        dashcard,
+        dashcards,
+      );
 
       updateParameters(dispatch, getState, (parameters) => [
         ...parameters,
         parameter,
       ]);
-
-      const dashcard = dashcardId
-        ? getDashCardById(getState(), dashcardId)
-        : null;
 
       if (dashcard && supportsInlineParameters(dashcard)) {
         const currentParameters = dashcard.inline_parameters ?? [];

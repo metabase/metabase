@@ -2504,6 +2504,69 @@ H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
       target_id: ORDERS_DASHBOARD_ID,
     });
   });
+
+  it("should allow parameters with same name in different contexts but not within same context", () => {
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Test Question",
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 5,
+        },
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    H.editDashboard();
+
+    // Dashboard-level Category
+    H.setFilter("Text or Category", "Is", "Category");
+    H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+    cy.button("Done").click();
+
+    // Try to add another dashboard-level filter with the same name
+    H.setFilter("Text or Category", "Is", "Category");
+    H.sidebar()
+      .findByText("This label is already in use.")
+      .should("be.visible");
+    cy.button("Done").click();
+
+    // Question-level Category
+    H.setDashCardFilter(0, "Text or Category", "Is", "Category");
+    H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+    cy.button("Done").click();
+
+    H.saveDashboard();
+
+    // Dashboard-level Category
+    H.filterWidget().contains("Category").click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter some text").type("Gadget");
+      cy.button("Add filter").click();
+    });
+
+    // Question dashcard Category
+    H.getDashboardCard(0).findByTestId("parameter-widget").click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter some text").type("Gizmo");
+      cy.button("Add filter").click();
+    });
+
+    H.getDashboardCard(0).findByText("No results!").should("be.visible");
+    // Verify URL has unique slugs for inline parameters
+    cy.url().should("contain", "/dashboard/2?category=Gadget&category-2=Gizmo");
+    cy.visit("/dashboard/2?category=Widget&category-2=Gadget");
+
+    // Ensure values from the URL are applied correctly
+    cy.findByTestId("dashboard-parameters-widget-container")
+      .findByText("Widget")
+      .should("be.visible");
+    H.getDashboardCard(0)
+      .findByTestId("parameter-widget")
+      .findByText("Gadget")
+      .should("be.visible");
+  });
 });
 
 function isFilterSelected(filter, bool) {
