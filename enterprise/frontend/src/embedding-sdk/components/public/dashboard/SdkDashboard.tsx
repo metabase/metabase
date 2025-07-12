@@ -245,6 +245,7 @@ const SdkDashboardInner = ({
           show({
             title: t`Save your changes?`,
             message: t`You’ll need to save your changes before leaving to create a new question.`,
+            confirmButtonText: t`Save changes`,
             onConfirm: async () => {
               /**
                * Dispatch the same actions as in the DashboardLeaveConfirmationModal.
