@@ -10,6 +10,7 @@ import {
   getCanShowAutoApplyFiltersToast,
   getDashCardBeforeEditing,
   getDashCardById,
+  getDashboardBeforeEditing,
   getDashboardById,
   getDashboardComplete,
   getLoadingDashCards,
@@ -379,13 +380,33 @@ export const fetchCardDataAction = createAsyncThunk<
         ? CardApi.query
         : DashboardApi.cardQuery;
 
+      // When dashboard is in edit mode, filter out parameters that don't exist on the backend yet
+      // to avoid "Dashboard does not have a parameter with ID" errors
+      const parametersToSend = shouldUseCardQueryEndpoint
+        ? undefined
+        : (() => {
+            const editingDashboard = getState().dashboard.editingDashboard;
+            if (editingDashboard) {
+              // In edit mode, only send parameters that existed before editing began
+              const dashboardBeforeEditing =
+                getDashboardBeforeEditing(getState());
+              const savedParameterIds = new Set(
+                (dashboardBeforeEditing?.parameters || []).map((p) => p.id),
+              );
+              return datasetQuery.parameters?.filter((p) =>
+                savedParameterIds.has(p.id),
+              );
+            }
+            return datasetQuery.parameters;
+          })();
+
       const requestBody = shouldUseCardQueryEndpoint
         ? { cardId: card.id, ignore_cache: ignoreCache }
         : {
             dashboardId: dashcard.dashboard_id,
             dashcardId: dashcard.id,
             cardId: card.id,
-            parameters: datasetQuery.parameters,
+            parameters: parametersToSend,
             ignore_cache: ignoreCache,
             dashboard_id: dashcard.dashboard_id,
             dashboard_load_id: dashboardLoadId,
