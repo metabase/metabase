@@ -8,8 +8,10 @@ import {
   getExtraTagsForVersion,
   getGenericVersion,
   getLastReleaseFromTags,
+  getMajorVersion,
   getMajorVersionNumberFromReleaseBranch,
   getMilestoneName,
+  getMinorVersion,
   getNextVersions,
   getOSSVersion,
   getReleaseBranch,
@@ -799,5 +801,25 @@ describe("version-helpers", () => {
 
       expect(filteredTags).toEqual(createTags(["0.55.0", "0.55.0-nightly"]));
     });
+  });
+
+  describe("getMajorVersion", () => {
+    it.each([
+      ["v0.52.3", "52"],
+      ["v1.52", "52"],
+      ["v1.43.2.1", "43"]
+    ])("%s -> %s" , (input, expected) => {
+      expect(getMajorVersion(input)).toBe(expected);
+    })
+  });
+
+  describe("getMinorVersion", () => {
+    it.each([
+      ["v0.52.3", "3"],
+      ["v1.52", "0"],
+      ["v1.43.2.1", "2"]
+    ])("%s -> %s" , (input, expected) => {
+      expect(getMinorVersion(input)).toBe(expected);
+    })
   });
 });

@@ -76,6 +76,12 @@ export const getMajorVersion = (versionString: string) =>
     .replace(/-rc\d+/i, "")
     .split(".")[0];
 
+export const getMinorVersion = (versionString: string) =>
+  versionString
+    .replace(/^[^\.]+\./, "")
+    .replace(/-rc\d+/i, "")
+    .split(".")?.[1] || "0";
+
 export const isReleaseBranch = (branchName: string) => {
   return branchName.startsWith("release-x.");
 };
