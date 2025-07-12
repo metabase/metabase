@@ -1,14 +1,13 @@
 import Questions from "metabase/entities/questions";
-import type { CardId } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 // load a card either by ID or from a base64 serialization.  if both are present then they are merged, which the serialized version taking precedence
 export async function loadCard(
-  cardId: CardId,
+  cardId: string | number,
   { dispatch, getState }: { dispatch: Dispatch; getState: GetState },
 ) {
   try {
-    await dispatch(
+    const action = (await dispatch(
       Questions.actions.fetch(
         { id: cardId },
         {
@@ -20,10 +19,15 @@ export async function loadCard(
           ], // complies with Card interface
         },
       ),
-    );
+    )) as { payload: { result: number } };
+
+    // In order to support entity ids,
+    // `getObject` looks up the metadata with a numeric id,
+    // so we must use the one from the Redux action.
+    const numericCardId = action?.payload?.result ?? cardId;
 
     const question = Questions.selectors.getObject(getState(), {
-      entityId: cardId,
+      entityId: numericCardId,
     });
 
     return question?.card();

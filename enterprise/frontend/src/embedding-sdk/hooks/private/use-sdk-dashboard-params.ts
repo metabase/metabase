@@ -5,7 +5,6 @@ import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
-import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { isNotNull } from "metabase/lib/types";
 
 export type SdkDashboardDisplayProps = {
@@ -55,17 +54,11 @@ export type SdkDashboardDisplayProps = {
 } & CommonStylingProps;
 
 export const useSdkDashboardParams = ({
-  dashboardId: dashboardIdProp,
   withDownloads,
   withTitle,
   withCardTitle,
   hiddenParameters,
 }: SdkDashboardDisplayProps) => {
-  const { id: dashboardId, isLoading = false } = useValidatedEntityId({
-    type: "dashboard",
-    id: dashboardIdProp,
-  });
-
   // temporary name until we change `hideDownloadButton` to `downloads`
   const hideDownloadButton = !withDownloads;
 
@@ -84,7 +77,5 @@ export const useSdkDashboardParams = ({
   };
   return {
     displayOptions,
-    dashboardId,
-    isLoading,
   };
 };
