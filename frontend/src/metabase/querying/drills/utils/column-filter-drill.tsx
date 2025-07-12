@@ -10,6 +10,8 @@ export const columnFilterDrill: Drill<Lib.ColumnFilterDrillThruInfo> = ({
   drill,
 }) => {
   const { query, column, stageIndex } = Lib.filterDrillDetails(drill);
+  const shouldShowBackButton =
+    Lib.isNumeric(column) && !Lib.isCoordinate(column);
 
   return [
     {
@@ -18,7 +20,13 @@ export const columnFilterDrill: Drill<Lib.ColumnFilterDrillThruInfo> = ({
       title: t`Filter by this column`,
       buttonType: "horizontal",
       icon: "filter",
-      popover: getFilterPopover({ question, query, column, stageIndex }),
+      popover: getFilterPopover({
+        question,
+        query,
+        column,
+        stageIndex,
+        shouldShowBackButton,
+      }),
     },
   ];
 };

@@ -61,7 +61,7 @@ describe("MultiStageFilterPicker", () => {
 
     await userEvent.click(screen.getByText("Summaries"));
     await userEvent.click(screen.getByText("Count"));
-    await userEvent.type(screen.getByPlaceholderText("Min"), "10");
+    await userEvent.type(screen.getByPlaceholderText("Start of range"), "10");
     await userEvent.click(screen.getByRole("button", { name: "Apply filter" }));
 
     const newQuery = getNewQuery();

@@ -242,9 +242,9 @@ describe("scenarios > filters > filter sources", () => {
       H.visitQuestionAdhoc(tableQuestionWithExpression, { mode: "notebook" });
       H.filter({ mode: "notebook" });
       H.clauseStepPopover().findByText("Total100").click();
-      H.selectFilterOperator("Greater than");
+      H.selectFilterOperator("Range");
       H.clauseStepPopover().within(() => {
-        cy.findByPlaceholderText("Enter a number").type("250.5");
+        cy.findByPlaceholderText("Start of range").type("250.5");
         cy.button("Add filter").click();
       });
       assertFilterName("Total100 is greater than 250.5");
@@ -320,9 +320,9 @@ describe("scenarios > filters > filter sources", () => {
       H.visitQuestionAdhoc(tableWithAggregations, { mode: "notebook" });
       addNewFilter();
       H.clauseStepPopover().findByText("Sum of Quantity").click();
-      H.selectFilterOperator("Less than");
+      H.selectFilterOperator("Range");
       H.clauseStepPopover().within(() => {
-        cy.findByPlaceholderText("Enter a number").type("350");
+        cy.findByPlaceholderText("End of range").type("350");
         cy.button("Add filter").click();
       });
       assertFilterName("Sum of Quantity is less than 350", { stage: 1 });
@@ -369,9 +369,9 @@ describe("scenarios > filters > filter sources", () => {
       });
       H.filter({ mode: "notebook" });
       H.clauseStepPopover().findByText("Total100").click();
-      H.selectFilterOperator("Greater than");
+      H.selectFilterOperator("Range");
       H.clauseStepPopover().within(() => {
-        cy.findByPlaceholderText("Enter a number").type("250.5");
+        cy.findByPlaceholderText("Start of range").type("250.5");
         cy.button("Add filter").click();
       });
       assertFilterName("Total100 is greater than 250.5");
@@ -465,9 +465,9 @@ describe("scenarios > filters > filter sources", () => {
       });
       addNewFilter();
       H.clauseStepPopover().findByText("Sum of Quantity").click();
-      H.selectFilterOperator("Less than");
+      H.selectFilterOperator("Range");
       H.clauseStepPopover().within(() => {
-        cy.findByPlaceholderText("Enter a number").type("350");
+        cy.findByPlaceholderText("End of range").type("350");
         cy.button("Add filter").click();
       });
       assertFilterName("Sum of Quantity is less than 350", { stage: 1 });
@@ -518,9 +518,9 @@ describe("scenarios > filters > filter sources", () => {
       });
       H.filter({ mode: "notebook" });
       H.clauseStepPopover().findByText("Total100").click();
-      H.selectFilterOperator("Greater than");
+      H.selectFilterOperator("Range");
       H.clauseStepPopover().within(() => {
-        cy.findByPlaceholderText("Enter a number").type("250.5");
+        cy.findByPlaceholderText("Start of range").type("250.5");
         cy.button("Add filter").click();
       });
       assertFilterName("Total100 is greater than 250.5");
@@ -614,9 +614,9 @@ describe("scenarios > filters > filter sources", () => {
       });
       addNewFilter();
       H.clauseStepPopover().findByText("Sum of QUANTITY").click();
-      H.selectFilterOperator("Less than");
+      H.selectFilterOperator("Range");
       H.clauseStepPopover().within(() => {
-        cy.findByPlaceholderText("Enter a number").type("350");
+        cy.findByPlaceholderText("End of range").type("350");
         cy.button("Add filter").click();
       });
       assertFilterName("Sum of QUANTITY is less than 350", { stage: 1 });

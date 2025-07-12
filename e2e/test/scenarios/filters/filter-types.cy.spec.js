@@ -205,34 +205,38 @@ const NUMBER_CASES = [
   {
     title: "greater than",
     columnName: "Price",
-    operator: "Greater than",
+    operator: "Range",
     values: ["47.5"],
     expectedDisplayName: "Price is greater than 47.5",
     expectedRowCount: 111,
+    inputSelector: "Start of range",
   },
   {
     title: "less than",
     columnName: "Price",
-    operator: "Less than",
+    operator: "Range",
     values: ["47.5"],
     expectedDisplayName: "Price is less than 47.5",
     expectedRowCount: 89,
+    inputSelector: "End of range",
   },
   {
     title: "greater than or equal to",
     columnName: "Price",
-    operator: "Greater than or equal to",
+    operator: "Range",
     values: ["47.5"],
     expectedDisplayName: "Price is greater than or equal to 47.5",
     expectedRowCount: 111,
+    inputSelector: "Start of range",
   },
   {
     title: "less than or equal to",
     columnName: "Price",
-    operator: "Less than or equal to",
+    operator: "Range",
     values: ["47.5"],
     expectedDisplayName: "Price is less than or equal to 47.5",
     expectedRowCount: 89,
+    inputSelector: "End of range",
   },
   {
     title: "is empty",
@@ -451,7 +455,7 @@ const RELATIVE_DATE_CASES = [
   },
 ];
 
-describe("scenarios > filters > filter types", () => {
+describe("scenarios > filters > filter types > ", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -502,6 +506,7 @@ describe("scenarios > filters > filter types", () => {
         values = [],
         expectedDisplayName,
         expectedRowCount,
+        inputSelector = "Filter value",
       }) => {
         it(title, () => {
           H.openProductsTable({ mode: "notebook" });
@@ -511,7 +516,7 @@ describe("scenarios > filters > filter types", () => {
           H.selectFilterOperator(operator);
           H.clauseStepPopover().within(() => {
             values.forEach((value) => {
-              cy.findByLabelText("Filter value")
+              cy.findByLabelText(inputSelector)
                 .focus()
                 .type(`${value},`, { delay: 50 })
                 .blur();

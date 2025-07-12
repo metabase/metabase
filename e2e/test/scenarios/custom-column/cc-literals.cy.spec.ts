@@ -124,7 +124,7 @@ describe("scenarios > custom column > literals", () => {
     H.getNotebookStep("expression").button("Filter").click();
     H.popover().within(() => {
       cy.findByText("Column").click();
-      cy.findByPlaceholderText("Min").type("5");
+      cy.findByPlaceholderText("Start of range").type("5");
       cy.button("Add filter").click();
     });
     H.getNotebookStep("filter").button("Summarize").click();

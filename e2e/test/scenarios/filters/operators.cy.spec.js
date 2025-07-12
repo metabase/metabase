@@ -24,17 +24,7 @@ describe("operators in questions", () => {
       unexpected: ["Is null", "Not null"],
     },
     number: {
-      expected: [
-        "Equal to",
-        "Not equal to",
-        "Greater than",
-        "Less than",
-        "Between",
-        "Greater than or equal to",
-        "Less than or equal to",
-        "Is empty",
-        "Not empty",
-      ],
+      expected: ["Equal to", "Not equal to", "Range", "Is empty", "Not empty"],
       unexpected: ["Is null", "Not null"],
     },
     relativeDates: {
@@ -86,7 +76,7 @@ describe("operators in questions", () => {
 
       H.popover().within(() => {
         cy.findByText("Price").click();
-        cy.findByText("Between").click();
+        cy.findByText("Range").click();
       });
 
       cy.findByRole("menu").within(() => {
