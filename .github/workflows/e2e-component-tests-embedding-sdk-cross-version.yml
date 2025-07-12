@@ -5,7 +5,7 @@ on:
 
 jobs:
   files-changed:
-    name: Check which files changed
+    name: "SDK cross-version E2E > Check which files changed"
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
@@ -21,6 +21,7 @@ jobs:
 
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
+    name: "SDK cross-version E2E > [Backport only] Get build requirements"
     if: |
       !cancelled()
     runs-on: ubuntu-22.04
@@ -54,6 +55,7 @@ jobs:
             };
 
   build:
+    name: "SDK cross-version E2E > Build uberjar"
     needs: [files-changed, get-build-requirements]
     if: |
       !cancelled()
@@ -85,6 +87,7 @@ jobs:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar-cross-version
 
   resolve-sdk-version:
+    name: "SDK cross-version E2E > Resolve SDK version"
     if: |
       !cancelled()
     runs-on: ubuntu-22.04
@@ -117,12 +120,12 @@ jobs:
             };
 
   e2e-tests:
+    name: "SDK cross-version E2E > Run e2e tests"
     needs: [get-build-requirements, build, resolve-sdk-version]
     if: |
       !cancelled() && needs.build.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 45
-    name: e2e-tests-embedding-sdk
     env:
       MB_EDITION: ee
       DISPLAY: ""
@@ -225,15 +228,3 @@ jobs:
              const summary = formatSummary(results);
 
              await core.summary.addRaw(summary).write();
-
-  e2e-tests-skipped-stub:
-    needs: [e2e-tests]
-    if: |
-      !cancelled() &&
-      needs.e2e-tests.result == 'skipped'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 5
-    name: e2e-component-tests-embedding-sdk-cross-version
-    steps:
-      - run: |
-          echo "Didn't run due to conditional filtering"
