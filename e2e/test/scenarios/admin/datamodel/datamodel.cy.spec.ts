@@ -36,6 +36,7 @@ describe("scenarios > admin > datamodel", () => {
     cy.intercept("GET", "/api/database?*").as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
+    cy.intercept("GET", "/api/database/*/schema/*").as("schema");
     cy.intercept("POST", "/api/dataset*").as("dataset");
     cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
       "updateField",
@@ -51,6 +52,7 @@ describe("scenarios > admin > datamodel", () => {
 
     cy.findByRole("link", { name: /Segments/ }).click();
     cy.location("pathname").should("eq", "/admin/datamodel/segments");
+    cy.wait("@schema");
 
     H.DataModel.TablePicker.getTable("Reviews").click();
     H.DataModel.TableSection.getNameInput()
@@ -685,6 +687,29 @@ describe("scenarios > admin > datamodel", () => {
         cy.wait("@updateTable");
         verifyAndCloseToast("Table name updated");
         TableSection.getNameInput().should("have.value", "New orders");
+      },
+    );
+
+    it(
+      "should show empty state when table has no fields",
+      { tags: ["@external"] },
+      () => {
+        H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.queryWritableDB(
+          'alter table "Domestic"."Animals" drop column Name, drop column Score',
+        );
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+        H.DataModel.visit();
+        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getSchema("Domestic").click();
+        TablePicker.getTable("Animals").click();
+
+        TableSection.get()
+          .findByText("This table has no fields")
+          .should("be.visible");
+        TableSection.getSortButton().should("not.exist");
       },
     );
 
