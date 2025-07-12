@@ -14,7 +14,8 @@ import {
   REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
 
-import { sharedMetadata } from "../test/shared";
+import { columnsForExpressionMode } from "../mode";
+import { queryWithAggregation, sharedMetadata } from "../test/shared";
 
 import { complete } from "./__support__";
 import { suggestFields } from "./fields";
@@ -67,11 +68,12 @@ describe("suggestFields", () => {
     const source = suggestFields({
       query,
       stageIndex,
-      availableColumns: Lib.expressionableColumns(
+      availableColumns: columnsForExpressionMode({
         query,
         stageIndex,
+        expressionMode: "expression",
         expressionIndex,
-      ),
+      }),
     });
 
     return function (doc: string) {
@@ -191,7 +193,11 @@ describe("suggestFields", () => {
     const source = suggestFields({
       query,
       stageIndex,
-      availableColumns: Lib.expressionableColumns(query, stageIndex),
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "expression",
+      }),
     });
 
     const result = complete(source, "[Use|");
@@ -359,7 +365,11 @@ describe("suggestFields", () => {
     const source = suggestFields({
       query,
       stageIndex,
-      availableColumns: Lib.expressionableColumns(query, stageIndex),
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "expression",
+      }),
     });
 
     complete(source, "Foo|");
@@ -415,10 +425,11 @@ describe("suggestFields", () => {
     const source = suggestFields({
       query,
       stageIndex: stageIndexAfterNesting,
-      availableColumns: Lib.expressionableColumns(
+      availableColumns: columnsForExpressionMode({
         query,
-        stageIndexAfterNesting,
-      ),
+        stageIndex: stageIndexAfterNesting,
+        expressionMode: "expression",
+      }),
     });
 
     const result = complete(source, "T|");
@@ -451,4 +462,71 @@ describe("suggestFields", () => {
       ],
     });
   });
+
+  it.each(["expression", "filter"] as const)(
+    "should not suggest aggregations when expressionMode = %s",
+    async (expressionMode) => {
+      const query = queryWithAggregation;
+      const stageIndex = -1;
+
+      const source = suggestFields({
+        query,
+        stageIndex,
+        availableColumns: columnsForExpressionMode({
+          query,
+          stageIndex,
+          expressionMode,
+        }),
+      });
+
+      const result = await complete(source, "[Bar aggregat|]");
+      const aggregations = result?.options.filter(
+        (option) => option.displayLabel === "Bar Aggregation",
+      );
+      expect(aggregations).toHaveLength(0);
+    },
+  );
+
+  it("should suggest aggregations when expressionMode = aggregation", async () => {
+    const query = queryWithAggregation;
+    const stageIndex = -1;
+    const source = suggestFields({
+      query,
+      stageIndex,
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "aggregation",
+      }),
+    });
+
+    const result = await complete(source, "[Bar aggregat|]");
+    const aggregations = result?.options.filter(
+      (option) => option.displayLabel === "Bar Aggregation",
+    );
+    expect(aggregations).toHaveLength(1);
+  });
+
+  it.each(["expression", "filter", "aggregation"] as const)(
+    "should suggest aggregations when expressionMode = %s in later stages",
+    async (expressionMode) => {
+      const query = Lib.appendStage(queryWithAggregation);
+      const stageIndex = -1;
+      const source = suggestFields({
+        query,
+        stageIndex,
+        availableColumns: columnsForExpressionMode({
+          query,
+          stageIndex,
+          expressionMode,
+        }),
+      });
+
+      const result = await complete(source, "[Bar aggregat|]");
+      const aggregations = result?.options.filter(
+        (option) => option.displayLabel === "Bar Aggregation",
+      );
+      expect(aggregations).toHaveLength(1);
+    },
+  );
 });

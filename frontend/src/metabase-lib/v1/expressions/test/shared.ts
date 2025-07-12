@@ -1,7 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
 import * as Lib from "metabase-lib";
-import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
+import {
+  type ExpressionClauseOpts,
+  createQuery,
+  createQueryWithClauses,
+} from "metabase-lib/test-helpers";
 import {
   COMMON_DATABASE_FEATURES,
   createMockCard,
@@ -68,6 +72,44 @@ const metadata = createMockMetadata({
   ],
 });
 
+const exprs: ExpressionClauseOpts[] = [
+  {
+    name: "foo",
+    operator: "+",
+    args: [1, 2],
+  },
+  {
+    name: "bool",
+    operator: "=",
+    args: [1, 1],
+  },
+  {
+    name: "name with [brackets]",
+    operator: "+",
+    args: [1, 2],
+  },
+  {
+    name: "name with \\ slash",
+    operator: "+",
+    args: [1, 2],
+  },
+  {
+    name: "stringly",
+    operator: "concat",
+    args: ["foo", "bar"],
+  },
+  {
+    name: "bar",
+    operator: "+",
+    args: [1, 2],
+  },
+  {
+    name: "BAR",
+    operator: "+",
+    args: [1, 2],
+  },
+];
+
 export const query = createQueryWithClauses({
   query: createQuery({
     metadata,
@@ -79,47 +121,33 @@ export const query = createQueryWithClauses({
       }),
     }),
   }),
-  expressions: [
-    {
-      name: "foo",
-      operator: "+",
-      args: [1, 2],
-    },
-    {
-      name: "bool",
-      operator: "=",
-      args: [1, 1],
-    },
-    {
-      name: "name with [brackets]",
-      operator: "+",
-      args: [1, 2],
-    },
-    {
-      name: "name with \\ slash",
-      operator: "+",
-      args: [1, 2],
-    },
-    {
-      name: "stringly",
-      operator: "concat",
-      args: ["foo", "bar"],
-    },
-    {
-      name: "bar",
-      operator: "+",
-      args: [1, 2],
-    },
-    {
-      name: "BAR",
-      operator: "+",
-      args: [1, 2],
-    },
-  ],
+  expressions: exprs,
 });
+
+export const queryWithAggregation = createQueryWithClauses({
+  query: createQuery({
+    metadata,
+    query: createMockStructuredDatasetQuery({
+      database: SAMPLE_DB_ID,
+      query: createMockStructuredQuery({
+        "source-table": ORDERS_ID,
+        fields: [],
+        aggregation: [
+          [
+            "aggregation-options",
+            ["sum", ["field", ORDERS.TOTAL, null]],
+            { name: "Bar Aggregation", "display-name": "Bar Aggregation" },
+          ],
+        ],
+      }),
+    }),
+  }),
+  expressions: exprs,
+});
+
 export const stageIndex = -1;
 
-function findField(name: string) {
+export function findField(query: Lib.Query, name: string) {
   const columns = Lib.expressionableColumns(query, stageIndex);
   for (const column of columns) {
     const info = Lib.displayInfo(query, stageIndex, column);
@@ -131,6 +159,7 @@ function findField(name: string) {
 }
 
 function findFields<const T extends { [key: string]: unknown }>(
+  query: Lib.Query,
   table: T,
 ): {
   [K in keyof T]: Lib.ColumnMetadata;
@@ -140,12 +169,12 @@ function findFields<const T extends { [key: string]: unknown }>(
   };
 
   for (const name in table) {
-    res[name] = findField(name);
+    res[name] = findField(query, name);
   }
   return res;
 }
 
-function findSegment(name: string) {
+function findSegment(query: Lib.Query, name: string) {
   const segments = Lib.availableSegments(query, stageIndex);
   for (const segment of segments) {
     const info = Lib.displayInfo(query, stageIndex, segment);
@@ -156,7 +185,7 @@ function findSegment(name: string) {
   throw new Error(`Could not find segment: ${name}`);
 }
 
-function findMetric(name: string) {
+function findMetric(query: Lib.Query, name: string) {
   const metrics = Lib.availableMetrics(query, stageIndex);
   for (const metric of metrics) {
     const info = Lib.displayInfo(query, stageIndex, metric);
@@ -167,28 +196,57 @@ function findMetric(name: string) {
   throw new Error(`Could not find metric: ${name}`);
 }
 
-export const fields = {
-  orders: findFields(ORDERS),
-  people: findFields(PEOPLE),
-  products: findFields(PRODUCTS),
-};
+function findAggregation(query: Lib.Query, name: string) {
+  if (query !== queryWithAggregation) {
+    return null;
+  }
+  const aggregations = Lib.aggregableColumns(query, stageIndex);
+  for (const aggregation of aggregations) {
+    const info = Lib.displayInfo(query, stageIndex, aggregation);
+    if (info.displayName === name) {
+      return aggregation;
+    }
+  }
+  throw new Error(`Could not find aggregation: ${name}`);
+}
 
-export const expressions = {
-  BOOL: findField("bool"),
-  FOO: findField("foo"),
-  NAME_WITH_BRACKETS: findField("name with [brackets]"),
-  NAME_WITH_SLASH: findField("name with \\ slash"),
-  STRINGLY: findField("stringly"),
-  BAR_UPPER: findField("BAR"),
-  BAR_LOWER: findField("bar"),
-};
+export function findDimensions(query: Lib.Query) {
+  const fields = {
+    orders: findFields(query, ORDERS),
+    people: findFields(query, PEOPLE),
+    products: findFields(query, PRODUCTS),
+  };
 
-export const segments = {
-  EXPENSIVE_THINGS: findSegment("Expensive Things"),
-};
+  const expressions = {
+    BOOL: findField(query, "bool"),
+    FOO: findField(query, "foo"),
+    NAME_WITH_BRACKETS: findField(query, "name with [brackets]"),
+    NAME_WITH_SLASH: findField(query, "name with \\ slash"),
+    STRINGLY: findField(query, "stringly"),
+    BAR_UPPER: findField(query, "BAR"),
+    BAR_LOWER: findField(query, "bar"),
+  };
 
-export const metrics = {
-  FOO: findMetric("Foo Metric"),
-};
+  const segments = {
+    EXPENSIVE_THINGS: findSegment(query, "Expensive Things"),
+  };
+
+  const metrics = {
+    FOO: findMetric(query, "Foo Metric"),
+  };
+
+  const aggregations = {
+    BAR_AGGREGATION: findAggregation(query, "Bar Aggregation"),
+  };
+
+  return {
+    fields,
+    expressions,
+    segments,
+    metrics,
+    aggregations,
+  };
+}
+export const { fields, expressions, segments, metrics } = findDimensions(query);
 
 export const sharedMetadata = metadata;

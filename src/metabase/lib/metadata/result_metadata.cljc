@@ -227,7 +227,13 @@
       (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
         (if (seq fe-friendly-opts)
           [:expression expression-name fe-friendly-opts]
-          [:expression expression-name])))))
+          [:expression expression-name]))
+
+      [:aggregation aggregation-index (opts :guard (some-fn :base-type :effective-type))]
+      (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
+        (if (seq fe-friendly-opts)
+          [:aggregation aggregation-index fe-friendly-opts]
+          [:aggregation aggregation-index])))))
 
 (mu/defn- remove-join-alias-from-broken-field-ref?
   "Following the rules for the old 'annotate' code:

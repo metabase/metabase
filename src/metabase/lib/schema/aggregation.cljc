@@ -96,7 +96,8 @@
 (mbql-clause/define-tuple-mbql-clause :var :- :type/Float
   #_expr [:schema [:ref ::expression/number]])
 
-(doseq [tag [:avg
+(doseq [tag [:aggregation
+             :avg
              :count
              :cum-count
              :count-where

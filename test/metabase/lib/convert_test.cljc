@@ -225,7 +225,7 @@
                 :stages   [{:lib/type     :mbql.stage/mbql
                             :source-table 1
                             :aggregation  [[:sum {:lib/uuid ag-uuid}
-                                            [:field {:lib/uuid string?
+                                            [:field {:lib/uuid (str (random-uuid))
                                                      :effective-type :type/Integer} 1]]]
                             :breakout     [[:aggregation
                                             {:display-name   "Revenue"
@@ -1274,3 +1274,13 @@
                                     :lib/stage-metadata (symbol "nil #_\"key is not present.\"")
                                     :source-metadata    (symbol "nil #_\"key is not present.\"")}]}]}
                 (-> legacy lib.convert/->pMBQL lib.convert/->legacy-MBQL lib.convert/->pMBQL)))))))
+
+(deftest ^:parallel round-trip-aggregation-reference-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+        sum   (->> (lib/aggregable-columns query nil)
+                   (m/find-first (comp #{"sum"} :name)))
+        query (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) "2*sum"))
+        legacy-query (lib.convert/->legacy-MBQL query)]
+    (is (= legacy-query
+           (-> legacy-query lib.convert/->pMBQL lib.convert/->legacy-MBQL)))))
