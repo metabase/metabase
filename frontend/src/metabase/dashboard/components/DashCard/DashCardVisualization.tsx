@@ -502,7 +502,6 @@ export function DashCardVisualization({
             parameters={effectiveParameters}
             isCollapsed={shouldCollapseList}
             isSortable={false}
-            widgetsVariant="subtle"
             widgetsPopoverPosition="bottom-end"
             ref={parameterListRef}
           />
