@@ -823,10 +823,14 @@
   "Get a translated description of a temporal bucketing interval.
 
   > **Code health:** Healthy"
-  [n unit]
-  (let [n    (if (string? n) (keyword n) n)
-        unit (if (string? unit) (keyword unit) unit)]
-    (lib.core/describe-temporal-interval n unit)))
+  ([n unit]
+   (let [n    (if (string? n) (keyword n) n)
+         unit (if (string? unit) (keyword unit) unit)]
+     (lib.core/describe-temporal-interval n unit)))
+  ([n unit opts]
+   (let [n    (if (string? n) (keyword n) n)
+         unit (if (string? unit) (keyword unit) unit)]
+     (lib.core/describe-temporal-interval n unit (js->clj opts :keywordize-keys true)))))
 
 (defn ^:export describe-relative-datetime
   "Get a translated description of a relative datetime interval.
