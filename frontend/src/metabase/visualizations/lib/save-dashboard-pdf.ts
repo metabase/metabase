@@ -161,7 +161,9 @@ export const saveDashboardPdf = async ({
   dashboardName,
   includeBranding,
 }: SavePdfProps) => {
-  const originalFileName = `${dashboardName}.pdf`;
+  const now = new Date();
+  const formattedDateTime = now.toISOString().slice(0, 16).replace("T", " ");
+  const originalFileName = `${dashboardName} ${formattedDateTime}.pdf`;
   const fileName = includeBranding
     ? // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
       `Metabase - ${originalFileName}`
