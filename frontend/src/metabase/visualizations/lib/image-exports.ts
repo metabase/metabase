@@ -5,7 +5,8 @@ import GlobalDashboardS from "metabase/css/dashboard.module.css";
 import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module.css";
 import DashboardGridS from "metabase/dashboard/components/DashboardGrid.module.css";
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
-import { isEmbeddingSdk, isStorybookActive } from "metabase/env";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { isStorybookActive } from "metabase/env";
 import { utf8_to_b64 } from "metabase/lib/encoding";
 import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -48,7 +49,7 @@ export const saveDomImageStyles = css`
     /* the renderer for saving to image/pdf does not support text overflow
      with line height in custom themes in the embedding sdk.
      this is a workaround to make sure the text is not clipped vertically */
-    ${isEmbeddingSdk &&
+    ${isEmbeddingSdk() &&
     css`
       .${DashboardGridS.DashboardCardContainer} .${GlobalDashboardS.Card} * {
         overflow: visible !important;

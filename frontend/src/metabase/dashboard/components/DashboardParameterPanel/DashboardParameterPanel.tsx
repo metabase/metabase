@@ -11,7 +11,7 @@ import {
   getParameters,
   getTabHiddenParameterSlugs,
 } from "metabase/dashboard/selectors";
-import { isEmbeddingSdk } from "metabase/env";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
@@ -68,7 +68,7 @@ export function DashboardParameterPanel({
             S.isSticky,
             {
               [S.isNightMode]: shouldRenderAsNightMode,
-              [S.isEmbeddingSdk]: isEmbeddingSdk,
+              [S.isEmbeddingSdk]: isEmbeddingSdk(),
             },
           )}
           data-testid="edit-dashboard-parameters-widget-container"
@@ -92,7 +92,7 @@ export function DashboardParameterPanel({
           [S.allowSticky]: allowSticky,
           [S.isSticky]: isSticky,
           [S.isNightMode]: shouldRenderAsNightMode,
-          [S.isEmbeddingSdk]: isEmbeddingSdk,
+          [S.isEmbeddingSdk]: isEmbeddingSdk(),
         })}
         data-testid="dashboard-parameters-widget-container"
       >

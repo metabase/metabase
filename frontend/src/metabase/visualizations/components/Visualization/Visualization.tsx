@@ -19,6 +19,7 @@ import ExplicitSize from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
@@ -26,7 +27,6 @@ import {
   getIsShowingRawTable,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconName, IconProps } from "metabase/ui";
@@ -101,7 +101,6 @@ type StateProps = {
   hasDevWatermark: boolean;
   fontFamily: string;
   isRawTable: boolean;
-  isEmbeddingSdk: boolean;
   scrollToLastColumn: boolean;
 };
 
@@ -201,7 +200,6 @@ const mapStateToProps = (state: State): StateProps => ({
   hasDevWatermark: getTokenFeature(state, "development_mode"),
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
-  isEmbeddingSdk: getIsEmbeddingSdk(state),
   scrollToLastColumn: getUiControls(state)?.scrollToLastColumn,
 });
 
@@ -255,7 +253,6 @@ class Visualization extends PureComponent<
     isAction: false,
     isDashboard: false,
     isEditing: false,
-    isEmbeddingSdk: false,
     isFullscreen: false,
     isNightMode: false,
     isPreviewing: false,
@@ -584,7 +581,6 @@ class Visualization extends PureComponent<
       isAction,
       isDashboard,
       isEditing,
-      isEmbeddingSdk,
       isFullscreen,
       isMobile,
       isNightMode,
@@ -667,7 +663,7 @@ class Visualization extends PureComponent<
             !isDashboard &&
             // For the SDK the EmptyVizState component in some cases (a small container) looks really weird,
             // so at least temporarily we don't display it when rendered in the SDK.
-            !isEmbeddingSdk
+            !isEmbeddingSdk()
           ) {
             // hide the error and display the empty state instead
             error = null;
@@ -837,7 +833,7 @@ class Visualization extends PureComponent<
                     hovered={hovered}
                     isDashboard={!!isDashboard}
                     isEditing={!!isEditing}
-                    isEmbeddingSdk={isEmbeddingSdk}
+                    isEmbeddingSdk={isEmbeddingSdk()}
                     isFullscreen={!!isFullscreen}
                     isMobile={!!isMobile}
                     isVisualizerViz={isVisualizerViz}

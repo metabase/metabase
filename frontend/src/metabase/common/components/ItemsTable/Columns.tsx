@@ -8,10 +8,9 @@ import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import EntityItem from "metabase/common/components/EntityItem";
 import Markdown from "metabase/common/components/Markdown";
-import { useSelector } from "metabase/lib/redux";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { IconProps } from "metabase/ui";
 import { Tooltip } from "metabase/ui";
 import type {
@@ -48,9 +47,7 @@ const ItemLinkComponent = ({
   item: CollectionItem;
   onClick?: (item: CollectionItem) => void;
 }>) => {
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
-
-  if (isEmbeddingSdk) {
+  if (isEmbeddingSdk()) {
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
   return (
