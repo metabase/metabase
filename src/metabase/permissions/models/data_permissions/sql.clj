@@ -168,3 +168,35 @@
                               (perm-type-to-int-inline perm-type level)
                               (perm-type-to-int-case perm-type :dp.perm_value)]]))
                         permission-mapping)))})
+
+(mu/defn- has-perms-for-database-as-honey-sql?
+  "Builds an EXISTS (SELECT ...) half-join to filter databases that a user has the required permissions for.
+   Similar to has-perms-for-table-as-honey-sql? but specifically for database-level permissions."
+  [user-id :- pos-int?
+   perm-type :- :keyword
+   required-level :- :keyword
+   & [most-or-least :- [:maybe [:enum :most :least]]]]
+  [:exists {:select [1]
+            :from [[:data_permissions :dp]]
+            :where [:and
+                    [:= :dp.perm_type (h2x/literal perm-type)]
+                    [:= :md.id :dp.db_id]
+                    (user-in-group-half-join user-id)]
+            :group-by [:md.id]
+            :having [(perm-condition perm-type required-level (or most-or-least :least))]}])
+
+(mu/defn visible-database-filter-select
+  "Selects database IDs that are visible to the provided user given a mapping of permission types to the required value.
+   Similar to visible-table-filter-select but for databases."
+  [{:keys [user-id is-superuser?]} :- UserInfo
+   permission-mapping :- PermissionMapping]
+  {:select [:md.id]
+   :from [[:metabase_database :md]]
+   :where (if is-superuser?
+            [:= [:inline 1] [:inline 1]]
+            (into [:and]
+                  (mapcat (fn [[perm-type perm-level]]
+                            [(apply has-perms-for-database-as-honey-sql?
+                                    user-id perm-type (cond-> perm-level
+                                                        (not (sequential? perm-level)) vector))]))
+                  permission-mapping))})
