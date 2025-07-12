@@ -22,6 +22,7 @@ export function TimeFilterPicker({
   filter,
   isNew,
   withAddButton,
+  withSubmitButton,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -98,6 +99,7 @@ export function TimeFilterPicker({
           isNew={isNew}
           isValid
           withAddButton={withAddButton}
+          withSubmitButton={withSubmitButton}
           onAddButtonClick={handleAddButtonClick}
         />
       </Box>

@@ -27,6 +27,7 @@ export function CoordinateFilterPicker({
   filter,
   isNew,
   withAddButton,
+  withSubmitButton,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -119,6 +120,7 @@ export function CoordinateFilterPicker({
           isNew={isNew}
           isValid={isValid}
           withAddButton={withAddButton}
+          withSubmitButton={withSubmitButton}
           onAddButtonClick={handleAddButtonClick}
         />
       </Box>

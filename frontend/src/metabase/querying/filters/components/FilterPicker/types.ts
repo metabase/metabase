@@ -8,6 +8,7 @@ export type FilterPickerWidgetProps = {
   filter?: Lib.Filterable;
   isNew: boolean;
   withAddButton: boolean;
+  withSubmitButton: boolean;
   onChange: (filter: Lib.ExpressionClause, opts: FilterChangeOpts) => void;
   onBack?: () => void;
 };

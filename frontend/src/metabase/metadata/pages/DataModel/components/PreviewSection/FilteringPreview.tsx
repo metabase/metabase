@@ -34,6 +34,7 @@ const FilteringPreviewBase = ({ databaseId, fieldId, table }: Props) => {
       column={column}
       query={query}
       stageIndex={STAGE_INDEX}
+      withSubmitButton={false}
       onChange={_.noop}
     />
   );

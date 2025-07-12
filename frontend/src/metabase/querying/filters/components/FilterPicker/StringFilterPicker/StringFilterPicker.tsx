@@ -23,6 +23,7 @@ export function StringFilterPicker({
   filter,
   isNew,
   withAddButton,
+  withSubmitButton,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -101,6 +102,7 @@ export function StringFilterPicker({
           isNew={isNew}
           isValid={isValid}
           withAddButton={withAddButton}
+          withSubmitButton={withSubmitButton}
           onAddButtonClick={handleAddButtonClick}
         >
           {type === "partial" && (

@@ -16,6 +16,7 @@ interface FilterPickerBodyProps {
   filter?: Lib.Filterable;
   isNew?: boolean;
   withAddButton?: boolean;
+  withSubmitButton?: boolean;
   onChange: (filter: Lib.ExpressionClause, opts: FilterChangeOpts) => void;
   onBack?: () => void;
 }
@@ -27,6 +28,7 @@ export function FilterPickerBody({
   filter,
   isNew = filter == null,
   withAddButton = false,
+  withSubmitButton = true,
   onChange,
   onBack,
 }: FilterPickerBodyProps) {
@@ -43,6 +45,7 @@ export function FilterPickerBody({
       filter={filter}
       isNew={isNew}
       withAddButton={withAddButton}
+      withSubmitButton={withSubmitButton}
       onChange={onChange}
       onBack={onBack}
     />
