@@ -15,7 +15,6 @@
 (deftest caching-strategies
   (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:cache-granular-controls}
-
       (let [query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 5})
             mkres (fn [input]
                     {:cache/details (if input

@@ -330,7 +330,7 @@ describe("issue 21559", { tags: "@external" }, () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(q2Details.name);
+      H.selectDataset(q2Details.name);
       cy.findByText("80.52").should("exist");
       H.horizontalWell().findAllByTestId("well-item").should("have.length", 2);
       cy.button("Save").click();
