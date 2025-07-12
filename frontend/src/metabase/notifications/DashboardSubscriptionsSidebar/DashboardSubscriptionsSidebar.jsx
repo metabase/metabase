@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { useDashboardContext } from "metabase/dashboard/context";
 import Pulses from "metabase/entities/pulses";
 import {
   NEW_PULSE_TEMPLATE,
@@ -498,7 +499,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
   }
 }
 
-const DashboardSubscriptionsSidebar = _.compose(
+const DashboardSubscriptionsSidebarConnected = _.compose(
   Pulses.loadList({
     query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
     loadingAndErrorWrapper: false,
@@ -506,4 +507,17 @@ const DashboardSubscriptionsSidebar = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
 )(DashboardSubscriptionsSidebarInner);
 
-export default DashboardSubscriptionsSidebar;
+export default function DashboardSubscriptionsSidebar() {
+  const { dashboard, setSharing } = useDashboardContext();
+
+  if (!dashboard) {
+    return null;
+  }
+
+  return (
+    <DashboardSubscriptionsSidebarConnected
+      dashboard={dashboard}
+      onCancel={() => setSharing(false)}
+    />
+  );
+}
