@@ -16,6 +16,7 @@ import { Box } from "metabase/ui";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
+import { ContentManager } from "./ContentManager";
 import {
   SdkIframeApiKeyInProductionError,
   SdkIframeExistingUserSessionInProductionError,
@@ -88,8 +89,12 @@ const SdkIframeEmbedView = ({
         entityTypes={settings.entityTypes}
       />
     ))
-    .with({ template: "curate-content" }, (_settings) => null)
-    .with({ template: "view-content" }, (_settings) => null)
+    .with({ template: "curate-content" }, (settings) => (
+      <ContentManager settings={settings} />
+    ))
+    .with({ template: "view-content" }, (settings) => (
+      <ContentManager settings={settings} />
+    ))
     .with(
       {
         dashboardId: P.nonNullable,
