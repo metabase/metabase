@@ -1,14 +1,4 @@
-import { DASHBOARD_EDITING_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
-import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
-import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
-import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
-
-import {
-  SdkDashboard,
-  type SdkDashboardInnerProps,
-  type SdkDashboardProps,
-} from "../SdkDashboard";
+import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
 /**
  * @interface
@@ -25,31 +15,5 @@ export type EditableDashboardProps = SdkDashboardProps;
  * @param props
  */
 export const EditableDashboard = (props: EditableDashboardProps) => {
-  const dashboardActions: SdkDashboardInnerProps["dashboardActions"] = ({
-    isEditing,
-    downloadsEnabled,
-  }) =>
-    isEditing
-      ? DASHBOARD_EDITING_ACTIONS
-      : downloadsEnabled.pdf
-        ? [DASHBOARD_ACTION.EDIT_DASHBOARD, DASHBOARD_ACTION.DOWNLOAD_PDF]
-        : [DASHBOARD_ACTION.EDIT_DASHBOARD];
-
-  const getClickActionMode: SdkDashboardInnerProps["getClickActionMode"] = ({
-    question,
-  }) =>
-    getEmbeddingMode({
-      question,
-      queryMode: EmbeddingSdkMode,
-      plugins: props.drillThroughQuestionProps
-        ?.plugins as InternalMetabasePluginsConfig,
-    });
-
-  return (
-    <SdkDashboard
-      {...props}
-      getClickActionMode={getClickActionMode}
-      dashboardActions={dashboardActions}
-    />
-  );
+  return <SdkDashboard {...props} mode="editable" />;
 };

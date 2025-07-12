@@ -20,6 +20,7 @@ import {
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
+import type { DashboardMode } from "metabase/dashboard/types/dashboard-mode";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { setEditingDashboard, toggleSidebar } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
@@ -50,6 +51,12 @@ import { useCommonDashboardParams } from "./use-common-dashboard-params";
 export type SdkDashboardProps = PropsWithChildren<
   {
     /**
+     * Dashboard mode - defines what users can do with the dashboard.
+     * Can be a preset string ('editable', 'interactive', 'static') or a full configuration object.
+     */
+    mode?: DashboardMode;
+
+    /**
      * Additional mapper function to override or add drill-down menu. See the implementing custom actions section for more details.
      */
     plugins?: MetabasePluginsConfig;
@@ -79,10 +86,8 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
   Partial<
     Pick<
       DashboardContextProps,
-      | "getClickActionMode"
-      | "dashboardActions"
       | "dashcardMenu"
-      | "navigateToNewCardFromDashboard"
+      | "dashboardMode"
     >
   >;
 
@@ -103,10 +108,8 @@ const SdkDashboardInner = ({
     plugins: plugins,
   },
   renderDrillThroughQuestion: AdHocQuestionView,
-  dashboardActions,
+  mode,
   dashcardMenu = plugins?.dashboard?.dashboardCardMenu,
-  getClickActionMode,
-  navigateToNewCardFromDashboard = undefined,
   className,
   style,
   children,
@@ -173,11 +176,6 @@ const SdkDashboardInner = ({
     <DashboardContextProvider
       dashboardId={dashboardId}
       parameterQueryParams={initialParameters}
-      navigateToNewCardFromDashboard={
-        navigateToNewCardFromDashboard !== undefined
-          ? navigateToNewCardFromDashboard
-          : onNavigateToNewCardFromDashboard
-      }
       downloadsEnabled={displayOptions.downloadsEnabled}
       background={displayOptions.background}
       bordered={displayOptions.bordered}
@@ -188,9 +186,8 @@ const SdkDashboardInner = ({
       onLoad={handleLoad}
       onLoadWithoutCards={handleLoadWithoutCards}
       onError={(error) => dispatch(setErrorPage(error))}
-      getClickActionMode={getClickActionMode}
       dashcardMenu={dashcardMenu}
-      dashboardActions={dashboardActions}
+      dashboardMode={mode}
       onAddQuestion={(dashboard) => {
         dispatch(setEditingDashboard(dashboard));
         dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
