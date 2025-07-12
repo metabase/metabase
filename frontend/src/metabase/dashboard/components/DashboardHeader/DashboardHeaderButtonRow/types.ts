@@ -1,12 +1,13 @@
 import type { ComponentType } from "react";
 
-import type { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/action-buttons";
 import type {
   DashboardFullscreenControls,
   DashboardNightModeControls,
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
 import type { Collection, Dashboard } from "metabase-types/api";
+
+import type { DASHBOARD_ACTION } from "./dashboard-action-keys";
 
 export type DashboardActionKey = keyof typeof DASHBOARD_ACTION;
 

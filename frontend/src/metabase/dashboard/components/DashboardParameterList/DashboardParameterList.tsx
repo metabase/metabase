@@ -4,12 +4,9 @@ import {
   setParameterValue,
   setParameterValueToDefault,
 } from "metabase/dashboard/actions";
+import { useDashboardContext } from "metabase/dashboard/context";
 import {
-  getDashboardComplete,
   getEditingParameter,
-  getIsEditing,
-  getIsNightMode,
-  getTabHiddenParameterSlugs,
   getValuePopulatedParameters,
 } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -23,20 +20,18 @@ interface DashboardParameterListProps {
 export function DashboardParameterList({
   isFullscreen,
 }: DashboardParameterListProps) {
-  const dashboard = useSelector(getDashboardComplete);
   const parameters = useSelector(getValuePopulatedParameters);
   const editingParameter = useSelector(getEditingParameter);
-  const hiddenParameterSlugs = useSelector(getTabHiddenParameterSlugs);
-  const isEditing = useSelector(getIsEditing);
-  const isNightMode = useSelector(getIsNightMode);
-  const shouldRenderAsNightMode = isNightMode && isFullscreen;
   const dispatch = useDispatch();
+
+  const { hideParameters, isEditing, shouldRenderAsNightMode, dashboard } =
+    useDashboardContext();
 
   return (
     <ParametersList
       parameters={parameters}
       editingParameter={editingParameter}
-      hideParameters={hiddenParameterSlugs}
+      hideParameters={hideParameters}
       dashboard={dashboard}
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
