@@ -6,6 +6,11 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import {
+  STANDARD_USER_LIST_PAGE_SIZE,
+  skipToken,
+  useListUsersQuery,
+} from "metabase/api";
+import {
   isExamplesCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
@@ -134,6 +139,17 @@ export function MainNavbarView({
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
   const shouldDisplayGettingStarted = isNewInstance && canAccessOnboarding;
 
+  const { data: userData } = useListUsersQuery(
+    isAdmin
+      ? {
+          limit: STANDARD_USER_LIST_PAGE_SIZE,
+          offset: 0,
+        }
+      : skipToken,
+  );
+  const areThereOtherUsers = (userData?.total ?? 0) > 1;
+  const showOtherUsersCollections = isAdmin && areThereOtherUsers;
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -203,7 +219,7 @@ export function MainNavbarView({
                 role="tree"
                 aria-label="collection-tree"
               />
-              {isAdmin && (
+              {showOtherUsersCollections && (
                 <PaddedSidebarLink
                   icon="group"
                   url={OTHER_USERS_COLLECTIONS_URL}
