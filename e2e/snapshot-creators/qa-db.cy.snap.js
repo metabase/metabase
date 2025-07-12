@@ -21,10 +21,19 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
     } else {
       addPostgresDatabase();
       snapshot("postgres-12");
-      restoreAndAuthenticate();
 
       setupWritableDB("postgres");
-      addPostgresDatabase("Writable Postgres12", true);
+      cy.get("@postgresID").then((id) => {
+        cy.log("**-- Enabling actions --**");
+        cy.request("PUT", `/api/database/${id}`, {
+          details: {
+            dbname: "writable_db",
+          },
+          settings: { "database-enable-actions": true },
+        });
+      });
+      // restoreAndAuthenticate();
+      // addPostgresDatabase("Writable Postgres12", true);
       snapshot("postgres-writable");
       restoreAndAuthenticate();
 
