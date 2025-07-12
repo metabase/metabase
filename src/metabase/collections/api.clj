@@ -1180,24 +1180,31 @@
 
 (defn create-collection!
   "Create a new collection."
-  [{:keys [name description parent_id namespace authority_level]}]
+  [{:keys [name description parent_id namespace authority_level] :as params}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id namespace)
   (when (some? authority_level)
     ;; make sure only admin and an EE token is present to be able to create an Official token
     (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
     (api/check-superuser))
+  ;; Get namespace from parent collection if not provided
+  (let [parent-collection (when parent_id
+                            (t2/select-one [:model/Collection :location :id :namespace] :id parent_id))
+        effective-namespace (cond
+                              (contains? params :namespace) namespace
+                              parent-collection (:namespace parent-collection)
+                              :else nil)]
   ;; Now create the new Collection :)
-  (u/prog1 (t2/insert-returning-instance!
-            :model/Collection
-            (merge
-             {:name            name
-              :description     description
-              :authority_level authority_level
-              :namespace       namespace}
-             (when parent_id
-               {:location (collection/children-location (t2/select-one [:model/Collection :location :id] :id parent_id))})))
-    (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
+    (u/prog1 (t2/insert-returning-instance!
+              :model/Collection
+              (merge
+               {:name            name
+                :description     description
+                :authority_level authority_level
+                :namespace       effective-namespace}
+               (when parent-collection
+                 {:location (collection/children-location parent-collection)})))
+      (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*}))))
 
 (api.macros/defendpoint :post "/"
   "Create a new Collection."
