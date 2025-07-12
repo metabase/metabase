@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { loadCurrentUser } from "metabase/redux/user";
 import { Box, Text, Title } from "metabase/ui";
 import type { UserInfo } from "metabase-types/store";
 
@@ -9,11 +10,8 @@ import { submitUser } from "../../../actions";
 import { getIsHosted, getUser } from "../../../selectors";
 import { UserForm } from "../../UserForm";
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
-import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 export const UserCreationStep = () => {
-  useForceLocaleRefresh();
-
   const { goToNextStep } = useEmbeddingSetup();
 
   const user = useSelector(getUser);
@@ -23,6 +21,8 @@ export const UserCreationStep = () => {
 
   const handleSubmit = async (user: UserInfo) => {
     await dispatch(submitUser(user)).unwrap();
+    await dispatch(loadCurrentUser());
+
     // We want to set the embedding homepage visible if the user skips the rest of the flow.
     // This is the first place where we can do this, as we need the initial setup to be done.
     await updateSettings({ "embedding-homepage": "visible" });
