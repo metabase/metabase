@@ -1,4 +1,4 @@
-import { InteractiveQuestion } from "embedding-sdk";
+import { InteractiveQuestion } from "embedding-sdk/components/public";
 import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../../context";

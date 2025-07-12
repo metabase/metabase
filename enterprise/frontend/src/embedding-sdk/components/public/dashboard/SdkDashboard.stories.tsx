@@ -1,14 +1,10 @@
-import {
-  InteractiveQuestion,
-  MetabaseProvider,
-  defineMetabaseTheme,
-} from "embedding-sdk";
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import {
   dashboardIdArgType,
   dashboardIds,
 } from "embedding-sdk/test/storybook-id-args";
 import { storybookThemes } from "embedding-sdk/test/storybook-themes";
+import { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 import {
   ActionIcon,
   Box,
@@ -19,6 +15,9 @@ import {
   Stack,
   Title,
 } from "metabase/ui";
+
+import { InteractiveQuestion } from "../InteractiveQuestion";
+import { MetabaseProvider } from "../MetabaseProvider";
 
 import { SdkDashboard, type SdkDashboardProps } from "./SdkDashboard";
 
