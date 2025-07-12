@@ -258,6 +258,14 @@
   "Should Metabase do AI analysis on entities?"
   :ai-entity-analysis)
 
+(define-premium-feature enable-etl-connections?
+  "Does the Metabase Cloud instance have ETL connections?"
+  :etl-connections)
+
+(define-premium-feature enable-etl-connections-pg?
+  "Does the Metabase Cloud instance have ETL connections with PG?"
+  :etl-connections-pg)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -281,6 +289,8 @@
    :embedding                      (hide-embed-branding?)
    :embedding_sdk                  (enable-embedding-sdk-origins?)
    :embedding_iframe_sdk           (enable-embedding-iframe-sdk?)
+   :etl_connections                (enable-etl-connections?)
+   :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
    :llm_autodescription            (enable-llm-autodescription?)
    :metabot_v3                     (enable-metabot-v3?)

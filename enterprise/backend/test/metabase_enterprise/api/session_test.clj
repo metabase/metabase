@@ -83,5 +83,7 @@
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true
-            :database_routing               true}
+            :database_routing               true
+            :etl_connections                false
+            :etl_connections_pg             false}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

@@ -92,7 +92,8 @@
 (mu/defn- cruft-dependent-cols [{table-name :name :as table}
                                 database
                                 sync-stage :- [:enum ::reactivate ::create ::update]]
-  (let [is-crufty? (if (= sync-stage ::update)
+  (let [is-crufty? (if (and (= sync-stage ::update)
+                            (not (:is_attached_dwh database)))
                      ;; TODO: we should add an updated_by column to metabase_table in
                      ;; [[metabase.warehouse-schema.api.table/update-table!*]] to track occasions where the table was
                      ;; updated by an admin, and respect their choices during an update.

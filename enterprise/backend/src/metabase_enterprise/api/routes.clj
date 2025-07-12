@@ -15,6 +15,7 @@
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
+   [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.llm.api]
@@ -43,6 +44,7 @@
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
    :etl-connections            (deferred-tru "ETL Connections")
+   :etl-connections-pg         (deferred-tru "ETL Connections PG replication")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
    :scim                       (deferred-tru "SCIM configuration")
@@ -77,6 +79,10 @@
    "/autodescribe"                 (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
+   "/database-replication"         (-> database-replication.api/routes ;; database-replication requires all these features.
+                                       (premium-handler :attached-dwh)
+                                       (premium-handler :etl-connections)
+                                       (premium-handler :etl-connections-pg))
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
+import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
 import type { UserId } from "./user";
 
@@ -252,6 +253,8 @@ export const tokenFeatures = [
   "ai_entity_analysis",
   "database_routing",
   "development_mode",
+  "etl_connections",
+  "etl_connections_pg",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -533,6 +536,11 @@ export type ColorSettings = Record<string, string>;
 export type IllustrationSettingValue = "default" | "none" | "custom";
 export type TimeoutValue = { amount: number; unit: string };
 
+export type DatabaseReplicationConnections = Record<
+  DatabaseId,
+  { connection_id: string }
+>;
+
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
@@ -577,6 +585,8 @@ export interface EnterpriseSettings extends Settings {
   "saml-attribute-group": string | null;
   "saml-group-sync": boolean | null;
   "saml-group-mappings": Record<string, GroupId[]> | null;
+  "database-replication-enabled": boolean | null;
+  "database-replication-connections"?: DatabaseReplicationConnections | null;
   /**
    * @deprecated
    */
