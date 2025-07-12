@@ -14,6 +14,7 @@
    [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.embedding.api.common :as api.embed.common]
    [metabase.parameters.chain-filter-test :as chain-filer-test]
+   [metabase.parameters.custom-values :as custom-values]
    [metabase.public-sharing.api-test :as public-test]
    [metabase.queries.api.card-test :as api.card-test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -1002,74 +1003,75 @@
           (dropdown [card param-key  & [entity-id]]
             (client/client :get 200 (format "embed/card/%s/params/%s/values"
                                             (card-token card nil entity-id) param-key)))]
-    (mt/with-temporary-setting-values [enable-embedding-static true]
-      (with-new-secret-key!
-        (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
-          (t2/update! :model/Card (:id field-filter-card)
-                      {:enable_embedding true
-                       :embedding_params (zipmap (map :slug (:parameters field-filter-card))
-                                                 (repeat "enabled"))})
-          (t2/update! :model/Card (:id card)
-                      {:enable_embedding true
-                       :embedding_params (zipmap (map :slug (:parameters card))
-                                                 (repeat "enabled"))})
-          (testing "field filter based param"
-            (let [response (dropdown field-filter-card (:field-values param-keys))]
-              (is (false? (:has_more_values response)))
-              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
-                               (-> response :values set))))
+    (binding [custom-values/*max-rows* 5]
+      (mt/with-temporary-setting-values [enable-embedding-static true]
+        (with-new-secret-key!
+          (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
+            (t2/update! :model/Card (:id field-filter-card)
+                        {:enable_embedding true
+                         :embedding_params (zipmap (map :slug (:parameters field-filter-card))
+                                                   (repeat "enabled"))})
+            (t2/update! :model/Card (:id card)
+                        {:enable_embedding true
+                         :embedding_params (zipmap (map :slug (:parameters card))
+                                                   (repeat "enabled"))})
+            (testing "field filter based param"
+              (let [response (dropdown field-filter-card (:field-values param-keys))]
+                (is (false? (:has_more_values response)))
+                (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                                 (-> response :values set))))
 
-            (let [response (search field-filter-card (:field-values param-keys) "bar")]
-              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
-                               (-> response :values set)))
-              (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))
-          (testing "field filter based param entity-id"
-            (let [response (dropdown field-filter-card (:field-values param-keys) (:entity_id field-filter-card))]
-              (is (false? (:has_more_values response)))
-              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
-                               (-> response :values set))))
-            (let [response (search field-filter-card (:field-values param-keys) "bar" (:entity_id field-filter-card))]
-              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
-                               (-> response :values set)))
-              (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))
-          (testing "static based param"
-            (let [response (dropdown card (:static-list param-keys))]
-              (is (= {:has_more_values false,
-                      :values          [["African"] ["American"] ["Asian"]]}
-                     response)))
-            (let [response (search card (:static-list param-keys) "af")]
-              (is (= {:has_more_values false,
-                      :values          [["African"]]}
-                     response))))
-          (testing "static based param entity-id"
-            (let [response (dropdown card (:static-list param-keys) (:entity_id card))]
-              (is (= {:has_more_values false,
-                      :values          [["African"] ["American"] ["Asian"]]}
-                     response)))
-            (let [response (search card (:static-list param-keys) "af" (:entity_id card))]
-              (is (= {:has_more_values false,
-                      :values          [["African"]]}
-                     response))))
-          (testing "card based param"
-            (let [response (dropdown card (:card param-keys))]
-              (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
-                                        ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
-                      :has_more_values false}
-                     response)))
-            (let [response (search card (:card param-keys) "red")]
-              (is (= {:has_more_values false,
-                      :values          [["Fred 62"] ["Red Medicine"]]}
-                     response))))
-          (testing "card based param entity-id"
-            (let [response (dropdown card (:card param-keys) (:entity_id card))]
-              (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
-                                        ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
-                      :has_more_values false}
-                     response)))
-            (let [response (search card (:card param-keys) "red" (:entity_id card))]
-              (is (= {:has_more_values false,
-                      :values          [["Fred 62"] ["Red Medicine"]]}
-                     response)))))))))
+              (let [response (search field-filter-card (:field-values param-keys) "bar")]
+                (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                                 (-> response :values set)))
+                (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))
+            (testing "field filter based param entity-id"
+              (let [response (dropdown field-filter-card (:field-values param-keys) (:entity_id field-filter-card))]
+                (is (false? (:has_more_values response)))
+                (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                                 (-> response :values set))))
+              (let [response (search field-filter-card (:field-values param-keys) "bar" (:entity_id field-filter-card))]
+                (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                                 (-> response :values set)))
+                (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))
+            (testing "static based param"
+              (let [response (dropdown card (:static-list param-keys))]
+                (is (= {:has_more_values false,
+                        :values          [["African"] ["American"] ["Asian"]]}
+                       response)))
+              (let [response (search card (:static-list param-keys) "af")]
+                (is (= {:has_more_values false,
+                        :values          [["African"]]}
+                       response))))
+            (testing "static based param entity-id"
+              (let [response (dropdown card (:static-list param-keys) (:entity_id card))]
+                (is (= {:has_more_values false,
+                        :values          [["African"] ["American"] ["Asian"]]}
+                       response)))
+              (let [response (search card (:static-list param-keys) "af" (:entity_id card))]
+                (is (= {:has_more_values false,
+                        :values          [["African"]]}
+                       response))))
+            (testing "card based param"
+              (let [response (dropdown card (:card param-keys))]
+                (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                          ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
+                        :has_more_values true}
+                       response)))
+              (let [response (search card (:card param-keys) "red")]
+                (is (= {:has_more_values false,
+                        :values          [["Fred 62"] ["Red Medicine"]]}
+                       response))))
+            (testing "card based param entity-id"
+              (let [response (dropdown card (:card param-keys) (:entity_id card))]
+                (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                          ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
+                        :has_more_values true}
+                       response)))
+              (let [response (search card (:card param-keys) "red" (:entity_id card))]
+                (is (= {:has_more_values false,
+                        :values          [["Fred 62"] ["Red Medicine"]]}
+                       response))))))))))
 
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
