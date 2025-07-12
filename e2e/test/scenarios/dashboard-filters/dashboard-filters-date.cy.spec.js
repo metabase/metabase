@@ -203,7 +203,7 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
-      DateFilter.setTime({ hours: 11, minutes: 0 });
+      DateFilter.setTime({ hours: 9, minutes: 27 });
       cy.findByText("Add filter").click();
       break;
 
