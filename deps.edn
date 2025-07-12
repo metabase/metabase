@@ -163,7 +163,7 @@
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
   org.eclipse.jetty/jetty-server            {:mvn/version "12.0.22"}
   org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.0.22"}
-  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.0.22"}
+  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.0.23"}
   org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.0.21"}
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "24.2.1" :extension "pom"} ; JavaScript engine
