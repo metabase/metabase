@@ -276,7 +276,8 @@
                                                                                                             (mb.viz/with-entity-click-action
                                                                                                               name-field-id
                                                                                                               ::mb.viz/dashboard
-                                                                                                              root-dashboard-id)
+                                                                                                              root-dashboard-id
+                                                                                                              nil)
                                                                                                             (mb.viz/with-click-action
                                                                                                               (mb.viz/column-name->column-ref "Price Known")
                                                                                                               (mb.viz/url-click-action "/price-info"))
