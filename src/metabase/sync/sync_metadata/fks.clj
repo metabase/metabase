@@ -2,6 +2,7 @@
   "Logic for updating FK properties of Fields from metadata fetched from a physical DB."
   (:require
    [honey.sql :as sql]
+   [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.driver.util :as driver.u]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -95,6 +96,7 @@
    metadata :- i/FKMetadataEntry]
   (u/prog1 (t2/query-one (mark-fk-sql (:id database) metadata))
     (when (= <> 1)
+      (analytics/inc! :metabase-sync/fk-sync {:op :update})
       (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
                                 (sync-util/table-name-for-logging :name (:fk-table-name metadata)
                                                                   :schema (:fk-table-schema metadata))
