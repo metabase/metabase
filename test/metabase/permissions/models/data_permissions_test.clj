@@ -739,3 +739,24 @@
       (is (contains?
            (t2/select-fn-set :object :model/Permissions :group_id group-id)
            (str "/block/db/" db-id "/"))))))
+
+(deftest use-cache?-test
+  (testing "use-cache? returns true only when both cache is enabled and user is current user"
+    (let [current-user-id 1
+          other-user-id 2]
+      (binding [api/*current-user-id* current-user-id]
+        (testing "cache enabled, current user"
+          (binding [data-perms/*use-perms-cache?* true]
+            (is (#'data-perms/use-cache? current-user-id))))
+
+        (testing "cache enabled, different user"
+          (binding [data-perms/*use-perms-cache?* true]
+            (is (not (#'data-perms/use-cache? other-user-id)))))
+
+        (testing "cache disabled, current user"
+          (binding [data-perms/*use-perms-cache?* false]
+            (is (not (#'data-perms/use-cache? current-user-id)))))
+
+        (testing "cache disabled, different user"
+          (binding [data-perms/*use-perms-cache?* false]
+            (is (not (#'data-perms/use-cache? other-user-id)))))))))
