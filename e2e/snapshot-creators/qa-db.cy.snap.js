@@ -16,8 +16,6 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
     if (Cypress.env("QA_DB_MONGO") === true) {
       addMongoDatabase();
       snapshot("mongo-5");
-
-      restoreAndAuthenticate();
     } else {
       addPostgresDatabase();
       snapshot("postgres-12");
@@ -32,21 +30,25 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
           settings: { "database-enable-actions": true },
         });
       });
-      // restoreAndAuthenticate();
-      // addPostgresDatabase("Writable Postgres12", true);
       snapshot("postgres-writable");
       restoreAndAuthenticate();
 
       addMySQLDatabase({});
       snapshot("mysql-8");
-      restoreAndAuthenticate();
 
       setupWritableDB("mysql");
-      addMySQLDatabase({ displayName: "Writable MySQL8", writable: true });
+      cy.get("@mysqlID").then((id) => {
+        cy.log("**-- Enabling actions --**");
+        cy.request("PUT", `/api/database/${id}`, {
+          details: {
+            dbname: "writable_db",
+            user: "root",
+          },
+          settings: { "database-enable-actions": true },
+        });
+      });
       snapshot("mysql-writable");
-      restoreAndAuthenticate();
     }
-
     restore("blank");
   });
 });
