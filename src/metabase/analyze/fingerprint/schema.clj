@@ -56,18 +56,19 @@
   "Schema for fingerprint information for Fields deriving from `:type/Temporal`."
   [:ref ::TemporalFingerprint])
 
-(mr/def ::TypeSpecificFingerprint
-  [:and
-   [:map
-    [:type/Number   {:optional true} NumberFingerprint]
-    [:type/Text     {:optional true} TextFingerprint]
-    ;; temporal fingerprints are keyed by `:type/DateTime` for historical reasons. `DateTime` used to be the parent of
-    ;; all temporal MB types.
-    [:type/DateTime {:optional true} TemporalFingerprint]]
-   [:fn
-    {:error/message "Type-specific fingerprint with exactly one key"}
-    (fn [m]
-      (= 1 (count (keys m))))]])
+(letfn [(f [m]
+          (= 1 (count (keys m))))]
+  (mr/def ::TypeSpecificFingerprint
+    [:and
+     [:map
+      [:type/Number   {:optional true} NumberFingerprint]
+      [:type/Text     {:optional true} TextFingerprint]
+      ;; temporal fingerprints are keyed by `:type/DateTime` for historical reasons. `DateTime` used to be the parent of
+      ;; all temporal MB types.
+      [:type/DateTime {:optional true} TemporalFingerprint]]
+     [:fn
+      {:error/message "Type-specific fingerprint with exactly one key"}
+      f]]))
 
 (def TypeSpecificFingerprint
   "Schema for type-specific fingerprint information."

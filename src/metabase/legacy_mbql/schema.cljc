@@ -320,13 +320,12 @@
     {:description "You cannot use `:binning` keys like `:strategy` in the top level."}
     ::no-binning-options-at-top-level]])
 
-(mr/def ::require-base-type-for-field-name
-  [:fn
-   {:error/message ":field clauses using a string field name must specify :base-type."}
-   (fn [[_ id-or-name {:keys [base-type]}]]
-     (if (string? id-or-name)
-       base-type
-       true))])
+(letfn [(f [[_ id-or-name {:keys [base-type]}]]
+          (if (string? id-or-name) base-type true))]
+  (mr/def ::require-base-type-for-field-name
+    [:fn
+     {:error/message ":field clauses using a string field name must specify :base-type."}
+     f]))
 
 (mr/def ::field
   [:and
@@ -1297,20 +1296,20 @@
 (def TemplateTag
   "Alias for ::TemplateTag; prefer that going forward."
   [:ref ::TemplateTag])
-
-(mr/def ::TemplateTagMap
-  "Schema for the `:template-tags` map passed in as part of a native query.
+(letfn [(f [m]
+          (every? (fn [[tag-name tag-definition]]
+                    (core/= tag-name (:name tag-definition)))
+                  m))]
+  (mr/def ::TemplateTagMap
+    "Schema for the `:template-tags` map passed in as part of a native query.
 
   Map of template tag name -> template tag definition"
-  [:and
-   [:map-of ::lib.schema.common/non-blank-string TemplateTag]
-   ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
-   [:fn
-    {:error/message "keys in template tag map must match the :name of their values"}
-    (fn [m]
-      (every? (fn [[tag-name tag-definition]]
-                (core/= tag-name (:name tag-definition)))
-              m))]])
+    [:and
+     [:map-of ::lib.schema.common/non-blank-string TemplateTag]
+     ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
+     [:fn
+      {:error/message "keys in template tag map must match the :name of their values"}
+      f]]))
 
 (def ^:private NativeQuery:Common
   [:map
@@ -1553,49 +1552,51 @@
   ;; queries, but I think we don't apply this schema until normalization.
   [:map-of ::lib.schema.common/non-blank-string [:maybe ::Ident]])
 
-(mr/def ::MBQLQuery
-  [:and
-   [:map
-    [:source-query       {:optional true} SourceQuery]
-    [:source-table       {:optional true} SourceTable]
-    [:aggregation        {:optional true} [:sequential {:min 1} Aggregation]]
-    [:aggregation-idents {:optional true} [:ref ::IndexedIdents]]
-    [:breakout           {:optional true} [:sequential {:min 1} Field]]
-    [:breakout-idents    {:optional true} [:ref ::IndexedIdents]]
-    [:expressions        {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
-    [:expression-idents  {:optional true} [:ref ::ExpressionIdents]]
-    [:fields             {:optional true} Fields]
-    [:filter             {:optional true} Filter]
-    [:limit              {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
-    [:order-by           {:optional true} (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]])]
-    [:page               {:optional true} [:ref ::Page]]
-    [:joins              {:optional true} [:ref ::Joins]]
+(letfn [(f1  [query]
+          (core/= 1 (core/count (select-keys query [:source-query :source-table]))))
+        (f2 [{:keys [breakout fields]}]
+          (empty? (set/intersection (set breakout) (set fields))))]
+  (mr/def ::MBQLQuery
+    [:and
+     [:map
+      [:source-query       {:optional true} SourceQuery]
+      [:source-table       {:optional true} SourceTable]
+      [:aggregation        {:optional true} [:sequential {:min 1} Aggregation]]
+      [:aggregation-idents {:optional true} [:ref ::IndexedIdents]]
+      [:breakout           {:optional true} [:sequential {:min 1} Field]]
+      [:breakout-idents    {:optional true} [:ref ::IndexedIdents]]
+      [:expressions        {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
+      [:expression-idents  {:optional true} [:ref ::ExpressionIdents]]
+      [:fields             {:optional true} Fields]
+      [:filter             {:optional true} Filter]
+      [:limit              {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
+      [:order-by           {:optional true} (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]])]
+      [:page               {:optional true} [:ref ::Page]]
+      [:joins              {:optional true} [:ref ::Joins]]
 
-    [:source-metadata
-     {:optional true
-      :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is
+      [:source-metadata
+       {:optional true
+        :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is
   primarily used to let power things like binning when used with Field Literals instead of normal Fields."}
-     [:maybe [:sequential SourceQueryMetadata]]]]
-   ;;
-   ;; CONSTRAINTS
-   ;;
-   [:fn
-    {:error/message "Query must specify either `:source-table` or `:source-query`, but not both."}
-    (fn [query]
-      (core/= 1 (core/count (select-keys query [:source-query :source-table]))))]
-   [:fn
-    {:error/message "Fields specified in `:breakout` should not be specified in `:fields`; this is implied."}
-    (fn [{:keys [breakout fields]}]
-      (empty? (set/intersection (set breakout) (set fields))))]
-   ;; TODO: Re-enable this - it's a useful check but it currently breaks a pile of too-literal legacy tests.
-   #_[:fn
-      {:error/message ":expressions must have the same keys as :expression-idents"}
-      (fn [{:keys [expressions expression-idents]}]
-        (core/or (core/= nil expressions expression-idents)
-                 (core/and (map? expressions)
-                           (map? expression-idents)
-                           (core/= (set (keys expressions))
-                                   (set (keys expression-idents))))))]])
+       [:maybe [:sequential SourceQueryMetadata]]]]
+     ;;
+     ;; CONSTRAINTS
+     ;;
+     [:fn
+      {:error/message "Query must specify either `:source-table` or `:source-query`, but not both."}
+      f1]
+     [:fn
+      {:error/message "Fields specified in `:breakout` should not be specified in `:fields`; this is implied."}
+      f2]
+     ;; TODO: Re-enable this - it's a useful check but it currently breaks a pile of too-literal legacy tests.
+     #_[:fn
+        {:error/message ":expressions must have the same keys as :expression-idents"}
+        (fn [{:keys [expressions expression-idents]}]
+          (core/or (core/= nil expressions expression-idents)
+                   (core/and (map? expressions)
+                             (map? expression-idents)
+                             (core/= (set (keys expressions))
+                                     (set (keys expression-idents))))))]]))
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 
@@ -1664,32 +1665,33 @@
      :description "The timezone the query should be ran in, overriding the default report timezone for the instance."}
     TimezoneId]])
 
-(mr/def ::Constraints
-  "Additional constraints added to a query limiting the maximum number of rows that can be returned. Mostly useful
+(letfn [(f [{:keys [max-results max-results-bare-rows]}]
+          (if-not (core/and max-results max-results-bare-rows)
+            true
+            (core/>= max-results max-results-bare-rows)))]
+  (mr/def ::Constraints
+    "Additional constraints added to a query limiting the maximum number of rows that can be returned. Mostly useful
   because native queries don't support the MBQL `:limit` clause. For MBQL queries, if `:limit` is set, it will
   override these values."
-  [:and
-   [:map
-    [:max-results
-     {:optional true
-      :description
-      "Maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this
+    [:and
+     [:map
+      [:max-results
+       {:optional true
+        :description
+        "Maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this
   applies to all queries"}
-     ::lib.schema.common/int-greater-than-or-equal-to-zero]
+       ::lib.schema.common/int-greater-than-or-equal-to-zero]
 
-    [:max-results-bare-rows
-     {:optional true
-      :description
-      "Maximum number of results to allow for a query with no aggregations. If set, this should be LOWER than
+      [:max-results-bare-rows
+       {:optional true
+        :description
+        "Maximum number of results to allow for a query with no aggregations. If set, this should be LOWER than
   `:max-results`."}
-     ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+       ::lib.schema.common/int-greater-than-or-equal-to-zero]]
 
-   [:fn
-    {:error/message "max-results-bare-rows must be less or equal to than max-results"}
-    (fn [{:keys [max-results max-results-bare-rows]}]
-      (if-not (core/and max-results max-results-bare-rows)
-        true
-        (core/>= max-results max-results-bare-rows)))]])
+     [:fn
+      {:error/message "max-results-bare-rows must be less or equal to than max-results"}
+      f]]))
 
 (mr/def ::MiddlewareOptions
   "Additional options that can be used to toggle middleware on or off."
@@ -1765,19 +1767,20 @@
    [:ref ::lib.schema.id/saved-questions-virtual-database]
    [:ref ::lib.schema.id/database]])
 
+(letfn [(f [{native :native, mbql :query, query-type :type}]
+          (core/case query-type
+            :native (core/not mbql)
+            :query  (core/not native)
+            false))]
 ;;; Make sure we have the combo of query `:type` and `:native`/`:query`
-(mr/def ::check-keys-for-query-type
-  [:and
-   [:fn
-    {:error/message "Query must specify at most one of `:native` or `:query`, but not both."}
-    (complement (every-pred :native :query))]
-   [:fn
-    {:error/message "Native queries must not specify `:query`; MBQL queries must not specify `:native`."}
-    (fn [{native :native, mbql :query, query-type :type}]
-      (core/case query-type
-        :native (core/not mbql)
-        :query  (core/not native)
-        false))]])
+  (mr/def ::check-keys-for-query-type
+    [:and
+     [:fn
+      {:error/message "Query must specify at most one of `:native` or `:query`, but not both."}
+      (complement (every-pred :native :query))]
+     [:fn
+      {:error/message "Native queries must not specify `:query`; MBQL queries must not specify `:native`."}
+      f]]))
 
 (mr/def ::check-query-does-not-have-source-metadata
   "`:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the

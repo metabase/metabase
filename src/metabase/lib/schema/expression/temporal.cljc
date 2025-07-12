@@ -141,15 +141,16 @@
 ;;; if `:absolute-datetime` has `:base-type` in options, it must either derive from `:type/Date` or `:type/DateTime`.
 ;;; TODO -- we should do additional validation here and make sure the unit/value agree with base-type when it's
 ;;; present.
-(mr/def ::absolute-datetime.base-type
-  [:and
-   [:ref ::common/base-type]
-   [:fn
-    {:error/message ":absolute-datetime base-type must derive from :type/Date or :type/DateTime"}
-    (fn [base-type]
-      (some #(isa? base-type %)
-            [:type/Date
-             :type/DateTime]))]])
+(letfn [(f [base-type]
+          (some #(isa? base-type %)
+                [:type/Date
+                 :type/DateTime]))]
+  (mr/def ::absolute-datetime.base-type
+    [:and
+     [:ref ::common/base-type]
+     [:fn
+      {:error/message ":absolute-datetime base-type must derive from :type/Date or :type/DateTime"}
+      f]]))
 
 (mr/def ::absolute-datetime.options
   [:merge
