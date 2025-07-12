@@ -125,6 +125,9 @@
   more information about the Metabase permissions system."
   (atom #{}))
 
+(def ^:dynamic *current-permissions-document*
+  nil)
+
 ;;; ---------------------------------------- Precondition checking helper fns ----------------------------------------
 
 (defn- check-one [condition code message]
