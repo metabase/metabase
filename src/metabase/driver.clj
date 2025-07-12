@@ -401,6 +401,14 @@
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti extra-info
+  "extra driver info"
+  {:added "0.56.0" :arglists '([driver])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod extra-info ::driver [_] nil)
+
 (defmulti execute-reducible-query
   "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`.
 

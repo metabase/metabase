@@ -43,6 +43,11 @@
   [{:keys [connection-properties]}]
   (into [] (mapcat #(u/one-or-many (parse-connection-property %))) connection-properties))
 
+(defn- parse-extra-info
+  "parse driver extra info"
+  [{:keys [db-routing-info]}]
+  {:db-routing-info (:text db-routing-info)})
+
 (defn- make-initialize! [driver add-to-classpath! init-steps]
   (fn [_]
     ;; First things first: add the driver to the classpath!
@@ -93,17 +98,21 @@
     (log/debug (u/format-color :magenta "Registering lazy loading driver %s..." driver))
     (driver/register! driver, :parent (set (map keyword (u/one-or-many parent))), :abstract? abstract)))
 
+(defn- parse-yaml-section [manifest section parser]
+  (some-> manifest
+          yaml/parse-string
+          section
+          u/one-or-many
+          first
+          parser))
+
 (defn- load-connection-properties
   [driver]
-  (let [manifest (str (io/file "modules/drivers/" (name driver) "resources/metabase-plugin.yaml"))
-        properties (some->
-                    (slurp manifest)
-                    (yaml/parse-string)
-                    :driver
-                    u/one-or-many
-                    first
-                    (parse-connection-properties))]
-    (.addMethod ^MultiFn driver/connection-properties driver (constantly properties))))
+  (let [manifest   (slurp (str (io/file "modules/drivers/" (name driver) "resources/metabase-plugin.yaml")))
+        properties (parse-yaml-section manifest :driver parse-connection-properties)
+        extras     (parse-yaml-section manifest :extra parse-extra-info)]
+    (.addMethod ^MultiFn driver/connection-properties driver (constantly properties))
+    (.addMethod ^MultiFn driver/extra-info driver (constantly extras))))
 
 (comment
   (load-connection-properties :databricks))
