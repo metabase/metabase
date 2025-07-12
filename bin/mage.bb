@@ -73,12 +73,25 @@
         (binding [*command-line-args* args]
           (try (bt/run task)
                (catch Exception e
+                 ;; What controls output when an exception is thrown?
+                 ;;
+                 ;; Throw an ex-info.
+                 ;; We print the exception message and data, and exit with a code dictated by babashka/exit.
+                 ;;
+                 ;; Too noisy? Include a :mage/error key in the ex-data to suppress printing the entire exception.
+                 ;; Good for expected failures, like linting errors.
                  (let [message (ex-message e)
                        data (ex-data e)]
-                   (when e       (println (c/yellow "\nException:\n") e))
-                   (when message (println (c/red    (c/reverse-color "Error     :")) message))
-                   (when data    (println (c/yellow (c/reverse-color "Error data:")) data))
-                   (System/exit (:mage/exit-code data 1))))))))))
+                   (when (and e (not (:mage/error data)))
+                     (println (c/yellow "\nException:\n") e))
+                   (when (and message (not (str/blank? message)))
+                     (println (c/red (c/reverse-color "ex-message : ")) message))
+                   (when data
+                     (println (c/yellow (c/reverse-color "ex-data    : ")) (pr-str
+                                                                            (dissoc data :mage/error))))
+                   (when (:mage/error data)
+                     (println (c/blue (c/reverse-color "mage/error : ")) (:mage/error data)))
+                   (System/exit (:babashka/exit data 1))))))))))
 
 (when (= *file* (System/getProperty "babashka.file"))
   (-main))

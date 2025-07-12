@@ -1800,3 +1800,44 @@
                                              [:= :bookmark.collection_id :this.id]
                                              ;; a magical alias, or perhaps this clause can be implicit
                                              [:= :bookmark.user_id :current_user/id]]]})
+
+
+(mu/defn my-schemas-go-where??
+  ([a :- [:int {:tag :arity1-1}]] a)
+  ([a :- [:int {:tag :arity2-1}] b :- [:string {:tag :arity2-2}]] [a b]))
+
+;; -- macroexpands to -->
+;; (def my-schemas-go-where??
+;;  "Inputs..."
+;;  (let [&f (fn my_schemas_go_where_QMARK__QMARK_82214 [a] a)]
+;;    (fn ([a]
+;;          (try
+;;            (metabase.util.malli.fn/validate-input
+;;              {:fn-name 'my-schemas-go-where??}
+;;              [:fn {:arg-a :skema} (fn arg-a-skema [_] true)]
+;;              a)
+;;            (->>
+;;              (&f a)
+;;              (metabase.util.malli.fn/validate-output
+;;                {:fn-name 'my-schemas-go-where??}
+;;                [:fn {:out :skema} (fn output-skema [_] true)]))
+;;            (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error))))))))
+
+
+;; Wouldn't this work better:
+(def my-schemas-go-where??
+  "Inputs: [a :- [:fn {:arg-a :skema} (fn arg-a-skema [_] true)]]\n  Return: [:fn {:out :skema} (fn output-skema [_] true)]"
+  (let [&f (fn my_schemas_go_where_QMARK__QMARK_82214 [a] a)]
+    (let [in-skema [:fn {:arg-a :skema} (fn arg-a-skema [_] true)]
+          out-skema [:fn {:out :skema} (fn output-skema [_] true) ]]
+      (fn ([a]
+           (try
+             (metabase.util.malli.fn/validate-input ;;<- calls validate
+              {:fn-name 'my-schemas-go-where??}
+              in-skema a)
+             (->>
+              (&f a)
+              (metabase.util.malli.fn/validate-output
+               {:fn-name 'my-schemas-go-where??}
+               out-skema))
+             (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))))
