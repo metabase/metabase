@@ -22,13 +22,40 @@ import {
   useGetDataAppQuery,
   useUpdateDataAppMutation,
 } from "metabase-enterprise/api";
+import { DataAppWidgetsCanvas } from "metabase-enterprise/data-apps/canvas/DataAppWidgetsCanvas";
 
 import { DataAppsComponentsList } from "./DataAppsComponentsList";
 import { DataAppEditSettingsModal } from "./modals/DataAppEditSettingsModal";
 import { DataAppPublishModal } from "./modals/DataAppPublishModal";
-import type { DataAppEditSettings } from "./types";
+import type { DataAppEditSettings, DataAppWidget } from "./types";
 
 type SettingsSectionKey = "components";
+
+const MOCK_COMPONENTS: DataAppWidget[] = [
+  {
+    id: "root",
+    type: "section",
+    childrenIds: ["1"],
+    options: {
+      width: 3,
+    },
+  },
+  {
+    id: "1",
+    type: "section",
+    childrenIds: ["2"],
+    options: {
+      width: 1,
+    },
+  },
+  {
+    id: "2",
+    type: "button",
+    options: {
+      text: "Testio",
+    },
+  },
+];
 
 type DataAppContainerProps = {
   params: {
@@ -146,17 +173,7 @@ export const DataAppContainer = ({
             flexGrow: 1,
           }}
         >
-          <Box
-            style={{
-              flexGrow: 1,
-              backgroundImage:
-                "radial-gradient(circle, var(--mb-color-border) 1px, transparent 0)",
-              backgroundSize: "16px 16px",
-              backgroundRepeat: "repeat",
-            }}
-          >
-            {`Canvas here`}
-          </Box>
+          <DataAppWidgetsCanvas components={MOCK_COMPONENTS} />
 
           {activeSettingsSection === "components" && (
             <ComponentsSidebar
