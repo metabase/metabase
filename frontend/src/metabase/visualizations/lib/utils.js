@@ -295,10 +295,11 @@ export function getSingleSeriesDimensionsAndMetrics(
     dimensions = dimensionNotMetricColumns;
     metrics = metricColumns;
   } else if (
-    dimensionNotMetricColumns.length === 1 &&
+    dimensionNotMetricColumns.length > 0 &&
     metricColumns.length <= maxMetrics
   ) {
-    dimensions = dimensionNotMetricColumns;
+    // TODO: prioritize date dimension
+    dimensions = [dimensionNotMetricColumns[0]];
     metrics = metricColumns;
   }
 
