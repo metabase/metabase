@@ -22,22 +22,10 @@ databaseChangeLog:
                   name: creator_id
                   type: int
                   remarks: Id of user who created or updated the transform
-                  constraints:
-                    # TODO: Confirm whether false ok later!
-                    nullable: true
-                    referencedTableName: core_user
-                    referencedColumnNames: id
-                    foreignKeyName: fk_transform_view_creator_id
               - column:
                   name: database_id
                   type: int
                   remarks: Id of metabase_database the view is created in
-                  constraints:
-                    # TODO: Confirm whether false ok later!
-                    nullable: true
-                    referencedTableName: metabase_database
-                    referencedColumnNames: id
-                    foreignKeyName: fk_transform_view_database_id
               - column:
                   name: status
                   type: varchar(16)
@@ -50,15 +38,6 @@ databaseChangeLog:
                   name: view_name
                   type: varchar(256)
                   remarks: Name of the view, unique per database and schema
-              - column:
-                  name: view_table_id
-                  type: int
-                  remarks: Foreign key to metabase_table, can be NULL as populated after sync
-                  constraints:
-                    nullable: true
-                    referencedTableName: metabase_table
-                    referencedColumnNames: id
-                    foreignKeyName: fk_view_table_id
               - column:
                   name: dataset_query
                   type: ${text.type}
@@ -95,7 +74,6 @@ databaseChangeLog:
             tableName: transform_view
             columnNames: database_id, view_schema, view_name
             constraintName: unique_transform_view_database_id_view_schema_view_name
-      rollback: # Handled in rollback of "Add transform_view table" changeset
 
   - changeSet:
       id: v57.2025-07-09T15:18:37
@@ -114,25 +92,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: database_id
-      rollback: # Handled in rollback of "Add transform_view table" changeset
-
-  - changeSet:
-      id: v57.2025-07-09T15:20:41
-      author: lbrdnk
-      comment: Create index for view_table_id of transform_view table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: transform_view
-                indexName: idx_transform_view_view_table_id
-      changes:
-        - createIndex:
-            tableName: transform_view
-            indexName: idx_transform_view_view_table_id
-            columns:
-              - column:
-                  name: view_table_id
       rollback: # Handled in rollback of "Add transform_view table" changeset
 
   - changeSet:
@@ -155,9 +114,35 @@ databaseChangeLog:
       rollback: # Handled in rollback of "Add transform_view table" changeset
 
   - changeSet:
+      id: v57.2025-07-10T16:58:14
+      author: lbrdnk
+      comment: Create fk constraint on core_user.id
+      changes:
+        - addForeignKeyConstraint:
+            constraintName: fk_transform_view_creator_id
+            baseTableName: transform_view
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v57.2025-07-10T16:59:51
+      author: lbrdnk
+      comment: Create fk constraint on metabase_database.id
+      changes:
+        - addForeignKeyConstraint:
+            constraintName: fk_transform_view_database_id
+            baseTableName: transform_view
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            onDelete: SET NULL
+
+  - changeSet:
       id: v57.2025-07-13T12:30:21
       author: lbrdnk
-      comment: Add transform_id to metabase_table to reference transform_view table
+      comment: Add transform_id to metabase_table to reference transform_view.id
       changes:
         - addColumn:
             tableName: metabase_table
@@ -170,7 +155,7 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-07-13T12:35:09
       author: lbrdnk
-      comment: Index metabase_table.transform_id fk constraint
+      comment: Index metabase_table.transform_id
       changes:
         - createIndex:
             tableName: metabase_table
@@ -186,11 +171,11 @@ databaseChangeLog:
       changes:
         - addForeignKeyConstraint:
             constraintName: fk_metabase_table_transform_id
-            nullable: true
             baseTableName: metabase_table
             baseColumnNames: transform_id
             referencedTableName: transform_view
             referencedColumnNames: id
+            onDelete: CASCADE
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
