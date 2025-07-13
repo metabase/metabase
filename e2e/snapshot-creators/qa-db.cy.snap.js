@@ -8,21 +8,22 @@ import {
 } from "e2e/support/helpers";
 
 describe("qa databases snapshots", { tags: "@external" }, () => {
-  beforeEach(() => {
-    restoreAndAuthenticate();
-  });
-
   it("creates snapshots for supported qa databases", () => {
     if (Cypress.env("QA_DB_MONGO") === true) {
+      restoreAndAuthenticate();
       addMongoDatabase();
       snapshot("mongo-5");
     } else {
+      // Postgres
+      restoreAndAuthenticate();
+
       addPostgresDatabase();
       snapshot("postgres-12");
 
       convertToWritable("postgres");
       snapshot("postgres-writable");
 
+      // MySQL
       restoreAndAuthenticate();
 
       addMySQLDatabase({});
@@ -31,6 +32,7 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
       convertToWritable("mysql");
       snapshot("mysql-writable");
     }
+
     restore("blank");
   });
 });
