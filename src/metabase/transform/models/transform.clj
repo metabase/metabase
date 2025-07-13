@@ -48,13 +48,15 @@
 ;; TODO: query schema: normalized mbql or native query
 ;; query is native query?
 
-(def view-name-prefix "mb_transform_")
+(def view-name-prefix
+  "Prefix for view names. Names `mb_transform_\\d+` in user schemas are reserved for managed views."
+  "mb_transform_")
 
 (defn transform-view-name
   "Generate name for transform view. Id should be unique."
   [id]
   (assert (pos-int? id))
-  (str "mb_transform_" id))
+  (str view-name-prefix id))
 
 ;; TODO: test for version matching, stub now
 #_{:clj-kondo/ignore [:missing-docstring :unresolved-namespace]}
@@ -67,16 +69,15 @@
       :query))
 
 (defn- assert-unique-name!
-  "Assert there is no same `name` table in the `schema`."
+  "Assert there is no same `name` :model/Table in the `schema`."
   [database schema name]
   ;; Deliberately not checking :model/TransformView. It is guaranteed the name is unique across that table
-  ;; as the table ids are used to ensure uniqueness.
+  ;; as the transform_view.id is used to generate name.
   (when-some [table-ids (not-empty (t2/select-fn-vec :id :model/Table
                                                      :active true
                                                      :db_id (:id database)
                                                      :schema schema
                                                      :name name))]
-    ;; TODO: exceptions thrown from here should be handled on API level, decorated with appropriate codes.
     (throw (ex-info (i18n/tru "View name in use. `{0}<numbers>+` names are reserved." view-name-prefix)
                     {:status-code 400
                      :database-id (:id database)
@@ -101,7 +102,6 @@
                      :display-name display-name
                      :same-display-name-table-ids table-ids}))))
 
-;; this should take the schema
 (defn insert-returning-instance!
   [schema display-name dataset-query creator]
   (let [query (dataset-query->query dataset-query)
@@ -120,15 +120,15 @@
                                                       :dataset_query dataset-query
                                                       :dataset_query_schema dataset-query-current-schema
                                                       :dataset_query_type query-type
-                                                      :status :record_created
-                                                      ;; TODO: This is questionable due to the sync
-                                                      :view_display_name display-name})
+                                                      :status :record_created})
             transform-id (doto (:id transform)
                            (as-> $ (assert (pos-int? $))))
             view-name (transform-view-name transform-id)]
         (assert-unique-name! database schema view-name)
         (driver/create-view! driver database-id (str/join "." (remove nil? [schema view-name])) native)
         ;; TODO: Is it reasonable to do the following in transaction?
+        ;; NB: Following could take a long time or fail, the same way as analysis
+        ;; TODO: All of that should go off thread.
         (sync-metadata/sync-new-table-metadata! database {:table-name view-name
                                                           :schema schema})
         (let [view-table (t2/select-one :model/Table
@@ -142,7 +142,8 @@
           (t2/update! :model/Table :id (:id view-table)
                       {:display_name display-name
                        ;; TODO: This should be handled by analysis!!! (and should be async!!!)
-                       :initial_sync_status "complete"})
+                       :initial_sync_status "complete"
+                       :transform_id transform-id})
           (t2/select-one :model/TransformView :id transform-id))))))
 
 (defn update-transform!
