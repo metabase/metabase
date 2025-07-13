@@ -219,17 +219,8 @@
     [[10 "Engineering"]
      [20 "Sales"]]]])
 
-;; TODO: with-force-reload-dataset?
-#_(defmacro with-force-recreate-dataset
-    [dataset-sym & body]
-    `(try
-       (tx/destroy-db! (tx/get-dataset-definition ~dataset-sym))
-       (finally
-         (mt/dataset
-           ~dataset-sym
-           ~@body))))
-
 (defmacro with-no-transform-views
+  "Clean up the appdb and dwh prior "
   [& body]
   `(do (doseq [table# (:tables (driver/describe-database driver/*driver* (mt/db)))]
          (let [schema# (:schema table#)
@@ -237,13 +228,13 @@
            (when (str/starts-with? name# "mb_transform")
              (metabase.request.session/with-current-user (mt/user->id :rasta)
                (driver/drop-view! driver/*driver* (mt/id) (str/join "." (filter some? [schema# name#])))))))
-       (t2/delete! :model/TransformView :view_name [:like "mb_transform%"])
        (t2/delete! :model/Table :name [:like "mb_transform%"])
+       (t2/delete! :model/TransformView :view_name [:like "mb_transform%"])
        ~@body))
 
 ;; API tests
 
-(deftest can-create-transform-test ; create + overwrite
+(deftest can-create-transform-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :view)
     (mt/dataset
@@ -254,26 +245,27 @@
                                   (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
                                   (lib/breakout (lib.metadata/field mp (mt/id :users :score)))
                                   (lib.convert/->legacy-MBQL)))
-              display-name "Test view 1"]
+              display-name "Test view 1"
+              resp (mt/user-http-request :rasta :post 200 "transform"
+                                         {:display_name display-name
+                                          :dataset_query dataset-query})]
           (testing "POST /transform creates new view in app db"
             (is (=? {:id pos-int?
-                     :view_table_id pos-int?
                      :database_id (mt/id)
                      :creator_id (mt/user->id :rasta)
-                     :status "view_synced"
-                     :view_display_name "Test view 1"}
-                    (mt/user-http-request :rasta :post 200 "transform"
-                                          {:display_name display-name
-                                           :dataset_query dataset-query}))))
-          (let [transform-view (t2/select-one :model/TransformView :view_display_name display-name)]
+                     :status "view_synced"}
+                    resp)))
+          (let [transform-id (:id resp)
+                transform (t2/select-one :model/TransformView :id transform-id)
+                table (t2/select-one :model/Table :transform_id transform-id)
+                table-id (:id table)]
             (testing "Transform generated view has user set display name"
-              (let [table (t2/select-one :model/Table :id (:view_table_id transform-view))]
-                (is (= (:view_name transform-view) (:name table)))
-                (is (= (:view_display_name transform-view) (:display_name table)))))
+              (is (= (:view_name transform) (:name table)))
+              (is (= display-name (:display_name table))))
             (testing "Transform generated view can be queried"
               (let [mp (mt/metadata-provider)]
                 (is (=? {:status :completed}
-                        (-> (lib/query mp (lib.metadata/table mp (:view_table_id transform-view)))
+                        (-> (lib/query mp (lib.metadata/table mp table-id))
                             (qp/process-query))))))))))))
 
 (deftest transform-table-name-clash-test
@@ -307,12 +299,10 @@
     (mt/dataset
       users-departments-db
       (with-no-transform-views
-        (let [clashing-name "T T T"
-              clashing-schema "clashing_schema_333"]
+        (let [clashing-name "T T T"]
           (testing "Base: view creation is successfull"
             (mt/user-http-request :rasta :post 200 "transform"
-                                  {:schema clashing-schema
-                                   :display_name clashing-name
+                                  {:display_name clashing-name
                                    :dataset_query
                                    (let [mp (mt/metadata-provider)]
                                      (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
@@ -323,47 +313,14 @@
                      :display-name clashing-name
                      :same-display-name-table-ids (comp pos-int? first)}
                     (mt/user-http-request :rasta :post 400 "transform"
-                                          {:schema clashing-schema
-                                           :display_name clashing-name
+                                          {:display_name clashing-name
                                            :dataset_query
                                            (let [mp (mt/metadata-provider)]
                                              (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
                                                  (lib.convert/->legacy-MBQL)))})))
-          ;; TODO: Remove display-name form TransformView -- should be only in Table
-            (is (= 1 (t2/count :model/TransformView :view_display_name clashing-name)))))))))
+            (is (= 1 (t2/count :model/Table :display_name clashing-name)))))))))
 
 ;; schemas -- ensure that picking of existing schema creates in that schema
-
-;; STUB: Figure out way of having the two in sync
-#_(deftest view-tables-display-name-changed-test
-    (mt/test-drivers
-      (mt/normal-drivers-with-feature :view)
-      (mt/dataset
-        users-departments-db
-        (with-no-transform-views
-          (let [dataset-query (let [mp (mt/metadata-provider)]
-                                (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
-                                    (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
-                                    (lib/breakout (lib.metadata/field mp (mt/id :users :score)))
-                                    (lib.convert/->legacy-MBQL)))
-                display-name "Test view 1"]
-            (testing "POST /transform creates new view in app db"
-              (is (=? {:view_table_id pos-int?
-                       :database_id (mt/id)
-                       :creator_id (mt/user->id :rasta)
-                       :status "view_synced"
-                       :view_display_name "Test view 1"}
-                      (mt/user-http-request :rasta :post 200 "transform"
-                                            {:display_name display-name
-                                             :dataset_query dataset-query}))))
-            (let [transform-view (t2/select-one :model/TransformView :view_display_name display-name)]
-              (t2/update! :model/Table :id (:view_table_id transform-view)
-                          {:display_name "Changed!"})
-          ;; this should be always in sync, figure out reasonable way!
-          ;; Just a stub!
-              (is (= "Changed!"
-                     (t2/select-one-fn :view_display_name :model/TransformView
-                                       :id (:id transform-view))))))))))
 
 (comment
   (mt/with-db (toucan2.core/select-one :model/Database :name "users-departments-db (postgres)")
@@ -371,6 +328,7 @@
       (metabase.request.session/with-current-user (mt/user->id :rasta)
         (driver/create-view! driver/*driver* (mt/id) "xix.wiwiw" "select * from public.users limit 2")))))
 
+;; TODO: adjust to migr
 (deftest put-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :view)
