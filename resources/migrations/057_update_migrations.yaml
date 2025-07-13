@@ -23,7 +23,8 @@ databaseChangeLog:
                   type: int
                   remarks: Id of user who created or updated the transform
                   constraints:
-                    nullable: false
+                    # TODO: Confirm whether false ok later!
+                    nullable: true
                     referencedTableName: core_user
                     referencedColumnNames: id
                     foreignKeyName: fk_transform_view_creator_id
@@ -32,7 +33,8 @@ databaseChangeLog:
                   type: int
                   remarks: Id of metabase_database the view is created in
                   constraints:
-                    nullable: false
+                    # TODO: Confirm whether false ok later!
+                    nullable: true
                     referencedTableName: metabase_database
                     referencedColumnNames: id
                     foreignKeyName: fk_transform_view_database_id
@@ -49,10 +51,6 @@ databaseChangeLog:
                   type: varchar(256)
                   remarks: Name of the view, unique per database and schema
               - column:
-                  name: view_display_name
-                  type: varchar(256)
-                  remarks: Display name for presentation purposes, user set
-              - column:
                   name: view_table_id
                   type: int
                   remarks: Foreign key to metabase_table, can be NULL as populated after sync
@@ -65,20 +63,14 @@ databaseChangeLog:
                   name: dataset_query
                   type: ${text.type}
                   remarks: Query as stored in report_card.dataset_query
-                  constraints:
-                    nullable: false
               - column:
                   name: dataset_query_schema
                   type: int
                   remarks: Schema version similar to report_card.card_schema
-                  constraints:
-                    nullable: false
               - column:
                   name: dataset_query_type
                   type: varchar(16)
                   remarks: Type of dataset_query
-                  constraints:
-                    nullable: false
               - column:
                   name: created_at
                   type: ${timestamp_type}
@@ -109,6 +101,12 @@ databaseChangeLog:
       id: v57.2025-07-09T15:18:37
       author: lbrdnk
       comment: Create index for database_id of transform_view table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform_view
+                indexName: idx_transform_view_database_id
       changes:
         - createIndex:
             tableName: transform_view
@@ -122,6 +120,12 @@ databaseChangeLog:
       id: v57.2025-07-09T15:20:41
       author: lbrdnk
       comment: Create index for view_table_id of transform_view table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform_view
+                indexName: idx_transform_view_view_table_id
       changes:
         - createIndex:
             tableName: transform_view
@@ -135,6 +139,12 @@ databaseChangeLog:
       id: v57.2025-07-10T16:56:27
       author: lbrdnk
       comment: Create index for creator_id of transform_view table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform_view
+                indexName: idx_transform_view_creator_id
       changes:
         - createIndex:
             tableName: transform_view
@@ -143,6 +153,44 @@ databaseChangeLog:
               - column:
                   name: creator_id
       rollback: # Handled in rollback of "Add transform_view table" changeset
+
+  - changeSet:
+      id: v57.2025-07-13T12:30:21
+      author: lbrdnk
+      comment: Add transform_id to metabase_table to reference transform_view table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: transform_id
+                  type: int
+                  remarks: fk to tranform_view table
+
+  - changeSet:
+      id: v57.2025-07-13T12:35:09
+      author: lbrdnk
+      comment: Index metabase_table.transform_id fk constraint
+      changes:
+        - createIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_transform_id
+            columns:
+              - column:
+                  name: transform_id
+
+  - changeSet:
+      id: v57.2025-07-13T12:39:22
+      author: lbrdnk
+      comment: Add metabase_table.transform_id fk constraint
+      changes:
+        - addForeignKeyConstraint:
+            constraintName: fk_metabase_table_transform_id
+            nullable: true
+            baseTableName: metabase_table
+            baseColumnNames: transform_id
+            referencedTableName: transform_view
+            referencedColumnNames: id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
