@@ -25,7 +25,7 @@ export function addMongoDatabase(displayName = "QA Mongo") {
     details: {
       "advanced-options": false,
       "use-conn-uri": true,
-      "conn-uri": `mongodb://${user}:${password}${host}:${port}/${dbName}?authSource=admin`,
+      "conn-uri": `mongodb://${user}:${password}@${host}:${port}/${dbName}?authSource=admin`,
       "tunnel-enabled": false,
     },
   });
