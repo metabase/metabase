@@ -22,6 +22,8 @@ import { ResponsiveButton } from "../ResponsiveButton";
 import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
 
+const OUTLINE_SAFETY_MARGIN = 2;
+
 interface Props {
   params: RouteParams;
   table: Table;
@@ -138,18 +140,12 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         />
       </Box>
 
-      <Stack gap="lg" px="xl">
+      <Stack gap="lg" px="xl" pt={OUTLINE_SAFETY_MARGIN}>
         <Stack gap={12}>
           <Group align="center" gap="md" justify="space-between">
             <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
 
-            <Group
-              className={S.buttons}
-              flex="1"
-              gap="md"
-              justify="flex-end"
-              wrap="nowrap"
-            >
+            <Group flex="1" gap="md" justify="flex-end" wrap="nowrap">
               {isChangingSorting && (
                 <Loader size="xs" data-testid="loading-indicator" />
               )}

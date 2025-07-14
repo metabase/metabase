@@ -16,6 +16,8 @@ import S from "./FieldSection.module.css";
 import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
 
+const OUTLINE_SAFETY_MARGIN = 2;
+
 interface Props {
   databaseId: DatabaseId;
   field: Field;
@@ -109,17 +111,11 @@ const FieldSectionBase = ({
         />
       </Box>
 
-      <Stack gap={12} mb={12} px="xl">
+      <Stack gap={12} mb={12} pt={OUTLINE_SAFETY_MARGIN} px="xl">
         <Group align="center" gap="md" justify="space-between">
           <Text flex="0 0 auto" fw="bold">{t`Field settings`}</Text>
 
-          <Group
-            className={S.buttons}
-            flex="1"
-            gap="md"
-            justify="flex-end"
-            wrap="nowrap"
-          >
+          <Group flex="1" gap="md" justify="flex-end" wrap="nowrap">
             {!isPreviewOpen && (
               <Button
                 leftSection={<Icon name="eye" />}
