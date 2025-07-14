@@ -5,6 +5,10 @@
   }
 }
 
+.section {
+  width: auto;
+}
+
 .description {
   position: relative;
   top: -2px; /* Imitate collapsed borders. -1px does not seem to do the trick on Mac. */
