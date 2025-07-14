@@ -1253,10 +1253,10 @@
            driver-api
            lib
            lib-be
+           models
            queries
            query-permissions
            query-processor
-           models
            sync
            util}}
 
