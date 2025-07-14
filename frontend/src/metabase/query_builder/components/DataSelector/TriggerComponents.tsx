@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { Box, Icon, Text } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -40,18 +40,24 @@ export function Trigger({
   }
 
   return (
-    <span
+    <Flex
+      align="center"
       className={
         className ||
         cx(CS.px2, CS.py2, CS.textBold, CS.cursorPointer, CS.textDefault)
       }
+      data-testid="trigger"
       style={style}
     >
       {children}
       {showDropdownIcon && (
-        <Icon className={CS.ml1} name="chevrondown" size={iconSize} />
+        <Icon
+          className={cx(CS.ml1, CS.flexNoShrink)}
+          name="chevrondown"
+          size={iconSize}
+        />
       )}
-    </span>
+    </Flex>
   );
 }
 
@@ -83,7 +89,7 @@ export function DatabaseTrigger({ database }: { database: Database }) {
   return database ? (
     <span
       className={cx(CS.textWrap, CS.noDecoration)}
-      data-testid="selected-database"
+      data-testid="selected-database1"
     >
       {database.name}
     </span>
