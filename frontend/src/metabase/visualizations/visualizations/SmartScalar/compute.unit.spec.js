@@ -1048,7 +1048,7 @@ describe("SmartScalar > compute", () => {
               comparisonValue: comparisonValue,
               metricValue: primaryValue,
             }),
-            comparisonDescStr: `vs. ${comparisonColumnLabel}`,
+            comparisonDescStr: `${changeType === "missing" ? "for" : "vs."} ${comparisonColumnLabel}`,
           },
           ...getMetricProperties({
             dateStr: "2019",
@@ -1098,7 +1098,7 @@ describe("SmartScalar > compute", () => {
               changeType: "missing",
               primaryValue: 300,
               comparisonValue: undefined,
-              comparisonColumnLabel: "N/A",
+              comparisonColumnLabel: "Average",
             }),
           },
         ];
@@ -2229,8 +2229,8 @@ function getComparisonValueProperties({
 
     return {
       comparisonDescStr: includeComparisonDescStr
-        ? `vs. ${dateStr}`
-        : undefined,
+        ? `for ${dateStr}`
+        : "for previous value",
       display: {
         comparisonValue: CHANGE_TYPE_OPTIONS.MISSING.COMPARISON_VALUE_STR,
         percentChange: CHANGE_TYPE_OPTIONS.MISSING.PERCENT_CHANGE_STR,
