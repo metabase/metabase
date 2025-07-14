@@ -930,16 +930,18 @@ describe("scenarios > admin > datamodel", () => {
           .should("be.checked");
 
         H.openProductsTable();
-        assertTableHeader([
-          "ID",
-          "Ean",
-          "Title",
-          "Category",
-          "Vendor",
-          "Price",
-          "Rating",
-          "Created At",
-        ]);
+        H.assertTableData({
+          columns: [
+            "ID",
+            "Ean",
+            "Title",
+            "Category",
+            "Vendor",
+            "Price",
+            "Rating",
+            "Created At",
+          ],
+        });
       });
 
       it("should allow sorting fields alphabetically", () => {
@@ -960,16 +962,18 @@ describe("scenarios > admin > datamodel", () => {
           .should("be.checked");
 
         H.openProductsTable();
-        assertTableHeader([
-          "Category",
-          "Created At",
-          "Ean",
-          "ID",
-          "Price",
-          "Rating",
-          "Title",
-          "Vendor",
-        ]);
+        H.assertTableData({
+          columns: [
+            "Category",
+            "Created At",
+            "Ean",
+            "ID",
+            "Price",
+            "Rating",
+            "Title",
+            "Vendor",
+          ],
+        });
       });
 
       it("should allow sorting fields smartly", () => {
@@ -988,16 +992,18 @@ describe("scenarios > admin > datamodel", () => {
           .should("be.checked");
 
         H.openProductsTable();
-        assertTableHeader([
-          "ID",
-          "Created At",
-          "Category",
-          "Ean",
-          "Price",
-          "Rating",
-          "Title",
-          "Vendor",
-        ]);
+        H.assertTableData({
+          columns: [
+            "ID",
+            "Created At",
+            "Category",
+            "Ean",
+            "Price",
+            "Rating",
+            "Title",
+            "Vendor",
+          ],
+        });
       });
 
       it("should allow sorting fields in the custom order", () => {
@@ -1030,16 +1036,18 @@ describe("scenarios > admin > datamodel", () => {
           .should("be.checked");
 
         H.openProductsTable();
-        assertTableHeader([
-          "Ean",
-          "ID",
-          "Title",
-          "Category",
-          "Vendor",
-          "Price",
-          "Rating",
-          "Created At",
-        ]);
+        H.assertTableData({
+          columns: [
+            "Ean",
+            "ID",
+            "Title",
+            "Category",
+            "Vendor",
+            "Price",
+            "Rating",
+            "Created At",
+          ],
+        });
       });
 
       it("should allow switching to predefined order after drag & drop (metabase#56482)", () => {
@@ -2616,6 +2624,26 @@ describe("scenarios > admin > datamodel", () => {
           TablePicker.getTable("Many Data Types").click();
           TableSection.getField("Json → A").should("not.exist");
         });
+
+        it("should let you change the name of JSON-unfolded columns (metabase#55563)", () => {
+          // Go to field settings
+          H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
+          TablePicker.getTable("Many Data Types").click();
+          TableSection.clickField("Json → A");
+
+          TableSection.getFieldNameInput("Json → A").clear().type("A").blur();
+          FieldSection.getPreviewButton().click();
+
+          FieldSection.getNameInput().should("have.value", "A");
+          FieldSection.get()
+            .findByTestId("name-prefix")
+            .should("be.visible")
+            .and("have.text", "Json:");
+          verifyTablePreview({
+            column: "A",
+            values: ["10", "10"],
+          });
+        });
       });
     });
 
@@ -3011,15 +3039,6 @@ function turnTableVisibilityOff(tableId: TableId) {
     visibility_type: "hidden",
   });
 }
-
-const assertTableHeader = (columns: string[]) => {
-  cy.findAllByTestId("header-cell").should("have.length", columns.length);
-
-  columns.forEach((column, index) => {
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByTestId("header-cell").eq(index).should("have.text", column);
-  });
-};
 
 const setDataModelPermissions = ({
   tableIds = [],
