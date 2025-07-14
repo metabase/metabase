@@ -12,8 +12,8 @@ describe("native query template tags", () => {
     );
   });
 
-  describe("template tag attributes should be preserved (metabase#38263)", () => {
-    it("should preserve required attribute when creating native query", () => {
+  describe("template tag attributes", () => {
+    it("should preserve required attribute when creating native query (metabase#38263)", () => {
       const queryText = "SELECT * FROM orders WHERE state = {{state}}";
       const query = Lib.nativeQuery(
         SAMPLE_DATABASE.id,
@@ -39,7 +39,7 @@ describe("native query template tags", () => {
       expect(retrievedTags.state.required).toBe(true);
     });
 
-    it("should preserve required=false attribute when using nativeQuery", () => {
+    it("should preserve required=false attribute (metabase#38263)", () => {
       const queryText = "SELECT * FROM orders WHERE state = {{state}}";
       const query = Lib.nativeQuery(
         SAMPLE_DATABASE.id,
