@@ -31,7 +31,7 @@ const setup = async (props: {
     "email-from-address-override": props.cloudCustomFromAddress,
     "token-features": createMockTokenFeatures({
       hosting: !!props.hosted,
-      "cloud-custom-smtp": props.cloudCustomSMTPFF,
+      cloud_custom_smtp: props.cloudCustomSMTPFF,
     }),
     "email-smtp-host-override": props.smtpHost,
     "smtp-override-enabled": props.cloudSMTPEnabled,

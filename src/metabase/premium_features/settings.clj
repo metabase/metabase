@@ -271,7 +271,7 @@
    :audit_app                      (enable-audit-app?)
    :cache_granular_controls        (enable-cache-granular-controls?)
    :cache_preemptive               (enable-preemptive-caching?)
-   :cloud-custom-smtp              (cloud-custom-smtp?)
+   :cloud_custom_smtp              (cloud-custom-smtp?)
    :collection_cleanup             (enable-collection-cleanup?)
    :config_text_file               (enable-config-text-file?)
    :content_translation            (enable-content-translation?)

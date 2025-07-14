@@ -101,7 +101,7 @@ export const createMockTokenFeatures = (
   audit_app: false,
   cache_granular_controls: false,
   disable_password_login: false,
-  "cloud-custom-smtp": false,
+  cloud_custom_smtp: false,
   content_translation: false,
   content_verification: false,
   embedding: false,

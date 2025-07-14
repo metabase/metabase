@@ -9,7 +9,7 @@ import { UPGRADE_URL } from "./constants";
 
 export const UpsellEmailWhitelabelPill = ({ source }: { source: string }) => {
   const isHosted = useSelector(getIsHosted);
-  const hasCloudSMTPFeature = useHasTokenFeature("cloud-custom-smtp");
+  const hasCloudSMTPFeature = useHasTokenFeature("cloud_custom_smtp");
 
   if (!isHosted || hasCloudSMTPFeature) {
     return null;

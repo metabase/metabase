@@ -13,7 +13,7 @@ export function EmailFromAddressWidget() {
   const { value: fromAddressValue } = useAdminSetting("email-from-address");
   const isHosted = useSetting("is-hosted?");
   const isCloudSMTPEnabled = useSetting("smtp-override-enabled");
-  const hasCloudCustomSMTPFeature = useHasTokenFeature("cloud-custom-smtp");
+  const hasCloudCustomSMTPFeature = useHasTokenFeature("cloud_custom_smtp");
 
   if (!isHosted) {
     return (

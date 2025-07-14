@@ -222,7 +222,7 @@ export const tokenFeatures = [
   "advanced_permissions",
   "audit_app",
   "cache_granular_controls",
-  "cloud-custom-smtp",
+  "cloud_custom_smtp",
   "content_translation",
   "content_verification",
   "disable_password_login",

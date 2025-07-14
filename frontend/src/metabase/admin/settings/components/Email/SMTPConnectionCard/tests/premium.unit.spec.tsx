@@ -11,7 +11,7 @@ describe("SMTPConnectionCard (EE with token)", () => {
   it("should show the cloud SMTP card when hosted", async () => {
     await setup({
       isHosted: true,
-      tokenFeatures: { "cloud-custom-smtp": true },
+      tokenFeatures: { cloud_custom_smtp: true },
     });
 
     expect(
@@ -25,7 +25,7 @@ describe("SMTPConnectionCard (EE with token)", () => {
   it("should show self-hosted SMTP card when self-hoste", () => {
     setup({
       isHosted: false,
-      tokenFeatures: { "cloud-custom-smtp": true },
+      tokenFeatures: { cloud_custom_smtp: true },
     });
 
     expect(
