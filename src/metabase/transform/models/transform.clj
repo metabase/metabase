@@ -1,12 +1,11 @@
 (ns metabase.transform.models.transform
   (:require
    [clojure.string :as str]
-   [honey.sql :as sql]
+
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.query-processor.compile :as qp.compile]
@@ -28,6 +27,7 @@
 
 ;; TODO: This is temporary
 (defn top-schema
+  "Get most used schema"
   [database-id]
   ;; Following is temporary. Later do it in nicer way
   (-> (t2/query {:select [[[:count :id] :c] [:schema :s]]
@@ -72,7 +72,7 @@
 
 (defn- query-type
   [query]
-  (or (and (metabase.lib.util/native-stage? query 0)
+  (or (and (lib/native-stage? query 0)
            :native)
       :query))
 
@@ -111,6 +111,7 @@
                      :same-display-name-table-ids table-ids}))))
 
 (defn insert-returning-instance!
+  "Create new transform."
   [schema display-name dataset-query creator]
   (let [query (dataset-query->query dataset-query)
         query-type (query-type query)
@@ -154,6 +155,7 @@
           (t2/select-one :model/TransformView :id transform-id))))))
 
 (defn update-transform!
+  "Update transform's query"
   [transform-id dataset-query creator]
   (let [transform (t2/select-one :model/TransformView :id transform-id)
         view-name (:view_name transform)
@@ -177,6 +179,7 @@
       (sync-metadata/sync-table-metadata! (t2/select-one :model/Table :transform_id transform-id)))))
 
 (defn delete-transform!
+  "Delete transform and view."
   [id]
   (let [transform (t2/select-one :model/TransformView :id id)
         schema-name (:schema transform)
@@ -196,5 +199,6 @@
   (t2/select :model/TransformView))
 
 (defn transform-by-id
+  "Transform by id."
   [id]
   (t2/select-one :model/TransformView :id id))
