@@ -296,5 +296,5 @@ export function SetByEnvVarWrapper<SettingName extends SettingKey>({
       </Box>
     );
   }
-  return <div>{children}</div>;
+  return children;
 }

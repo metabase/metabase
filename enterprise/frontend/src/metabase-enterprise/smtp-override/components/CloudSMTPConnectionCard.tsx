@@ -81,6 +81,9 @@ export const CloudSMTPConnectionCard = () => {
                   </div>
                 </Group>
                 <Button
+                  // Radio.Card is button, and you can't nest a button inside another button
+                  component={"div"}
+                  role="button"
                   variant="subtle"
                   onClick={(e) => {
                     handleOpenModal();
