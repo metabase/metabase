@@ -739,9 +739,7 @@ H.describeWithSnowplow("scenarios > admin > settings > email settings", () => {
         // Button text should change
         cy.button("Edit settings");
         // Custom server should be auto-enabled
-        cy.findByRole("radio", { checked: true }).findByText(
-          "Custom SMTP Server",
-        );
+        cy.findByLabelText("Custom SMTP Server").should("be.checked");
       });
 
       cy.findByLabelText("From Address")
