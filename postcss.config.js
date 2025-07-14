@@ -1,16 +1,22 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
+const path = require("path");
+
 const glob = require("glob");
 
-// eslint-disable-next-line no-undef
-const SRC_PATH = __dirname + "/frontend/src/metabase";
-const CSS_SRC = glob.sync(SRC_PATH + "/css/**/*.css");
+const SRC_PATH = path.join(__dirname, "frontend/src/metabase");
+const CSS_SRC = glob.sync(path.join(SRC_PATH, "css/**/*.css"));
 
 module.exports = {
-  plugins: {
-    "postcss-import": {},
-    "postcss-url": {},
-    "postcss-preset-env": {
+  plugins: [
+    // Import other CSS files
+    require("postcss-import")(),
+
+    // Rebase/inline URLs
+    require("postcss-url")(),
+
+    // Modern CSS features & your custom-media definitions
+    require("postcss-preset-env")({
       stage: 2,
       importFrom: CSS_SRC,
       features: {
@@ -19,9 +25,15 @@ module.exports = {
         "focus-visible-pseudo-class": false,
         "has-pseudo-class": false,
       },
-    },
-    "postcss-discard-comments": {},
-    "postcss-nesting": {},
-    "postcss-preset-mantine": {},
-  },
+    }),
+
+    // Strip comments
+    require("postcss-discard-comments")(),
+
+    // Nesting support
+    require("postcss-nesting")(),
+
+    // Mantine preset
+    require("postcss-preset-mantine")(),
+  ],
 };

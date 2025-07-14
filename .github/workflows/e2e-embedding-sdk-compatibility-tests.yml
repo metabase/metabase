@@ -178,18 +178,11 @@ jobs:
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
-      - name: Compile CLJS
-        run: yarn build-pure:cljs
-        shell: bash
-
       - name: Build Embedding SDK package
-        run: yarn build-embedding-sdk
-
-      - name: Prepare Embedding SDK artifact
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/build-embedding-sdk
         with:
-          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
-          path: resources/embedding-sdk
+          m2-cache-key: uberjar
+          artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
   # In order to check compatibility between Sample Apps and Embedding SDK, the job for each sample app:
   # - pulls a Sample App
@@ -325,18 +318,61 @@ jobs:
     needs: [ get-build-requirements, build ]
     strategy:
       matrix:
-        test_suite: [
-          "vite-6-host-app-e2e",
-          "next-15-app-router-host-app-e2e",
-          "next-15-pages-router-host-app-e2e",
-          "angular-20-host-app-e2e",
-        ]
-        environment: [ "production", "development" ]
+        include:
+          # vite@6
+          - test_suite: vite-6-host-app-e2e
+            environment: production
+            bundle_format: esm
+          - test_suite: vite-6-host-app-e2e
+            environment: production
+            bundle_format: cjs
+          - test_suite: vite-6-host-app-e2e
+            environment: development
+            bundle_format: esm
+          - test_suite: vite-6-host-app-e2e
+            environment: development
+            bundle_format: cjs
+
+          # next-app-router@15
+          - test_suite: next-15-app-router-host-app-e2e
+            environment: production
+            bundle_format: esm
+          - test_suite: next-15-app-router-host-app-e2e
+            environment: production
+            bundle_format: cjs
+          - test_suite: next-15-app-router-host-app-e2e
+            environment: development
+            bundle_format: esm
+          - test_suite: next-15-app-router-host-app-e2e
+            environment: development
+            bundle_format: cjs
+
+          # next-pages-router@15
+          - test_suite: next-15-pages-router-host-app-e2e
+            environment: production
+            bundle_format: esm
+          - test_suite: next-15-pages-router-host-app-e2e
+            environment: production
+            bundle_format: cjs
+          - test_suite: next-15-pages-router-host-app-e2e
+            environment: development
+            bundle_format: esm
+          - test_suite: next-15-pages-router-host-app-e2e
+            environment: development
+            bundle_format: cjs
+
+          # angular@20
+          - test_suite: angular-20-host-app-e2e
+            environment: production
+            bundle_format: esm
+          - test_suite: angular-20-host-app-e2e
+            environment: development
+            bundle_format: esm
     if: |
       !cancelled() && needs.build.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 45
-    name: e2e-host-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
+    name: e2e-host-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-environment-${{ matrix.bundle_format }}-bundle-format
     env:
       MB_EDITION: ee
       DISPLAY: ""
@@ -348,6 +384,7 @@ jobs:
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
       HOST_APP_ENVIRONMENT: ${{ matrix.environment }}
+      HOST_APP_BUNDLE_FORMAT: ${{ matrix.bundle_format }}
     permissions:
       id-token: write
 
