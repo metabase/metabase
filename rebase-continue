@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "branch",
+        "restack"
+      ],
+      "branch": "emb-596-use-entity-ids-directly-in-sdk-collection-pickers-and"
+    }
+  ]
 }
