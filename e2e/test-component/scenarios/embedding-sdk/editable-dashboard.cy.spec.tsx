@@ -309,6 +309,10 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
             "be.visible",
           );
           cy.findByLabelText("Name").clear().type("Orders in a dashboard");
+          // Dashboard without tabs should not show the tab selector
+          cy.findByLabelText("Which tab should this go on?").should(
+            "not.exist",
+          );
           cy.button("Save").click();
         });
 
@@ -329,69 +333,104 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
       });
     });
 
-    it("should allow to save unsaved changes before creating a dashboard question", () => {
-      cy.get("@dashboardId").then((dashboardId) => {
-        mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
+    describe("with dashboard with tabs", () => {
+      const DASHBOARD_WITH_TABS_NAME = "Dashboard With tabs";
+
+      beforeEach(() => {
+        cy.signInAsAdmin();
+        H.createDashboardWithTabs({
+          name: DASHBOARD_WITH_TABS_NAME,
+          tabs: [
+            { name: "Tab 1", id: 1 },
+            { name: "Tab 2", id: 2 },
+          ],
+        }).then(({ id: dashboardId }) => {
+          cy.wrap(dashboardId).as("dashboardWithTabsId");
+        });
+        cy.signOut();
       });
 
-      const ADDED_QUESTION_NAME = "Orders";
-      const ADDED_QUESTION_NAME_2 = "Orders Model";
-      const ADDED_QUESTION_NAME_3 = "Products in a dashboard";
+      it("should allow to save unsaved changes before creating a dashboard question", () => {
+        cy.get("@dashboardWithTabsId").then((dashboardId) => {
+          mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
+        });
 
-      getSdkRoot().within(() => {
-        cy.button("Edit dashboard").should("be.visible").click();
-        cy.button("Add questions").should("be.visible").click();
+        const ADDED_QUESTION_NAME = "Orders";
+        const ADDED_QUESTION_NAME_2 = "Orders Model";
+        const ADDED_QUESTION_NAME_3 = "Products in a dashboard";
 
-        cy.log("make the dashboard dirty");
-        cy.findByRole("menuitem", { name: ADDED_QUESTION_NAME }).click();
-        cy.button("New Question").should("be.visible").click();
+        getSdkRoot().within(() => {
+          cy.button("Edit dashboard").should("be.visible").click();
+          cy.button("Add questions").should("be.visible").click();
 
-        cy.log("we should now see the save confirmation modal");
-        H.modal().within(() => {
-          cy.findByRole("heading", { name: "Save your changes?" }).should(
-            "be.visible",
+          cy.log("make the dashboard dirty");
+          cy.findByRole("menuitem", { name: ADDED_QUESTION_NAME }).click();
+          cy.button("New Question").should("be.visible").click();
+
+          cy.log("we should now see the save confirmation modal");
+          H.modal().within(() => {
+            cy.findByRole("heading", { name: "Save your changes?" }).should(
+              "be.visible",
+            );
+            cy.findByText(
+              "You’ll need to save your changes before leaving to create a new question.",
+            ).should("be.visible");
+
+            cy.button("Save changes").should("be.visible").click();
+          });
+
+          cy.log(
+            "go back to the dashboard should still land us in the edit mode with the dirty state saved",
           );
-          cy.findByText(
-            "You’ll need to save your changes before leaving to create a new question.",
-          ).should("be.visible");
+          cy.button(`Back to ${DASHBOARD_WITH_TABS_NAME}`).click();
+          H.getDashboardCard()
+            .findByText(ADDED_QUESTION_NAME)
+            .should("be.visible");
 
-          cy.button("Save changes").should("be.visible").click();
-        });
+          cy.log("make the dashboard dirty again");
+          cy.button("Add questions").should("be.visible").click();
+          cy.findByRole("menuitem", { name: ADDED_QUESTION_NAME_2 }).click();
+          cy.button("New Question").click();
 
-        cy.log(
-          "go back to the dashboard should still land us in the edit mode with the dirty state saved",
-        );
-        cy.button(`Back to ${DASHBOARD_NAME}`).click();
-        H.getDashboardCard()
-          .findByText(ADDED_QUESTION_NAME)
-          .should("be.visible");
+          H.modal().button("Save changes").click();
 
-        cy.log("make the dashboard dirty again");
-        cy.button("Add questions").should("be.visible").click();
-        cy.findByRole("menuitem", { name: ADDED_QUESTION_NAME_2 }).click();
-        cy.button("New Question").click();
-
-        H.modal().button("Save changes").click();
-
-        cy.log("we are back in the query builder");
-        H.popover().findByRole("link", { name: "Products" }).click();
-        cy.button("Save").click();
-
-        H.modal().within(() => {
-          cy.findByLabelText("Name").clear().type(ADDED_QUESTION_NAME_3);
+          cy.log("we are back in the query builder");
+          H.popover().findByRole("link", { name: "Products" }).click();
           cy.button("Save").click();
-        });
 
-        cy.log("we should see 3 dashcards in the dashboard now");
-        H.getDashboardCard()
-          .findByText(ADDED_QUESTION_NAME)
-          .should("be.visible");
-        H.getDashboardCard(1)
-          .findByText(ADDED_QUESTION_NAME_2)
-          .should("be.visible");
-        H.getDashboardCard(2)
-          .findByText(ADDED_QUESTION_NAME_3)
-          .should("be.visible");
+          H.modal().within(() => {
+            cy.findByLabelText("Name").clear().type(ADDED_QUESTION_NAME_3);
+            // Test saving a question to a different tab
+            cy.findByLabelText("Which tab should this go on?")
+              .should("be.visible")
+              .and("have.value", "Tab 1")
+              .click();
+          });
+
+          // The popover is rendered in the portal root, so we need to call this outside `H.modal()`
+          H.popover().findByRole("option", { name: "Tab 2" }).click();
+          cy.log("save the question to the dashboard");
+          H.modal().button("Save").click();
+
+          cy.log(
+            "we should see 2 dash cards in the the first tab, and the 3rd one in the second tab",
+          );
+          cy.log(
+            'we should be on the "Tab 2" tab, because we saved the question there',
+          );
+          H.getDashboardCard()
+            .findByText(ADDED_QUESTION_NAME_3)
+            .should("be.visible");
+
+          // 1st tab
+          H.goToTab("Tab 1");
+          H.getDashboardCard()
+            .findByText(ADDED_QUESTION_NAME)
+            .should("be.visible");
+          H.getDashboardCard(1)
+            .findByText(ADDED_QUESTION_NAME_2)
+            .should("be.visible");
+        });
       });
     });
   });

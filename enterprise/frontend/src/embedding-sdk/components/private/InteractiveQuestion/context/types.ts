@@ -58,7 +58,7 @@ type InteractiveQuestionConfig = {
    */
   onSave?: (
     question: MetabaseQuestion,
-    context: { isNewQuestion: boolean },
+    context: { isNewQuestion: boolean; dashboardTabId?: number | undefined },
   ) => void;
 
   /**
