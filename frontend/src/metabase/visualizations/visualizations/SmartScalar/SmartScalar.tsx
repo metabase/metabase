@@ -362,6 +362,8 @@ Object.assign(SmartScalar, {
   iconName: "smartscalar",
   canSavePng: true,
 
+  excludeHeaderBottomPadding: true,
+
   minSize: getMinSize("smartscalar"),
   defaultSize: getDefaultSize("smartscalar"),
 
