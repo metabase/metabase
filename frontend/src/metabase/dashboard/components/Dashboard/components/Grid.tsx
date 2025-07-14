@@ -24,17 +24,7 @@ export const Grid = ({
   const {
     dashboard,
     selectedTabId,
-    slowCards,
-    clickBehaviorSidebarDashcard,
-    navigateToNewCardFromDashboard,
-    downloadsEnabled,
     isEditing,
-    isEditingParameter,
-    isFullscreen,
-    isNightMode,
-    getClickActionMode,
-    autoScrollToDashcardId,
-    reportAutoScrolledToDashcard,
     onRefreshPeriodChange,
     shouldRenderAsNightMode,
     isLoadingWithoutCards,
@@ -128,19 +118,6 @@ export const Grid = ({
 
   return (
     <DashboardGridConnected
-      dashboard={dashboard}
-      selectedTabId={selectedTabId}
-      slowCards={slowCards}
-      clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
-      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-      downloadsEnabled={downloadsEnabled}
-      isEditing={isEditing}
-      isEditingParameter={isEditingParameter}
-      isFullscreen={isFullscreen}
-      isNightMode={isNightMode}
-      getClickActionMode={getClickActionMode}
-      autoScrollToDashcardId={autoScrollToDashcardId}
-      reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
       handleSetEditing={handleSetEditing}
       className={className}
       style={style}

@@ -24,6 +24,9 @@ export type MetabaseDashboard = {
   };
 };
 
+/**
+ * @inline
+ */
 export type DashboardEventHandlersProps = {
   /**
    * Callback that is called when the dashboard is loaded.
