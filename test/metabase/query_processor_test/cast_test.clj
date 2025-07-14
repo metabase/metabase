@@ -1042,7 +1042,6 @@
                 rows (mt/rows result)]
             (is (= (datetime-number-cast-expected driver/*driver*)
                    (-> rows first (get 2))))))))))
-
 ;; today()
 
 (deftest ^:parallel today-test
