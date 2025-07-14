@@ -4,14 +4,21 @@
   border-radius: var(--mantine-radius-md);
 }
 
-.RadioCardRoot {
-  :hover {
-    .label {
-      color: var(--mb-color-brand);
-    }
+.card .label {
+  font-weight: bold;
+  cursor: pointer;
+  padding-left: 0.75rem;
+
+  &:hover {
+    color: var(--mb-color-brand);
   }
 }
 
-.label {
+.card .description {
+  font-size: 14px;
+  padding-left: 0.75rem;
+}
+
+.cardTitle {
   font-weight: bold;
 }

@@ -5,7 +5,18 @@ import { t } from "ttag";
 import { trackSMTPSetupClick } from "metabase/admin/settings/components/Email/analytics";
 import { useAdminSetting } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
-import { Box, Button, Divider, Group, Icon, Radio, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  Flex,
+  Group,
+  Icon,
+  Paper,
+  Radio,
+  Stack,
+  Text,
+} from "metabase/ui";
 
 import S from "./CloudSMTPConnectionCard.module.css";
 import { SMTPOverrideConnectionForm } from "./SMTPOverrideConnectionForm";
@@ -48,60 +59,63 @@ export const CloudSMTPConnectionCard = () => {
         value={localValue ? "custom" : "metabase"}
         onChange={handleChange}
       >
-        <Radio.Card radius="md" value="metabase" className={S.RadioCardRoot}>
-          <Box p="lg">
-            <Group justify="space-between">
-              <Group wrap="nowrap" align="flex-start">
-                {isSMTPOverrideConfigured ? (
-                  <Radio.Indicator />
-                ) : (
-                  <Icon name="check" c="success" size={20} />
-                )}
-
-                <div>
-                  {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-                  <Text className={S.label}>{t`Managed by Metabase`}</Text>
-                  {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-                  <Text>{t`Emails come from Metabase Cloud email server`}</Text>
-                </div>
-              </Group>
-            </Group>
-          </Box>
-        </Radio.Card>
+        <Paper radius="md" p="lg" className={S.card}>
+          {isSMTPOverrideConfigured ? (
+            <Radio
+              key={"metabase"}
+              value={"metabase"}
+              // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+              label={t`Managed by Metabase`}
+              // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+              description={t`Emails come from Metabase Cloud email server`}
+              classNames={{
+                label: S.label,
+                description: S.description,
+              }}
+            />
+          ) : (
+            <Flex gap={"md"}>
+              <Icon name="check" c="success" size={20} />
+              <Stack gap={0}>
+                <Text
+                  className={S.cardTitle}
+                  // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+                >{t`Managed by Metabase`}</Text>
+                {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+                <Text>{t`Emails come from Metabase Cloud email server`}</Text>
+              </Stack>
+            </Flex>
+          )}
+        </Paper>
         <Divider />
-        {isSMTPOverrideConfigured && (
-          <Radio.Card radius="md" value="custom" className={S.RadioCardRoot}>
-            <Box p="lg">
-              <Group justify="space-between">
-                <Group wrap="nowrap" align="flex-start">
-                  <Radio.Indicator />
-                  <div>
-                    <Text className={S.label}>{t`Custom SMTP Server`}</Text>
-                    <Text>{t`Emails come from your email server`}</Text>
-                  </div>
-                </Group>
-                <Button
-                  // Radio.Card is button, and you can't nest a button inside another button
-                  component={"div"}
-                  role="button"
-                  variant="subtle"
-                  onClick={(e) => {
-                    handleOpenModal();
-                    e.stopPropagation();
-                  }}
-                >{t`Edit settings`}</Button>
-              </Group>
+        <Paper radius="md" className={S.card}>
+          {isSMTPOverrideConfigured && (
+            <Group p="lg" justify="space-between" style={{ cursor: "pointer" }}>
+              <Radio
+                key={"custom"}
+                value={"custom"}
+                label={t`Custom SMTP Server`}
+                classNames={{
+                  label: S.label,
+                  description: S.description,
+                }}
+                description={t`Emails come from your email server`}
+              />
+              <Button
+                variant="subtle"
+                onClick={handleOpenModal}
+              >{t`Edit settings`}</Button>
+            </Group>
+          )}
+          {!isSMTPOverrideConfigured && (
+            <Box p="sm">
+              <Button
+                variant="subtle"
+                onClick={handleOpenModal}
+              >{t`Set up a custom SMTP server`}</Button>
             </Box>
-          </Radio.Card>
-        )}
-        {!isSMTPOverrideConfigured && (
-          <Box p="sm">
-            <Button
-              variant="subtle"
-              onClick={handleOpenModal}
-            >{t`Set up a custom SMTP server`}</Button>
-          </Box>
-        )}
+          )}
+        </Paper>
       </Radio.Group>
       {showModal && <SMTPOverrideConnectionForm onClose={closeModal} />}
     </div>
