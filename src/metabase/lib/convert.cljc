@@ -357,6 +357,10 @@
   (let [[tag opts & args] (->pMBQL aggregation)]
     (into [tag (merge opts options)] args)))
 
+(defmethod ->pMBQL :datetime
+  [[_tag value options]]
+  (lib.options/ensure-uuid [:datetime (or options {}) (->pMBQL value)]))
+
 (defmethod ->pMBQL :time-interval
   [[_tag field n unit options]]
   (lib.options/ensure-uuid [:time-interval (or options {}) (->pMBQL field) n unit]))
@@ -497,11 +501,12 @@
              :relative-datetime :time :absolute-datetime :now :convert-timezone
              :get-week :get-year :get-month :get-day :get-hour
              :get-minute :get-second :get-quarter
-             :datetime-add :datetime-subtract :date :datetime
+             :datetime-add :datetime-subtract :date
              :concat :substring :replace :regex-match-first :split-part
              :length :trim :ltrim :rtrim :upper :lower :text :integer]]
   (lib.hierarchy/derive tag ::expression))
 
+;; TODO: aggregation->legacy-MBQL can wrap things in :aggregation-options which only makes sense for aggregations, so why should expression go through that as well?
 (defmethod ->legacy-MBQL ::aggregation-or-expression
   [input]
   (aggregation->legacy-MBQL input))
