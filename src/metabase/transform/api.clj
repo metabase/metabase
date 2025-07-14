@@ -41,7 +41,6 @@
 (api.macros/defendpoint :get "/:id"
   "Get all transforms"
   [{:keys [id]} :- [:map [:id ms/Int]]]
-  (def iddd id)
   (models.transform/transform-by-id id))
 
 (mr/def ::update-body
