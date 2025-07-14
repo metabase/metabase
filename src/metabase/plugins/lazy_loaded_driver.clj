@@ -44,7 +44,8 @@
   (into [] (mapcat #(u/one-or-many (parse-connection-property %))) connection-properties))
 
 (defn- parse-extra-info
-  "parse driver extra info"
+  "Parse the extra info included in the plugin manifest. Currently only supports `db-routing-info`, but could
+   also be used for other info like DB flavors (e.g. supabase, neon)."
   [{:keys [db-routing-info]}]
   {:db-routing-info (:text db-routing-info)})
 
