@@ -2649,7 +2649,6 @@ describe("scenarios > admin > datamodel", () => {
         });
 
         it("should let you change the name of JSON-unfolded columns (metabase#55563)", () => {
-          // Go to field settings
           H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
           TableSection.clickField("Json → A");
@@ -2666,6 +2665,36 @@ describe("scenarios > admin > datamodel", () => {
             column: "A",
             values: ["10", "10"],
           });
+        });
+
+        it("should smartly truncate prefix name", () => {
+          H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
+          TablePicker.getTable("Many Data Types").click();
+          TableSection.clickField("Json → A");
+
+          cy.log("should not truncante short prefixes");
+          TableSection.getFieldNameInput("Json")
+            .clear()
+            .type("Quite long prefix")
+            .blur();
+          FieldSection.get()
+            .findByTestId("name-prefix")
+            .should("have.text", "Quite long prefix:")
+            .then((element) => {
+              H.assertIsNotEllipsified(element[0]);
+            });
+
+          cy.log("should truncante long prefixes");
+          TableSection.getFieldNameInput("Quite long prefix")
+            .clear()
+            .type("Legendarily long prefix")
+            .blur();
+          FieldSection.get()
+            .findByTestId("name-prefix")
+            .should("have.text", "Legendarily long prefix:")
+            .then((element) => {
+              H.assertIsEllipsified(element[0]);
+            });
         });
       });
     });
