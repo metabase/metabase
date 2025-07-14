@@ -876,9 +876,12 @@
   The `:force-local?` option forces creation of a new local connection even if
   the current connection is still open.
 
+  ConnectionOptions can be passed as `opts`, but `:keep-open?` will always be
+  overridden to `true`.
+
   Not thread-safe."
 
-  ^Connection [driver ^Connection connection & {:keys [force-local?]}]
+  ^Connection [driver ^Connection connection & {:keys [force-local?] :as opts}]
   (cond
     (and (not force-local?) (not (.isClosed connection)))
     connection
@@ -893,7 +896,7 @@
     (binding [*connection-recursion-depth* -1]
       (try
         (let [{:keys [db]} *resilient-connection-ctx*
-              conn (do-with-connection-with-options driver db {:keep-open? true} identity)]
+              conn (do-with-connection-with-options driver db (merge opts {:keep-open? true}) identity)]
           (set! *resilient-connection-ctx* {:db db :conn conn})
           conn)
         (catch Throwable _
