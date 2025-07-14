@@ -1,5 +1,3 @@
-import { get } from "underscore";
-
 import type { GithubProps, Tag } from "./types";
 
 // https://regexr.com/7l1ip
@@ -78,17 +76,17 @@ const getVersionParts = (versionString: string) => {
     .replace(/-rc\d+/i, "")
     .split(".");
   return {
-    major: Number(parts[0]),
-    minor: Number(parts[1]) || 0,
-    patch: Number(parts[2]),
+    major: parts[0],
+    minor: parts[1] || "0",
+    patch: parts[2],
   };
 };
 
 export const getMajorVersion = (versionString: string) =>
-  getVersionParts(versionString).major.toString();
+  getVersionParts(versionString).major;
 
 export const getMinorVersion = (versionString: string) =>
-  getVersionParts(versionString).minor.toString();
+  getVersionParts(versionString).minor;
 
 export const isReleaseBranch = (branchName: string) => {
   return branchName.startsWith("release-x.");
