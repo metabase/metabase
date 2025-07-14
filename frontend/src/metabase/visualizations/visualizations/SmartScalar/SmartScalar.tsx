@@ -283,7 +283,7 @@ function PreviousValueComparison({
     iconSize,
     children,
   }: PropsWithChildren<{ inTooltip?: boolean; iconSize: string | number }>) => {
-    const isSame = changeType === CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE;
+    const isChanged = changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE;
     return (
       <Flex align="center" maw="100%" c={inTooltip ? undefined : changeColor}>
         {changeArrowIconName && (
@@ -295,7 +295,7 @@ function PreviousValueComparison({
         )}
         <Ellipsified
           showTooltip={false}
-          className={cx({ [CS.textBold]: !isSame })}
+          className={cx({ [CS.textBold]: isChanged })}
         >
           {children}
         </Ellipsified>
