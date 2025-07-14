@@ -1249,8 +1249,15 @@
   {:team "Semantic Layer"
    :api #{}
    :uses #{api
+           driver
+           driver-api
            lib
+           lib-be
+           queries
+           query-permissions
+           query-processor
            models
+           sync
            util}}
 
   types
