@@ -21,7 +21,7 @@ export function ComponentPreviewRoot({ configuration, children }: Props) {
   }
 
   return (
-    <Flex w="100%" h="100%" align="center" justify="center">
+    <Flex w="100%" h="100%" align="center" p="xl" justify="center">
       {children}
     </Flex>
   );

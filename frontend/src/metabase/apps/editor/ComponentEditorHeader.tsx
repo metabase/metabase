@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+
 import LogoIcon from "metabase/common/components/LogoIcon";
 import { Button, Group, Icon, Title } from "metabase/ui";
 
@@ -6,11 +8,13 @@ import type { ComponentConfiguration } from "../types";
 type Props = {
   configuration: ComponentConfiguration;
   onConfigureClick: () => void;
+  onSaveClick: () => void;
 };
 
 export function ComponentEditorHeader({
   configuration,
   onConfigureClick,
+  onSaveClick,
 }: Props) {
   return (
     <Group
@@ -20,7 +24,9 @@ export function ComponentEditorHeader({
       justify="space-between"
     >
       <Group>
-        <LogoIcon />
+        <Link to="/browse/apps">
+          <LogoIcon />
+        </Link>
         <Title order={3}>{configuration.title ?? "Untitled Component"}</Title>
       </Group>
       <Group>
@@ -31,7 +37,9 @@ export function ComponentEditorHeader({
         >
           {"Configure"}
         </Button>
-        <Button variant="filled">{"Save"}</Button>
+        <Button variant="filled" onClick={onSaveClick}>
+          {"Save"}
+        </Button>
       </Group>
     </Group>
   );

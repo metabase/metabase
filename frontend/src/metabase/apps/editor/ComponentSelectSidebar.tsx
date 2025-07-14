@@ -1,12 +1,14 @@
 import { IconApps, IconComponents } from "@tabler/icons-react";
 
-import { Box, Stack, Tabs, Title } from "metabase/ui";
+import { Box, Stack, Tabs, Text, Title } from "metabase/ui";
 
 import {
   type ComponentMetadata,
   SYSTEM_COMPONENT_CATEGORIES,
 } from "../const/systemComponents";
+import { useApps } from "../hooks/use-apps";
 
+import { SelectableComponent } from "./SelectableComponent";
 import { SelectableComponentGroup } from "./SelectableComponentGroup";
 
 type Props = {
@@ -14,6 +16,10 @@ type Props = {
 };
 
 export function ComponentSelectSidebar({ onSelectComponent }: Props) {
+  const apps = useApps();
+
+  const customComponents = apps.filter((app) => app.type === "component");
+
   return (
     <Box p="md">
       <Title order={3} mb="md">
@@ -43,7 +49,26 @@ export function ComponentSelectSidebar({ onSelectComponent }: Props) {
         </Tabs.Panel>
 
         <Tabs.Panel value="custom" py="md">
-          {"Custom tab content"}
+          <Stack gap="xs">
+            {customComponents.length === 0 && (
+              <Text c="text-secondary">
+                {`No custom components found. Create one to get started.`}
+              </Text>
+            )}
+            {customComponents.map((component) => (
+              <SelectableComponent
+                key={component.id}
+                component={{
+                  id: component.id,
+                  name: component.title ?? "Untitled Component",
+                  category: "custom" as any,
+                  description: "Custom component",
+                  icon: IconComponents,
+                }}
+                onClick={onSelectComponent}
+              />
+            ))}
+          </Stack>
         </Tabs.Panel>
       </Tabs>
     </Box>

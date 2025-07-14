@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { uuid } from "metabase/lib/uuid";
 import { Box, Group, Stack } from "metabase/ui";
@@ -8,6 +8,11 @@ import {
   SystemComponentId,
 } from "../const/systemComponents";
 import { TRAVERSE_STOP, traverseComponentTree } from "../helpers";
+import {
+  getInitialComponentConfiguration,
+  useApp,
+  useSaveApp,
+} from "../hooks/use-apps";
 import { useComponentContext } from "../hooks/use-component-context";
 import type { ComponentConfiguration, ComponentDefinition } from "../types";
 
@@ -18,29 +23,25 @@ import { ComponentSelectSidebar } from "./ComponentSelectSidebar";
 import { ComponentSettingsSidebar } from "./ComponentSettingsSidebar";
 import { EditableComponentTreeNode } from "./EditableComponentTreeNode";
 
-export function ComponentEditor() {
-  const initialComponent = useMemo<ComponentDefinition>(() => {
-    return {
-      id: uuid(),
-      componentId: SystemComponentId.Placeholder,
-    };
-  }, []);
+type Props = {
+  params: {
+    id?: string;
+  };
+};
+
+export function ComponentEditor({ params }: Props) {
+  const saveApp = useSaveApp();
+  const app = useApp(params.id) ?? getInitialComponentConfiguration();
 
   const [selectedComponent, setSelectedComponent] =
-    useState<ComponentDefinition | null>(initialComponent);
+    useState<ComponentDefinition | null>(null);
 
   const [configureSelectedTab, setConfigureSelectedTab] = useState<
     "globalSettings" | "componentTree" | null
-  >(null);
+  >("globalSettings");
 
   const [componentConfiguration, setComponentConfiguration] =
-    useState<ComponentConfiguration>({
-      root: initialComponent,
-      id: uuid(),
-      type: "component",
-      title: "Untitled Component",
-      context: "none",
-    });
+    useState<ComponentConfiguration>(app as ComponentConfiguration);
 
   const componentContext = useComponentContext({
     component: componentConfiguration,
@@ -208,6 +209,10 @@ export function ComponentEditor() {
     <Stack gap="0" p="0" h="100%" w="100%">
       <ComponentEditorHeader
         configuration={componentConfiguration}
+        onSaveClick={() => {
+          saveApp(componentConfiguration);
+          document.location = "/browse/apps";
+        }}
         onConfigureClick={() => {
           setSelectedComponent(null);
           setConfigureSelectedTab("globalSettings");
