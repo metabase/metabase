@@ -41,6 +41,7 @@ export function Trigger({
 
   return (
     <Flex
+      component="span"
       align="center"
       className={
         className ||
