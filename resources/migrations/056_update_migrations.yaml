@@ -232,6 +232,48 @@ databaseChangeLog:
             path: instance_analytics_views/users/v2/h2-users.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v56.2025-07-10T21:49:48
+      author: nvoxland
+      comment: Create the table backing the message queue
+      changes:
+        - createTable:
+            tableName: queue_payload
+            remarks: Lightweight message queue for cross-cluster communication
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: queue_name
+                  type: varchar(254)
+                  remarks: The name of queue this message is in
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the message was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The number of actual messages in the payload
+                  name: num_messages
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: A json-formatted array of messages
+                  name: payload
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
