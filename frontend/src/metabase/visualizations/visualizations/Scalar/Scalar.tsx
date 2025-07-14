@@ -51,6 +51,8 @@ export class Scalar extends Component<
   static iconName = "number";
   static canSavePng = false;
 
+  static excludeHeaderBottomPadding = true;
+
   static minSize = getMinSize("scalar");
   static defaultSize = getDefaultSize("scalar");
 

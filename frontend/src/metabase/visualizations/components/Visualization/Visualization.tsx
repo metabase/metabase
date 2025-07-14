@@ -765,7 +765,11 @@ class Visualization extends PureComponent<
           ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
-            <VisualizationHeader>
+            <VisualizationHeader
+              excludeHeaderBottomPadding={
+                visualization?.excludeHeaderBottomPadding
+              }
+            >
               <ChartCaption
                 series={series}
                 visualizerRawSeries={visualizerRawSeries}

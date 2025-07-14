@@ -10,8 +10,11 @@ export const VisualizationRoot = styled.div`
   height: 100%;
 `;
 
-export const VisualizationHeader = styled.div`
+export const VisualizationHeader = styled.div<{
+  excludeHeaderBottomPadding?: boolean;
+}>`
   padding: 0.625rem 0.5rem 0.375rem 0.5rem;
+  padding-bottom: ${(props) => props.excludeHeaderBottomPadding && 0};
   flex-shrink: 0;
 `;
 
