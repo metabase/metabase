@@ -30,23 +30,25 @@ export const NameDescriptionInput = ({
   onNameChange,
 }: Props) => {
   const { ref, width } = useElementSize();
-  const leftSectionWidth = width > 0 ? width : 40;
+  const { ref: sectionRef, width: sectionWidth } = useElementSize();
+  const leftSectionWidth = sectionWidth > 0 ? sectionWidth : 40;
 
   return (
-    <Box>
+    <Box ref={ref}>
       <Input
         classNames={{
           input: S.nameInput,
           root: S.name,
+          section: S.section,
         }}
         fw="bold"
         leftSection={
           <Group
             align="center"
             gap={10}
-            maw={rem(140)}
+            maw={rem(Math.floor(width / 2))}
             px={rem(10)}
-            ref={ref}
+            ref={sectionRef}
             wrap="nowrap"
           >
             <Icon c="brand" flex="0 0 auto" name={nameIcon} size={20} />
@@ -82,7 +84,7 @@ export const NameDescriptionInput = ({
         styles={{
           section: {
             // limit the flicker when element is being measured for the first time
-            visibility: width === 0 ? "hidden" : undefined,
+            visibility: sectionWidth === 0 ? "hidden" : undefined,
           },
           input: {
             paddingLeft: leftSectionWidth,
