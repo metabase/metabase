@@ -18,7 +18,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.sql ResultSet Connection)))
+   (java.sql ResultSet Connection)
+   (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -63,7 +64,7 @@
           (or driver/*driver* :h2)
           (mt/db)
           nil
-          (fn [^java.sql.Connection conn]
+          (fn [^Connection conn]
             ;; We have to mock this to make it work with all DBs
             (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
               (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
@@ -76,7 +77,7 @@
           :h2
           (mt/db)
           nil
-          (fn [^java.sql.Connection conn]
+          (fn [^Connection conn]
             (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 conn nil nil))
                  (map :name)
                  sort))))))
@@ -219,7 +220,7 @@
                    driver/*driver*
                    (mt/db)
                    nil
-                   (fn [^java.sql.Connection conn]
+                   (fn [^Connection conn]
                      ;; Databricks does not support setting auto commit to false. Catching the setAutoCommit
                      ;; exception results in testing the true value only.
                      (try
@@ -273,3 +274,30 @@
                   all-tables-sans-one (table-names (driver/do-with-resilient-connection driver/*driver* (mt/id) driver/describe-database))]
               ;; there is at maximum one missing table
               (is (>= 1 (count (set/difference all-tables all-tables-sans-one)))))))))))
+
+(deftest connection-reuse-test
+  (testing "resilient context reuses reconnected connections"
+    (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
+      (let [connection-count (volatile! 0)
+            orig-do-with-resolved-connection-data-source @#'sql-jdbc.execute/do-with-resolved-connection-data-source]
+        (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                      (fn [driver db opts]
+                        (reify javax.sql.DataSource
+                          (getConnection [_]
+                            (vswap! connection-count inc)
+                            (.getConnection ^DataSource (orig-do-with-resolved-connection-data-source driver db opts)))))]
+          (let [closed-conn (doto (.getConnection ^DataSource
+                                   (orig-do-with-resolved-connection-data-source driver/*driver* (mt/id) {}))
+                              (.close))]
+            (driver/do-with-resilient-connection
+             driver/*driver* (mt/id)
+             (fn [driver _]
+               ;; reinit, as we it has been used for setup
+               (vreset! connection-count 0)
+               (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn)
+               (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn)
+               (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn)
+               (is (= 1 @connection-count))
+               (.close (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn))
+               (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn)
+               (is (= 2 @connection-count))))))))))
