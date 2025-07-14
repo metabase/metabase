@@ -866,6 +866,9 @@
           (try (.close conn)
                (catch Throwable _)))))))
 
+(defn- is-open [^Connection conn]
+  (not (.isClosed conn)))
+
 (defn try-ensure-open-conn!
   "Ensure that a connection is open and usable, reconnecting if necessary and possible.
 
@@ -883,13 +886,13 @@
 
   ^Connection [driver ^Connection connection & {:keys [force-local?] :as opts}]
   (cond
-    (and (not force-local?) (not (.isClosed connection)))
+    (and (not force-local?) (is-open connection))
     connection
 
     (not (thread-bound? #'*resilient-connection-ctx*))
     connection
 
-    (some-> *resilient-connection-ctx* ^Connection (:conn) .isClosed not)
+    (some-> *resilient-connection-ctx* :conn is-open)
     (:conn *resilient-connection-ctx*)
 
     :else
