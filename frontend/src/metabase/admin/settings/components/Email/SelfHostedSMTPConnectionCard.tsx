@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -5,19 +6,20 @@ import { useSetting } from "metabase/common/hooks";
 import { color } from "metabase/lib/colors";
 import { Button, Flex, Paper, Title } from "metabase/ui";
 
-export const SMTPConnectionCard = ({
-  onOpenSMTPModal,
-}: {
-  onOpenSMTPModal: () => void;
-}) => {
+import { SelfHostedSMTPConnectionForm } from "./SelfHostedSMTPConnectionForm";
+import { trackSMTPSetupClick } from "./analytics";
+
+export const SelfHostedSMTPConnectionCard = () => {
+  const [showModal, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
   const isEmailConfigured = useSetting("email-configured?");
 
   return (
     <>
-      <SettingsSection data-testid="smtp-connection-card">
+      <SettingsSection data-testid="self-hosted-smtp-connection-card">
         <Flex justify="space-between" align="center">
           <Flex align="center" gap="sm">
-            <Title order={2}>{t`SMTP`}</Title>
+            <Title order={2}>{t`Self-Hosted SMTP`}</Title>
             {isEmailConfigured && (
               <Paper
                 fw="bold"
@@ -28,11 +30,18 @@ export const SMTPConnectionCard = ({
               >{t`Active`}</Paper>
             )}
           </Flex>
-          <Button onClick={onOpenSMTPModal} variant="filled">
+          <Button
+            onClick={() => {
+              openModal();
+              trackSMTPSetupClick({ eventDetail: "self-hosted" });
+            }}
+            variant="filled"
+          >
             {isEmailConfigured ? t`Edit configuration` : t`Configure`}
           </Button>
         </Flex>
       </SettingsSection>
+      {showModal && <SelfHostedSMTPConnectionForm onClose={closeModal} />}
     </>
   );
 };
