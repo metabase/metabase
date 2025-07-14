@@ -200,7 +200,8 @@ databaseChangeLog:
             dbms: h2
             path: instance_analytics_views/users/v2/h2-users.sql
             relativeToChangelogFile: true
- - changeSet:
+
+  - changeSet:
       id: v56.2025-07-07T11:26:31
       author: johnswanson
       rollback:
@@ -302,7 +303,6 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.MoveExistingAtSymbolUserAttributes"
 
-
   - changeSet:
       id: v56.2025-07-07T07:13:58
       author: johnswanson
@@ -320,8 +320,6 @@ databaseChangeLog:
                   type: ${boolean.type}
                   constraints:
                     nullable: true
-
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
