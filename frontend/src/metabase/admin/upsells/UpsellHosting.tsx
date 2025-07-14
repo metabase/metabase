@@ -2,6 +2,7 @@ import { jt, t } from "ttag";
 
 const RocketGlobeIllustrationSrc = "app/assets/img/rocket-globe.svg";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getIsHosted } from "metabase/setup/selectors";
 
 import { UpsellBanner, UpsellCard } from "./components";
@@ -35,6 +36,12 @@ export const UpsellHosting = ({ location }: { location: string }) => {
 };
 
 export const UpsellHostingBanner = ({ location }: { location: string }) => {
+  const campaign = "hosting";
+  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+    campaign,
+    location,
+  });
+
   const isHosted = useSelector(getIsHosted);
 
   if (isHosted) {
@@ -48,6 +55,7 @@ export const UpsellHostingBanner = ({ location }: { location: string }) => {
       buttonText={t`Learn more`}
       internalLink="/admin/settings/cloud"
       location={location}
+      onClick={triggerUpsellFlow}
     >
       {jt`${(
         <strong key="migrate">{t`Migrate to Metabase Cloud`}</strong>

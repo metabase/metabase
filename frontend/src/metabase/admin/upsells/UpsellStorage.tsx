@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getStoreUrl } from "metabase/selectors/settings";
 import { List } from "metabase/ui";
 
@@ -12,6 +13,12 @@ import { UpsellBanner } from "./components";
 export const BUY_STORAGE_URL = getStoreUrl("account/storage");
 
 export const UpsellStorage = ({ location }: { location: string }) => {
+  const campaign = "storage";
+  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+    campaign,
+    location,
+  });
+
   const isHosted = useSetting("is-hosted?");
   const hasStorage = useHasTokenFeature("attached_dwh");
 
@@ -27,6 +34,7 @@ export const UpsellStorage = ({ location }: { location: string }) => {
       location={location}
       title={t`Add Metabase Storage`}
       large
+      onClick={triggerUpsellFlow}
     >
       <List
         mt="xs"
