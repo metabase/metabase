@@ -88,9 +88,9 @@
 ;;; in [[lib.equality/find-matching-column]], but until I get around to that I'm keeping the old stuff around as a
 ;;; fallback using the `fallback-match-` prefix.
 
-(def ^:private ^:dynamic *recursive-column-resolution-by-name*
+(def ^:private ^:dynamic *recursive-column-resolution-depth*
   "Whether we're in a recursive call to [[resolve-column-name]] or not. Prevent infinite recursion (#32063)"
-  false)
+  0)
 
 (mu/defn- fallback-match-field-name :- [:maybe ::lib.metadata.calculation/column-metadata-with-source]
   "Find the column with `column-name` in a sequence of `column-metadatas`."
@@ -103,7 +103,7 @@
                         (cond-> *debug* (update ::debug.origin (fn [origin]
                                                                  (list (list 'resolve-column-name-in-metadata column-name :key k :=> origin)))))))
               resolution-keys)
-        (when-not *recursive-column-resolution-by-name*
+        (when (zero? *recursive-column-resolution-depth*)
           ;; ideally we shouldn't hit this but if we do it's not the end of the world.
           (log/infof "Couldn't resolve column name %s."
                      (pr-str column-name))
@@ -162,8 +162,10 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    field-ref    :- :mbql.clause/field]
-  (when-let [visible-columns (not-empty (lib.metadata.calculation/visible-columns query stage-number))]
-    (resolve-column-in-metadata query field-ref visible-columns)))
+  (when (< *recursive-column-resolution-depth* 2)
+    (binding [*recursive-column-resolution-depth* (inc *recursive-column-resolution-depth*)]
+      (when-let [visible-columns (not-empty (lib.metadata.calculation/visible-columns query stage-number))]
+        (resolve-column-in-metadata query field-ref visible-columns)))))
 
 (def ^:private opts-propagated-keys
   "Keys to copy non-nil values directly from `:field` opts into column metadata."
@@ -186,7 +188,8 @@
    :source-field-join-alias :fk-join-alias
    :source-field-name       :fk-field-name
    :temporal-unit           :metabase.lib.field/temporal-unit
-   :display-name            :lib/ref-display-name}) ; display-name gets copied to both display-name and lib/ref-display-name
+   ;; display-name gets copied to both display-name and lib/ref-display-name
+   :display-name            :lib/ref-display-name})
 
 (defn- opts-fn-inherited-temporal-unit
   "`:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
@@ -435,7 +438,7 @@
                                  ;; if we can't resolve the column with this name we probably won't be able to
                                  ;; calculate much metadata -- assume it comes from the previous stage so we at least
                                  ;; have a value for `:lib/source`.
-                                 (when-not *recursive-column-resolution-by-name*
+                                 (when (zero? *recursive-column-resolution-depth*)
                                    (log/warnf "Failed to resolve field ref with name %s in stage %d" (pr-str id-or-name) stage-number))
                                  {:lib/source :source/previous-stage}))
          field-id          (if (integer? id-or-name)
