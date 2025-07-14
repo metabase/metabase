@@ -172,7 +172,7 @@ describe("BaseSMTPConnectionForm", () => {
       expect(mockUpdate).toHaveBeenCalledWith({
         "email-smtp-host": "smtp.torchic.com",
         "email-smtp-port": 587,
-        "email-smtp-security ": "tls",
+        "email-smtp-security": "tls",
         "email-smtp-username": "red@example.com",
         "email-smtp-password": "password123",
       });
