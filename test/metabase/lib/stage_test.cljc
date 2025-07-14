@@ -214,31 +214,29 @@
                   #'lib.tu/query-with-source-card-with-result-metadata]
             :let [query (@varr)]]
       (testing (pr-str varr)
-        (is (=? [{:name                     "USER_ID"
-                  :display-name             "User ID"
-                  :base-type                :type/Integer
-                  :lib/source               :source/card
-                  :lib/desired-column-alias "USER_ID"}
-                 {:name                     "count"
-                  :display-name             "Count"
-                  :base-type                :type/Integer
-                  :lib/source               :source/card
-                  :lib/desired-column-alias "count"}
-                 {:name                     "ID"
-                  :display-name             "ID"
-                  :base-type                :type/BigInteger
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__ID"}
-                 {:name                     "NAME"
-                  :display-name             "Name"
-                  :base-type                :type/Text
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__NAME"}
-                 {:name                     "LAST_LOGIN"
-                  :display-name             "Last Login"
-                  :base-type                :type/DateTime
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"}]
+        (is (=? [{:name         "USER_ID"
+                  :display-name "User ID"
+                  :base-type    :type/Integer
+                  :lib/source   :source/card}
+                 {:name         "count"
+                  :display-name "Count"
+                  :base-type    :type/Integer
+                  :lib/source   :source/card}
+                 {:name         "ID"
+                  :display-name "ID"
+                  :base-type    :type/BigInteger
+                  :lib/source   :source/implicitly-joinable
+                  :fk-field-id  (meta/id :checkins :user-id)}
+                 {:name         "NAME"
+                  :display-name "Name"
+                  :base-type    :type/Text
+                  :lib/source   :source/implicitly-joinable
+                  :fk-field-id  (meta/id :checkins :user-id)}
+                 {:name         "LAST_LOGIN"
+                  :display-name "Last Login"
+                  :base-type    :type/DateTime
+                  :lib/source   :source/implicitly-joinable
+                  :fk-field-id  (meta/id :checkins :user-id)}]
                 (lib/visible-columns query)))))))
 
 (deftest ^:parallel do-not-propagate-temporal-units-to-next-stage-text
@@ -268,33 +266,33 @@
                                 (lib/with-join-conditions [(lib/= (meta/field-metadata :venues :category-id)
                                                                   (meta/field-metadata :categories :id))])))
                   (lib/append-stage))]
-    (is (=? [{:base-type :type/BigInteger,
-              :semantic-type :type/PK,
-              :name "ID",
+    (is (=? [{:base-type :type/BigInteger
+              :semantic-type :type/PK
+              :name "ID"
               :lib/source :source/previous-stage
-              :effective-type :type/BigInteger,
-              :lib/desired-column-alias "ID",
+              :effective-type :type/BigInteger
+              :lib/desired-column-alias "ID"
               :display-name "ID"}
-             {:base-type :type/Text,
-              :semantic-type :type/Name,
-              :name "NAME",
-              :lib/source :source/previous-stage,
-              :effective-type :type/Text,
-              :lib/desired-column-alias "NAME",
+             {:base-type :type/Text
+              :semantic-type :type/Name
+              :name "NAME"
+              :lib/source :source/previous-stage
+              :effective-type :type/Text
+              :lib/desired-column-alias "NAME"
               :display-name "Name"}
-             {:base-type :type/BigInteger,
-              :semantic-type :type/PK,
-              :name "ID",
+             {:base-type :type/BigInteger
+              :semantic-type :type/PK
+              :name "ID"
               :lib/source :source/previous-stage
-              :effective-type :type/BigInteger,
-              :lib/desired-column-alias "Cat__ID",
+              :effective-type :type/BigInteger
+              :lib/desired-column-alias "Cat__ID"
               :display-name "ID"}
-             {:base-type :type/Text,
-              :semantic-type :type/Name,
-              :name "NAME",
+             {:base-type :type/Text
+              :semantic-type :type/Name
+              :name "NAME"
               :lib/source :source/previous-stage
-              :effective-type :type/Text,
-              :lib/desired-column-alias "Cat__NAME",
+              :effective-type :type/Text
+              :lib/desired-column-alias "Cat__NAME"
               :display-name "Name"}]
             (lib/visible-columns query)))))
 
@@ -577,12 +575,7 @@
         (testing (str "Stage number = " stage-number)
           (is (=? [{:name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
                    {:name "coun"}]
-                  (lib/returned-columns query stage-number (lib.util/query-stage query stage-number) {:unique-name-fn
-                                                                                                      (fn identity-generator
-                                                                                                        ([]
-                                                                                                         identity-generator)
-                                                                                                        ([s]
-                                                                                                         s))}))))))))
+                  (lib/returned-columns query stage-number (lib.util/query-stage query stage-number) {}))))))))
 
 (deftest ^:parallel remapped-columns-in-joined-source-queries-test
   (testing "Remapped columns in joined source queries should work (#15578)"
@@ -694,22 +687,26 @@
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate (lib/count))
                     (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year))
-                    (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
-                    lib/append-stage
-                    (as-> query (let [cols                 (lib/fieldable-columns query)
-                                      created-at-month-col (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Created At: Month"})
-                                      count-col            (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Count"})]
-                                  (lib/with-fields query [created-at-month-col count-col]))))]
+                    (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)))]
       (testing "lib/returned-columns should use deduplicated names (like the QP does) for `:name`"
-        (is (=? [{:lib/original-name "CREATED_AT"
-                  :name              "CREATED_AT_2"
-                  :display-name      "Created At: Month"}
-                 {:lib/original-name "count"
-                  :name              "count"
-                  :display-name      "Count"}]
-                (lib/returned-columns query))))
+        (is (=? [{:lib/original-name     "CREATED_AT"
+                  :lib/deduplicated-name "CREATED_AT"
+                  :name                  "CREATED_AT"
+                  :display-name          "Created At: Year"}
+                 {:lib/original-name     "CREATED_AT"
+                  :lib/deduplicated-name "CREATED_AT_2"
+                  :name                  "CREATED_AT_2"
+                  :display-name          "Created At: Month"}
+                 {:lib/original-name     "count"
+                  :lib/deduplicated-name "count"
+                  :name                  "count"
+                  :display-name          "Count"}]
+                (map #(select-keys % [:lib/original-name :lib/deduplicated-name :name :display-name])
+                     (lib/returned-columns query 0)))))
       (testing "display-info should propagate the deduplicated names"
-        (is (=? [{:name         "CREATED_AT_2"
+        (is (=? [{:name         "CREATED_AT"
+                  :display-name "Created At: Year"}
+                 {:name         "CREATED_AT_2"
                   :display-name "Created At: Month"}
                  {:name         "count"
                   :display-name "Count"}]
@@ -719,10 +716,8 @@
         (let [query' (lib/append-stage query)]
           (are [stage-number expected] (= expected
                                           (map :name (lib/returned-columns query' stage-number (lib.util/query-stage query' stage-number))))
-            -1 ["CREATED_AT_2" "count"]
-            -2 ["CREATED_AT" "count"]
-            ;; first stage, before we added :fields`
-            0  ["CREATED_AT" "CREATED_AT" "count"]))))))
+            0  ["CREATED_AT" "CREATED_AT" "count"]
+            1  ["CREATED_AT" "CREATED_AT_2" "count"]))))))
 
 (deftest ^:parallel do-not-duplicate-columns-with-default-temporal-bucketing-test
   (testing "Do not add a duplicate column from a join if it uses :default temporal bucketing"
@@ -798,3 +793,54 @@
                 "Q1 → Category"
                 "Q1 → Count"]
                (map :display-name (lib/returned-columns query))))))))
+
+(deftest ^:parallel expressions-with-aggregations-and-breakouts-returned-columns-test
+  (testing "expressions in :fields should be returned AFTER breakouts and aggregations"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query orders
+                   {:aggregation [[:count] [:sum $orders.quantity]]
+                    :breakout    [$orders.user-id->people.state
+                                  $orders.user-id->people.source
+                                  $orders.product-id->products.category]
+                    :expressions {:test-expr [:ltrim "wheeee"]}
+                    :fields      [[:expression "test-expr"]]}))]
+      (is (= ["User → State"              ; from breakouts
+              "User → Source"             ; from breakouts
+              "Product → Category"        ; from breakouts
+              "Count"                     ; from aggregations
+              "Sum of Quantity"           ; from aggregations
+              "test-expr"]                ; from expressions/fields ???
+             (binding [lib.metadata.calculation/*display-name-style* :long]
+               (mapv :display-name (lib/returned-columns query))))))))
+
+(deftest ^:parallel return-correct-deduplicated-names-test
+  (testing "Deduplicated names from previous stage should be preserved even when excluding certain fields"
+    ;; e.g. a field called CREATED_AT_2 in the previous stage should continue to be called that. See ;; see
+    ;; https://metaboat.slack.com/archives/C0645JP1W81/p1750961267171999
+    (let [query (-> (lib/query
+                     meta/metadata-provider
+                     (lib.tu.macros/mbql-query orders
+                       {:source-query {:source-table $$orders
+                                       :aggregation  [[:count]]
+                                       :breakout     [[:field %created-at {:base-type :type/DateTime, :temporal-unit :year}]
+                                                      [:field %created-at {:base-type :type/DateTime, :temporal-unit :month}]]}
+                        :filter       [:>
+                                       [:field "count" {:base-type :type/Integer}]
+                                       0]}))
+                    lib/append-stage
+                    lib/append-stage
+                    (as-> query (lib/remove-field query -1 (first (lib/fieldable-columns query -1)))))]
+      (is (=? [{:name                     "CREATED_AT_2"
+                :lib/original-name        "CREATED_AT"
+                :lib/deduplicated-name    "CREATED_AT_2"
+                :lib/source-column-alias  "CREATED_AT_2"
+                :lib/desired-column-alias "CREATED_AT_2"
+                :display-name             "Created At: Month"}
+               {:name                     "count"
+                :lib/original-name        "count"
+                :lib/deduplicated-name    "count"
+                :lib/source-column-alias  "count"
+                :lib/desired-column-alias "count"
+                :display-name             "Count"}]
+              (lib/returned-columns query))))))

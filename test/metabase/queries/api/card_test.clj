@@ -1358,6 +1358,37 @@
                           :moderation_reviews
                           (map clean)))))))))))
 
+(deftest fetch-card-entity-id-test
+  (testing "GET /api/card/:id with entity ID"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       card {:collection_id (u/the-id collection)
+                                             :dataset_query (mt/mbql-query venues)}]
+        (testing "Should be able to fetch a Card using entity ID when you have Collection read perms"
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+          (is (=? {:name (:name card)}
+                  (mt/user-http-request :rasta :get 200 (str "card/" (:entity_id card))))))))))
+
+(deftest card-query-metadata-entity-id-test
+  (testing "GET /api/card/:id/query_metadata with entity ID"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       card {:collection_id (u/the-id collection)
+                                             :dataset_query (mt/mbql-query venues)}]
+        (testing "Should be able to get query metadata using entity ID when you have Collection read perms"
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+          (is (map? (mt/user-http-request :rasta :get 200 (str "card/" (:entity_id card) "/query_metadata")))))))))
+
+(deftest run-query-entity-id-test
+  (testing "POST /api/card/:card-id/query with entity ID"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       card {:collection_id (u/the-id collection)
+                                             :dataset_query (mt/mbql-query venues)}]
+        (testing "Should be able to run query using entity ID when you have Collection read perms"
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+          (is (map? (mt/user-http-request :rasta :post 202 (str "card/" (:entity_id card) "/query")))))))))
+
 (deftest ^:parallel fetch-card-404-test
   (testing "GET /api/card/:id"
     (is (= "Not found."
@@ -4246,6 +4277,25 @@
                     (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
                                           {:dataset_query (lib/->legacy-MBQL query-cycle)
                                            :type card-type-c})))))))))))
+
+(deftest cannot-make-query-cycles-with-native-queries-test
+  (testing "Cannot make query cycles that include native queries"
+    (let [mp (mt/metadata-provider)
+          query-a (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type :question}]
+        (let [query-b (mt/native-query {:query "select * from {{#100-base-query}}"
+                                        :template-tags
+                                        {:#100-base-query
+                                         {:type :card
+                                          :name "#100-base-query"
+                                          :id (random-uuid)
+                                          :card-id id-a
+                                          :display-name "#100 Base Query"}}})]
+          (mt/with-temp [:model/Card {id-b :id} {:dataset_query query-b :type :question}]
+            (let [query-cycle (lib/query mp (lib.metadata/card mp id-b))]
+              (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
+                                    {:dataset_query (lib/->legacy-MBQL query-cycle)
+                                     :type :question}))))))))
 
 (deftest e2e-card-update-invalidates-cache-test
   (testing "Card update invalidates card's cache (#55955)"

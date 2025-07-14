@@ -324,6 +324,7 @@
            audit-app
            config
            driver
+           eid-translation
            events
            legacy-mbql
            lib-be
@@ -389,6 +390,7 @@
            channel
            collections
            config
+           eid-translation
            embedding
            events
            lib
@@ -878,6 +880,7 @@
            config
            content-verification
            dashboards
+           eid-translation
            embedding
            events
            legacy-mbql
@@ -1357,6 +1360,7 @@
            api
            app-db
            audit-app
+           database-routing
            driver
            events
            lib

@@ -4,9 +4,8 @@ import _ from "underscore";
 import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Grid } from "metabase/dashboard/components/Dashboard/components/Grid";
+import { Dashboard } from "metabase/dashboard/components/Dashboard";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
-import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { SetTitle } from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
@@ -77,7 +76,7 @@ export function PublicOrEmbeddedDashboardView() {
       setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior
       actionButtons={buttons ? <div className={CS.flex}>{buttons}</div> : null}
-      dashboardTabs={dashboardId && dashboardHasTabs && <DashboardTabs />}
+      dashboardTabs={dashboardId && dashboardHasTabs && <Dashboard.Tabs />}
       background={background}
       bordered={bordered}
       titled={titled}
@@ -96,7 +95,7 @@ export function PublicOrEmbeddedDashboardView() {
         })}
         mt={isCompactHeader ? "xs" : "sm"}
       >
-        <Grid />
+        <Dashboard.Grid />
       </FullWidthContainer>
     </EmbedFrame>
   );

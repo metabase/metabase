@@ -19,13 +19,22 @@ import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "../../constants";
+import {
+  DashboardInfoButton,
+  ExportAsPdfButton,
+  FullscreenToggle,
+  NightModeToggleButton,
+} from "../DashboardHeader/buttons";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
+import { DashboardTabs } from "../DashboardTabs";
+import { DashboardTitle } from "../DashboardTitle";
+import { RefreshWidget } from "../RefreshWidget";
 
 import S from "./Dashboard.module.css";
-import { Grid } from "./components/Grid";
+import { Grid, ParametersList } from "./components";
 
-function Dashboard({ className }: { className?: string }) {
+const DashboardDefaultView = ({ className }: { className?: string }) => {
   const {
     dashboard,
     isEditing,
@@ -147,12 +156,7 @@ function Dashboard({ className }: { className?: string }) {
         data-element-id="dashboard-header-container"
         data-testid="dashboard-header-container"
       >
-        {/**
-         * Do not conditionally render `<DashboardHeader />` as it calls
-         * `useDashboardTabs` under the hood. This hook sets `selectedTabId`
-         * in Redux state which kicks off a fetch for the dashboard cards.
-         */}
-        <DashboardHeader />
+        <Dashboard.Header />
       </Box>
 
       <Flex
@@ -178,7 +182,7 @@ function Dashboard({ className }: { className?: string }) {
             className={S.CardsContainer}
             data-element-id="dashboard-cards-container"
           >
-            <Grid />
+            <Dashboard.Grid />
           </FullWidthContainer>
         </Box>
 
@@ -215,5 +219,31 @@ function Dashboard({ className }: { className?: string }) {
       <FilterApplyToast />
     </Flex>
   );
-}
-export { Dashboard };
+};
+
+type DashboardComponentType = typeof DashboardDefaultView & {
+  Header: typeof DashboardHeader;
+  Grid: typeof Grid;
+  Title: typeof DashboardTitle;
+  Tabs: typeof DashboardTabs;
+  ParametersList: typeof ParametersList;
+  FullscreenButton: typeof FullscreenToggle;
+  ExportAsPdfButton: typeof ExportAsPdfButton;
+  InfoButton: typeof DashboardInfoButton;
+  NightModeButton: typeof NightModeToggleButton;
+  RefreshPeriod: typeof RefreshWidget;
+};
+
+const DashboardComponent = DashboardDefaultView as DashboardComponentType;
+DashboardComponent.Header = DashboardHeader;
+DashboardComponent.Grid = Grid;
+DashboardComponent.Title = DashboardTitle;
+DashboardComponent.Tabs = DashboardTabs;
+DashboardComponent.ParametersList = ParametersList;
+DashboardComponent.FullscreenButton = FullscreenToggle;
+DashboardComponent.ExportAsPdfButton = ExportAsPdfButton;
+DashboardComponent.InfoButton = DashboardInfoButton;
+DashboardComponent.NightModeButton = NightModeToggleButton;
+DashboardComponent.RefreshPeriod = RefreshWidget;
+
+export const Dashboard = DashboardComponent;
