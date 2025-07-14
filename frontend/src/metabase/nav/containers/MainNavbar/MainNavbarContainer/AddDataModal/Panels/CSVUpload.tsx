@@ -17,7 +17,7 @@ import CollectionName from "metabase/common/components/CollectionName";
 import {
   type CollectionPickerItem,
   CollectionPickerModal,
-} from "metabase/common/components/CollectionPicker";
+} from "metabase/common/components/Pickers/CollectionPicker";
 import { UploadInput } from "metabase/common/components/upload";
 import { useDispatch } from "metabase/lib/redux";
 import {

@@ -142,3 +142,17 @@
            :status :invalid-format,
            :reason ["\"abcdefghijklmnopqrst\" should be 21 characters long, but it is 20"]}}
          (eid-translation.util/model->entity-ids->ids {:card ["abcdefghijklmnopqrst"]}))))
+
+(deftest ^:parallel ->id-or-404-test
+  (testing "->id-or-404 should work the same as ->id for valid entity IDs"
+    (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
+      (is (= card-id (eid-translation.util/->id-or-404 :card card-id)))
+      (is (= card-id (eid-translation.util/->id-or-404 :card card-eid)))))
+
+  (testing "->id-or-404 should throw 404 error for non-existent entity IDs"
+    (is (thrown-with-msg? Exception #"Not found\."
+                          (eid-translation.util/->id-or-404 :card "abcdefghijklmnopqrstu"))))
+
+  (testing "->id-or-404 should preserve original error for invalid format"
+    (is (thrown-with-msg? Exception #"problem looking up id from entity_id"
+                          (eid-translation.util/->id-or-404 :card "invalid-format")))))

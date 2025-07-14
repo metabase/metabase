@@ -23,6 +23,9 @@ title: Driver interface changelog
 - Added the driver multi-method `driver/extra-info` for drivers to provide info such as db routing configuration details
   from their `metabase-plugin.yaml` file.
 
+- Extend `datetime()` to accept UTF-8 encoded binary and numbers (unix timestamps) in addition to strings.
+
+
 ## Metabase 0.55.0
 
 - Add the multi-method `->date` that allows the driver to control how to cast strings and temporal types to dates.

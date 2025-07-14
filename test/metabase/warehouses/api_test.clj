@@ -1640,6 +1640,14 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%d/syncable_schemas" (mt/id))))))))))
 
+(deftest get-syncable-schemas-checks-permissions-correctly
+  (testing "GET /api/database/:id/syncable_schemas"
+    (testing "Non-admins can get syncable schemas on the attached DWH"
+      (mt/with-temp [:model/Database {id :id} {:is_attached_dwh true}]
+        (with-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
+          (is (= ["PUBLIC"]
+                 (mt/user-http-request :rasta :get 200 (format "database/%d/syncable_schemas" id)))))))))
+
 (deftest ^:parallel get-schemas-for-schemas-with-no-visible-tables
   (mt/with-temp
     [:model/Database {db-id :id} {}
