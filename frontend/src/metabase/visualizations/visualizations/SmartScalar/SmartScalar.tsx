@@ -123,39 +123,42 @@ export function SmartScalar({
 
   return (
     <ScalarWrapper>
-      {isPeriodVisible(innerHeight) && <ScalarPeriod period={display.date} />}
-      <ScalarContainer
-        className={cx(
-          DashboardS.fullscreenNormalText,
-          DashboardS.fullscreenNightText,
-          EmbedFrameS.fullscreenNightText,
-        )}
-        data-testid="scalar-container"
-        tooltip={fullScalarValue}
-        alwaysShowTooltip={fullScalarValue !== displayValue}
-        isClickable={isClickable}
-      >
-        <span onClick={handleClick} ref={scalarRef}>
-          <ScalarValue
-            fontFamily={fontFamily}
-            gridSize={gridSize}
-            height={getValueHeight(innerHeight)}
-            totalNumGridCols={totalNumGridCols}
-            value={displayValue as string}
-            width={getValueWidth(width)}
-          />
-        </span>
-      </ScalarContainer>
-      {comparisons.map((comparison, index) => (
-        <Box maw="100%" key={index} data-testid="scalar-previous-value">
-          <PreviousValueComparison
-            comparison={comparison}
-            fontFamily={fontFamily}
-            formatOptions={formatOptions}
-            width={width}
-          />
-        </Box>
-      ))}
+      <Flex direction="column" w={isDashboard ? "100%" : "auto"}>
+        {isPeriodVisible(innerHeight) && <ScalarPeriod period={display.date} />}
+        <ScalarContainer
+          isSmartScalar
+          className={cx(
+            DashboardS.fullscreenNormalText,
+            DashboardS.fullscreenNightText,
+            EmbedFrameS.fullscreenNightText,
+          )}
+          data-testid="scalar-container"
+          tooltip={fullScalarValue}
+          alwaysShowTooltip={fullScalarValue !== displayValue}
+          isClickable={isClickable}
+        >
+          <span onClick={handleClick} ref={scalarRef}>
+            <ScalarValue
+              fontFamily={fontFamily}
+              gridSize={gridSize}
+              height={getValueHeight(innerHeight)}
+              totalNumGridCols={totalNumGridCols}
+              value={displayValue as string}
+              width={getValueWidth(width)}
+            />
+          </span>
+        </ScalarContainer>
+        {comparisons.map((comparison, index) => (
+          <Box maw="100%" key={index} data-testid="scalar-previous-value">
+            <PreviousValueComparison
+              comparison={comparison}
+              fontFamily={fontFamily}
+              formatOptions={formatOptions}
+              width={width}
+            />
+          </Box>
+        ))}
+      </Flex>
     </ScalarWrapper>
   );
 }
@@ -167,7 +170,7 @@ interface ScalarPeriodProps {
 
 function ScalarPeriod({ period, onClick }: ScalarPeriodProps) {
   return (
-    <ScalarTitleContainer data-testid="scalar-period" lines={1}>
+    <ScalarTitleContainer data-testid="scalar-period" lines={1} isSmartScalar>
       <Text
         component="h3"
         ta="center"
@@ -337,8 +340,7 @@ function PreviousValueComparison({
       <Flex
         wrap="wrap"
         align="center"
-        justify="center"
-        mx="sm"
+        ml="md"
         lh="1.5rem"
         c="var(--mb-color-text-secondary)"
         className={cx(
