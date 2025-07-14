@@ -305,6 +305,19 @@ describe("pratt/compiler", () => {
         ],
       });
     });
+
+    it("should correctly handle the mode option for datetime functions", () => {
+      expect(expr('datetime("2024-01-08")')).toEqual({
+        operator: "datetime",
+        options: {},
+        args: ["2024-01-08"],
+      });
+      expect(expr('datetime(10, "unixSeconds")')).toEqual({
+        operator: "datetime",
+        options: { mode: "unix-seconds" },
+        args: [10],
+      });
+    });
   });
 
   describe("Should match the old compiler", () => {
