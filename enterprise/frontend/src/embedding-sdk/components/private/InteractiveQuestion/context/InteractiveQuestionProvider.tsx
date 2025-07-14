@@ -73,7 +73,10 @@ export const InteractiveQuestionProvider = ({
     options?: OnCreateOptions,
   ): Promise<Question> => {
     if (isSaveEnabled) {
-      const saveContext = { isNewQuestion: true };
+      const saveContext = {
+        isNewQuestion: true,
+        dashboardTabId: options?.dashboardTabId,
+      };
       const sdkQuestion = transformSdkQuestion(question);
 
       await onBeforeSave?.(sdkQuestion, saveContext);

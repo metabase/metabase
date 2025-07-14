@@ -376,8 +376,7 @@ function DashboardQueryBuilder({
   onNavigateBack,
   queryBuilderProps,
 }: DashboardQueryBuilderProps) {
-  const dispatch = useSdkDispatch();
-  const { dashboard } = useDashboardContext();
+  const { dashboard, selectTab, setEditingDashboard } = useDashboardContext();
 
   /**
    * This won't happen at this point in time. As `DashboardQueryBuilder` is guaranteed to be rendered
@@ -393,10 +392,13 @@ function DashboardQueryBuilder({
     <InteractiveQuestionProvider
       questionId="new"
       targetDashboardId={targetDashboardId}
-      onSave={(question, { isNewQuestion }) => {
+      onSave={(question, { isNewQuestion, dashboardTabId }) => {
         if (isNewQuestion) {
           onCreate(question);
-          dispatch(setEditingDashboard(dashboard));
+          if (dashboardTabId) {
+            selectTab({ tabId: dashboardTabId });
+          }
+          setEditingDashboard(dashboard);
         }
       }}
       onNavigateBack={onNavigateBack}
