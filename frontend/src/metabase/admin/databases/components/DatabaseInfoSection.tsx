@@ -28,7 +28,7 @@ export const DatabaseInfoSection = ({
       <Text size="lg" fw="700" mb="xs" lh={1.4}>
         {name}
       </Text>
-      <Markdown>{description}</Markdown>
+      <Markdown c="text-secondary">{description}</Markdown>
     </Stack>
     <Box w="100%">
       <Card
