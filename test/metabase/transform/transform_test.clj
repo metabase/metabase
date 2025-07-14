@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
@@ -226,11 +227,25 @@
          (let [schema# (:schema table#)
                name# (:name table#)]
            (when (str/starts-with? name# "mb_transform")
-             (metabase.request.session/with-current-user (mt/user->id :rasta)
+             (request/with-current-user (mt/user->id :crowberto)
                (driver/drop-view! driver/*driver* (mt/id) (str/join "." (filter some? [schema# name#])))))))
        (t2/delete! :model/Table :name [:like "mb_transform%"])
        (t2/delete! :model/TransformView :view_name [:like "mb_transform%"])
        ~@body))
+
+(deftest view-name-length-limit-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :view)
+    (mt/dataset
+      users-departments-with-score
+      (with-no-transform-views!
+        (testing "View name length limits are respected"
+          (when-let [limit (driver/view-name-length-limit driver/*driver*)]
+            (request/with-current-user (:id (mt/fetch-user :crowberto))
+              (is (driver/create-view! driver/*driver* (u/the-id (mt/db))
+                                       (apply str (repeat limit "a"))
+                                       "SELECT * FROM users"
+                                       :replace? true)))))))))
 
 ;; API tests
 
@@ -393,7 +408,7 @@
   (mt/test-drivers
     (mt/normal-drivers-with-feature :view)
     (mt/dataset
-      users-departments-db
+      users-departments-with-score
       (with-no-transform-views!
         (let [mp (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
