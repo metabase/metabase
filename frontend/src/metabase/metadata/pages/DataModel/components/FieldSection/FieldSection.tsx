@@ -1,4 +1,5 @@
-import { memo } from "react";
+import { useElementSize } from "@mantine/hooks";
+import { memo, useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
@@ -6,9 +7,11 @@ import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { NameDescriptionInput } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { Box, Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, Field } from "metabase-types/api";
+
+import { ResponsiveButton } from "../ResponsiveButton";
 
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
@@ -17,6 +20,7 @@ import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
 
 const OUTLINE_SAFETY_MARGIN = 2;
+const BUTTONS_GAP = 16;
 
 interface Props {
   databaseId: DatabaseId;
@@ -38,6 +42,25 @@ const FieldSectionBase = ({
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
+  const { ref: buttonsContainerRef, width: buttonsContainerWidth } =
+    useElementSize();
+  const [previewButtonWidth, setPreviewButtonWidth] = useState(0);
+  const [fieldValuesButtonWidth, setFieldValuesButtonWidth] = useState(0);
+  const requiredWidth = getRequiredWidth();
+  const isWidthInitialized = previewButtonWidth + fieldValuesButtonWidth > 0;
+  const showButtonLabels = isWidthInitialized
+    ? buttonsContainerWidth >= requiredWidth
+    : true;
+
+  function getRequiredWidth() {
+    let width = fieldValuesButtonWidth;
+
+    if (!isPreviewOpen) {
+      width += previewButtonWidth + BUTTONS_GAP;
+    }
+
+    return width;
+  }
 
   const handleNameChange = async (name: string) => {
     if (field.display_name === name) {
@@ -112,28 +135,38 @@ const FieldSectionBase = ({
       </Box>
 
       <Stack gap={12} mb={12} pt={OUTLINE_SAFETY_MARGIN} px="xl">
-        <Group align="center" gap="md" justify="space-between">
+        <Group
+          align="center"
+          gap="md"
+          justify="space-between"
+          miw={0}
+          wrap="nowrap"
+        >
           <Text flex="0 0 auto" fw="bold">{t`Field settings`}</Text>
 
-          <Group flex="1" gap="md" justify="flex-end" wrap="nowrap">
+          <Group
+            flex="1"
+            gap="md"
+            justify="flex-end"
+            miw={0}
+            ref={buttonsContainerRef}
+            wrap="nowrap"
+          >
             {!isPreviewOpen && (
-              <Button
-                leftSection={<Icon name="eye" />}
-                px="sm"
-                py="xs"
-                size="xs"
+              <ResponsiveButton
+                icon="eye"
+                showLabel={showButtonLabels}
                 onClick={onPreviewClick}
-              >{t`Preview`}</Button>
+                onRequestWidth={setPreviewButtonWidth}
+              >{t`Preview`}</ResponsiveButton>
             )}
 
-            <Button
-              h={32}
-              leftSection={<Icon name="gear_settings_filled" />}
-              px="sm"
-              py="xs"
-              size="xs"
+            <ResponsiveButton
+              icon="gear_settings_filled"
+              showLabel={showButtonLabels}
               onClick={onFieldValuesClick}
-            >{t`Field values`}</Button>
+              onRequestWidth={setFieldValuesButtonWidth}
+            >{t`Field values`}</ResponsiveButton>
           </Group>
         </Group>
       </Stack>

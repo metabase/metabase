@@ -24,7 +24,7 @@ import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
 
 const OUTLINE_SAFETY_MARGIN = 2;
-const BUTTON_GAP = 16;
+const BUTTONS_GAP = 16;
 const LOADER_WIDTH = 16;
 const FIELD_ORDER_PICKER_WIDTH = 136;
 
@@ -59,16 +59,16 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     let width = 0;
 
     if (isChangingSorting) {
-      width += LOADER_WIDTH + BUTTON_GAP;
+      width += LOADER_WIDTH + BUTTONS_GAP;
     }
 
     if (isSorting) {
-      width += FIELD_ORDER_PICKER_WIDTH + BUTTON_GAP + doneButtonWidth;
+      width += FIELD_ORDER_PICKER_WIDTH + BUTTONS_GAP + doneButtonWidth;
     } else {
       width += syncButtonWidth;
 
       if (hasFields) {
-        width += sortingButtonWidth + BUTTON_GAP;
+        width += sortingButtonWidth + BUTTONS_GAP;
       }
     }
 
