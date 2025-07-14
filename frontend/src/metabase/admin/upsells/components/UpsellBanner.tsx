@@ -44,6 +44,7 @@ type UpsellBannerPropsBase = {
   large?: boolean;
   children: React.ReactNode;
   style?: React.CSSProperties;
+  onClick?: () => void;
 };
 
 export type UpsellBannerProps =
@@ -59,6 +60,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   location,
   large,
   children,
+  onClick,
   ...props
 }: UpsellBannerProps) => {
   const url = useUpsellLink({
@@ -98,7 +100,18 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       </Flex>
 
       <Flex align="center" gap="md">
-        {buttonLink !== undefined ? (
+        {onClick !== undefined && (
+          <UnstyledButton
+            onClick={() => {
+              trackUpsellClicked({ location, campaign });
+              onClick();
+            }}
+            className={S.UpsellCTALink}
+          >
+            {buttonText}
+          </UnstyledButton>
+        )}
+        {buttonLink !== undefined && onClick === undefined && (
           <ExternalLink
             onClickCapture={() => trackUpsellClicked({ location, campaign })}
             href={url}
@@ -106,7 +119,8 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
           >
             {buttonText}
           </ExternalLink>
-        ) : (
+        )}
+        {internalLink !== undefined && onClick === undefined && (
           <Link
             onClickCapture={() => trackUpsellClicked({ location, campaign })}
             to={internalLink}
