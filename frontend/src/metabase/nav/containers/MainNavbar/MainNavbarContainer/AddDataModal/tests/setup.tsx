@@ -4,6 +4,7 @@ import {
   setupGdriveGetFolderEndpoint,
   setupGdrivePostFolderEndpoint,
   setupGdriveServiceAccountEndpoint,
+  setupTokenStatusEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -86,12 +87,14 @@ export const setup = ({
         schema_name: "uploads",
         table_prefix: "uploaded_",
       },
+      "store-url": "https://store.metabase.com",
     }),
   });
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
+  setupTokenStatusEndpoint(true);
 
   setupDatabaseListEndpoint(databases);
 
