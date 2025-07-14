@@ -33,30 +33,59 @@ export const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
   const adminEmail = useSelector((state) => getSetting(state, "admin-email"));
   const adminEmailElement = <b key="admin-email">{adminEmail}</b>;
 
-  const getAlertCopy = match(reason)
+  const hasAdminEmail = !!adminEmail;
+
+  const getAlertCopy = match({ reason, hasAdminEmail })
     .with(
-      "add-database",
+      { reason: "add-database", hasAdminEmail: true },
       () =>
         c("{0} is admin's email address")
           .jt`To add a new database, please contact your administrator at ${adminEmailElement}.`,
     )
     .with(
-      "enable-csv-upload",
+      { reason: "add-database", hasAdminEmail: false },
+      () => t`To add a new database, please contact your administrator.`,
+    )
+    .with(
+      { reason: "enable-csv-upload", hasAdminEmail: true },
       () =>
         c("{0} is admin's email address")
           .jt`To enable CSV file upload, please contact your administrator at ${adminEmailElement}.`,
     )
     .with(
-      "obtain-csv-upload-permission",
+      { reason: "enable-csv-upload", hasAdminEmail: false },
+      () => t`To enable CSV file upload, please contact your administrator.`,
+    )
+    .with(
+      {
+        reason: "obtain-csv-upload-permission",
+        hasAdminEmail: true,
+      },
       () =>
         c("{0} is admin's email address")
           .jt`You are not permitted to upload CSV files. To get proper permissions, please contact your administrator at ${adminEmailElement}.`,
     )
     .with(
-      "enable-google-sheets",
+      {
+        reason: "obtain-csv-upload-permission",
+        hasAdminEmail: false,
+      },
+      () =>
+        t`You are not permitted to upload CSV files. To get proper permissions, please contact your administrator.`,
+    )
+    .with(
+      {
+        reason: "enable-google-sheets",
+        hasAdminEmail: true,
+      },
       () =>
         c("{0} is admin's email address")
           .jt`To enable Google Sheets import, please contact your administrator at ${adminEmailElement}.`,
+    )
+    .with(
+      { reason: "enable-google-sheets", hasAdminEmail: false },
+      () =>
+        t`To enable Google Sheets import, please contact your administrator.`,
     )
     .exhaustive();
 

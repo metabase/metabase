@@ -123,7 +123,7 @@ describe("scenarios > metrics > dashboard", () => {
     H.editDashboard();
 
     H.showDashcardVisualizerModal(0, {
-      buttonText: "Visualize another way",
+      isVisualizerCard: false,
     });
     H.modal().within(() => {
       H.switchToAddMoreData();

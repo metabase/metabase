@@ -117,7 +117,9 @@
       [:expression expression-name])
 
     [:aggregation index opts]
-    (if-let [opts (remove-namespaced-options opts)]
+    (if-let [opts (-> opts
+                      (dissoc :base-type)
+                      (remove-namespaced-options))]
       [:aggregation index opts]
       [:aggregation index])
 
