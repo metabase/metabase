@@ -16,6 +16,7 @@ import type { Parameter } from "metabase-types/api";
 export interface DashboardParameterListProps
   extends Pick<
     ComponentProps<typeof ParametersList>,
+    | "aria-hidden"
     | "widgetsVariant"
     | "widgetsWithinPortal"
     | "widgetsPopoverPosition"
@@ -32,6 +33,7 @@ export const DashboardParameterList = forwardRef<
   DashboardParameterListProps
 >(function DashboardParameterList(
   {
+    "aria-hidden": ariaHidden,
     className,
     parameters,
     isSortable = true,
@@ -57,6 +59,7 @@ export const DashboardParameterList = forwardRef<
   return (
     <ParametersList
       ref={ref}
+      aria-hidden={ariaHidden}
       className={cx(DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME, className)}
       parameters={parameters}
       editingParameter={editingParameter}

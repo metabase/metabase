@@ -93,6 +93,7 @@ export const CollapsibleDashboardParameterList = forwardRef<
       >
         <DashboardParameterList
           {...parametersListCommonProps}
+          aria-hidden
           className={CS.absolute}
           hasTestIdProps={false}
           ref={ref}
