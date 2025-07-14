@@ -5,6 +5,7 @@ import _ from "underscore";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import { formatValue } from "metabase/lib/formatting/value";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import { formatValue } from "metabase/lib/formatting/value";
 import { isEmpty } from "metabase/lib/validate";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import type {
