@@ -133,9 +133,7 @@
                               (or (get column-settings {::mb.viz/column-name col-name})
                                   (get column-settings {::mb.viz/column-name col-id-or-name}))
                               (qualify-keys col-settings))
-        global-settings      (merge
-                              global-type-settings
-                              (::mb.viz/global-column-settings viz-settings))
+        global-settings      (streaming.common/viz-settings-for-col col viz-settings)
         currency?            (boolean (or (= (::mb.viz/number-style column-settings) "currency")
                                           (= (::mb.viz/number-style viz-settings) "currency")
                                           (and (nil? (::mb.viz/number-style column-settings))
@@ -144,11 +142,7 @@
                                                 (::mb.viz/currency column-settings)))))
 
         {::mb.viz/keys [number-separators decimals scale number-style
-                        prefix suffix currency-style currency]} (merge
-                                                                 (when currency?
-                                                                   (:type/Currency global-settings))
-                                                                 (:type/Number global-settings)
-                                                                 column-settings)
+                        prefix suffix currency-style currency]} global-settings
         currency           (when currency?
                              (keyword (or currency "USD")))
         integral?          (and (isa? (or effective_type base_type) :type/Integer) (integer? (or scale 1)))
