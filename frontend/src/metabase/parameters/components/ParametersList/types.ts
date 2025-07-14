@@ -12,7 +12,6 @@ export type ParametersListProps = {
   parameters: Parameter[];
 } & Partial<
   {
-    "aria-hidden"?: boolean;
     className: string;
 
     question: Question;

@@ -21,7 +21,6 @@ const getId = (valuePopulatedParameter: Parameter) =>
 export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
   function ParametersList(
     {
-      "aria-hidden": ariaHidden,
       className,
 
       parameters,
@@ -114,7 +113,6 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
 
     return visibleValuePopulatedParameters.length > 0 ? (
       <Flex
-        aria-hidden={ariaHidden}
         display="flex"
         direction={vertical ? "column" : "row"}
         align="end"
