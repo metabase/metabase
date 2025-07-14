@@ -1210,7 +1210,47 @@ describe("Notebook Editor > Join Step", () => {
       expect(condition.rhsExpression.longDisplayName).toBe("ID + 1");
     });
 
-    it("should display 'Custom expression' for LHS custom expressions", () => {
+    it("should display the literal value for a LHS literal", () => {
+      setup({
+        step: createMockNotebookStep({
+          query: getJoinedQueryWithCustomExpressions(
+            () =>
+              Lib.expressionClause("value", [10], {
+                "base-type": "type/Integer",
+                "effective-type": "type/Integer",
+              }),
+            (findRHSColumn) =>
+              Lib.expressionClause(findRHSColumn("PRODUCTS", "ID")),
+          ),
+        }),
+      });
+      const lhsButton = screen.getByLabelText("Left column");
+      const rhsButton = screen.getByLabelText("Right column");
+      expect(lhsButton).toHaveTextContent("10");
+      expect(rhsButton).toHaveTextContent("ID");
+    });
+
+    it("should display the literal for a RHS literal", () => {
+      setup({
+        step: createMockNotebookStep({
+          query: getJoinedQueryWithCustomExpressions(
+            (findLHSColumn) =>
+              Lib.expressionClause(findLHSColumn("ORDERS", "PRODUCT_ID")),
+            () =>
+              Lib.expressionClause("value", ["abc"], {
+                "base-type": "type/Text",
+                "effective-type": "type/Text",
+              }),
+          ),
+        }),
+      });
+      const lhsButton = screen.getByLabelText("Left column");
+      const rhsButton = screen.getByLabelText("Right column");
+      expect(lhsButton).toHaveTextContent("Product ID");
+      expect(rhsButton).toHaveTextContent('"abc"');
+    });
+
+    it("should display 'Custom expression' for a LHS custom expression", () => {
       setup({
         step: createMockNotebookStep({
           query: getJoinedQueryWithCustomExpressions(
@@ -1230,7 +1270,7 @@ describe("Notebook Editor > Join Step", () => {
       expect(rhsButton).toHaveTextContent("ID");
     });
 
-    it("should display 'Custom expression' for RHS custom expressions", () => {
+    it("should display 'Custom expression' for a RHS custom expression", () => {
       setup({
         step: createMockNotebookStep({
           query: getJoinedQueryWithCustomExpressions(
