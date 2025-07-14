@@ -115,6 +115,40 @@ describe("scenarios > admin > datamodel", () => {
         `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
       );
     });
+
+    it(
+      "should not show 404 error if database is not selected",
+      { tags: ["@external"] },
+      () => {
+        H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+        cy.log("database not selected");
+        H.DataModel.visit();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+
+        cy.log("database selected");
+        TablePicker.getDatabase("Writable Postgres12").click();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+
+        cy.log("schema selected");
+        TablePicker.getSchema("Domestic").click();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+
+        cy.log("table selected");
+        TablePicker.getTable("Animals").click();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+      },
+    );
   });
 
   describe("Table picker", () => {
@@ -2031,9 +2065,10 @@ describe("scenarios > admin > datamodel", () => {
           TableSection.clickField("Quantity");
           FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-          PreviewSection.get()
-            .findByPlaceholderText("Enter a number")
-            .should("be.visible");
+          PreviewSection.get().within(() => {
+            cy.findByPlaceholderText("Enter a number").should("be.visible");
+            cy.button(/Add filter/).should("not.exist");
+          });
 
           cy.reload();
           FieldSection.getFilteringInput()
@@ -2061,12 +2096,11 @@ describe("scenarios > admin > datamodel", () => {
           TableSection.clickField("Quantity");
           FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-          PreviewSection.get()
-            .findByPlaceholderText("Min")
-            .should("be.visible");
-          PreviewSection.get()
-            .findByPlaceholderText("Max")
-            .should("be.visible");
+          PreviewSection.get().within(() => {
+            cy.findByPlaceholderText("Min").should("be.visible");
+            cy.findByPlaceholderText("Max").should("be.visible");
+            cy.button(/Add filter/).should("not.exist");
+          });
 
           cy.reload();
           FieldSection.getFilteringInput()
@@ -2097,9 +2131,10 @@ describe("scenarios > admin > datamodel", () => {
           TableSection.clickField("Quantity");
           FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-          PreviewSection.get()
-            .findByPlaceholderText("Search the list")
-            .should("be.visible");
+          PreviewSection.get().within(() => {
+            cy.findByPlaceholderText("Search the list").should("be.visible");
+            cy.button(/Add filter/).should("not.exist");
+          });
 
           cy.reload();
           FieldSection.getFilteringInput()
