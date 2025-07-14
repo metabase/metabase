@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "new-iframe-embedding-setup-flow",
-    "hash": "8ac02d5493047eabb40bd39fc689458ecc797bc1"
+    "hash": "a3d1886de7f469d10d8b9fd35631ff5f74672bfc"
   },
   "upstream": {
     "branch": "emb-574-update-new-embed-route-from-embednew-to-embed-wizard"
