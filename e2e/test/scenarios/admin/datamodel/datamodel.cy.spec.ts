@@ -1521,8 +1521,8 @@ describe("scenarios > admin > datamodel", () => {
 
           FieldSection.getSemanticTypeInput()
             .should("have.value", "Foreign Key")
-            .click();
-          H.popover().findByText("No semantic type").click();
+            // it should allow to just type to search
+            .type("no sema{downarrow}{enter}");
           cy.wait("@updateField");
           H.undoToast().should(
             "contain.text",
@@ -1575,8 +1575,8 @@ describe("scenarios > admin > datamodel", () => {
 
           FieldSection.getSemanticTypeFkTarget()
             .should("have.value", "")
-            .click();
-          H.popover().findByText("Products → ID").click();
+            // it should allow to just type to search
+            .type("products{downarrow}{enter}");
           cy.wait("@updateField");
           H.undoToast().should(
             "contain.text",
@@ -1750,8 +1750,8 @@ describe("scenarios > admin > datamodel", () => {
             .scrollIntoView()
             .should("be.visible")
             .and("have.value", "US Dollar")
-            .click();
-          H.popover().findByText("Canadian Dollar").click();
+            // it should allow to just type to search
+            .type("canadian{downarrow}{enter}");
           cy.wait("@updateField");
           verifyAndCloseToast("Semantic type of Tax updated");
 
