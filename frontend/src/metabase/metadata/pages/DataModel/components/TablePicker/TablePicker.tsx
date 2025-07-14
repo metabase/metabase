@@ -70,7 +70,7 @@ function Tree({
 
     if (
       !isExpanded({ databaseId: database.value.databaseId }) &&
-      database.value.databaseId !== databaseId
+      databaseId == null
     ) {
       toggle(database.key, true);
       onChange(database.value, { isAutomatic: true });
@@ -87,10 +87,11 @@ function Tree({
     if (
       databaseId &&
       isExpanded({ databaseId }) &&
-      database?.children.length === 1
+      database?.children.length === 1 &&
+      schemaName == null
     ) {
       const schema = database.children[0];
-      if (schema.type === "schema" && schemaName !== schema.value.schemaName) {
+      if (schema.type === "schema") {
         toggle(schema.key, true);
         onChange(schema.value, { isAutomatic: true });
       }
@@ -98,7 +99,7 @@ function Tree({
   }, [databaseId, schemaName, tree, toggle, isExpanded, onChange]);
 
   if (isEmpty) {
-    return <EmptyState title={t`No data to show.`} />;
+    return <EmptyState title={t`No data to show`} />;
   }
 
   return (
