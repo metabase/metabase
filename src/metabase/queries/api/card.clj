@@ -270,21 +270,26 @@
   [cols]
   (map #(update-keys % u/->kebab-case-en) cols))
 
-(defn- source-cols [card source database-id->metadata-provider]
+(mu/defn- source-cols
+  [card
+   source :- [:enum ::breakouts ::aggregations]
+   database-id->metadata-provider]
   (if-let [names (get-in card [:visualization_settings (case source
-                                                         :source/breakouts :graph.dimensions
-                                                         :source/aggregations :graph.metrics)])]
+                                                         ::breakouts    :graph.dimensions
+                                                         ::aggregations :graph.metrics)])]
     (cols->kebab-case (card-columns-from-names card names))
     (->> (dataset-query->query (get database-id->metadata-provider (:database_id card)) (:dataset_query card))
          lib/returned-columns
-         (filter (comp #{source} :lib/source)))))
+         (filter (case source
+                   ::breakouts    :lib/breakout?
+                   ::aggregations #(= (:lib/source %) :source/aggregations))))))
 
 (defn- area-bar-line-series-are-compatible?
   [first-card second-card database-id->metadata-provider]
   (and (#{:area :line :bar} (:display second-card))
-       (let [initial-dimensions (source-cols first-card :source/breakouts database-id->metadata-provider)
-             new-dimensions     (source-cols second-card :source/breakouts database-id->metadata-provider)
-             new-metrics        (source-cols second-card :source/aggregations database-id->metadata-provider)]
+       (let [initial-dimensions (source-cols first-card ::breakouts database-id->metadata-provider)
+             new-dimensions     (source-cols second-card ::breakouts database-id->metadata-provider)
+             new-metrics        (source-cols second-card ::aggregations database-id->metadata-provider)]
          (cond
            ;; must have at least one dimension and one metric
            (or (zero? (count new-dimensions))

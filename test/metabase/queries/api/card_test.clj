@@ -4278,6 +4278,25 @@
                                           {:dataset_query (lib/->legacy-MBQL query-cycle)
                                            :type card-type-c})))))))))))
 
+(deftest cannot-make-query-cycles-with-native-queries-test
+  (testing "Cannot make query cycles that include native queries"
+    (let [mp (mt/metadata-provider)
+          query-a (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type :question}]
+        (let [query-b (mt/native-query {:query "select * from {{#100-base-query}}"
+                                        :template-tags
+                                        {:#100-base-query
+                                         {:type :card
+                                          :name "#100-base-query"
+                                          :id (random-uuid)
+                                          :card-id id-a
+                                          :display-name "#100 Base Query"}}})]
+          (mt/with-temp [:model/Card {id-b :id} {:dataset_query query-b :type :question}]
+            (let [query-cycle (lib/query mp (lib.metadata/card mp id-b))]
+              (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
+                                    {:dataset_query (lib/->legacy-MBQL query-cycle)
+                                     :type :question}))))))))
+
 (deftest e2e-card-update-invalidates-cache-test
   (testing "Card update invalidates card's cache (#55955)"
     (let [existing-config (t2/select-one :model/CacheConfig :model_id 0 :model "root")]
