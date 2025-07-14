@@ -2,8 +2,8 @@ import { useDisclosure } from "@mantine/hooks";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
-import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
+import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
+import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker";
 import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { trackEmbedWizardResourceSelected } from "../analytics";
