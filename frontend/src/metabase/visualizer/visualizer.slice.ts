@@ -143,7 +143,7 @@ const initializeFromState = async (
   return copy(initialState);
 };
 
-const initializeFromCard = async (
+export const initializeFromCard = async (
   cardId: number,
   dispatch: Dispatch,
   getState: GetState,

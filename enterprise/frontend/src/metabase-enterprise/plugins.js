@@ -19,6 +19,7 @@ import "./whitelabel";
 import "./embedding";
 import "./embedding-sdk";
 import "./snippets";
+import "./smtp-override";
 import "./sharing";
 import "./moderation";
 import "./advanced_permissions";

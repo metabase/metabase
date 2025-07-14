@@ -83,7 +83,7 @@ import { EmptyVizState } from "../EmptyVizState";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
-import LoadingView from "./LoadingView";
+import LoadingView, { type LoadingViewProps } from "./LoadingView";
 import NoResultsView from "./NoResultsView";
 import {
   VisualizationActionButtonsContainer,
@@ -144,6 +144,7 @@ type VisualizationOwnProps = {
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
+  renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   onEditSummary?: () => void;
@@ -605,6 +606,7 @@ class Visualization extends PureComponent<
       rawSeries = [],
       visualizerRawSeries,
       renderEmptyMessage,
+      renderLoadingView = LoadingView,
       renderTableHeader,
       replacementContent,
       scrollToColumn,
@@ -794,10 +796,10 @@ class Visualization extends PureComponent<
           ) : genericError ? (
             <SmallGenericError bordered={false} />
           ) : loading ? (
-            <LoadingView
-              expectedDuration={expectedDuration}
-              isSlow={!!isSlow}
-            />
+            renderLoadingView({
+              expectedDuration,
+              isSlow,
+            })
           ) : isPlaceholder ? (
             <EmptyVizState
               chartType={visualization?.identifier}

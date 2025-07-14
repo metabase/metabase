@@ -112,7 +112,6 @@ const PinnedQuestionCard = ({
               {({ question, rawSeries, loading, error, errorIcon }) =>
                 loading ? (
                   <CardPreviewSkeleton
-                    name={question?.displayName()}
                     display={question?.display()}
                     description={question?.description()}
                   />

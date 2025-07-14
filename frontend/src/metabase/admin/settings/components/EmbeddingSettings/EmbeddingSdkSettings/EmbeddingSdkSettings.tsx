@@ -106,7 +106,7 @@ export function EmbeddingSdkSettings() {
 
   return (
     <SettingsPageWrapper title={t`Embedding SDK`}>
-      <UpsellDevInstances source="embedding-page" />
+      <UpsellDevInstances location="embedding-page" />
       <SettingsSection>
         <EmbeddingToggle
           label={t`Enable Embedded analytics SDK for React`}

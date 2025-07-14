@@ -84,9 +84,9 @@
 
 (shared.ns/import-fns
  [lib.aggregation
+  aggregable-columns
   aggregate
   aggregation-clause
-  aggregation-column
   aggregation-ref
   aggregation-operator-columns
   aggregations

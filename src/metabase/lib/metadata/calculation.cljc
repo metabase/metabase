@@ -7,7 +7,6 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
@@ -24,7 +23,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(def DisplayNameStyle
+(mr/def ::display-name-style
   "Schema for valid values of `display-name-style` as passed to [[display-name-method]].
 
   * `:default`: normal style used for 99% of FE stuff. For example a column that comes from a joined table might return
@@ -53,7 +52,7 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (mu/defn ^:export display-name :- :string
-  "Calculate a nice human-friendly display name for something. See [[DisplayNameStyle]] for a the difference between
+  "Calculate a nice human-friendly display name for something. See [[::display-name-style]] for a the difference between
   different `style`s."
   ([query]
    (display-name query query))
@@ -67,7 +66,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     x
-    style        :- DisplayNameStyle]
+    style        :- ::display-name-style]
    (or
     ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
     ((some-fn :display-name :lib/expression-name) (lib.options/options x))
@@ -313,8 +312,10 @@
    [:is-source-table {:optional true} [:maybe :boolean]]
    ;; if this is a Card, is it the source card of the query?
    [:is-source-card {:optional true} [:maybe :boolean]]
+   ;; does this column come from the `:aggregation`s in this stage of the query?
+   [:is-aggregation {:optional true} [:maybe :boolean]]
    ;; does this column occur in the breakout clause?
-   [:is-breakout-column {:optional true} [:maybe :boolean]]
+   [:is-breakout {:optional true} [:maybe :boolean]]
    ;; does this column occur in the order-by clause?
    [:is-order-by-column {:optional true} [:maybe :boolean]]
    ;; for joins
@@ -355,10 +356,12 @@
                           {:query query, :stage-number stage-number, :x x}
                           e))))))))
 
-(defn default-display-info
+(mu/defn default-display-info :- ::display-info
   "Default implementation of [[display-info-method]], available in case you want to use this in a different
   implementation and add additional information to it."
-  [query stage-number x]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   x]
   (let [x-metadata (metadata query stage-number x)]
     (merge
      ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display-name`
@@ -388,7 +391,7 @@
         :is-calculated          (= source :source/expressions)
         :is-implicitly-joinable (= source :source/implicitly-joinable)
         :is-aggregation         (= source :source/aggregations)
-        :is-breakout            (= source :source/breakouts)})
+        :is-breakout            (boolean (:lib/breakout? x-metadata))})
      (when-some [selected (:selected? x-metadata)]
        {:selected selected})
      (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :temporal-unit) x-metadata)]
@@ -408,26 +411,29 @@
           :schema (:schema table)
           :visibility-type (:visibility-type table)}))
 
-(def ColumnMetadataWithSource
+(mr/def ::column-metadata-with-source
   "Schema for the column metadata that should be returned by [[metadata]]."
   [:merge
    [:ref ::lib.schema.metadata/column]
    [:map
-    [:lib/source ::lib.schema.metadata/column-source]]])
+    [:lib/source ::lib.schema.metadata/column.source]]])
 
-(def ColumnsWithUniqueAliases
-  "Schema for column metadata that should be returned by [[visible-columns]]. This is mostly used
-  to power metadata calculation for stages (see [[metabase.lib.stage]]."
+(mr/def ::returned-column
+  [:merge
+   ;; visible column is just the normal column metadata schema but also requires `:lib/source` and
+   ;; `:lib/source-column-alias`
+   [:ref ::visible-column]
+   [:map
+    [:lib/desired-column-alias ::lib.schema.metadata/desired-column-alias]]])
+
+(mr/def ::returned-columns
+  "Schema for column metadata that should be returned by [[returned-columns]] and implementations
+  of [[returned-columns-method]]."
   [:and
-   [:sequential
-    [:merge
-     ColumnMetadataWithSource
-     [:map
-      [:lib/source-column-alias  ::lib.schema.metadata/source-column-alias]
-      [:lib/desired-column-alias ::lib.schema.metadata/desired-column-alias]]]]
+   [:sequential ::returned-column]
    [:fn
     ;; should be dev-facing only, so don't need to i18n
-    {:error/message "Column :lib/desired-column-alias values must be distinct, regardless of case, for each stage!"
+    {:error/message "Column :lib/desired-column-alias values must be distinct for each stage!"
      :error/fn      (fn [{:keys [value]} _]
                       (str "Column :lib/desired-column-alias values must be distinct, got: "
                            (pr-str (mapv :lib/desired-column-alias value))))}
@@ -436,26 +442,14 @@
        (empty? columns)
        (apply distinct? (map :lib/desired-column-alias columns))))]])
 
-(mr/def ::unique-name-fn
-  "Stateful function with the signature
-
-    (f str) => unique-str
-
-  i.e. repeated calls with the same string should return different unique strings."
-  [:=>
-   [:cat :string] ; this is allowed to be a blank string.
-   ::lib.schema.common/non-blank-string])
-
-(def ReturnedColumnsOptions
+(mr/def ::returned-columns.options
   "Schema for options passed to [[returned-columns]] and [[returned-columns-method]]."
-  [:map
-   [:include-remaps? {:optional true, :default false} :boolean]
-   ;; has the signature (f str) => str
-   [:unique-name-fn {:optional true} ::unique-name-fn]])
-
-(mu/defn- default-returned-columns-options :- ReturnedColumnsOptions
-  []
-  {:unique-name-fn (lib.util/unique-name-generator)})
+  [:and
+   [:map
+    [:include-remaps? {:optional true, :default false} :boolean]]
+   [:fn
+    {:error/message "unique-name-fn is no longer allowed as an option."}
+    (complement :unique-name-fn)]])
 
 (defmulti returned-columns-method
   "Impl for [[returned-columns]]."
@@ -490,12 +484,12 @@
   The value is used in [[metabase.lib.field.resolution/resolve-field-ref]]."
   false)
 
-(mu/defn returned-columns :- [:maybe ColumnsWithUniqueAliases]
+(mu/defn returned-columns :- [:maybe ::returned-columns]
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
   join, and include the `:lib/source` of where they came from. This should only include columns that will be present
   in the results; DOES NOT include 'expected' columns that are not 'exported' to subsequent stages.
 
-  See [[ReturnedColumnsOptions]] for allowed options and [[default-returned-columns-options]] for default values."
+  See [[::returned-columns.options]] for allowed options."
   ([query]
    (returned-columns query (lib.util/query-stage query -1)))
 
@@ -508,15 +502,25 @@
   ([query          :- ::lib.schema/query
     stage-number   :- :int
     x
-    options        :- [:maybe ReturnedColumnsOptions]]
-   (let [options (merge (default-returned-columns-options) options)]
-     (binding [*propagate-binning-and-bucketing* true]
-       (returned-columns-method query stage-number x options)))))
+    options        :- [:maybe ::returned-columns.options]]
+   (binding [*propagate-binning-and-bucketing* true]
+     (returned-columns-method query stage-number x options))))
 
-(def VisibleColumnsOptions
+(mr/def ::visible-column
+  [:merge
+   [:ref ::column-metadata-with-source]
+   [:map
+    [:lib/source-column-alias ::lib.schema.metadata/source-column-alias]]])
+
+(mr/def ::visible-columns
+  "Schema for column metadata that should be returned by [[visible-columns]] and implementations
+  of [[visible-columns-method]]."
+  [:sequential ::visible-column])
+
+(mr/def ::visible-columns.options
   "Schema for options passed to [[visible-columns]] and [[visible-columns-method]]."
   [:merge
-   ReturnedColumnsOptions
+   [:ref ::returned-columns.options]
    [:map
     ;; these all default to true
     [:include-joined?                              {:optional true} :boolean]
@@ -524,25 +528,15 @@
     [:include-implicitly-joinable?                 {:optional true} :boolean]
     [:include-implicitly-joinable-for-source-card? {:optional true} :boolean]]])
 
-(mu/defn- default-visible-columns-options :- VisibleColumnsOptions
+(mu/defn- default-visible-columns-options :- ::visible-columns.options
   []
-  (merge
-   (default-returned-columns-options)
-   {:include-joined?                              true
-    :include-expressions?                         true
-    :include-implicitly-joinable?                 true
-    :include-implicitly-joinable-for-source-card? true}))
+  {:include-joined?                              true
+   :include-expressions?                         true
+   :include-implicitly-joinable?                 true
+   :include-implicitly-joinable-for-source-card? true})
 
 (defmulti visible-columns-method
-  "Impl for [[visible-columns]].
-
-  This should mostly be similar to the implementation for [[metadata-method]], but needs to include
-  `:lib/source-column-alias` and `:lib/desired-column-alias`. `:lib/source-column-alias` should probably be the same
-  as `:name`; use the supplied `:unique-name-fn` from `options` with the signature `(f str) => str` to ensure
-  `:lib/desired-column-alias` is unique.
-
-  Also, columns that aren't 'projected' should be returned as well -- in other words, ignore `:fields`,
-  `:aggregations`, and `:breakouts`."
+  "Impl for [[visible-columns]]."
   {:arglists '([query stage-number x options])}
   (fn [_query _stage-number x _options]
     (lib.dispatch/dispatch-value x))
@@ -562,7 +556,7 @@
   [query _stage-number stage-number options]
   (visible-columns-method query stage-number (lib.util/query-stage query stage-number) options))
 
-(mu/defn visible-columns :- ColumnsWithUniqueAliases
+(mu/defn visible-columns :- ::visible-columns
   "Return a sequence of columns that should be visible *within* a given stage of something, e.g. a query stage or a
   join query. This includes not just the columns that get returned (ones present in [[metadata]], but other columns
   that are 'reachable' in this stage of the query. E.g. in a query like
@@ -593,7 +587,7 @@
   ([query          :- ::lib.schema/query
     stage-number   :- :int
     x
-    options        :- [:maybe VisibleColumnsOptions]]
+    options        :- [:maybe ::visible-columns.options]]
    (let [options (merge (default-visible-columns-options) options)]
      (u/prog1 (visible-columns-method query stage-number x options)
        (lib.metadata.ident/assert-idents-present! <> {:query        query
@@ -601,13 +595,12 @@
                                                       :target       x
                                                       :options      options})))))
 
-(mu/defn remapped-columns
+(mu/defn remapped-columns :- [:maybe ::visible-columns]
   "Given a seq of columns, return metadata for any remapped columns, if the `:include-remaps?` option is set."
-  [query :- map?
-   stage-number
-   source-cols
-   {:keys [include-remaps? unique-name-fn] :as _options} :- [:map
-                                                             [:unique-name-fn ::unique-name-fn]]]
+  [query                                  :- ::lib.schema/query
+   stage-number                           :- :int
+   source-cols                            :- [:maybe [:sequential ::lib.schema.metadata/column]]
+   {:keys [include-remaps?] :as _options} :- [:maybe ::returned-columns.options]]
   (when (and include-remaps?
              (lib.util/first-stage? query stage-number))
     (let [existing-ids (into #{} (keep :id) source-cols)]
@@ -616,12 +609,9 @@
             :when  (and remapped
                         (not (existing-ids (:id remapped))))]
         (assoc remapped
-               :lib/source               (:lib/source column) ;; TODO: What's the right source for a remap?
-               :lib/source-column-alias  (column-name query stage-number remapped)
-               :lib/hack-original-name   (or ((some-fn :lib/hack-original-name :name) column)
-                                             (:name remapped))
-               :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query remapped))
-               :ident                    (lib.metadata.ident/remap-ident (:ident remapped) (:ident column)))))))
+               :lib/source              (:lib/source column) ; TODO: What's the right source for a remap?
+               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) remapped)
+               :ident                   (lib.metadata.ident/remap-ident (:ident remapped) (:ident column)))))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
@@ -640,7 +630,7 @@
   Does not include columns from any Tables that are already explicitly joined.
 
   Does not include columns that would be implicitly joinable via multiple hops."
-  [query stage-number column-metadatas unique-name-fn]
+  [query stage-number column-metadatas]
   (let [remap-target-ids (into #{} (keep (comp :field-id :lib/external-remap)) column-metadatas)
         existing-table-ids (into #{} (comp (remove (comp remap-target-ids :id))
                                            (map :table-id))
@@ -665,22 +655,25 @@
     (into []
           (mapcat (fn [{:keys [table-id], ::keys [fk-ident fk-field-id fk-field-name fk-join-alias]}]
                     (let [table-metadata (id->table table-id)
-                          options        {:unique-name-fn               unique-name-fn
-                                          :include-implicitly-joinable? false}]
+                          ;; Shouldn't we be forwarding the rest of the `options` as well? -- Cam
+                          ;;
+                          ;; I wouldn't say so. This is deliberately minimal, including only the core/default columns
+                          ;; for an implicit join. In practice since implicit joins are only to tables (or cards, in
+                          ;; the future) the other options (including joins, expressions, etc.) are not relevant. It's
+                          ;; always the table's columns, or the returned-columns of the card. -- Braden
+                          options        {:include-implicitly-joinable? false}]
                       (for [field (visible-columns-method query stage-number table-metadata options)
-                            :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)
-                                   field (m/assoc-some field
-                                                       :ident                    ident
-                                                       :fk-field-id              fk-field-id
-                                                       :fk-field-name            fk-field-name
-                                                       :fk-join-alias            fk-join-alias
-                                                       :lib/source               :source/implicitly-joinable
-                                                       :lib/source-column-alias  (:name field))]]
-                        (assoc field :lib/desired-column-alias (unique-name-fn
-                                                                (lib.join.util/desired-alias query field)))))))
+                            :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)]]
+                        (m/assoc-some field
+                                      :ident                    ident
+                                      :fk-field-id              fk-field-id
+                                      :fk-field-name            fk-field-name
+                                      :fk-join-alias            fk-join-alias
+                                      :lib/source               :source/implicitly-joinable
+                                      :lib/source-column-alias  (:name field))))))
           target-fields)))
 
-(mu/defn default-columns-for-stage :- ColumnsWithUniqueAliases
+(mu/defn default-columns-for-stage :- ::returned-columns
   "Given a query and stage, returns the columns which would be selected by default.
 
   This is exactly [[lib.metadata.calculation/returned-columns]] filtered by the `:lib/source`.

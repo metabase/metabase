@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
@@ -208,9 +209,16 @@
 
 (defn find-first
   "Finds the column with the matching `:lib/desired-column-alias`"
-  [desired columns]
-  (m/find-first (comp #(= desired %) :lib/desired-column-alias) columns))
+  [metadata-providerable desired columns]
+  ;; [[lib/visible-columns]] no longer returns desired column alias (since it's a function of which columns get
+  ;; returned), however I don't feel like completely reworking this test so I'm just going to add them here.
+  (let [columns (into []
+                      (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable)
+                      columns)]
+    (or (m/find-first (comp #(= desired %) :lib/desired-column-alias) columns)
+        (throw (ex-info "Failed to find column"
+                        {:desired-column-alias desired, :found (map :lib/desired-column-alias columns)})))))
 
 (deftest ^:parallel matrix-test-queries-test
   (doseq [[query desired] (test-queries :type/Text)]
-    (is (find-first desired (lib/visible-columns query)))))
+    (is (find-first query desired (lib/visible-columns query)))))

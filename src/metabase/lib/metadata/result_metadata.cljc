@@ -112,22 +112,15 @@
                       {:initial-cols (map select-relevant-keys initial-cols)
                        :lib-cols     (map select-relevant-keys lib-cols)})))))
 
-(mu/defn- source->legacy-source :- ::legacy-source
-  [source :- [:maybe ::lib.schema.metadata/column-source]]
-  (case source
-    :source/card                :fields
-    :source/native              :native
-    :source/previous-stage      :fields
-    :source/table-defaults      :fields
-    :source/fields              :fields
-    :source/aggregations        :aggregation
-    :source/breakouts           :breakout
-    :source/joins               :fields
-    :source/expressions         :fields
-    :source/implicitly-joinable :fields
-    ;; TODO (Cam 6/26/25) -- ???? Not clear why some columns don't have a `:lib/source` at all. But in that case just
-    ;; fall back to `:fields`
-    :fields))
+(mu/defn- legacy-source :- ::legacy-source
+  [{source :lib/source, breakout? :lib/breakout?, :as _col} :- [:maybe ::lib.schema.metadata/column]]
+  (if breakout?
+    :breakout
+    (case source
+      :source/native       :native
+      :source/aggregations :aggregation
+      ;; everything else gets mapped to `:fields`.
+      :fields)))
 
 (mu/defn- basic-native-col :- ::kebab-cased-map
   "Generate basic column metadata for a column coming back from a native query for which we have only barebones metadata
@@ -211,7 +204,7 @@
   https://metaboat.slack.com/archives/C0645JP1W81/p1749064861598669?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [cols :- [:sequential ::kebab-cased-map]]
   (mapv (fn [col]
-          (assoc col :source (source->legacy-source (:lib/source col))))
+          (assoc col :source (legacy-source col)))
         cols))
 
 (mu/defn- fe-friendly-expression-ref :- ::super-broken-legacy-field-ref
@@ -235,7 +228,13 @@
       (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
         (if (seq fe-friendly-opts)
           [:expression expression-name fe-friendly-opts]
-          [:expression expression-name])))))
+          [:expression expression-name]))
+
+      [:aggregation aggregation-index (opts :guard (some-fn :base-type :effective-type))]
+      (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
+        (if (seq fe-friendly-opts)
+          [:aggregation aggregation-index fe-friendly-opts]
+          [:aggregation aggregation-index])))))
 
 (mu/defn- remove-join-alias-from-broken-field-ref?
   "Following the rules for the old 'annotate' code:
@@ -323,8 +322,7 @@
                            query
                            -1
                            (lib.util/query-stage query -1)
-                           {:unique-name-fn  (lib.util/non-truncating-unique-name-generator)
-                            :include-remaps? (not (get-in query [:middleware :disable-remaps?]))}))
+                           {:include-remaps? (not (get-in query [:middleware :disable-remaps?]))}))
           ;; generate barebones cols if lib was unable to calculate metadata here.
           lib-cols (if (empty? lib-cols)
                      (mapv basic-native-col initial-cols)
