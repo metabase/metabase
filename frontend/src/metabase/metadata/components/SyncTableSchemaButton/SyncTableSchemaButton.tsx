@@ -15,9 +15,9 @@ export function SyncTableSchemaButton({ tableId }: { tableId: TableId }) {
 
     if (error) {
       sendToast({
-        icon: "warning",
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to start sync`,
-        toastColor: "error",
       });
     } else {
       setStarted(true);

@@ -23,13 +23,14 @@ type Positionable =
   | Lib.ExpressionParts
   | Lib.ExpressionArg
   | { node?: Node }
+  | { token?: Token }
   | { pos: number; len: number }
   | Node
   | Token
   | undefined
   | null;
 
-function position(x: Positionable):
+export function position(x: Positionable):
   | {
       pos?: number;
       len?: number;
@@ -40,6 +41,9 @@ function position(x: Positionable):
   }
   if ("node" in x) {
     return position(x.node);
+  }
+  if ("token" in x && x.token) {
+    return { pos: x.token.pos, len: x.token.len };
   }
   if ("pos" in x && "len" in x) {
     return { pos: x.pos, len: x.len };

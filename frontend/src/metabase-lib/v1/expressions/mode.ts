@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import { getClauseDefinition, isDefinedClause } from "./clause";
 import { DiagnosticError } from "./errors";
@@ -39,4 +39,21 @@ export function checkExpressionModeSupportsClause(
   }
 
   return null;
+}
+
+export function columnsForExpressionMode({
+  query,
+  stageIndex = -1,
+  expressionIndex,
+  expressionMode,
+}: {
+  query: Lib.Query;
+  stageIndex?: number;
+  expressionIndex?: number;
+  expressionMode: Lib.ExpressionMode;
+}) {
+  if (expressionMode === "aggregation") {
+    return Lib.aggregableColumns(query, stageIndex, expressionIndex);
+  }
+  return Lib.expressionableColumns(query, stageIndex, expressionIndex);
 }

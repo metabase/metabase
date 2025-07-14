@@ -431,6 +431,8 @@ import warning_component from "./warning.svg?component";
 import warning_source from "./warning.svg?source";
 import warning_round_filled_component from "./warning_round_filled.svg?component";
 import warning_round_filled_source from "./warning_round_filled.svg?source";
+import warning_triangle_filled_component from "./warning_triangle_filled.svg?component";
+import warning_triangle_filled_source from "./warning_triangle_filled.svg?source";
 import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
 import webhook_component from "./webhook.svg?component";
@@ -1300,6 +1302,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: warning_round_filled_component,
       source: warning_round_filled_source,
     },
+    warning_triangle_filled: {
+      component: warning_triangle_filled_component,
+      source: warning_triangle_filled_source,
+    },
     waterfall: {
       component: waterfall_component,
       source: waterfall_source,
@@ -1557,6 +1563,7 @@ export type IconName =
   | "view_archive"
   | "warning"
   | "warning_round_filled"
+  | "warning_triangle_filled"
   | "waterfall"
   | "webhook"
   | "10k"
