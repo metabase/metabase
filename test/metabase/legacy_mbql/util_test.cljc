@@ -584,6 +584,42 @@
                  (mbql.u/desugar-filter-clause
                   [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ" "LMN"])))))))
 
+(t/deftest ^:parallel desugar-between-test
+  (t/testing "desugar-between with inclusive boundaries"
+    (t/testing "leaves simple between alone"
+      (t/is (= [:between [:field 1 nil] 10 20]
+               (mbql.u/desugar-between [:between [:field 1 nil] 10 20]))))
+    (t/testing "both inclusive (default) - uses standard between without options"
+      (t/is (= [:between [:field 1 nil] 10 20]
+               (mbql.u/desugar-between [:between [:field 1 nil] 10 20 {}])))
+      (t/is (= [:between [:field 1 nil] 10 20]
+               (mbql.u/desugar-between [:between [:field 1 nil] 10 20 {:min-inclusive true, :max-inclusive true}])))))
+
+  (t/testing "desugar-between with exclusive boundaries"
+    (t/testing "min-inclusive false only"
+      (t/is (= [:and [:> [:field 1 nil] 10] [:<= [:field 1 nil] 20]]
+               (mbql.u/desugar-between [:between [:field 1 nil] 10 20 {:min-inclusive false}]))))
+    (t/testing "max-inclusive false only"
+      (t/is (= [:and [:>= [:field 1 nil] 10] [:< [:field 1 nil] 20]]
+               (mbql.u/desugar-between [:between [:field 1 nil] 10 20 {:max-inclusive false}]))))
+    (t/testing "both exclusive"
+      (t/is (= [:and [:> [:field 1 nil] 10] [:< [:field 1 nil] 20]]
+               (mbql.u/desugar-between [:between [:field 1 nil] 10 20 {:min-inclusive false, :max-inclusive false}])))))
+
+  (t/testing "desugar-between with expressions"
+    (t/is (= [:and [:> [:expression "price"] 100] [:<= [:expression "price"] 200]]
+             (mbql.u/desugar-between [:between [:expression "price"] 100 200 {:min-inclusive false}]))))
+
+  (t/testing "desugar-between with different field types"
+    (t/testing "with field options"
+      (t/is (= [:and [:> [:field 1 {:temporal-unit :day}] 10] [:< [:field 1 {:temporal-unit :day}] 20]]
+               (mbql.u/desugar-between [:between [:field 1 {:temporal-unit :day}] 10 20
+                                        {:min-inclusive false, :max-inclusive false}]))))
+    (t/testing "with nested field references"
+      (t/is (= [:and [:>= [:field "price" {:base-type :type/Float}] 10.5] [:< [:field "price" {:base-type :type/Float}] 20.5]]
+               (mbql.u/desugar-between [:between [:field "price" {:base-type :type/Float}] 10.5 20.5
+                                        {:max-inclusive false}]))))))
+
 (t/deftest ^:parallel desugar-temporal-extract-test
   (t/testing "desugaring :get-year, :get-month, etc"
     (doseq [[[op mode] unit] mbql.u/temporal-extract-ops->unit]

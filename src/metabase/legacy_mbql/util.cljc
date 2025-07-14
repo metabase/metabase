@@ -372,6 +372,19 @@
              (for [x (concat [x y] more)]
                (into [op field x] tail))))))
 
+(defn desugar-between
+  "Rewrite :between with inclusive options as compound comparisons"
+  [m]
+  (lib.util.match/replace m
+    [:between field min-val max-val (opts :guard map?)]
+    (let [{:keys [min-inclusive max-inclusive]
+           :or   {min-inclusive true, max-inclusive true}} opts]
+      (if (and min-inclusive max-inclusive)
+        [:between field min-val max-val] ; Standard between without options
+        [:and
+         [(if min-inclusive :>= :>) field min-val]
+         [(if max-inclusive :<= :<) field max-val]]))))
+
 (defn desugar-current-relative-datetime
   "Replace `relative-datetime` clauses like `[:relative-datetime :current]` with `[:relative-datetime 0 <unit>]`.
   `<unit>` is inferred from the `:field` the clause is being compared to (if any), otherwise falls back to `default.`"
@@ -474,6 +487,7 @@
       desugar-in
       desugar-multi-argument-comparisons
       desugar-does-not-contain
+      desugar-between ; Should occur before time-interval and inside, which generate (currently vanilla) :between clauses
       desugar-time-interval
       desugar-relative-time-interval
       desugar-is-null-and-not-null

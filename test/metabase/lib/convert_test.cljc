@@ -561,6 +561,49 @@
     {"and"  [:and [:field 1 nil] [:field 2 nil]]}
     [:expression "and"]))
 
+(deftest ^:parallel round-trip-between-with-options-test
+  (testing "between filter with options produces valid transitional legacy MBQL"
+    (are [pmbql-filter expected-legacy-filter]
+         (let [pmbql-query {:lib/type :mbql/query
+                            :database 1
+                            :stages [{:lib/type :mbql.stage/mbql
+                                      :source-table 1
+                                      :filters [pmbql-filter]}]}
+               legacy-query (lib.convert/->legacy-MBQL pmbql-query)
+               legacy-filter (get-in legacy-query [:query :filter])]
+           ;; The legacy query must be valid according to the schema
+           (is (= expected-legacy-filter legacy-filter)
+               "Conversion produces expected legacy filter")
+           ;; And it must validate against the legacy schema (with our schema update)
+           (is (try
+                 (mbql.s/validate-query legacy-query)
+                 true
+                 (catch Exception _
+                   false))
+               "Legacy query validates against schema"))
+
+      ;; Standard between (both inclusive) - no options needed
+      [:between {} [:field {} 1] 10 20]
+      [:between [:field 1 nil] 10 20]
+
+      ;; min-inclusive false - produces transitional format with options
+      [:between {:min-inclusive false} [:field {} 1] 10 20]
+      [:between [:field 1 nil] 10 20 {:min-inclusive false}]
+
+      ;; max-inclusive false - produces transitional format with options
+      [:between {:max-inclusive false} [:field {} 1] 10 20]
+      [:between [:field 1 nil] 10 20 {:max-inclusive false}]
+
+      ;; both false - produces transitional format with options
+      [:between {:min-inclusive false, :max-inclusive false} [:field {} 1] 10 20]
+      [:between [:field 1 nil] 10 20 {:min-inclusive false, :max-inclusive false}]
+
+      ;; both explicitly true - produces transitional format with options
+      [:between {:min-inclusive true, :max-inclusive true} [:field {} 1] 10 20]
+      [:between [:field 1 nil] 10 20 {:min-inclusive true, :max-inclusive true}])))
+
+; Test moved to metabase.lib.convert-desugar-integration-test namespace
+
 (deftest ^:parallel round-trip-segments-test
   (test-round-trip {:database 282
                     :type :query
