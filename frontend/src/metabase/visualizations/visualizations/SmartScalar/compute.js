@@ -1,4 +1,4 @@
-import moment from "moment"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -382,7 +382,7 @@ function computeComparisonPeriodsAgo({
     dateUnitSettings.dateUnit,
   ).toLowerCase();
 
-  const computedPrevDate = moment
+  const computedPrevDate = dayjs
     .parseZone(nextDate)
     .subtract(dateUnitsAgo, dateUnitSettings.dateUnit)
     .format();
@@ -433,7 +433,7 @@ function getRowOfPeriodsAgo({
   nextValueRowIndex,
   rows,
 }) {
-  const targetDate = moment.parseZone(prevDate);
+  const targetDate = dayjs.parseZone(prevDate);
   // skip the latest element since that is our current value
   const searchIndexStart = nextValueRowIndex - 1;
   if (searchIndexStart < 0) {
@@ -449,7 +449,7 @@ function getRowOfPeriodsAgo({
 
   for (let i = searchIndexStart; i >= searchIndexEnd; i--) {
     const candidateRow = rows[i];
-    const candidateDate = moment.parseZone(candidateRow[dimensionColIndex]);
+    const candidateDate = dayjs.parseZone(candidateRow[dimensionColIndex]);
     const candidateValue = candidateRow[metricColIndex];
 
     if (
@@ -496,8 +496,8 @@ function computeComparisonStrPreviousValue({
   prevDate,
   nextDate,
 }) {
-  const isSameDay = moment.parseZone(prevDate).isSame(nextDate, "day");
-  const isSameYear = moment.parseZone(prevDate).isSame(nextDate, "year");
+  const isSameDay = dayjs.parseZone(prevDate).isSame(nextDate, "day");
+  const isSameYear = dayjs.parseZone(prevDate).isSame(nextDate, "year");
 
   const options = {
     removeDay: isSameDay,
