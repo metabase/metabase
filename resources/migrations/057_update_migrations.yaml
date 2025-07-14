@@ -175,7 +175,7 @@ databaseChangeLog:
             baseColumnNames: transform_id
             referencedTableName: transform_view
             referencedColumnNames: id
-            onDelete: CASCADE
+            onDelete: SET NULL
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
