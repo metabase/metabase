@@ -22,10 +22,15 @@ export type ComponentConfiguration = {
   formScopes?: ComponentFormScope[];
 };
 
-export type ComponentValue = {
-  type: "constant";
-  value: string;
-};
+export type ComponentValue =
+  | {
+      type: "constant";
+      value?: string;
+    }
+  | {
+      type: "context";
+      field?: string;
+    };
 
 export type ComponentDefinition = {
   id: string;

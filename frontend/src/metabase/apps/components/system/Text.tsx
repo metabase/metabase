@@ -1,12 +1,17 @@
 import { getComponentStyleValue } from "metabase/apps/helpers";
+import type { ComponentContext } from "metabase/apps/hooks/use-component-context";
+import { useComponentValue } from "metabase/apps/hooks/use-component-value";
 import type { ComponentDefinition } from "metabase/apps/types";
 import { Text } from "metabase/ui";
 
 type Props = {
+  componentContext: ComponentContext;
   component: ComponentDefinition;
 };
 
-export function TextSystemComponent({ component }: Props) {
+export function TextSystemComponent({ component, componentContext }: Props) {
+  const value = useComponentValue(component, componentContext, "Text");
+
   return (
     <Text
       size={getComponentStyleValue(component, "size")}
@@ -17,7 +22,7 @@ export function TextSystemComponent({ component }: Props) {
       }
       c={getComponentStyleValue(component, "color")}
     >
-      {component.value?.value}
+      {value}
     </Text>
   );
 }

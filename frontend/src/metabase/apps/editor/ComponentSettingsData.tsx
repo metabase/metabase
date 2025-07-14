@@ -1,18 +1,19 @@
 import { Select, Stack, TextInput } from "metabase/ui";
 
+import type { ComponentContext } from "../hooks/use-component-context";
 import type { ComponentDefinition } from "../types";
 
 type Props = {
+  componentContext: ComponentContext;
   component: ComponentDefinition;
   onComponentSettingsChange: (settings: Partial<ComponentDefinition>) => void;
 };
 
 export function ComponentSettingsData({
+  componentContext,
   component,
   onComponentSettingsChange,
 }: Props) {
-  const type = (component.value?.type as string) ?? "constant";
-
   const handleChangeConstantValue = (value: string) => {
     onComponentSettingsChange({
       value: {
@@ -22,11 +23,29 @@ export function ComponentSettingsData({
     });
   };
 
+  const handleChangeContextField = (value: string) => {
+    onComponentSettingsChange({
+      value: {
+        type: "context",
+        field: value,
+      },
+    });
+  };
+
+  const handleChangeContextType = (value: string) => {
+    onComponentSettingsChange({
+      value: {
+        type: value as any,
+      },
+    });
+  };
+
   return (
     <Stack gap="md">
       <Select
         label="Source Type"
-        value={type}
+        value={component.value?.type ?? "constant"}
+        onChange={handleChangeContextType}
         data={[
           {
             label: "Constant Value",
@@ -35,31 +54,41 @@ export function ComponentSettingsData({
           {
             label: "Component Context",
             value: "context",
-            disabled: true,
+            disabled: componentContext.type !== "tableRow",
           },
           {
             label: "Data Source Parameter",
-            value: "dataSource",
+            value: "dataSource" as any,
             disabled: true,
           },
           {
             label: "Global Parameter",
-            value: "global",
+            value: "global" as any,
             disabled: true,
           },
           {
             label: "Form Value",
-            value: "form",
+            value: "form" as any,
             disabled: true,
           },
         ]}
       />
-      {type === "constant" && (
+      {component.value?.type === "constant" && (
         <TextInput
           label="Constant Value"
           value={component.value?.value ?? ""}
           onChange={(e) => {
             handleChangeConstantValue(e.target.value);
+          }}
+        />
+      )}
+      {component.value?.type === "context" && (
+        <Select
+          label="Context Parameter"
+          value={component.value?.field ?? ""}
+          data={componentContext.parameters}
+          onChange={(value) => {
+            handleChangeContextField(value);
           }}
         />
       )}

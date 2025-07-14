@@ -1,6 +1,7 @@
 import { Text } from "metabase/ui";
 
 import { SystemComponentId } from "../const/systemComponents";
+import type { ComponentContext } from "../hooks/use-component-context";
 import type { ComponentDefinition } from "../types";
 
 import { CardSystemComponent } from "./system/Card";
@@ -11,6 +12,7 @@ import { TextSystemComponent } from "./system/Text";
 import { TitleSystemComponent } from "./system/Title";
 
 type Props = {
+  componentContext: ComponentContext;
   parentComponent?: ComponentDefinition;
   component: ComponentDefinition;
   ChildComponent?: React.ComponentType<any>;
@@ -18,16 +20,27 @@ type Props = {
 };
 
 export function ComponentTreeNode({
+  componentContext,
   component,
   ChildComponent = ComponentTreeNode,
   childComponentProps,
 }: Props) {
   switch (component.componentId) {
     case SystemComponentId.Title:
-      return <TitleSystemComponent component={component} />;
+      return (
+        <TitleSystemComponent
+          component={component}
+          componentContext={componentContext}
+        />
+      );
 
     case SystemComponentId.Text:
-      return <TextSystemComponent component={component} />;
+      return (
+        <TextSystemComponent
+          component={component}
+          componentContext={componentContext}
+        />
+      );
 
     case SystemComponentId.Icon:
       return <IconSystemComponent component={component} />;
@@ -35,6 +48,7 @@ export function ComponentTreeNode({
     case SystemComponentId.Stack:
       return (
         <StackSystemComponent
+          componentContext={componentContext}
           component={component}
           ChildComponent={ChildComponent}
           childComponentProps={childComponentProps}
@@ -44,6 +58,7 @@ export function ComponentTreeNode({
     case SystemComponentId.Group:
       return (
         <GroupSystemComponent
+          componentContext={componentContext}
           component={component}
           ChildComponent={ChildComponent}
           childComponentProps={childComponentProps}
@@ -53,6 +68,7 @@ export function ComponentTreeNode({
     case SystemComponentId.Card:
       return (
         <CardSystemComponent
+          componentContext={componentContext}
           component={component}
           ChildComponent={ChildComponent}
           childComponentProps={childComponentProps}

@@ -3,17 +3,20 @@ import { IconDatabase, IconListTree, IconPalette } from "@tabler/icons-react";
 import { Box, Tabs, Text, Title } from "metabase/ui";
 
 import { getComponentName } from "../helpers";
+import type { ComponentContext } from "../hooks/use-component-context";
 import type { ComponentDefinition } from "../types";
 
 import { ComponentSettingsData } from "./ComponentSettingsData";
 import { ComponentSettingsStyle } from "./ComponentSettingsStyle";
 
 type Props = {
+  componentContext: ComponentContext;
   component: ComponentDefinition;
   onComponentSettingsChange: (settings: Partial<ComponentDefinition>) => void;
 };
 
 export function ComponentSettingsSidebar({
+  componentContext,
   component,
   onComponentSettingsChange,
 }: Props) {
@@ -42,6 +45,7 @@ export function ComponentSettingsSidebar({
         <Tabs.Panel value="data" py="md">
           <ComponentSettingsData
             component={component}
+            componentContext={componentContext}
             onComponentSettingsChange={onComponentSettingsChange}
           />
         </Tabs.Panel>

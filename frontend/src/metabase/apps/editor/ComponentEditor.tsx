@@ -8,6 +8,7 @@ import {
   SystemComponentId,
 } from "../const/systemComponents";
 import { TRAVERSE_STOP, traverseComponentTree } from "../helpers";
+import { useComponentContext } from "../hooks/use-component-context";
 import type { ComponentConfiguration, ComponentDefinition } from "../types";
 
 import { ComponentEditorHeader } from "./ComponentEditorHeader";
@@ -40,6 +41,10 @@ export function ComponentEditor() {
       title: "Untitled Component",
       context: "none",
     });
+
+  const componentContext = useComponentContext({
+    component: componentConfiguration,
+  });
 
   const handleSelectInitialComponent = (component: ComponentMetadata) => {
     const componentDefinition: ComponentDefinition = {
@@ -220,6 +225,7 @@ export function ComponentEditor() {
         >
           <ComponentPreviewRoot configuration={componentConfiguration}>
             <EditableComponentTreeNode
+              componentContext={componentContext}
               selectedComponent={selectedComponent}
               component={componentConfiguration.root}
               onSelect={handleSelectComponent}
@@ -242,6 +248,7 @@ export function ComponentEditor() {
               />
             ) : (
               <ComponentSettingsSidebar
+                componentContext={componentContext}
                 component={selectedComponent}
                 onComponentSettingsChange={handleComponentSettingsChange}
               />

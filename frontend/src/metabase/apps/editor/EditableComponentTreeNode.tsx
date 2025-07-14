@@ -7,12 +7,14 @@ import { Box } from "metabase/ui";
 import { ComponentTreeNode } from "../components/ComponentTreeNode";
 import { SystemComponentId } from "../const/systemComponents";
 import { getComponentName } from "../helpers";
+import type { ComponentContext } from "../hooks/use-component-context";
 import type { ComponentDefinition } from "../types";
 
 import { ComponentPickPlaceholder } from "./ComponentPickPlaceholder";
 import S from "./EditableComponentTreeNode.module.css";
 
 type Props = {
+  componentContext: ComponentContext;
   parentComponent?: ComponentDefinition;
   component: ComponentDefinition;
   selectedComponent: ComponentDefinition | null;
@@ -25,6 +27,7 @@ type Props = {
 };
 
 export function EditableComponentTreeNode({
+  componentContext,
   parentComponent,
   component,
   selectedComponent,
@@ -102,6 +105,7 @@ export function EditableComponentTreeNode({
         </>
       )}
       <ComponentTreeNode
+        componentContext={componentContext}
         component={component}
         ChildComponent={EditableComponentTreeNode}
         childComponentProps={{

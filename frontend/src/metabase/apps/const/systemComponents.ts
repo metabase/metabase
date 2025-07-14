@@ -51,6 +51,15 @@ export type ComponentMetadata = {
 export const DEFAULT_SPACING = "md";
 export const SPACING_OPTIONS = ["xs", "sm", "md", "lg", "xl"];
 export const SPACING_OPTIONS_WITH_ZERO = ["0", ...SPACING_OPTIONS];
+export const FLEX_ALIGN_OPTIONS = [
+  "flex-start",
+  "center",
+  "flex-end",
+  "stretch",
+  "space-between",
+  "space-around",
+  "space-evenly",
+];
 
 export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
   {
@@ -156,7 +165,7 @@ export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
       {
         name: "Gap",
         key: "gap",
-        defaultValue: "sm",
+        defaultValue: "md",
         type: "string",
         options: SPACING_OPTIONS_WITH_ZERO,
       },
@@ -166,6 +175,20 @@ export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
         defaultValue: "0",
         type: "string",
         options: SPACING_OPTIONS_WITH_ZERO,
+      },
+      {
+        name: "Align",
+        key: "align",
+        defaultValue: "center",
+        type: "string",
+        options: FLEX_ALIGN_OPTIONS,
+      },
+      {
+        name: "Justify",
+        key: "justify",
+        defaultValue: "flex-start",
+        type: "string",
+        options: FLEX_ALIGN_OPTIONS,
       },
     ],
   },
@@ -190,6 +213,20 @@ export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
         defaultValue: "0",
         type: "string",
         options: SPACING_OPTIONS_WITH_ZERO,
+      },
+      {
+        name: "Align",
+        key: "align",
+        defaultValue: "flex-start",
+        type: "string",
+        options: FLEX_ALIGN_OPTIONS,
+      },
+      {
+        name: "Justify",
+        key: "justify",
+        defaultValue: "flex-start",
+        type: "string",
+        options: FLEX_ALIGN_OPTIONS,
       },
     ],
   },
