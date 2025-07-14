@@ -94,7 +94,13 @@ function getJoinedQuery() {
   return Lib.join(query, stageIndex, join);
 }
 
-function getJoinedQueryWithCustomLhsExpression() {
+type FindColumn = (tableName: string, columnName: string) => Lib.ColumnMetadata;
+type CreateExpression = (findColumn: FindColumn) => Lib.ExpressionClause;
+
+function getJoinedQueryWithCustomExpressions(
+  createLhsExpression: CreateExpression,
+  createRhsExpression: CreateExpression,
+) {
   const query = createQuery({ metadata });
   const {
     table,
@@ -103,40 +109,11 @@ function getJoinedQueryWithCustomLhsExpression() {
     findLHSColumn,
     findRHSColumn,
   } = getJoinQueryHelpers(query, 0, PRODUCTS_ID);
-
-  const ordersProductId = findLHSColumn("ORDERS", "PRODUCT_ID");
-  const productsId = findRHSColumn("PRODUCTS", "ID");
   const stageIndex = -1;
   const condition = Lib.joinConditionClause(
     defaultOperator,
-    Lib.expressionClause("+", [ordersProductId, 1]),
-    productsId,
-  );
-  const join = Lib.withJoinFields(
-    Lib.joinClause(table, [condition], defaultStrategy),
-    "all",
-  );
-
-  return Lib.join(query, stageIndex, join);
-}
-
-function getJoinedQueryWithCustomRhsExpression() {
-  const query = createQuery({ metadata });
-  const {
-    table,
-    defaultStrategy,
-    defaultOperator,
-    findLHSColumn,
-    findRHSColumn,
-  } = getJoinQueryHelpers(query, 0, PRODUCTS_ID);
-
-  const ordersProductId = findLHSColumn("ORDERS", "PRODUCT_ID");
-  const productsId = findRHSColumn("PRODUCTS", "ID");
-  const stageIndex = -1;
-  const condition = Lib.joinConditionClause(
-    defaultOperator,
-    ordersProductId,
-    Lib.expressionClause("+", [productsId, 1]),
+    createLhsExpression(findLHSColumn),
+    createRhsExpression(findRHSColumn),
   );
   const join = Lib.withJoinFields(
     Lib.joinClause(table, [condition], defaultStrategy),
@@ -1236,7 +1213,15 @@ describe("Notebook Editor > Join Step", () => {
     it("should display 'Custom expression' for LHS custom expressions", () => {
       setup({
         step: createMockNotebookStep({
-          query: getJoinedQueryWithCustomLhsExpression(),
+          query: getJoinedQueryWithCustomExpressions(
+            (findLHSColumn) =>
+              Lib.expressionClause("+", [
+                findLHSColumn("ORDERS", "PRODUCT_ID"),
+                1,
+              ]),
+            (findRHSColumn) =>
+              Lib.expressionClause(findRHSColumn("PRODUCTS", "ID")),
+          ),
         }),
       });
       const lhsButton = screen.getByLabelText("Left column");
@@ -1248,7 +1233,12 @@ describe("Notebook Editor > Join Step", () => {
     it("should display 'Custom expression' for RHS custom expressions", () => {
       setup({
         step: createMockNotebookStep({
-          query: getJoinedQueryWithCustomRhsExpression(),
+          query: getJoinedQueryWithCustomExpressions(
+            (findLHSColumn) =>
+              Lib.expressionClause(findLHSColumn("ORDERS", "PRODUCT_ID")),
+            (findRHSColumn) =>
+              Lib.expressionClause("+", [findRHSColumn("PRODUCTS", "ID"), 1]),
+          ),
         }),
       });
       const lhsButton = screen.getByLabelText("Left column");
