@@ -147,7 +147,7 @@
                     :perms/view-data :blocked
                     (binding [api/*current-user-id* (mt/user->id :rasta)]
                       (data-perms/disable-perms-cache
-                        ;; Mimicks the API endpoint (required):
+                       ;; Mimicks the API endpoint (required):
                        (binding [qp.perms/*param-values-query* true]
                          (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
                                parameter (first (:parameters dashboard))]

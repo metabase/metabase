@@ -124,14 +124,6 @@
     (data-perms/set-database-permission! group-or-id (data/db) perm-type value)
     (thunk)))
 
-(defn do-with-perm-for-group-and-table!
-  "Implementation of `with-perm-for-group-and-table`. Sets the data permission for the test dataset/table to the given
-  value for the given permission group for the duration of the test."
-  [group-or-id table-or-id perm-type value thunk]
-  (with-restored-data-perms-for-group! (u/the-id group-or-id)
-    (data-perms/set-table-permission! group-or-id table-or-id perm-type value)
-    (thunk)))
-
 (defn do-with-perms-for-group-and-tables!
   "Implementation of `with-perm-for-group-and-table`. Sets the data permission for the test dataset/table to the given
   value for the given permission group for the duration of the test."
@@ -146,7 +138,7 @@
   "Sets the data permission for the test dataset and specified table to the given value for the given permission group
   and runs `body` in that context."
   [group-or-id table-or-id perm-type value & body]
-  `(do-with-perm-for-group-and-table! ~group-or-id ~table-or-id ~perm-type ~value (fn [] ~@body)))
+  `(do-with-perms-for-group-and-tables! ~group-or-id ~{table-or-id {perm-type value}} (fn [] ~@body)))
 
 (defmacro with-perms-for-group-and-tables!
   "Sets the data permission for the test dataset and specified tables to the given values for the given permission
