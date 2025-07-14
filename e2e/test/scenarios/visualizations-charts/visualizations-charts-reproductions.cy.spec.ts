@@ -441,3 +441,32 @@ describe("issue 59671", () => {
     H.visualize();
   });
 });
+
+describe("issue 59830", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not crash when saved dimension settings refer to a non-existent column (metabase#59830)", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      display: "line" as const,
+      query: {
+        "source-table": ORDERS_ID,
+        breakout: [
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
+        aggregation: [["count"], ["avg", ["field", ORDERS.TOTAL, null]]],
+      },
+      visualization_settings: {
+        "graph.dimensions": ["DOES_NOT_EXIST"],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.icon("warning").should("not.exist");
+    cy.findByTestId("visualization-placeholder").should("be.visible");
+  });
+});
