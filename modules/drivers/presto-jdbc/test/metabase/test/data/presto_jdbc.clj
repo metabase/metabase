@@ -198,3 +198,4 @@
         false))))
 
 (defmethod sql.tx/generated-column-sql :presto-jdbc [_ _] nil)
+(defmethod sql.tx/default-column-sql :presto-jdbc [_ _] nil)
