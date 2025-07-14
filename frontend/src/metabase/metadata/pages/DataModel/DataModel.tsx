@@ -196,6 +196,7 @@ export const DataModel = ({ children, location, params }: Props) => {
 
           {!isEmptyStateShown && field && table && isPreviewOpen && (
             <Box
+              bg="accent-gray-light"
               flex={COLUMN_CONFIG.preview.flex}
               h="100%"
               p="xl"
