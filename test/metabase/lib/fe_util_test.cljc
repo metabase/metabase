@@ -494,9 +494,50 @@
         (lib.expression/+ column 10)
         (lib.filter/and (lib.filter/= column 10) true)))))
 
-;; XXX: START HERE: Not sure if that's adequate testing above.
-;; - Special-case conversion to put those options in an optional last slot.
-;; - Desugar such a between into two :</:>=/etc. clauses in QP. (It should be an invisible QP sugaring though!)
+(deftest ^:parallel between-filter-with-options-fe-util-test
+  (let [query  (lib.tu/venues-query)
+        column (m/filter-vals some? (meta/field-metadata :venues :price))]
+    (testing "between filter options survive full FE/BE roundtrip"
+      (let [fe-parts        {:operator :between
+                             :column   column
+                             :values   [10 20]
+                             :options  {:min-inclusive false :max-inclusive true}}
+            filter-clause   (lib.fe-util/number-filter-clause (:operator fe-parts)
+                                                              (:column fe-parts)
+                                                              (:values fe-parts)
+                                                              (:options fe-parts))
+            roundtrip-parts (lib.fe-util/number-filter-parts query -1 filter-clause)]
+        ;; The roundtrip drops true values since they're the default
+        (is (= {:min-inclusive false} (:options roundtrip-parts)))
+        (is (= :between (:operator roundtrip-parts)))
+        (is (= [10 20] (:values roundtrip-parts)))))
+
+    (testing "Test with nil/empty values"
+      (is (nil? (lib.fe-util/number-filter-parts
+                 query -1
+                 (lib.fe-util/expression-clause :between [column nil 20] {:min-inclusive false})))))
+
+    (testing "options are preserved through expression-parts/expression-clause"
+      (let [clause (-> (lib.filter/between column 5 25)
+                       (lib.options/update-options assoc :min-inclusive false))
+            parts (lib/expression-parts query clause)
+            rebuilt (lib/expression-clause (:operator parts) (:args parts) (:options parts))
+            final-parts (lib.fe-util/number-filter-parts query -1 rebuilt)]
+        (is (= {:min-inclusive false} (:options final-parts)))))
+
+    (testing "defaults are elided"
+      (let [fe-parts {:operator :between
+                      :column column
+                      :values [5 25]
+                      :options {:min-inclusive true :max-inclusive true}}
+            filter-clause (lib.fe-util/number-filter-clause (:operator fe-parts)
+                                                            (:column fe-parts)
+                                                            (:values fe-parts)
+                                                            (:options fe-parts))
+            roundtrip-parts (lib.fe-util/number-filter-parts query -1 filter-clause)]
+        ;; Either nil or empty map is acceptable when all options are defaults
+        (is (or (nil? (:options roundtrip-parts))
+                (= {} (:options roundtrip-parts))))))))
 
 (deftest ^:parallel coordinate-filter-parts-test
   (let [query         (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
