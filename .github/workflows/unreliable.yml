@@ -1,0 +1,62 @@
+# This CI workflow contains jobs that are too unreliable to run on CI on every commit.
+# It runs daily, when manually dispatching the workflow on the GH website, and on
+# PRs that have the `run-unreliable-ci`
+#
+# Unreliable jobs are CI jobs that fail often enough that a red CI badge needs someone to
+# manually check it before determining if the commit is really breaking something.
+# Red CI should mean the commit broke something and we need to fix it.
+#
+# Use these 2 stats questions to determine if a job is unreliable:
+# - more than 5% on https://stats.metabase.com/question/23726-failure-rate-on-master
+# - more than 25 on https://stats.metabase.com/question/18090-most-re-run-workflows
+
+name: Unreliable Tests
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
+
+jobs:
+  build:
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'run-unreliable-ci')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      MB_EDITION: ee
+      INTERACTIVE: false
+      SKIP_LICENSES: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: uberjar
+          java-version: 21
+
+      - name: Build uberjar with ./bin/build.sh
+        timeout-minutes: 10
+        run: ./bin/build.sh
+        shell: bash
+
+      - name: Prepare uberjar artifact
+        uses: ./.github/actions/prepare-uberjar-artifact
+        with:
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+
+  flaky-e2e-tests:
+    name: Flaky e2e Tests
+    uses: ./.github/workflows/e2e-test.yml
+    needs:
+      - build
+    secrets: inherit
+    with:
+      name: Flaky
+      tags: "@flaky"
