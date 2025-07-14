@@ -39,16 +39,11 @@ describe("DatabaseRoutingSection", () => {
     setup({
       engine: "bigquery-cloud-sdk",
       features: ["database-routing"],
-      db_routing_info:
-        "Route queries on this database to a different BigQuery project or Google Cloud account based on the person's user attribute. Each BigQuery destination must have identical schemas.",
+      db_routing_info: "custom db routing info.",
     });
 
     expect(screen.getByText("Database routing")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Route queries on this database to a different BigQuery project or Google Cloud account based on the person's user attribute. Each BigQuery destination must have identical schemas.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("custom db routing info.")).toBeInTheDocument();
     expect(screen.getByText("Enable database routing")).toBeInTheDocument();
     expect(screen.getByLabelText("Enable database routing")).toBeEnabled();
   });
