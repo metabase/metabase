@@ -373,18 +373,59 @@
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
                         (lib/breakout (lib.metadata/field mp (mt/id :users :department_id))))
-              display-name "My shiny transfrom"]
-          (let [resp (mt/user-http-request :rasta :post 200 "transform"
-                                           {:display_name display-name
-                                            :dataset_query (lib.convert/->legacy-MBQL query)})
-                transform-id (:id resp)]
-            (testing "Base: Transform was successfully created"
-              (is (= 1 (t2/count :model/TransformView :id transform-id)))
-              (is (= 1 (t2/count :model/Table :transform_id transform-id))))
-            (testing "Transform was deleted"
-              (mt/user-http-request :rasta :delete 200 (str "transform/" transform-id))
+              display-name "My shiny transfrom"
+              resp (mt/user-http-request :rasta :post 200 "transform"
+                                         {:display_name display-name
+                                          :dataset_query (lib.convert/->legacy-MBQL query)})
+              transform-id (:id resp)]
+          (testing "Base: Transform was successfully created"
+            (is (= 1 (t2/count :model/TransformView :id transform-id)))
+            (is (= 1 (t2/count :model/Table :transform_id transform-id))))
+          (testing "Transform was deleted"
+            (mt/user-http-request :rasta :delete 200 (str "transform/" transform-id))
             ;; Ensure transform was removed from dwh, hence is not picked up by sync that follows
-              (sync/sync-database! (mt/db))
-              (is (empty? (filter #(str/starts-with? % models.transform/view-name-prefix)
-                                  (t2/select-fn-vec :name :model/Table :db_id (mt/id)))))
-              (is (empty? (t2/select :model/TransformView :id transform-id))))))))))
+            (sync/sync-database! (mt/db))
+            (is (empty? (filter #(str/starts-with? % models.transform/view-name-prefix)
+                                (t2/select-fn-vec :name :model/Table :db_id (mt/id)))))
+            (is (empty? (t2/select :model/TransformView :id transform-id)))))))))
+
+(deftest get-transform-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :view)
+    (mt/dataset
+      users-departments-db
+      (with-no-transform-views
+        (let [mp (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
+                        (lib/breakout (lib.metadata/field mp (mt/id :users :department_id))))
+              display-name "Transform strikes back"
+              resp (mt/user-http-request :rasta :post 200 "transform"
+                                         {:display_name display-name
+                                          :dataset_query (lib.convert/->legacy-MBQL query)})
+              transform-id (:id resp)
+              query-2 (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
+                          (lib/breakout (lib.metadata/field mp (mt/id :users :department_id))))
+              display-name-2 "Another one"
+              resp-2 (mt/user-http-request :rasta :post 200 "transform"
+                                           {:display_name display-name-2
+                                            :dataset_query (lib.convert/->legacy-MBQL query-2)})
+              transform-id-2 (:id resp-2)]
+          (testing "Base: Transforms were successfully created"
+            (is (= 1 (t2/count :model/TransformView :id transform-id)))
+            (is (= 1 (t2/count :model/Table :transform_id transform-id)))
+            (is (= 1 (t2/count :model/TransformView :id transform-id-2)))
+            (is (= 1 (t2/count :model/Table :transform_id transform-id-2))))
+          (testing "GET /"
+            (let [resp (mt/user-http-request :rasta :get 200 "transform")
+                  tables (t2/select :model/Table :transform_id [:in (mapv :id resp)])]
+              (is (= 2 (count resp)))
+              (is (= 2 (count tables)))
+              (is (some (comp #{display-name} :display_name) tables))
+              (is (some (comp #{display-name-2} :display_name) tables))))
+          (testing "GET /:id"
+            (is (= transform-id
+                   (:id (mt/user-http-request :rasta :get 200 (str "transform/" transform-id)))))
+            (is (= transform-id-2
+                   (:id (mt/user-http-request :rasta :get 200 (str "transform/" transform-id-2)))))))))))

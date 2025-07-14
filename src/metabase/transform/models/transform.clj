@@ -165,7 +165,7 @@
       (t2/update! :model/TransformView :id transform-id
                   {:dataset_query dataset-query
                    :creator_id (:id creator)})
-      ;; TODO: async
+      ;; TODO: async + analysis
       (sync-metadata/sync-table-metadata! (t2/select-one :model/Table :transform_id transform-id)))))
 
 (defn delete-transform!
@@ -180,3 +180,13 @@
     (driver/drop-view! driver database-id namespaced-view-name)
     (t2/delete! :model/Table :transform_id id)
     (t2/delete! :model/TransformView :id id)))
+
+;; TODO: pagination, sort, filter, ?perms, table hydration?
+(defn get-transforms
+  "Get transforms"
+  []
+  (t2/select :model/TransformView))
+
+(defn transform-by-id
+  [id]
+  (t2/select-one :model/TransformView :id id))
