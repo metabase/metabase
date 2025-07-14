@@ -245,7 +245,6 @@
   The expression should be given as a string.
 
   Implementor notes:
-  If the driver does not use standard ANSI SQL syntax for this, this method should be specialised to provide the correct string.
   If a driver does not support adding generated columns for tests, return nil."
   {:arglists '([driver expr])}
   tx/dispatch-on-driver-with-test-extensions
@@ -264,6 +263,18 @@
 (defmethod generated-column-infers-type? :default
   [_]
   false)
+
+(defmulti default-column-sql
+  "Return the driver-specific equivalent of 'DEFAULT $expr' (SQL:92) to be appended to a column definition.
+  The expression should be given as a string.
+
+  If the driver does not support default columns for tests, return nil."
+  {:arglists '([driver expr])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod default-column-sql :default [_ expr]
+  (format "DEFAULT (%s)" expr))
 
 (defn- field-definition-sql
   [driver {:keys [field-name base-type field-comment not-null? unique? default-expr generated-expr], :as field-definition}]
@@ -286,7 +297,7 @@
         unique         (when unique?
                          "UNIQUE")
         default        (when default-expr
-                         (format "DEFAULT (%s)" default-expr))
+                         (default-column-sql driver default-expr))
         generated      (when generated-expr
                          (generated-column-sql driver generated-expr))
         infer-type     (and generated-expr (generated-column-infers-type? driver))
