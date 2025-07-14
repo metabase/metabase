@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field.util :as lib.field.util]
@@ -163,27 +162,8 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    field-ref    :- :mbql.clause/field]
-  (when-not *recursive-column-resolution-by-name*
-    (binding [*recursive-column-resolution-by-name* true]
-      (let [previous-stage-number (lib.util/previous-stage-number query stage-number)
-            stage                 (if previous-stage-number
-                                    (lib.util/query-stage query previous-stage-number)
-                                    (lib.util/query-stage query stage-number))
-            stage-columns         (for [col (concat
-                                             (lib.metadata.calculation/visible-columns query stage-number stage)
-                                             ;; work around visible columns not including aggregations (#59657)
-                                             (lib.aggregation/aggregations-metadata query stage-number))]
-                                    (cond-> col
-                                      *debug* (update ::debug.origin conj (list 'visibile-columns :stage stage-number))))]
-        (when-some [column (and (seq stage-columns)
-                                (resolve-column-in-metadata query field-ref stage-columns))]
-          (if-not previous-stage-number
-            (cond-> column
-              *debug* (update ::debug.origin conj (list 'resolve-column-name stage-number field-ref :current-stage)))
-            (-> column
-                lib.field.util/update-keys-for-col-from-previous-stage
-                (assoc :lib/source :source/previous-stage)
-                (cond-> *debug* (update ::debug.origin conj (list 'resolve-column-name stage-number field-ref :previous-stage previous-stage-number))))))))))
+  (when-let [visible-columns (not-empty (lib.metadata.calculation/visible-columns query stage-number))]
+    (resolve-column-in-metadata query field-ref visible-columns)))
 
 (def ^:private opts-propagated-keys
   "Keys to copy non-nil values directly from `:field` opts into column metadata."

@@ -1,5 +1,7 @@
 (ns metabase.lib.metadata.cache
-  "General value caching for metadata using the CachedMetadataProvider's general caching facilities."
+  "Cache arbitrary immutable values on `metadata-providerable` (eg. a query), by using the `CachedMetadataProvider`'s
+  general caching facilities. Has helpers for constructing a cache key that includes the query and stage, making it
+  easy to cache things like `visible-columns`."
   (:require
    [clojure.string :as str]
    [medley.core :as m]

@@ -1,4 +1,4 @@
-(ns ^:deprecated metabase.lib.ident
+(ns metabase.lib.ident
   "Helpers for `:ident`s."
   (:require
    [metabase.util :as u]))
