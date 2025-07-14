@@ -90,7 +90,7 @@ export function DatabaseTrigger({ database }: { database: Database }) {
   return database ? (
     <span
       className={cx(CS.textWrap, CS.noDecoration)}
-      data-testid="selected-database1"
+      data-testid="selected-database"
     >
       {database.name}
     </span>
