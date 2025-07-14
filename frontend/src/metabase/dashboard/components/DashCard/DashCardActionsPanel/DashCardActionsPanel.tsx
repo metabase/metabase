@@ -229,7 +229,7 @@ function DashCardActionsPanelInner({
     );
   }
 
-  const duplicateDashcard = useDuplicateDashCard({ dashboard, dashcard });
+  const duplicateDashcard = useDuplicateDashCard({ dashcard });
   if (!isLoading && dashcard) {
     buttons.push(
       <DashCardActionButton

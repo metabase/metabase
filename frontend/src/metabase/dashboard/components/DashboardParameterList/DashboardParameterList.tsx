@@ -2,9 +2,14 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { getValuePopulatedParameters } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 
-import { ParametersList } from "../../../parameters/components/ParametersList";
+import {
+  ParametersList,
+  type ParametersListProps,
+} from "../../../parameters/components/ParametersList";
 
-export function DashboardParameterList() {
+export type DashboardParameterListProps = Pick<ParametersListProps, "vertical">;
+
+export function DashboardParameterList(props: DashboardParameterListProps) {
   const parameters = useSelector(getValuePopulatedParameters);
 
   const {
@@ -34,6 +39,7 @@ export function DashboardParameterList() {
       setEditingParameter={setEditingParameter}
       setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior
+      {...props}
     />
   );
 }
