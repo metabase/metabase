@@ -151,7 +151,7 @@
   (let [target-field-ids (into #{}
                                (map (comp :id chain-filter/remapping))
                                field-ids)]
-    (when (and (not (target-field-ids nil))
+    (when (and (not (contains? target-field-ids nil))
                (= 1 (count target-field-ids)))
       (first target-field-ids))))
 
