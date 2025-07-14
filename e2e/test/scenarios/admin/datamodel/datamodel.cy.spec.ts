@@ -2065,9 +2065,10 @@ describe("scenarios > admin > datamodel", () => {
           TableSection.clickField("Quantity");
           FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-          PreviewSection.get()
-            .findByPlaceholderText("Enter a number")
-            .should("be.visible");
+          PreviewSection.get().within(() => {
+            cy.findByPlaceholderText("Enter a number").should("be.visible");
+            cy.button(/Add filter/).should("not.exist");
+          });
 
           cy.reload();
           FieldSection.getFilteringInput()
@@ -2095,12 +2096,11 @@ describe("scenarios > admin > datamodel", () => {
           TableSection.clickField("Quantity");
           FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-          PreviewSection.get()
-            .findByPlaceholderText("Min")
-            .should("be.visible");
-          PreviewSection.get()
-            .findByPlaceholderText("Max")
-            .should("be.visible");
+          PreviewSection.get().within(() => {
+            cy.findByPlaceholderText("Min").should("be.visible");
+            cy.findByPlaceholderText("Max").should("be.visible");
+            cy.button(/Add filter/).should("not.exist");
+          });
 
           cy.reload();
           FieldSection.getFilteringInput()
@@ -2131,9 +2131,10 @@ describe("scenarios > admin > datamodel", () => {
           TableSection.clickField("Quantity");
           FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-          PreviewSection.get()
-            .findByPlaceholderText("Search the list")
-            .should("be.visible");
+          PreviewSection.get().within(() => {
+            cy.findByPlaceholderText("Search the list").should("be.visible");
+            cy.button(/Add filter/).should("not.exist");
+          });
 
           cy.reload();
           FieldSection.getFilteringInput()

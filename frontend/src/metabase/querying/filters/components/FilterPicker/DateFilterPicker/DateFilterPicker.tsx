@@ -16,6 +16,7 @@ export function DateFilterPicker({
   filter,
   isNew,
   withAddButton,
+  withSubmitButton,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -45,14 +46,20 @@ export function DateFilterPicker({
         value={value}
         availableOperators={availableOperators}
         availableUnits={availableUnits}
-        renderSubmitButton={({ value, isDisabled }) => (
-          <FilterSubmitButton
-            isNew={isNew}
-            isDisabled={isDisabled}
-            withAddButton={withAddButton}
-            onAddButtonClick={() => handleAddButtonClick(value)}
-          />
-        )}
+        renderSubmitButton={({ value, isDisabled }) => {
+          if (!withSubmitButton) {
+            return null;
+          }
+
+          return (
+            <FilterSubmitButton
+              isNew={isNew}
+              isDisabled={isDisabled}
+              withAddButton={withAddButton}
+              onAddButtonClick={() => handleAddButtonClick(value)}
+            />
+          );
+        }}
         renderBackButton={() =>
           onBack ? (
             <PopoverBackButton p="sm" onClick={onBack}>
