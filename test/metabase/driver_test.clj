@@ -298,7 +298,7 @@
                   (describe-fields-for-table (mt/db) table))))))))
 
 (deftest ^:parallel describe-fields-returns-nullability-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
     (mt/dataset nullable-db
       (let [table   (t2/select-one :model/Table :id (mt/id :nullable))
             fields  (describe-fields-for-table (mt/db) table)
@@ -312,7 +312,7 @@
             (is (= [nil nil nil] (mapv :database-is-nullable [a b c])))))))))
 
 (deftest ^:parallel describe-fields-returns-default-expr-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
     (mt/dataset default-expr-db
       (let [table (t2/select-one :model/Table :id (mt/id :default_expr))
             fields (describe-fields-for-table (mt/db) table)
@@ -327,7 +327,7 @@
             (is (= [nil nil nil] (mapv :database-default [a b c])))))))))
 
 (deftest ^:parallel describe-fields-returns-is-generated-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
     (mt/dataset generated-column-db
       (let [table (t2/select-one :model/Table :id (mt/id :generated_column))
             fields (describe-fields-for-table (mt/db) table)
