@@ -355,7 +355,7 @@
         (setting/set-many! new-settings)
         (cond-> (assoc new-settings :with-corrections (-> corrections
                                                           (set/rename-keys (set/map-invert mb-to-smtp-map))
-                                                          (#(humanize-email-corrections % mb-to-smtp-map))))
+                                                          (humanize-email-corrections mb-to-smtp-map)))
           obfuscated? (update (smtp->mb-setting :pass mb-to-smtp-map) setting/obfuscate-value)))
       ;; test failed, return response message
       {:status 400
