@@ -7,7 +7,12 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { getDocsUrl, getIsPaidPlan, getUpgradeUrl } from "./settings";
+import {
+  getDocsUrl,
+  getIsPaidPlan,
+  getStoreUrlFromState,
+  getUpgradeUrl,
+} from "./settings";
 
 describe("getUpgradeUrl", () => {
   it.each([
@@ -129,6 +134,24 @@ describe("getDocsUrl", () => {
 
     expect(getDocsUrl(state, { page: "foo/bar", anchor: "baz" })).toBe(
       "https://www.metabase.com/docs/v0.41/foo/bar.html#baz",
+    );
+  });
+});
+
+describe("getStoreUrlFromState", () => {
+  it("should return the correct URL", () => {
+    const state = createMockState({
+      settings: createMockSettingsState({
+        "store-url": "https://test-store.metabase.com",
+      }),
+    });
+
+    expect(getStoreUrlFromState(state, "")).toBe(
+      "https://test-store.metabase.com/",
+    );
+
+    expect(getStoreUrlFromState(state, "account/manage/plans")).toBe(
+      "https://test-store.metabase.com/account/manage/plans",
     );
   });
 });
