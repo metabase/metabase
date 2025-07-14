@@ -1,0 +1,16 @@
+.CollapsedMoveParameterMenuInput {
+  text-align: center;
+
+  &::placeholder {
+    color: var(--mb-color-text-dark);
+    font-weight: 700;
+  }
+
+  &:hover {
+    background-color: var(--mb-color-bg-light);
+
+    &::placeholder {
+      color: var(--mb-color-brand);
+    }
+  }
+}

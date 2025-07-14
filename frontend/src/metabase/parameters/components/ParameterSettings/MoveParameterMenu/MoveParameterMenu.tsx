@@ -1,7 +1,9 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { moveParameter } from "metabase/dashboard/actions";
 import { getDashcardList, getTabs } from "metabase/dashboard/selectors";
 import {
@@ -14,6 +16,8 @@ import { Group, Icon, type IconName, Select, Stack, Text } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { BaseDashboardCard, ParameterId } from "metabase-types/api";
 
+import S from "./MoveParameterMenu.module.css";
+
 type MoveParameterMenuProps = {
   parameterId: ParameterId;
 };
@@ -21,6 +25,8 @@ type MoveParameterMenuProps = {
 const TOP_NAV_VALUE = "top-nav";
 
 export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
+  const [isOpen, { open: onOpen, close: onClose }] = useDisclosure(false);
+
   const tabs = useSelector(getTabs);
 
   const dashcards = useSelector((state) =>
@@ -115,11 +121,17 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
 
   return (
     <Select
+      classNames={{
+        input: !isOpen ? S.CollapsedMoveParameterMenuInput : undefined,
+        section: !isOpen ? CS.hidden : undefined,
+      }}
       placeholder={t`Move filter`}
       data={options}
       renderOption={renderOption}
       value={parameterDashcard ? String(parameterDashcard?.id) : TOP_NAV_VALUE}
       onChange={handleChange}
+      onDropdownOpen={onOpen}
+      onDropdownClose={onClose}
     />
   );
 }
