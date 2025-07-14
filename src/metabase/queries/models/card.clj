@@ -23,6 +23,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.types.isa :as lib.types]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -42,6 +43,7 @@
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
@@ -1339,6 +1341,22 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
+(defn extract-non-temporal-dimension-ids
+  [{:keys [dataset_query]}]
+  (if (nil? dataset_query)
+    (json/encode [])
+    (let [dataset-query     (json/decode+kw dataset_query)
+          metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
+          lib-query         (lib/query metadata-provider dataset-query)
+          columns           (lib/returned-columns lib-query)
+          dimensions        (remove (comp #{:source/aggregations} :lib/source) columns)
+          dim-ids           (->> dimensions
+                                 (remove lib.types/temporal?)
+                                 (filter :id)
+                                 (map :id)
+                                 (sort))]
+      (json/encode (or dim-ids [])))))
+
 (def ^:private base-search-spec
   {:model        :model/Card
    :attrs        {:archived            true
@@ -1358,7 +1376,9 @@
                   :verified            [:= "verified" :mr.status]
                   :view-count          true
                   :created-at          true
-                  :updated-at          true}
+                  :updated-at          true
+                  :non-temporal-dim-ids {:fn extract-non-temporal-dimension-ids
+                                         :req-fields [:dataset_query :database_id]}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
@@ -1385,11 +1405,11 @@
                                                         [:= :mr.moderated_item_type "card"]
                                                         [:= :mr.moderated_item_id :this.id]
                                                         [:= :mr.most_recent true]]]}
-                  ;; Workaround for dataflow :((((((
-                  ;; NOTE: disabled for now, as this is not a very important ranker and can afford to have stale data,
-                  ;;       and could cause a large increase in the query count for dashboard updates.
-                  ;;       (see the test failures when this hook is added back)
-                  ;:dashcard  [:model/DashboardCard [:= :dashcard.card_id :this.id]]
+   ;; Workaround for dataflow :((((((
+   ;; NOTE: disabled for now, as this is not a very important ranker and can afford to have stale data,
+   ;;       and could cause a large increase in the query count for dashboard updates.
+   ;;       (see the test failures when this hook is added back)
+                                        ;:dashcard  [:model/DashboardCard [:= :dashcard.card_id :this.id]]
    #_:end})
 
 (search/define-spec "card"
