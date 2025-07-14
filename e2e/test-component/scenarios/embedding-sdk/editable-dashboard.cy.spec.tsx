@@ -415,17 +415,20 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
           cy.log(
             "we should see 2 dash cards in the the first tab, and the 3rd one in the second tab",
           );
+          cy.log(
+            'we should be on the "Tab 2" tab, because we saved the question there',
+          );
+          H.getDashboardCard()
+            .findByText(ADDED_QUESTION_NAME_3)
+            .should("be.visible");
+
+          // 1st tab
+          H.goToTab("Tab 1");
           H.getDashboardCard()
             .findByText(ADDED_QUESTION_NAME)
             .should("be.visible");
           H.getDashboardCard(1)
             .findByText(ADDED_QUESTION_NAME_2)
-            .should("be.visible");
-
-          // 2nd tab
-          H.goToTab("Tab 2");
-          H.getDashboardCard()
-            .findByText(ADDED_QUESTION_NAME_3)
             .should("be.visible");
         });
       });
