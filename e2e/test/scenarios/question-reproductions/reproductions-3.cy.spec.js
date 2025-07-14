@@ -3117,7 +3117,7 @@ describe("Issue 48771", () => {
     cy.signIn("nosql");
   });
 
-  it("should allow (metabase#48771)", () => {
+  it("should allow to add a filter after summary stage (metabase#48771)", () => {
     H.visitQuestion("@questionId");
     H.openNotebook();
 
