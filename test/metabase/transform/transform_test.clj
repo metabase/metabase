@@ -195,17 +195,7 @@
 
           (is (= #{["Foo"] ["Bar"] ["Baz"]} (native-query-rows (format "SELECT name FROM \"%s\".\"%s\"" schema-name view-name)))))))))
 
-(deftest view-name-length-limit-test
-  (mt/test-drivers
-    (mt/normal-drivers-with-feature :view)
-    (testing "View name length limits are respected"
-      (when-let [limit (driver/view-name-length-limit driver/*driver*)]
-        (is (driver/create-view! driver/*driver* (u/the-id (mt/db))
-                                 (apply str (repeat limit "a"))
-                                 "SELECT * FROM users"
-                                 :replace? true))))))
-
-;; Use this only only with with-no-transform-views! and in non-parallel tests
+;; Use this only with with-no-transform-views! and in non-parallel tests
 (mt/defdataset users-departments-with-score
   [["users"
     [{:field-name "name" :base-type :type/Text}
@@ -236,16 +226,12 @@
 (deftest view-name-length-limit-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :view)
-    (mt/dataset
-      users-departments-with-score
-      (with-no-transform-views!
-        (testing "View name length limits are respected"
-          (when-let [limit (driver/view-name-length-limit driver/*driver*)]
-            (request/with-current-user (:id (mt/fetch-user :crowberto))
-              (is (driver/create-view! driver/*driver* (u/the-id (mt/db))
-                                       (apply str (repeat limit "a"))
-                                       "SELECT * FROM users"
-                                       :replace? true)))))))))
+    (testing "View name length limits are respected"
+      (when-let [limit (driver/view-name-length-limit driver/*driver*)]
+        (is (driver/create-view! driver/*driver* (u/the-id (mt/db))
+                                 (apply str (repeat limit "a"))
+                                 "SELECT * FROM users"
+                                 :replace? true))))))
 
 ;; API tests
 
@@ -343,40 +329,40 @@
     (mt/dataset
       users-departments-with-score
       (with-no-transform-views!
-        (let [display-name "t r a n s"]
-          (let [transform (mt/user-http-request :rasta :post 200 "transform"
-                                                {:display_name display-name
-                                                 :dataset_query
-                                                 (let [mp (mt/metadata-provider)]
-                                                   (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
-                                                       (lib.convert/->legacy-MBQL)))})
-                table (t2/select-one :model/Table :display_name display-name)
-                table-id (:id table)]
-            (testing "Base: view creation and sync is successful"
-              (is (= 1 (t2/count :model/Table :display_name display-name)))
-              (is #{"id" "name" "department_id" "score"}
-                  (t2/select-fn-set :name :model/Field
-                                    :table_id table-id
-                                    :active true)))
+        (let [display-name "t r a n s"
+              transform (mt/user-http-request :rasta :post 200 "transform"
+                                              {:display_name display-name
+                                               :dataset_query
+                                               (let [mp (mt/metadata-provider)]
+                                                 (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                                                     (lib.convert/->legacy-MBQL)))})
+              table (t2/select-one :model/Table :display_name display-name)
+              table-id (:id table)]
+          (testing "Base: view creation and sync is successful"
+            (is (= 1 (t2/count :model/Table :display_name display-name)))
+            (is (= #{"id" "name" "department_id" "score"}
+                   (t2/select-fn-set (comp u/lower-case-en :name) :model/Field
+                                     :table_id table-id
+                                     :active true))))
+          (let [mp (mt/metadata-provider)]
+            (is (= [[1 "Alice" 10 100] [2 "Bob" 20 200] [3 "Charlie" 10 300]]
+                   (mt/rows (-> (lib/query mp (lib.metadata/table mp table-id))
+                                (qp/process-query))))))
+          (testing "PUT / can modify the query"
+            (mt/user-http-request :rasta :put 200 (str "transform/" (:id transform))
+                                  {:dataset_query
+                                   (let [mp (mt/metadata-provider)]
+                                     (-> (lib/query mp (lib.metadata/table mp (mt/id :departments)))
+                                         (lib.convert/->legacy-MBQL)))})
+            (is (= 1 (t2/count :model/Table :display_name display-name)))
+            (is (= #{"idx" "name" "id"}
+                   (t2/select-fn-set (comp u/lower-case-en :name) :model/Field
+                                     :table_id table-id
+                                     :active true)))
             (let [mp (mt/metadata-provider)]
-              (is (= [[1 "Alice" 10 100] [2 "Bob" 20 200] [3 "Charlie" 10 300]]
+              (is (= [[1 10 "Engineering"] [2 20 "Sales"]]
                      (mt/rows (-> (lib/query mp (lib.metadata/table mp table-id))
-                                  (qp/process-query))))))
-            (testing "PUT / can modify the query"
-              (mt/user-http-request :rasta :put 200 (str "transform/" (:id transform))
-                                    {:dataset_query
-                                     (let [mp (mt/metadata-provider)]
-                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :departments)))
-                                           (lib.convert/->legacy-MBQL)))})
-              (is (= 1 (t2/count :model/Table :display_name display-name)))
-              (is (= #{"idx" "name" "id"}
-                     (t2/select-fn-set :name :model/Field
-                                       :table_id table-id
-                                       :active true)))
-              (let [mp (mt/metadata-provider)]
-                (is (= [[1 10 "Engineering"] [2 20 "Sales"]]
-                       (mt/rows (-> (lib/query mp (lib.metadata/table mp table-id))
-                                    (qp/process-query)))))))))))))
+                                  (qp/process-query))))))))))))
 
 (deftest delete-transform-test
   (mt/test-drivers
