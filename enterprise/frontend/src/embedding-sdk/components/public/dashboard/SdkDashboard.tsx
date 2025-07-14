@@ -27,8 +27,13 @@ import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { MetabaseQuestion } from "embedding-sdk/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
+import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { setEditingDashboard, toggleSidebar } from "metabase/dashboard/actions";
+import {
+  setEditingDashboard,
+  toggleSidebar,
+  updateDashboardAndCards,
+} from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
@@ -37,11 +42,12 @@ import {
   type DashboardContextProviderHandle,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { getDashboardComplete } from "metabase/dashboard/selectors";
+import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
+import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
 import type { DashboardId } from "metabase-types/api";
 
@@ -195,6 +201,9 @@ const SdkDashboardInner = ({
     }
   }, [dispatch, dashboardId]);
 
+  const { modalContent, show } = useConfirmation();
+  const isDashboardDirty = useSelector(getIsDirty);
+
   if (isLocaleLoading || isLoading) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
@@ -232,7 +241,29 @@ const SdkDashboardInner = ({
           : onNavigateToNewCardFromDashboard
       }
       onNewQuestion={() => {
-        setRenderMode("queryBuilder");
+        if (isDashboardDirty) {
+          show({
+            title: t`Save your changes?`,
+            message: t`You’ll need to save your changes before leaving to create a new question.`,
+            confirmButtonText: t`Save changes`,
+            onConfirm: async () => {
+              /**
+               * Dispatch the same actions as in the DashboardLeaveConfirmationModal.
+               * @see {@link https://github.com/metabase/metabase/blob/4453fa8363eb37062a159f398050d050d91397a9/frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx#L30-L34}
+               */
+              setRenderMode("queryBuilder");
+              dispatch(dismissAllUndo());
+              await dispatch(updateDashboardAndCards());
+              // After saving the dashboard, it will exit the editing mode.
+              dispatch(setEditingDashboard(dashboard));
+            },
+            confirmButtonProps: {
+              color: "brand",
+            },
+          });
+        } else {
+          setRenderMode("queryBuilder");
+        }
       }}
       downloadsEnabled={displayOptions.downloadsEnabled}
       background={displayOptions.background}
@@ -296,6 +327,7 @@ const SdkDashboardInner = ({
           />
         ))
         .exhaustive()}
+      {modalContent}
     </DashboardContextProvider>
   );
 };
