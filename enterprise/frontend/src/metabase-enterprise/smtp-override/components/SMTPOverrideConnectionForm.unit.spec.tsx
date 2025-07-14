@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   findRequests,
-  setupEmailEndpoints,
+  setupEmailOverrideEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -20,7 +20,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { SMTPConnectionForm } from "./SMTPConnectionForm";
+import { SMTPOverrideConnectionForm } from "./SMTPOverrideConnectionForm";
 
 const setup = async ({
   setEnvVars,
@@ -33,39 +33,39 @@ const setup = async ({
   const settingsDefinitionsWithDefaults: {
     [K in EnterpriseSettingKey]?: SettingDefinition;
   } = {
-    "email-smtp-host": createMockSettingDefinition({
-      key: "email-smtp-host",
+    "email-smtp-host-override": createMockSettingDefinition({
+      key: "email-smtp-host-override",
       value: "smtp.rotom.com",
       env_name: "MB_EMAIL_SMTP_HOST",
       is_env_setting: setEnvVars === "all" || setEnvVars === "host",
     }),
-    "email-smtp-port": createMockSettingDefinition({
-      key: "email-smtp-port",
-      value: 123,
+    "email-smtp-port-override": createMockSettingDefinition({
+      key: "email-smtp-port-override",
+      value: 465,
       env_name: "MB_EMAIL_SMTP_PORT",
       is_env_setting: setEnvVars === "all",
     }),
-    "email-smtp-security": createMockSettingDefinition({
-      key: "email-smtp-security",
+    "email-smtp-security-override": createMockSettingDefinition({
+      key: "email-smtp-security-override",
       value: "ssl",
       env_name: "MB_EMAIL_SMTP_SECURITY",
       is_env_setting: setEnvVars === "all",
     }),
-    "email-smtp-username": createMockSettingDefinition({
-      key: "email-smtp-username",
+    "email-smtp-username-override": createMockSettingDefinition({
+      key: "email-smtp-username-override",
       value: "misty@example.com",
       env_name: "MB_EMAIL_SMTP_USERNAME",
       is_env_setting: setEnvVars === "all",
     }),
 
-    "email-smtp-password": createMockSettingDefinition({
-      key: "email-smtp-password",
+    "email-smtp-password-override": createMockSettingDefinition({
+      key: "email-smtp-password-override",
       value: "*****chu",
       env_name: "MB_EMAIL_SMTP_PASSWORD",
       is_env_setting: setEnvVars === "all",
     }),
   };
-  setupEmailEndpoints();
+  setupEmailOverrideEndpoints();
   setupSettingsEndpoints(Object.values(settingsDefinitionsWithDefaults));
   const settingValues: any = {};
   Object.entries(settingsDefinitionsWithDefaults).forEach(([key, setting]) => {
@@ -73,7 +73,7 @@ const setup = async ({
   });
   setupPropertiesEndpoints(createMockSettings(settingValues));
 
-  renderWithProviders(<SMTPConnectionForm onClose={() => {}} />, {
+  renderWithProviders(<SMTPOverrideConnectionForm onClose={() => {}} />, {
     storeInitialState: createMockState({
       settings: createMockSettingsState({
         ...settingValues,
@@ -89,7 +89,7 @@ const setup = async ({
   }
 };
 
-describe("SMTP connection form", () => {
+describe("SMTPOverrideConnectionForm", () => {
   it("should render the smtp connection form", async () => {
     await setup({});
     expect(screen.getByText(/SMTP Host/i)).toBeInTheDocument();
@@ -97,10 +97,12 @@ describe("SMTP connection form", () => {
     expect(screen.getByText(/SMTP Host/i)).toBeInTheDocument();
     expect(screen.getByText(/SMTP Username/i)).toBeInTheDocument();
     expect(screen.getByText(/SMTP Password/i)).toBeInTheDocument();
-    expect(screen.getByText("None")).toBeInTheDocument();
     expect(screen.getByText("SSL")).toBeInTheDocument();
     expect(screen.getByText("TLS")).toBeInTheDocument();
     expect(screen.getByText("STARTTLS")).toBeInTheDocument();
+
+    // Security is required
+    expect(screen.queryByText("None")).not.toBeInTheDocument();
 
     expect(
       await screen.findByDisplayValue("smtp.rotom.com"),
@@ -108,16 +110,13 @@ describe("SMTP connection form", () => {
     expect(screen.getByLabelText(/SMTP Host/i)).toHaveDisplayValue(
       "smtp.rotom.com",
     );
-    expect(screen.getByLabelText(/SMTP port/i)).toHaveDisplayValue("123");
+    expect(screen.getByDisplayValue("465")).toBeChecked();
     expect(screen.getByLabelText(/SMTP username/i)).toHaveDisplayValue(
       "misty@example.com",
     );
     expect(screen.getByLabelText(/SMTP password/i)).toHaveDisplayValue(
       "*****chu",
     );
-    expect(
-      await screen.findByRole("button", { name: /send test email/i }),
-    ).toBeEnabled();
   });
 
   it("disable save button correctly", async () => {
@@ -128,13 +127,11 @@ describe("SMTP connection form", () => {
     expect(saveButton).toBeDisabled();
 
     const hostInput = screen.getByLabelText(/SMTP host/i);
-    const portInput = screen.getByLabelText(/SMTP port/i);
 
     await userEvent.clear(hostInput);
-    await userEvent.clear(portInput);
 
     await userEvent.type(hostInput, "smtp.treeko.com");
-    await userEvent.type(portInput, "456");
+    await userEvent.click(screen.getByDisplayValue("587"));
 
     expect(
       await screen.findByRole("button", { name: /save changes/i }),
@@ -150,17 +147,15 @@ describe("SMTP connection form", () => {
   it("should submit all settings changes via api", async () => {
     await setup({});
     const hostInput = screen.getByLabelText(/SMTP Host/i);
-    const portInput = screen.getByLabelText(/SMTP Port/i);
     const usernameInput = screen.getByLabelText(/SMTP Username/i);
     const passwordInput = screen.getByLabelText(/SMTP Password/i);
 
     await userEvent.clear(hostInput);
-    await userEvent.clear(portInput);
     await userEvent.clear(usernameInput);
     await userEvent.clear(passwordInput);
 
     await userEvent.type(hostInput, "smtp.treeko.com");
-    await userEvent.type(portInput, "456");
+    await userEvent.click(screen.getByDisplayValue("587"));
     await userEvent.type(usernameInput, "ash@example.com");
     await userEvent.type(passwordInput, "teamrocket");
     await userEvent.click(screen.getByLabelText("TLS"));
@@ -170,14 +165,15 @@ describe("SMTP connection form", () => {
     );
 
     const puts = await findRequests("PUT");
-    const { body } = puts[0];
+    const { url, body } = puts[0];
 
+    expect(url).toContain("/api/ee/email/override");
     expect(body).toEqual({
-      "email-smtp-host": "smtp.treeko.com",
-      "email-smtp-port": "456",
-      "email-smtp-security": "tls",
-      "email-smtp-username": "ash@example.com",
-      "email-smtp-password": "teamrocket",
+      "email-smtp-host-override": "smtp.treeko.com",
+      "email-smtp-port-override": 587,
+      "email-smtp-security-override": "tls",
+      "email-smtp-username-override": "ash@example.com",
+      "email-smtp-password-override": "teamrocket",
     });
   });
 
@@ -194,7 +190,7 @@ describe("SMTP connection form", () => {
     expect(screen.getByText(/MB_EMAIL_SMTP_HOST/i)).toBeInTheDocument();
     expect(screen.getByText(/environment variable/i)).toBeInTheDocument();
 
-    await userEvent.type(screen.getByLabelText(/SMTP port/i), "123");
+    await userEvent.click(screen.getByDisplayValue("587"));
     await userEvent.click(screen.getByLabelText("TLS"));
     await userEvent.type(
       screen.getByLabelText(/SMTP username/i),
@@ -215,37 +211,5 @@ describe("SMTP connection form", () => {
 
     const puts = await findRequests("PUT");
     expect(puts).toHaveLength(1);
-  });
-
-  it("should hide test email button when fields are missing", async () => {
-    await setup({});
-    await userEvent.clear(screen.getByLabelText(/SMTP Host/i));
-
-    expect(
-      screen.queryByRole("button", { name: /send test email/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should hide test email button when form is dirty", async () => {
-    await setup({});
-
-    expect(
-      await screen.findByRole("button", { name: /send test email/i }),
-    ).toBeEnabled();
-    await userEvent.type(
-      screen.getByLabelText(/SMTP host/i),
-      "smtp.treeko.com",
-    );
-    expect(
-      screen.queryByRole("button", { name: /send test email/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should enable test email button when all fields are set by environment variables (metabase#45445)", async () => {
-    await setup({ setEnvVars: "all" });
-
-    expect(
-      await screen.findByRole("button", { name: /send test email/i }),
-    ).toBeEnabled();
   });
 });

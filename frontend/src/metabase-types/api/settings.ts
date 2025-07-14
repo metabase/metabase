@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
+
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { GroupId } from "./group";
@@ -222,6 +224,7 @@ export const tokenFeatures = [
   "advanced_permissions",
   "audit_app",
   "cache_granular_controls",
+  "cloud_custom_smtp",
   "content_translation",
   "content_verification",
   "disable_password_login",
@@ -312,12 +315,18 @@ export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
 
 interface InstanceSettings {
   "admin-email": string | null;
+  "email-from-address-override": string | null;
+  "email-smtp-host-override": string | null;
+  "email-smtp-port-override": 465 | 587 | 2525 | null;
+  "email-smtp-security-override": "ssl" | "tls" | "starttls" | null;
+  "email-smtp-username-override": string | null;
+  "email-smtp-password-override": string | null;
   "email-from-name": string | null;
   "email-from-address": string | null;
   "email-reply-to": string[] | null;
   "email-smtp-host": string | null;
   "email-smtp-port": number | null;
-  "email-smtp-security": "none" | "ssl" | "tls" | "starttls";
+  "email-smtp-security": "none" | "ssl" | "tls" | "starttls" | null;
   "email-smtp-username": string | null;
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
@@ -337,6 +346,7 @@ interface InstanceSettings {
   "show-homepage-xrays": boolean;
   "site-name": string;
   "site-uuid": string;
+  "smtp-override-enabled": boolean;
   "subscription-allowed-domains": string | null;
   "uploads-settings": UploadsSettings;
   "user-visibility": string | null;
@@ -488,6 +498,7 @@ export type UserSettings = {
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
   "trial-banner-dismissal-timestamp"?: string | null;
+  "sdk-iframe-embed-setup-settings"?: SdkIframeEmbedSetupSettings | null;
 };
 
 /**
