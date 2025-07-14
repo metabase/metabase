@@ -766,6 +766,7 @@
            audit-app
            collections
            config
+           events
            models
            premium-features
            request
