@@ -6,16 +6,11 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import {
-  STANDARD_USER_LIST_PAGE_SIZE,
-  skipToken,
-  useListUsersQuery,
-} from "metabase/api";
-import {
   isExamplesCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
-import { useUserSetting } from "metabase/common/hooks";
+import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import {
   getCanAccessOnboardingPage,
@@ -139,15 +134,8 @@ export function MainNavbarView({
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
   const shouldDisplayGettingStarted = isNewInstance && canAccessOnboarding;
 
-  const { data: userData } = useListUsersQuery(
-    isAdmin
-      ? {
-          limit: STANDARD_USER_LIST_PAGE_SIZE,
-          offset: 0,
-        }
-      : skipToken,
-  );
-  const areThereOtherUsers = (userData?.total ?? 0) > 1;
+  const activeUsersCount = useSetting("active-users-count");
+  const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
   const showOtherUsersCollections = isAdmin && areThereOtherUsers;
 
   return (

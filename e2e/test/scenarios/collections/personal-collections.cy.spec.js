@@ -47,35 +47,29 @@ describe("personal collections", () => {
     });
 
     it("should see a link to other users' personal collections only if there are other users", () => {
-      cy.intercept("GET", "/api/user**", {
-        statusCode: 200,
-        body: {
-          data: [],
-          total: 1, // only the admin
-          limit: 27,
-          offset: 0,
-        },
-      }).as("getUsers");
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["active-users-count"] = 1;
+          return res.body;
+        });
+      }).as("getSessionProperties");
 
       cy.visit("/");
-      cy.wait("@getUsers");
+      cy.wait("@getSessionProperties");
 
       H.navigationSidebar()
         .findByLabelText("Other users' personal collections")
         .should("not.exist");
 
-      cy.intercept("GET", "/api/user**", {
-        statusCode: 200,
-        body: {
-          data: [],
-          total: 2, // Increase the total to 2
-          limit: 27,
-          offset: 0,
-        },
-      }).as("getUsers");
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["active-users-count"] = 2;
+          return res.body;
+        });
+      }).as("getSessionProperties");
 
       cy.reload();
-      cy.wait("@getUsers");
+      cy.wait("@getSessionProperties");
 
       H.navigationSidebar()
         .findByLabelText("Other users' personal collections")

@@ -11,7 +11,6 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupSettingEndpoint,
-  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -23,19 +22,12 @@ import {
 import type { ModelResult } from "metabase/browse/models";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as domUtils from "metabase/lib/dom";
-import type {
-  Card,
-  Dashboard,
-  DashboardId,
-  User,
-  UserListResult,
-} from "metabase-types/api";
+import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
   createMockTokenFeatures,
   createMockUser,
-  createMockUserListResult,
 } from "metabase-types/api/mocks";
 import type { DashboardState } from "metabase-types/store";
 import {
@@ -50,7 +42,6 @@ export type SetupOpts = {
   pathname?: string;
   route?: string;
   user?: User | null;
-  userList?: UserListResult[];
   hasDataAccess?: boolean;
   withAdditionalDatabase?: boolean;
   isUploadEnabled?: boolean;
@@ -64,6 +55,7 @@ export type SetupOpts = {
   isEmbeddingIframe?: boolean;
   hasWhitelabelToken?: boolean;
   applicationName?: string;
+  activeUsersCount?: number;
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -81,10 +73,7 @@ export async function setup({
   pathname = "/",
   route = pathname,
   user = createMockUser(),
-  userList = [
-    createMockUserListResult(),
-    createMockUserListResult({ id: 11, personal_collection_id: 21 }),
-  ],
+  activeUsersCount = 2,
   hasDataAccess = true,
   openDashboard,
   openQuestionCard,
@@ -157,7 +146,6 @@ export async function setup({
     collection: createMockCollection(OUR_ANALYTICS),
     collectionItems: [],
   });
-  setupUsersEndpoints(userList);
 
   setupSettingEndpoint({
     settingKey: "version-info",
@@ -205,6 +193,7 @@ export async function setup({
         whitelabel: hasWhitelabelToken,
       }),
       "show-google-sheets-integration": true,
+      "active-users-count": activeUsersCount,
     }),
   });
 

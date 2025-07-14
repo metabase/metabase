@@ -378,10 +378,10 @@ describe("nav > containers > MainNavbar", () => {
       ).toBeInTheDocument();
     });
 
-    it("admin not should see other users personal collections if there no users", async () => {
+    it("admin not should see other users personal collections if there no other users", async () => {
       await setup({
         user: createMockUser({ is_superuser: true }),
-        userList: [],
+        activeUsersCount: 1,
       });
       expect(
         screen.queryByText(/Other users' personal collections/i),
