@@ -1,7 +1,7 @@
 {
   "base": {
-    "name": "master",
-    "hash": "1783247861e65973eaae9342221cd7941c07c17c"
+    "name": "emb-595-use-entity-ids-directly-in-sdk-components-without",
+    "hash": "c647567c4915b7c1196584f629089361c4e7339c"
   },
   "upstream": {
     "branch": "emb-596-use-entity-ids-directly-in-sdk-collection-pickers-and"
