@@ -3,9 +3,8 @@ import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useSetting, useStoreUrl, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { getStoreUrlFromState } from "metabase/selectors/settings";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 
 /**
@@ -21,9 +20,7 @@ export function useUpsellFlow({
 }) {
   const storeWindowRef = useRef<WindowProxy | null>(null);
   const [sendToast] = useToast();
-  const storeUrl = useSelector((state) =>
-    getStoreUrlFromState(state, "checkout/upgrade/self-hosted"),
-  );
+  const storeUrl = useStoreUrl("checkout/upgrade/self-hosted");
   const storeOrigin = new URL(storeUrl).origin;
   const { updateToken, tokenStatus, error } = useLicense(() => {
     if (storeWindowRef.current) {
