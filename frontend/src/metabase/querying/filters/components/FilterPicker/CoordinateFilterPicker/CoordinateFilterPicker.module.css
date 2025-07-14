@@ -1,0 +1,9 @@
+.toggleButton {
+  border-right: 1px solid var(--mb-color-border);
+  cursor: pointer;
+  user-select: none;
+}
+
+.root .input {
+  padding-left: 3rem;
+}

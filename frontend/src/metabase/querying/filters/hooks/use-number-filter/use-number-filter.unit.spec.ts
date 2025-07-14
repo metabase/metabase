@@ -14,37 +14,37 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import type { NumberOrEmptyValue } from "./types";
+import type { NumberOrEmptyValue, UiNumberFilterOperator } from "./types";
 import { useNumberFilter } from "./use-number-filter";
 
 interface CreateFilterCase {
-  operator: Lib.NumberFilterOperator;
+  operator: UiNumberFilterOperator;
   values: number[];
   expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
-  operator: Lib.NumberFilterOperator;
+  operator: UiNumberFilterOperator;
   expression: Lib.ExpressionClause;
   values: number[];
   expectedDisplayName: string;
 }
 
 interface CoerceFilterCase {
-  operator: Lib.NumberFilterOperator;
+  operator: UiNumberFilterOperator;
   values: NumberOrEmptyValue[];
   expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
-  operator: Lib.NumberFilterOperator;
+  operator: UiNumberFilterOperator;
   values: NumberOrEmptyValue[];
 }
 
 interface DefaultOperatorCase {
   title: string;
   column: Lib.ColumnMetadata;
-  expectedOperator: Lib.NumberFilterOperator;
+  expectedOperator: UiNumberFilterOperator;
 }
 
 const METADATA = createMockMetadata({
@@ -86,7 +86,7 @@ describe("useNumberFilter", () => {
       expectedDisplayName: "Total is not equal to 10",
     },
     {
-      operator: ">",
+      operator: "between",
       values: [10],
       expectedDisplayName: "Total is greater than 10",
     },
@@ -199,7 +199,7 @@ describe("useNumberFilter", () => {
       values: [],
     },
     {
-      operator: ">",
+      operator: "between",
       values: [null],
     },
     {

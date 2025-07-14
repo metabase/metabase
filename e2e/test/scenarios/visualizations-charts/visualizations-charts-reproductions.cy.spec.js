@@ -185,9 +185,9 @@ describe("issue 17524", () => {
 
       H.filter();
       H.popover().findByText("ID").click();
-      H.selectFilterOperator("Greater than");
+      H.selectFilterOperator("Range");
       H.popover().within(() => {
-        cy.findByLabelText("Filter value").type("1");
+        cy.findByLabelText("Start of range").type("1");
         cy.button("Apply filter").click();
       });
       cy.get("polygon");
@@ -965,9 +965,9 @@ const addCountGreaterThan2Filter = () => {
   // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId("action-buttons").last().button("Filter").click();
   H.popover().findByText("Count").click();
-  H.selectFilterOperator("Greater than");
+  H.selectFilterOperator("Range");
   H.popover().within(() => {
-    cy.findByPlaceholderText("Enter a number").type("2");
+    cy.findByPlaceholderText("Start of range").type("2");
     cy.button("Add filter").click();
   });
 };

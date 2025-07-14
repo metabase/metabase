@@ -17,7 +17,8 @@ export function getFilterPopover({
   column,
   stageIndex,
   initialFilter,
-}: FilterPopoverProps) {
+  shouldShowBackButton = false,
+}: FilterPopoverProps & { shouldShowBackButton?: boolean }) {
   return function FilterDrillPopover({
     onChangeCardAndRun,
     onClose,
@@ -35,6 +36,7 @@ export function getFilterPopover({
           onChangeCardAndRun({ nextCard });
           onClose();
         }}
+        onBack={shouldShowBackButton ? onClose : undefined}
       />
     );
   };

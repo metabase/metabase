@@ -34,10 +34,10 @@ describe("scenarios > filters > bigint (metabase#5816)", () => {
     name: "SQL NUMBER",
     native: {
       query: `SELECT ${MIN_BIGINT_VALUE} AS NUMBER
-UNION ALL
-SELECT 0 AS NUMBER
-UNION ALL
-SELECT ${MAX_BIGINT_VALUE} AS NUMBER`,
+              UNION ALL
+              SELECT 0 AS NUMBER
+              UNION ALL
+              SELECT ${MAX_BIGINT_VALUE} AS NUMBER`,
       "template-tags": {},
     },
     display: "table",
@@ -47,10 +47,10 @@ SELECT ${MAX_BIGINT_VALUE} AS NUMBER`,
     name: "SQL NUMBER",
     native: {
       query: `SELECT CAST('${NEGATIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER
-UNION ALL
-SELECT CAST(0 AS DECIMAL) AS NUMBER
-UNION ALL
-SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
+              UNION ALL
+              SELECT CAST(0 AS DECIMAL) AS NUMBER
+              UNION ALL
+              SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       "template-tags": {},
     },
     display: "table",
@@ -151,8 +151,9 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
 
       cy.log("> operator");
       testFilter({
-        filterOperator: "Greater than",
-        setFilterValue: () => cy.findByLabelText("Filter value").type(minValue),
+        filterOperator: "Range",
+        setFilterValue: () =>
+          cy.findByLabelText("Start of range").type(minValue),
         filterDisplayName: `NUMBER is greater than ${minValue}`,
         filteredRowCount: 2,
       });
@@ -181,34 +182,34 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         filteredRowCount: 3,
       });
 
-      cy.log("between operator - min value");
+      cy.log("range operator - min value");
       testFilter({
-        filterOperator: "Between",
+        filterOperator: "Range",
         setFilterValue: () => {
-          cy.findByPlaceholderText("Min").type(minValue);
-          cy.findByPlaceholderText("Max").type("0");
+          cy.findByPlaceholderText("Start of range").type(minValue);
+          cy.findByPlaceholderText("End of range").type("0");
         },
         filterDisplayName: `NUMBER is between ${minValue} and 0`,
         filteredRowCount: 2,
       });
 
-      cy.log("between operator - max value");
+      cy.log("range operator - max value");
       testFilter({
-        filterOperator: "Between",
+        filterOperator: "Range",
         setFilterValue: () => {
-          cy.findByPlaceholderText("Min").type("0");
-          cy.findByPlaceholderText("Max").type(maxValue);
+          cy.findByPlaceholderText("Start of range").type("0");
+          cy.findByPlaceholderText("End of range").type(maxValue);
         },
         filterDisplayName: `NUMBER is between 0 and ${maxValue}`,
         filteredRowCount: 2,
       });
 
-      cy.log("between operator - min and max values");
+      cy.log("range operator - min and max values");
       testFilter({
-        filterOperator: "Between",
+        filterOperator: "Range",
         setFilterValue: () => {
-          cy.findByPlaceholderText("Min").type(minValue);
-          cy.findByPlaceholderText("Max").type(maxValue);
+          cy.findByPlaceholderText("Start of range").type(minValue);
+          cy.findByPlaceholderText("End of range").type(maxValue);
         },
         filterDisplayName: `NUMBER is between ${minValue} and ${maxValue}`,
         filteredRowCount: 3,

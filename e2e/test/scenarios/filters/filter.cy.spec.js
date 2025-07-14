@@ -1053,6 +1053,14 @@ describe("scenarios > question > filter", () => {
     });
   });
 
+  it("should show column name and close popover on click", () => {
+    H.openOrdersTable();
+    H.tableHeaderColumn("Total").click();
+    H.popover().findByText("Filter by this column").click();
+    H.popover().should("contain", "Total").findByText("Total").click();
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+  });
+
   it("should render the selected item in view", () => {
     cy.viewport(1280, 320);
     H.openReviewsTable({ mode: "notebook" });

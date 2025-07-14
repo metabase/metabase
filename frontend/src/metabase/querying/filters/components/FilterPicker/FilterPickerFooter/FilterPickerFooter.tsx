@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { isValidElement } from "react";
 
@@ -11,6 +12,7 @@ interface FilterPickerFooterProps {
   isNew: boolean;
   isValid: boolean;
   withAddButton: boolean;
+  withSeparator?: boolean;
   children?: ReactNode;
   onAddButtonClick: () => void;
 }
@@ -19,11 +21,18 @@ export function FilterPickerFooter({
   isNew,
   isValid,
   withAddButton = false,
+  withSeparator = true,
   children,
   onAddButtonClick,
 }: FilterPickerFooterProps) {
   return (
-    <Flex className={S.FilterFooterRoot} p="md" justify="space-between">
+    <Flex
+      className={cx(S.FilterFooterRoot, {
+        [S.separator]: withSeparator,
+      })}
+      p="md"
+      justify="space-between"
+    >
       {isValidElement(children) ? children : <Box />}
       <FilterSubmitButton
         isNew={isNew}
