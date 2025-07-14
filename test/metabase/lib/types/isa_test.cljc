@@ -38,54 +38,44 @@
                                           orderable-columns))]
     (testing "effective type"
       (is (=? [{:name "NAME"
-                :lib/desired-column-alias "NAME"
                 :semantic-type :type/Name
                 :effective-type :type/Text}
                {:name "NAME"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__NAME"
                 :semantic-type :type/Name
                 :effective-type :type/Text}]
               (columns-of-type :type/Text))))
     (testing "semantic type"
       (is (=? [{:name "ID"
-                :lib/desired-column-alias "ID"
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}
                {:name "CATEGORY_ID"
-                :lib/desired-column-alias "CATEGORY_ID"
                 :semantic-type :type/FK
                 :effective-type :type/Integer}
                {:name "ID"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
+                :fk-field-id (meta/id :venues :category-id)
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}]
               (columns-of-type :Relation/*))))
-    (testing "experssions"
+    (testing "expressions"
       (is (=? [{:name "ID"
-                :lib/desired-column-alias "ID"
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}
                {:name "CATEGORY_ID"
-                :lib/desired-column-alias "CATEGORY_ID"
                 :semantic-type :type/FK
                 :effective-type :type/Integer}
                {:name "LATITUDE"
-                :lib/desired-column-alias "LATITUDE"
                 :semantic-type :type/Latitude
                 :effective-type :type/Float}
                {:name "LONGITUDE"
-                :lib/desired-column-alias "LONGITUDE"
                 :semantic-type :type/Longitude
                 :effective-type :type/Float}
                {:name "PRICE"
-                :lib/desired-column-alias "PRICE"
                 :semantic-type :type/Category
                 :effective-type :type/Integer}
                {:name "myadd"
-                :lib/desired-column-alias "myadd"
                 :effective-type :type/Integer}
                {:name "ID"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
+                :fk-field-id (meta/id :venues :category-id)
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}]
               (filter lib.types.isa/numeric? orderable-columns))))))

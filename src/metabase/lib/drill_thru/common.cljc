@@ -60,8 +60,7 @@
         query
         stage-number
         (lib.util/query-stage query stage-number)
-        {:unique-name-fn                               (lib.util/unique-name-generator)
-         :include-joined?                              false
+        {:include-joined?                              false
          :include-expressions?                         false
          :include-implicitly-joinable?                 false
          :include-implicitly-joinable-for-source-card? false})

@@ -1377,6 +1377,9 @@
                    ;; Unique names are required by the FE for compatibility.
                    ;; This applies only for JS; Clojure usage should prefer `:lib/desired-column-alias` to `:name`, and
                    ;; that's already unique by construction.
+                   ;;
+                   ;; TODO (Cam 7/8/25) -- shouldn't this use `:lib/deduplicate-name` or something?? Shouldn't we do
+                   ;; this generally everywhere? (Also, we're already doing this in the `returned-columns-method`
                    (update :name unique-name-fn)))
          to-array)))
 

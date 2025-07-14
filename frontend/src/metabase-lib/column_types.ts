@@ -1,7 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as TYPES from "cljs/metabase.lib.types.isa";
 import type Field from "metabase-lib/v1/metadata/Field";
-import type { DatasetColumn } from "metabase-types/api";
+import type { Field as ApiField, DatasetColumn } from "metabase-types/api";
 
 import type { ColumnMetadata, ColumnTypeInfo } from "./types";
 
@@ -49,7 +49,7 @@ export const isURL: TypeFn = TYPES.URL_QMARK_;
 export const isZipCode: TypeFn = TYPES.zip_code_QMARK_;
 
 export function legacyColumnTypeInfo(
-  column: DatasetColumn | Field,
+  column: DatasetColumn | Field | ApiField,
 ): ColumnTypeInfo {
   return ML.legacy_column__GT_type_info(column);
 }

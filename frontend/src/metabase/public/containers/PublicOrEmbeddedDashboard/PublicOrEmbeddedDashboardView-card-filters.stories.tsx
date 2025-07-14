@@ -127,18 +127,26 @@ const DATE_FILTER = createMockParameter({
 });
 
 interface CreateDashboardOpts {
-  parameterIds: string[];
-  headingText: string;
-  headingWidth: number;
+  chartCardParameterIds?: string[];
+  chartCardWidth?: number;
+  chartCardName?: string;
+  headingParameterIds?: string[];
+  headingText?: string;
+  headingWidth?: number;
 }
 
 function createDashboard({
-  parameterIds,
-  headingText,
-  headingWidth,
+  chartCardParameterIds = [],
+  chartCardWidth = 12,
+  chartCardName = "Bar",
+  headingParameterIds = [],
+  headingText = "Heading",
+  headingWidth = 24,
 }: CreateDashboardOpts) {
   const parameters = [CATEGORY_FILTER, NUMBER_FILTER, DATE_FILTER].filter(
-    (parameter) => parameterIds.includes(parameter.id),
+    (parameter) =>
+      chartCardParameterIds.includes(parameter.id) ||
+      headingParameterIds.includes(parameter.id),
   );
 
   return createMockDashboard({
@@ -151,15 +159,20 @@ function createDashboard({
         id: DASHCARD_HEADING_ID,
         dashboard_tab_id: TAB_ID,
         text: headingText,
-        inline_parameters: parameterIds,
+        inline_parameters: headingParameterIds,
         size_x: headingWidth,
         size_y: 1,
       }),
       createMockDashboardCard({
         id: DASHCARD_BAR_ID,
         dashboard_tab_id: TAB_ID,
-        card: createMockCard({ id: CARD_BAR_ID, name: "Bar", display: "bar" }),
-        size_x: 12,
+        card: createMockCard({
+          id: CARD_BAR_ID,
+          name: chartCardName,
+          display: "bar",
+        }),
+        inline_parameters: chartCardParameterIds,
+        size_x: chartCardWidth,
         size_y: 8,
         row: 1,
         parameter_mappings: [
@@ -237,7 +250,7 @@ export const FullWidthHeadingOneFilter = {
 
   args: createArgs({
     dashboard: createDashboard({
-      parameterIds: [CATEGORY_FILTER.id],
+      headingParameterIds: [CATEGORY_FILTER.id],
       headingText: "Heading",
       headingWidth: 24,
     }),
@@ -249,7 +262,11 @@ export const FullWidthHeadingManyFilters = {
 
   args: createArgs({
     dashboard: createDashboard({
-      parameterIds: [CATEGORY_FILTER.id, NUMBER_FILTER.id, DATE_FILTER.id],
+      headingParameterIds: [
+        CATEGORY_FILTER.id,
+        NUMBER_FILTER.id,
+        DATE_FILTER.id,
+      ],
       headingText: "Heading",
       headingWidth: 24,
     }),
@@ -261,7 +278,7 @@ export const NarrowHeadingOneFilter = {
 
   args: createArgs({
     dashboard: createDashboard({
-      parameterIds: [CATEGORY_FILTER.id],
+      headingParameterIds: [CATEGORY_FILTER.id],
       headingText: "Heading",
       headingWidth: 8,
     }),
@@ -273,7 +290,11 @@ export const NarrowHeadingManyFilters = {
 
   args: createArgs({
     dashboard: createDashboard({
-      parameterIds: [CATEGORY_FILTER.id, NUMBER_FILTER.id, DATE_FILTER.id],
+      headingParameterIds: [
+        CATEGORY_FILTER.id,
+        NUMBER_FILTER.id,
+        DATE_FILTER.id,
+      ],
       headingText: "Heading",
       headingWidth: 8,
     }),
@@ -285,7 +306,11 @@ export const NarrowHeadingManyFiltersExpanded = {
 
   args: createArgs({
     dashboard: createDashboard({
-      parameterIds: [CATEGORY_FILTER.id, NUMBER_FILTER.id, DATE_FILTER.id],
+      headingParameterIds: [
+        CATEGORY_FILTER.id,
+        NUMBER_FILTER.id,
+        DATE_FILTER.id,
+      ],
       headingText: "Heading",
       headingWidth: 8,
     }),
@@ -305,9 +330,122 @@ export const NarrowHeadingOneFilterLongText = {
 
   args: createArgs({
     dashboard: createDashboard({
-      parameterIds: [CATEGORY_FILTER.id],
+      headingParameterIds: [CATEGORY_FILTER.id],
       headingText: "Looooong Text",
       headingWidth: 8,
     }),
   }),
+};
+
+export const FullWidthChartOneFilter = {
+  render: Template,
+
+  args: createArgs({
+    dashboard: createDashboard({
+      chartCardParameterIds: [CATEGORY_FILTER.id],
+      chartCardWidth: 24,
+    }),
+  }),
+};
+
+export const FullWidthChartManyFilters = {
+  render: Template,
+
+  args: createArgs({
+    dashboard: createDashboard({
+      chartCardParameterIds: [
+        CATEGORY_FILTER.id,
+        NUMBER_FILTER.id,
+        DATE_FILTER.id,
+      ],
+      chartCardWidth: 24,
+    }),
+  }),
+};
+
+export const MediumChartOneFilter = {
+  render: Template,
+
+  args: createArgs({
+    dashboard: createDashboard({
+      chartCardParameterIds: [CATEGORY_FILTER.id],
+      chartCardWidth: 10,
+    }),
+  }),
+};
+
+export const MediumChartManyFilters = {
+  render: Template,
+
+  args: createArgs({
+    dashboard: createDashboard({
+      chartCardParameterIds: [
+        CATEGORY_FILTER.id,
+        NUMBER_FILTER.id,
+        DATE_FILTER.id,
+      ],
+      chartCardWidth: 10,
+    }),
+  }),
+};
+
+export const NarrowChartOneFilter = {
+  render: Template,
+
+  args: createArgs({
+    dashboard: createDashboard({
+      chartCardParameterIds: [CATEGORY_FILTER.id],
+      chartCardWidth: 6,
+    }),
+  }),
+};
+
+export const NarrowChartOneFilterLongCardName = {
+  render: Template,
+
+  args: createArgs({
+    dashboard: createDashboard({
+      chartCardParameterIds: [CATEGORY_FILTER.id],
+      chartCardWidth: 6,
+      chartCardName: "Looooong Card Name",
+    }),
+  }),
+};
+
+export const NarrowChartManyFilters = {
+  render: Template,
+
+  args: createArgs({
+    dashboard: createDashboard({
+      chartCardParameterIds: [
+        CATEGORY_FILTER.id,
+        NUMBER_FILTER.id,
+        DATE_FILTER.id,
+      ],
+      chartCardWidth: 6,
+    }),
+  }),
+};
+
+export const NarrowChartManyFiltersExpanded = {
+  render: Template,
+
+  args: createArgs({
+    dashboard: createDashboard({
+      chartCardParameterIds: [
+        CATEGORY_FILTER.id,
+        NUMBER_FILTER.id,
+        DATE_FILTER.id,
+      ],
+      chartCardWidth: 6,
+    }),
+  }),
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const expandFiltersButton = await canvas.findByTestId(
+      "show-filter-parameter-button",
+    );
+    await userEvent.click(expandFiltersButton);
+  },
 };

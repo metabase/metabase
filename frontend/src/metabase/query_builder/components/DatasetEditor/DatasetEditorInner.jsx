@@ -3,7 +3,7 @@ import cx from "classnames";
 import { merge } from "icepick";
 import PropTypes from "prop-types";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePrevious } from "react-use";
+import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useListModelIndexesQuery } from "metabase/api";
@@ -247,6 +247,12 @@ const _DatasetEditorInner = (props) => {
 
   const [focusedFieldName, setFocusedFieldName] = useState();
 
+  useMount(() => {
+    if (question.isSaved() && Lib.canRun(question.query(), question.type())) {
+      runQuestionQuery();
+    }
+  });
+
   const focusedFieldIndex = useMemo(() => {
     if (!focusedFieldName) {
       return -1;
@@ -320,8 +326,8 @@ const _DatasetEditorInner = (props) => {
   const handleCancelEdit = () => {
     closeModal();
     cancelQuestionChanges();
-    runDirtyQuestionQuery();
     setQueryBuilderMode("view");
+    runDirtyQuestionQuery();
   };
 
   const handleCancelClick = () => {

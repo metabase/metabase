@@ -120,6 +120,12 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
         gap="sm"
         className={className}
         ref={ref}
+        onMouseDown={(e) => {
+          if (isEditing) {
+            // Prevents clicking a filter in edit mode triggering card dragging
+            e.stopPropagation();
+          }
+        }}
       >
         {isSortable ? (
           <SortableList

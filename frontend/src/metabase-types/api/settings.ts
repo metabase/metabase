@@ -312,7 +312,7 @@ export type CustomGeoJSONMap = {
 export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
 
 interface InstanceSettings {
-  "admin-email": string;
+  "admin-email": string | null;
   "email-from-address-override": string | null;
   "email-smtp-host-override": string | null;
   "email-smtp-port-override": 465 | 587 | 2525 | null;
@@ -335,6 +335,7 @@ interface InstanceSettings {
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "example-dashboard-id": number | null;
+  "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;

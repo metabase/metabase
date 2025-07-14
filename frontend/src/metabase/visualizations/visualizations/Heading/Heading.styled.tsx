@@ -50,7 +50,7 @@ export const InputContainer = styled.div<InputContainerProps>`
     `}
 `;
 
-export const TextInput = styled.input`
+const TextInput = styled.input`
   border: none;
   background: none;
   max-height: 100%;

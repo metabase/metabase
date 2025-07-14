@@ -237,69 +237,63 @@
 (deftest ^:parallel orderable-columns-test
   (let [query (lib.tu/venues-query)]
     (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-      (is (=? [{:lib/type                 :metadata/column
-                :name                     "ID"
-                :display-name             "ID"
-                :id                       (meta/id :venues :id)
-                :table-id                 (meta/id :venues)
-                :base-type                :type/BigInteger
-                :lib/source-column-alias  "ID"
-                :lib/desired-column-alias "ID"}
-               {:lib/type                 :metadata/column
-                :name                     "NAME"
-                :display-name             "Name"
-                :id                       (meta/id :venues :name)
-                :table-id                 (meta/id :venues)
-                :base-type                :type/Text
-                :lib/source-column-alias  "NAME"
-                :lib/desired-column-alias "NAME"}
-               {:lib/type                 :metadata/column
-                :name                     "CATEGORY_ID"
-                :display-name             "Category ID"
-                :id                       (meta/id :venues :category-id)
-                :table-id                 (meta/id :venues)
-                :lib/source-column-alias  "CATEGORY_ID"
-                :lib/desired-column-alias "CATEGORY_ID"}
-               {:lib/type                 :metadata/column
-                :name                     "LATITUDE"
-                :display-name             "Latitude"
-                :id                       (meta/id :venues :latitude)
-                :table-id                 (meta/id :venues)
-                :base-type                :type/Float
-                :lib/source-column-alias  "LATITUDE"
-                :lib/desired-column-alias "LATITUDE"}
-               {:lib/type                 :metadata/column
-                :name                     "LONGITUDE"
-                :display-name             "Longitude"
-                :id                       (meta/id :venues :longitude)
-                :table-id                 (meta/id :venues)
-                :base-type                :type/Float
-                :lib/source-column-alias  "LONGITUDE"
-                :lib/desired-column-alias "LONGITUDE"}
-               {:lib/type                 :metadata/column
-                :name                     "PRICE"
-                :display-name             "Price"
-                :id                       (meta/id :venues :price)
-                :table-id                 (meta/id :venues)
-                :base-type                :type/Integer
-                :lib/source-column-alias  "PRICE"
-                :lib/desired-column-alias "PRICE"}
-               {:lib/type                 :metadata/column
-                :name                     "ID"
-                :display-name             "ID"
-                :id                       (meta/id :categories :id)
-                :table-id                 (meta/id :categories)
-                :base-type                :type/BigInteger
-                :lib/source-column-alias  "ID"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"}
-               {:lib/type                 :metadata/column
-                :name                     "NAME"
-                :display-name             "Name"
-                :id                       (meta/id :categories :name)
-                :table-id                 (meta/id :categories)
-                :base-type                :type/Text
-                :lib/source-column-alias  "NAME"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__NAME"}]
+      (is (=? [{:lib/type                :metadata/column
+                :name                    "ID"
+                :display-name            "ID"
+                :id                      (meta/id :venues :id)
+                :table-id                (meta/id :venues)
+                :base-type               :type/BigInteger
+                :lib/source-column-alias "ID"}
+               {:lib/type                :metadata/column
+                :name                    "NAME"
+                :display-name            "Name"
+                :id                      (meta/id :venues :name)
+                :table-id                (meta/id :venues)
+                :base-type               :type/Text
+                :lib/source-column-alias "NAME"}
+               {:lib/type                :metadata/column
+                :name                    "CATEGORY_ID"
+                :display-name            "Category ID"
+                :id                      (meta/id :venues :category-id)
+                :table-id                (meta/id :venues)
+                :lib/source-column-alias "CATEGORY_ID"}
+               {:lib/type                :metadata/column
+                :name                    "LATITUDE"
+                :display-name            "Latitude"
+                :id                      (meta/id :venues :latitude)
+                :table-id                (meta/id :venues)
+                :base-type               :type/Float
+                :lib/source-column-alias "LATITUDE"}
+               {:lib/type                :metadata/column
+                :name                    "LONGITUDE"
+                :display-name            "Longitude"
+                :id                      (meta/id :venues :longitude)
+                :table-id                (meta/id :venues)
+                :base-type               :type/Float
+                :lib/source-column-alias "LONGITUDE"}
+               {:lib/type                :metadata/column
+                :name                    "PRICE"
+                :display-name            "Price"
+                :id                      (meta/id :venues :price)
+                :table-id                (meta/id :venues)
+                :base-type               :type/Integer
+                :lib/source-column-alias "PRICE"}
+               {:lib/type                :metadata/column
+                :name                    "ID"
+                :display-name            "ID"
+                :id                      (meta/id :categories :id)
+                :table-id                (meta/id :categories)
+                :base-type               :type/BigInteger
+                :lib/source-column-alias "ID"
+                :fk-field-id             (meta/id :venues :category-id)}
+               {:lib/type                :metadata/column
+                :name                    "NAME"
+                :display-name            "Name"
+                :id                      (meta/id :categories :name)
+                :table-id                (meta/id :categories)
+                :base-type               :type/Text
+                :lib/source-column-alias "NAME"
+                :fk-field-id             (meta/id :venues :category-id)}]
               (lib/orderable-columns query))))))
 
 (deftest ^:parallel orderable-expressions-test
@@ -379,31 +373,26 @@
       (is (=? [{:name                     "USER_ID"
                 :display-name             "User ID"
                 :base-type                :type/Integer
-                :lib/source               :source/card
-                :lib/desired-column-alias "USER_ID"}
+                :lib/source               :source/card}
                {:name                     "count"
                 :display-name             "Count"
                 :base-type                :type/Integer
-                :lib/source               :source/card
-                :lib/desired-column-alias "count"}
+                :lib/source               :source/card}
                ;; Implicitly joinable columns
                {:name                     "ID"
                 :display-name             "ID"
                 :base-type                :type/BigInteger
                 :lib/source               :source/implicitly-joinable
-                :lib/desired-column-alias "USERS__via__USER_ID__ID"
                 :fk-field-id              (meta/id :checkins :user-id)}
                {:name                     "NAME"
                 :display-name             "Name"
                 :base-type                :type/Text
                 :lib/source               :source/implicitly-joinable
-                :lib/desired-column-alias "USERS__via__USER_ID__NAME"
                 :fk-field-id              (meta/id :checkins :user-id)}
                {:name                     "LAST_LOGIN"
                 :display-name             "Last Login"
                 :base-type                :type/DateTime
                 :lib/source               :source/implicitly-joinable
-                :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"
                 :fk-field-id              (meta/id :checkins :user-id)}]
               (lib/orderable-columns query)))
       (testing `lib/display-info

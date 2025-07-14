@@ -811,3 +811,57 @@
                q3
                -1
                [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "double-price"]))))))
+
+(deftest ^:parallel resolve-field-from-card-test
+  (let [q1 (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+               (lib/join (meta/table-metadata :reviews)))
+        mp (lib.tu/mock-metadata-provider
+            meta/metadata-provider
+            {:cards [{:id            1
+                      :dataset-query q1
+                      :name          "Products+Reviews"
+                      :type          :model}]})
+        q2 (-> (lib/query mp (lib.metadata/card mp 1))
+               (as-> query (lib/aggregate query (lib/sum (lib.tu.notebook/find-col-with-spec
+                                                          query
+                                                          (lib/visible-columns query)
+                                                          {}
+                                                          {:long-display-name "Price"}))))
+               (lib.tu.notebook/add-breakout {:long-display-name "Reviews → Created At"}))]
+    (is (=? {:stages [{:source-card 1
+                       :aggregation [[:sum
+                                      {}
+                                      [:field {} "PRICE"]]]
+                       :breakout    [[:field {} "Reviews__CREATED_AT"]]}]}
+            q2))
+    (is (=? {:name "PRICE", :id (meta/id :products :price)}
+            (#'lib.field.resolution/resolve-column-name
+             q2
+             0
+             [:field
+              {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float}
+              "PRICE"])))
+    (is (= [{:name "CREATED_AT_2", :lib/source-column-alias "Reviews__CREATED_AT"}
+            {:name "sum", :lib/source-column-alias "sum"}]
+           (map #(select-keys % [:name :lib/source-column-alias])
+                (lib/returned-columns q2))))
+    (let [mp (lib.tu/mock-metadata-provider
+              mp
+              {:cards [{:id            2
+                        :dataset-query q2
+                        :name          "Products+Reviews Summary"
+                        :type          :model}]})
+          q3 (lib/query mp (lib.metadata/card mp 2))]
+      (is (= [{:name "CREATED_AT_2", :lib/source-column-alias "Reviews__CREATED_AT"}
+              {:name "sum", :lib/source-column-alias "sum"}]
+             (map #(select-keys % [:name :lib/source-column-alias])
+                  (lib/visible-columns q3))))
+      (is (=? {:lib/source-column-alias  "Reviews__CREATED_AT"
+               :lib/desired-column-alias "Reviews__CREATED_AT"
+               :display-name             "Reviews → Created At"}
+              (lib.field.resolution/resolve-field-ref
+               q3
+               0
+               [:field
+                {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float}
+                "Reviews__CREATED_AT"]))))))
