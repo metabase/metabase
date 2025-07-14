@@ -149,7 +149,8 @@
     :last-edited-at {:type :date-range}
     :last-editor-id {:type :list, :context-key :last-edited-by}
     :native-query   {:type :native-query, :context-key :search-native-query}
-    :verified       {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}}))
+    :verified       {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
+    :non-temporal-dim-ids {:type :single-value :context-key :non-temporal-dim-ids}}))
 
 (def ^:private filter-defaults-by-context
   {:default         {:archived               false
@@ -246,7 +247,8 @@
    [:verified                            {:optional true} true?]
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:include-dashboard-questions?        {:optional true} :boolean]
-   [:include-metadata?                   {:optional true} :boolean]])
+   [:include-metadata?                   {:optional true} :boolean]
+   [:non-temporal-dim-ids                {:optional true} ms/NonBlankString]])
 
 (defmulti column->string
   "Turn a complex column into a string"

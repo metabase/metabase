@@ -146,7 +146,8 @@
     search-engine                       :search_engine
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
-    include-metadata                    :include_metadata}
+    include-metadata                    :include_metadata
+    non-temporal-dim-ids                :non_temporal_dim_ids}
    :- [:map
        [:q                                   {:optional true} [:maybe ms/NonBlankString]]
        [:context                             {:optional true} [:maybe :keyword]]
@@ -165,7 +166,8 @@
        [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:calculate_available_models          {:optional true} [:maybe true?]]
        [:include_dashboard_questions         {:default false} [:maybe :boolean]]
-       [:include_metadata                    {:default false} [:maybe :boolean]]]]
+       [:include_metadata                    {:default false} [:maybe :boolean]]
+       [:non_temporal_dim_ids                {:optional true} [:maybe ms/NonBlankString]]]]
   (api/check-valid-page-params (request/limit) (request/offset))
   (try
     (u/prog1 (search/search
@@ -194,7 +196,8 @@
                 :ids                                 (set ids)
                 :calculate-available-models?         calculate-available-models
                 :include-dashboard-questions?        include-dashboard-questions
-                :include-metadata?                   include-metadata}))
+                :include-metadata?                   include-metadata
+                :non-temporal-dim-ids                non-temporal-dim-ids}))
       (analytics/inc! :metabase-search/response-ok))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]

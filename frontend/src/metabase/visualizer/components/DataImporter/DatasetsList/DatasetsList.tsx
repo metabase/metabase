@@ -1,14 +1,18 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { useSearchQuery } from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { Flex, Loader } from "metabase/ui";
-import { getDataSources } from "metabase/visualizer/selectors";
+import {
+  getDataSources,
+  getVisualizationColumns,
+} from "metabase/visualizer/selectors";
 import { createDataSource } from "metabase/visualizer/utils";
+import { partitionTimeDimensions } from "metabase/visualizer/utils/column";
 import {
   addDataSource,
   removeDataSource,
@@ -48,6 +52,18 @@ export function DatasetsList({
     () => new Set(dataSources.map((s) => s.id)),
     [dataSources],
   );
+
+  const visualizationColumns = useSelector(getVisualizationColumns);
+  const { otherDimensions } = useMemo(() => {
+    return partitionTimeDimensions(visualizationColumns || []);
+  }, [visualizationColumns]);
+
+  const nonTemporalDimIds = useMemo(() => {
+    return otherDimensions
+      .map((dim) => dim.id)
+      .filter((id) => id != null)
+      .sort((a, b) => a - b) as number[];
+  }, [otherDimensions]);
 
   const handleAddDataSource = useCallback(
     (source: VisualizerDataSource) => {
@@ -94,56 +110,35 @@ export function DatasetsList({
   );
 
   const { data: searchResult, isFetching: isSearchLoading } = useSearchQuery(
-    search.length > 0
-      ? {
-          q: search,
-          limit: 10,
-          models: ["card", "dataset", "metric"],
-          include_dashboard_questions: true,
-          include_metadata: true,
-        }
-      : skipToken,
+    {
+      ...(search.length > 0 && { q: search }),
+      limit: 10,
+      models: ["card", "dataset", "metric"],
+      include_dashboard_questions: true,
+      include_metadata: true,
+      non_temporal_dim_ids: JSON.stringify(nonTemporalDimIds),
+    },
     {
       refetchOnMountOrArgChange: true,
     },
   );
 
-  const { data: allRecents = [], isLoading: isListRecentsLoading } =
-    useListRecentsQuery(
-      { include_metadata: true },
-      {
-        refetchOnMountOrArgChange: true,
-      },
-    );
-
   const items = useMemo(() => {
-    if (search.length > 0) {
-      return (searchResult ? searchResult.data : [])
-        .map((item) =>
-          typeof item.id === "number" &&
-          shouldIncludeDashboardQuestion(item, dashboardId)
-            ? {
-                ...createDataSource("card", item.id, item.name),
-                result_metadata: item.result_metadata,
-                display: item.display,
-              }
-            : null,
-        )
-        .filter(isNotNull);
-    }
-
-    return allRecents
-      .filter((maybeCard) =>
-        ["card", "dataset", "metric"].includes(maybeCard.model),
+    return (searchResult ? searchResult.data : [])
+      .map((item) =>
+        typeof item.id === "number" &&
+        shouldIncludeDashboardQuestion(item, dashboardId)
+          ? {
+              ...createDataSource("card", item.id, item.name),
+              result_metadata: item.result_metadata,
+              display: item.display,
+            }
+          : null,
       )
-      .map((card) => ({
-        ...createDataSource("card", card.id, card.name),
-        display: card.display,
-        result_metadata: card.result_metadata,
-      }));
-  }, [searchResult, allRecents, search, dashboardId]);
+      .filter(isNotNull);
+  }, [searchResult, dashboardId]);
 
-  if (isListRecentsLoading || isSearchLoading) {
+  if (isSearchLoading) {
     return (
       <Flex
         gap="xs"

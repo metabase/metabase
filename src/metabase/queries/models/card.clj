@@ -1342,6 +1342,7 @@
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (defn extract-non-temporal-dimension-ids
+  "Populate list of nontemporal dimension field IDs"
   [{:keys [dataset_query]}]
   (if (nil? dataset_query)
     (json/encode [])
@@ -1349,6 +1350,7 @@
           metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
           lib-query         (lib/query metadata-provider dataset-query)
           columns           (lib/returned-columns lib-query)
+          ;; Dimensions are columns that are not aggregations
           dimensions        (remove (comp #{:source/aggregations} :lib/source) columns)
           dim-ids           (->> dimensions
                                  (remove lib.types/temporal?)
