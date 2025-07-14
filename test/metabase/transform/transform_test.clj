@@ -11,7 +11,6 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.test.data.interface :as tx]
    [metabase.transform.models.transform :as models.transform]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -205,6 +204,7 @@
                                  "SELECT * FROM users"
                                  :replace? true))))))
 
+;; Use this only only with with-no-transform-views! and in non-parallel tests
 (mt/defdataset users-departments-with-score
   [["users"
     [{:field-name "name" :base-type :type/Text}
@@ -219,7 +219,7 @@
     [[10 "Engineering"]
      [20 "Sales"]]]])
 
-(defmacro with-no-transform-views
+(defmacro with-no-transform-views!
   "Clean up the appdb and dwh prior test exec"
   [& body]
   `(do (doseq [table# (:tables (driver/describe-database driver/*driver* (mt/db)))]
@@ -239,7 +239,7 @@
     (mt/normal-drivers-with-feature :view)
     (mt/dataset
       users-departments-with-score
-      (with-no-transform-views
+      (with-no-transform-views!
         (let [dataset-query (let [mp (mt/metadata-provider)]
                               (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
                                   (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
@@ -273,7 +273,7 @@
     (mt/normal-drivers-with-feature :view)
     (mt/dataset
       users-departments-with-score
-      (with-no-transform-views
+      (with-no-transform-views!
         (let [clashing-name "mb_transform_333"
               clashing-schema "clashing_schema_333"]
           (mt/with-temp [:model/Table _table {:db_id (mt/id) :schema clashing-schema :name clashing-name}]
@@ -298,7 +298,7 @@
     (mt/normal-drivers-with-feature :view)
     (mt/dataset
       users-departments-with-score
-      (with-no-transform-views
+      (with-no-transform-views!
         (let [clashing-name "T T T"]
           (testing "Base: view creation is successfull"
             (mt/user-http-request :rasta :post 200 "transform"
@@ -327,7 +327,7 @@
     (mt/normal-drivers-with-feature :view)
     (mt/dataset
       users-departments-with-score
-      (with-no-transform-views
+      (with-no-transform-views!
         (let [display-name "t r a n s"]
           (let [transform (mt/user-http-request :rasta :post 200 "transform"
                                                 {:display_name display-name
@@ -368,7 +368,7 @@
     (mt/normal-drivers-with-feature :view)
     (mt/dataset
       users-departments-with-score
-      (with-no-transform-views
+      (with-no-transform-views!
         (let [mp (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
@@ -394,7 +394,7 @@
     (mt/normal-drivers-with-feature :view)
     (mt/dataset
       users-departments-db
-      (with-no-transform-views
+      (with-no-transform-views!
         (let [mp (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
