@@ -3,6 +3,8 @@
   (:require
    [clj-http.client :as http]
    [metabase.config.core :as config]
+   [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.settings :as search.settings]
@@ -48,10 +50,23 @@
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
 
+(defn- build-search-payload
+  "Build the payload for the semantic search request."
+  [search-ctx]
+  (let [payload (select-keys search-ctx
+                             [:search-string :archived? :models :created-at :created-by :last-edited-at :last-edited-by])]
+    (cond-> payload
+      (:created-at payload)
+      (update :created-at #(some-> % (params.dates/date-string->range {:inclusive-end? false})))
+
+      (:last-edited-at payload)
+      (update :last-edited-at #(some-> % (params.dates/date-string->range {:inclusive-end? false}))))))
+
 (defmethod search.engine/results :search.engine/semantic
-  [{:keys [search-string]}]
-  (let [response-body (semantic-search-request! :post "query" {:query search-string})
-        results (-> (json/decode response-body true) :results)]
+  [search-ctx]
+  (let [payload       (build-search-payload search-ctx)
+        response-body (semantic-search-request! :post "query" payload)
+        results       (-> (json/decode response-body true) :results)]
     (map (fn [result]
            (-> result
                (update :created_at parse-datetime)
@@ -59,12 +74,10 @@
                (update :last_edited_at parse-datetime)))
          results)))
 
-;; TODO
 (defmethod search.engine/model-set :search.engine/semantic
   [_search-ctx]
-  ;; TODO: Return set of models that have results for the query
-  (log/info "Semantic search model-set called")
-  #{})
+  ;; TODO: Do we need to fetch the model set from the external service?
+  search.config/all-models)
 
 (defmethod search.engine/score :search.engine/semantic
   [_search-ctx result]
