@@ -95,6 +95,12 @@
      id dataset-query
      @api/*current-user*)))
 
+(api.macros/defendpoint :delete "/:id"
+  "Create a transform"
+  [{:keys [id]} :- [:map [:id ms/Int]]]
+  ;; TODO: Which permissions to use.
+  (models.transform/delete-transform! id))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."
   (api.macros/ns-handler))

@@ -167,3 +167,16 @@
                    :creator_id (:id creator)})
       ;; TODO: async
       (sync-metadata/sync-table-metadata! (t2/select-one :model/Table :transform_id transform-id)))))
+
+(defn delete-transform!
+  [id]
+  (let [transform (t2/select-one :model/TransformView :id id)
+        schema-name (:schema transform)
+        view-name (:view_name transform)
+        database-id (:database_id transform)
+        database (t2/select-one :model/Database :id database-id)
+        driver (driver.u/database->driver database)
+        namespaced-view-name (str/join "." (remove nil? [schema-name view-name]))]
+    (driver/drop-view! driver database-id namespaced-view-name)
+    (t2/delete! :model/Table :transform_id id)
+    (t2/delete! :model/TransformView :id id)))

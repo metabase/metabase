@@ -220,7 +220,7 @@
      [20 "Sales"]]]])
 
 (defmacro with-no-transform-views
-  "Clean up the appdb and dwh prior "
+  "Clean up the appdb and dwh prior test exec"
   [& body]
   `(do (doseq [table# (:tables (driver/describe-database driver/*driver* (mt/db)))]
          (let [schema# (:schema table#)
@@ -272,7 +272,7 @@
   (mt/test-drivers
     (mt/normal-drivers-with-feature :view)
     (mt/dataset
-      users-departments-db
+      users-departments-with-score
       (with-no-transform-views
         (let [clashing-name "mb_transform_333"
               clashing-schema "clashing_schema_333"]
@@ -290,14 +290,14 @@
                                              (let [mp (mt/metadata-provider)]
                                                (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
                                                    (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
-                                                   (lib/breakout (lib.metadata/field mp (mt/id :users :score)))
+                                                   (lib/breakout (lib.metadata/field mp (mt/id :users :department_id)))
                                                    (lib.convert/->legacy-MBQL)))}))))))))))
 
 (deftest transform-display-name-clash-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :view)
     (mt/dataset
-      users-departments-db
+      users-departments-with-score
       (with-no-transform-views
         (let [clashing-name "T T T"]
           (testing "Base: view creation is successfull"
@@ -326,7 +326,7 @@
   (mt/test-drivers
     (mt/normal-drivers-with-feature :view)
     (mt/dataset
-      users-departments-db
+      users-departments-with-score
       (with-no-transform-views
         (let [display-name "t r a n s"]
           (let [transform (mt/user-http-request :rasta :post 200 "transform"
@@ -362,3 +362,29 @@
                 (is (= [[1 10 "Engineering"] [2 20 "Sales"]]
                        (mt/rows (-> (lib/query mp (lib.metadata/table mp table-id))
                                     (qp/process-query)))))))))))))
+
+(deftest delete-transform-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :view)
+    (mt/dataset
+      users-departments-with-score
+      (with-no-transform-views
+        (let [mp (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
+                        (lib/breakout (lib.metadata/field mp (mt/id :users :department_id))))
+              display-name "My shiny transfrom"]
+          (let [resp (mt/user-http-request :rasta :post 200 "transform"
+                                           {:display_name display-name
+                                            :dataset_query (lib.convert/->legacy-MBQL query)})
+                transform-id (:id resp)]
+            (testing "Base: Transform was successfully created"
+              (is (= 1 (t2/count :model/TransformView :id transform-id)))
+              (is (= 1 (t2/count :model/Table :transform_id transform-id))))
+            (testing "Transform was deleted"
+              (mt/user-http-request :rasta :delete 200 (str "transform/" transform-id))
+            ;; Ensure transform was removed from dwh, hence is not picked up by sync that follows
+              (sync/sync-database! (mt/db))
+              (is (empty? (filter #(str/starts-with? % models.transform/view-name-prefix)
+                                  (t2/select-fn-vec :name :model/Table :db_id (mt/id)))))
+              (is (empty? (t2/select :model/TransformView :id transform-id))))))))))
