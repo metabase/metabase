@@ -157,7 +157,8 @@
              ;; specified by `:widget-type`. Non-Field-filter parameters just have `:type`. So prefer
              ;; `:widget-type` if available but fall back to `:type` if not.
              (cond
-               (and (= tag-type :dimension)
+               (and (or (= tag-type :dimension)
+                        (= tag-type :custom-filter))
                     (not= widget-type :none))
                [param-name widget-type]
 
