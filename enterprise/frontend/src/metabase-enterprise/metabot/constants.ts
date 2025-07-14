@@ -33,4 +33,7 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get list_available_fields() {
     return undefined;
   },
+  get search_data_sources() {
+    return t`Checking available data sources`;
+  },
 };

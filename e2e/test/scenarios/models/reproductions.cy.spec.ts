@@ -1841,3 +1841,99 @@ describe("issue 55486", () => {
     checkIsShowingQueryEditorTab();
   });
 });
+
+describe("Issue 30712", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.startNewModel();
+
+    H.entityPickerModal().findByText("Orders").click();
+    H.join();
+    H.joinTable("Products");
+
+    H.join();
+    H.joinTable("People");
+  });
+
+  it("should not crash the editor when ordering by columns on joined tables (metabase#30712)", () => {
+    H.getNotebookStep("summarize").findByLabelText("Sort").click();
+    H.popover().findByText("Total").click();
+
+    cy.log("no error should be thrown");
+    cy.get("main").findByText("Something's gone wrong").should("not.exist");
+    cy.findByTestId("run-button").should("be.visible");
+  });
+});
+
+describe.skip("issue 60930", () => {
+  const modelDetails: StructuredQuestionDetails = {
+    name: "Model",
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          "source-table": PRODUCTS_ID,
+          alias: "Products",
+          strategy: "left-join",
+          fields: "all",
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
+            [
+              "field",
+              PRODUCTS.ID,
+              { "base-type": "type/BigInteger", "join-alias": "Products" },
+            ],
+          ],
+        },
+        {
+          "source-table": REVIEWS_ID,
+          alias: "Reviews",
+          strategy: "left-join",
+          fields: "all",
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
+            [
+              "field",
+              REVIEWS.PRODUCT_ID,
+              { "base-type": "type/Integer", "join-alias": "Reviews" },
+            ],
+          ],
+        },
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not apply model metadata overrides to incorrect columns after changes in the query (metabase#60930)", () => {
+    cy.log("create a model");
+    H.createQuestion(modelDetails).then(({ body: card }) =>
+      H.visitModel(card.id),
+    );
+
+    cy.log("override the column name");
+    H.openQuestionActions("Edit metadata");
+    H.waitForLoaderToBeRemoved();
+    H.openColumnOptions("Products → ID");
+    H.renameColumn("Products → ID", "ID2");
+    H.saveMetadataChanges();
+    H.tableInteractive().findByText("ID2").should("exist");
+
+    cy.log("remove the ID2 column from the query");
+    H.openQuestionActions("Edit query definition");
+    H.getNotebookStep("join", { index: 0 })
+      .findByLabelText("Pick columns")
+      .click();
+    H.popover().findByLabelText("Select all").click();
+    H.saveMetadataChanges();
+    H.tableInteractive().findByText("ID2").should("not.exist");
+  });
+});
