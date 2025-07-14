@@ -25,6 +25,7 @@ Database routing is useful for:
 - [PostgreSQL](../databases/connections/postgresql.md)
 - [SQL Server](../databases/connections/sql-server.md)
 - [SQLite](../databases/connections/sqlite.md)
+- [BigQuery](../databases/connections/bigquery.md)
 
 ## How database routing works
 
