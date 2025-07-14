@@ -12,11 +12,12 @@ import {
   NameDescriptionInput,
   SortableFieldList,
 } from "metabase/metadata/components";
-import { Box, Button, Group, Icon, Loader, Stack, Text } from "metabase/ui";
+import { Box, Group, Loader, Stack, Text } from "metabase/ui";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
+import { ResponsiveButton } from "../ResponsiveButton";
 
 import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
@@ -154,25 +155,19 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
               )}
 
               {!isSorting && hasFields && (
-                <Button
-                  h={32}
-                  leftSection={<Icon name="sort_arrows" />}
-                  px="sm"
-                  py="xs"
-                  size="xs"
+                <ResponsiveButton
+                  icon="sort_arrows"
+                  // showLabel
                   onClick={() => setIsSorting(true)}
-                >{t`Sorting`}</Button>
+                >{t`Sorting`}</ResponsiveButton>
               )}
 
               {!isSorting && (
-                <Button
-                  h={32}
-                  leftSection={<Icon name="gear_settings_filled" />}
-                  px="sm"
-                  py="xs"
-                  size="xs"
+                <ResponsiveButton
+                  icon="gear_settings_filled"
+                  // showLabel
                   onClick={onSyncOptionsClick}
-                >{t`Sync options`}</Button>
+                >{t`Sync options`}</ResponsiveButton>
               )}
 
               {isSorting && (
@@ -183,13 +178,12 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
               )}
 
               {isSorting && (
-                <Button
-                  h={32}
-                  px="md"
-                  py="xs"
-                  size="xs"
+                <ResponsiveButton
+                  icon="check" // TODO: hide this when not ellipsified
+                  // showLabel
+                  showIconWithLabel={false}
                   onClick={() => setIsSorting(false)}
-                >{t`Done`}</Button>
+                >{t`Done`}</ResponsiveButton>
               )}
             </Group>
           </Group>
