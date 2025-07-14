@@ -60,7 +60,7 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
   };
 
   const renderOption = useCallback(
-    ({ option }: { option: { value: string } }) => {
+    ({ option, checked }: { option: { value: string }; checked?: boolean }) => {
       if (option.value === TOP_NAV_VALUE) {
         return <SelectItem title={t`Top of page`} icon="dashboard" />;
       }
@@ -77,6 +77,7 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
           }
           icon={getDashcardIcon(dashcard)}
           subtitle={isHeadingDashCard(dashcard) ? t`Heading` : t`Card`}
+          checked={checked}
         />
       );
     },
@@ -127,19 +128,25 @@ function SelectItem({
   icon,
   title,
   subtitle,
+  checked = false,
 }: {
   icon: IconName;
   title: string;
   subtitle?: string;
+  checked?: boolean;
 }) {
   return (
     <Group p="sm">
       <Icon name={icon} />
       <Stack gap="xs">
-        <Text fw="400" lh="sm">
+        <Text fw="400" lh="sm" c={checked ? "text-white" : "text-dark"}>
           {title}
         </Text>
-        {!!subtitle && <Text size="sm">{subtitle}</Text>}
+        {!!subtitle && (
+          <Text size="sm" c={checked ? "text-white" : "text-dark"}>
+            {subtitle}
+          </Text>
+        )}
       </Stack>
     </Group>
   );
