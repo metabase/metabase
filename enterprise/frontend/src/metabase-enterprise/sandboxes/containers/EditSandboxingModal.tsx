@@ -3,6 +3,7 @@ import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
+import { useListUserAttributesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import { connect } from "metabase/lib/redux";
@@ -39,7 +40,6 @@ interface EditSandboxingModalContainerProps {
 
 const EditSandboxingModalContainer = ({
   policy,
-  attributes,
   push,
   params,
   route,
@@ -53,6 +53,8 @@ const EditSandboxingModalContainer = ({
     fetchPolicy(params);
     fetchUserAttributes();
   }, [fetchPolicy, params, fetchUserAttributes]);
+
+  const { data: attributes } = useListUserAttributesQuery();
 
   const isLoading = policyRequestState?.loading || !attributes;
 
@@ -77,7 +79,7 @@ const EditSandboxingModalContainer = ({
     >
       <EditSandboxingModal
         policy={policy}
-        attributes={attributes}
+        attributes={attributes || []}
         params={params}
         onCancel={close}
         onSave={handleSave}

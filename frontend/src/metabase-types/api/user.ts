@@ -20,6 +20,7 @@ export interface BaseUser {
   last_login: string;
   first_login: string;
   updated_at: string;
+  tenant_id: number | null;
 }
 
 export interface User extends BaseUser {
@@ -28,6 +29,7 @@ export interface User extends BaseUser {
   is_installer: boolean;
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
+  can_write_any_collection: boolean;
   personal_collection_id: CollectionId;
   sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | null;
   custom_homepage: {
@@ -97,6 +99,7 @@ export type ListUsersRequest = {
   query?: string;
   group_id?: number;
   include_deactivated?: boolean;
+  tenancy?: UserTenancy;
 } & PaginationRequest;
 
 export type ListUsersResponse = {
@@ -141,3 +144,5 @@ export type GetUserKeyValueRequest = UserKeyValueKey;
 export type UpdateUserKeyValueRequest = UserKeyValue & {
   expires_at?: string;
 };
+
+export type UserTenancy = "internal" | "external" | "all";

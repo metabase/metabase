@@ -14,11 +14,11 @@ import { createMockState } from "metabase-types/store/mocks";
 import { UserForm } from "./UserForm";
 
 const GROUPS = [
-  createMockGroup(),
-  createMockGroup({ id: 2, name: "Administrators" }),
-  createMockGroup({ id: 3, name: "foo" }),
-  createMockGroup({ id: 4, name: "bar" }),
-  createMockGroup({ id: 5, name: "flamingos" }),
+  createMockGroup({ id: 1, magic_group_type: "all-internal-users" }),
+  createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
+  createMockGroup({ id: 3, name: "foo", magic_group_type: null }),
+  createMockGroup({ id: 4, name: "bar", magic_group_type: null }),
+  createMockGroup({ id: 5, name: "flamingos", magic_group_type: null }),
 ];
 
 const USER = createMockUser({

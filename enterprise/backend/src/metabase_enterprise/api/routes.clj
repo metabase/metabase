@@ -25,6 +25,7 @@
    [metabase-enterprise.scim.routes]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
+   [metabase-enterprise.tenants.api]
    [metabase-enterprise.upload-management.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
@@ -35,20 +36,21 @@
 
 (def ^:private required-feature->message
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
-   :attached-dwh               (deferred-tru "Attached DWH")
-   :audit-app                  (deferred-tru "Audit app")
    :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
    :ai-sql-generation          (deferred-tru "AI SQL Generation")
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
+   :attached-dwh               (deferred-tru "Attached DWH")
+   :audit-app                  (deferred-tru "Audit app")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
+   :database-routing           (deferred-tru "Database Routing")
    :etl-connections            (deferred-tru "ETL Connections")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
    :scim                       (deferred-tru "SCIM configuration")
    :serialization              (deferred-tru "Serialization")
-   :upload-management          (deferred-tru "Upload Management")
-   :database-routing           (deferred-tru "Database Routing")})
+   :tenants                    (deferred-tru "Tenants")
+   :upload-management          (deferred-tru "Upload Management")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -88,6 +90,7 @@
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
+   "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 

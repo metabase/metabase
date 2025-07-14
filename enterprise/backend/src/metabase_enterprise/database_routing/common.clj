@@ -14,47 +14,53 @@
 
 (def ^:dynamic ^:private *database-routing-on* :unset)
 
+(defn- router-db-or-id->destination-db-id*
+  [is-anonymous-user? user-attributes is-superuser? db-or-id]
+  (when-let [attr-name (user-attribute db-or-id)]
+    (let [database-name (get user-attributes attr-name)]
+      (cond
+        ;; if database routing is EXPLICITLY off, e.g. in `POST /api/database/:id/sync_schema`, don't do any routing.
+        (= :off *database-routing-on*)
+        nil
+
+        is-anonymous-user?
+        (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.") {:status-code 400}))
+
+        (= database-name "__METABASE_ROUTER__")
+        nil
+
+        ;; superusers default to the Router Database
+        (and (nil? database-name)
+             is-superuser?)
+        nil
+
+        ;; non-superusers get an error
+        (nil? database-name)
+        (throw (ex-info (tru "Required user attribute is missing. Cannot route to a Destination Database.")
+                        {:database-name database-name
+                         :router-database-id (u/the-id db-or-id)
+                         :status-code 400}))
+
+        :else
+        (or (t2/select-one-pk :model/Database
+                              :router_database_id (u/the-id db-or-id)
+                              :name database-name)
+            (throw (ex-info (tru "Database Routing error: No Destination Database with slug `{0}` found."
+                                 database-name)
+                            {:database-name database-name
+                             :router-database-id (u/the-id db-or-id)
+                             :status-code 400})))))))
+
 (defn router-db-or-id->destination-db-id
   "Given a user and a database (or id), returns the ID of the destination database that the user's query should ultimately be
   routed to. If the database is not a Router Database, returns `nil`. If the database is a Router Database but no
   current user exists, an exception will be thrown."
-  ([db-or-id]
-   (router-db-or-id->destination-db-id @api/*current-user* db-or-id))
-  ([user db-or-id]
-   (when-let [attr-name (user-attribute db-or-id)]
-     (let [database-name (get (:login_attributes user) attr-name)]
-       (cond
-         ;; if database routing is EXPLICITLY off, e.g. in `POST /api/database/:id/sync_schema`, don't do any routing.
-         (= :off *database-routing-on*)
-         nil
-
-         (nil? user)
-         (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.") {:status-code 400}))
-
-         (= database-name "__METABASE_ROUTER__")
-         nil
-
-         ;; superusers default to the Router Database
-         (and (nil? database-name)
-              api/*is-superuser?*)
-         nil
-
-         ;; non-superusers get an error
-         (nil? database-name)
-         (throw (ex-info (tru "Required user attribute is missing. Cannot route to a Destination Database.")
-                         {:database-name database-name
-                          :router-database-id (u/the-id db-or-id)
-                          :status-code 400}))
-
-         :else
-         (or (t2/select-one-pk :model/Database
-                               :router_database_id (u/the-id db-or-id)
-                               :name database-name)
-             (throw (ex-info (tru "Database Routing error: No Destination Database with slug `{0}` found."
-                                  database-name)
-                             {:database-name database-name
-                              :router-database-id (u/the-id db-or-id)
-                              :status-code 400}))))))))
+  [db-or-id]
+  (router-db-or-id->destination-db-id*
+   (nil? @api/*current-user*)
+   (api/current-user-attributes)
+   api/*is-superuser?*
+   db-or-id))
 
 ;; We want, at all times, a guarantee that we are not hitting a router *or* destination database without being
 ;; intentional about it. It would be bad to EITHER:

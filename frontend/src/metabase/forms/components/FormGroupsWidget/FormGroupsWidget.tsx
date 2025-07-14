@@ -4,8 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { MembershipSelect } from "metabase/admin/people/components/MembershipSelect";
+import { useListPermissionsGroupsQuery } from "metabase/api";
 import FormField from "metabase/common/components/FormField";
-import { useGroupListQuery } from "metabase/common/hooks";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import type { GroupId, Member } from "metabase-types/api";
 
@@ -22,7 +22,7 @@ export const FormGroupsWidget = ({
   const [{ value: formValue }, , { setValue }] =
     useField<{ id: GroupId; is_group_manager?: boolean }[]>(name);
 
-  const { data: groups, isLoading } = useGroupListQuery();
+  const { data: groups, isLoading } = useListPermissionsGroupsQuery();
 
   if (isLoading || !groups) {
     return null;

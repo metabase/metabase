@@ -12,17 +12,41 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
+   [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
-   [metabase.util.i18n :refer [tru]]
-   [ring.util.response :as response])
+   [metabase.tenants.core :as tenants]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru trs]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [ring.util.response :as response]
+   [toucan2.core :as t2])
   (:import
    (java.net URLEncoder)))
 
 (set! *warn-on-reflection* true)
 
+(mu/defn- fetch-or-create-tenant! :- [:maybe ms/PositiveInt]
+  [tenant-slug :- [:maybe :string]]
+  ;; `use-tenants` is a feature flag: if disabled, we should *never* assign tenants.
+  (when (and tenant-slug (setting/get :use-tenants))
+    (let [existing-tenant (t2/select-one :model/Tenant :slug tenant-slug)]
+      (cond
+        (:is_active existing-tenant) (u/the-id existing-tenant)
+
+        (and (nil? existing-tenant)
+             (sso-settings/jwt-user-provisioning-enabled?))
+        (u/the-id (tenants/create-tenant! {:slug tenant-slug :name tenant-slug}))
+
+        ;; possibilities here:
+        ;; - we have an existing, active tenant - return its id
+        ;; - no tenant exists, user provisioning is on - create it and return its id
+        ;; - an inactive tenant exists - throw an exception.
+        :else (throw (ex-info (trs "An error occurred - please contact your administrator.") {:status-code 400}))))))
+
 (defn fetch-or-create-user!
   "Returns a session map for the given `email`. Will create the user if needed."
-  [first-name last-name email user-attributes]
+  [first-name last-name email user-attributes tenant-slug]
   (when-not (sso-settings/jwt-enabled)
     (throw
      (IllegalArgumentException.
@@ -31,7 +55,8 @@
               :last_name        last-name
               :email            email
               :sso_source       :jwt
-              :login_attributes user-attributes}]
+              :login_attributes user-attributes
+              :tenant_id        (fetch-or-create-tenant! tenant-slug)}]
     (or (sso-utils/fetch-and-update-login-attributes! user (sso-settings/jwt-user-provisioning-enabled?))
         (sso-utils/check-user-provisioning :jwt)
         (sso-utils/create-new-sso-user! user))))
@@ -45,6 +70,9 @@
 (def ^:private ^{:arglists '([])} jwt-attribute-lastname
   (comp keyword sso-settings/jwt-attribute-lastname))
 
+(def ^:private ^{:arglists '([])} jwt-attribute-tenant
+  (comp keyword sso-settings/jwt-attribute-tenant))
+
 (def ^:private ^{:arglists '([])} jwt-attribute-groups
   (comp keyword sso-settings/jwt-attribute-groups))
 
@@ -53,12 +81,14 @@
   [:iss :iat :sub :aud :exp :nbf :jti])
 
 (defn- jwt-data->login-attributes [jwt-data]
-  (apply dissoc
-         jwt-data
-         (jwt-attribute-email)
-         (jwt-attribute-firstname)
-         (jwt-attribute-lastname)
-         registered-claims))
+  (let [use-tenants? (setting/get :use-tenants)
+        to-dissoc (remove nil? (concat
+                                [(jwt-attribute-email)
+                                 (jwt-attribute-firstname)
+                                 (jwt-attribute-lastname)
+                                 (when use-tenants? (jwt-attribute-tenant))]
+                                registered-claims))]
+    (apply dissoc jwt-data to-dissoc)))
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time. 3 minutes is the time
 ;; used by Zendesk for their JWT SSO, so it seemed like a good place for us to start
@@ -93,20 +123,21 @@
   [jwt {{redirect :return_to} :params, :as request}]
   (let [redirect-url (or redirect (URLEncoder/encode "/"))]
     (sso-utils/check-sso-redirect redirect-url)
-    (let [jwt-data     (try
-                         (jwt/unsign jwt (sso-settings/jwt-shared-secret)
-                                     {:max-age three-minutes-in-seconds})
-                         (catch Throwable e
-                           (throw
-                            (ex-info (ex-message e)
-                                     {:status      "error-jwt-bad-unsigning"
-                                      :status-code 401}))))
-          login-attrs  (jwt-data->login-attributes jwt-data)
-          email        (get jwt-data (jwt-attribute-email))
-          first-name   (get jwt-data (jwt-attribute-firstname))
-          last-name    (get jwt-data (jwt-attribute-lastname))
-          user         (fetch-or-create-user! first-name last-name email login-attrs)
-          session      (session/create-session! :sso user (request/device-info request))]
+    (let [jwt-data    (try
+                        (jwt/unsign jwt (sso-settings/jwt-shared-secret)
+                                    {:max-age three-minutes-in-seconds})
+                        (catch Throwable e
+                          (throw
+                           (ex-info (ex-message e)
+                                    {:status      "error-jwt-bad-unsigning"
+                                     :status-code 401}))))
+          login-attrs (jwt-data->login-attributes jwt-data)
+          email       (get jwt-data (jwt-attribute-email))
+          tenant-slug (get jwt-data (jwt-attribute-tenant))
+          first-name  (get jwt-data (jwt-attribute-firstname))
+          last-name   (get jwt-data (jwt-attribute-lastname))
+          user        (fetch-or-create-user! first-name last-name email login-attrs tenant-slug)
+          session     (session/create-session! :sso user (request/device-info request))]
       (sync-groups! user jwt-data)
       {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 

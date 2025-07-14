@@ -237,6 +237,14 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :feature    :sso-jwt
   :audit      :getter)
 
+(defsetting jwt-attribute-tenant
+  (deferred-tru "Key to retrieve the JWT user''s tenant")
+  :export?    false
+  :encryption :when-encryption-key-set
+  :default    "tenant"
+  :feature    :sso-jwt
+  :audit      :getter)
+
 (defsetting jwt-attribute-groups
   (deferred-tru "Key to retrieve the JWT user''s groups")
   :default    "groups"

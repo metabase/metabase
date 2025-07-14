@@ -11,13 +11,13 @@ import {
 import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { Box, Flex, Icon, Popover } from "metabase/ui";
-import type { Group, Member } from "metabase-types/api";
+import type { GroupInfo, Member } from "metabase-types/api";
 
 import { GroupSummary } from "../GroupSummary";
 
 import S from "./MembershipSelect.module.css";
 
-const getGroupSections = (groups: Omit<Group, "members">[]) => {
+const getGroupSections = (groups: GroupInfo[]) => {
   const defaultGroup = groups.find(isDefaultGroup);
   const adminGroup = groups.find(isAdminGroup);
   const pinnedGroups = [defaultGroup, adminGroup].filter(isNotNull);
@@ -35,10 +35,10 @@ const getGroupSections = (groups: Omit<Group, "members">[]) => {
   return [{ groups: regularGroups }];
 };
 
-type Memberships = Map<Group["id"], Partial<Member>>;
+type Memberships = Map<GroupInfo["id"], Partial<Member>>;
 
 interface MembershipSelectProps {
-  groups: Omit<Group, "members">[];
+  groups: GroupInfo[];
   memberships: Memberships;
   isCurrentUser?: boolean;
   isUserAdmin: boolean;

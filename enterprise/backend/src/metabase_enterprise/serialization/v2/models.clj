@@ -90,6 +90,7 @@
    "Secret"
    "Session"
    "TaskHistory"
+   "Tenant"
    "User"
    "UserKeyValue"
    "UserParameterValue"

@@ -14,7 +14,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
+import { Messages } from "../../constants/messages";
 import { navigateToGranularPermissions } from "../../permissions";
 import type { PermissionSectionConfig, SchemaEntityId } from "../../types";
 import {
@@ -110,7 +110,9 @@ const buildAccessPermission = (
     type: DataPermissionType.ACCESS,
     isDisabled,
     isHighlighted: isAdmin,
-    disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+    disabledTooltip: isAdmin
+      ? Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+      : null,
     value,
     warning,
     confirmations,
@@ -182,6 +184,7 @@ export const buildTablesPermissions = (
   entityId: SchemaEntityId,
   groupId: number,
   isAdmin: boolean,
+  isExternal: boolean,
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
   defaultGroup: Group,
@@ -217,6 +220,7 @@ export const buildTablesPermissions = (
       entityId,
       groupId,
       isAdmin,
+      isExternal,
       permissions,
       accessPermission.value,
       defaultGroup,

@@ -147,7 +147,9 @@ describe("impersonation modal", () => {
   it("should create impersonation", async () => {
     const store = await setup({ hasImpersonation: false });
 
-    await userEvent.click(await screen.findByText(/pick a user attribute/i));
+    await userEvent.click(
+      await screen.findByPlaceholderText("Pick a user attribute"),
+    );
     await userEvent.click(await screen.findByText("foo"));
 
     expect(await screen.findByRole("button", { name: /save/i })).toBeEnabled();
@@ -169,7 +171,9 @@ describe("impersonation modal", () => {
   it("should update impersonation", async () => {
     const store = await setup();
 
-    await userEvent.click(await screen.findByText(selectedAttribute));
+    await userEvent.click(
+      await screen.findByPlaceholderText("Pick a user attribute"),
+    );
     await userEvent.click(await screen.findByText("bar"));
 
     expect(await screen.findByRole("button", { name: /save/i })).toBeEnabled();
@@ -191,7 +195,9 @@ describe("impersonation modal", () => {
   it("should show only already selected attribute if attributes array is empty", async () => {
     await setup({ hasImpersonation: true, userAttributes: [] });
 
-    await screen.findByText(selectedAttribute);
+    await expect(
+      screen.getByPlaceholderText("Pick a user attribute"),
+    ).toHaveValue(selectedAttribute);
     expect(await screen.findByRole("button", { name: /save/i })).toBeEnabled();
   });
 

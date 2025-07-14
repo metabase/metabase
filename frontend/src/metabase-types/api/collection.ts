@@ -68,7 +68,7 @@ export interface Collection {
   archived: boolean;
   children?: Collection[];
   authority_level?: CollectionAuthorityLevel;
-  type?: "instance-analytics" | "trash" | null;
+  type?: "instance-analytics" | "trash" | "tenant" | null;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
