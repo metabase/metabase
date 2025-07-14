@@ -22,12 +22,8 @@ describe("Add data modal (Starter: hosted instance without the attached DWH)", (
       ).toBeInTheDocument();
       expect(screen.getByText("Upload CSV files")).toBeInTheDocument();
       expect(screen.getByText("Sync with Google Sheets")).toBeInTheDocument();
-      const upsellLink = screen.getByRole("link", { name: "Add" });
+      const upsellLink = screen.getByRole("button", { name: "Add" });
       expect(upsellLink).toBeInTheDocument();
-      expect(upsellLink).toHaveAttribute(
-        "href",
-        "https://store.metabase.com/account/storage?utm_source=product&utm_medium=upsell&utm_campaign=storage&utm_content=add-data-modal-sheets&source_plan=starter",
-      );
     });
 
     it("should render a 'contact admin prompt' for non-admin", async () => {

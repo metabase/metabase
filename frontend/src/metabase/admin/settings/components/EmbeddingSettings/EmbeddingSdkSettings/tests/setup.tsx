@@ -3,6 +3,7 @@ import {
   findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupTokenStatusEndpoint,
   setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
   setupUserKeyValueEndpoints,
@@ -46,6 +47,7 @@ export async function setup({
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
+    setupTokenStatusEndpoint(true);
   }
 
   setupPropertiesEndpoints(settings);
@@ -64,7 +66,7 @@ export async function setup({
 
   await waitFor(async () => {
     const gets = await findRequests("GET");
-    expect(gets).toHaveLength(3);
+    expect(gets).toHaveLength(hasEnterprisePlugins ? 4 : 3);
   });
 
   await screen.findByText("Embedding SDK");
