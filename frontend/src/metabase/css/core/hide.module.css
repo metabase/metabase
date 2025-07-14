@@ -2,10 +2,6 @@
   display: none !important;
 }
 
-.hideEmpty:empty {
-  display: none;
-}
-
 .show {
   display: inherit;
 }
