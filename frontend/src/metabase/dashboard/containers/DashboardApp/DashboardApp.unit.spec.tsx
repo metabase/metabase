@@ -234,7 +234,9 @@ describe("DashboardApp", () => {
     it("should show an empty state without the 'add a question' prompt if the user lacks write access", async () => {
       await setup({ dashboard: { can_write: false } });
 
-      expect(screen.getByText("This dashboard is empty")).toBeInTheDocument();
+      expect(
+        await screen.findByText("This dashboard is empty"),
+      ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Add a chart" }),
       ).not.toBeInTheDocument();
