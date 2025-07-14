@@ -1,15 +1,15 @@
 (ns metabase.transform.models.transform
   (:require
    [clojure.string :as str]
-
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
-   [metabase.queries.models.card.metadata :as card.metadata]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.core :as sync]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -41,7 +41,7 @@
 ;; TODO: This is borrowed. Ideally dataset_query submodule should be created in metabase.queries and this and related
 ;;       functions provided there. Gist is that not only functionality metabase.queries is supposed to manipulate this.
 (defn dataset-query->query
-  "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
+  "Convert the `dataset_query` to pMBQL query."
   ([dataset-query]
    (if (-> dataset-query :lib/type #{:mbql/query})
      dataset-query
@@ -51,7 +51,7 @@
   ([metadata-provider dataset-query]
    (if (-> dataset-query :lib/type #{:mbql/query})
      dataset-query
-     (some->> dataset-query card.metadata/normalize-dataset-query (lib/query metadata-provider)))))
+     (some->> dataset-query queries/normalize-dataset-query (lib/query metadata-provider)))))
 
 ;; TODO: query schema: normalized mbql or native query
 ;; query is native query?
@@ -120,7 +120,7 @@
         database (doto (t2/select-one :model/Database :id database-id)
                    (as-> $ (assert (some? $))))
         driver (driver.u/database->driver database)
-        native (:query (qp.compile/compile-with-inline-parameters query))]
+        native (:query (driver-api/compile-with-inline-parameters query))]
     (t2/with-transaction [_conn]
       (assert-unique-display-name! database schema display-name)
       (let [transform (t2/insert-returning-instance! :model/TransformView
@@ -138,8 +138,8 @@
         ;; TODO: Is it reasonable to do the following in transaction?
         ;; NB: Following could take a long time or fail, the same way as analysis
         ;; TODO: All of that should go off thread.
-        (sync-metadata/sync-new-table-metadata! database {:table-name view-name
-                                                          :schema schema})
+        (sync/sync-new-table-metadata! database {:table-name view-name
+                                                 :schema schema})
         (let [view-table (t2/select-one :model/Table
                                         :db_id database-id
                                         :name view-name)]
@@ -176,7 +176,7 @@
                   {:dataset_query dataset-query
                    :creator_id (:id creator)})
       ;; TODO: async + analysis
-      (sync-metadata/sync-table-metadata! (t2/select-one :model/Table :transform_id transform-id)))))
+      (sync/sync-table-metadata! (t2/select-one :model/Table :transform_id transform-id)))))
 
 (defn delete-transform!
   "Delete transform and view."
