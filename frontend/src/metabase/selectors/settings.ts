@@ -51,11 +51,9 @@ export const getStoreUrl = (path: StorePaths = "") => {
   return `https://store.metabase.com/${path}`;
 };
 
-export function getStoreUrlFromState(state: State, path: StorePaths) {
-  const storeUrl = getSetting(state, "store-url");
-  const url = new URL(storeUrl);
-  url.pathname = path;
-  return url.toString();
+export function getStoreUrlFromState(state: State, path: StorePaths = "") {
+  const storeUrl = new URL(path, getSetting(state, "store-url"));
+  return storeUrl.toString();
 }
 
 export const migrateToCloudGuideUrl = () =>

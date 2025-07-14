@@ -146,7 +146,7 @@ describe("getStoreUrlFromState", () => {
       }),
     });
 
-    expect(getStoreUrlFromState(state, "")).toBe(
+    expect(getStoreUrlFromState(state)).toBe(
       "https://test-store.metabase.com/",
     );
 
