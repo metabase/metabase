@@ -1,8 +1,10 @@
 (ns metabase.transform.models.transform
   (:require
    [clojure.string :as str]
+   [honey.sql :as sql]
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u] [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
@@ -10,7 +12,8 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.util.i18n :as i18n]
-   [methodical.core :as methodical] [toucan2.core :as t2]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 (doto :model/TransformView
   (derive :metabase/model)
@@ -23,12 +26,17 @@
    :dataset_query_type mi/transform-keyword
    :status mi/transform-keyword})
 
-;; TODO: This is temporary, mysql app db compatible
+;; TODO: This is temporary
 (defn top-schema
   [database-id]
-  (-> (t2/query ["select count(id) c, `schema` s from metabase_table where db_id = ? group by `schema` order by count(id) desc, `schema` limit 1" database-id])
-      first
-      :s))
+  ;; Following is temporary. Later do it in nicer way
+  (-> (t2/query {:select [[[:count :id] :c] [:schema :s]]
+                 :from [[:metabase_table :t]]
+                 :where [:= :t.db_id database-id]
+                 :group-by [:schema]
+                 :order-by [[[:count :id] :desc]]
+                 :limit 1})
+      first :s))
 
 ;; TODO: This is borrowed. Ideally dataset_query submodule should be created in metabase.queries and this and related
 ;;       functions provided there. Gist is that not only functionality metabase.queries is supposed to manipulate this.
