@@ -105,6 +105,11 @@ describe("CollectionBrowser", () => {
 
     breadcrumb.click();
     expect(onBreadcrumbClick).toHaveBeenCalledTimes(1);
+    expect(onBreadcrumbClick).toHaveBeenCalledWith({
+      id: "root",
+      name: "Our analytics",
+      description: null,
+    });
   });
 });
 
