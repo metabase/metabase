@@ -9,6 +9,7 @@ import {
   getCurrencyStyleOptions,
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
+  sortCurrencyOptionsByPriority,
 } from "metabase/lib/formatting";
 import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import type { FormattingSettings } from "metabase-types/api";
@@ -60,13 +61,14 @@ export function FormattingWidget() {
     localValue?.["type/Currency"] || {};
 
   const [currencyOptions, currencyStyleOptions] = useMemo(() => {
-    const currencyOptions = _.sortBy(
-      getCurrencyOptions() as { name: string; value: string }[],
-      "name",
+    const currencyOptions = (
+      getCurrencyOptions() as { name: string; value: string }[]
     ).map(mapNameToLabel);
+    const sortedCurrencyOptions =
+      sortCurrencyOptionsByPriority(currencyOptions);
     const currencyStyleOptions =
       getCurrencyStyleOptions(currency).map(mapNameToLabel);
-    return [currencyOptions, currencyStyleOptions];
+    return [sortedCurrencyOptions, currencyStyleOptions];
   }, [currency]);
 
   if (isLoading) {

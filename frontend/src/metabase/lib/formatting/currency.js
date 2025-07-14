@@ -65,3 +65,22 @@ export function getCurrencyOptions() {
     value: currency.code,
   }));
 }
+
+export function sortCurrencyOptionsByPriority(currencyOptions, key = "label") {
+  // Sort alphabetically by label keeping USD, CAD, and EUR in front
+  return currencyOptions.sort((a, b) => {
+    const priority = ["USD", "CAD", "EUR"];
+    const aIdx = priority.indexOf(a.value);
+    const bIdx = priority.indexOf(b.value);
+    if (aIdx !== -1 && bIdx !== -1) {
+      return aIdx - bIdx;
+    }
+    if (aIdx !== -1) {
+      return -1;
+    }
+    if (bIdx !== -1) {
+      return 1;
+    }
+    return a[key].localeCompare(b[key]);
+  });
+}

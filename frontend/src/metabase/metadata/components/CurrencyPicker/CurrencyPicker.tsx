@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { currency } from "cljs/metabase.util.currency";
+import { sortCurrencyOptionsByPriority } from "metabase/lib/formatting";
 import {
   Combobox,
   Flex,
@@ -95,14 +96,16 @@ type Currency = {
 
 function getData() {
   const currencyData = currency as [Currency["symbol"], Currency][];
-
-  return currencyData.map(([, currency]) => ({
+  const currencyFormatted = currencyData.map(([, currency]) => ({
     label: currency.name,
     value: currency.code,
     symbol: currency.symbol,
   }));
+  return sortCurrencyOptionsByPriority(currencyFormatted);
 }
 
 function getSymbols() {
-  return Object.fromEntries(getData().map((item) => [item.value, item.symbol]));
+  return Object.fromEntries(
+    getData().map((item: any) => [item.value, item.symbol]),
+  );
 }

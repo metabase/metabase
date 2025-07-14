@@ -11,6 +11,7 @@ import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
   numberFormatterForOptions,
+  sortCurrencyOptionsByPriority,
 } from "metabase/lib/formatting";
 import { hasHour } from "metabase/lib/formatting/datetime-utils";
 import MetabaseSettings from "metabase/lib/settings";
@@ -251,10 +252,13 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "select",
     props: {
       // FIXME: rest of these options
-      options: currency.map(([_, currency]) => ({
-        name: currency.name,
-        value: currency.code,
-      })),
+      options: sortCurrencyOptionsByPriority(
+        currency.map(([_, currency]) => ({
+          name: currency.name,
+          value: currency.code,
+        })),
+        "name",
+      ),
       searchProp: "name",
       searchCaseSensitive: false,
     },
