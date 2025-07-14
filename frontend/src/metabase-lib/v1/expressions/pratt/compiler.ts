@@ -289,11 +289,6 @@ function compileDatetimeMode(
     return "iso";
   }
 
-  check(
-    !Lib.isExpressionParts(mode),
-    t`The mode argument cannot be an expression`,
-    node,
-  );
   check(isStringLiteral(mode), t`Expected string literal for mode`, node);
 
   return DATETIME_MODE_MAP[mode.toLowerCase().replaceAll("-", "")];
