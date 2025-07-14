@@ -33,6 +33,7 @@
    ;; TODO -- not convinced whether this belongs here or in `permissions`
   with-can-run-adhoc-query]
  [metabase.queries.models.card.metadata
+  normalize-dataset-query
   refresh-metadata]
  [metabase.queries.models.parameter-card]
  [metabase.queries.models.query
