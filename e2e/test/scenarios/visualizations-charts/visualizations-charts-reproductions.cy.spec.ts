@@ -470,3 +470,28 @@ describe("issue 59830", () => {
     cy.findByTestId("visualization-placeholder").should("be.visible");
   });
 });
+
+describe("issue 54755", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should show an empty state when no dimensions are available (metabase#54755)", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      display: "line" as const,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+      visualization_settings: {
+        "graph.dimensions": [],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.icon("warning").should("not.exist");
+    cy.findByTestId("visualization-placeholder").should("be.visible");
+  });
+});
