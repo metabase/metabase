@@ -1,5 +1,9 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -2491,5 +2495,89 @@ describe("issue 53036", () => {
       cy.icon("play").should("be.visible");
       cy.icon("add").click();
     });
+  });
+});
+
+describe("Issue 48771", () => {
+  const MODEL_NAME = "M1";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion({
+      name: MODEL_NAME,
+      type: "model",
+      native: {
+        database: SAMPLE_DB_ID,
+        query: "SELECT 1 AS ID",
+      },
+    }).then(({ body: model }) => {
+      H.createQuestion(
+        {
+          type: "question",
+          query: {
+            filter: [
+              ">=",
+              [
+                "field",
+                "count",
+                {
+                  "base-type": "type/Integer",
+                },
+              ],
+              0.5,
+            ],
+            "source-query": {
+              database: SAMPLE_DB_ID,
+              "source-table": ORDERS_ID,
+              joins: [
+                {
+                  "source-table": `card__${model.id}`,
+                  fields: "all",
+                  alias: MODEL_NAME,
+                  strategy: "left-join",
+                  condition: [
+                    "=",
+                    ["field", ORDERS.ID, { "base-type": "type/Integer" }],
+                    [
+                      "field",
+                      "ID",
+                      { "join-alias": MODEL_NAME, "base-type": "type/Integer" },
+                    ],
+                  ],
+                },
+              ],
+              aggregation: [["count"]],
+              breakout: [["field", ORDERS.CREATED_AT, null]],
+            },
+          },
+        },
+        { visitQuestion: true, wrapId: true },
+      );
+    });
+
+    cy.log("give nosql user access to root collection");
+    cy.updateCollectionGraph({
+      [USER_GROUPS.NOSQL_GROUP]: { root: "write" },
+    });
+
+    cy.signOut();
+    cy.signIn("nosql");
+  });
+
+  it("should allow to add a filter after summary stage (metabase#48771)", () => {
+    H.visitQuestion("@questionId");
+    H.openNotebook();
+
+    H.getNotebookStep("filter", { stage: 1 })
+      .findByText("Count is greater than or equal to 0.5")
+      .click();
+
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").clear().type("0.7");
+      cy.button("Update filter").click();
+    });
+    H.visualize();
   });
 });
