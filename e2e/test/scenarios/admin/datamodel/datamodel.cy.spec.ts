@@ -2668,6 +2668,8 @@ describe("scenarios > admin > datamodel", () => {
         });
 
         it("should smartly truncate prefix name", () => {
+          const shortPrefix = "Short prefix";
+          const longPrefix = "Legendarily long column prefix";
           H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
           TableSection.clickField("Json → A");
@@ -2675,26 +2677,60 @@ describe("scenarios > admin > datamodel", () => {
           cy.log("should not truncante short prefixes");
           TableSection.getFieldNameInput("Json")
             .clear()
-            .type("Quite long prefix")
+            .type(shortPrefix)
             .blur();
+
+          cy.log("in field section");
           FieldSection.get()
             .findByTestId("name-prefix")
-            .should("have.text", "Quite long prefix:")
+            .should("have.text", `${shortPrefix}:`)
             .then((element) => {
               H.assertIsNotEllipsified(element[0]);
             });
+          FieldSection.get().findByTestId("name-prefix").realHover();
+          H.tooltip().should("not.exist");
+
+          cy.log("in table section");
+          TableSection.getField("Json → D")
+            .findByTestId("name-prefix")
+            .should("have.text", `${shortPrefix}:`)
+            .then((element) => {
+              H.assertIsNotEllipsified(element[0]);
+            });
+          TableSection.getField("Json → D")
+            .findByTestId("name-prefix")
+            .realHover();
+          H.tooltip().should("not.exist");
 
           cy.log("should truncante long prefixes");
-          TableSection.getFieldNameInput("Quite long prefix")
+          TableSection.getFieldNameInput(shortPrefix)
             .clear()
-            .type("Legendarily long prefix")
+            .type(longPrefix)
             .blur();
+
+          cy.log("in field section");
           FieldSection.get()
             .findByTestId("name-prefix")
-            .should("have.text", "Legendarily long prefix:")
+            .should("have.text", `${longPrefix}:`)
             .then((element) => {
               H.assertIsEllipsified(element[0]);
             });
+          FieldSection.get()
+            .findByTestId("name-prefix")
+            .realHover({ scrollBehavior: "center" });
+          H.tooltip().should("be.visible").and("have.text", longPrefix);
+
+          // hide tooltip
+          FieldSection.getDescriptionInput().realHover();
+          H.tooltip().should("not.exist");
+
+          cy.log("in table section");
+          TableSection.getField("Json → D")
+            .scrollIntoView({ offset: { left: 0, top: -400 } })
+            .findByTestId("name-prefix")
+            .should("have.text", `${longPrefix}:`)
+            .realHover({ scrollBehavior: "center" });
+          H.tooltip().should("be.visible").and("have.text", longPrefix);
         });
       });
     });

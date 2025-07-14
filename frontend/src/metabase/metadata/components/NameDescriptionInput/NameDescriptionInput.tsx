@@ -1,5 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Box, Group, Icon, type IconName, Text, rem } from "metabase/ui";
 
 import { Input } from "./Input";
@@ -45,7 +46,11 @@ export const NameDescriptionInput = ({
         leftSection={
           <Group
             align="center"
+            c="text-light"
             gap={10}
+            flex="1"
+            fs="lg"
+            lh="normal"
             maw={rem(Math.floor(width / 2))}
             px={rem(10)}
             ref={sectionRef}
@@ -54,17 +59,16 @@ export const NameDescriptionInput = ({
             <Icon c="brand" flex="0 0 auto" name={nameIcon} size={20} />
 
             {namePrefix && (
-              <Text
-                c="text-light"
+              <Ellipsified
                 data-testid="name-prefix"
-                flex="1"
-                lh="normal"
-                lineClamp={1}
-                size="lg"
+                lines={1}
+                tooltip={namePrefix}
               >
-                {namePrefix}
-                {":"}
-              </Text>
+                <Text c="text-light" component="span" size="lg">
+                  {namePrefix}
+                  {":"}
+                </Text>
+              </Ellipsified>
             )}
           </Group>
         }
