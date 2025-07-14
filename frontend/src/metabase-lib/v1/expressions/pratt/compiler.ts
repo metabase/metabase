@@ -274,6 +274,7 @@ const DATETIME_MODE_MAP: Record<string, Lib.DatetimeMode> = {
   iso: "iso",
   simple: "simple",
   isobytes: "iso-bytes",
+  simplebytes: "simple-bytes",
   unixseconds: "unix-seconds",
   unixmilliseconds: "unix-milliseconds",
   unixmicroseconds: "unix-microseconds",
