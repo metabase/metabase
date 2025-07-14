@@ -538,6 +538,16 @@
         (map #(get % 2))
         (lib.util.match/match expr :expression)))
 
+(defn- aggregation->name
+  [query stage-number aggregation]
+  (lib.metadata.calculation/display-name query stage-number aggregation))
+
+(defn- referred-aggregations
+  [agg]
+  (into #{}
+        (map #(get % 2))
+        (lib.util.match/match agg :aggregation)))
+
 (defn- cyclic-definition
   ([node->children]
    (some #(cyclic-definition node->children %) (keys node->children)))
@@ -580,13 +590,6 @@
      (lib.util/clause? expr)
      (some #(invalid-nesting % (conj path-tags (first expr))) (nnext expr)))))
 
-(comment
-  (invalid-nesting [:sum {:lib/uuid (str (random-uuid))}
-                    [:avg {:lib/uuid (str (random-uuid))}
-                     [:field {:lib/uuid (str (random-uuid))} 123]]])
-  (lib.hierarchy/isa? :sum ::lib.schema.aggregation/aggregation-clause-tag)
-  -)
-
 (mu/defn diagnose-expression :- [:maybe [:map [:message :string]]]
   "Checks `expr` for type errors and, if `expression-mode` is :expression and
   `expression-position` is provided, for cyclic references with other expressions.
@@ -616,15 +619,26 @@
       (or (when-not (validator expr)
             {:message  (i18n/tru "Types are incompatible.")
              :friendly true})
-          (when-let [dependency-path (and (= expression-mode :expression)
-                                          expression-position
-                                          (let [exprs (expressions query stage-number)
-                                                edited-expr (nth exprs expression-position)
-                                                edited-name (expression->name edited-expr)
-                                                deps (-> (m/index-by expression->name exprs)
-                                                         (assoc edited-name expr)
-                                                         (update-vals referred-expressions))]
-                                            (cyclic-definition deps)))]
+          (when-let [dependency-path
+                     (when expression-position
+                       (clojure.core/case expression-mode
+                         :expression (let [exprs (expressions query stage-number)
+                                           edited-expr (nth exprs expression-position)
+                                           edited-name (expression->name edited-expr)
+                                           deps (-> (m/index-by expression->name exprs)
+                                                    (assoc edited-name expr)
+                                                    (update-vals referred-expressions))]
+                                       (cyclic-definition deps))
+                         :aggregation (let [aggs (:aggregation (lib.util/query-stage query stage-number))
+                                            edited-expr (assoc expr 1 (get-in aggs [expression-position 1]))
+                                            uuid->agg (-> aggs
+                                                          (assoc expression-position edited-expr)
+                                                          (->> (m/index-by lib.options/uuid)))
+                                            deps (update-vals uuid->agg referred-aggregations)]
+                                        (some->> (cyclic-definition deps)
+                                                 (map (comp #(aggregation->name query stage-number %)
+                                                            uuid->agg))))
+                         nil))]
             {:message (i18n/tru "Cycle detected: {0}" (str/join " → " dependency-path))
              :friendly true})
           (when-let [nested (invalid-nesting expr)]
