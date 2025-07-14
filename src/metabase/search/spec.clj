@@ -39,10 +39,12 @@
     [:req-fields {:optional true} [:vector :keyword]]]])
 
 (defn function-attr?
+  "Attributes populate by clojure functions"
   [attr-def]
   (and (map? attr-def) (:fn attr-def)))
 
 (defn collect-fn-attr-req-fields
+  "Return set of required appdb fields declared in a spec's function attrs"
   [spec]
   (->> (:attrs spec)
        vals
