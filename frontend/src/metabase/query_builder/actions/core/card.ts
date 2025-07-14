@@ -7,7 +7,7 @@ export async function loadCard(
   { dispatch, getState }: { dispatch: Dispatch; getState: GetState },
 ) {
   try {
-    const action = (await dispatch(
+    await dispatch(
       Questions.actions.fetch(
         { id: cardId },
         {
@@ -19,15 +19,10 @@ export async function loadCard(
           ], // complies with Card interface
         },
       ),
-    )) as { payload: { result: number } };
-
-    // In order to support entity ids,
-    // `getObject` looks up the metadata with a numeric id,
-    // so we must use the one from the Redux action.
-    const numericCardId = action?.payload?.result ?? cardId;
+    );
 
     const question = Questions.selectors.getObject(getState(), {
-      entityId: numericCardId,
+      entityId: cardId,
     });
 
     return question?.card();
