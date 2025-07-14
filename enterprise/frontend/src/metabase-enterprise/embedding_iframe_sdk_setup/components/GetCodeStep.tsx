@@ -12,6 +12,7 @@ import {
   Text,
 } from "metabase/ui";
 
+import { trackEmbedWizardCodeCopied } from "../analytics";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { useSdkIframeEmbedSnippet } from "../hooks/use-sdk-iframe-embed-snippet";
 
@@ -97,7 +98,10 @@ export const GetCodeStep = () => {
             {({ copied, copy }: { copied: boolean; copy: () => void }) => (
               <Button
                 leftSection={<Icon name="copy" size={16} />}
-                onClick={copy}
+                onClick={() => {
+                  copy();
+                  trackEmbedWizardCodeCopied();
+                }}
               >
                 {copied ? t`Copied!` : t`Copy Code`}
               </Button>
