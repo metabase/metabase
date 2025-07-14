@@ -404,24 +404,4 @@
     initial-cols  :- ::cols]
    (->> initial-cols
         (add-extra-metadata query)
-        cols->legacy-metadata))) (mu/defn returned-columns :- [:and
-                                                               [:sequential ::kebab-cased-map]
-                                                               [:fn
-                                                                {:error/message "columns should have unique :name(s)"}
-                                                                (fn [cols]
-                                                                  (or (empty? cols)
-                                                                      (apply distinct? (map :name cols))))]]
-                                   "Return metadata for columns returned by a pMBQL `query`.
-
-  `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column
-  name and base type). If provided these are merged with the columns the query is expected to return.
-
-  Note this `initial-cols` is more or less required for native queries unless they have metadata attached."
-                                   ([query]
-                                    (returned-columns query []))
-
-                                   ([query         :- ::lib.schema/query
-                                     initial-cols  :- ::cols]
-                                    (->> initial-cols
-                                         (add-extra-metadata query)
-                                         cols->legacy-metadata)))
+        cols->legacy-metadata)))
