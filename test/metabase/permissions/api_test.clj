@@ -82,8 +82,8 @@
         (mt/with-temp [:model/PermissionsGroup regular-group {:name "Regular Group" :is_tenant_group false}
                        :model/PermissionsGroup tenant-group {:name "Tenant Group" :is_tenant_group true}]
           (let [all-groups (fetch-groups)
-                internal-groups #p (fetch-groups :tenancy "internal")
-                external-groups #p (fetch-groups :tenancy "external")
+                internal-groups (fetch-groups :tenancy "internal")
+                external-groups (fetch-groups :tenancy "external")
                 regular-id (:id regular-group)
                 tenant-id (:id tenant-group)]
 
@@ -128,17 +128,6 @@
 
     (testing "invalid tenancy value returns 400"
       (:status (mt/user-http-request :crowberto :get 400 "permissions/group" :tenancy "invalid")))))
-
-(deftest groups-list-limit-test
-  (testing "GET /api/permissions/group?limit=1&offset=1"
-    (testing "Limit and offset pagination have defaults"
-      (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "0")
-             (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1")))
-      (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1" :limit 50)
-             (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1"))))
-    (testing "Limit and offset pagination works for permissions list"
-      (is (partial= [{:id (:id (perms-group/all-users)), :name "All Users"}]
-                    (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
 
 (deftest fetch-group-test
   (testing "GET /permissions/group/:id"

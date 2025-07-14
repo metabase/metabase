@@ -172,7 +172,7 @@
   This API requires superuser or group manager of more than one group.
   Group manager is only available if `advanced-permissions` is enabled and returns only groups that user
   is manager of.
-  
+
   Optional query parameter `tenancy` can be used to filter groups:
   - `tenancy=external`: Returns only tenant groups (where `is_tenant_group = true`)
   - `tenancy=internal`: Returns only non-tenant groups (where `is_tenant_group = false`)
