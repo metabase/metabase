@@ -1,5 +1,5 @@
-import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import { formatValue } from "metabase/lib/formatting/value";
 
 export const COMPACT_MAX_WIDTH = 250;
 export const COMPACT_WIDTH_PER_DIGIT = 25;

@@ -2,17 +2,19 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { currency } from "cljs/metabase.util.currency";
+import { displayNameForColumn } from "metabase/lib/formatting/column";
 import {
-  displayNameForColumn,
   getCurrency,
   getCurrencyStyleOptions,
   getCurrencySymbol,
+} from "metabase/lib/formatting/currency";
+import {
   getDateFormatFromStyle,
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-  numberFormatterForOptions,
-} from "metabase/lib/formatting";
+} from "metabase/lib/formatting/date";
 import { hasHour } from "metabase/lib/formatting/datetime-utils";
+import { numberFormatterForOptions } from "metabase/lib/formatting/numbers";
 import MetabaseSettings from "metabase/lib/settings";
 import { getVisualizationRaw } from "metabase/visualizations";
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";

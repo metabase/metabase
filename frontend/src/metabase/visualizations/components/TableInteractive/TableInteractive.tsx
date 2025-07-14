@@ -45,7 +45,7 @@ import type {
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { getScrollBarSize } from "metabase/lib/dom";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting/value";
 import { useDispatch } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { setUIControls } from "metabase/query_builder/actions";

@@ -7,9 +7,11 @@ import { useAdminSetting } from "metabase/api/utils";
 import {
   getCurrencyOptions,
   getCurrencyStyleOptions,
+} from "metabase/lib/formatting/currency";
+import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-} from "metabase/lib/formatting";
+} from "metabase/lib/formatting/date";
 import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import type { FormattingSettings } from "metabase-types/api";
 

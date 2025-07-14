@@ -11,7 +11,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { formatNumber } from "metabase/lib/formatting";
+import { formatNumber } from "metabase/lib/formatting/numbers";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";

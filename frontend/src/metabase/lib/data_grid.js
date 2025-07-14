@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import * as Pivot from "cljs/metabase.pivot.js";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting/value";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 

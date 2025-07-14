@@ -4,17 +4,13 @@ import { isElementOfType } from "react-dom/test-utils";
 import { mockSettings } from "__support__/settings";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
-import {
-  capitalize,
-  formatDateTimeWithUnit,
-  formatNumber,
-  formatTime,
-  formatTimeWithUnit,
-  formatUrl,
-  formatValue,
-  getCurrencySymbol,
-  slugify,
-} from "metabase/lib/formatting";
+import { getCurrencySymbol } from "metabase/lib/formatting/currency";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
+import { formatNumber } from "metabase/lib/formatting/numbers";
+import { capitalize } from "metabase/lib/formatting/strings";
+import { formatTime, formatTimeWithUnit } from "metabase/lib/formatting/time";
+import { formatUrl, slugify } from "metabase/lib/formatting/url";
+import { formatValue } from "metabase/lib/formatting/value";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockColumn } from "metabase-types/api/mocks";
 

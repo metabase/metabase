@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
-import { duration } from "metabase/lib/formatting";
+import { duration } from "metabase/lib/formatting/time";
 import { Tooltip } from "metabase/ui";
 
 import RunButton from "./RunButton";

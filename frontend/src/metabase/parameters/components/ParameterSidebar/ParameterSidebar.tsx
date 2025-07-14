@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { getEmbeddedParameterVisibility } from "metabase/dashboard/selectors";
-import { slugify } from "metabase/lib/formatting";
+import { slugify } from "metabase/lib/formatting/url";
 import { useSelector } from "metabase/lib/redux";
 import type { IconName } from "metabase/ui";
 import { Tabs, Text } from "metabase/ui";

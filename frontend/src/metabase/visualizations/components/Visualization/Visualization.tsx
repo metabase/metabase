@@ -21,7 +21,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import { formatNumber } from "metabase/lib/formatting";
+import { formatNumber } from "metabase/lib/formatting/numbers";
 import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import {

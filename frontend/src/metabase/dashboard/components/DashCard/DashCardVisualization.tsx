@@ -15,7 +15,7 @@ import {
   getVirtualCardType,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
-import { duration } from "metabase/lib/formatting";
+import { duration } from "metabase/lib/formatting/time";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";

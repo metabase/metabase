@@ -2,8 +2,8 @@ import moment from "moment"; // eslint-disable-line no-restricted-imports -- dep
 import { t } from "ttag";
 import _ from "underscore";
 
-import { formatValue } from "metabase/lib/formatting";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
+import { formatValue } from "metabase/lib/formatting/value";
 import { isEmpty } from "metabase/lib/validate";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";

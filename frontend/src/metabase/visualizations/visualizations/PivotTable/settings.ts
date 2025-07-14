@@ -12,7 +12,7 @@ import {
   COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
 } from "metabase/lib/data_grid";
-import { displayNameForColumn } from "metabase/lib/formatting";
+import { displayNameForColumn } from "metabase/lib/formatting/column";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";

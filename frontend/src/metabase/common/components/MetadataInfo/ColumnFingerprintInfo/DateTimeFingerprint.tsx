@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import type * as Lib from "metabase-lib";
 
 import { Table } from "../MetadataInfo.styled";

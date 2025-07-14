@@ -16,7 +16,7 @@ import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/home/selectors";
-import { capitalize } from "metabase/lib/formatting";
+import { capitalize } from "metabase/lib/formatting/strings";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { openDiagnostics } from "metabase/redux/app";

@@ -7,7 +7,7 @@ import {
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { displayNameForColumn } from "metabase/lib/formatting";
+import { displayNameForColumn } from "metabase/lib/formatting/column";
 import {
   ActionIcon,
   Flex,

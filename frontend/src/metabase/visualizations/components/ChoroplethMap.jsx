@@ -13,7 +13,7 @@ import Link from "metabase/common/components/Link";
 import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting/value";
 import { connect, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import EntityMenu from "metabase/common/components/EntityMenu";
 import Link from "metabase/common/components/Link";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import Settings from "metabase/lib/settings";
 import { parseTimestamp } from "metabase/lib/time";
 import * as Urls from "metabase/lib/urls";

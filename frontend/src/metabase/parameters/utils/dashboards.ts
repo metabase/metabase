@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { isQuestionCard, isQuestionDashCard } from "metabase/dashboard/utils";
-import { slugify } from "metabase/lib/formatting";
+import { slugify } from "metabase/lib/formatting/url";
 import { isNotNull } from "metabase/lib/types";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import Question from "metabase-lib/v1/Question";
