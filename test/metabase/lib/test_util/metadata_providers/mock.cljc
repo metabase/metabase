@@ -6,6 +6,7 @@
    [clojure.test :refer [deftest is]]
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
@@ -158,8 +159,8 @@
   ([m]
    (-> m
        ->mock-metadata
-       (update :fields #(for [field %]
-                          (u/assoc-default field :ident (u/generate-nano-id))))
+       (m/update-existing :fields #(for [field %]
+                                     (u/assoc-default field :ident (u/generate-nano-id))))
        ->MockMetadataProvider))
 
   ([parent-metadata-provider mock-metadata]

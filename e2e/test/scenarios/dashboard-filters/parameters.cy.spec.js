@@ -1040,7 +1040,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.dashboardParameterSidebar().button("Remove").click();
 
       H.getDashboardCard(0).within(() => {
-        cy.findByText("Heading Text").should("exist");
+        cy.findByDisplayValue("Heading Text").should("exist");
         cy.findByText("Count").should("not.exist");
 
         H.filterWidget({ isEditing: true }).contains("Category").click();
@@ -1813,7 +1813,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.button("Add filter").click();
       });
       H.getDashboardCard(0).within(() => {
-        cy.findAllByText("Gadget").should("have.length", 2); // x-axis label + filter
+        cy.findAllByText("Gadget").filter(":visible").should("have.length", 2); // x-axis label + filter
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gizmo").should("not.exist");
         cy.findByText("Widget").should("not.exist");
