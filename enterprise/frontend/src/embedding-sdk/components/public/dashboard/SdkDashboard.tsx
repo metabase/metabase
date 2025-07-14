@@ -30,10 +30,7 @@ import {
   FullscreenToggle,
   NightModeToggleButton,
 } from "metabase/dashboard/components/DashboardHeader/buttons";
-import {
-  DashboardParameterList,
-  type DashboardParameterListProps,
-} from "metabase/dashboard/components/DashboardParameterList";
+import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { DashboardTitle } from "metabase/dashboard/components/DashboardTitle";
 import { RefreshWidget } from "metabase/dashboard/components/RefreshWidget";
@@ -42,8 +39,6 @@ import {
   type DashboardContextProps,
   DashboardContextProvider,
 } from "metabase/dashboard/context";
-import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
-import { useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
@@ -245,7 +240,7 @@ export const SdkDashboard = ({ ...props }: SdkDashboardInnerProps) => (
 );
 
 SdkDashboard.Grid = Grid;
-SdkDashboard.ParameterList = SdkDashboardParameterList;
+SdkDashboard.ParameterList = DashboardParameterList;
 SdkDashboard.Title = DashboardTitle;
 SdkDashboard.Tabs = DashboardTabs;
 SdkDashboard.FullscreenButton = FullscreenToggle;
@@ -253,11 +248,3 @@ SdkDashboard.ExportAsPdfButton = ExportAsPdfButton;
 SdkDashboard.InfoButton = DashboardInfoButton;
 SdkDashboard.NightModeButton = NightModeToggleButton;
 SdkDashboard.RefreshPeriod = RefreshWidget;
-
-function SdkDashboardParameterList(
-  props: Omit<DashboardParameterListProps, "parameters">,
-) {
-  const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
-
-  return <DashboardParameterList parameters={parameters} {...props} />;
-}
