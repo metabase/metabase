@@ -12,6 +12,7 @@ import { StaticVisualization } from "metabase/static-viz/components/StaticVisual
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type { MantineThemeOverride } from "metabase/ui";
 import { Box } from "metabase/ui";
+import { themeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { RawSeries } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -71,11 +72,13 @@ export const SdkVisualizationWrapper = ({
   theme?: MetabaseTheme;
   initialStore?: State;
 }) => (
-  <Box fz="0.875rem">
-    <VisualizationWrapper initialStore={initialStore}>
-      <SdkThemeProvider theme={theme}>{children}</SdkThemeProvider>
-    </VisualizationWrapper>
-  </Box>
+  <themeProviderContext.Provider value={{ withCssVariables: true }}>
+    <Box fz="0.875rem">
+      <VisualizationWrapper initialStore={initialStore}>
+        <SdkThemeProvider theme={theme}>{children}</SdkThemeProvider>
+      </VisualizationWrapper>
+    </Box>
+  </themeProviderContext.Provider>
 );
 export interface IsomorphicVisualizationStoryProps {
   // Use `any` on purpose to avoid type casting of imported json snapshots of raw series
@@ -112,13 +115,15 @@ export const SdkVisualizationStory = ({
   theme,
 }: IsomorphicVisualizationStoryProps & { theme?: MetabaseTheme }) => {
   return (
-    <Box w={1000} h={600} bg={theme?.colors?.background}>
-      <VisualizationWrapper>
-        <SdkThemeProvider theme={theme}>
-          <Visualization rawSeries={rawSeries} width={500} />
-        </SdkThemeProvider>
-      </VisualizationWrapper>
-    </Box>
+    <themeProviderContext.Provider value={{ withCssVariables: true }}>
+      <Box w={1000} h={600} bg={theme?.colors?.background}>
+        <VisualizationWrapper>
+          <SdkThemeProvider theme={theme}>
+            <Visualization rawSeries={rawSeries} width={500} />
+          </SdkThemeProvider>
+        </VisualizationWrapper>
+      </Box>
+    </themeProviderContext.Provider>
   );
 };
 

@@ -21,7 +21,7 @@ import type {
   DashboardNightModeControls,
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
-import { isEmbeddingSdk } from "metabase/env";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
 import { getSetting } from "metabase/selectors/settings";
@@ -150,7 +150,7 @@ export const DashboardHeaderInner = ({
         )}
         editingButtons={editingButtons}
         onLastEditInfoClick={
-          isEmbeddingSdk
+          isEmbeddingSdk()
             ? undefined
             : () => {
                 dispatch(setSidebar({ name: SIDEBAR_NAME.info }));
