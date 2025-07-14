@@ -101,6 +101,8 @@
   "Implementation of `with-full-data-perms-for-all-users`. Sets every data permission for all databases to the
   most permissive value for the All Users permission group for the duration of the test."
   [thunk]
+  ;; make sure app DB is set up and test users are created
+  (initialize/initialize-if-needed! :db :test-users)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
     (doseq [[perm-type _] data-perms/Permissions
             db-id         (t2/select-pks-set :model/Database)]
