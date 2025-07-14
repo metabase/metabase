@@ -93,6 +93,19 @@ describe("CollectionBrowser", () => {
 
     expect(columnNames).toStrictEqual(["Type", "Name"]);
   });
+
+  it("should call onBreadcrumbClick when a breadcrumb is clicked", async () => {
+    const onBreadcrumbClick = jest.fn();
+
+    await setup({ props: { onBreadcrumbClick } });
+
+    const breadcrumb = await screen.findByText("Our analytics");
+    expect(breadcrumb).toBeInTheDocument();
+    expect(onBreadcrumbClick).not.toHaveBeenCalled();
+
+    breadcrumb.click();
+    expect(onBreadcrumbClick).toHaveBeenCalledTimes(1);
+  });
 });
 
 async function setup({

@@ -9,6 +9,7 @@ import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-trans
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
 import type {
+  MetabaseCollection,
   MetabaseCollectionItem,
   SdkCollectionId,
 } from "embedding-sdk/types/collection";
@@ -91,11 +92,17 @@ export type CollectionBrowserProps = {
    * A function to call when an item is clicked.
    */
   onClick?: (item: MetabaseCollectionItem) => void;
+
+  /**
+   * A function to call when a breadcrumb is clicked.
+   */
+  onBreadcrumbClick?: (collection: MetabaseCollection) => void;
 } & CommonStylingProps;
 
 export const CollectionBrowserInner = ({
   collectionId = "personal",
   onClick,
+  onBreadcrumbClick,
   pageSize = COLLECTION_PAGE_SIZE,
   visibleEntityTypes = [...USER_FACING_ENTITY_NAMES],
   EmptyContentComponent = null,
@@ -127,6 +134,12 @@ export const CollectionBrowserInner = ({
   };
 
   const onClickBreadcrumbItem = (item: CollectionEssentials) => {
+    onBreadcrumbClick?.({
+      id: item.id,
+      name: item.name,
+      description: null,
+    });
+
     setCurrentCollectionId(item.id);
   };
 

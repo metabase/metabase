@@ -1,3 +1,4 @@
+import { action } from "@storybook/addon-actions";
 import type { StoryFn } from "@storybook/react";
 import type { ComponentProps } from "react";
 
@@ -28,6 +29,7 @@ export const Default = {
 
   args: {
     collectionId: COLLECTION_ID,
+    onBreadcrumbClick: action("onBreadcrumbClick"),
   },
 };
 
