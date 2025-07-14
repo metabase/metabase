@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import dayjs from "dayjs";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
@@ -18,6 +19,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import { PreviewModal } from "metabase-enterprise/tenants/components/PreviewModal";
 import type {
   GroupId,
   GroupInfo,
@@ -67,6 +69,7 @@ export const PeopleListRow = ({
       }, new Map()),
     [userMemberships],
   );
+  const [showPreview, { open: openPreview, close: closePreview}] = useDisclosure();
 
   const isPasswordLoginEnabled = useSelector((state) =>
     getSetting(state, enablePasswordLoginKey),
@@ -156,6 +159,15 @@ export const PeopleListRow = ({
                     getItems(user),
                   )}
 
+                  {isExternal && (
+                    <Menu.Item
+                      onClick={openPreview}
+                      c="brand"
+                    >
+                      {t`Preview Metabase as this user`}
+                    </Menu.Item>
+                  )}
+
                   {!isCurrentUser && (
                     <Menu.Item
                       component={ForwardRefLink}
@@ -169,6 +181,9 @@ export const PeopleListRow = ({
               </Menu>
             )}
           </Box>
+          {showPreview && (
+            <PreviewModal onClose={closePreview} user={user} />
+          )}
         </Fragment>
       )}
     </tr>
