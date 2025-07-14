@@ -89,8 +89,8 @@ export const CollapsibleDashboardParameterList = forwardRef<
     <>
       {/* Invisible expanded parameter list for measurements */}
       <div
-        aria-hidden
         className={cx(CS.fixed, CS.hidden, CS.pointerEventsNone, CS.fullWidth)}
+        hidden
       >
         <DashboardParameterList
           {...parametersListCommonProps}
