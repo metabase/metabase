@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import { memo, useState } from "react";
 import { t } from "ttag";
 
@@ -23,6 +24,9 @@ import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
 
 const OUTLINE_SAFETY_MARGIN = 2;
+const BUTTON_GAP = 16;
+const LOADER_WIDTH = 16;
+const FIELD_ORDER_PICKER_WIDTH = 136;
 
 interface Props {
   params: RouteParams;
@@ -39,6 +43,37 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const [sendToast] = useToast();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = table.fields && table.fields.length > 0;
+  const { ref: buttonsContainerRef, width: buttonsContainerWidth } =
+    useElementSize();
+  const [sortingButtonWidth, setSortingButtonWidth] = useState(0);
+  const [syncButtonWidth, setSyncButtonWidth] = useState(0);
+  const [doneButtonWidth, setDoneButtonWidth] = useState(0);
+  const requiredWidth = getRequiredWidth();
+  const isWidthInitialized =
+    sortingButtonWidth + syncButtonWidth + doneButtonWidth > 0;
+  const showButtonLabels = isWidthInitialized
+    ? buttonsContainerWidth >= requiredWidth
+    : true;
+
+  function getRequiredWidth() {
+    let width = 0;
+
+    if (isChangingSorting) {
+      width += LOADER_WIDTH + BUTTON_GAP;
+    }
+
+    if (isSorting) {
+      width += FIELD_ORDER_PICKER_WIDTH + BUTTON_GAP + doneButtonWidth;
+    } else {
+      width += syncButtonWidth;
+
+      if (hasFields) {
+        width += sortingButtonWidth + BUTTON_GAP;
+      }
+    }
+
+    return width;
+  }
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateTable({
@@ -142,27 +177,42 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
       <Stack gap="lg" px="xl" pt={OUTLINE_SAFETY_MARGIN}>
         <Stack gap={12}>
-          <Group align="center" gap="md" justify="space-between">
+          <Group
+            align="center"
+            gap="md"
+            justify="space-between"
+            miw={0}
+            wrap="nowrap"
+          >
             <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
 
-            <Group flex="1" gap="md" justify="flex-end" wrap="nowrap">
+            <Group
+              flex="1"
+              gap="md"
+              justify="flex-end"
+              miw={0}
+              ref={buttonsContainerRef}
+              wrap="nowrap"
+            >
               {isChangingSorting && (
-                <Loader size="xs" data-testid="loading-indicator" />
+                <Loader data-testid="loading-indicator" size="xs" />
               )}
 
               {!isSorting && hasFields && (
                 <ResponsiveButton
                   icon="sort_arrows"
-                  // showLabel
+                  showLabel={showButtonLabels}
                   onClick={() => setIsSorting(true)}
+                  onRequestWidth={setSortingButtonWidth}
                 >{t`Sorting`}</ResponsiveButton>
               )}
 
               {!isSorting && (
                 <ResponsiveButton
                   icon="gear_settings_filled"
-                  // showLabel
+                  showLabel={showButtonLabels}
                   onClick={onSyncOptionsClick}
+                  onRequestWidth={setSyncButtonWidth}
                 >{t`Sync options`}</ResponsiveButton>
               )}
 
@@ -175,10 +225,11 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
               {isSorting && (
                 <ResponsiveButton
-                  icon="check" // TODO: hide this when not ellipsified
-                  // showLabel
+                  icon="check"
+                  showLabel={showButtonLabels}
                   showIconWithLabel={false}
                   onClick={() => setIsSorting(false)}
+                  onRequestWidth={setDoneButtonWidth}
                 >{t`Done`}</ResponsiveButton>
               )}
             </Group>
