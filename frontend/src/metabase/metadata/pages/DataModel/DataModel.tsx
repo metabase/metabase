@@ -119,17 +119,19 @@ export const DataModel = ({ children, location, params }: Props) => {
 
       {!isSegments && (
         <>
-          {tableId == null && databaseExists === false && (
-            <Stack
-              className={S.column}
-              h="100%"
-              justify="center"
-              miw={rem(400)}
-              p="xl"
-            >
-              <LoadingAndErrorWrapper error={t`Not found.`} />
-            </Stack>
-          )}
+          {databaseId != null &&
+            tableId == null &&
+            databaseExists === false && (
+              <Stack
+                className={S.column}
+                h="100%"
+                justify="center"
+                miw={rem(400)}
+                p="xl"
+              >
+                <LoadingAndErrorWrapper error={t`Not found.`} />
+              </Stack>
+            )}
 
           {tableId && (
             <Stack
