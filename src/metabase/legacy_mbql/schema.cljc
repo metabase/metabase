@@ -475,8 +475,7 @@
    [:numeric-expression NumericExpression]
    [:aggregation        Aggregation]
    [:value              value]
-   [:field              Field]])
-
+   [:field              Reference]])
 (def ^:private NumericExpressionArg
   [:ref ::NumericExpressionArg])
 
@@ -725,19 +724,12 @@
   string [:or StringExpressionArg DateTimeExpressionArg])
 
 (def ^:private LiteralDatetimeModeString
-  [:enum {:error/message "datetime mode string"}
-   :iso
-   :simple
-   :isobytes
-   :simplebytes
-   :unixmilliseconds
-   :unixseconds
-   :unixmicroseconds
-   :unixnanoseconds])
+  (into [:enum {:error/message "datetime mode string"}]
+        lib.schema.expression.temporal/datetime-modes))
 
 (defclause ^{:requires-features #{:expressions :expressions/datetime}} datetime
-  value  :any ;;StringExpressionArg ;; normally a string, number, or bytes
-  mode   (optional LiteralDatetimeModeString))
+  value  :any ;; normally a string, number, or bytes
+  options (optional [:map [:mode {:optional true} LiteralDatetimeModeString]]))
 
 (mr/def ::DatetimeExpression
   (one-of + datetime-add datetime-subtract convert-timezone now date datetime))
@@ -989,7 +981,8 @@
 (mr/def ::NumericExpression
   (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer float
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
-          get-hour get-minute get-second))
+          get-hour get-minute get-second
+          aggregation))
 
 (mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case case:if host domain
@@ -1086,7 +1079,7 @@
                        :numeric-expression
                        :else))}
    [:numeric-expression NumericExpression]
-   [:else (one-of avg cum-sum distinct distinct-where stddev sum min max metric share count-where
+   [:else (one-of aggregation avg cum-sum distinct distinct-where stddev sum min max metric share count-where
                   sum-where case case:if median percentile ag:var cum-count count offset)]])
 
 (def ^:private UnnamedAggregation
