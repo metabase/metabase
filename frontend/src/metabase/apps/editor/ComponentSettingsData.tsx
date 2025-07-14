@@ -33,8 +33,23 @@ export function ComponentSettingsData({
             value: "constant",
           },
           {
-            label: "Context Parameter",
+            label: "Component Context",
             value: "context",
+            disabled: true,
+          },
+          {
+            label: "Data Source Parameter",
+            value: "dataSource",
+            disabled: true,
+          },
+          {
+            label: "Global Parameter",
+            value: "global",
+            disabled: true,
+          },
+          {
+            label: "Form Value",
+            value: "form",
             disabled: true,
           },
         ]}

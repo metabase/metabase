@@ -38,3 +38,13 @@ export function traverseComponentTree(
     }
   }
 }
+
+export function getComponentName(component: ComponentDefinition) {
+  const componentMetadata = SYSTEM_COMPONENTS_MAP[component.componentId];
+
+  if (componentMetadata) {
+    return componentMetadata.name;
+  }
+
+  return component.componentId;
+}

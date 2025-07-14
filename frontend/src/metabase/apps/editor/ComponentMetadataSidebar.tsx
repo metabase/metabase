@@ -7,6 +7,7 @@ import type { ComponentConfiguration } from "../types";
 import { ComponentGlobalSettings } from "./ComponentGlobalSettings";
 
 type Props = {
+  tab: "globalSettings" | "componentTree" | null;
   configuration: ComponentConfiguration;
   onConfigurationChange: (
     configuration: Partial<ComponentConfiguration>,
@@ -14,12 +15,13 @@ type Props = {
 };
 
 export function ComponentMetadataSidebar({
+  tab,
   configuration,
   onConfigurationChange,
 }: Props) {
   return (
     <Box p="md">
-      <Tabs defaultValue="globalSettings">
+      <Tabs defaultValue={tab ?? "globalSettings"}>
         <Tabs.List>
           <Tabs.Tab
             value="globalSettings"

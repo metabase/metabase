@@ -1,6 +1,6 @@
 .root {
   cursor: pointer;
-  outline-offset: 1px;
+  outline-offset: 0;
   position: relative;
 }
 
@@ -14,7 +14,7 @@
 }
 
 .selectedPlaceholder {
-  outline: 1px solid blue;
+  outline: 1px solid blue !important;
 }
 
 .addSection {
@@ -22,34 +22,35 @@
   display: none;
   align-items: center;
   justify-content: center;
-  background-color: var(--mb-color-bg-medium);
+  background-color: rgba(0, 0, 255, 0.288);
+  z-index: 1;
 }
 
 .add-top {
   width: 90%;
   left: 5%;
-  top: -20px;
-  height: 20px;
+  top: -15px;
+  height: 15px;
 }
 
 .add-bottom {
   width: 90%;
   left: 5%;
-  bottom: -20px;
-  height: 20px;
+  bottom: -15px;
+  height: 15px;
 }
 
 .add-left {
-  left: -20px;
+  left: -15px;
   top: 5%;
-  width: 20px;
+  width: 15px;
   height: 90%;
 }
 
 .add-right {
   top: 5%;
-  right: -20px;
-  width: 20px;
+  right: -15px;
+  width: 15px;
   height: 90%;
 }
 
@@ -59,4 +60,25 @@
 
 .root:hover:has(.root:hover) > .addSection {
   display: none;
+}
+
+.root:hover:has(.root:hover) > .componentName {
+  display: none;
+}
+
+.componentName {
+  display: none;
+  position: absolute;
+  top: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: blue;
+  color: white;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.root:hover > .componentName {
+  display: block;
 }

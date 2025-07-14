@@ -6,6 +6,7 @@ import { Box } from "metabase/ui";
 
 import { ComponentTreeNode } from "../components/ComponentTreeNode";
 import { SystemComponentId } from "../const/systemComponents";
+import { getComponentName } from "../helpers";
 import type { ComponentDefinition } from "../types";
 
 import { ComponentPickPlaceholder } from "./ComponentPickPlaceholder";
@@ -43,7 +44,7 @@ export function EditableComponentTreeNode({
     return (
       <Box
         onClick={handleClick}
-        className={cx({
+        className={cx(S.root, {
           [S.selectedPlaceholder]: selectedComponent?.id === component.id,
         })}
       >
@@ -67,6 +68,7 @@ export function EditableComponentTreeNode({
         [S.selected]: selectedComponent?.id === component.id,
       })}
     >
+      <div className={S.componentName}>{getComponentName(component)}</div>
       {canAddVertical && (
         <>
           <AddSection
@@ -141,7 +143,7 @@ function AddSection({
       className={cx(S.addSection, S[`add-${position}`])}
       onClick={handleClick}
     >
-      <IconPlus size={12} color="var(--mb-color-brand)" />
+      <IconPlus size={12} color="white" />
     </Box>
   );
 }

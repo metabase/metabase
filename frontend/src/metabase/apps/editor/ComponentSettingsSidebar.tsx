@@ -2,6 +2,7 @@ import { IconDatabase, IconListTree, IconPalette } from "@tabler/icons-react";
 
 import { Box, Tabs, Text, Title } from "metabase/ui";
 
+import { getComponentName } from "../helpers";
 import type { ComponentDefinition } from "../types";
 
 import { ComponentSettingsData } from "./ComponentSettingsData";
@@ -23,8 +24,7 @@ export function ComponentSettingsSidebar({
           {"Component Settings"}
         </Title>
         <Text c="text-secondary" size="sm">
-          {component.componentId}
-          <br /> {component.id}
+          {getComponentName(component)}: {component.id}
         </Text>
       </Box>
       <Tabs defaultValue="data" mt="md">

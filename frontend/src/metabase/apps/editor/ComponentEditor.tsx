@@ -28,6 +28,10 @@ export function ComponentEditor() {
   const [selectedComponent, setSelectedComponent] =
     useState<ComponentDefinition | null>(initialComponent);
 
+  const [configureSelectedTab, setConfigureSelectedTab] = useState<
+    "globalSettings" | "componentTree" | null
+  >(null);
+
   const [componentConfiguration, setComponentConfiguration] =
     useState<ComponentConfiguration>({
       root: initialComponent,
@@ -90,9 +94,7 @@ export function ComponentEditor() {
       traverseComponentTree(newState.root, (component) => {
         if (component.id === selectedComponent?.id) {
           for (const [key, value] of Object.entries(settings)) {
-            if (key in component) {
-              (component as any)[key] = value;
-            }
+            (component as any)[key] = value;
           }
 
           return TRAVERSE_STOP;
@@ -201,10 +203,21 @@ export function ComponentEditor() {
     <Stack gap="0" p="0" h="100%" w="100%">
       <ComponentEditorHeader
         configuration={componentConfiguration}
-        onConfigureClick={() => setSelectedComponent(null)}
+        onConfigureClick={() => {
+          setSelectedComponent(null);
+          setConfigureSelectedTab("globalSettings");
+        }}
       />
       <Group gap="0" p="0" h="calc(100% - 73px)" align="flex-start" bg="white">
-        <Box flex={1} h="100%" style={{ overflow: "auto" }}>
+        <Box
+          flex={1}
+          h="100%"
+          style={{ overflow: "auto" }}
+          onClick={() => {
+            setSelectedComponent(null);
+            setConfigureSelectedTab("componentTree");
+          }}
+        >
           <ComponentPreviewRoot configuration={componentConfiguration}>
             <EditableComponentTreeNode
               selectedComponent={selectedComponent}
@@ -235,6 +248,7 @@ export function ComponentEditor() {
             )
           ) : (
             <ComponentMetadataSidebar
+              tab={configureSelectedTab}
               configuration={componentConfiguration}
               onConfigurationChange={handleComponentConfigurationChange}
             />
