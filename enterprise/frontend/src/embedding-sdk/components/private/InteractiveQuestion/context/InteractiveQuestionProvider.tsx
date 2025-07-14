@@ -70,7 +70,7 @@ export const InteractiveQuestionProvider = ({
 
   const handleCreate = async (
     question: Question,
-    options: OnCreateOptions,
+    options?: OnCreateOptions,
   ): Promise<Question> => {
     if (isSaveEnabled) {
       const saveContext = { isNewQuestion: true };
