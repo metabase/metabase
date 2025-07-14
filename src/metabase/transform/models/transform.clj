@@ -145,7 +145,6 @@
                        :transform_id transform-id})
           (t2/select-one :model/TransformView :id transform-id))))))
 
-;; TODO: adjust to new migr
 (defn update-transform!
   [transform-id dataset-query creator]
   (let [transform (t2/select-one :model/TransformView :id transform-id)
@@ -167,4 +166,4 @@
                   {:dataset_query dataset-query
                    :creator_id (:id creator)})
       ;; TODO: async
-      (sync-metadata/sync-table-metadata! (t2/select-one :model/Table :id (:view_table_id transform))))))
+      (sync-metadata/sync-table-metadata! (t2/select-one :model/Table :transform_id transform-id)))))

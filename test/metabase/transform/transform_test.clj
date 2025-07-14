@@ -322,13 +322,6 @@
 
 ;; schemas -- ensure that picking of existing schema creates in that schema
 
-(comment
-  (mt/with-db (toucan2.core/select-one :model/Database :name "users-departments-db (postgres)")
-    (mt/with-driver :postgres
-      (metabase.request.session/with-current-user (mt/user->id :rasta)
-        (driver/create-view! driver/*driver* (mt/id) "xix.wiwiw" "select * from public.users limit 2")))))
-
-;; TODO: adjust to migr
 (deftest put-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :view)
@@ -341,31 +334,31 @@
                                                  :dataset_query
                                                  (let [mp (mt/metadata-provider)]
                                                    (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
-                                                       (lib.convert/->legacy-MBQL)))})]
-            (testing "Base: view creation is successfull"
+                                                       (lib.convert/->legacy-MBQL)))})
+                table (t2/select-one :model/Table :display_name display-name)
+                table-id (:id table)]
+            (testing "Base: view creation and sync is successful"
               (is (= 1 (t2/count :model/Table :display_name display-name)))
-              (is (= 1 (t2/count :model/TransformView :view_display_name display-name)))
               (is #{"id" "name" "department_id" "score"}
                   (t2/select-fn-set :name :model/Field
-                                    :table_id (t2/select-one-fn :id :model/Table :display_name display-name)
-                                    :active true))
+                                    :table_id table-id
+                                    :active true)))
+            (let [mp (mt/metadata-provider)]
+              (is (= [[1 "Alice" 10 100] [2 "Bob" 20 200] [3 "Charlie" 10 300]]
+                     (mt/rows (-> (lib/query mp (lib.metadata/table mp table-id))
+                                  (qp/process-query))))))
+            (testing "PUT / can modify the query"
+              (mt/user-http-request :rasta :put 200 (str "transform/" (:id transform))
+                                    {:dataset_query
+                                     (let [mp (mt/metadata-provider)]
+                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :departments)))
+                                           (lib.convert/->legacy-MBQL)))})
+              (is (= 1 (t2/count :model/Table :display_name display-name)))
+              (is (= #{"idx" "name" "id"}
+                     (t2/select-fn-set :name :model/Field
+                                       :table_id table-id
+                                       :active true)))
               (let [mp (mt/metadata-provider)]
-                (is (= [[1 "Alice" 10 100] [2 "Bob" 20 200] [3 "Charlie" 10 300]]
-                       (mt/rows (-> (lib/query mp (lib.metadata/table mp (:view_table_id transform)))
-                                    (qp/process-query))))))
-              (testing "PUT / can modify the query"
-                (mt/user-http-request :rasta :put 200 (str "transform/" (:id transform))
-                                      {:dataset_query
-                                       (let [mp (mt/metadata-provider)]
-                                         (-> (lib/query mp (lib.metadata/table mp (mt/id :departments)))
-                                             (lib.convert/->legacy-MBQL)))})
-                (is (= 1 (t2/count :model/Table :display_name display-name)))
-                (is (= 1 (t2/count :model/TransformView :view_display_name display-name)))
-                (is (= #{"idx" "name" "id"}
-                       (t2/select-fn-set :name :model/Field
-                                         :table_id (t2/select-one-fn :id :model/Table :display_name display-name)
-                                         :active true)))
-                (let [mp (mt/metadata-provider)]
-                  (is (= [[1 10 "Engineering"] [2 20 "Sales"]]
-                         (mt/rows (-> (lib/query mp (lib.metadata/table mp (:view_table_id transform)))
-                                      (qp/process-query))))))))))))))
+                (is (= [[1 10 "Engineering"] [2 20 "Sales"]]
+                       (mt/rows (-> (lib/query mp (lib.metadata/table mp table-id))
+                                    (qp/process-query)))))))))))))
