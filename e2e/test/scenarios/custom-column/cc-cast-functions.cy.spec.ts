@@ -361,6 +361,37 @@ describe("exercise binary datetime() cast function", () => {
   });
 });
 
+describe("exercise today() function", () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("should show today's date", () => {
+    startNewQuestion();
+    removeTableFields();
+    H.visualize();
+    H.assertQueryBuilderRowCount(200);
+    H.openNotebook();
+
+    addCustomColumn({
+      name: "TODAY",
+      expression: "today()",
+    });
+
+    const today = new Date();
+    const dateString = today.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    H.visualize();
+    cy.findAllByTestId("header-cell").eq(1).should("have.text", "TODAY");
+    cy.findAllByTestId("cell-data").eq(3).should("have.text", dateString);
+  });
+});
+
 function startNewQuestion() {
   H.startNewQuestion();
   H.entityPickerModal().within(() => {
