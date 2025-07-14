@@ -1866,3 +1866,49 @@ describe("Issue 30712", () => {
     cy.findByTestId("run-button").should("be.visible");
   });
 });
+
+describe("Issue 56913", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openQuestionActions();
+    H.popover().findByText("Turn into a model").click();
+    H.modal().button("Turn this into a model").click();
+
+    H.createNativeQuestion(
+      {
+        native: {
+          query: "select {{ x }}",
+          "template-tags": {
+            x: {
+              id: "d7f1fb15-c7b8-6051-443d-604b6ed5457b",
+              name: "x",
+              "display-name": "X",
+              type: "text",
+              default: null,
+            },
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should show the error modal when converting a native question with variables into a model, even when the 'turn into a model' modal was previously acknowledged (metabase#56913)", () => {
+    H.openQuestionActions();
+    H.popover().findByText("Turn into a model").click();
+    H.modal()
+      .findByText("Variables in models aren't supported yet")
+      .should("be.visible");
+  });
+});
