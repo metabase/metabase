@@ -8,7 +8,7 @@ import {
 import { useLocale } from "./use-locale";
 
 const TestComponent = () => {
-  const locale = useLocale();
+  const { locale } = useLocale();
   return <div data-testid="locale">{`${locale}`}</div>;
 };
 

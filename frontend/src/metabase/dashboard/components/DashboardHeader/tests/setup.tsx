@@ -10,6 +10,7 @@ import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pul
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { getDefaultTab } from "metabase/dashboard/actions";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import {
   createMockDashboard,
   createMockDashboardCard,
@@ -114,7 +115,15 @@ export const setup = async ({
   renderWithProviders(
     <Route
       path="*"
-      component={() => <DashboardHeader {...dashboardHeaderProps} />}
+      component={() => (
+        <MockDashboardContext
+          dashboardId={dashboard.id}
+          dashboard={dashboard}
+          navigateToNewCardFromDashboard={null}
+        >
+          <DashboardHeader {...dashboardHeaderProps} />
+        </MockDashboardContext>
+      )}
     ></Route>,
     {
       withRouter: true,

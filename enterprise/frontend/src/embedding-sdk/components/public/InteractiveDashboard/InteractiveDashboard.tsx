@@ -4,11 +4,12 @@ import {
   useCallback,
   useEffect,
 } from "react";
-import _ from "underscore";
+import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
   DashboardNotFoundError,
+  SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { renderOnlyInSdkProvider } from "embedding-sdk/components/private/SdkContext";
@@ -25,7 +26,8 @@ import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/Dashboa
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
-import { resetErrorPage } from "metabase/redux/app";
+import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
+import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
@@ -66,7 +68,7 @@ export type InteractiveDashboardProps = {
   DashboardEventHandlersProps;
 
 const InteractiveDashboardInner = ({
-  dashboardId: initialDashboardId,
+  dashboardId: dashboardIdProp,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -85,18 +87,13 @@ const InteractiveDashboardInner = ({
   },
   renderDrillThroughQuestion: AdHocQuestionView,
 }: InteractiveDashboardProps) => {
-  const {
-    displayOptions,
-    ref,
-    isFullscreen,
-    onFullscreenChange,
-    refreshPeriod,
-    onRefreshPeriodChange,
-    setRefreshElapsedHook,
-    dashboardId,
-    isLoading,
-  } = useSdkDashboardParams({
-    dashboardId: initialDashboardId,
+  const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
+    onLoad,
+    onLoadWithoutCards,
+  });
+
+  const { displayOptions, dashboardId, isLoading } = useSdkDashboardParams({
+    dashboardId: dashboardIdProp,
     withDownloads,
     withTitle,
     hiddenParameters,
@@ -142,13 +139,22 @@ const InteractiveDashboardInner = ({
   if (!dashboardId || errorPage?.status === 404) {
     return (
       <StyledPublicComponentWrapper className={className} style={style}>
-        <DashboardNotFoundError id={initialDashboardId} />
+        <DashboardNotFoundError id={dashboardIdProp} />
       </StyledPublicComponentWrapper>
     );
   }
 
+  if (errorPage) {
+    return (
+      <StyledPublicComponentWrapper className={className} style={style}>
+        <SdkError
+          message={errorPage.data?.message ?? t`Something's gone wrong`}
+        />
+      </StyledPublicComponentWrapper>
+    );
+  }
   return (
-    <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
+    <StyledPublicComponentWrapper className={className} style={style}>
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
@@ -173,19 +179,12 @@ const InteractiveDashboardInner = ({
             withFooter={false}
             theme={theme}
             getClickActionMode={getClickActionMode}
-            isFullscreen={isFullscreen}
-            onFullscreenChange={onFullscreenChange}
-            refreshPeriod={refreshPeriod}
-            onRefreshPeriodChange={onRefreshPeriodChange}
-            setRefreshElapsedHook={setRefreshElapsedHook}
             bordered={displayOptions.bordered}
             navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
-            onLoad={onLoad}
-            onLoadWithoutCards={onLoadWithoutCards}
+            onLoad={handleLoad}
+            onLoadWithoutCards={handleLoadWithoutCards}
+            onError={(error) => dispatch(setErrorPage(error))}
             downloadsEnabled={{ pdf: withDownloads, results: withDownloads }}
-            isNightMode={false}
-            onNightModeChange={_.noop}
-            hasNightModeToggle={false}
           />
         </InteractiveDashboardProvider>
       )}

@@ -5,7 +5,10 @@ import type { Dispatch, SetStateAction } from "react";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
-import type { DisplayTheme } from "metabase/public/lib/types";
+import type {
+  DisplayTheme,
+  EmbedResourceDownloadOptions,
+} from "metabase/public/lib/types";
 import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover/QuestionDownloadPopover";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -38,7 +41,7 @@ export interface PublicOrEmbeddedQuestionViewProps {
   theme: DisplayTheme | undefined;
   titled: boolean;
   setCard: Dispatch<SetStateAction<Card<DatasetQuery> | null>>;
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
 }
 
 export function PublicOrEmbeddedQuestionView({
@@ -61,7 +64,7 @@ export function PublicOrEmbeddedQuestionView({
   const question = new Question(card, metadata);
 
   const questionResultDownloadButton =
-    result && downloadsEnabled ? (
+    result && downloadsEnabled.results ? (
       <PublicOrEmbeddedQuestionDownloadPopover
         className={cx(
           CS.m1,

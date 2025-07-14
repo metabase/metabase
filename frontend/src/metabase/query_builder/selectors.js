@@ -4,7 +4,7 @@ import * as d3 from "d3";
 import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
-import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/use-favicon";
+import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getDashboardById } from "metabase/dashboard/selectors";
 import Databases from "metabase/entities/databases";
 import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
@@ -22,7 +22,6 @@ import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
-import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
 import {
   computeTimeseriesDataInverval,
   minTimeseriesUnit,
@@ -574,21 +573,6 @@ export const getZoomRow = createSelector(
     }
     return queryResults[0].data.rows[rowIndex];
   },
-);
-
-const isZoomingRow = createSelector(
-  [getZoomedObjectId],
-  (index) => index != null,
-);
-
-export const getMode = createSelector(
-  [getLastRunQuestion],
-  (question) => question && getQuestionMode(question),
-);
-
-export const getIsObjectDetail = createSelector(
-  [getMode, isZoomingRow],
-  (mode, isZoomingSingleRow) => isZoomingSingleRow || mode?.name() === "object",
 );
 
 export const getIsDirty = createSelector(

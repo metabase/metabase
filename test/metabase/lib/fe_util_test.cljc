@@ -265,8 +265,7 @@
 (deftest ^:parallel case-or-if-parts-test
   (let [query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
         int-field    (meta/field-metadata :venues :category-id)
-        string-field (meta/field-metadata :venues :name)
-        dt-field     (meta/field-metadata :users :last-login)
+        other-int-field (meta/field-metadata :venues :price)
         boolean-field (meta/field-metadata :venues :category-id)
         test-cases {(lib/case [[boolean-field int-field]])
                     {:operator :case
@@ -278,25 +277,25 @@
                      :options {}
                      :args [boolean-field int-field]}
 
-                    (lib/case [[boolean-field int-field]] string-field)
+                    (lib/case [[boolean-field int-field]] other-int-field)
                     {:operator :case
                      :options {}
-                     :args [boolean-field int-field string-field]}
+                     :args [boolean-field int-field other-int-field]}
 
-                    (lib/case [[boolean-field int-field] [boolean-field string-field]])
+                    (lib/case [[boolean-field int-field] [boolean-field other-int-field]])
                     {:operator :case
                      :options {}
-                     :args [boolean-field int-field boolean-field string-field]}
+                     :args [boolean-field int-field boolean-field other-int-field]}
 
-                    (lib/case [[boolean-field int-field] [boolean-field string-field]] nil)
+                    (lib/case [[boolean-field int-field] [boolean-field other-int-field]] nil)
                     {:operator :case
                      :options {}
-                     :args [boolean-field int-field boolean-field string-field]}
+                     :args [boolean-field int-field boolean-field other-int-field]}
 
-                    (lib/case [[boolean-field int-field] [boolean-field string-field]] dt-field)
+                    (lib/case [[boolean-field int-field] [boolean-field other-int-field]] other-int-field)
                     {:operator :case
                      :options {}
-                     :args [boolean-field int-field boolean-field string-field dt-field]}}]
+                     :args [boolean-field int-field boolean-field other-int-field other-int-field]}}]
     (testing "case pairs should be flattened in expression parts"
       (doseq [[clause parts] test-cases]
         (let [{:keys [operator options args]} parts
@@ -328,7 +327,6 @@
 
 (deftest ^:parallel nested-case-or-if-parts-test
   (let [query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
-        int-field    (meta/field-metadata :venues :category-id)
         string-field (meta/field-metadata :venues :name)
         boolean-field (meta/field-metadata :venues :category-id)]
     (testing "deeply nested case/if should round-trip through expression-parts and expression-clause"
@@ -336,7 +334,7 @@
                       :operator :case
                       :options {}
                       :args [boolean-field
-                             int-field
+                             string-field
                              "default"]}
 
                      {:lib/type :mbql/expression-parts
@@ -351,7 +349,7 @@
                                       :operator :case
                                       :options {}
                                       :args [boolean-field
-                                             int-field
+                                             string-field
                                              "default"]}]}]}
 
                      {:lib/type :mbql/expression-parts
