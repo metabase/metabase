@@ -84,12 +84,7 @@ const _StaticQuestion = ({
 
             {(withChartTypeSelector || withDownloads) && (
               <Group justify="space-between">
-                {withChartTypeSelector && (
-                  <Group gap="xs">
-                    <SdkQuestion.ChartTypeDropdown />
-                    <SdkQuestion.QuestionSettingsDropdown />
-                  </Group>
-                )}
+                {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
                 {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
               </Group>
             )}
