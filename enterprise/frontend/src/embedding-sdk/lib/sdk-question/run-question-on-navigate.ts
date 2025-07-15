@@ -1,4 +1,4 @@
-import { runQuestionQuerySdk } from "embedding-sdk/lib/interactive-question/run-question-query";
+import { runQuestionQuerySdk } from "embedding-sdk/lib/sdk-question/run-question-query";
 import type {
   NavigateToNewCardParams,
   SdkQuestionState,

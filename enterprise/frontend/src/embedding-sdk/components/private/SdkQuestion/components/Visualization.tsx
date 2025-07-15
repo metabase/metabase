@@ -8,7 +8,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
+import { shouldRunCardQuery } from "embedding-sdk/lib/sdk-question";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
