@@ -13,10 +13,10 @@
   (fn [queue-type _queue-name]
     queue-type))
 
-(defmulti create-queue!
+(defmulti listen!
   "Creates a queue with the given name. This is a no-op if the queue already exists. Returns queue name if created, nil if not created"
-  {:arglists '([queue-type queue-name batch-handler response-handler])}
-  (fn [queue-type _queue-name _batch-handler _response-handler]
+  {:arglists '([queue-type queue-name batch-handler])}
+  (fn [queue-type _queue-name _batch-handler]
     queue-type))
 
 (defmulti clear-queue!

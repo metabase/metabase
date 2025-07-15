@@ -1,8 +1,8 @@
-(ns metabase.queue.persistent-test
+(ns metabase.queue.appdb-test
   (:require
    [clojure.test :refer :all]
+   [metabase.queue.appdb :as q.appdb]
    [metabase.queue.backend :as q.backend]
-   [metabase.queue.persistent :as q.persistent]
    [toucan2.core :as t2]))
 
 (defn- clear-test-rows [queues]
@@ -16,42 +16,40 @@
 
 (deftest create-and-remove-queue
   (let [queue-name (keyword "queue" (str (gensym "test-")))]
-    (q.backend/create-queue! :queue.type/persistent queue-name mock-batch-handler mock-response-handler)
-    (is (contains? @@#'q.persistent/queues queue-name))
-    (q.backend/close-queue! :queue.type/persistent queue-name)
-    (is (not (contains? @@#'q.persistent/queues queue-name)))))
+    (q.backend/listen! :queue.backend/appdb queue-name mock-batch-handler)
+    (is (contains? @@#'q.appdb/queues queue-name))
+    (q.backend/close-queue! :queue.backend/appdb queue-name)
+    (is (not (contains? @@#'q.appdb/queues queue-name)))))
 
 (deftest get-next-batch
-  (let [first-queue :queue/queue1
-        second-queue :queue/queue2
-        invalid-queue :queue/queue-invalid]
-    (with-redefs [q.persistent/queues (atom {first-queue identity second-queue identity})]
+  (let [queue1 (keyword (gensym "queue/queue1"))
+        queue2 (keyword (gensym "queue/queue2"))
+        invalid-queue (keyword (gensym "queue/queue-invalid"))]
+    (with-redefs [q.appdb/queues (atom {queue1 identity queue2 identity})]
       (t2/with-connection [conn]
         (testing "Returns nil if no queues are defined"
-          (with-redefs [q.persistent/queues (atom {})]
-            (is (nil? (#'q.persistent/get-next-batch conn)))))
+          (with-redefs [q.appdb/queues (atom {})]
+            (is (nil? (#'q.appdb/get-next-batch conn)))))
 
         (testing "Returns nil if no rows are found"
-          (clear-test-rows [first-queue second-queue])
-          (is (nil? (#'q.persistent/get-next-batch conn))))
+          (is (nil? (#'q.appdb/get-next-batch conn))))
 
         (testing "Returns finds a row for a valid queue"
-          (clear-test-rows [first-queue second-queue])
           (t2/insert! :model/QueuePayload
                       {:queue_name   (name invalid-queue)
                        :num_messages 1
                        :payload      [{:test "invalid"}]})
           (t2/insert! :model/QueuePayload
-                      {:queue_name   (name first-queue)
+                      {:queue_name   (name queue1)
                        :num_messages 1
                        :payload      [{:test "data1"}]})
           (t2/insert! :model/QueuePayload
-                      {:queue_name   (name second-queue)
+                      {:queue_name   (name queue2)
                        :num_messages 1
                        :payload      [{:test "data2"}]})
-          (let [[id queue-name data] (#'q.persistent/get-next-batch conn)]
+          (let [[id queue-name data] (#'q.appdb/get-next-batch conn)]
             (is (pos-int? id))
-            (is (= first-queue queue-name))
+            (is (= queue1 queue-name))
             (is (= [{:test "data1"}] data))))))))
 
 (deftest process-batch
@@ -64,11 +62,11 @@
                                                   {:queue_name   (name queue-name)
                                                    :num_messages 1
                                                    :payload      batch})]
-          (is (= ["data1-out" "data2-out"] (#'q.persistent/process-batch message-id queue-name mock-batch-handler batch {:conn conn})))
+          (is (= ["data1-out" "data2-out"] (#'q.appdb/process-batch message-id queue-name mock-batch-handler batch {:conn conn})))
           (is (= 0 (t2/count :model/QueuePayload :queue_name (name queue-name))))
 
           (testing "if the row is already deleted, it doesn't throw an error"
-            (= ["data1-out" "data2-out"] (#'q.persistent/process-batch -1 queue-name mock-batch-handler batch {:conn conn}))
+            (= ["data1-out" "data2-out"] (#'q.appdb/process-batch -1 queue-name mock-batch-handler batch {:conn conn}))
             (is (= 0 (t2/count :model/QueuePayload :queue_name (name queue-name)))))))
       (testing "If the handler throws an exception, the message should not be deleted from the queue"
         (clear-test-rows [queue-name])
@@ -77,37 +75,37 @@
                                                   {:queue_name   (name queue-name)
                                                    :num_messages 1
                                                    :payload      batch})]
-          (is (thrown? Exception (#'q.persistent/process-batch message-id queue-name mock-batch-handler batch {:conn conn})))
+          (is (thrown? Exception (#'q.appdb/process-batch message-id queue-name mock-batch-handler batch {:conn conn})))
           (is (= 1 (t2/count :model/QueuePayload :queue_name (name queue-name)))))))))
 
 (deftest poll
   (let [queue-name :queue/test-queue]
     (clear-test-rows [queue-name])
-    (with-redefs [q.persistent/queues (atom {queue-name {:batch-handler mock-batch-handler :response-handler mock-response-handler}})]
+    (with-redefs [q.appdb/queues (atom {queue-name {:batch-handler mock-batch-handler :response-handler mock-response-handler}})]
       (testing "When nothing is in the queue, the handler should not be called"
-        (is (= [:empty nil] (#'q.persistent/poll!))))
+        (is (= [:empty nil] (#'q.appdb/poll!))))
 
       (testing "When there are batches the queue, the handler should be called and the batch deleted from the queue"
-        (q.backend/flush! :queue.type/persistent queue-name ["test1" "test2" "test3"])
-        (q.backend/flush! :queue.type/persistent queue-name ["test4" "test5"])
-        (is (= 5 (q.backend/queue-length :queue.type/persistent queue-name)))
-        (let [[result promise] (#'q.persistent/poll!)]
+        (q.backend/flush! :queue.backend/appdb queue-name ["test1" "test2" "test3"])
+        (q.backend/flush! :queue.backend/appdb queue-name ["test4" "test5"])
+        (is (= 5 (q.backend/queue-length :queue.backend/appdb queue-name)))
+        (let [[result promise] (#'q.appdb/poll!)]
           (is (= result :success))
           (is (= [:success queue-name ["test1-out" "test2-out" "test3-out"]] @promise)))
-        (is (= 2 (q.backend/queue-length :queue.type/persistent queue-name)))
+        (is (= 2 (q.backend/queue-length :queue.backend/appdb queue-name)))
         (clear-test-rows [queue-name]))
 
       (testing "Handler throws an exception"
-        (q.backend/flush! :queue.type/persistent queue-name ["test1" "err" "test3"])
-        (is (= 3 (q.backend/queue-length :queue.type/persistent queue-name)))
-        (let [[status promise] (#'q.persistent/poll!)
+        (q.backend/flush! :queue.backend/appdb queue-name ["test1" "err" "test3"])
+        (is (= 3 (q.backend/queue-length :queue.backend/appdb queue-name)))
+        (let [[status promise] (#'q.appdb/poll!)
               [response-status response-name response] @promise]
           (is (= :error status))
           (is (= queue-name response-name))
           (is (= :error response-status))
           (is (= "Error in handler" (.getMessage ^Throwable response))))
         (testing "The message should not be deleted from the queue"
-          (is (= 3 (q.backend/queue-length :queue.type/persistent queue-name))))))))
+          (is (= 3 (q.backend/queue-length :queue.backend/appdb queue-name))))))))
 
 ;(deftest poll
 ;  (let [queue-name :queue/test-queue

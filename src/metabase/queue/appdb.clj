@@ -1,4 +1,4 @@
-(ns metabase.queue.persistent
+(ns metabase.queue.appdb
   (:require [metabase.models.interface :as mi]
             [metabase.queue.backend :as q.backend]
             [metabase.util :as u]
@@ -38,7 +38,7 @@
     (t2/with-transaction [conn]
       (log/infof "Checking for queued messages")
       (if-let [[message-id queue-name batch] (get-next-batch conn)]
-        (let [handlers #p (get #p @queues #p queue-name)
+        (let [handlers (get #p @queues #p queue-name)
               {:keys [batch-handler response-handler]} handlers]
           (log/infof "Found batch of %d messages in queue %s" (count batch) (name queue-name))
           (if (empty? handlers)
@@ -61,45 +61,46 @@
 
 (defn- start-polling! []
   (when-not @background-process
-    (log/info "Starting background process for persistent queue")
+    (log/info "Starting background process for appdb queue")
     (reset! background-process
             (future
               (try
                 (while (not (empty? @queues))
-                  (let [result #p (poll!)]
+                  (let [result (poll!)]
                     (when (= :empty result)
                       (do
                         (log/info "No waiting messages in queue")
                         (Thread/sleep 2000)))))
                 (catch InterruptedException _
                   (log/info "Background process interrupted")))
-              (log/info "Stopping background process for persistent queue")
+              (log/info "Stopping background process for appdb queue")
               (reset! background-process nil)))))
 
-(defmethod q.backend/create-queue! :queue.type/persistent [_ queue-name batch-handler response-handler]
+(defmethod q.backend/listen! :queue.backend/appdb [_ queue-name batch-handler]
   (when-not (contains? @queues queue-name)
-    (swap! queues assoc queue-name {:batch-handler    batch-handler
-                                    :response-handler response-handler})
+    (swap! queues assoc queue-name {:batch-handler    batch-handler})
     (log/infof "Registered handler for queue %s" (name queue-name))
     (start-polling!)
     queue-name))
 
-(defmethod q.backend/clear-queue! :queue.type/persistent
+(defmethod q.backend/clear-queue! :queue.backend/appdb
   [_ queue-name]
   (t2/delete! :model/QueuePayload :queue_name (name queue-name)))
 
-(defmethod q.backend/close-queue! :queue.type/persistent [_ queue-name]
+(defmethod q.backend/close-queue! :queue.backend/appdb [_ queue-name]
   (swap! queues dissoc queue-name)
   (log/infof "Unregistered handler for queue %s" (name queue-name)))
 
-(defmethod q.backend/queue-length :queue.type/persistent
+(defmethod q.backend/queue-length :queue.backend/appdb
   [_ queue]
   (or
    (t2/select-one-fn :num [:model/QueuePayload [[:sum :num_messages] :num]] :queue_name (name queue))
    0))
 
-(defmethod q.backend/flush! :queue.type/persistent
+(defmethod q.backend/flush! :queue.backend/appdb
   [_ queue messages]
+  #p "Flushing"
+  #p messages
   (t2/insert! :model/QueuePayload
               {:queue_name   (name queue)
                :num_messages (count messages)
