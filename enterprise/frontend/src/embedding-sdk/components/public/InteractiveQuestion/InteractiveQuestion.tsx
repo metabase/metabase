@@ -1,9 +1,5 @@
 import type { ReactNode } from "react";
 
-import {
-  InteractiveQuestionDefaultView,
-  type InteractiveQuestionDefaultViewProps,
-} from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   BackButton,
@@ -32,6 +28,10 @@ import {
   SdkQuestionProvider,
   type SdkQuestionProviderProps,
 } from "embedding-sdk/components/private/SdkQuestion/context";
+import {
+  InteractiveQuestionDefaultView,
+  type InteractiveQuestionDefaultViewProps,
+} from "embedding-sdk/components/private/SdkQuestionDefaultView";
 import type { InteractiveQuestionQuestionIdProps } from "embedding-sdk/components/public/InteractiveQuestion/types";
 
 /**

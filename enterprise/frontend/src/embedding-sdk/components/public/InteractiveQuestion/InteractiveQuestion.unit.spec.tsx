@@ -22,7 +22,7 @@ import {
 import {
   InteractiveQuestionDefaultView,
   type InteractiveQuestionDefaultViewProps,
-} from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
+} from "embedding-sdk/components/private/SdkQuestionDefaultView";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
