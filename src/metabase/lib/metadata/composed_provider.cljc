@@ -1,13 +1,16 @@
 (ns metabase.lib.metadata.composed-provider
   (:require
    #?(:clj [pretty.core :as pretty])
+   [better-cond.core :as b]
    [clojure.core.protocols]
    [clojure.datafy :as datafy]
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.lib.metadata.protocols :as metadata.protocols]))
+   [metabase.lib.metadata.protocols :as metadata.protocols]
+   [metabase.util.malli :as mu]))
 
-(defn- cached-providers [providers]
+(mu/defn- cached-providers :- [:sequential ::metadata.protocols/cached-metadata-provider]
+  [providers :- [:maybe [:sequential ::metadata.protocols/metadata-provider]]]
   (filter metadata.protocols/cached-metadata-provider? providers))
 
 (defn- invocation-tracker-providers [providers]
@@ -39,6 +42,24 @@
                    (cached-providers providers)
                    metadata-type
                    ids))
+
+(defn- cached-value [metadata-providers k not-found]
+  (loop [[cached-provider & more] (cached-providers metadata-providers)]
+    (b/cond
+      (not cached-provider)
+      not-found
+
+      :let [v (metadata.protocols/cached-value cached-provider k not-found)]
+
+      (not= v not-found)
+      v
+
+      :else
+      (recur more))))
+
+(defn- cache-value! [metadata-providers k v]
+  (when-let [cached-provider (first (cached-providers metadata-providers))]
+    (metadata.protocols/cache-value! cached-provider k v)))
 
 (defn- store-metadata! [metadata-providers metadata]
   (when-first [provider (cached-providers metadata-providers)]
@@ -88,6 +109,10 @@
     (cached-metadatas metadata-providers metadata-type metadata-ids))
   (store-metadata! [_this metadata]
     (store-metadata! metadata-providers metadata))
+  (cached-value [_this k not-found]
+    (cached-value metadata-providers k not-found))
+  (cache-value! [_this k v]
+    (cache-value! metadata-providers k v))
 
   metadata.protocols/InvocationTracker
   (invoked-ids [_this metadata-type]

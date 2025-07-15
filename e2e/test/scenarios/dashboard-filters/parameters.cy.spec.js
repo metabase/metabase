@@ -1813,7 +1813,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.button("Add filter").click();
       });
       H.getDashboardCard(0).within(() => {
-        cy.findAllByText("Gadget").should("have.length", 2); // x-axis label + filter
+        cy.findAllByText("Gadget").filter(":visible").should("have.length", 2); // x-axis label + filter
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gizmo").should("not.exist");
         cy.findByText("Widget").should("not.exist");

@@ -3,13 +3,14 @@
   (:require
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -281,13 +282,22 @@
   [metadata-providerable native-stage]
   (query-with-stages metadata-providerable [native-stage]))
 
+(defn- ensure-cached-metadata-provider
+  "Ensure `a-query` has a cached metadata provider (needed so we can use the general `cached-value` and `cache-value!`
+  facilities; wrap the current metadata in one that adds caching if needed."
+  [a-query]
+  (cond-> a-query
+    (and (:lib/metadata a-query)
+         (not (lib.metadata.protocols/cached-metadata-provider? (:lib/metadata a-query))))
+    (update :lib/metadata lib.metadata.cached-provider/cached-metadata-provider)))
+
 (mu/defn query :- ::lib.schema/query
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    x]
-  (lib.cache/attach-query-cache (query-method metadata-providerable x)))
+  (ensure-cached-metadata-provider (query-method metadata-providerable x)))
 
 (mu/defn ->query :- ::lib.schema/query
   "[[->]] friendly form of [[query]].
@@ -431,14 +441,14 @@
   (let [{q :query, n :stage-number} (wrap-native-query-with-mbql a-query stage-number card-id)]
     (apply f q n args)))
 
+;;; TODO (Cam 7/10/25) -- not sure this is really needed since the `:encode/serialize` keys for schemas already say
+;;; how to do this
 (defn serializable
   "Given a query, ensure it doesn't have any keys or structures that aren't safe for serialization.
 
   For example, any Atoms or Delays or should be removed."
   [a-query]
-  (-> a-query
-      (dissoc a-query :lib/metadata)
-      lib.cache/discard-query-cache))
+  (dissoc a-query :lib/metadata))
 
 (defn- get-native-stages [native-stage]
   (for [{:keys [card-id] tag-type :type} (-> native-stage :template-tags vals)

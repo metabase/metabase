@@ -1,6 +1,6 @@
 (ns metabase.lib.remove-replace-test
   (:require
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   #?(:cljs [metabase.test-runner.assert-exprs.approximately-equal])
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
@@ -514,15 +514,19 @@
       (is (=? (map lib.options/ident aggregations)
               (map lib.options/ident replaced-aggregations))))
     (testing "replacing with dependent should cascade keeping valid parts"
-      (is (=? {:stages [{:aggregation [[:max {} [:field {} (meta/id :venues :price)]]
-                                       (second aggregations)]
-                         :expressions [[:aggregation {:lib/expression-name "expr"} string?]]}
-                        {:filters [[:= {} [:field {} "max"] 1]]}]}
-              (-> query
-                  (as-> <> (lib/expression <> "expr" (lib/aggregation-ref <> 0)))
-                  (lib/append-stage)
-                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
-                  (lib/replace-clause 0 (first aggregations) (lib/max (meta/field-metadata :venues :price)))))))
+      (let [query' (-> query
+                       (as-> <> (lib/aggregate <> (lib/with-expression-name (lib/aggregation-ref <> 0) "expr")))
+                       (lib/append-stage)
+                       (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
+                       (lib/replace-clause 0 (first aggregations) (lib/max (meta/field-metadata :venues :price))))
+            agg0-id (get-in query' [:stages 0 :aggregation 0 1 :lib/uuid])]
+        (is (=? {:stages [{:aggregation [[:max {:lib/uuid string?} [:field {} (meta/id :venues :price)]]
+                                         (second aggregations)
+                                         [:aggregation {:name "expr", :display-name "expr"} string?]]}
+                          {:filters [[:= {} [:field {} "max"] 1]]}]}
+                query'))
+        (is (string? agg0-id))
+        (is (= agg0-id (get-in query' [:stages 0 :aggregation 2 2])))))
     (testing "replacing with dependent should cascade removing invalid parts"
       (binding [lib.schema.expression/*suppress-expression-type-check?* false]
         (is (=? {:stages [{:aggregation [[:sum {} [:field {} (meta/id :products :id)]]

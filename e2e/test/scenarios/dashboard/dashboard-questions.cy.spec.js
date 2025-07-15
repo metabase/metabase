@@ -858,7 +858,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // overlay the quantity series in the purple dashboard
       H.showDashcardVisualizerModal(0, {
-        buttonText: "Visualize another way",
+        isVisualizerCard: false,
       });
 
       H.modal().within(() => {

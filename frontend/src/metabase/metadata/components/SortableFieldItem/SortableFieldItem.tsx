@@ -1,9 +1,10 @@
 import cx from "classnames";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Sortable } from "metabase/common/components/Sortable";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Card, Flex, Icon, Text, rem } from "metabase/ui";
+import { Box, Card, Flex, Icon, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
@@ -59,18 +60,18 @@ export const SortableFieldItem = ({
           <Icon className={S.icon} flex="0 0 auto" mr="sm" name={icon} />
 
           {parent && (
-            <Text
-              c="text-light"
+            <Box
               data-testid="name-prefix"
               flex="0 0 auto"
               lh="normal"
-              lineClamp={1}
               maw="50%"
               mr="xs"
             >
-              {parent.display_name}
-              {":"}
-            </Text>
+              <Ellipsified lines={1} tooltip={parent.display_name}>
+                {parent.display_name}
+                {":"}
+              </Ellipsified>
+            </Box>
           )}
 
           <Text flex="1" fw="bold" lh="normal" lineClamp={1}>
