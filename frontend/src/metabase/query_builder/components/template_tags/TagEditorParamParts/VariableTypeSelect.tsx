@@ -30,6 +30,12 @@ const OPTIONS: Array<{ value: TemplateTagType; label: string }> = [
       return t`Field Filter`;
     },
   },
+  {
+    value: "temporal-unit",
+    get label() {
+      return t`Time grouping`;
+    },
+  },
 ];
 
 export function VariableTypeSelect(props: {
