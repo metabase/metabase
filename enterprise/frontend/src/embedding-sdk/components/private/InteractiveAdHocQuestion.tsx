@@ -15,7 +15,7 @@ import {
 
 interface InteractiveAdHocQuestionProps {
   questionPath: string; // route path to load a question, e.g. /question/140-best-selling-products - for saved, or /question/xxxxxxx for ad-hoc encoded question config
-  onNavigateBack: () => void;
+  onNavigateBack: (() => void) | false; // `false` disables the back button
 }
 
 export const InteractiveAdHocQuestion = ({

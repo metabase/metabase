@@ -67,8 +67,10 @@ type InteractiveQuestionConfig = {
 
   /**
    * A callback function that triggers when a user clicks the back button.
+   *
+   * Setting this to `false` hides the "Back to previous results" button.
    */
-  onNavigateBack?: () => void;
+  onNavigateBack?: (() => void) | false;
 };
 
 export type QuestionMockLocationParameters = {

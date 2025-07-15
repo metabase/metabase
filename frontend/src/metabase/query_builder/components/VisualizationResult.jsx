@@ -92,14 +92,17 @@ export default class VisualizationResult extends Component {
                     )} when there are some results.`}
                   </p>
                 )}
-                <button
-                  className={ButtonsS.Button}
-                  onClick={() =>
-                    onNavigateBack ? onNavigateBack() : window.history.back()
-                  }
-                >
-                  {t`Back to previous results`}
-                </button>
+
+                {onNavigateBack !== false && (
+                  <button
+                    className={ButtonsS.Button}
+                    onClick={() =>
+                      onNavigateBack ? onNavigateBack() : window.history.back()
+                    }
+                  >
+                    {t`Back to previous results`}
+                  </button>
+                )}
               </div>
             }
           />
