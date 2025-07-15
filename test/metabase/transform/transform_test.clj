@@ -1,12 +1,18 @@
 (ns ^:mb/driver-tests metabase.transform.transform-test
   "Test for transforms"
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.transform.models.transform :as models.transform]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -189,6 +195,34 @@
 
           (is (= #{["Foo"] ["Bar"] ["Baz"]} (native-query-rows (format "SELECT name FROM \"%s\".\"%s\"" schema-name view-name)))))))))
 
+;; Use this only with with-no-transform-views! and in non-parallel tests
+(mt/defdataset users-departments-with-score
+  [["users"
+    [{:field-name "name" :base-type :type/Text}
+     {:field-name "department_id" :base-type :type/Integer}
+     {:field-name "score" :base-type :type/Integer}]
+    [["Alice" 10 100]
+     ["Bob" 20 200]
+     ["Charlie" 10 300]]]
+   ["departments"
+    [{:field-name "idx" :base-type :type/Integer}
+     {:field-name "name" :base-type :type/Text}]
+    [[10 "Engineering"]
+     [20 "Sales"]]]])
+
+(defmacro with-no-transform-views!
+  "Clean up the appdb and dwh prior test exec"
+  [& body]
+  `(do (doseq [table# (:tables (driver/describe-database driver/*driver* (mt/db)))]
+         (let [schema# (:schema table#)
+               name# (:name table#)]
+           (when (str/starts-with? name# "mb_transform")
+             (request/with-current-user (mt/user->id :crowberto)
+               (driver/drop-view! driver/*driver* (mt/id) (str/join "." (filter some? [schema# name#])))))))
+       (t2/delete! :model/Table :name [:like "mb_transform%"])
+       (t2/delete! :model/TransformView :view_name [:like "mb_transform%"])
+       ~@body))
+
 (deftest view-name-length-limit-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :view)
@@ -198,3 +232,201 @@
                                  (apply str (repeat limit "a"))
                                  "SELECT * FROM users"
                                  :replace? true))))))
+
+;; API tests
+
+(deftest can-create-transform-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :view)
+    (mt/dataset
+      users-departments-with-score
+      (with-no-transform-views!
+        (let [dataset-query (let [mp (mt/metadata-provider)]
+                              (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                                  (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
+                                  (lib/breakout (lib.metadata/field mp (mt/id :users :score)))
+                                  (lib.convert/->legacy-MBQL)))
+              display-name "Test view 1"
+              resp (mt/user-http-request :rasta :post 200 "transform"
+                                         {:display_name display-name
+                                          :dataset_query dataset-query})]
+          (testing "POST /transform creates new view in app db"
+            (is (=? {:id pos-int?
+                     :database_id (mt/id)
+                     :creator_id (mt/user->id :rasta)
+                     :status "view_synced"}
+                    resp)))
+          (let [transform-id (:id resp)
+                transform (t2/select-one :model/TransformView :id transform-id)
+                table (t2/select-one :model/Table :transform_id transform-id)
+                table-id (:id table)]
+            (testing "Transform generated view has user set display name"
+              (is (= (:view_name transform) (:name table)))
+              (is (= display-name (:display_name table))))
+            (testing "Transform generated view can be queried"
+              (let [mp (mt/metadata-provider)]
+                (is (=? {:status :completed}
+                        (-> (lib/query mp (lib.metadata/table mp table-id))
+                            (qp/process-query))))))))))))
+
+(deftest transform-table-name-clash-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :view)
+    (mt/dataset
+      users-departments-with-score
+      (with-no-transform-views!
+        (let [clashing-name "mb_transform_333"
+              clashing-schema "clashing_schema_333"]
+          (mt/with-temp [:model/Table _table {:db_id (mt/id) :schema clashing-schema :name clashing-name}]
+            (with-redefs [models.transform/transform-view-name (constantly clashing-name)]
+              (is (=? {:data {:database-id (mt/id)
+                              :database-name (:name (mt/db))
+                              :name clashing-name
+                              :schema clashing-schema
+                              :same-name-table-ids (comp pos-int? first)}}
+                      (mt/user-http-request :rasta :post 400 "transform"
+                                            {:schema clashing-schema
+                                             :display_name "hello"
+                                             :dataset_query
+                                             (let [mp (mt/metadata-provider)]
+                                               (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                                                   (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
+                                                   (lib/breakout (lib.metadata/field mp (mt/id :users :department_id)))
+                                                   (lib.convert/->legacy-MBQL)))}))))))))))
+
+(deftest transform-display-name-clash-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :view)
+    (mt/dataset
+      users-departments-with-score
+      (with-no-transform-views!
+        (let [clashing-name "T T T"]
+          (testing "Base: view creation is successfull"
+            (mt/user-http-request :rasta :post 200 "transform"
+                                  {:display_name clashing-name
+                                   :dataset_query
+                                   (let [mp (mt/metadata-provider)]
+                                     (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                                         (lib.convert/->legacy-MBQL)))}))
+          (testing "Creation of duplicate display name view fails"
+            (is (=? {:database-id (mt/id)
+                     :database-name (:name (mt/db))
+                     :display-name clashing-name
+                     :same-display-name-table-ids (comp pos-int? first)}
+                    (mt/user-http-request :rasta :post 400 "transform"
+                                          {:display_name clashing-name
+                                           :dataset_query
+                                           (let [mp (mt/metadata-provider)]
+                                             (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                                                 (lib.convert/->legacy-MBQL)))})))
+            (is (= 1 (t2/count :model/Table :display_name clashing-name)))))))))
+
+;; schemas -- ensure that picking of existing schema creates in that schema
+
+(deftest put-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :view)
+    (mt/dataset
+      users-departments-with-score
+      (with-no-transform-views!
+        (let [display-name "t r a n s"
+              transform (mt/user-http-request :rasta :post 200 "transform"
+                                              {:display_name display-name
+                                               :dataset_query
+                                               (let [mp (mt/metadata-provider)]
+                                                 (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                                                     (lib.convert/->legacy-MBQL)))})
+              table (t2/select-one :model/Table :display_name display-name)
+              table-id (:id table)]
+          (testing "Base: view creation and sync is successful"
+            (is (= 1 (t2/count :model/Table :display_name display-name)))
+            (is (= #{"id" "name" "department_id" "score"}
+                   (t2/select-fn-set (comp u/lower-case-en :name) :model/Field
+                                     :table_id table-id
+                                     :active true))))
+          (let [mp (mt/metadata-provider)]
+            (is (= [[1 "Alice" 10 100] [2 "Bob" 20 200] [3 "Charlie" 10 300]]
+                   (mt/rows (-> (lib/query mp (lib.metadata/table mp table-id))
+                                (qp/process-query))))))
+          (testing "PUT / can modify the query"
+            (mt/user-http-request :rasta :put 200 (str "transform/" (:id transform))
+                                  {:dataset_query
+                                   (let [mp (mt/metadata-provider)]
+                                     (-> (lib/query mp (lib.metadata/table mp (mt/id :departments)))
+                                         (lib.convert/->legacy-MBQL)))})
+            (is (= 1 (t2/count :model/Table :display_name display-name)))
+            (is (= #{"idx" "name" "id"}
+                   (t2/select-fn-set (comp u/lower-case-en :name) :model/Field
+                                     :table_id table-id
+                                     :active true)))
+            (let [mp (mt/metadata-provider)]
+              (is (= [[1 10 "Engineering"] [2 20 "Sales"]]
+                     (mt/rows (-> (lib/query mp (lib.metadata/table mp table-id))
+                                  (qp/process-query))))))))))))
+
+(deftest delete-transform-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :view)
+    (mt/dataset
+      users-departments-with-score
+      (with-no-transform-views!
+        (let [mp (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
+                        (lib/breakout (lib.metadata/field mp (mt/id :users :department_id))))
+              display-name "My shiny transfrom"
+              resp (mt/user-http-request :rasta :post 200 "transform"
+                                         {:display_name display-name
+                                          :dataset_query (lib.convert/->legacy-MBQL query)})
+              transform-id (:id resp)]
+          (testing "Base: Transform was successfully created"
+            (is (= 1 (t2/count :model/TransformView :id transform-id)))
+            (is (= 1 (t2/count :model/Table :transform_id transform-id))))
+          (testing "Transform was deleted"
+            (mt/user-http-request :rasta :delete 200 (str "transform/" transform-id))
+            ;; Ensure transform was removed from dwh, hence is not picked up by sync that follows
+            (sync/sync-database! (mt/db))
+            (is (empty? (filter #(str/starts-with? % models.transform/view-name-prefix)
+                                (t2/select-fn-vec :name :model/Table :db_id (mt/id)))))
+            (is (empty? (t2/select :model/TransformView :id transform-id)))))))))
+
+(deftest get-transform-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :view)
+    (mt/dataset
+      users-departments-with-score
+      (with-no-transform-views!
+        (let [mp (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
+                        (lib/breakout (lib.metadata/field mp (mt/id :users :department_id))))
+              display-name "Transform strikes back"
+              resp (mt/user-http-request :rasta :post 200 "transform"
+                                         {:display_name display-name
+                                          :dataset_query (lib.convert/->legacy-MBQL query)})
+              transform-id (:id resp)
+              query-2 (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :users :score))))
+                          (lib/breakout (lib.metadata/field mp (mt/id :users :department_id))))
+              display-name-2 "Another one"
+              resp-2 (mt/user-http-request :rasta :post 200 "transform"
+                                           {:display_name display-name-2
+                                            :dataset_query (lib.convert/->legacy-MBQL query-2)})
+              transform-id-2 (:id resp-2)]
+          (testing "Base: Transforms were successfully created"
+            (is (= 1 (t2/count :model/TransformView :id transform-id)))
+            (is (= 1 (t2/count :model/Table :transform_id transform-id)))
+            (is (= 1 (t2/count :model/TransformView :id transform-id-2)))
+            (is (= 1 (t2/count :model/Table :transform_id transform-id-2))))
+          (testing "GET /"
+            (let [resp (mt/user-http-request :rasta :get 200 "transform")
+                  tables (t2/select :model/Table :transform_id [:in (mapv :id resp)])]
+              (is (= 2 (count resp)))
+              (is (= 2 (count tables)))
+              (is (some (comp #{display-name} :display_name) tables))
+              (is (some (comp #{display-name-2} :display_name) tables))))
+          (testing "GET /:id"
+            (is (= transform-id
+                   (:id (mt/user-http-request :rasta :get 200 (str "transform/" transform-id)))))
+            (is (= transform-id-2
+                   (:id (mt/user-http-request :rasta :get 200 (str "transform/" transform-id-2)))))))))))
