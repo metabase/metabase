@@ -458,7 +458,6 @@ export class AccordionList<
       className,
       globalSearch = false,
       sections,
-      withBorders,
       "data-testid": testId,
       alwaysExpanded = false,
     } = this.props;
@@ -500,7 +499,6 @@ export class AccordionList<
             canToggleSections={this.canToggleSections()}
             toggleSection={this.toggleSection}
             hasCursor={this.isRowSelected(rows[index])}
-            withBorders={withBorders}
           />
         ))}
       </Box>
