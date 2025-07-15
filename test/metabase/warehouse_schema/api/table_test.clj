@@ -765,7 +765,7 @@
                                        :dataset_query {:query    {:source-table (mt/id :venues)}
                                                        :type     :query
                                                        :database (mt/id)}}]
-        (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
         (is (=? {:display_name      "Go Dubs!"
                  :schema            "Everything else"
                  :db_id             (:database_id card)
