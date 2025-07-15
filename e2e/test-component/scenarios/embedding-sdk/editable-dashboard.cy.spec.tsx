@@ -256,6 +256,10 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
           .then(() => {
             resolveCardEndpoint();
           });
+
+        cy.findByTestId("interactive-question-result-toolbar").should(
+          "be.visible",
+        );
       });
     });
   });
