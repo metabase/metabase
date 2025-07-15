@@ -386,7 +386,7 @@
                      :strategy   strategy
                      :alias      string?
                      :fields     (if summaries?
-                                   (symbol "nil #_\"key is not present.\"")
+                                   :none
                                    :all)
                      :stages     [(fn [x] (and (map? x)
                                                (= ((some-fn :source-table :source-card) x)

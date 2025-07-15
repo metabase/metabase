@@ -152,8 +152,8 @@
    (when-let [previous-path (previous-path path)]
      (visible-joins query previous-path))))
 
-(mu/defn- distinct-fields :- [:sequential :mbql.clause/field]
-  [fields :- [:maybe [:sequential :mbql.clause/field]]]
+(mu/defn- distinct-fields :- [:sequential ::lib.schema.ref/ref]
+  [fields :- [:maybe [:sequential ::lib.schema.ref/ref]]]
   (m/distinct-by
    (fn [field]
      (lib/update-options field (fn [opts]
@@ -188,16 +188,15 @@
                                               (or (let [fk-field-info->join-alias (construct-fk-field-info->join-alias query previous-path)]
                                                     (fk-field-info->join-alias fk-field-info))
                                                   (recur previous-path))))
-                                          "WHOOPS"
-                                          #_(throw (ex-info (let [field (lib.metadata/field query (:source-field opts))
-                                                                  table (lib.metadata/table query (:table-id field))]
-                                                              (tru "Cannot find matching implicit join for FK field {0} {1} {2}"
-                                                                   (pr-str (:source-field opts))
-                                                                   (pr-str (:name table))
-                                                                   (pr-str  (:display-name field))))
-                                                            {:resolving  field-ref
-                                                             :candidates fk-field-info->join-alias
-                                                             :stage      stage})))))]
+                                          (throw (ex-info (let [field (lib.metadata/field query (:source-field opts))
+                                                                table (lib.metadata/table query (:table-id field))]
+                                                            (tru "Cannot find matching implicit join for FK field {0} {1} {2}"
+                                                                 (pr-str (:source-field opts))
+                                                                 (pr-str (:name table))
+                                                                 (pr-str  (:display-name field))))
+                                                          {:resolving  field-ref
+                                                           :candidates fk-field-info->join-alias
+                                                           :stage      stage})))))]
     (update-in
      query path
      (fn [stage]
