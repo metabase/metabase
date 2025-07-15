@@ -117,4 +117,3 @@
     (reset-tracking!)
     (catch Exception e
       (log/debug e "Error resetting semantic search tracking"))))
-
