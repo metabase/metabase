@@ -37,11 +37,10 @@ const FieldSectionBase = ({
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
 
-  const handleNameChange = async (name: string) => {
-    if (field.display_name === name) {
-      return;
-    }
-
+  const handleNameChange = async (
+    name: string,
+    previousName = field.display_name,
+  ) => {
     const { error } = await updateField({ id, display_name: name });
 
     if (error) {
@@ -52,23 +51,22 @@ const FieldSectionBase = ({
       });
     } else {
       sendToast({
+        actionLabel: t`Undo`,
+        action: () => handleNameChange(previousName, name),
         icon: "check",
         message: t`Name of ${field.display_name} updated`,
       });
     }
   };
 
-  const handleDescriptionChange = async (description: string) => {
-    const newDescription = description.trim();
-
-    if ((field.description ?? "") === newDescription) {
-      return;
-    }
-
+  const handleDescriptionChange = async (
+    description: string,
+    previousDescription = field.description,
+  ) => {
     const { error } = await updateField({
       id,
       // API does not accept empty strings
-      description: newDescription.length === 0 ? null : newDescription,
+      description: description.length === 0 ? null : description,
     });
 
     if (error) {
@@ -79,6 +77,9 @@ const FieldSectionBase = ({
       });
     } else {
       sendToast({
+        actionLabel: t`Undo`,
+        action: () =>
+          handleDescriptionChange(previousDescription ?? "", description),
         icon: "check",
         message: t`Description of ${field.display_name} updated`,
       });
