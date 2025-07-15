@@ -50,6 +50,7 @@ export const ParameterTargetList = ({
     <AccordionList
       className={CS.textBrand}
       maxHeight={maxHeight || 600}
+      style={{ minHeight: 200 }}
       sections={sections}
       onChange={(item: ParameterMappingOption) => onChange(item.target)}
       itemIsSelected={(item: ParameterMappingOption) =>
@@ -58,7 +59,8 @@ export const ParameterTargetList = ({
       renderItemIcon={(item: ParameterMappingOption) => (
         <Icon name={(item.icon as IconName) || "unknown"} size={18} />
       )}
-      alwaysExpanded={true}
+      alwaysExpanded
+      globalSearch
       hideSingleSectionTitle={!hasForeignOption}
     />
   );
