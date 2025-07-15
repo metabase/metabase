@@ -15,7 +15,7 @@ import {
   isDashcardLoading,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
-import { isEmbeddingSdk } from "metabase/env";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { color } from "metabase/lib/colors";
 import { useSelector, useStore } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -328,7 +328,7 @@ function DashCardInner({
             [S.shouldForceHiddenBackground]: shouldForceHiddenBackground,
             [S.isNightMode]: shouldRenderAsNightMode,
             [S.isUsuallySlow]: isSlow === "usually-slow",
-            [S.isEmbeddingSdk]: isEmbeddingSdk,
+            [S.isEmbeddingSdk]: isEmbeddingSdk(),
           },
           className,
         )}

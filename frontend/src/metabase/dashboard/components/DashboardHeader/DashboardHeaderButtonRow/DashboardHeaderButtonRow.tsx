@@ -14,9 +14,9 @@ import {
   getHasModelActionsEnabled,
   getIsEditing,
 } from "metabase/dashboard/selectors";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
@@ -38,7 +38,6 @@ export const DashboardHeaderButtonRow = ({
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   const dashboard = useSelector(getDashboardComplete);
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const canEdit = Boolean(dashboard?.can_write && !dashboard?.archived);
 
   const {
@@ -82,7 +81,7 @@ export const DashboardHeaderButtonRow = ({
             formInput,
             isAdmin,
             isPublic,
-            isEmbeddingSdk,
+            isEmbeddingSdk: isEmbeddingSdk(),
             openSettingsSidebar,
             ...props,
           };
