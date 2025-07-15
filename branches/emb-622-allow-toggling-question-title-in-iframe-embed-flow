@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-617-ability-to-showhide-title-in-staticquestion",
     "hash": "2cba036f61e095e3c824a1e221ea491cfdfe084c"
+  },
+  "upstream": {
+    "branch": "emb-622-allow-toggling-question-title-in-iframe-embed-flow"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 61024,
+        "gqlID": "PR_kwDOAczgH86fDUqQ"
+      }
+    }
   }
 }
