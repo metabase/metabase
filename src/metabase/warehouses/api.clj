@@ -270,7 +270,6 @@
       include-tables?              add-tables
       true                         add-can-upload-to-dbs
       true                         (t2/hydrate :router_user_attribute)
-      true                         (t2/hydrate :db_routing_info)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
       filter-by-data-access?       (#(filter mi/can-read? %))
@@ -394,7 +393,6 @@
   [db {:keys [include include-editable-data-model?]}]
   (cond-> db
     true                         (t2/hydrate :router_user_attribute)
-    true                         (t2/hydrate :db_routing_info)
     true                         add-expanded-schedules
     true                         (get-database-hydrate-include include)
     true                         add-can-upload

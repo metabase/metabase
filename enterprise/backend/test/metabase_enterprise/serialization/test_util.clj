@@ -121,7 +121,7 @@
 
 (defn do-with-world [f]
   (with-temp-dpc [:model/Database   {db-id :id} (into {:name temp-db-name} (-> (data/db)
-                                                                               (dissoc :id :features :name :entity_id :db_routing_info)))
+                                                                               (dissoc :id :features :name :entity_id)))
                   :model/Table      {table-id :id :as table} (temp-table (data/id :venues) db-id)
                   :model/Table      {table-id-categories :id}  (temp-table (data/id :categories) db-id)
                   :model/Table      {table-id-users :id}       (temp-table (data/id :users) db-id)

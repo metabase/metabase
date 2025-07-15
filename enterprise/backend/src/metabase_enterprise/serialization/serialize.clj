@@ -108,7 +108,7 @@
 
 (defmethod serialize-one :model/Database
   [db]
-  (dissoc db :features :db_routing_info))
+  (dissoc db :features))
 
 (defmethod serialize-one :model/Field
   [field]

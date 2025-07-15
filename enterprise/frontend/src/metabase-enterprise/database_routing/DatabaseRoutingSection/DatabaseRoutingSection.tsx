@@ -11,7 +11,11 @@ import {
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
-import { skipToken, useListUserAttributesQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetSettingsQuery,
+  useListUserAttributesQuery,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
@@ -43,11 +47,20 @@ export const DatabaseRoutingSection = ({
 }) => {
   const dispatch = useDispatch();
 
+  const {
+    data: sessionProperties,
+    isLoading: _isSessionPropertiesLoading,
+    error: _sessionPropertiesError,
+  } = useGetSettingsQuery();
+
   const isAdmin = useSelector(getUserIsAdmin);
   const userAttribute = database.router_user_attribute ?? undefined;
   const dbSupportsRouting = database.features?.includes("database-routing");
-  const dbRoutingInfo =
-    database.db_routing_info ??
+  const engineInfo = sessionProperties?.engines?.[database.engine ?? ""] as
+    | Record<string, any>
+    | undefined;
+  const dbRoutingInfo: string =
+    engineInfo?.["extra-info"]?.["db-routing-info"] ??
     // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
     t`When someone views a question using data from this database, Metabase will send the queries to the destination database set by the person's user attribute. Each destination database must have identical schemas.`;
   const shouldHideSection =

@@ -2,7 +2,6 @@
   (:require
    [metabase-enterprise.database-routing.common :refer [router-db-or-id->destination-db-id]]
    [metabase.api.common :as api]
-   [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -23,18 +22,6 @@
    databases k
    (fn [] (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter
                             :database_id  [:in (map :id databases)]))
-   :id
-   {:default nil}))
-
-(defenterprise hydrate-db-routing-info
-  "Enterprise implementation. Hydrates the db routing info attribute on the databases"
-  :feature :database-routing
-  [k databases]
-  (mi/instances-with-hydrated-data
-   databases k
-   (fn [] (into {}
-                (for [db databases]
-                  [(:id db) (:db-routing-info (driver/extra-info (:engine db)))])))
    :id
    {:default nil}))
 
