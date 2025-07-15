@@ -7,12 +7,12 @@ import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
@@ -56,8 +56,6 @@ function Dashboard({ className }: { className?: string }) {
     sidebar,
     closeSidebar,
   } = useDashboardContext();
-
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
 
   const canWrite = Boolean(dashboard?.can_write);
   const canRestore = Boolean(dashboard?.can_restore);
@@ -140,7 +138,7 @@ function Dashboard({ className }: { className?: string }) {
           S.DashboardHeaderContainer,
           EmbedFrameS.EmbedFrameHeader,
           {
-            [S.isEmbeddingSdk]: isEmbeddingSdk,
+            [S.isEmbeddingSdk]: isEmbeddingSdk(),
             [S.isFullscreen]: isFullscreen,
             [S.isNightMode]: shouldRenderAsNightMode,
           },
