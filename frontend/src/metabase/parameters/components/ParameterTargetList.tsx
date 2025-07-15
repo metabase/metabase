@@ -50,7 +50,6 @@ export const ParameterTargetList = ({
     <AccordionList
       className={CS.textBrand}
       maxHeight={maxHeight || 600}
-      style={{ minHeight: 200 }}
       sections={sections}
       onChange={(item: ParameterMappingOption) => onChange(item.target)}
       itemIsSelected={(item: ParameterMappingOption) =>
