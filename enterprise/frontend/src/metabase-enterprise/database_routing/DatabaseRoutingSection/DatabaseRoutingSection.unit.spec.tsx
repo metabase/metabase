@@ -4,7 +4,14 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { Database } from "metabase-types/api";
-import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockEngine,
+  createMockEngines,
+  createMockSettings,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { DatabaseRoutingSection } from "./DatabaseRoutingSection";
 
@@ -17,6 +24,18 @@ const setup = (database: Partial<Database>) => {
   renderWithProviders(<DatabaseRoutingSection database={db} />, {
     storeInitialState: {
       currentUser: createMockUser({ is_superuser: true }),
+      settings: createMockSettingsState(
+        createMockSettings({
+          engines: createMockEngines({
+            "bigquery-cloud-sdk": createMockEngine({
+              "driver-name": "Big Query",
+              "extra-info": {
+                "db-routing-info": "custom db routing info.",
+              },
+            }),
+          }),
+        }),
+      ),
     },
   });
 };
@@ -39,7 +58,6 @@ describe("DatabaseRoutingSection", () => {
     setup({
       engine: "bigquery-cloud-sdk",
       features: ["database-routing"],
-      db_routing_info: "custom db routing info.",
     });
 
     expect(screen.getByText("Database routing")).toBeInTheDocument();

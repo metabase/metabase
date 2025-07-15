@@ -35,6 +35,7 @@ const ENGINES_MOCK: Record<string, Engine> = {
     "driver-name": "H2",
     "superseded-by": null,
     source: createMockEngineSource(),
+    "extra-info": null,
   },
   sqlite: {
     "details-fields": [
@@ -44,6 +45,7 @@ const ENGINES_MOCK: Record<string, Engine> = {
     "driver-name": "SQLite",
     "superseded-by": null,
     source: createMockEngineSource(),
+    "extra-info": null,
   },
 };
 

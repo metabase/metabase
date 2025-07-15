@@ -15,11 +15,13 @@ import type {
   VersionInfo,
   VersionInfoRecord,
 } from "metabase-types/api";
+
 export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "driver-name": "PostgreSQL",
   "details-fields": [],
   source: createMockEngineSource(),
   "superseded-by": null,
+  "extra-info": null,
   ...opts,
 });
 
