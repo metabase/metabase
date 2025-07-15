@@ -173,7 +173,11 @@
         compiled (:query (qp.compile/compile-with-inline-parameters query))
         database (t2/select-one :model/Database :id database-id)
         driver (driver.u/database->driver database)]
-    (driver/create-view! driver database-id namespaced-view-name* compiled :replace? true)
+    ;; TODO (lbrdnk 2025-07-15): (driver/create-view! ... :replace? true) can not be used because of postgres
+    ;;                           expects same replaced view having columns. We do not. Should we? Imo no. Should we
+    ;;                           ajdust the implementation of create-view! for postgres? Probably.
+    (driver/drop-view! driver database-id namespaced-view-name*)
+    (driver/create-view! driver database-id namespaced-view-name* compiled)
     (t2/with-transaction [_conn]
       (t2/update! :model/TransformView :id transform-id
                   {:dataset_query dataset-query
