@@ -48,7 +48,7 @@ To include a time grouping parameter, include an `mb.time_grouping` function cal
 
 - `mb.time_grouping` is the function that handles the time grouping. It takes two arguments: `name` and `column`.
 - `name` is what you want to call the parameter. The name can be anything, but it must be wrapped in either single or double quote marks. E.g., `"Unit"` or `'Time Grouping'`. By default, this name will change the label on the widget. You can also set a different label for the widget in the variables sidebar.
-- `column` is the name of the column you want to group by. The column name must be wrapped in double quote marks, e.g., `"created_at"` (`created_at` without the quotes won't work).
+- `column` is the name of the column you want to group by. The column name must be wrapped in either single or double quote marks, e.g., `"created_at"` (`created_at` without the quotes won't work).
 
 Like with all parameters, you can set a default value (e.g., "month"). With time grouping parameters, you're limited to the options for the [time grouping parameter](../../dashboards/filters.md#time-grouping-parameter).
 
