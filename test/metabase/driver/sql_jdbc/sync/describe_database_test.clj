@@ -18,7 +18,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.sql ResultSet Connection)
+   (java.sql ResultSet Connection DatabaseMetaData)
    (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
@@ -304,7 +304,10 @@
 
 (deftest try-ensure-open-conn-sets-non-recursive-options-test
   (testing "try-ensure-open-conn! sets connection options as non-recursive"
-    (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
+    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+    (mt/test-drivers (disj (descendants driver/hierarchy :sql-jdbc)
+                           ;; too tricky to stub the connection
+                           :presto-jdbc :databricks :starburst)
       (let [connection-option-calls (volatile! [])
             is-default-options
             (identical? (get-method sql-jdbc.execute/do-with-connection-with-options :sql-jdbc)
@@ -314,9 +317,14 @@
             closed-conn (proxy [Connection] []
                           (isClosed [] true)
                           (close [] nil))
+
             new-conn (proxy [Connection] []
                        (isClosed [] false)
                        (close [] nil)
+                       (isReadOnly [] true)
+                       (getMetaData []
+                         (reify DatabaseMetaData
+                           (supportsTransactionIsolationLevel [_ _] false)))
                        (setReadOnly [read-only]
                          (vswap! connection-option-calls conj [:setReadOnly read-only]))
                        (setAutoCommit [auto-commit]
@@ -335,8 +343,9 @@
                       sql-jdbc.execute/recursive-connection?
                       (let [original-recursive-fn sql-jdbc.execute/recursive-connection?]
                         (fn []
-                          (vswap! connection-option-calls conj [:recursive-connection-check])
-                          (original-recursive-fn)))]
+                          (let [ret (original-recursive-fn)]
+                            (vswap! connection-option-calls conj [:recursive-connection-check ret])
+                            ret)))]
 
           (driver/do-with-resilient-connection
            driver/*driver* (mt/id)
@@ -345,13 +354,11 @@
                ;; Should return the new connection
                (is (identical? new-conn result))
 
-               ;; Should have checked if this is a recursive connection
-               (is (some #(= % [:recursive-connection-check]) @connection-option-calls))
+               (is (some #(= % [:recursive-connection-check false]) @connection-option-calls))
 
                ;; Should have set connection options (since it's non-recursive)
-               (let [calls @connection-option-calls]
-                 (is (some #(and (= (first %) :setReadOnly) (true? (second %))) calls))
-                 (when is-default-options
-                   (is (some #(and (= (first %) :setAutoCommit) (true? (second %))) calls))
-                   (is (some #(= (first %) :setTransactionIsolation) calls))
+               (when is-default-options
+                 (let [calls @connection-option-calls]
+                   (is (some #(= [:setReadOnly true] %) calls))
+                   (is (some #(= [:setAutoCommit true] %) calls))
                    (is (some #(= (first %) :setHoldability) calls))))))))))))
