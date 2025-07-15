@@ -401,3 +401,22 @@
           (mt/with-native-query-testing-context query
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"column number mismatch"
                                   (-> query qp/process-query mt/rows count)))))))))
+
+(deftest multi-stage-with-external-remapping-test
+  (testing "Should handle multiple stages with external remapping (#60587)"
+    (mt/with-driver :h2
+      (mt/with-temp [:model/Dimension _ {:field_id (mt/id :orders :user_id)
+                                         :name "User ID"
+                                         :type :external
+                                         :human_readable_field_id (mt/id :people :email)}]
+        (let [mp    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                      (lib/breakout $ (lib.metadata/field mp (mt/id :orders :user_id)))
+                      (lib/append-stage $)
+                      (lib/expression $ "user" (first (lib/returned-columns $)))
+                      (lib/aggregate $ (lib/distinct (m/find-first (comp #{"user"} :name)
+                                                                   (lib/visible-columns $)))))]
+          ;; should return {:rows [[1746]], :columns ("count")}
+          (mt/with-native-query-testing-context query
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Duplicate column name"
+                                  (-> query qp/process-query mt/rows+column-names)))))))))

@@ -25,6 +25,7 @@ title: Driver interface changelog
 
 - Extend `datetime()` to accept UTF-8 encoded binary and numbers (unix timestamps) in addition to strings.
 
+- Added a feature `:expressions/today` for drivers that support generating a date for the current day.
 
 ## Metabase 0.55.0
 

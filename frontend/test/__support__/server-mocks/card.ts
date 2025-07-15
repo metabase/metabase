@@ -21,6 +21,15 @@ export function setupCardEndpoints(card: Card) {
   fetchMock.get(`path:/api/card/${card.id}/series`, []);
 }
 
+export function setupCardByEntityIdEndpoints(card: Card) {
+  fetchMock.get(`path:/api/card/${card.entity_id}`, card);
+  fetchMock.put(`path:/api/card/${card.entity_id}`, async (url) => {
+    const lastCall = fetchMock.lastCall(url);
+    return createMockCard(await lastCall?.request?.json());
+  });
+  fetchMock.get(`path:/api/card/${card.entity_id}/series`, []);
+}
+
 export function setupCardQueryMetadataEndpoint(
   card: Card,
   metadata: CardQueryMetadata,
