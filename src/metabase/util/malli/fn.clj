@@ -347,6 +347,7 @@
     (fn :- :int [x :- :int] (inc x))
 
   compiles to something like
+
     (let [&f (fn [x] (inc x))]
       (fn [a]
         (validate-input {} :int a)
