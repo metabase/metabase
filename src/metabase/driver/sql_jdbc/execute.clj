@@ -875,6 +875,8 @@
   If the given connection is already open, just returns it. If the connection
   is closed and we're in [[driver/do-with-resilient-connection]] context,
   attempts to reuse an existing reconnection or establish a new one.
+  The connection will automatically be closed when exiting the [[driver/do-with-resilient-connection]]
+  context.
 
   The `:force-local?` option forces creation of a new local connection even if
   the current connection is still open.
@@ -896,6 +898,9 @@
     (:conn *resilient-connection-ctx*)
 
     :else
+    ;; we locally reset `*connection-recursion-depth*` so that the new connection
+    ;; gets all the options set as we'd expect, else we may be optaining a badly
+    ;; configured connection (see: https://github.com/metabase/metabase/pull/59999)
     (binding [*connection-recursion-depth* -1]
       (try
         (let [{:keys [db]} *resilient-connection-ctx*
