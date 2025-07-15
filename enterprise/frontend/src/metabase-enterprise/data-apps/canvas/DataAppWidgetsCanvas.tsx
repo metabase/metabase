@@ -1,5 +1,5 @@
 import type React from "react";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 import { Box, Button, Flex } from "metabase/ui";
 
@@ -10,12 +10,17 @@ import type {
   WidgetId,
 } from "../types";
 
+import { DndCanvas } from "./DndCanvas";
+
 type DataAppWidgetsCanvasProps = {
   components: DataAppWidget[];
+  onComponentsUpdate: (newComponents: DataAppWidget[]) => void;
 };
 
+// TODO: we should have non-editable canvas for viewing data apps
 export const DataAppWidgetsCanvas = ({
   components,
+  onComponentsUpdate,
 }: DataAppWidgetsCanvasProps) => {
   const componentsMap = useMemo(() => {
     const map = new Map();
@@ -28,23 +33,25 @@ export const DataAppWidgetsCanvas = ({
   const rootSection = componentsMap.get("root") as DataAppWidgetSection;
   const RootSectionComponent = WIDGET_COMPONENTS_MAP[rootSection.type];
 
-  const renderChildren = useCallback(
-    (childrenIds: WidgetId[]) => {
-      return childrenIds.map((id) => {
-        const widget = componentsMap.get(id);
-        const WidgetComponent = WIDGET_COMPONENTS_MAP[widget.type];
+  const onComponentRender = (widget: DataAppWidget) => {
+    const WidgetComponent = WIDGET_COMPONENTS_MAP[widget.type];
 
-        return (
-          <WidgetComponent
-            key={id}
-            widget={widget}
-            renderChildren={renderChildren}
-          />
-        );
-      });
-    },
-    [componentsMap],
-  );
+    return (
+      <WidgetComponent
+        key={widget.id}
+        widget={widget}
+        renderChildren={renderChildren}
+      />
+    );
+  };
+
+  const renderChildren = (childrenIds: WidgetId[]) => {
+    return childrenIds.map((id) => {
+      const widget = componentsMap.get(id);
+
+      return onComponentRender(widget);
+    });
+  };
 
   return (
     <Box
@@ -56,9 +63,15 @@ export const DataAppWidgetsCanvas = ({
         backgroundRepeat: "repeat",
       }}
     >
-      <RootSectionComponent
-        widget={rootSection}
-        renderChildren={renderChildren}
+      {/*<RootSectionComponent*/}
+      {/*  widget={rootSection}*/}
+      {/*  renderChildren={renderChildren}*/}
+      {/*/>*/}
+
+      <DndCanvas
+        components={components}
+        onComponentsUpdate={onComponentsUpdate}
+        onComponentRender={onComponentRender}
       />
     </Box>
   );

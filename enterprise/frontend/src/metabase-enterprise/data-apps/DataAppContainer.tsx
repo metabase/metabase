@@ -76,6 +76,8 @@ export const DataAppContainer = ({
     SettingsSectionKey | undefined
   >(isNewApp ? "components" : undefined); // show components list by default for new empty data app
 
+  const [components, setComponents] = useState(MOCK_COMPONENTS);
+
   const { data: dataApp } = useGetDataAppQuery({ id: appId });
   const [updateDataApp] = useUpdateDataAppMutation();
 
@@ -173,7 +175,10 @@ export const DataAppContainer = ({
             flexGrow: 1,
           }}
         >
-          <DataAppWidgetsCanvas components={MOCK_COMPONENTS} />
+          <DataAppWidgetsCanvas
+            components={components}
+            onComponentsUpdate={setComponents}
+          />
 
           {activeSettingsSection === "components" && (
             <ComponentsSidebar
