@@ -11,6 +11,7 @@
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections :notifications))
@@ -216,6 +217,44 @@
                                                                               :payload      {:card_id card-id}
                                                                               :payload_type "notification/card"})
                    :creator_id)))))))
+
+(deftest notification-with-custom-template-test
+  (mt/with-model-cleanup [:model/Notification]
+    (testing "can create a notification with a template"
+      (let [template     (-> notification.tu/channel-template-email-with-handlebars-body
+                             (update :channel_type u/qualified-name)
+                             (update-in [:details :type] u/qualified-name))
+            notification (mt/user-http-request :crowberto :post 200 "notification"
+                                               {:payload_type  :notification/testing
+                                                :creator_id    (mt/user->id :crowberto)
+                                                :handlers      [(assoc @notification.tu/default-email-handler
+                                                                       :template notification.tu/channel-template-email-with-handlebars-body)]})
+            created-template (-> notification :handlers first :template)]
+        (is (=? template created-template))
+        (testing "and can update the template"
+          (let [updated-notification (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                                           (update notification :handlers (fn [[handler]]
+                                                                                            [(assoc-in handler [:template :name] "New Name")])))
+                updated-template    (-> updated-notification :handlers first :template)]
+            (is (=? (-> created-template
+                        (assoc :name "New Name")
+                        (dissoc :updated_at :created_at))
+                    (dissoc updated-template :updated_at :created_at)))))
+
+        (testing "can delete the template"
+          (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                (update notification :handlers (fn [[handler]]
+                                                                 [(dissoc handler :template)])))
+          (is (false? (t2/exists? :model/ChannelTemplate (:id created-template)))))
+
+        (testing "and re-create it again"
+          (let [notification       (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                                         (update notification :handlers (fn [[handler]]
+                                                                                          [(assoc handler
+                                                                                                  :template template
+                                                                                                  :template_id nil)])))
+                recreated-template (-> notification :handlers first :template)]
+            (is (=? template recreated-template))))))))
 
 (defn- update-cron-subscription
   [{:keys [subscriptions] :as notification} new-schedule ui-display-type]

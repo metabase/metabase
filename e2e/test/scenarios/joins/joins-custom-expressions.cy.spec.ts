@@ -202,13 +202,13 @@ describe("scenarios > joins > custom expressions", () => {
     H.popover().findByText("Inner join").click();
     H.getNotebookStep("join")
       .findByLabelText("Left column")
-      .findByText("Custom expression")
+      .findByText("1")
       .click();
     H.enterCustomColumnDetails({ formula: "[ID] + 1" });
     H.popover().button("Update").click();
     H.getNotebookStep("join")
       .findByLabelText("Right column")
-      .findByText("Custom expression")
+      .findByText("1")
       .click();
     H.enterCustomColumnDetails({ formula: "[Reviews → ID] + 1" });
     H.popover().button("Update").click();
