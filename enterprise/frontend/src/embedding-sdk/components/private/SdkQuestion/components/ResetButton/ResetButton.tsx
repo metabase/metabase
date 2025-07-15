@@ -12,7 +12,7 @@ import { useSdkQuestionContext } from "../../context";
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionResetButtonProps = ButtonProps;
+export type ResetButtonProps = ButtonProps;
 
 /**
  * Button to reset question modifications. Only appears when there are unsaved changes to the question.
@@ -24,7 +24,7 @@ export type InteractiveQuestionResetButtonProps = ButtonProps;
 export const QuestionResetButton = ({
   onClick,
   ...buttonProps
-}: InteractiveQuestionResetButtonProps = {}) => {
+}: ResetButtonProps = {}) => {
   const { question, originalQuestion, onReset } = useSdkQuestionContext();
 
   const handleReset = (e: MouseEvent<HTMLButtonElement>) => {
