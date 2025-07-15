@@ -3185,6 +3185,28 @@ describe("scenarios > admin > datamodel", () => {
         "Field values",
       );
 
+      cy.log("buttons should have tooltips when labels are not shown");
+      TableSection.getSyncOptionsButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Sync options");
+
+      TableSection.getSortButton().realHover({ scrollBehavior: "center" });
+      H.tooltip().should("be.visible").and("have.text", "Sorting");
+
+      TableSection.getSortButton().click();
+      TableSection.getSortDoneButton().realHover({ scrollBehavior: "center" });
+      H.tooltip().should("be.visible").and("have.text", "Done");
+      TableSection.getSortDoneButton().click();
+
+      FieldSection.getPreviewButton().realHover({ scrollBehavior: "center" });
+      H.tooltip().should("be.visible").and("have.text", "Preview");
+
+      FieldSection.getFieldValuesButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Field values");
+
       cy.log("button labels should reappear when they can fit again");
       cy.viewport(1200, 800);
       TableSection.getSyncOptionsButton().should("have.text", "Sync options");
