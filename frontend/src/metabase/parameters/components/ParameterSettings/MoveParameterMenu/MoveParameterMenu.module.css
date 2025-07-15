@@ -1,5 +1,6 @@
 .CollapsedMoveParameterMenuInput {
   text-align: center;
+  border-radius: var(--mantine-radius-sm);
 
   &::placeholder {
     color: var(--mb-color-text-dark);
@@ -7,7 +8,7 @@
   }
 
   &:hover {
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background-hover);
 
     &::placeholder {
       color: var(--mb-color-brand);
