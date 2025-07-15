@@ -722,6 +722,11 @@
     _
     nil))
 
+(mu/defn join-condition-lhs-or-rhs-literal? :- :boolean
+  "Whether this LHS or RHS expression is a `:value` clause."
+  [lhs-or-rhs :- [:maybe ::lib.schema.expression/expression]]
+  (lib.util/clause-of-type? lhs-or-rhs :value))
+
 (mu/defn join-condition-lhs-or-rhs-column? :- :boolean
   "Whether this LHS or RHS expression is a `:field` reference."
   [lhs-or-rhs :- [:maybe ::lib.schema.expression/expression]]
