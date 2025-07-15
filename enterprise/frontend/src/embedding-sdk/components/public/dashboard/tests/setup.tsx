@@ -110,7 +110,7 @@ export interface SetupSdkDashboardOptions {
   isLocaleLoading?: boolean;
   component: React.ComponentType<SdkDashboardProps>;
   dashboardName?: string;
-  queryBuilderProps?: EditableDashboardProps["queryBuilderProps"];
+  dataPickerProps?: EditableDashboardProps["dataPickerProps"];
 }
 
 jest.mock("metabase/common/hooks/use-locale", () => ({
@@ -123,7 +123,7 @@ export const setupSdkDashboard = async ({
   isLocaleLoading = false,
   component: Component,
   dashboardName = "Dashboard",
-  queryBuilderProps,
+  dataPickerProps,
 }: SetupSdkDashboardOptions) => {
   const useLocaleMock = useLocale as jest.Mock;
   useLocaleMock.mockReturnValue({ isLocaleLoading });
@@ -198,7 +198,7 @@ export const setupSdkDashboard = async ({
     <Box h="500px">
       <Component
         dashboardId={dashboardId}
-        queryBuilderProps={queryBuilderProps}
+        dataPickerProps={dataPickerProps}
         {...props}
       />
     </Box>,

@@ -16,7 +16,7 @@ import {
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
 type CustomArgs = {
-  "queryBuilderProps.entityTypes"?: InteractiveQuestionProps["entityTypes"];
+  "dataPickerProps.entityTypes"?: InteractiveQuestionProps["entityTypes"];
 };
 
 const meta = {
@@ -30,7 +30,7 @@ const meta = {
     // Core props
     dashboardId: dashboardIdArgType,
 
-    "queryBuilderProps.entityTypes": {
+    "dataPickerProps.entityTypes": {
       control: "check",
       options: [
         "model",
@@ -151,11 +151,11 @@ const meta = {
       action: "onLoadWithoutCards",
     },
   },
-  render: ({ "queryBuilderProps.entityTypes": entityTypes, ...args }) => {
+  render: ({ "dataPickerProps.entityTypes": entityTypes, ...args }) => {
     return (
       <EditableDashboard
         {...args}
-        queryBuilderProps={{
+        dataPickerProps={{
           entityTypes,
         }}
       />

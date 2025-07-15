@@ -107,7 +107,7 @@ export type EditableDashboardOwnProps = {
   /**
    * Additional props to pass to the query builder rendered by `InteractiveQuestion` when creating a new dashboard question.
    */
-  queryBuilderProps?: Pick<InteractiveQuestionProps, "entityTypes">;
+  dataPickerProps?: Pick<InteractiveQuestionProps, "entityTypes">;
 };
 
 export type SdkDashboardInnerProps = SdkDashboardProps &
@@ -145,7 +145,7 @@ const SdkDashboardInner = ({
   className,
   style,
   children,
-  queryBuilderProps,
+  dataPickerProps,
 }: SdkDashboardInnerProps) => {
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
@@ -323,7 +323,7 @@ const SdkDashboardInner = ({
             onNavigateBack={() => {
               setRenderMode("dashboard");
             }}
-            queryBuilderProps={queryBuilderProps}
+            dataPickerProps={dataPickerProps}
           />
         ))
         .exhaustive()}
@@ -364,7 +364,7 @@ type DashboardQueryBuilderProps = {
   targetDashboardId: DashboardId;
   onCreate: (question: MetabaseQuestion) => void;
   onNavigateBack: () => void;
-  queryBuilderProps: EditableDashboardOwnProps["queryBuilderProps"];
+  dataPickerProps: EditableDashboardOwnProps["dataPickerProps"];
 };
 
 /**
@@ -374,7 +374,7 @@ function DashboardQueryBuilder({
   targetDashboardId,
   onCreate,
   onNavigateBack,
-  queryBuilderProps,
+  dataPickerProps,
 }: DashboardQueryBuilderProps) {
   const { dashboard, selectTab, setEditingDashboard } = useDashboardContext();
 
@@ -403,7 +403,7 @@ function DashboardQueryBuilder({
       }}
       onNavigateBack={onNavigateBack}
       backToDashboard={dashboard}
-      entityTypes={queryBuilderProps?.entityTypes}
+      entityTypes={dataPickerProps?.entityTypes}
     >
       <InteractiveQuestionDefaultView
         withResetButton

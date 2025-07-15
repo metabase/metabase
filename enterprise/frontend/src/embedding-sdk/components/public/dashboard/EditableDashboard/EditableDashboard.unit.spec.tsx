@@ -159,9 +159,9 @@ describe("EditableDashboard", () => {
     ).toBeInTheDocument();
   });
 
-  it("should allow to pass `queryBuilderProps.entityTypes` to the query builder", async () => {
+  it("should allow to pass `dataPickerProps.entityTypes` to the query builder", async () => {
     await setup({
-      queryBuilderProps: {
+      dataPickerProps: {
         entityTypes: ["model"],
       },
     });
