@@ -132,7 +132,7 @@ class TagEditorParamInner extends Component<
     }
 
     return {
-      isMultiSelect: false,
+      isMultiSelect: originalParameter.isMultiSelect,
       values_source_type: originalParameter.values_source_type,
       values_source_config: originalParameter.values_source_config,
       values_query_type: originalParameter.values_query_type,
