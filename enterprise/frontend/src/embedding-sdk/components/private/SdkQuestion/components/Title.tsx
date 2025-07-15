@@ -7,7 +7,7 @@ import type { CommonStylingProps } from "embedding-sdk/types/props";
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionTitleProps = CommonStylingProps;
+export type TitleProps = CommonStylingProps;
 
 /**
  * Displays a title based on the question's state. Shows:
@@ -20,7 +20,7 @@ export type InteractiveQuestionTitleProps = CommonStylingProps;
  * @category InteractiveQuestion
  * @param props
  */
-export const Title = ({ className, style }: InteractiveQuestionTitleProps) => {
+export const Title = ({ className, style }: TitleProps) => {
   const { question } = useSdkQuestionContext();
 
   return (
