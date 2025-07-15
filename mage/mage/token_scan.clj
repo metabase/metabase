@@ -2,7 +2,7 @@
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
-   [clojure.set :as set]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.color :as c]
    [mage.util :as u])
@@ -15,7 +15,7 @@
    The keys are human-readable names, the values are regex patterns to match the tokens.
    These patterns are designed to catch common token formats used in Metabase."
   {"Airgap Token"    #"airgap_.{400}" ;; afaik 461 is the absolute minimum, but this is good enough
-   "Hash/Dev Token"  #"(mb_dev_[0-9a-f]{57}|[0-9a-f]{64})"
+   "Hash/Dev Token"  #"(mb_dev_[0-9a-f]{57}|\\b[0-9a-f]{64}\\b)"
    "OpenAI API Key"  #"sk-[A-Za-z0-9]{43,51}" ;; OpenAI API keys start with sk- and are ~48 chars total
    "JWT Token"       #"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}" ;; JWT format: header.payload.signature
    "JWE Token"       #"eyJ[A-Za-z0-9_-]{400,}" ;; JWE tokens are much longer, minimum ~461 chars
@@ -58,22 +58,23 @@
   "Scan a single file for regex patterns. Returns map with file path and matches."
   [patterns ^String file-path]
   (try
-    (let [lines (str/split-lines (slurp file-path))
-          matches (into []
-                        (comp
-                         (map-indexed (fn [line-idx line]
-                                        (keep (fn [[pattern-name pattern]]
-                                                (when (and (re-find pattern line)
-                                                           (not (white-listed? line)))
-                                                  {:pattern-name pattern-name
-                                                   :line-number (inc line-idx)
-                                                   :line-text (truncate-around-match line pattern)}))
-                                              patterns)))
-                         cat)
-                        lines)]
-      {:file file-path
-       :matches matches
-       :error nil})
+    (with-open [reader (io/reader file-path)]
+      (let [matches (loop [line-num 1
+                           matches []]
+                      (if-let [line (.readLine reader)]
+                        (let [line-matches (keep (fn [[pattern-name pattern]]
+                                                   (when (and (re-find pattern line)
+                                                              (not (white-listed? line)))
+                                                     {:pattern-name pattern-name
+                                                      :line-number line-num
+                                                      :line-text (truncate-around-match line pattern)}))
+                                                 patterns)]
+                          (recur (inc line-num)
+                                 (into matches line-matches)))
+                        matches))]
+        {:file file-path
+         :matches matches
+         :error nil}))
     (catch Exception e
       {:file file-path
        :matches []
@@ -82,28 +83,31 @@
 (defn- git-ignored-files
   "Returns a set of files that are ignored by git."
   [files]
-  (println
-   (c/yellow "Checking git ignore status for " (c/white (count files)) " files..."))
-  (let [proc (p/sh {:out :string
-                    :err :string
-                    :continue true
-                    :dir u/project-root-directory
-                    :in (str/join "\n" files)}
-                   "git" "check-ignore" "--stdin")
+  (println (c/yellow "Checking git ignore status for " (c/white (count files)) " files..."))
+  (let [{:keys [exit]
+         :as proc} (p/sh {:out :string
+                          :err :string
+                          :continue true
+                          :dir u/project-root-directory
+                          :in (str/join "\n" files)}
+                         "git" "check-ignore" "--stdin")
         output (:out proc)]
-    (->> output str/split-lines
+    (when (= 128 exit)
+      (throw (ex-info "git check-ignore has failed with an exceptional status code: maybe git is not initialized in this directory or no gitignore file found."
+                      {:babashka/exit exit :git-error (:err proc)})))
+    (->> output
+         str/split-lines
          (remove str/blank?)
          (map str/trim)
-         (set))))
-
+         set)))
 
 (defn- get-all-files
   "Get all files in the project (excluding auto-generated files and build artifacts)"
   []
-  (let [project-root u/project-root-directory]
-    (->> (fs/glob project-root "**/*")
-         (filter fs/regular-file?)
-         (map str))))
+  (u/debug "finding all files in the project directory...")
+  (->> (fs/glob u/project-root-directory "**/*")
+       (filter fs/regular-file?)
+       (map str)))
 
 (defn- merge-scanned
   "Merge results from parallel scanning"
@@ -116,57 +120,57 @@
        (update :total-matches + (count (:matches scanned)))
        (update :scanned conj scanned))))
 
+(defn- clamp "Clamp n to the range [lo, hi]." [n lo hi] (max lo (min hi n)))
+(def ^:private pool-size (clamp (* 4 (.availableProcessors (Runtime/getRuntime))) 4 32))
+
 (defn scan-files [patterns files]
-  (let [start-time (System/nanoTime)
-        pool-size (-> (/ (count files) 8) int (max 4) (min 32))
-        _ (println (c/yellow "Using thread pool size: " pool-size))
-        executor (Executors/newFixedThreadPool pool-size)
-        callables (mapv (fn [f] (reify Callable (call [_] (scan-file patterns f)))) files)
-        futures (.invokeAll executor callables)
-        results (mapv #(.get ^java.util.concurrent.Future %) futures)
-        merged (reduce merge-scanned (merge-scanned) results)
-        duration-ms (/ (- (System/nanoTime) start-time) 1e6)]
-    (.shutdown executor)
-    (.awaitTermination executor 10 TimeUnit/SECONDS)
-    (assoc merged :duration-ms duration-ms)))
+  (let [_ (u/debug (c/yellow "Using thread pool size: " pool-size))
+        executor (Executors/newFixedThreadPool pool-size)]
+    (try
+      (let [callables (mapv (fn [f] (reify Callable (call [_] (scan-file patterns f)))) files)
+            futures (.invokeAll executor callables)
+            results (mapv #(.get ^java.util.concurrent.Future %) futures)]
+        (reduce merge-scanned (merge-scanned) results))
+      (finally
+        (.shutdown executor)
+        (.awaitTermination executor 10 TimeUnit/SECONDS)))))
 
 (defn- find-files-from-options [all-files arguments]
-  (cond
-    ;; --all-files flag
-    all-files (do
-                (when (seq arguments)
-                  (println (c/yellow "Ignoring specific files, scanning all files...")))
-                (get-all-files))
-    ;; Default: require specific files
-    ;; Arguments provided = specific files to scan
-    (seq arguments) arguments
-    :else (throw (ex-info
-                  nil
-                  {:mage/error    (c/yellow "No files specified. Use -a to scan all files or specify files to scan.")
-                   :babashka/exit 1}))))
+  (let [files (cond
+                ;; --all-files flag
+                all-files (do
+                            (when (seq arguments)
+                              (println (c/yellow "Ignoring specific files, scanning all files...")))
+                            (get-all-files))
+                ;; Default: require specific files
+                ;; Arguments provided = specific files to scan
+                (seq arguments) arguments
+                :else (throw (ex-info
+                              nil
+                              {:mage/error    (c/yellow "No files specified. Use -a to scan all files or specify files to scan.")
+                               :babashka/exit 1})))]
+    (distinct (map str files))))
 
 (defn run-scan
   "Main entry point for regex scanning"
   [{:keys [options arguments]}]
-  (let [{:keys [all-files
+  (let [start-time (System/nanoTime)
+        {:keys [all-files
                 verbose
                 no-lines]} options
         files              (find-files-from-options all-files arguments)
         ignored            (git-ignored-files files) ;; Returns a set of git-ignored files
-        _                  (u/debug "Ignored files:" (vec ignored))
+        _                  (u/debug "Ignored files:" (count ignored))
         files'             (remove ignored files)
-        _                  (u/debug "Files to scan:" (vec files'))
+        _                  (u/debug "Files to scan:" (count files'))
         _                  (doseq [file files']
-                             (u/debug "Checking file exists: " file "|" (fs/exists? file))
                              (when-not (fs/exists? file)
-                               (let [relative-path (str (fs/relativize u/project-root-directory file))]
-                                 (throw (ex-info (str "Missing file: " relative-path) {:babashka/exit 1
-                                                                                       :relative-path relative-path
-                                                                                       :file file})))))
-        _                  (println "Scanning" (c/green (count files')) "and ignoring " (c/magenta (- (count files) (count files'))) ".gitignore'd and whitelisted files...")
-        {:keys [scanned duration-ms total-files files-with-matches total-matches]
+                               (throw (ex-info (str "Missing file: " file) {:babashka/exit 1 :file file}))))
+        _                  (println "Scanning" (c/green (count files')) "and ignoring" (c/magenta (- (count files) (count files'))) ".gitignore'd and whitelisted files...")
+        {:keys [scanned total-files files-with-matches total-matches]
          :as   full-info}  (scan-files token-patterns files')
-        info               (dissoc full-info :scanned :duration-ms)]
+        info               (dissoc full-info :scanned :duration-ms)
+        duration-ms (/ (- (System/nanoTime) start-time) 1e6)]
 
     ;; Print results
     (doseq [{:keys [file matches error]} scanned]
@@ -178,18 +182,19 @@
           (doseq [{:keys [pattern-name line-number line-text]} matches]
             (println (c/white "  Line# " (c/bold line-number) " [" (c/yellow pattern-name) "]:" (c/green (str/trim line-text))))))))
 
-    (println (c/green "Scan completed in:   " (format "%.0f" duration-ms) "ms"))
+    (println "Scan completed in:   " (format "%.0f" duration-ms) "ms")
     (when verbose
       (println "--------------------")
       (println (c/yellow "Files scanned:      " total-files))
       (println (c/yellow "Files with matches: " files-with-matches))
       (println (c/yellow "Total matches:      " total-matches)))
 
-    (when (> total-matches 0)
+    (if (> total-matches 0)
       (throw (ex-info nil
                       {:outcome    info
                        :mage/error (str (c/red "Token Scanning found a potential secret.\n")
                                         (c/magenta "If you know your token is good add it to the token whitelist in mage/resources/token_scanner/token_whitelist.txt\n")
-                                        (c/cyan (c/green "More info:") " https://github.com/metabase/metabase/blob/master/docs/developers-guide/security-token-scanner.md"))})))
+                                        (c/cyan (c/green "More info:") " https://github.com/metabase/metabase/blob/master/docs/developers-guide/security-token-scanner.md"))}))
+      (println (c/green "OK: No potential secrets found.")))
     ;; Return results for potential further processing + testing
     info))

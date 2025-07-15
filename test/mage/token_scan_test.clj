@@ -1,6 +1,6 @@
 (ns mage.token-scan-test
   (:require
-   [clojure.string :as str]
+   [babashka.fs :as fs]
    [clojure.test :refer [deftest is]]
    [mage.token-scan :as token-scan]
    [mage.util :as u]))
@@ -11,42 +11,46 @@
              (select-keys [:total-matches :files-with-matches])))))
 
 (def token-like-comment (str ";;" (apply str (repeat 100 \a)) "\n"))
-(def this-file-path "test/mage/token_scan_test.clj")
+(def sample-file-path
+  (str u/project-root-directory "/test/mage/token_scan_test_example.clj"))
 
 (deftest token-scan-finds-error
   (try
-    (spit (str u/project-root-directory "/" this-file-path)
+    (spit sample-file-path
           ;; add comment to the bottom of this file:
           token-like-comment
           :append true)
-    (try (token-scan/run-scan {:arguments [this-file-path]})
+    (try (token-scan/run-scan {:arguments [sample-file-path]})
          (catch Exception e
            (is (= {:total-files 1, :files-with-matches 1, :total-matches 1} (:outcome (ex-data e))))))
     (finally
-      (spit this-file-path
-            (str/replace (slurp this-file-path) token-like-comment "")))))
+      (fs/delete sample-file-path))))
 
 (deftest token-scan-finds-errors
   ;; Append the token-like comment to the bottom of this file 10 times:
   (dotimes [_ 10]
-    (spit (str u/project-root-directory "/" this-file-path)
-          ;; add comment to the bottom of this file:
+    (spit sample-file-path
           token-like-comment
           :append true))
-  (try (token-scan/run-scan {:arguments [this-file-path]})
+  (try (token-scan/run-scan {:arguments [sample-file-path]})
        (catch Exception e
          (is (= {:total-files 1
                  :files-with-matches 1
                  :total-matches 10} (:outcome (ex-data e)))
              "should have 10 matches, in this file, one for each token-like-comment"))
        (finally
-         (spit this-file-path
-               (str/replace (slurp this-file-path) token-like-comment "")))))
+         (fs/delete sample-file-path))))
 
 (deftest missing-file-test
   (try
     (token-scan/run-scan {:arguments ["some-missing-file.txt"]})
     (catch Exception e
       (is (= "Missing file: some-missing-file.txt" (ex-message e))
-          "should have an empty message and no data for missing file error")
-      (is (= {:babashka/exit 1} (ex-data e))))))
+          "should have an error message missing file errors")
+      (is (= 1 (:babashka/exit (ex-data e))))))
+  (try
+    (token-scan/run-scan {:arguments ["bb.edn" "some-missing-file.txt"]})
+    (catch Exception e
+      (is (= "Missing file: some-missing-file.txt" (ex-message e))
+          "should have an error message missing file errors")
+      (is (= 1 (:babashka/exit (ex-data e)))))))
