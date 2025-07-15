@@ -1,1 +1,1 @@
-export * from "./InteractiveQuestionDefaultView";
+export * from "./SdkQuestionDefaultView";

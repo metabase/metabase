@@ -32,7 +32,7 @@ import { shouldShowSaveButton } from "../SdkQuestion/components";
 import { useSdkQuestionContext } from "../SdkQuestion/context";
 
 import { DefaultViewTitle } from "./DefaultViewTitle";
-import InteractiveQuestionS from "./InteractiveQuestionDefaultView.module.css";
+import InteractiveQuestionS from "./SdkQuestionDefaultView.module.css";
 
 export interface InteractiveQuestionDefaultViewProps extends FlexibleSizeProps {
   /**

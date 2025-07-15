@@ -5,7 +5,7 @@ import { Anchor, Stack, Text } from "metabase/ui";
 import { getQuestionTitle } from "../QuestionTitle";
 import { useSdkQuestionContext } from "../SdkQuestion/context";
 
-import type { InteractiveQuestionDefaultViewProps } from "./InteractiveQuestionDefaultView";
+import type { InteractiveQuestionDefaultViewProps } from "./SdkQuestionDefaultView";
 
 interface DefaultViewTitleTextProps
   extends Pick<
