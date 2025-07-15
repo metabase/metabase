@@ -24,8 +24,8 @@ import {
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
 import { VisualizationButton } from "embedding-sdk/components/private/InteractiveQuestion/components/VisualizationButton/VisualizationButton";
 import {
-  InteractiveQuestionProvider,
-  type InteractiveQuestionProviderProps,
+  SdkQuestionProvider,
+  type SdkQuestionProviderProps,
 } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import {
   InteractiveQuestionDefaultView,
@@ -44,9 +44,9 @@ export type BaseInteractiveQuestionProps =
      * The children of the MetabaseProvider component.s
      */
     children?: ReactNode;
-    plugins?: InteractiveQuestionProviderProps["componentPlugins"];
+    plugins?: SdkQuestionProviderProps["componentPlugins"];
   } & Pick<
-      InteractiveQuestionProviderProps,
+      SdkQuestionProviderProps,
       | "onBeforeSave"
       | "onSave"
       | "entityTypes"
@@ -98,7 +98,7 @@ export const _InteractiveQuestion = ({
   initialSqlParameters,
   onRun,
 }: InteractiveQuestionProps): JSX.Element | null => (
-  <InteractiveQuestionProvider
+  <SdkQuestionProvider
     questionId={questionId}
     componentPlugins={plugins}
     onBeforeSave={onBeforeSave}
@@ -121,7 +121,7 @@ export const _InteractiveQuestion = ({
         withChartTypeSelector={withChartTypeSelector}
       />
     )}
-  </InteractiveQuestionProvider>
+  </SdkQuestionProvider>
 );
 
 /**

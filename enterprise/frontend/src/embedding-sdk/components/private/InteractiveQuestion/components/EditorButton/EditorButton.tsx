@@ -1,6 +1,6 @@
 import type { HTMLAttributes, MouseEventHandler } from "react";
 
-import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { useSdkQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import { ActionIcon, type ActionIconProps, Icon } from "metabase/ui";
 
@@ -37,7 +37,7 @@ export const EditorButton = ({
   isOpen = false,
   ...actionIconProps
 }: InteractiveQuestionEditorButtonProps) => {
-  const { question } = useInteractiveQuestionContext();
+  const { question } = useSdkQuestionContext();
   return (
     question &&
     QuestionNotebookButton.shouldRender({

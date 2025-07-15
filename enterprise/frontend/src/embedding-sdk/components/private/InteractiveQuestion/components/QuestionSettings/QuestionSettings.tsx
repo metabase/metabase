@@ -10,8 +10,8 @@ import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import {
-  type InteractiveQuestionContextType,
-  useInteractiveQuestionContext,
+  type SdkQuestionContextType,
+  useSdkQuestionContext,
 } from "../../context";
 
 /**
@@ -28,7 +28,7 @@ const QuestionSettingsContent = ({
 }: {
   question: Question;
   queryResults?: any[];
-  updateQuestion: InteractiveQuestionContextType["updateQuestion"];
+  updateQuestion: SdkQuestionContextType["updateQuestion"];
 }) => {
   const series = useMemo(() => {
     const result = queryResults?.[0] ?? {};
@@ -84,8 +84,7 @@ const QuestionSettingsContent = ({
 export const QuestionSettings = ({
   ...stackProps
 }: InteractiveQuestionQuestionSettingsProps) => {
-  const { question, queryResults, updateQuestion } =
-    useInteractiveQuestionContext();
+  const { question, queryResults, updateQuestion } = useSdkQuestionContext();
 
   if (!question) {
     return null;

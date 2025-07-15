@@ -5,11 +5,11 @@ import { isQuestionDirty } from "metabase/query_builder/utils/question";
 import { useRunVisualization as useRunVisualizationCore } from "metabase/querying/notebook/components/Notebook";
 import type Question from "metabase-lib/v1/Question";
 
-import { useInteractiveQuestionContext } from "../context";
+import { useSdkQuestionContext } from "../context";
 
 export const useRunVisualization = () => {
   const { question, updateQuestion, originalQuestion, queryQuestion, onRun } =
-    useInteractiveQuestionContext();
+    useSdkQuestionContext();
 
   const isDirty = useMemo(
     () => isQuestionDirty(question, originalQuestion),

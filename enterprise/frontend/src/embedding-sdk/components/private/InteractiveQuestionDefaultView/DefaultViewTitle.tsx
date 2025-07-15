@@ -2,7 +2,7 @@ import { c, t } from "ttag";
 
 import { Anchor, Stack, Text } from "metabase/ui";
 
-import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
+import { useSdkQuestionContext } from "../InteractiveQuestion/context";
 import { getQuestionTitle } from "../QuestionTitle";
 
 import type { InteractiveQuestionDefaultViewProps } from "./InteractiveQuestionDefaultView";
@@ -48,8 +48,7 @@ export const DefaultViewTitle = ({
   title,
   withResetButton = false,
 }: InteractiveQuestionDefaultViewProps) => {
-  const { question, originalQuestion, onReset } =
-    useInteractiveQuestionContext();
+  const { question, originalQuestion, onReset } = useSdkQuestionContext();
 
   const isQuestionChanged = originalQuestion
     ? question?.isQueryDirtyComparedTo(originalQuestion)

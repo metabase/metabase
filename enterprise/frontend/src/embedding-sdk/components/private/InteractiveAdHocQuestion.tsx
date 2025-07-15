@@ -5,8 +5,8 @@ import * as Urls from "metabase/lib/urls";
 import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 
 import {
-  InteractiveQuestionProvider,
   type QuestionMockLocationParameters,
+  SdkQuestionProvider,
 } from "./InteractiveQuestion/context";
 import {
   InteractiveQuestionDefaultView,
@@ -56,7 +56,7 @@ export const InteractiveAdHocQuestion = ({
   }, [location.hash]);
 
   return (
-    <InteractiveQuestionProvider
+    <SdkQuestionProvider
       questionId={questionId}
       options={options}
       deserializedCard={deserializedCard}
@@ -81,7 +81,7 @@ export const InteractiveAdHocQuestion = ({
           withChartTypeSelector={withChartTypeSelector}
         />
       )}
-    </InteractiveQuestionProvider>
+    </SdkQuestionProvider>
   );
 };
 

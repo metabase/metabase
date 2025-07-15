@@ -29,7 +29,7 @@ import {
   type FlexibleSizeProps,
 } from "../FlexibleSizeComponent";
 import { shouldShowSaveButton } from "../InteractiveQuestion/components";
-import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
+import { useSdkQuestionContext } from "../InteractiveQuestion/context";
 
 import { DefaultViewTitle } from "./DefaultViewTitle";
 import InteractiveQuestionS from "./InteractiveQuestionDefaultView.module.css";
@@ -69,7 +69,7 @@ export const InteractiveQuestionDefaultView = ({
     originalQuestion,
     isSaveEnabled,
     withDownloads,
-  } = useInteractiveQuestionContext();
+  } = useSdkQuestionContext();
 
   const isNewQuestion = originalId === "new";
   const isQuestionSaved = question?.isSaved();
@@ -219,7 +219,7 @@ const DefaultViewSaveModal = ({
     onSave,
     isSaveEnabled,
     targetCollection,
-  } = useInteractiveQuestionContext();
+  } = useSdkQuestionContext();
 
   const { id, isLoading } = useTranslatedCollectionId({
     id: targetCollection,

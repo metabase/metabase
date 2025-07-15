@@ -1,7 +1,7 @@
 import { InteractiveQuestion } from "embedding-sdk";
 import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 
-import { useInteractiveQuestionContext } from "../../context";
+import { useSdkQuestionContext } from "../../context";
 import { ToolbarButton } from "../util/ToolbarButton";
 
 /**
@@ -20,7 +20,7 @@ export type InteractiveQuestionDownloadWidgetDropdownProps = PopoverProps;
 export const DownloadWidgetDropdown = ({
   ...popoverProps
 }: InteractiveQuestionDownloadWidgetDropdownProps) => {
-  const { withDownloads } = useInteractiveQuestionContext();
+  const { withDownloads } = useSdkQuestionContext();
   return (
     <Popover
       {...popoverProps}

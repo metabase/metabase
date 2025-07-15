@@ -4,7 +4,7 @@ import {
   type SDKBreakoutItem,
   useBreakoutData,
 } from "embedding-sdk/components/private/InteractiveQuestion/components/Breakout/use-breakout-data";
-import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { useSdkQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 
 import { BadgeList } from "../util/BadgeList";
 
@@ -42,7 +42,7 @@ export const BreakoutBadgeList = ({
   onAddItem: (item: SDKBreakoutItem | undefined) => void;
   onRemoveItem: (item: SDKBreakoutItem, index: number) => void;
 }) => {
-  const { question } = useInteractiveQuestionContext();
+  const { question } = useSdkQuestionContext();
 
   if (!question) {
     return null;

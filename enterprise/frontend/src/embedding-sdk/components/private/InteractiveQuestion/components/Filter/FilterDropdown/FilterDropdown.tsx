@@ -11,7 +11,7 @@ import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import type { PopoverProps } from "metabase/ui";
 
-import { useInteractiveQuestionContext } from "../../../context";
+import { useSdkQuestionContext } from "../../../context";
 import { ToolbarButton } from "../../util/ToolbarButton";
 import { FilterBadgeList } from "../FilterBadgeList";
 import { FilterPicker } from "../FilterPicker/FilterPicker";
@@ -112,7 +112,7 @@ const FilterDropdownInner = ({
 export const FilterDropdown = ({
   withColumnItemIcon,
 }: InteractiveQuestionFilterDropdownProps) => {
-  const { question } = useInteractiveQuestionContext();
+  const { question } = useSdkQuestionContext();
 
   if (!question) {
     return null;

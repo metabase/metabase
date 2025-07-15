@@ -2,10 +2,10 @@ import { useMemo } from "react";
 
 import { getSensibleVisualizations } from "metabase/query_builder/components/chart-type-selector";
 
-import { useInteractiveQuestionContext } from "../context";
+import { useSdkQuestionContext } from "../context";
 
 export const useSensibleVisualizations = () => {
-  const { queryResults } = useInteractiveQuestionContext();
+  const { queryResults } = useSdkQuestionContext();
 
   const result = queryResults?.[0];
 

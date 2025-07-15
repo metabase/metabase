@@ -7,7 +7,7 @@ import { useBreakoutQueryHandlers } from "metabase/query_builder/hooks";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { useInteractiveQuestionContext } from "../../context";
+import { useSdkQuestionContext } from "../../context";
 
 export interface SDKBreakoutItem extends BreakoutListItem {
   breakoutIndex: number;
@@ -18,7 +18,7 @@ export interface SDKBreakoutItem extends BreakoutListItem {
 
 export const useBreakoutData = (): SDKBreakoutItem[] => {
   const { updateQuestion, ...interactiveQuestionContext } =
-    useInteractiveQuestionContext();
+    useSdkQuestionContext();
   const question = interactiveQuestionContext.question as Question;
   const onQueryChange = (query: Lib.Query) => {
     if (question) {

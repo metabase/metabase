@@ -1,7 +1,7 @@
 import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
 import {
-  InteractiveQuestionProvider,
-  type InteractiveQuestionProviderProps,
+  SdkQuestionProvider,
+  type SdkQuestionProviderProps,
 } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 
@@ -15,7 +15,7 @@ import type { InteractiveQuestionQuestionIdProps } from "../InteractiveQuestion/
  */
 export type StaticQuestionProps = InteractiveQuestionQuestionIdProps & {
   withChartTypeSelector?: boolean;
-} & Pick<InteractiveQuestionProviderProps, "initialSqlParameters"> &
+} & Pick<SdkQuestionProviderProps, "initialSqlParameters"> &
   FlexibleSizeProps;
 
 const StaticQuestionInner = ({
@@ -27,7 +27,7 @@ const StaticQuestionInner = ({
   style,
   initialSqlParameters,
 }: StaticQuestionProps): JSX.Element | null => (
-  <InteractiveQuestionProvider
+  <SdkQuestionProvider
     questionId={initialQuestionId}
     variant="static"
     initialSqlParameters={initialSqlParameters}
@@ -39,7 +39,7 @@ const StaticQuestionInner = ({
       className={className}
       style={style}
     />
-  </InteractiveQuestionProvider>
+  </SdkQuestionProvider>
 );
 
 /**

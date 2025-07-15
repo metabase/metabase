@@ -5,7 +5,7 @@ import type { ButtonProps } from "embedding-sdk/types/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { useInteractiveQuestionContext } from "../context";
+import { useSdkQuestionContext } from "../context";
 
 import { ToolbarButton } from "./util/ToolbarButton";
 
@@ -47,7 +47,7 @@ export const shouldShowSaveButton = ({
 export const SaveButton = ({
   ...buttonProps
 }: InteractiveQuestionSaveButtonProps = {}) => {
-  const { question, originalQuestion } = useInteractiveQuestionContext();
+  const { question, originalQuestion } = useSdkQuestionContext();
 
   const isSaveButtonEnabled = shouldShowSaveButton({
     question,

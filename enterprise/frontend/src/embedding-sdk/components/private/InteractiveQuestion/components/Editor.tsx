@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { useSdkQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import {
@@ -41,7 +41,7 @@ export const Editor = ({
   useDatabaseListQuery();
 
   const { question, originalQuestion, updateQuestion, queryQuestion } =
-    useInteractiveQuestionContext();
+    useSdkQuestionContext();
 
   const isDirty = useMemo(() => {
     return isQuestionDirty(question, originalQuestion);

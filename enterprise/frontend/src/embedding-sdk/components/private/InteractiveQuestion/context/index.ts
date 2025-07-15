@@ -1,2 +1,2 @@
-export * from "./InteractiveQuestionProvider";
+export * from "./SdkQuestionProvider";
 export * from "./types";

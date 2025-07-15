@@ -7,7 +7,7 @@ import {
 import { Box } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-import { useInteractiveQuestionContext } from "../../../context";
+import { useSdkQuestionContext } from "../../../context";
 import type { SDKFilterItem } from "../hooks/use-filter-data";
 import { useFilterHandlers } from "../hooks/use-filter-handlers";
 
@@ -63,7 +63,7 @@ export const FilterPicker = ({
   onClose,
   onBack,
 }: Props) => {
-  const { question, updateQuestion } = useInteractiveQuestionContext();
+  const { question, updateQuestion } = useSdkQuestionContext();
 
   if (!question) {
     return null;

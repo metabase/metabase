@@ -5,7 +5,7 @@ import type { ButtonProps } from "embedding-sdk/types/ui";
 import { isSavedQuestionChanged } from "metabase/query_builder/utils/question";
 import * as Lib from "metabase-lib";
 
-import { useInteractiveQuestionContext } from "../../context";
+import { useSdkQuestionContext } from "../../context";
 
 /**
  * @interface
@@ -25,8 +25,7 @@ export const QuestionResetButton = ({
   onClick,
   ...buttonProps
 }: InteractiveQuestionResetButtonProps = {}) => {
-  const { question, originalQuestion, onReset } =
-    useInteractiveQuestionContext();
+  const { question, originalQuestion, onReset } = useSdkQuestionContext();
 
   const handleReset = (e: MouseEvent<HTMLButtonElement>) => {
     onReset();

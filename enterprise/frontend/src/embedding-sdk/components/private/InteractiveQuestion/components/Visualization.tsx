@@ -14,7 +14,7 @@ import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import type Question from "metabase-lib/v1/Question";
 
-import { useInteractiveQuestionContext } from "../context";
+import { useSdkQuestionContext } from "../context";
 
 /**
  * @interface
@@ -48,7 +48,7 @@ export const QuestionVisualization = ({
     updateQuestion,
     variant,
     originalId,
-  } = useInteractiveQuestionContext();
+  } = useSdkQuestionContext();
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =

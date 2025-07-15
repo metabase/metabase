@@ -6,7 +6,7 @@ import {
 } from "metabase/query_builder/utils/get-aggregation-items";
 import * as Lib from "metabase-lib";
 
-import { useInteractiveQuestionContext } from "../../context";
+import { useSdkQuestionContext } from "../../context";
 
 export interface SDKAggregationItem extends AggregationItem {
   onRemoveAggregation: () => void;
@@ -14,7 +14,7 @@ export interface SDKAggregationItem extends AggregationItem {
 }
 
 export const useSummarizeData = () => {
-  const { question, updateQuestion } = useInteractiveQuestionContext();
+  const { question, updateQuestion } = useSdkQuestionContext();
 
   const query = question?.query();
   const stageIndex = -1;

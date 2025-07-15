@@ -7,11 +7,11 @@ import {
 } from "metabase/query_builder/utils/question";
 import { Button } from "metabase/ui";
 
-import { useInteractiveQuestionContext } from "../../context";
+import { useSdkQuestionContext } from "../../context";
 import { useRunVisualization } from "../../hooks/use-run-visualization";
 
 export const VisualizationButton = () => {
-  const { question, originalQuestion } = useInteractiveQuestionContext();
+  const { question, originalQuestion } = useSdkQuestionContext();
   const { visualizeQuestion } = useRunVisualization();
 
   const isRunnable = useMemo(

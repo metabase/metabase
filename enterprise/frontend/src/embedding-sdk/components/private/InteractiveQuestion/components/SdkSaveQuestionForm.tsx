@@ -6,7 +6,7 @@ import {
 import { SaveQuestionProvider } from "metabase/common/components/SaveQuestionForm/context";
 import { Stack, Title } from "metabase/ui";
 
-import { useInteractiveQuestionContext } from "../context";
+import { useSdkQuestionContext } from "../context";
 
 /**
  * @interface
@@ -35,7 +35,7 @@ export const SdkSaveQuestionForm = ({
   onCancel,
 }: InteractiveQuestionSaveQuestionFormProps) => {
   const { question, originalQuestion, onSave, onCreate, targetCollection } =
-    useInteractiveQuestionContext();
+    useSdkQuestionContext();
 
   const { id, isLoading } = useTranslatedCollectionId({
     id: targetCollection,

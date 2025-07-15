@@ -3,7 +3,7 @@ import type { HTMLAttributes } from "react";
 import { DashboardBackButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import type { ActionIconProps } from "metabase/ui";
 
-import { useInteractiveQuestionContext } from "../../context";
+import { useSdkQuestionContext } from "../../context";
 
 /**
  * @expand
@@ -25,7 +25,7 @@ export type InteractiveQuestionBackButtonProps = Omit<
 export const BackButton = ({
   ...actionIconProps
 }: InteractiveQuestionBackButtonProps) => {
-  const { onNavigateBack } = useInteractiveQuestionContext();
+  const { onNavigateBack } = useSdkQuestionContext();
 
   if (!onNavigateBack) {
     return null;

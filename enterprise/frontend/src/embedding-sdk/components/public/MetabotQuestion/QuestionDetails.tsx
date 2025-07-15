@@ -3,14 +3,14 @@ import { t } from "ttag";
 import { useBreakoutData } from "embedding-sdk/components/private/InteractiveQuestion/components/Breakout/use-breakout-data";
 import { useFilterData } from "embedding-sdk/components/private/InteractiveQuestion/components/Filter/hooks/use-filter-data";
 import { useSummarizeData } from "embedding-sdk/components/private/InteractiveQuestion/components/Summarize/use-summarize-data";
-import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { useSdkQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { isNotNull } from "metabase/lib/types";
 import { Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 export function QuestionDetails() {
-  const { question } = useInteractiveQuestionContext();
+  const { question } = useSdkQuestionContext();
   const tableSection = getTableSection(question);
 
   const filterItems = useFilterData();

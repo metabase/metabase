@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { Group, Popover } from "metabase/ui";
 
-import { useInteractiveQuestionContext } from "../../context";
+import { useSdkQuestionContext } from "../../context";
 import { AddBadgeListItem } from "../util/BadgeList/AddBadgeListItem";
 import { BadgeListItem } from "../util/BadgeList/BadgeListItem";
 
@@ -55,7 +55,7 @@ export const BreakoutInner = () => {
  * @category InteractiveQuestion
  */
 export const Breakout = () => {
-  const { question } = useInteractiveQuestionContext();
+  const { question } = useSdkQuestionContext();
 
   if (!question) {
     return null;

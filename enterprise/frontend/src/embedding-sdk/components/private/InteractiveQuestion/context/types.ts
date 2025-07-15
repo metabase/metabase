@@ -13,7 +13,7 @@ import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
-type InteractiveQuestionConfig = {
+type SdkQuestionConfig = {
   /**
    * An array that specifies which entity types are available in the data picker
    */
@@ -76,28 +76,28 @@ export type QuestionMockLocationParameters = {
   params: { slug?: string };
 };
 
-export type InteractiveQuestionProviderProps = PropsWithChildren<
-  InteractiveQuestionConfig &
+export type SdkQuestionProviderProps = PropsWithChildren<
+  SdkQuestionConfig &
     Omit<LoadSdkQuestionParams, "questionId"> & {
       questionId: SdkQuestionId | null;
       variant?: "static" | "interactive";
     }
 >;
 
-export type InteractiveQuestionContextType = Omit<
+export type SdkQuestionContextType = Omit<
   LoadQuestionHookResult,
   "loadAndQueryQuestion"
 > &
   Pick<
-    InteractiveQuestionConfig,
+    SdkQuestionConfig,
     | "onRun"
     | "onNavigateBack"
     | "isSaveEnabled"
     | "targetCollection"
     | "withDownloads"
   > &
-  Pick<InteractiveQuestionProviderProps, "variant"> & {
-    plugins: InteractiveQuestionConfig["componentPlugins"] | null;
+  Pick<SdkQuestionProviderProps, "variant"> & {
+    plugins: SdkQuestionConfig["componentPlugins"] | null;
     mode: Mode | null | undefined;
     originalId: SdkQuestionId | null;
     resetQuestion: () => void;

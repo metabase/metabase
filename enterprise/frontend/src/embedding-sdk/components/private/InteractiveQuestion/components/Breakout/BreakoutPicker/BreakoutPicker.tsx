@@ -8,7 +8,7 @@ import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutS
 import { Button, Divider, Icon, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-import { useInteractiveQuestionContext } from "../../../context";
+import { useSdkQuestionContext } from "../../../context";
 import type { SDKBreakoutItem } from "../use-breakout-data";
 
 export const BreakoutPickerInner = ({
@@ -66,7 +66,7 @@ export const BreakoutPicker = ({
   onClose?: () => void;
   breakoutItem?: SDKBreakoutItem;
 }) => {
-  const { question, updateQuestion } = useInteractiveQuestionContext();
+  const { question, updateQuestion } = useSdkQuestionContext();
 
   if (!question) {
     return null;

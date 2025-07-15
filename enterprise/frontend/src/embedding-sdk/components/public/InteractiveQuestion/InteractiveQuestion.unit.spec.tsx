@@ -41,7 +41,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
-import { useInteractiveQuestionContext } from "../../private/InteractiveQuestion/context";
+import { useSdkQuestionContext } from "../../private/InteractiveQuestion/context";
 
 import {
   type BaseInteractiveQuestionProps,
@@ -80,7 +80,7 @@ function InteractiveQuestionCustomLayout({
 }: {
   title?: SdkQuestionTitleProps;
 }) {
-  const { resetQuestion } = useInteractiveQuestionContext();
+  const { resetQuestion } = useSdkQuestionContext();
 
   return (
     <div>

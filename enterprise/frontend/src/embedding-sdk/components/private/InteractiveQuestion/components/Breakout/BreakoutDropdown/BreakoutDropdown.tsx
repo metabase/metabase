@@ -8,7 +8,7 @@ import {
 } from "embedding-sdk/components/private/util/MultiStepPopover";
 import type { PopoverProps } from "metabase/ui";
 
-import { useInteractiveQuestionContext } from "../../../context";
+import { useSdkQuestionContext } from "../../../context";
 import { ToolbarButton } from "../../util/ToolbarButton";
 import { BreakoutBadgeList } from "../BreakoutBadgeList";
 import { BreakoutPicker } from "../BreakoutPicker";
@@ -101,7 +101,7 @@ export const BreakoutDropdownInner = (
 export const BreakoutDropdown = (
   props: InteractiveQuestionBreakoutDropdownProps,
 ) => {
-  const { question } = useInteractiveQuestionContext();
+  const { question } = useSdkQuestionContext();
 
   if (!question) {
     return null;

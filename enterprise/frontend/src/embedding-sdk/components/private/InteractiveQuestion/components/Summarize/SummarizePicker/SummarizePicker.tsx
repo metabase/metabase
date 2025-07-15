@@ -6,7 +6,7 @@ import {
 } from "metabase/common/components/AggregationPicker";
 import * as Lib from "metabase-lib";
 
-import { useInteractiveQuestionContext } from "../../../context";
+import { useSdkQuestionContext } from "../../../context";
 import { BadgeList, type BadgeListProps } from "../../util/BadgeList";
 import {
   type SDKAggregationItem,
@@ -20,7 +20,7 @@ export const SummarizePicker = ({
 }: {
   aggregation?: SDKAggregationItem;
 } & Pick<AggregationPickerProps, "className" | "onClose" | "onBack">) => {
-  const { question, updateQuestion } = useInteractiveQuestionContext();
+  const { question, updateQuestion } = useSdkQuestionContext();
 
   if (!question) {
     return null;

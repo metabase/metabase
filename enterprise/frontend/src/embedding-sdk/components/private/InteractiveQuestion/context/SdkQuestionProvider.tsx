@@ -14,24 +14,21 @@ import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/mode
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type Question from "metabase-lib/v1/Question";
 
-import type {
-  InteractiveQuestionContextType,
-  InteractiveQuestionProviderProps,
-} from "./types";
+import type { SdkQuestionContextType, SdkQuestionProviderProps } from "./types";
 
 /**
- * Note: This context should only be used as a wrapper for the InteractiveQuestionDefaultView
- * component. The idea behind this context is to allow the InteractiveQuestionDefaultView component
+ * Note: This context should only be used as a wrapper for the SdkQuestionDefaultView
+ * component. The idea behind this context is to allow the SdkQuestionDefaultView component
  * to use components within the ./components folder, which use the context for display
  * and functions.
  * */
-export const InteractiveQuestionContext = createContext<
-  InteractiveQuestionContextType | undefined
+export const SdkQuestionContext = createContext<
+  SdkQuestionContextType | undefined
 >(undefined);
 
 const DEFAULT_OPTIONS = {};
 
-export const InteractiveQuestionProvider = ({
+export const SdkQuestionProvider = ({
   questionId,
   options = DEFAULT_OPTIONS,
   deserializedCard,
@@ -47,7 +44,7 @@ export const InteractiveQuestionProvider = ({
   initialSqlParameters,
   withDownloads,
   variant,
-}: InteractiveQuestionProviderProps) => {
+}: SdkQuestionProviderProps) => {
   const handleCreateQuestion = useCreateQuestion();
   const handleSaveQuestion = useSaveQuestion();
 
@@ -120,7 +117,7 @@ export const InteractiveQuestionProvider = ({
     );
   }, [question, variant, plugins]);
 
-  const questionContext: InteractiveQuestionContextType = {
+  const questionContext: SdkQuestionContextType = {
     originalId: questionId,
     isQuestionLoading,
     isQueryRunning,
@@ -156,17 +153,17 @@ export const InteractiveQuestionProvider = ({
   }, [dispatch, entityTypes]);
 
   return (
-    <InteractiveQuestionContext.Provider value={questionContext}>
+    <SdkQuestionContext.Provider value={questionContext}>
       {children}
-    </InteractiveQuestionContext.Provider>
+    </SdkQuestionContext.Provider>
   );
 };
 
-export const useInteractiveQuestionContext = () => {
-  const context = useContext(InteractiveQuestionContext);
+export const useSdkQuestionContext = () => {
+  const context = useContext(SdkQuestionContext);
   if (context === undefined) {
     throw new Error(
-      "useInteractiveQuestionContext must be used within a InteractiveQuestionProvider",
+      "useSdkQuestionContext must be used within a SdkQuestionProvider",
     );
   }
   return context;

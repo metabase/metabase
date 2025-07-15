@@ -5,7 +5,7 @@ import {
 } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import type { StackProps } from "metabase/ui";
 
-import { useInteractiveQuestionContext } from "../../context";
+import { useSdkQuestionContext } from "../../context";
 
 // TODO: Add props for formatting, file type, etc
 /**
@@ -20,7 +20,7 @@ const DownloadWidgetInner = ({
   ...rest
 }: InteractiveQuestionDownloadWidgetProps &
   Pick<UseDownloadDataParams, "question" | "result">) => {
-  const { withDownloads } = useInteractiveQuestionContext();
+  const { withDownloads } = useSdkQuestionContext();
   const [, handleDownload] = useDownloadData({
     question,
     result,
@@ -48,7 +48,7 @@ const DownloadWidgetInner = ({
 export const DownloadWidget = (
   props: InteractiveQuestionDownloadWidgetProps,
 ) => {
-  const { question, queryResults } = useInteractiveQuestionContext();
+  const { question, queryResults } = useSdkQuestionContext();
   const [result] = queryResults ?? [];
 
   if (!question || !result) {

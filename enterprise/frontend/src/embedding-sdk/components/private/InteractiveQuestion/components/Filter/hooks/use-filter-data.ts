@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { useSdkQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import type { FilterItem } from "metabase/querying/filters/components/FilterPanel/types";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import * as Lib from "metabase-lib";
@@ -16,7 +16,7 @@ export interface SDKFilterItem extends FilterItemWithDisplay {
 }
 
 export const useFilterData = (): SDKFilterItem[] => {
-  const { question, updateQuestion } = useInteractiveQuestionContext();
+  const { question, updateQuestion } = useSdkQuestionContext();
 
   const query = question?.query();
   const stageIndex = -1;
