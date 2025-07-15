@@ -57,8 +57,6 @@ import {
   getComparisonOptions,
   getComparisons,
   getDefaultComparison,
-  getValueHeight,
-  getValueWidth,
   isPeriodVisible,
   isSuitableScalarColumn,
   validateComparisons,
@@ -74,7 +72,6 @@ export function SmartScalar({
   gridSize,
   width,
   height,
-  totalNumGridCols,
   fontFamily,
   onRenderError,
 }: VisualizationProps & VisualizationPassThroughProps) {
@@ -138,14 +135,7 @@ export function SmartScalar({
           isClickable={isClickable}
         >
           <span onClick={handleClick} ref={scalarRef}>
-            <ScalarValue
-              fontFamily={fontFamily}
-              gridSize={gridSize}
-              height={getValueHeight(innerHeight)}
-              totalNumGridCols={totalNumGridCols}
-              value={displayValue as string}
-              width={getValueWidth(width)}
-            />
+            <ScalarValue gridSize={gridSize} value={String(displayValue)} />
           </span>
         </ScalarContainer>
         {comparisons.map((comparison, index) => (

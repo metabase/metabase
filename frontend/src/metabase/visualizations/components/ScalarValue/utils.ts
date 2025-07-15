@@ -1,50 +1,31 @@
 import { DEFAULT_CARD_SIZE, GRID_WIDTH } from "metabase/lib/dashboard_grid";
-import { measureText } from "metabase/lib/measure-text";
+import { rem } from "metabase/ui";
+import type { VisualizationGridSize } from "metabase/visualizations/types/visualization";
 
 interface FindSizeInput {
-  text: string;
-  targetHeight: number;
-  targetWidth: number;
-  unit: string;
-  fontFamily: string;
-  fontWeight: string | number;
-  step: number;
-  min: number;
-  max: number;
+  gridSize?: VisualizationGridSize;
 }
 
-export const findSize = ({
-  text,
-  targetHeight,
-  targetWidth,
-  unit,
-  fontFamily,
-  fontWeight,
-  step,
-  min,
-  max,
-}: FindSizeInput) => {
-  let size = max;
-  let metrics = measureText(text, {
-    size: `${size}${unit}`,
-    family: fontFamily,
-    weight: fontWeight,
+const defaultFontSize = rem(18);
+const matchers: { fontSize: string; minSize: [number, number] }[] = [
+  { fontSize: rem(80), minSize: [24, 6] },
+  { fontSize: rem(72), minSize: [20, 5] },
+  { fontSize: rem(56), minSize: [16, 5] },
+  { fontSize: rem(42), minSize: [10, 4] },
+  { fontSize: rem(36), minSize: [6, 4] },
+  { fontSize: rem(27), minSize: [4, 3] },
+  { fontSize: rem(21), minSize: [3, 2] },
+];
+
+export const findSize = ({ gridSize }: FindSizeInput): string => {
+  if (!gridSize) {
+    return defaultFontSize;
+  }
+  const matcher = matchers.find((m) => {
+    return gridSize.width >= m.minSize[0] && gridSize.height >= m.minSize[1];
   });
 
-  while (
-    (metrics.width > targetWidth || metrics.height > targetHeight) &&
-    size > min
-  ) {
-    size = Math.max(size - step, min);
-
-    metrics = measureText(text, {
-      size: `${size}${unit}`,
-      family: fontFamily,
-      weight: fontWeight,
-    });
-  }
-
-  return `${size}${unit}`;
+  return matcher?.fontSize || defaultFontSize;
 };
 
 const MAX_SIZE_SMALL = 2.2;

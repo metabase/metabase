@@ -22,7 +22,7 @@ import {
   ScalarTitleContent,
   ScalarValueWrapper,
 } from "./ScalarValue.styled";
-import { findSize, getMaxFontSize } from "./utils";
+import { findSize } from "./utils";
 
 export const ScalarWrapper = ({ children }: PropsWithChildren) => (
   <ScalarRoot>{children}</ScalarRoot>
@@ -30,21 +30,10 @@ export const ScalarWrapper = ({ children }: PropsWithChildren) => (
 
 interface ScalarValueProps {
   value: string;
-  height: number;
-  width: number;
   gridSize?: VisualizationGridSize;
-  totalNumGridCols?: number;
-  fontFamily: string;
 }
 
-export const ScalarValue = ({
-  value,
-  height,
-  width,
-  gridSize,
-  totalNumGridCols,
-  fontFamily,
-}: ScalarValueProps) => {
+export const ScalarValue = ({ value, gridSize }: ScalarValueProps) => {
   const {
     other: { number: numberTheme },
   } = useMantineTheme();
@@ -54,26 +43,8 @@ export const ScalarValue = ({
       return numberTheme.value?.fontSize;
     }
 
-    return findSize({
-      text: value,
-      targetHeight: height,
-      targetWidth: width,
-      fontFamily: fontFamily ?? "Lato",
-      fontWeight: 700,
-      unit: "rem",
-      step: 0.2,
-      min: 1,
-      max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
-    });
-  }, [
-    fontFamily,
-    gridSize,
-    height,
-    totalNumGridCols,
-    value,
-    width,
-    numberTheme?.value?.fontSize,
-  ]);
+    return findSize({ gridSize });
+  }, [gridSize, numberTheme?.value?.fontSize]);
 
   return (
     <ScalarValueWrapper

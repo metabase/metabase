@@ -27,7 +27,7 @@ import type { DatasetColumn, DatasetData } from "metabase-types/api/dataset";
 
 import { ScalarContainer } from "./Scalar.styled";
 import { scalarToBarTransform } from "./scalars-bar-transform";
-import { getValueHeight, getValueWidth } from "./utils";
+// import { getValueHeight, getValueWidth } from "./utils"; // TODO: Delete if not needed
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(
@@ -146,15 +146,11 @@ export class Scalar extends Component<
           data: { cols, rows },
         },
       ],
-      isDashboard,
       settings,
       visualizationIsClickable,
       onVisualizationClick,
-      height,
       width,
       gridSize,
-      totalNumGridCols,
-      fontFamily,
       rawSeries,
     } = this.props;
 
@@ -192,14 +188,6 @@ export class Scalar extends Component<
     };
     const isClickable = onVisualizationClick != null;
 
-    const showSmallTitle =
-      !!settings["card.title"] &&
-      isDashboard &&
-      Boolean(
-        (gridSize?.width != null && gridSize.width < 2) ||
-          (gridSize?.height != null && gridSize.height < 2),
-      );
-
     const handleClick = () => {
       if (
         this._scalar &&
@@ -224,14 +212,7 @@ export class Scalar extends Component<
           isClickable={isClickable}
         >
           <span onClick={handleClick} ref={(scalar) => (this._scalar = scalar)}>
-            <ScalarValue
-              fontFamily={fontFamily}
-              gridSize={gridSize}
-              height={getValueHeight(height, { isDashboard, showSmallTitle })}
-              totalNumGridCols={totalNumGridCols}
-              value={displayValue as string}
-              width={getValueWidth(width)}
-            />
+            <ScalarValue gridSize={gridSize} value={String(displayValue)} />
           </span>
         </ScalarContainer>
       </ScalarWrapper>
