@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 
 import {
   BrandLinkWithLeftMargin,

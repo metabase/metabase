@@ -2,7 +2,7 @@ import { jt, t } from "ttag";
 
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import { Flex, Stack, Text, Title, rem } from "metabase/ui";
 
 export const CollectionPermissionsHelp = () => {

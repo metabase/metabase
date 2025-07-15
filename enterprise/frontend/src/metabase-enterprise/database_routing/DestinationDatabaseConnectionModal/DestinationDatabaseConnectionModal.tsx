@@ -8,7 +8,7 @@ import S from "metabase/admin/databases/containers/DatabaseConnectionModal.modul
 import { useGetDatabaseQuery, useUpdateDatabaseMutation } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import title from "metabase/hoc/Title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";

@@ -2,7 +2,7 @@ import { useFormikContext } from "formik";
 import { jt, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import type { DatabaseData } from "metabase-types/api";
 
 const DatabaseSslKeyDescription = (): JSX.Element | null => {

@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import { Box, Button, Flex, Stack, Text } from "metabase/ui";
 
 import { SlackBadge } from "./SlackBadge";

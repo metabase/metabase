@@ -10,7 +10,7 @@ import {
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import { useSelector } from "metabase/lib/redux";
 import {

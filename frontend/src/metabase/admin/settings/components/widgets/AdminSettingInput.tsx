@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import {
   Box,
   type BoxProps,
