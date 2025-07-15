@@ -4,7 +4,7 @@ import { Box } from "metabase/ui";
 
 import {
   EditorButton,
-  type InteractiveQuestionEditorButtonProps,
+  type EditorButtonProps as EditorButtonProps,
 } from "./EditorButton";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
@@ -22,7 +22,7 @@ export default {
 };
 
 export const Default = {
-  render(args: InteractiveQuestionEditorButtonProps) {
+  render(args: EditorButtonProps) {
     return (
       <Box p="lg">
         <InteractiveQuestion questionId={QUESTION_ID}>
