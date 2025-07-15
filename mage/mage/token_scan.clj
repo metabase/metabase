@@ -160,14 +160,13 @@
 
         ;; Filter out git-ignored files + whitelisted files
         ignored (ignored-files files)
+        _ (u/debug "Ignored files:" (vec ignored))
         files (remove ignored files)
-        
-        _ (if (empty? files)
-            (throw (ex-info
-                    nil
-                    {:mage/error (c/yellow "No files to scan")
-                     :babshka/exit 0}))
-            (println "Scanning" (count files) "files"))
+        _ (u/debug "Files to scan:" (vec files))
+        _     (doseq [file files]
+                (when-not (fs/exists? file)
+                  (throw (ex-info (str "Missing file: " file) {:babashka/exit 1}))))
+        _ (println "Scanning" (c/green (count files)) "and ignoring " (c/magenta (count ignored)) ".gitignore'd and whitelisted files...")
         
         {:keys [scanned duration-ms total-files files-with-matches total-matches] :as full-info}
         (scan-files token-patterns files)

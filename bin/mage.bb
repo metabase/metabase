@@ -8,12 +8,11 @@
    [babashka.tasks :as bt]
    [clojure.string :as str]
    [mage.color :as c]
-   [mage.shell :as sh]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
 
-(defn lolcat [f]
+(defn- lolcat [f]
   (if (try (u/sh "command -v lolcat")
            (catch Exception _ false))
     (bt/shell (str "lolcat " f))
@@ -22,7 +21,7 @@
       (when (> (rand) 0.8)
         (println (c/yellow "Tip: install lolcat for a better experience!"))))))
 
-(defn invalid-task? []
+(defn- invalid-task? []
   (let [task-name (first *command-line-args*)]
     (when-not (contains? (set (u/all-bb-tasks-list)) task-name)
       (println (c/red (str "Unknown task: " task-name)))
@@ -33,7 +32,7 @@
         (filter (fn [x] (str/starts-with? x "-"))
                 (str/split-lines (slurp "zen.md")))))
 
-(defn tip-o-day []
+(defn- tip-o-day []
   (rand-nth
    (concat ["Did you know? You can use `./bin/mage <task> --help` to get more information about a specific task."
             "Pro tip: Use `./bin/mage <task>` to run a specific task."
@@ -50,6 +49,18 @@
   (println "")
   (println (u/sh "./bin/bb tasks"))
   (println (tip-o-day)))
+
+(defn- exception->map [^Exception e]
+  (cond-> {:exception-type (-> e class .getName)
+           :ex-message (.getMessage e)}
+
+    ;; Include ex-data if it's an ExceptionInfo
+    (instance? clojure.lang.ExceptionInfo e)
+    (assoc :data (ex-data e))
+
+    ;; Recursively handle cause
+    (.getCause e)
+    (assoc :cause (exception->map (.getCause e)))))
 
 (defn -main [& _]
   (cond
@@ -80,10 +91,15 @@
                  ;;
                  ;; Too noisy? Include a :mage/error key in the ex-data to suppress printing the entire exception.
                  ;; Good for expected failures, like linting errors.
+                 ;;
+                 ;; Exceptions get summarized unless you set MAGE_DEBUG in your environment.
                  (let [message (ex-message e)
                        data (ex-data e)]
                    (when (and e (not (:mage/error data)))
-                     (println (c/yellow "\nException:\n") e))
+                     (println (c/yellow "\nException:\n")
+                              (cond-> e
+                                (not (u/env "MAGE_DEBUG" (constantly nil)))
+                                exception->map)))
                    (when (and message (not (str/blank? message)))
                      (println (c/red (c/reverse-color "ex-message : ")) message))
                    (when data

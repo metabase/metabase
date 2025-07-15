@@ -42,3 +42,11 @@
        (finally
          (spit this-file-path
                (str/replace (slurp this-file-path) token-like-comment "")))))
+
+(deftest missing-file-test
+  (try
+    (token-scan/run-scan {:arguments ["some-missing-file.txt"]})
+    (catch Exception e
+      (is (= "Missing file: some-missing-file.txt" (ex-message e))
+          "should have an empty message and no data for missing file error")
+      (is (= {:babashka/exit 1} (ex-data e))))))
