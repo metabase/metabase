@@ -173,7 +173,7 @@ export const DashCardCardParameterMapperButton = ({
           {buttonIcon}
         </Flex>
       </Popover.Target>
-      <Popover.Dropdown>
+      <Popover.Dropdown style={{ boxSizing: "content-box" }}>
         <ParameterTargetList
           onChange={(target: ParameterTarget) => {
             handleChangeTarget(target);
