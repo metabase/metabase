@@ -5,7 +5,7 @@ export {
   type ChartTypeSelectorProps as InteractiveQuestionChartTypeSelectorProps,
   type DownloadWidgetProps as InteractiveQuestionDownloadWidgetProps,
   type InteractiveQuestionDownloadWidgetDropdownProps,
-  type InteractiveQuestionEditorProps,
+  type EditorProps as InteractiveQuestionEditorProps,
   type EditorButtonProps as InteractiveQuestionEditorButtonProps,
   type FilterProps as InteractiveQuestionFilterProps,
   type FilterDropdownProps as InteractiveQuestionFilterDropdownProps,

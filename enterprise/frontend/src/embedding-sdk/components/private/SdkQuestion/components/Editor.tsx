@@ -17,7 +17,7 @@ import type Question from "metabase-lib/v1/Question";
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionEditorProps = {
+export type EditorProps = {
   /**
    * Callback function executed when changes are applied
    */
@@ -36,7 +36,7 @@ export type InteractiveQuestionEditorProps = {
 export const Editor = ({
   onApply = () => {},
   hasVisualizeButton = true,
-}: InteractiveQuestionEditorProps) => {
+}: EditorProps) => {
   // Loads databases and metadata so we can show notebook steps for the selected data source
   useDatabaseListQuery();
 
