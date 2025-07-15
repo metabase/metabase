@@ -29,7 +29,10 @@ const FormattingSectionBase = ({ field }: Props) => {
       : new Set(["column_title"]);
   }, [field]);
 
-  const handleChange = async (settings: FieldSettings) => {
+  const handleChange = async (
+    settings: FieldSettings,
+    previousSettings = field.settings ?? {},
+  ) => {
     const { error } = await updateField({ id, settings });
 
     if (error) {
@@ -40,6 +43,8 @@ const FormattingSectionBase = ({ field }: Props) => {
       });
     } else {
       sendToast({
+        actionLabel: t`Undo`,
+        action: () => handleChange(previousSettings, settings),
         icon: "check",
         message: t`Formatting of ${field.display_name} updated`,
       });

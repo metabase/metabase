@@ -61,7 +61,7 @@ const FieldSectionBase = ({
 
   const handleDescriptionChange = async (
     description: string,
-    previousDescription = field.description,
+    previousDescription = field.description ?? "",
   ) => {
     const { error } = await updateField({
       id,
@@ -78,8 +78,7 @@ const FieldSectionBase = ({
     } else {
       sendToast({
         actionLabel: t`Undo`,
-        action: () =>
-          handleDescriptionChange(previousDescription ?? "", description),
+        action: () => handleDescriptionChange(previousDescription, description),
         icon: "check",
         message: t`Description of ${field.display_name} updated`,
       });
