@@ -2,12 +2,12 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { createDatabase } from "metabase/admin/databases/database";
-import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useDispatch } from "metabase/lib/redux";
 import { Stack, Text, Title } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
+import { EmbeddingSetupDatabaseForm } from "../EmbeddingSetupDatabaseForm";
 
 export const DataConnectionStep = () => {
   const dispatch = useDispatch();
@@ -29,7 +29,7 @@ export const DataConnectionStep = () => {
         </Text>
       </Stack>
 
-      <DatabaseForm
+      <EmbeddingSetupDatabaseForm
         onSubmit={handleSubmit}
         onEngineChange={() => {}}
         onCancel={() => {
