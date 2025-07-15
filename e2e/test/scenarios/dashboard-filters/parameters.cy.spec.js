@@ -860,7 +860,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget");
+        expect(search).to.eq("?category-2=Gadget");
       });
 
       // Add a second filter
@@ -887,7 +887,7 @@ describe("scenarios > dashboard > parameters", () => {
         .should("exist");
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget&count=6000");
+        expect(search).to.eq("?category-2=Gadget&count-3=6000");
       });
 
       H.getDashboardCard(1).within(() => {
@@ -902,7 +902,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget&count=");
+        expect(search).to.eq("?category-2=Gadget&count-3=");
       });
     });
 
@@ -982,7 +982,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?count=4000");
+        expect(search).to.eq("?count-3=4000");
       });
     });
 
@@ -1265,7 +1265,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Gizmo").should("not.exist");
       });
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Doohickey&category_1=");
+        expect(search).to.eq("?category-3=Doohickey&category_1-4=");
       });
 
       H.getDashboardCard(2).within(() => {
@@ -1280,7 +1280,7 @@ describe("scenarios > dashboard > parameters", () => {
         .findByText(/No results/)
         .should("exist");
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Doohickey&category_1=Gizmo");
+        expect(search).to.eq("?category-3=Doohickey&category_1-4=Gizmo");
       });
 
       H.getDashboardCard(0).within(() => H.clearFilterWidget());
@@ -1290,7 +1290,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Gizmo").should("exist");
       });
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=&category_1=Gizmo");
+        expect(search).to.eq("?category-3=&category_1-4=Gizmo");
       });
     });
 
@@ -1361,7 +1361,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget");
+        expect(search).to.eq("?category-3=Gadget");
       });
     });
 
@@ -1480,7 +1480,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget");
+        expect(search).to.eq("?category-3=Gadget");
       });
 
       // Verify filter doesn't show up in the dashboard header
@@ -1631,7 +1631,7 @@ describe("scenarios > dashboard > parameters", () => {
         });
 
         cy.location().should(({ search }) => {
-          expect(search).to.eq("?category=Gadget");
+          expect(search).to.eq("?category-3=Gadget");
         });
 
         // Verify filter doesn't show up in the dashboard header
@@ -1820,7 +1820,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget");
+        expect(search).to.eq("?category-2=Gadget");
       });
     });
 
@@ -1998,7 +1998,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?count=4000");
+        expect(search).to.eq("?count-2=4000");
       });
     });
 
@@ -2390,7 +2390,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget");
+        expect(search).to.eq("?category-3=Gadget");
       });
     });
 

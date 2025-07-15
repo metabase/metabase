@@ -205,12 +205,12 @@ describe("issue 8030 + 32444", () => {
         H.saveDashboard();
 
         cy.wait("@getCardQuery");
-        cy.get("@getCardQuery.all").should("have.length", 4);
+        cy.get("@getCardQuery.all").should("have.length", 3);
 
         addFilterValue("Aerodynamic Bronze Hat");
 
         cy.wait("@getCardQuery");
-        cy.get("@getCardQuery.all").should("have.length", 5);
+        cy.get("@getCardQuery.all").should("have.length", 4);
       });
     });
   });
