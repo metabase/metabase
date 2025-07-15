@@ -34,6 +34,7 @@
    slurp
    str/split-lines
    (remove str/blank?)
+   (remove #(str/starts-with? % "#")) ;; Ignore comments
    distinct))
 
 (defn- whitelisted? [line]
@@ -109,6 +110,17 @@
          (map str/trim)
          set)))
 
+(defn remove-ignored [files]
+  (let [ignored (git-ignored-files files) ;; Returns a set of git-ignored files
+        _       (u/debug "Ignored files:" (count ignored))
+        files'  (remove ignored files)]
+    (u/debug "Files to scan:" (count files'))
+    (doseq [file files']
+      (when-not (fs/exists? file)
+        (throw (ex-info (str "Missing file: " file) {:babashka/exit 1 :file file}))))
+    (println "Scanning" (c/green (count files')) "and ignoring" (c/magenta (- (count files) (count files'))) ".gitignore'd and whitelisted files...")
+    files'))
+
 (defn- get-all-files
   "Get all files in the project (excluding auto-generated files and build artifacts)"
   []
@@ -161,6 +173,8 @@
          (map str)
          distinct)))
 
+
+
 (defn run-scan
   "Main entry point for regex scanning"
   [{:keys [options arguments]}]
@@ -168,14 +182,7 @@
         {:keys [all-files
                 verbose]} options
         files             (find-files-from-options all-files arguments)
-        ignored           (git-ignored-files files) ;; Returns a set of git-ignored files
-        _                 (u/debug "Ignored files:" (count ignored))
-        files'            (remove ignored files)
-        _                 (u/debug "Files to scan:" (count files'))
-        _                 (doseq [file files']
-                            (when-not (fs/exists? file)
-                              (throw (ex-info (str "Missing file: " file) {:babashka/exit 1 :file file}))))
-        _                 (println "Scanning" (c/green (count files')) "and ignoring" (c/magenta (- (count files) (count files'))) ".gitignore'd and whitelisted files...")
+        files'            (remove-ignored files)
         {:keys [scanned total-files files-with-matches total-matches]
          :as   full-info} (scan-files token-patterns files')
         info              (dissoc full-info :scanned :duration-ms)
