@@ -1,12 +1,15 @@
 import {
+  IconBadge,
   IconCarouselHorizontal,
   IconCarouselVertical,
   IconFavicon,
+  IconForms,
   IconH1,
   IconLetterT,
   IconList,
   IconSeparator,
   IconSquare,
+  IconSquareDot,
 } from "@tabler/icons-react";
 
 import { Icons } from "metabase/ui";
@@ -15,6 +18,7 @@ export enum SystemComponentCategory {
   Typography = "typography",
   Layout = "layout",
   Data = "data",
+  Form = "form",
 }
 
 export enum SystemComponentId {
@@ -27,6 +31,9 @@ export enum SystemComponentId {
   Card = "system:card",
   List = "system:list",
   Placeholder = "system:placeholder",
+  Badge = "system:badge",
+  TextInput = "system:text-input",
+  Button = "system:button",
 }
 
 export type StyleVariable = {
@@ -283,6 +290,12 @@ export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
         type: "string",
         options: SPACING_OPTIONS_WITH_ZERO,
       },
+      {
+        name: "Flex",
+        key: "flex",
+        defaultValue: "1",
+        type: "string",
+      },
     ],
   },
   {
@@ -339,6 +352,147 @@ export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
       },
     ],
   },
+  {
+    id: SystemComponentId.Badge,
+    name: "Badge",
+    category: SystemComponentCategory.Typography,
+    description: "Display a badge",
+    icon: IconBadge,
+    dataVariables: [
+      {
+        name: "Value",
+        type: "value",
+      },
+    ],
+    styleVariables: [
+      {
+        name: "Color",
+        key: "color",
+        defaultValue: "var(--mb-color-bg-primary)",
+        type: "color",
+      },
+      {
+        name: "Size",
+        key: "size",
+        defaultValue: "md",
+        type: "string",
+        options: SPACING_OPTIONS,
+      },
+      {
+        name: "Variant",
+        key: "variant",
+        defaultValue: "light",
+        type: "string",
+        options: [
+          "light",
+          "filled",
+          "outline",
+          "dot",
+          "transparent",
+          "default",
+          "white",
+        ],
+      },
+      {
+        name: "Radius",
+        key: "radius",
+        defaultValue: "sm",
+        type: "string",
+        options: SPACING_OPTIONS_WITH_ZERO,
+      },
+    ],
+  },
+  {
+    id: SystemComponentId.TextInput,
+    name: "Text Input",
+    category: SystemComponentCategory.Form,
+    description: "Display a text input",
+    icon: IconForms,
+    styleVariables: [
+      {
+        name: "Placeholder",
+        key: "placeholder",
+        defaultValue: "Enter text",
+        type: "string",
+      },
+      {
+        name: "Label",
+        key: "label",
+        defaultValue: "Label",
+        type: "string",
+      },
+      {
+        name: "Size",
+        key: "size",
+        defaultValue: "md",
+        type: "string",
+        options: SPACING_OPTIONS,
+      },
+      {
+        name: "Variant",
+        key: "variant",
+        defaultValue: "default",
+        type: "string",
+        options: ["default", "filled"],
+      },
+    ],
+    dataVariables: [
+      {
+        name: "Value",
+        type: "value",
+      },
+      {
+        name: "Target",
+        type: "inputTarget",
+      },
+    ],
+  },
+  {
+    id: SystemComponentId.Button,
+    name: "Button",
+    category: SystemComponentCategory.Form,
+    description: "Display a button",
+    icon: IconSquareDot,
+    styleVariables: [
+      {
+        name: "Variant",
+        key: "variant",
+        defaultValue: "default",
+        type: "string",
+        options: ["default", "filled", "outline", "transparent"],
+      },
+      {
+        name: "Size",
+        key: "size",
+        defaultValue: "md",
+        type: "string",
+        options: SPACING_OPTIONS,
+      },
+      {
+        name: "Radius",
+        key: "radius",
+        defaultValue: "sm",
+        type: "string",
+        options: SPACING_OPTIONS_WITH_ZERO,
+      },
+      {
+        name: "Color",
+        key: "color",
+        defaultValue: "var(--mb-color-brand)",
+        type: "color",
+      },
+    ],
+    dataVariables: [
+      {
+        name: "Value",
+        type: "value",
+      },
+      {
+        name: "On Click",
+        type: "action",
+      },
+    ],
+  },
 ];
 
 export const SYSTEM_COMPONENTS_MAP: Record<string, ComponentMetadata> =
@@ -363,6 +517,12 @@ export const SYSTEM_COMPONENT_CATEGORIES = [
     title: "Data",
     components: Object.values(SYSTEM_COMPONENTS).filter(
       (component) => component.category === SystemComponentCategory.Data,
+    ),
+  },
+  {
+    title: "Form",
+    components: Object.values(SYSTEM_COMPONENTS).filter(
+      (component) => component.category === SystemComponentCategory.Form,
     ),
   },
 ];

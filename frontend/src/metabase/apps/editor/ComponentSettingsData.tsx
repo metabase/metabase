@@ -4,7 +4,9 @@ import { SYSTEM_COMPONENTS_MAP } from "../const/systemComponents";
 import type { ComponentContext } from "../hooks/use-component-context";
 import type { ComponentConfiguration, ComponentDefinition } from "../types";
 
+import { DataAction } from "./DataAction";
 import { DataComponentSelect } from "./DataComponentSelect";
+import { DataInputTarget } from "./DataInputTarget";
 import { DataSourceSelect } from "./DataSourceSelect";
 import { DataValueSelect } from "./DataValueSelect";
 
@@ -60,6 +62,12 @@ export function ComponentSettingsData({
                 onComponentSettingsChange={onComponentSettingsChange}
               />
             );
+
+          case "inputTarget":
+            return <DataInputTarget key={index} />;
+
+          case "action":
+            return <DataAction key={index} />;
 
           default:
             return null;

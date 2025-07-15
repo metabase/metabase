@@ -5,12 +5,15 @@ import { getComponentById } from "../hooks/use-apps";
 import type { ComponentContext } from "../hooks/use-component-context";
 import type { ComponentConfiguration, ComponentDefinition } from "../types";
 
+import { BadgeSystemComponent } from "./system/Badge";
+import { ButtonSystemComponent } from "./system/Button";
 import { CardSystemComponent } from "./system/Card";
 import { GroupSystemComponent } from "./system/Group";
 import { IconSystemComponent } from "./system/Icon";
 import { ListSystemComponent } from "./system/List";
 import { StackSystemComponent } from "./system/Stack";
 import { TextSystemComponent } from "./system/Text";
+import { TextInputSystemComponent } from "./system/TextInput";
 import { TitleSystemComponent } from "./system/Title";
 
 type Props = {
@@ -37,6 +40,7 @@ export function ComponentTreeNode({
           configuration={customComponent}
           componentContext={componentContext}
           component={customComponent.root}
+          parentComponent={component}
           ChildComponent={ChildComponent}
           childComponentProps={childComponentProps}
         />
@@ -106,6 +110,32 @@ export function ComponentTreeNode({
         />
       );
 
+    case SystemComponentId.Badge:
+      return (
+        <BadgeSystemComponent
+          configuration={configuration}
+          componentContext={componentContext}
+          component={component}
+        />
+      );
+
+    case SystemComponentId.TextInput:
+      return (
+        <TextInputSystemComponent
+          configuration={configuration}
+          componentContext={componentContext}
+          component={component}
+        />
+      );
+
+    case SystemComponentId.Button:
+      return (
+        <ButtonSystemComponent
+          configuration={configuration}
+          componentContext={componentContext}
+          component={component}
+        />
+      );
     default:
       return <Text>{component.componentId}</Text>;
   }

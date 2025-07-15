@@ -24,6 +24,7 @@ export function CardSystemComponent({
   const child = component.children?.[0];
   return (
     <Paper
+      flex={getComponentStyleValue(component, "flex")}
       bg={getComponentStyleValue(component, "backgroundColor")}
       radius={getComponentStyleValue(component, "borderRadius")}
       p={getComponentStyleValue(component, "padding")}

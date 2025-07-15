@@ -1,6 +1,11 @@
-import { IconDatabase, IconListTree, IconPalette } from "@tabler/icons-react";
+import {
+  IconDatabase,
+  IconListTree,
+  IconPalette,
+  IconTrash,
+} from "@tabler/icons-react";
 
-import { Box, Tabs, Text, Title } from "metabase/ui";
+import { Box, Button, Tabs, Text, Title } from "metabase/ui";
 
 import { getComponentName } from "../helpers";
 import type { ComponentContext } from "../hooks/use-component-context";
@@ -8,12 +13,15 @@ import type { ComponentConfiguration, ComponentDefinition } from "../types";
 
 import { ComponentSettingsData } from "./ComponentSettingsData";
 import { ComponentSettingsStyle } from "./ComponentSettingsStyle";
+import { SidebarTree } from "./SidebarTree";
 
 type Props = {
   componentConfiguration: ComponentConfiguration;
   componentContext: ComponentContext;
   component: ComponentDefinition;
   onComponentSettingsChange: (settings: Partial<ComponentDefinition>) => void;
+  onDeleteComponent: (component: ComponentDefinition) => void;
+  onSelectComponent: (component: ComponentDefinition) => void;
 };
 
 export function ComponentSettingsSidebar({
@@ -21,6 +29,8 @@ export function ComponentSettingsSidebar({
   componentContext,
   component,
   onComponentSettingsChange,
+  onDeleteComponent,
+  onSelectComponent,
 }: Props) {
   return (
     <Box p="md">
@@ -32,6 +42,16 @@ export function ComponentSettingsSidebar({
           {getComponentName(component)}: {component.id}
         </Text>
       </Box>
+      <Button
+        mt="md"
+        variant="filled"
+        color="error"
+        size="xs"
+        leftSection={<IconTrash size={12} />}
+        onClick={() => onDeleteComponent(component)}
+      >
+        {"Delete"}
+      </Button>
       <Tabs defaultValue="data" mt="md">
         <Tabs.List>
           <Tabs.Tab value="data" leftSection={<IconDatabase size={12} />}>
@@ -59,7 +79,11 @@ export function ComponentSettingsSidebar({
           />
         </Tabs.Panel>
         <Tabs.Panel value="tree" py="md">
-          {"TODO"}
+          <SidebarTree
+            configuration={componentConfiguration}
+            selectedComponent={component}
+            onSelectComponent={onSelectComponent}
+          />
         </Tabs.Panel>
       </Tabs>
     </Box>

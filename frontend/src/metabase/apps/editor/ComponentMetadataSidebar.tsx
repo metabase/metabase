@@ -2,13 +2,16 @@ import { IconListTree, IconSettings } from "@tabler/icons-react";
 
 import { Box, Tabs } from "metabase/ui";
 
-import type { ComponentConfiguration } from "../types";
+import type { ComponentConfiguration, ComponentDefinition } from "../types";
 
 import { ComponentGlobalSettings } from "./ComponentGlobalSettings";
+import { SidebarTree } from "./SidebarTree";
 
 type Props = {
   tab: "globalSettings" | "componentTree" | null;
   configuration: ComponentConfiguration;
+  selectedComponent?: ComponentDefinition;
+  onSelectComponent: (component: ComponentDefinition) => void;
   onConfigurationChange: (
     configuration: Partial<ComponentConfiguration>,
   ) => void;
@@ -17,6 +20,8 @@ type Props = {
 export function ComponentMetadataSidebar({
   tab,
   configuration,
+  selectedComponent,
+  onSelectComponent,
   onConfigurationChange,
 }: Props) {
   return (
@@ -43,7 +48,11 @@ export function ComponentMetadataSidebar({
           />
         </Tabs.Panel>
         <Tabs.Panel py="md" value="componentTree">
-          {"TODO"}
+          <SidebarTree
+            configuration={configuration}
+            selectedComponent={selectedComponent}
+            onSelectComponent={onSelectComponent}
+          />
         </Tabs.Panel>
       </Tabs>
     </Box>

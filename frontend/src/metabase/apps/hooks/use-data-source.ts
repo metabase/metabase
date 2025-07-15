@@ -9,7 +9,7 @@ export function useDataSource(dataSource?: ComponentDataSource) {
       database: dataSource?.databaseId ?? 1,
       query: {
         "source-table": dataSource?.tableId ?? 1,
-        limit: 50,
+        limit: 20,
       },
     },
     { skip: !dataSource },

@@ -1,0 +1,18 @@
+.root {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.label {
+  padding-block: 3px;
+
+  &[data-hovered] {
+    background-color: var(--mb-color-bg-medium) !important;
+  }
+
+  &[data-selected] {
+    font-weight: 700;
+    background-color: var(--mb-color-brand) !important;
+    color: white;
+  }
+}

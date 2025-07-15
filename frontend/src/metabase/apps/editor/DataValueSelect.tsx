@@ -76,7 +76,7 @@ export function DataValueSelect({
           },
         ]}
       />
-      {component.value?.type === "constant" && (
+      {(!component.value || component.value?.type === "constant") && (
         <TextInput
           label="Constant Value"
           value={component.value?.value ?? ""}
