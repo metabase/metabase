@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { isNotNull } from "metabase/lib/types";
-import { ActionIcon, Box, Icon, Space, Tabs } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, Space, Tabs } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -145,16 +145,15 @@ export const SeriesSettings = ({
 
   return (
     <Box pt={hasMultipleSections ? 0 : undefined} className={CS.overflowYAuto}>
-      <div>
+      <Flex direction="row" align="center" pt="md" pl="md" pr="md" gap="xs">
         <ActionIcon onClick={onCloseClick}>
-          <Icon name="arrow_left" />
+          <Icon name="chevronleft" />
         </ActionIcon>
         <Space w="xs" />
         <span className={CS.textBold}>{label || "Series Settings"}</span>
-      </div>
+      </Flex>
       {hasMultipleSections && (
         <Tabs
-          px="md"
           pt="xs"
           value={currentSection}
           onChange={(section) => setCurrentSection(String(section))}
