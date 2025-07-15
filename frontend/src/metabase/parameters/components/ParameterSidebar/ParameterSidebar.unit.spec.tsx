@@ -47,6 +47,7 @@ const setup = ({
         <ParameterSidebar
           parameter={parameter}
           otherParameters={otherParameters}
+          dashcards={[]}
           onChangeName={onChangeName}
           onChangeType={jest.fn()}
           onChangeDefaultValue={jest.fn()}

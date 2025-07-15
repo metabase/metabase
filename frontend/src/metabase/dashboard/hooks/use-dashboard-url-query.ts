@@ -9,16 +9,17 @@ import { useSetting } from "metabase/common/hooks";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { getParameterUrlSlug } from "metabase/parameters/utils/parameter-context";
 
 import { selectTab } from "../actions";
 import {
   getDashboard,
+  getDashcards,
   getSelectedTab,
   getTabs,
   getValuePopulatedParameters,
 } from "../selectors";
-import { createTabSlug } from "../utils";
+import { createTabSlug, findDashCardForInlineParameter } from "../utils";
 
 export function useDashboardUrlQuery(
   router: InjectedRouter,
@@ -28,14 +29,27 @@ export function useDashboardUrlQuery(
   const tabs = useSelector(getTabs);
   const selectedTab = useSelector(getSelectedTab);
   const parameters = useSelector(getValuePopulatedParameters);
+  const dashcards = useSelector(getDashcards);
   const siteUrl = useSetting("site-url");
 
   const dispatch = useDispatch();
 
-  const parameterValuesBySlug = useMemo(
-    () => getParameterValuesBySlug(parameters),
-    [parameters],
-  );
+  const parameterValuesBySlug = useMemo(() => {
+    const dashcardList = Object.values(dashcards);
+
+    return Object.fromEntries(
+      parameters.map((parameter) => {
+        const dashcard = findDashCardForInlineParameter(
+          parameter.id,
+          dashcardList,
+        );
+
+        const slug = getParameterUrlSlug(parameter, dashcard);
+
+        return [slug, parameter.value ?? null];
+      }),
+    );
+  }, [parameters, dashcards]);
 
   const queryParams = useMemo(() => {
     const queryParams = { ...parameterValuesBySlug };

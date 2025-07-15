@@ -3,6 +3,7 @@ import _ from "underscore";
 import { isQuestionCard, isQuestionDashCard } from "metabase/dashboard/utils";
 import { slugify } from "metabase/lib/formatting";
 import { isNotNull } from "metabase/lib/types";
+import { getParametersInSameContext } from "metabase/parameters/utils/parameter-context";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -37,6 +38,8 @@ export type NewParameterOpts = Pick<Parameter, "name" | "type" | "sectionId">;
 export function createParameter(
   opts: NewParameterOpts,
   parameters: Parameter[] = [],
+  dashcard?: DashboardCard | null,
+  dashcards: DashboardCard[] = [],
 ) {
   let baseName = opts.name;
   let nameIndex = 0;
@@ -50,7 +53,14 @@ export function createParameter(
 
   let name = nameIndex === 0 ? baseName : `${baseName} ${nameIndex}`;
 
-  while (parameters.some((p) => p.name === name)) {
+  // Filter parameters to only check names in the same context
+  const parametersToCheck = getParametersInSameContext(
+    parameters,
+    dashcard,
+    dashcards,
+  );
+
+  while (parametersToCheck.some((p) => p.name === name)) {
     nameIndex++;
     name = `${baseName} ${nameIndex}`;
   }
