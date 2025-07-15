@@ -8,6 +8,9 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private retention-max-per-app 20)
+(def ^:private retention-max-total 1000)
+
 (methodical/defmethod t2/table-name :model/DataApp           [_model] :data_app)
 (methodical/defmethod t2/table-name :model/DataAppDefinition [_model] :data_app_definition)
 (methodical/defmethod t2/table-name :model/DataAppRelease    [_model] :data_app_release)
@@ -136,6 +139,49 @@
                            (set-latest-definition! (:id app) definition))]
       (assoc app :definition app-definition))))
 
+(defn- prune-definitions!
+  "Remove older definitions that don't correspond to releases or latest working drafts."
+  ([]
+   (prune-definitions! retention-max-per-app retention-max-total))
+  ([retention-max-per-app retention-max-total]
+   (t2/delete! :model/DataAppDefinition
+               {:where [:in :id
+                        {:with   [[:protected_definitions
+                                   {:select [:dad.id]
+                                    :from   [[:data_app_definition :dad]]
+                                    :where  [:or
+                                             ;; Released definitions
+                                             [:exists {:select [1]
+                                                       :from   [[:data_app_release :dar]]
+                                                       :where  [:and
+                                                                [:= :dar.app_definition_id :dad.id]
+                                                                [:= :dar.retracted false]]}]
+                                             ;; The highest revision per app
+                                             [:exists {:select [1]
+                                                       :from   [[:data_app_definition :dad2]]
+                                                       :where  [:and
+                                                                [:= :dad2.app_id :dad.app_id]
+                                                                [:= :dad2.revision_number
+                                                                 {:select [:%max.revision_number]
+                                                                  :from   [[:data_app_definition :dad3]]
+                                                                  :where  [:= :dad3.app_id :dad.app_id]}]
+                                                                [:= :dad2.id :dad.id]]}]]}]
+
+                                  [:ranked
+                                   {:select [:dad.id :dad.app_id :dad.revision_number :dad.created_at
+                                             [[:raw "ROW_NUMBER() OVER (PARTITION BY dad.app_id ORDER BY dad.revision_number DESC)"] :app_rank]
+                                             [[:raw "ROW_NUMBER() OVER (ORDER BY dad.created_at DESC)"] :global_rank]]
+                                    :from   [[:data_app_definition :dad]]
+                                    :where  [:not [:exists {:select [1]
+                                                            :from   [[:protected_definitions :pd]]
+                                                            :where  [:= :pd.id :dad.id]}]]}]]
+
+                         :select [:id]
+                         :from   [:ranked]
+                         :where  [:or
+                                  [:> :app_rank retention-max-per-app]
+                                  [:> :global_rank retention-max-total]]}]})))
+
 (defn latest-definition
   "Get the latest definition (released or not) for a data app."
   [app-id]
@@ -179,9 +225,9 @@
 (defn get-published-data-app
   "Get the published version of a data app by id."
   [slug]
-  (let [app (t2/select-one :model/DataApp :slug slug :status :published)
-        _   (when-not app
-              (throw (ex-info "Not found." {:status-code 404})))
+  (let [app                 (t2/select-one :model/DataApp :slug slug :status :published)
+        _                   (when-not app
+                              (throw (ex-info "Not found." {:status-code 404})))
         released-definition (released-definition (:id app))]
     (when-not released-definition
       (throw (ex-info "Data app is not released"
