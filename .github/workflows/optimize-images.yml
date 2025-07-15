@@ -22,7 +22,7 @@ jobs:
 
     - name: Get changed PNG files
       id: changed-files
-      uses: tj-actions/changed-files@v41
+      uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46
       with:
         files: |
           docs/**/*.png

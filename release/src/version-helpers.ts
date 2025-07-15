@@ -70,11 +70,23 @@ export const isEnterpriseVersion = (versionString: string): boolean => {
 export const isPreReleaseVersion = (version: string) =>
   isValidVersionString(version) && /rc|alpha|beta/i.test(version);
 
-export const getMajorVersion = (versionString: string) =>
-  versionString
+const getVersionParts = (versionString: string) => {
+  const parts = versionString
     .replace(/^[^\.]+\./, "")
     .replace(/-rc\d+/i, "")
-    .split(".")[0];
+    .split(".");
+  return {
+    major: parts[0],
+    minor: parts[1] || "0",
+    patch: parts[2],
+  };
+};
+
+export const getMajorVersion = (versionString: string) =>
+  getVersionParts(versionString).major;
+
+export const getMinorVersion = (versionString: string) =>
+  getVersionParts(versionString).minor;
 
 export const isReleaseBranch = (branchName: string) => {
   return branchName.startsWith("release-x.");
