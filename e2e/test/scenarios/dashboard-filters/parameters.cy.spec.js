@@ -860,7 +860,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category-2=Gadget");
+        expect(search).to.eq("?category-3=Gadget");
       });
 
       // Add a second filter
@@ -887,7 +887,7 @@ describe("scenarios > dashboard > parameters", () => {
         .should("exist");
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category-2=Gadget&count-3=6000");
+        expect(search).to.eq("?category-3=Gadget&count-3=6000");
       });
 
       H.getDashboardCard(1).within(() => {
@@ -902,7 +902,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category-2=Gadget&count-3=");
+        expect(search).to.eq("?category-3=Gadget&count-3=");
       });
     });
 
