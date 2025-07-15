@@ -60,12 +60,7 @@ export function getDefaultDimensions(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) {
-  const mainSeriesColumns = rawSeries[0]?.data?.cols;
-  const prevDimensions = (settings["graph.dimensions"] ?? [])
-    .filter(isNotNull)
-    .filter((columnName) =>
-      mainSeriesColumns.some((col) => col.name === columnName),
-    );
+  const prevDimensions = settings["graph.dimensions"] ?? [];
   const defaultDimensions = getDefaultColumns(rawSeries).dimensions;
   if (
     prevDimensions.length > 0 &&
