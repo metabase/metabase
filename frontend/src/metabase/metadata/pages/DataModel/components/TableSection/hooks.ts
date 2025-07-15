@@ -27,6 +27,8 @@ export const useResponsiveButtons = ({
     : true;
 
   function getRequiredWidth() {
+    /* keep these conditions in sync with JSX in TableSection */
+
     let width = 0;
 
     if (isUpdatingSorting) {

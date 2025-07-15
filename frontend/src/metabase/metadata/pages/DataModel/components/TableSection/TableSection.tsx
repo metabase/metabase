@@ -171,6 +171,8 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
               ref={buttonsContainerRef}
               wrap="nowrap"
             >
+              {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
+
               {isUpdatingSorting && (
                 <Loader data-testid="loading-indicator" size="xs" />
               )}
