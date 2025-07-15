@@ -1,6 +1,7 @@
 (ns metabase.data-apps.models
   (:require
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -120,25 +121,6 @@
 ;;                                        Public APIs                                             ;;
 ;;------------------------------------------------------------------------------------------------;;
 
-(defn set-latest-definition!
-  "Create a new definition for an existing app."
-  [app-id definition]
-  (t2/insert-returning-instance! :model/DataAppDefinition
-                                 (merge definition
-                                        {:app_id          app-id
-                                         :revision_number (next-revision-number-hsql app-id)})))
-
-(defn create-app!
-  "Create a new App with an initial definition."
-  [app-data]
-  (t2/with-transaction [_conn]
-    (let [app (t2/insert-returning-instance! :model/DataApp (merge
-                                                             {:status :private}
-                                                             (dissoc app-data :definition)))
-          app-definition (when-let [definition (:definition app-data)]
-                           (set-latest-definition! (:id app) definition))]
-      (assoc app :definition app-definition))))
-
 (defn- prune-definitions!
   "Remove older definitions that don't correspond to releases or latest working drafts."
   ([]
@@ -181,6 +163,24 @@
                          :where  [:or
                                   [:> :app_rank retention-max-per-app]
                                   [:> :global_rank retention-max-total]]}]})))
+
+(defn set-latest-definition!
+  "Create a new definition for an existing app."
+  [app-id definition]
+  (u/prog1 (t2/insert-returning-instance! :model/DataAppDefinition
+                                          (merge definition
+                                                 {:app_id          app-id
+                                                  :revision_number (next-revision-number-hsql app-id)}))
+    (prune-definitions!)))
+
+(defn create-app!
+  "Create a new App with an initial definition."
+  [app-data]
+  (t2/with-transaction [_conn]
+    (let [app (t2/insert-returning-instance! :model/DataApp (merge {:status :private} (dissoc app-data :definition)))]
+      (when-let [definition (:definition app-data)]
+        (set-latest-definition! (:id app) definition))
+      (assoc app :definition (:definition app-data)))))
 
 (defn latest-definition
   "Get the latest definition (released or not) for a data app."
