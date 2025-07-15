@@ -170,8 +170,7 @@
        [:non_temporal_dim_ids                {:optional true} [:maybe ms/NonBlankString]]]]
   (api/check-valid-page-params (request/limit) (request/offset))
   (try
-    (u/prog1 (search/search
-              (search/search-context
+    (let [ctx (search/search-context
                {:archived                            archived
                 :context                             context
                 :created-at                          created-at
@@ -197,8 +196,9 @@
                 :calculate-available-models?         calculate-available-models
                 :include-dashboard-questions?        include-dashboard-questions
                 :include-metadata?                   include-metadata
-                :non-temporal-dim-ids                non-temporal-dim-ids}))
-      (analytics/inc! :metabase-search/response-ok))
+                :non-temporal-dim-ids                non-temporal-dim-ids})]
+      (u/prog1 (search/search ctx)
+        (analytics/inc! :metabase-search/response-ok)))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]
         (when (or (not status-code) (= 5 (quot status-code 100)))

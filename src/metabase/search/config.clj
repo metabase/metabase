@@ -110,7 +110,8 @@
    [:field            {:optional true} :string]
    [:context-key      {:optional true} :keyword]
    [:supported-value? {:optional true} ifn?]
-   [:required-feature {:optional true} :keyword]])
+   [:required-feature {:optional true} :keyword]
+   [:engine           {:optional true} :keyword]])
 
 (def ^:private Filter
   "A normalized representation, for the application to leverage."
@@ -120,16 +121,18 @@
    [:field            :string]
    [:context-key      :keyword]
    [:supported-value? ifn?]
-   [:required-feature [:maybe :keyword]]])
+   [:required-feature [:maybe :keyword]]
+   [:engine           [:maybe :keyword]]])
 
 (mu/defn- build-filter :- Filter
-  [{k :key t :type :keys [context-key field supported-value? required-feature]} :- FilterDef]
+  [{k :key t :type :keys [context-key field supported-value? required-feature engine]} :- FilterDef]
   {:key              k
    :type             (keyword "metabase.search.filter" (name t))
    :field            (or field (u/->snake_case_en (name k)))
    :context-key      (or context-key k)
    :supported-value? (or supported-value? (constantly true))
-   :required-feature required-feature})
+   :required-feature required-feature
+   :engine           (or engine :all)})
 
 (mu/defn- build-filters :- [:map-of :keyword Filter]
   [m]
@@ -150,7 +153,7 @@
     :last-editor-id {:type :list, :context-key :last-edited-by}
     :native-query   {:type :native-query, :context-key :search-native-query}
     :verified       {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
-    :non-temporal-dim-ids {:type :single-value :context-key :non-temporal-dim-ids}}))
+    :non-temporal-dim-ids {:type :single-value :engine :appdb}}))
 
 (def ^:private filter-defaults-by-context
   {:default         {:archived               false

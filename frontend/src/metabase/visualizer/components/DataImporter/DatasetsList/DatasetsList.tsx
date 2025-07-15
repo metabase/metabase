@@ -117,6 +117,7 @@ export function DatasetsList({
       include_dashboard_questions: true,
       include_metadata: true,
       non_temporal_dim_ids: JSON.stringify(nonTemporalDimIds),
+      //search_engine: "in-place",
     },
     {
       refetchOnMountOrArgChange: true,
