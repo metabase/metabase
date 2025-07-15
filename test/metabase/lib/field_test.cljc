@@ -1265,8 +1265,8 @@
             col (lib/visible-columns query)
             :let [col-ref (lib/ref col)]]
       (testing (str "ref " col-ref " of " (symbol query-var))
-        (is (= (dissoc col :lib/source-uuid)
-               (dissoc (lib/find-visible-column-for-ref query col-ref) :lib/source-uuid)))))))
+        (is (= (dissoc col :lib/source-uuid :lib/original-ref)
+               (dissoc (lib/find-visible-column-for-ref query col-ref) :lib/source-uuid :lib/original-ref)))))))
 
 (deftest ^:parallel find-visible-column-for-ref-test-2
   (testing "reference by ID instead of name"
