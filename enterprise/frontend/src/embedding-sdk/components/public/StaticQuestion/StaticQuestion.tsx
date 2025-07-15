@@ -6,14 +6,14 @@ import {
 } from "embedding-sdk/components/private/SdkQuestion/context";
 
 import { InteractiveQuestion } from "../SdkQuestion";
-import type { InteractiveQuestionQuestionIdProps } from "../SdkQuestion/types";
+import type { SdkQuestionIdProps } from "../SdkQuestion/types";
 
 /**
  * @interface
  * @expand
  * @category StaticQuestion
  */
-export type StaticQuestionProps = InteractiveQuestionQuestionIdProps & {
+export type StaticQuestionProps = SdkQuestionIdProps & {
   withChartTypeSelector?: boolean;
 } & Pick<SdkQuestionProviderProps, "initialSqlParameters"> &
   FlexibleSizeProps;

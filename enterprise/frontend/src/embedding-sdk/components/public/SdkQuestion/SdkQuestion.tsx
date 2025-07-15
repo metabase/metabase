@@ -33,30 +33,29 @@ import {
   type InteractiveQuestionDefaultViewProps,
 } from "embedding-sdk/components/private/SdkQuestionDefaultView";
 
-import type { InteractiveQuestionQuestionIdProps } from "./types";
+import type { SdkQuestionIdProps } from "./types";
 
 /**
  * @interface
  * @expand
  */
-export type BaseInteractiveQuestionProps =
-  InteractiveQuestionQuestionIdProps & {
-    /**
-     * The children of the MetabaseProvider component.s
-     */
-    children?: ReactNode;
-    plugins?: SdkQuestionProviderProps["componentPlugins"];
-  } & Pick<
-      SdkQuestionProviderProps,
-      | "onBeforeSave"
-      | "onSave"
-      | "entityTypes"
-      | "isSaveEnabled"
-      | "initialSqlParameters"
-      | "withDownloads"
-      | "targetCollection"
-      | "onRun"
-    >;
+export type BaseInteractiveQuestionProps = SdkQuestionIdProps & {
+  /**
+   * The children of the MetabaseProvider component.s
+   */
+  children?: ReactNode;
+  plugins?: SdkQuestionProviderProps["componentPlugins"];
+} & Pick<
+    SdkQuestionProviderProps,
+    | "onBeforeSave"
+    | "onSave"
+    | "entityTypes"
+    | "isSaveEnabled"
+    | "initialSqlParameters"
+    | "withDownloads"
+    | "targetCollection"
+    | "onRun"
+  >;
 
 /**
  * Props for the drill-through question

@@ -1,6 +1,6 @@
 import type { SdkQuestionId } from "embedding-sdk/types/question";
 
-export type InteractiveQuestionQuestionIdProps = {
+export type SdkQuestionIdProps = {
   /**
    * The ID of the question.
    *  <br/>
