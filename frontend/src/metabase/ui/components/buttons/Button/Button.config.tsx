@@ -12,7 +12,6 @@ export const buttonOverrides = {
         size: "1rem",
         color: "currentColor",
       },
-      justify: "start",
     },
     classNames: {
       root: ButtonStyles.root,
