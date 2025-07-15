@@ -7,6 +7,8 @@ import { useSetting, useStoreUrl, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 
+const NOTIFICATION_TIMEOUT = 30_000;
+
 /**
  * This hook allows to create an upsell flow that listens to the events from the Store tab
  *   and sends back results of token activation to the Store
@@ -23,11 +25,12 @@ export function useUpsellFlow({
   const storeUrl = useStoreUrl("checkout/upgrade/self-hosted");
   const storeOrigin = new URL(storeUrl).origin;
   const { updateToken, tokenStatus, error } = useLicense(() => {
+    sendToast({
+      message: t`License activated successfully`,
+      icon: "check_filled",
+      timeout: NOTIFICATION_TIMEOUT,
+    });
     if (storeWindowRef.current) {
-      sendToast({
-        message: t`License activated successfully`,
-        icon: "check_filled",
-      });
       sendMessageTokenActivation(true, storeWindowRef.current, storeOrigin);
     }
   });
@@ -70,7 +73,9 @@ export function useUpsellFlow({
     if (error && storeWindowRef.current) {
       sendMessageTokenActivation(false, storeWindowRef.current, storeOrigin);
       sendToast({
+        icon: "warning",
         message: error,
+        timeout: NOTIFICATION_TIMEOUT,
       });
     }
   }, [tokenStatus, error, sendToast, storeOrigin]);
