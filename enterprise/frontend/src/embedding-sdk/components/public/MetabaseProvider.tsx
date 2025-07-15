@@ -174,16 +174,20 @@ export const MetabaseProvider = memo(function MetabaseProvider({
   ...externalProps
 }: MetabaseProviderProps | PropsWithChildren) {
   const metabaseProviderProps = useMetabaseProviderPropsStore();
-  const props = (metabaseProviderProps ?? externalProps) as
-    | MetabaseProviderProps
-    | InternalMetabaseProviderProps
-    | null;
+
+  const props = (
+    metabaseProviderProps.initialized
+      ? metabaseProviderProps
+      : (externalProps ?? null)
+  ) as MetabaseProviderProps | InternalMetabaseProviderProps | null;
 
   const reduxStoreRef = useRef<Store<SdkStoreState, Action> | null>(null);
 
   if (!reduxStoreRef.current) {
     reduxStoreRef.current =
-      props && "reduxStore" in props ? props.reduxStore : getSdkStore();
+      props && "reduxStore" in props && props.reduxStore
+        ? props.reduxStore
+        : getSdkStore();
   }
 
   if (!props) {

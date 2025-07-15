@@ -12,13 +12,16 @@ export type MetabaseProviderPropsStoreExternalProps = Omit<
 
 export type MetabaseProviderPropsStoreInternalProps = {
   initialized?: boolean;
-  reduxStore?: InternalMetabaseProviderProps["reduxStore"];
+  reduxStore?: InternalMetabaseProviderProps["reduxStore"] | null;
 };
 
 export type MetabaseProviderPropsStore = {
-  getSnapshot(): MetabaseProviderPropsToStore | null;
+  getSnapshot(): MetabaseProviderPropsToStore;
   subscribe(fn: () => void): () => void;
-  setProps(p: Partial<MetabaseProviderPropsToStore>): void;
+  updateInternalProps(
+    p: Partial<MetabaseProviderPropsStoreInternalProps>,
+  ): void;
+  setProps(p: Partial<MetabaseProviderPropsStoreExternalProps>): void;
   cleanup(): void;
 };
 
@@ -28,7 +31,10 @@ const INTERNAL_PROP_NAMES: (keyof MetabaseProviderPropsStoreInternalProps)[] = [
 ];
 
 const KEY = "METABASE_PROVIDER_PROPS_STORE";
-const EMPTY_PROPS = {} as MetabaseProviderPropsToStore;
+const EMPTY_PROPS = {
+  initialized: false,
+  reduxStore: null,
+} as MetabaseProviderPropsStoreInternalProps;
 
 export function ensureMetabaseProviderPropsStore(
   initial?: MetabaseProviderPropsStoreExternalProps,
@@ -43,20 +49,30 @@ export function ensureMetabaseProviderPropsStore(
     return win[KEY];
   }
 
-  let props: MetabaseProviderPropsToStore = (initial ??
-    EMPTY_PROPS) as MetabaseProviderPropsToStore;
+  let props: MetabaseProviderPropsToStore = {
+    ...EMPTY_PROPS,
+    ...(initial ?? {}),
+  } as MetabaseProviderPropsToStore;
   const listeners = new Set<() => void>();
 
   const store: MetabaseProviderPropsStore = {
-    getSnapshot: () => (Object.keys(props).length ? props : null),
+    getSnapshot: () => props,
     subscribe(listener) {
       listeners.add(listener);
 
       return () => listeners.delete(listener);
     },
+    updateInternalProps(propsToSet) {
+      props = {
+        ...props,
+        ...propsToSet,
+      } as MetabaseProviderPropsToStore;
+
+      listeners.forEach((callback) => callback());
+    },
     setProps(propsToSet) {
       const internalProps = Object.fromEntries(
-        INTERNAL_PROP_NAMES.map((key) => [key, propsToSet[key] ?? props[key]]),
+        INTERNAL_PROP_NAMES.map((key) => [key, props[key]]),
       ) as MetabaseProviderPropsStoreInternalProps;
 
       props = {

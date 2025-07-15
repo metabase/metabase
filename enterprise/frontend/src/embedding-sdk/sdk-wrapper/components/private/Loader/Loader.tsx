@@ -50,13 +50,8 @@ const Spinner = ({ size = "1.5rem", color = "#509EE3" }: SpinnerProps) => {
 };
 
 export const Loader = ({ className, style }: CommonStylingProps) => {
-  const props = useMetabaseProviderPropsStore();
-
-  if (!props) {
-    return null;
-  }
-
-  const { theme, loaderComponent: LoaderComponent } = props;
+  const { theme, loaderComponent: LoaderComponent } =
+    useMetabaseProviderPropsStore();
 
   return (
     <div

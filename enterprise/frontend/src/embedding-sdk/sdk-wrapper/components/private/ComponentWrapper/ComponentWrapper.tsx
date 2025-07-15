@@ -18,11 +18,7 @@ const ComponentWrapperInner = <TComponentProps,>({
   const metabaseProviderStoreProps = useMetabaseProviderPropsStore();
   const { isLoading, isError } = useWaitForSdkBundle();
 
-  if (
-    isLoading ||
-    !metabaseProviderStoreProps ||
-    !metabaseProviderStoreProps.initialized
-  ) {
+  if (isLoading || !metabaseProviderStoreProps.initialized) {
     return <Loader />;
   }
 
