@@ -13,7 +13,7 @@ import { ToolbarButton } from "./util/ToolbarButton";
  * @category InteractiveQuestion
  * @expand
  */
-export type InteractiveQuestionSaveButtonProps = {
+export type SaveButtonProps = {
   /**
    * A handler function to be called when the button is clicked
    */
@@ -44,9 +44,7 @@ export const shouldShowSaveButton = ({
  * @category InteractiveQuestion
  * @param props
  */
-export const SaveButton = ({
-  ...buttonProps
-}: InteractiveQuestionSaveButtonProps = {}) => {
+export const SaveButton = ({ ...buttonProps }: SaveButtonProps = {}) => {
   const { question, originalQuestion } = useSdkQuestionContext();
 
   const isSaveButtonEnabled = shouldShowSaveButton({
