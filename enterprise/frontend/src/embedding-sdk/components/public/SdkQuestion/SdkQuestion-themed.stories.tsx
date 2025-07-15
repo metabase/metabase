@@ -10,7 +10,7 @@ import { questionIds } from "embedding-sdk/test/storybook-id-args";
 import { storybookThemes } from "embedding-sdk/test/storybook-themes";
 import { Box } from "metabase/ui";
 
-import { SdkQuestion } from "./InteractiveQuestion";
+import { SdkQuestion } from "./SdkQuestion";
 
 const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 

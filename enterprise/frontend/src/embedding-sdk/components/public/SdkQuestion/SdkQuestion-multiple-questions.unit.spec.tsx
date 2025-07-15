@@ -24,7 +24,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { SdkQuestion } from "./InteractiveQuestion";
+import { SdkQuestion } from "./SdkQuestion";
 
 const TEST_USER = createMockUser();
 const TEST_DB_ID = 1;
