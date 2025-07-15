@@ -492,7 +492,7 @@ export class AccordionList<
     return rows;
   };
 
-  isVirtualized = () => this.props.maxHeight !== Infinity;
+  isVirtualized = () => false;
 
   canToggleSections = () => {
     const { alwaysTogglable, sections } = this.props;
