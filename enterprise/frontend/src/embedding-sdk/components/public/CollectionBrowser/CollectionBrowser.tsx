@@ -1,10 +1,11 @@
-import { type ComponentType, useEffect, useState } from "react";
+import { type ComponentType, useEffect, useMemo, useState } from "react";
 
 import {
   CollectionNotFoundError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { useSdkBreadcrumb } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
@@ -13,17 +14,13 @@ import type {
   SdkCollectionId,
 } from "embedding-sdk/types/collection";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
+import { useGetCollectionQuery } from "metabase/api";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { isNotNull } from "metabase/lib/types";
-import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs/CollectionBreadcrumbs";
 import { Stack } from "metabase/ui";
-import type {
-  CollectionEssentials,
-  CollectionId,
-  CollectionItemModel,
-} from "metabase-types/api";
+import type { CollectionId, CollectionItemModel } from "metabase-types/api";
 
 const USER_FACING_ENTITY_NAMES = [
   "collection",
@@ -109,25 +106,54 @@ export const CollectionBrowserInner = ({
     getCollectionIdSlugFromReference(state, collectionId),
   );
 
-  const [currentCollectionId, setCurrentCollectionId] =
+  // Internal collection state.
+  const [internalCollectionId, setInternalCollectionId] =
     useState<CollectionId>(baseCollectionId);
 
+  const { breadcrumbs, updateCurrentLocation, isBreadcrumbEnabled } =
+    useSdkBreadcrumb({
+      consumer: "collection",
+    });
+
+  const latestBreadcrumbCollectionId = useMemo(() => {
+    return breadcrumbs[breadcrumbs.length - 1].id as CollectionId;
+  }, [breadcrumbs]);
+
+  // Use breadcrumb state when enabled, otherwise use internal state
+  const effectiveCollectionId = useMemo(() => {
+    if (isBreadcrumbEnabled) {
+      return latestBreadcrumbCollectionId;
+    }
+
+    return internalCollectionId;
+  }, [isBreadcrumbEnabled, latestBreadcrumbCollectionId, internalCollectionId]);
+
+  const { data: currentCollection, isFetching: isFetchingCollection } =
+    useGetCollectionQuery({ id: effectiveCollectionId });
+
   useEffect(() => {
-    setCurrentCollectionId(baseCollectionId);
+    setInternalCollectionId(baseCollectionId);
   }, [baseCollectionId]);
 
-  const onClickItem = (item: MetabaseCollectionItem) => {
-    if (onClick) {
-      onClick(item);
+  // Update the breadcrumb when collection changes.
+  // This cannot be done in onClickItem as we need to populate the
+  // initial collection's name in the breadcrumb.
+  useEffect(() => {
+    if (currentCollection && !isFetchingCollection) {
+      updateCurrentLocation({
+        type: "collection",
+        id: currentCollection.id,
+        name: currentCollection.name,
+      });
     }
+  }, [currentCollection, updateCurrentLocation, isFetchingCollection]);
+
+  const onClickItem = (item: MetabaseCollectionItem) => {
+    onClick?.(item);
 
     if (item.model === "collection") {
-      setCurrentCollectionId(item.id as CollectionId);
+      setInternalCollectionId(item.id as CollectionId);
     }
-  };
-
-  const onClickBreadcrumbItem = (item: CollectionEssentials) => {
-    setCurrentCollectionId(item.id);
   };
 
   const collectionTypes = visibleEntityTypes
@@ -136,13 +162,8 @@ export const CollectionBrowserInner = ({
 
   return (
     <Stack w="100%" h="100%" gap="sm" className={className} style={style}>
-      <CollectionBreadcrumbs
-        collectionId={currentCollectionId}
-        onClick={onClickBreadcrumbItem}
-        baseCollectionId={baseCollectionId}
-      />
       <CollectionItemsTable
-        collectionId={currentCollectionId}
+        collectionId={effectiveCollectionId}
         onClick={onClickItem}
         pageSize={pageSize}
         models={collectionTypes}

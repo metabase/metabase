@@ -18,6 +18,7 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
 import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
+import { useSdkBreadcrumb } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -26,6 +27,7 @@ import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { MetabaseQuestion } from "embedding-sdk/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
+import { useGetDashboardQuery } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -152,6 +154,23 @@ const SdkDashboardInner = ({
   });
 
   const { isLocaleLoading } = useLocale();
+  const { data: dashboard } = useGetDashboardQuery({ id: dashboardId });
+
+  const { updateCurrentLocation } = useSdkBreadcrumb({
+    consumer: "dashboard",
+  });
+
+  // Update breadcrumb when dashboard changes
+  useEffect(() => {
+    if (dashboard) {
+      updateCurrentLocation({
+        type: "dashboard",
+        id: dashboard.id,
+        name: dashboard.name,
+      });
+    }
+  }, [dashboard, updateCurrentLocation]);
+
   const { displayOptions } = useSdkDashboardParams({
     dashboardId,
     withDownloads,
