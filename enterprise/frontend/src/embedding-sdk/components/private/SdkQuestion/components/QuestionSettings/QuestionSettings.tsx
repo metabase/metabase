@@ -18,7 +18,7 @@ import {
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionQuestionSettingsProps = StackProps;
+export type QuestionSettingsProps = StackProps;
 
 const QuestionSettingsContent = ({
   question,
@@ -81,9 +81,7 @@ const QuestionSettingsContent = ({
  * @category InteractiveQuestion
  * @param props
  */
-export const QuestionSettings = ({
-  ...stackProps
-}: InteractiveQuestionQuestionSettingsProps) => {
+export const QuestionSettings = ({ ...stackProps }: QuestionSettingsProps) => {
   const { question, queryResults, updateQuestion } = useSdkQuestionContext();
 
   if (!question) {

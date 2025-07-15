@@ -12,7 +12,7 @@ import { ToolbarButton } from "../../util/ToolbarButton";
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionQuestionSettingsDropdownProps = {
+export type QuestionSettingsDropdownProps = {
   /**
    * Height for the dropdown menu
    */
@@ -29,7 +29,7 @@ export type InteractiveQuestionQuestionSettingsDropdownProps = {
 export const QuestionSettingsDropdown = ({
   height,
   ...popoverProps
-}: InteractiveQuestionQuestionSettingsDropdownProps = {}) => (
+}: QuestionSettingsDropdownProps = {}) => (
   <Popover position="bottom-end" {...popoverProps}>
     <Popover.Target>
       <ToolbarButton
