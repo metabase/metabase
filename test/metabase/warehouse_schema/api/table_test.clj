@@ -758,7 +758,7 @@
                      (mt/user-http-request :crowberto :get 200))))))))
 
 (deftest ^:parallel virtual-table-metadata-permission-test
-  (testing "GET /api/table/:id/query_metadata"
+  (testing "GET /api/table/card__:id/query_metadata"
     (testing "Make sure we do not leak the database info when the user does not have data perms"
       (mt/with-temp [:model/Card card {:database_id   (mt/id)
                                        :dataset_query {:query    {:source-table (mt/id :venues)}
@@ -855,7 +855,7 @@
                                           (format "table/card__%d/query_metadata" (u/the-id card)))))))))))
 
 (deftest include-metrics-for-card-test
-  (testing "GET /api/table/card__:id/query_metadata"
+  (testing "GET /api/table/:id/query_metadata"
     (mt/with-temp [:model/Card model {:name          "Venues model"
                                       :database_id   (mt/id)
                                       :type          :model
