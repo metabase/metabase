@@ -25,12 +25,12 @@ export function useUpsellFlow({
   const storeUrl = useStoreUrl("checkout/upgrade/self-hosted");
   const storeOrigin = new URL(storeUrl).origin;
   const { updateToken, tokenStatus, error } = useLicense(() => {
+    sendToast({
+      message: t`License activated successfully`,
+      icon: "check_filled",
+      timeout: NOTIFICATION_TIMEOUT,
+    });
     if (storeWindowRef.current) {
-      sendToast({
-        message: t`License activated successfully`,
-        icon: "check_filled",
-        timeout: NOTIFICATION_TIMEOUT,
-      });
       sendMessageTokenActivation(true, storeWindowRef.current, storeOrigin);
     }
   });
