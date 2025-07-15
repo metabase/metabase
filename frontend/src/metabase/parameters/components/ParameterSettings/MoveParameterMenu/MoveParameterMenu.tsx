@@ -12,7 +12,7 @@ import {
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Group, Icon, type IconName, Select, Stack, Text } from "metabase/ui";
+import { Flex, Group, Icon, type IconName, Select, Text } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { BaseDashboardCard, ParameterId } from "metabase-types/api";
 
@@ -154,10 +154,15 @@ function SelectItem({
   checked?: boolean;
 }) {
   return (
-    <Group p="sm">
+    <Group p="sm" w="100%">
       <Icon name={icon} />
-      <Stack gap="xs">
-        <Text fw="400" lh="sm" c={checked ? "text-white" : "text-dark"}>
+      <Flex direction="column" flex={1} gap="xs" miw={0}>
+        <Text
+          fw="400"
+          lh="sm"
+          c={checked ? "text-white" : "text-dark"}
+          truncate="end"
+        >
           {title}
         </Text>
         {!!subtitle && (
@@ -165,7 +170,7 @@ function SelectItem({
             {subtitle}
           </Text>
         )}
-      </Stack>
+      </Flex>
     </Group>
   );
 }
