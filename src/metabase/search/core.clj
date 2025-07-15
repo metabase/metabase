@@ -9,6 +9,7 @@
    [metabase.search.impl :as search.impl]
    [metabase.search.in-place.legacy :as search.legacy]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.semantic.core :as search.engines.semantic]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.util :as u]
@@ -21,6 +22,7 @@
   ;; TODO -- maybe engine loading should be moved to [[metabase.search.init]] instead
   search.engine/keep-me
   search.engines.appdb/keep-me
+  search.engines.semantic/keep-me
   search.legacy/keep-me
 
   search.config/keep-me
