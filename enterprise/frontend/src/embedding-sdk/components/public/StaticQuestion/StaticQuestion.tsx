@@ -1,5 +1,7 @@
 import type { PropsWithChildren } from "react";
 
+import { FlexibleSizeComponent } from "embedding-sdk/components/private/FlexibleSizeComponent";
+import { DefaultViewTitle } from "embedding-sdk/components/private/SdkQuestionDefaultView/DefaultViewTitle";
 import {
   SdkQuestion,
   type SdkQuestionProps,
@@ -26,6 +28,7 @@ export type StaticQuestionProps = PropsWithChildren<
     | "style"
     | "initialSqlParameters"
     | "withDownloads"
+    | "title"
   >
 >;
 
@@ -44,6 +47,7 @@ const _StaticQuestion = ({
   style,
   initialSqlParameters,
   withDownloads,
+  title = false, // Hidden by default for backwards-compatibility.
   children,
 }: StaticQuestionProps): JSX.Element | null => {
   const getClickActionMode: ClickActionModeGetter = ({
@@ -69,25 +73,35 @@ const _StaticQuestion = ({
       withDownloads={withDownloads}
     >
       {children ?? (
-        <Stack gap="sm" w="100%" h="100%">
-          {(withChartTypeSelector || withDownloads) && (
-            <Group justify="space-between">
-              {withChartTypeSelector && (
-                <Group gap="xs">
-                  <SdkQuestion.ChartTypeDropdown />
-                  <SdkQuestion.QuestionSettingsDropdown />
-                </Group>
-              )}
-              {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
-            </Group>
-          )}
-          <SdkQuestion.QuestionVisualization
-            height={height}
-            width={width}
-            className={className}
-            style={style}
-          />
-        </Stack>
+        <FlexibleSizeComponent
+          width={width}
+          height={height}
+          className={className}
+          style={style}
+        >
+          <Stack gap="sm">
+            {title && <DefaultViewTitle title={title} />}
+
+            {(withChartTypeSelector || withDownloads) && (
+              <Group justify="space-between">
+                {withChartTypeSelector && (
+                  <Group gap="xs">
+                    <SdkQuestion.ChartTypeDropdown />
+                    <SdkQuestion.QuestionSettingsDropdown />
+                  </Group>
+                )}
+                {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
+              </Group>
+            )}
+
+            <SdkQuestion.QuestionVisualization
+              height={height}
+              width={width}
+              className={className}
+              style={style}
+            />
+          </Stack>
+        </FlexibleSizeComponent>
       )}
     </SdkQuestion>
   );
