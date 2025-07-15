@@ -2,5 +2,16 @@
   "base": {
     "name": "master",
     "hash": "1cdb4bf7a4e829c923634a29c1643c7a3df452e8"
+  },
+  "upstream": {
+    "branch": "emb-617-ability-to-showhide-title-in-staticquestion"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 61001,
+        "gqlID": "PR_kwDOAczgH86fBe_Q"
+      }
+    }
   }
 }
