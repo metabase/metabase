@@ -15,7 +15,7 @@
    [:schema {:optional true} ms/NonBlankString]])
 
 (api.macros/defendpoint :post "/"
-  "Create a transform"
+  "Create transform"
   [_ _
    {dataset-query :dataset_query
     display-name :display_name
@@ -48,7 +48,7 @@
    [:dataset_query {:optional true} ms/Map]])
 
 (api.macros/defendpoint :put "/:id"
-  "Create a transform"
+  "Update transform"
   [{:keys [id]} :- [:map [:id ms/Int]]
    _
    body :- ::update-body]
@@ -63,7 +63,7 @@
      @api/*current-user*)))
 
 (api.macros/defendpoint :delete "/:id"
-  "Create a transform"
+  "Delete transform"
   [{:keys [id]} :- [:map [:id ms/Int]]]
   ;; TODO: perms.
   (models.transform/delete-transform! id))

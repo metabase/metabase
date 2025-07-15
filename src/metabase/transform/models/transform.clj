@@ -25,11 +25,17 @@
    :dataset_query_type mi/transform-keyword
    :status mi/transform-keyword})
 
-;; TODO: This is temporary
+(defn namespaced-view-name
+  "Generate view name"
+  [schema-name view-name]
+  (str/join "." (remove nil? [schema-name view-name])))
+
+;; TODO (lbrdnk 2025-07-15): Presumably, the schema should be inferred from mbql queries and required
+;;                           for native queries.
 (defn top-schema
   "Get most used schema"
   [database-id]
-  ;; Following is temporary. Later do it in nicer way
+  ;; Following is temporary. Later do it nicer way
   (-> (t2/query {:select [[[:count :id] :c] [:schema :s]]
                  :from [[:metabase_table :t]]
                  :where [:= :t.db_id database-id]
@@ -38,7 +44,8 @@
                  :limit 1})
       first :s))
 
-;; TODO: This is borrowed. Ideally dataset_query submodule should be created in metabase.queries and this and related
+;; TODO (lbrdnk 2025-07-15):
+;;       This is borrowed. Ideally dataset_query submodule should be created in metabase.queries and this and related
 ;;       functions provided there. Gist is that not only functionality metabase.queries is supposed to manipulate this.
 (defn dataset-query->query
   "Convert the `dataset_query` to pMBQL query."
@@ -52,9 +59,6 @@
    (if (-> dataset-query :lib/type #{:mbql/query})
      dataset-query
      (some->> dataset-query queries/normalize-dataset-query (lib/query metadata-provider)))))
-
-;; TODO: query schema: normalized mbql or native query
-;; query is native query?
 
 (def view-name-prefix
   "Prefix for view names. Names `mb_transform_\\d+` in user schemas are reserved for managed views."
@@ -94,6 +98,8 @@
                      :name name
                      :same-name-table-ids table-ids}))))
 
+;; TODO (lbrdnk 2025-07-15): Remove in favor of models' behavior, ie. display names can be duplicate. However
+;;                           adequate logic to differentiate that on FE should be put in place.
 (defn- assert-unique-display-name!
   [database schema display-name]
   ;; Deliberately not checking TransformView -- TODO: remove view_display_name from that table
@@ -142,6 +148,7 @@
                                                  :schema schema})
         (let [view-table (t2/select-one :model/Table
                                         :db_id database-id
+                                        :schema schema
                                         :name view-name)]
           (t2/update! :model/TransformView :id transform-id
                       {:view_name view-name
@@ -160,22 +167,18 @@
   (let [transform (t2/select-one :model/TransformView :id transform-id)
         view-name (:view_name transform)
         schema-name (:view_schema transform)
-        namespaced-view-name (str/join "." (remove nil? [schema-name view-name]))
+        namespaced-view-name* (namespaced-view-name schema-name view-name)
         query (dataset-query->query dataset-query)
         database-id (:database query)
         compiled (:query (qp.compile/compile-with-inline-parameters query))
         database (t2/select-one :model/Database :id database-id)
         driver (driver.u/database->driver database)]
-    ;; TODO: In transaction?
-    (driver/drop-view! driver database-id namespaced-view-name)
-    (driver/create-view! driver database-id namespaced-view-name compiled)
-    ;; If former successful
+    (driver/create-view! driver database-id namespaced-view-name* compiled :replace? true)
     (t2/with-transaction [_conn]
-      ;; also shutdown the transaction?
       (t2/update! :model/TransformView :id transform-id
                   {:dataset_query dataset-query
                    :creator_id (:id creator)})
-      ;; TODO: async + analysis
+      ;; TODO (lbrdnk 2025-07-15): Add async analysis.
       (sync/sync-table-metadata! (t2/select-one :model/Table :transform_id transform-id)))))
 
 (defn delete-transform!
@@ -187,12 +190,12 @@
         database-id (:database_id transform)
         database (t2/select-one :model/Database :id database-id)
         driver (driver.u/database->driver database)
-        namespaced-view-name (str/join "." (remove nil? [schema-name view-name]))]
-    (driver/drop-view! driver database-id namespaced-view-name)
+        namespaced-view-name* (namespaced-view-name schema-name view-name)]
+    (driver/drop-view! driver database-id namespaced-view-name*)
     (t2/delete! :model/Table :transform_id id)
     (t2/delete! :model/TransformView :id id)))
 
-;; TODO: pagination, sort, filter, ?perms, table hydration?
+;; TODO (lbrdnk 2025-07-15): pagination, sort, filter, ?perms, table hydration?
 (defn get-transforms
   "Get transforms"
   []
