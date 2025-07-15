@@ -1024,6 +1024,14 @@ export const OffsetBasedTimezone47835 = {
   },
 };
 
+export const NoDimensionColumn54755 = {
+  render: Template,
+  args: {
+    rawSeries: data.noDimensionColumn54755 as any,
+    renderingContext,
+  },
+};
+
 export const BarNonLinearNumericXAxis = {
   render: Template,
   args: {
