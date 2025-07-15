@@ -11,6 +11,7 @@ import {
 } from "metabase/ui";
 
 interface Props extends Omit<ButtonProps, "leftSection"> {
+  children: string;
   icon: IconName;
   showLabel: boolean;
   showIconWithLabel?: boolean;
@@ -37,6 +38,7 @@ export const ResponsiveButton = ({
     <>
       <Tooltip disabled={showLabel} label={children}>
         <Button
+          aria-label={children}
           h={32}
           leftSection={
             showLabel && showIconWithLabel ? <Icon name={icon} /> : undefined
