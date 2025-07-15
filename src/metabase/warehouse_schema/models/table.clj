@@ -132,8 +132,8 @@
 (mu/defmethod mi/visible-filter-clause :model/Table
   [_                  :- :keyword
    column-or-exp      :- :any
-   user-info          :- perms/UserInfo
-   permission-mapping :- perms/PermissionMapping]
+   user-info          :- ::perms/UserInfo
+   permission-mapping :- ::perms/PermissionMapping]
   [:in column-or-exp
    (perms/visible-table-filter-select :id user-info permission-mapping)])
 

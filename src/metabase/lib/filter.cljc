@@ -1,7 +1,8 @@
 (ns metabase.lib.filter
   (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case])
-  (:require [malli.registry :as mr]
+  (:require
    [inflections.core :as inflections]
+   [metabase.util.malli.registry :as mr]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.common :as lib.common]
@@ -431,10 +432,10 @@
 
 (mu/defn filterable-column-operators :- [:maybe [:sequential ::lib.schema.filter/operator]]
   "Returns the operators for which `filterable-column` is applicable."
-  [filterable-column :- ColumnWithOperators]
+  [filterable-column :- ::ColumnWithOperators]
   (:operators filterable-column))
 
-(mu/defn add-column-operators :- ColumnWithOperators
+(mu/defn add-column-operators :- ::ColumnWithOperators
   "Extend the column metadata with the available operators if any."
   [column :- ::lib.schema.metadata/column]
   (let [operators (lib.filter.operator/filter-operators column)]
@@ -448,7 +449,7 @@
     (when (lib.util/ref-clause? leading-arg)
       leading-arg)))
 
-(mu/defn filterable-columns :- [:maybe [:sequential ColumnWithOperators]]
+(mu/defn filterable-columns :- [:maybe [:sequential ::ColumnWithOperators]]
   "Get column metadata for all the columns that can be filtered in
   the stage number `stage-number` of the query `query`
   If `stage-number` is omitted, the last stage is used.
@@ -547,7 +548,7 @@
          (first matching-filters))))))
 
 ;; TODO: Refactor this away - handle legacy refs in `lib.js` and call `lib.equality` from there.
-(mu/defn find-filterable-column-for-legacy-ref :- [:maybe ColumnWithOperators]
+(mu/defn find-filterable-column-for-legacy-ref :- [:maybe ::ColumnWithOperators]
   "Given a legacy `:field` reference, return the filterable [[ColumnWithOperators]] that best fits it."
   ([query legacy-ref]
    (find-filterable-column-for-legacy-ref query -1 legacy-ref))
@@ -564,7 +565,7 @@
    [:lib/type [:= :mbql/filter-parts]]
    [:operator ::lib.schema.filter/operator]
    [:options ::lib.schema.common/options]
-   [:column [:maybe ColumnWithOperators]]
+   [:column [:maybe ::ColumnWithOperators]]
    [:args [:sequential :any]]])
 
 (mu/defn filter-parts :- FilterParts

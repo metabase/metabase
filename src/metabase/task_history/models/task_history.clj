@@ -96,7 +96,7 @@
   "Return all TaskHistory entries, filtered if `filter` is provided, applying `limit` and `offset` if not nil."
   [limit  :- [:maybe ::ms/PositiveInt]
    offset :- [:maybe ::ms/IntGreaterThanOrEqualToZero]
-   params :- [:maybe [:merge FilterParams SortParams]]]
+   params :- [:maybe [:merge ::FilterParams ::SortParams]]]
   (t2/select :model/TaskHistory (merge (params->where params)
                                        (params->order-by params)
                                        (when limit
@@ -106,7 +106,7 @@
 
 (mu/defn total
   "Return count of all, or filtered if `filter` is provided, task history entries."
-  [params :- FilterParams]
+  [params :- ::FilterParams]
   (t2/count :model/TaskHistory ((fnil identity {}) (params->where params))))
 
 (defn unique-tasks

@@ -725,7 +725,7 @@
                limit (take limit))
      :has_more_values has_more_values}))
 
-(mu/defn chain-filter-search :- ms/FieldValuesResult
+(mu/defn chain-filter-search :- ms/::FieldValuesResult
   "Convenience version of `chain-filter` that adds a constraint to only return values of Field with `field-id`
   containing String `query`. Powers the `search/:query` version of the chain filter endpoint."
   [field-id          :- ::ms/PositiveInt

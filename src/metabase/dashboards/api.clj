@@ -1244,7 +1244,7 @@
    _query-params
    {:keys [dashboard_load_id], :as body} :- [:map
                                              [:dashboard_load_id {:optional true} [:maybe ::ms/NonBlankString]]
-                                             [:parameters        {:optional true} [:maybe [:sequential ParameterWithID]]]]]
+                                             [:parameters        {:optional true} [:maybe [:sequential ::ParameterWithID]]]]]
   (with-dashboard-load-id dashboard_load_id
     (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
                        (merge
@@ -1271,7 +1271,7 @@
     pivot-results? :pivot_results}
    :- [:map
        [:parameters    {:optional true} [:maybe [:or
-                                                 [:sequential ParameterWithID]
+                                                 [:sequential ::ParameterWithID]
                                                  ;; support <form> encoded params for backwards compatibility... see
                                                  ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
                                                  ::ms/JSONString]]]
@@ -1304,7 +1304,7 @@
                                                   [:card-id      ::ms/PositiveInt]]
    _query-params
    body :- [:map
-            [:parameters {:optional true} [:maybe [:sequential ParameterWithID]]]]]
+            [:parameters {:optional true} [:maybe [:sequential ::ParameterWithID]]]]]
   (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
                      (merge
                       body

@@ -287,7 +287,7 @@
     [:location LocationPath]
     [:id       ::ms/PositiveInt]]])
 
-(mu/defn- parent :- CollectionWithLocationAndIDOrRoot
+(mu/defn- parent :- ::CollectionWithLocationAndIDOrRoot
   "Fetch the parent Collection of `collection`, or the Root Collection special placeholder object if this is a
   top-level Collection. Note that the `parent` of a `collection` that's in the trash is the collection it was trashed
   *from*."
@@ -304,14 +304,14 @@
 
      ;; To get children of this collection:
      (t2/select Collection :location \"/10/20/30/\")"
-  [{:keys [location], :as collection} :- CollectionWithLocationAndIDOrRoot]
+  [{:keys [location], :as collection} :- ::CollectionWithLocationAndIDOrRoot]
   (if (collection.root/is-root-collection? collection)
     "/"
     (str location (u/the-id collection) "/")))
 
 (mu/defn descendant-ids :- [:maybe [:set ::ms/PositiveInt]]
   "Return a set of IDs of all descendant Collections of a `collection`."
-  [collection :- CollectionWithLocationAndIDOrRoot]
+  [collection :- ::CollectionWithLocationAndIDOrRoot]
   (t2/select-pks-set :model/Collection :location [:like (str (children-location collection) \%)]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -508,7 +508,7 @@
    [:include-archived-items {:optional true} [:enum :only :exclude :all]]
    [:archive-operation-id {:optional true} [:maybe :string]]
    [:permission-level {:optional true} [:enum :read :write]]
-   [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]])
+   [:effective-child-of {:optional true} [:maybe ::CollectionWithLocationAndIDOrRoot]]])
 
 (def ^:private UserScope
   [:map
@@ -848,9 +848,9 @@
                             [:children [:set [:ref ::children]]]]]}}
    [:ref ::children]])
 
-(mu/defn descendants-flat :- [:sequential CollectionWithLocationAndIDOrRoot]
+(mu/defn descendants-flat :- [:sequential ::CollectionWithLocationAndIDOrRoot]
   "Return all descendant collections of a `collection`, including children, grandchildren, and so forth."
-  [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
+  [collection :- ::CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
   (or
    (t2/select [:model/Collection :name :id :location :description]
               {:where (apply
@@ -881,7 +881,7 @@
 
   where each letter represents a Collection, and the arrows represent values of its respective `:children`
   set."
-  [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
+  [collection :- ::CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
   ;; first, fetch all the descendants of the `collection`, and build a map of location -> children. This will be used
   ;; so we can fetch the immediate children of each Collection
   (let [location->children (group-by :location (apply descendants-flat collection additional-honeysql-where-clauses))
@@ -935,7 +935,7 @@
    You can think of this process as 'collapsing' the Collection hierarchy and removing nodes that aren't visible to
    the current User. This needs to be done so we can give a User a way to navigate to nodes that they are allowed to
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
-  [collection :- CollectionWithLocationAndIDOrRoot
+  [collection :- ::CollectionWithLocationAndIDOrRoot
    visibility-config :- CollectionVisibilityConfig
    & additional-honeysql-where-clauses]
   {:select [:id :name :description]
@@ -943,7 +943,7 @@
    :where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
 
 (mu/defn- effective-children* :- [:set (ms/InstanceOf :model/Collection)]
-  [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
+  [collection :- ::CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
   (set (t2/select [:model/Collection :id :name :description]
                   {:where (apply effective-children-where-clause
                                  collection
@@ -973,7 +973,7 @@
   Note that technically these operations could be seen as modifying the parent as well (e.g., moving
   a collection out of a parent collection modifies the parent's content) but it seems confusing if a
   user can't archive a collection they have permissions on because of the parent permissions."
-  [collection :- CollectionWithLocationAndIDOrRoot]
+  [collection :- ::CollectionWithLocationAndIDOrRoot]
   ;; Make sure we're not trying to operate on the Root Collection...
   (when (collection.root/is-root-collection? collection)
     (throw (Exception. (tru "You cannot operate on the Root Collection."))))
@@ -1004,7 +1004,7 @@
   *  C, because by archiving its parent, you are archiving it as well
 
   You do NOT need permissions for A (the parent), as you're not modifying A itself, only removing B from it."
-  [collection :- CollectionWithLocationAndIDOrRoot]
+  [collection :- ::CollectionWithLocationAndIDOrRoot]
   (perms-for-collection-and-descendants collection))
 
 (mu/defn perms-for-moving :- [:set ::perms/PathSchema]
@@ -1025,8 +1025,8 @@
   *  D, because it's the new parent Collection, and moving something into it requires write perms
 
   You do NOT need permissions for A (the current parent), as moving out of a collection doesn't modify the parent."
-  [collection :- CollectionWithLocationAndIDOrRoot
-   new-parent :- CollectionWithLocationAndIDOrRoot]
+  [collection :- ::CollectionWithLocationAndIDOrRoot
+   new-parent :- ::CollectionWithLocationAndIDOrRoot]
   ;; Make sure we're not trying to move the Root Collection...
   (when (collection.root/is-root-collection? collection)
     (throw (Exception. (tru "You cannot move the Root Collection."))))
@@ -1040,14 +1040,14 @@
          (perms-for-collection-and-descendants collection))))
 
 (mu/defn- collection->descendant-ids :- [:maybe [:set ::ms/PositiveInt]]
-  [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
+  [collection :- ::CollectionWithLocationAndIDOrRoot, & additional-conditions]
   (apply t2/select-pks-set :model/Collection
          :location [:like (str (children-location collection) "%")]
          additional-conditions))
 
 (mu/defn archive-collection!
   "Mark a collection as archived, along with all its children."
-  [collection :- CollectionWithLocationAndIDOrRoot]
+  [collection :- ::CollectionWithLocationAndIDOrRoot]
   (api/check-403
    (perms/set-has-full-permissions-for-set?
     @api/*current-user-permissions-set*
@@ -1079,7 +1079,7 @@
 
 (mu/defn unarchive-collection!
   "Mark a collection as unarchived, along with any children that were archived along with the collection."
-  [collection :- CollectionWithLocationAndIDOrRoot
+  [collection :- ::CollectionWithLocationAndIDOrRoot
    ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
    updates :- [:map [:parent_id {:optional true} [:maybe ::ms/PositiveInt]]]]
@@ -1131,7 +1131,7 @@
 
 (mu/defn archive-or-unarchive-collection!
   "Archive or un-archive a collection. When unarchiving, you may need to specify a new `parent_id`."
-  [collection :- CollectionWithLocationAndIDOrRoot
+  [collection :- ::CollectionWithLocationAndIDOrRoot
    ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
    updates :- [:map [:parent_id {:optional true} [:maybe ::ms/PositiveInt]
@@ -1142,7 +1142,7 @@
 
 (mu/defn move-collection!
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
-  [collection :- CollectionWithLocationAndIDOrRoot, new-location :- LocationPath]
+  [collection :- ::CollectionWithLocationAndIDOrRoot, new-location :- LocationPath]
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
         will-be-in-trash? (str/starts-with? new-location (trash-path))]
@@ -1236,7 +1236,7 @@
 (mu/defn- check-changes-allowed-for-personal-collection
   "If we're trying to UPDATE a Personal Collection, make sure the proposed changes are allowed. Personal Collections
   have lots of restrictions -- you can't archive them, for example, nor can you transfer them to other Users."
-  [collection-before-updates :- CollectionWithLocationAndIDOrRoot
+  [collection-before-updates :- ::CollectionWithLocationAndIDOrRoot
    collection-updates        :- :map]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason

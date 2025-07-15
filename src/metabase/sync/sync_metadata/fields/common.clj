@@ -23,22 +23,12 @@
     [:id                             ::lib.schema.id/field]
     [:nested-fields {:optional true} [:set [:ref ::TableMetadataFieldWithID]]]]])
 
-(mr/def ::TableMetadataFieldWithID
-  "Schema for `TableMetadataField` with an included ID of the corresponding Metabase Field object.
-  `our-metadata` is always returned in this format. (The ID is needed in certain places so we know which Fields to
-  retire, and the parent ID of any nested-fields.)"
-  [:ref ::TableMetadataFieldWithID])
-
 (mr/def ::TableMetadataFieldWithOptionalID
   [:merge
    [:ref ::TableMetadataFieldWithID]
    [:map
     [:id {:optional true}            ::lib.schema.id/field]
     [:nested-fields {:optional true} [:set [:ref ::TableMetadataFieldWithOptionalID]]]]])
-
-(mr/def ::TableMetadataFieldWithOptionalID
-  "Schema for either `::i/TableMetadataField` (`db-metadata`) or `TableMetadataFieldWithID` (`our-metadata`)."
-  [:ref ::TableMetadataFieldWithOptionalID])
 
 (mu/defn field-metadata-name-for-logging :- :string
   "Return a 'name for logging' for a map that conforms to the `TableMetadataField` schema.

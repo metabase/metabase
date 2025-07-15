@@ -12,7 +12,7 @@
   "
   (:require
    [clojure.set :as set]
-   [malli.registry :as mr]
+   [metabase.util.malli.registry :as mr]
    [metabase.api.common :as api]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]

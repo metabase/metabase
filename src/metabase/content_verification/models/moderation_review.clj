@@ -1,6 +1,6 @@
 (ns metabase.content-verification.models.moderation-review
   (:require
-   [malli.registry :as mr]
+   [metabase.util.malli.registry :as mr]
    [metabase.app-db.core :as app-db]
    [metabase.content-verification.impl :as moderation]
    [metabase.models.interface :as mi]

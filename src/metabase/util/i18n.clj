@@ -3,10 +3,10 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.i18n.impl :as i18n.impl]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [net.cgrand.macrovich :as macros]
    [potemkin :as p]
    [potemkin.types :as p.types])

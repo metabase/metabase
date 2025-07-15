@@ -35,7 +35,7 @@
   [:map
    [:last-edit-info {:optional true} LastEditInfo]])
 
-(mu/defn with-last-edit-info :- [:maybe [:sequential MaybeAnnotated]]
+(mu/defn with-last-edit-info :- [:maybe [:sequential ::MaybeAnnotated]]
   "Add the last edited information to a card. Will add a key `:last-edit-info`. Model should be one of `:dashboard` or
   `:card`. Gets the last edited information from the revisions table. If you need this information from a put route,
   use `@api/*current-user*` and a current timestamp since revisions are events and asynchronous."

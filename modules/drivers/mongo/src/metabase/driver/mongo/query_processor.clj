@@ -1,12 +1,13 @@
 (ns metabase.driver.mongo.query-processor
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
-  (:require [malli.registry :as mr]
+  (:require
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
+   [metabase.util.malli.registry :as mr]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -20,8 +21,8 @@
                                             $multiply $ne $not $or $project
                                             $regexMatch $second
                                             $setWindowFields $size $skip $sort
-                                            $strcasecmp $subtract $sum
-                                            $toBool $toLower $unwind $year]]
+                                            $strcasecmp $subtract $sum $toBool
+                                            $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]

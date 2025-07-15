@@ -1,6 +1,6 @@
 (ns metabase.search.config
   (:require
-   [malli.registry :as mr]
+   [metabase.util.malli.registry :as mr]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.settings :as search.settings]

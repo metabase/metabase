@@ -134,7 +134,7 @@
   [_route-params
    _query-params
    {:keys [model model_id]} :- [:map
-                                [:model    cache-config/CachingModel]
+                                [:model    ::cache-config/CachingModel]
                                 [:model_id (ms/QueryVectorOf ::ms/IntGreaterThanOrEqualToZero)]]]
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
   (doseq [id model_id] (check-cache-access model id))

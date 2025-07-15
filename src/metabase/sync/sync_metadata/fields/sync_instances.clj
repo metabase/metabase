@@ -150,7 +150,7 @@
   "Mark an `old-field` belonging to `table` as inactive if corresponding Field object exists. Does *NOT* recurse over
   nested Fields. Returns `1` if a Field was marked inactive, `nil` otherwise."
   [table          :- ::i/TableInstance
-   metabase-field :- common/TableMetadataFieldWithID]
+   metabase-field :- ::common/TableMetadataFieldWithID]
   (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field))
   (when (pos? (t2/update! :model/Field (u/the-id metabase-field) {:active false}))
     1))
@@ -161,7 +161,7 @@
   Returns `1` if a Field was marked inactive."
   [table        :- ::i/TableInstance
    db-metadata  :- [:set ::i/TableMetadataField]
-   our-metadata :- [:set common/TableMetadataFieldWithID]]
+   our-metadata :- [:set ::common/TableMetadataFieldWithID]]
   ;; retire all the Fields not present in `db-metadata`, and count how many rows were actually affected
   (sync-util/sum-for [metabase-field our-metadata
                       :when          (not (common/matching-field-metadata metabase-field db-metadata))]
@@ -180,7 +180,7 @@
   `field-metadata` (from synced DB) and `metabase-field` (from application DB)."
   [table          :- ::i/TableInstance
    field-metadata :- [:maybe ::i/TableMetadataField]
-   metabase-field :- [:maybe common/TableMetadataFieldWithID]]
+   metabase-field :- [:maybe ::common/TableMetadataFieldWithID]]
   (let [nested-fields-metadata (:nested-fields field-metadata)
         metabase-nested-fields (:nested-fields metabase-field)]
     (when (or (seq nested-fields-metadata)
@@ -197,7 +197,7 @@
   Not for the flattened nested fields for JSON columns in normal RDBMSes (nested field columns)"
   [table        :- ::i/TableInstance
    db-metadata  :- [:set ::i/TableMetadataField]
-   our-metadata :- [:set common/TableMetadataFieldWithID]]
+   our-metadata :- [:set ::common/TableMetadataFieldWithID]]
   (let [name->field-metadata (m/index-by common/canonical-name db-metadata)
         name->metabase-field (m/index-by common/canonical-name our-metadata)
         all-field-names      (set (concat (keys name->field-metadata)
@@ -212,12 +212,12 @@
   creating Field objects or marking them active/inactive as needed."
   ([table        :- ::i/TableInstance
     db-metadata  :- [:set ::i/TableMetadataField]
-    our-metadata :- [:set common/TableMetadataFieldWithID]]
+    our-metadata :- [:set ::common/TableMetadataFieldWithID]]
    (sync-instances! table db-metadata our-metadata nil))
 
   ([table        :- ::i/TableInstance
     db-metadata  :- [:set ::i/TableMetadataField]
-    our-metadata :- [:set common/TableMetadataFieldWithID]
+    our-metadata :- [:set ::common/TableMetadataFieldWithID]
     parent-id    :- ::common/ParentID]
    ;; syncing the active instances makes important changes to `our-metadata` that need to be passed to recursive
    ;; calls, such as adding new Fields or making inactive ones active again. Keep updated version returned by

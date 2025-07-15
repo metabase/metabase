@@ -119,14 +119,14 @@
   want the least restrict permission value."
   [:map-of
    ::data-perms/PermissionType
-   [:or ::data-perms/PermissionValue [:tuple data-perms/PermissionValue [:enum :most :least]]]])
+   [:or ::data-perms/PermissionValue [:tuple ::data-perms/PermissionValue [:enum :most :least]]]])
 
 (mu/defn visible-table-filter-select
   "Selects a column from tables that are visible to the provided user given a mapping of permission types to the required value or the required
   value and a directive if we should test against the most or least permissive permission the user has."
   [select-column                   :- [:enum :id :db_id]
-   {:keys [user-id is-superuser?]} :- UserInfo
-   permission-mapping              :- PermissionMapping]
+   {:keys [user-id is-superuser?]} :- ::UserInfo
+   permission-mapping              :- ::PermissionMapping]
   {:select [(case select-column
               :id :mt.id
               :db_id :mt.db_id)]
@@ -142,8 +142,8 @@
 (mu/defn select-tables-and-groups-granting-perm
   "Selects table.id and the group.id of all permissions groups that give the provided user the provided permission level or a
   permission level either more or less restrictive than the supplied level."
-  [{:keys [user-id is-superuser?]} :- UserInfo
-   permission-mapping              :- PermissionMapping]
+  [{:keys [user-id is-superuser?]} :- ::UserInfo
+   permission-mapping              :- ::PermissionMapping]
   {:select [:mt.id :dp.group_id :dp.perm_type :dp.perm_value]
    :from   [[:metabase_table :mt]]
    :join   [[:data_permissions :dp] [:or

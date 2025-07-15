@@ -38,7 +38,7 @@
    [:description     {:optional true} [:maybe :string]]
    [:display         {:optional true} [:maybe :string]]])
 
-(mu/defn- normalize-bookmark-result :- BookmarkResult
+(mu/defn- normalize-bookmark-result :- ::BookmarkResult
   "Normalizes bookmark results. Bookmarks are left joined against the card, collection, and dashboard tables, but only
   points to one of them. Normalizes it so it has just the desired fields."
   [result]
@@ -84,7 +84,7 @@
                   :from   [:collection_bookmark]
                   :where  [:= :user_id user-id]}]}))
 
-(mu/defn bookmarks-for-user :- [:sequential BookmarkResult]
+(mu/defn bookmarks-for-user :- [:sequential ::BookmarkResult]
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and
   item_id, name, and description from the underlying bookmarked item."
   [user-id]

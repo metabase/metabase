@@ -162,7 +162,7 @@
     (are [schema] (not (me/humanize (mr/explain schema value)))
       mbql.s/value
       @#'mbql.s/EqualityComparable
-      [:or mbql.s/absolute-datetime mbql.s/value])))
+      [:or ::mbql.s/absolute-datetime mbql.s/value])))
 
 (deftest ^:parallel expression-value-wrapped-literals-test
   (are [value] (not (me/humanize (mr/explain ::mbql.s/MBQLQuery
@@ -194,10 +194,10 @@
 (deftest ^:parallel or-test
   (are [schema expected] (= expected
                             (mu.humanize/humanize (mr/explain schema [:value "192.168.1.1" {:base_type :type/FK}])))
-    mbql.s/absolute-datetime
+    ::mbql.s/absolute-datetime
     "not an :absolute-datetime clause"
 
-    [:or mbql.s/absolute-datetime]
+    [:or ::mbql.s/absolute-datetime]
     "not an :absolute-datetime clause"
 
     mbql.s/value
@@ -206,7 +206,7 @@
     [:or mbql.s/value]
     [nil nil {:base_type "Not a valid base type: :type/FK"}]
 
-    [:or mbql.s/absolute-datetime :string mbql.s/value]
+    [:or ::mbql.s/absolute-datetime :string mbql.s/value]
     ["not an :absolute-datetime clause"
      "should be a string"
      [nil nil {:base_type "Not a valid base type: :type/FK"}]]))

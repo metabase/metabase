@@ -24,7 +24,7 @@
   [collection-or-id :- ::MapOrID]
   (str (collection-readwrite-path collection-or-id) "read/"))
 
-(mu/defn application-perms-path :- perms.u/PathSchema
+(mu/defn application-perms-path :- perms.u/::PathSchema
   "Returns the permissions path for *full* access a application permission."
   [perm-type]
   (case perm-type

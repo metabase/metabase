@@ -51,7 +51,7 @@
   "Search for a LDAP user with `username`."
   [ldap-connection                 :- (ms/InstanceOfClass LDAPConnectionPool)
    username                        :- ::ms/NonBlankString
-   {:keys [user-base user-filter]} :- LDAPSettings]
+   {:keys [user-base user-filter]} :- ::LDAPSettings]
   (let [options {:scope      :sub
                  :filter     (str/replace user-filter filter-placeholder (Filter/encodeValue ^String username))
                  :size-limit 1}]
@@ -83,7 +83,7 @@
   [ldap-connection         :- (ms/InstanceOfClass LDAPConnectionPool)
    dn                      :- ::ms/NonBlankString
    uid                     :- [:maybe ::ms/NonBlankString]
-   {:keys [group-base]}    :- LDAPSettings
+   {:keys [group-base]}    :- ::LDAPSettings
    group-membership-filter :- ::ms/NonBlankString]
   (when group-base
     (let [results (ldap/search
@@ -93,7 +93,7 @@
                     :filter (process-group-membership-filter group-membership-filter dn uid)})]
       (map :dn results))))
 
-(mu/defn ldap-search-result->user-info :- [:maybe UserInfo]
+(mu/defn ldap-search-result->user-info :- [:maybe ::UserInfo]
   "Convert the result "
   [ldap-connection               :- (ms/InstanceOfClass LDAPConnectionPool)
    {:keys [dn uid], :as result}  :- :map
@@ -101,7 +101,7 @@
            last-name-attribute
            email-attribute
            sync-groups?]
-    :as   settings}              :- LDAPSettings
+    :as   settings}              :- ::LDAPSettings
    group-membership-filter       :- ::ms/NonBlankString]
   (let [{first-name (keyword first-name-attribute)
          last-name  (keyword last-name-attribute)
@@ -117,12 +117,12 @@
                        (user-groups ldap-connection dn uid settings group-membership-filter)
                        []))}))
 
-(defenterprise-schema find-user :- [:maybe UserInfo]
+(defenterprise-schema find-user :- [:maybe ::UserInfo]
   "Get user information for the supplied username."
   metabase-enterprise.sso.integrations.ldap
   [ldap-connection :- (ms/InstanceOfClass LDAPConnectionPool)
    username        :- ::ms/NonBlankString
-   settings        :- LDAPSettings]
+   settings        :- ::LDAPSettings]
   (when-let [result (search ldap-connection username settings)]
     (ldap-search-result->user-info ldap-connection result settings group-membership-filter)))
 
@@ -131,7 +131,7 @@
 (mu/defn ldap-groups->mb-group-ids :- [:set ::ms/PositiveInt]
   "Translate a set of a user's group DNs to a set of MB group IDs using the configured mappings."
   [ldap-groups              :- [:maybe [:sequential ::ms/NonBlankString]]
-   {:keys [group-mappings]} :- [:select-keys LDAPSettings [:group-mappings]]]
+   {:keys [group-mappings]} :- [:select-keys ::LDAPSettings [:group-mappings]]]
   (-> group-mappings
       (select-keys (map #(DN. (str %)) ldap-groups))
       vals
@@ -140,7 +140,7 @@
 
 (mu/defn all-mapped-group-ids :- [:set ::ms/PositiveInt]
   "Returns the set of all MB group IDs that have configured mappings."
-  [{:keys [group-mappings]} :- [:select-keys LDAPSettings [:group-mappings]]]
+  [{:keys [group-mappings]} :- [:select-keys ::LDAPSettings [:group-mappings]]]
   (-> group-mappings
       vals
       flatten
@@ -149,8 +149,8 @@
 (defenterprise-schema fetch-or-create-user! :- (ms/InstanceOf :model/User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   metabase-enterprise.sso.integrations.ldap
-  [{:keys [first-name last-name email groups]} :- UserInfo
-   {:keys [sync-groups?], :as settings}        :- LDAPSettings]
+  [{:keys [first-name last-name email groups]} :- ::UserInfo
+   {:keys [sync-groups?], :as settings}        :- ::LDAPSettings]
   (let [user     (t2/select-one [:model/User :id :last_login :first_name :last_name :is_active]
                                 :%lower.email (u/lower-case-en email))
         new-user (if user

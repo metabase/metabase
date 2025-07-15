@@ -48,7 +48,7 @@
    [:sql-string   :string]
    [:param-values [:maybe [:sequential :any]]]])
 
-(mu/defn make-stmt-subs :- PreparedStatementSubstitution
+(mu/defn make-stmt-subs :- ::PreparedStatementSubstitution
   "Create a `PreparedStatementSubstitution` map for `sql-string` and the `param-seq`"
   [sql-string param-seq]
   {:sql-string   sql-string
@@ -61,31 +61,31 @@
         [snippet & args] (sql.qp/format-honeysql driver honeysql)]
     (make-stmt-subs snippet args)))
 
-(mu/defmethod ->prepared-substitution [:sql nil] :- PreparedStatementSubstitution
+(mu/defmethod ->prepared-substitution [:sql nil] :- ::PreparedStatementSubstitution
   [driver _]
   (honeysql->prepared-stmt-subs driver nil))
 
-(mu/defmethod ->prepared-substitution [:sql Object] :- PreparedStatementSubstitution
+(mu/defmethod ->prepared-substitution [:sql Object] :- ::PreparedStatementSubstitution
   [driver obj]
   (honeysql->prepared-stmt-subs driver (str obj)))
 
-(mu/defmethod ->prepared-substitution [:sql Number] :- PreparedStatementSubstitution
+(mu/defmethod ->prepared-substitution [:sql Number] :- ::PreparedStatementSubstitution
   [driver num]
   (honeysql->prepared-stmt-subs driver num))
 
-(mu/defmethod ->prepared-substitution [:sql Boolean] :- PreparedStatementSubstitution
+(mu/defmethod ->prepared-substitution [:sql Boolean] :- ::PreparedStatementSubstitution
   [driver b]
   (honeysql->prepared-stmt-subs driver b))
 
-(mu/defmethod ->prepared-substitution [:sql Keyword] :- PreparedStatementSubstitution
+(mu/defmethod ->prepared-substitution [:sql Keyword] :- ::PreparedStatementSubstitution
   [driver kwd]
   (honeysql->prepared-stmt-subs driver kwd))
 
-(mu/defmethod ->prepared-substitution [:sql Date] :- PreparedStatementSubstitution
+(mu/defmethod ->prepared-substitution [:sql Date] :- ::PreparedStatementSubstitution
   [_driver date]
   (make-stmt-subs "?" [date]))
 
-(mu/defmethod ->prepared-substitution [:sql Temporal] :- PreparedStatementSubstitution
+(mu/defmethod ->prepared-substitution [:sql Temporal] :- ::PreparedStatementSubstitution
   [driver t]
   (honeysql->prepared-stmt-subs driver t))
 

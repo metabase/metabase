@@ -486,7 +486,7 @@
   [:merge
    TimedSyncMetadata
    [:map
-    [:steps [:maybe [:sequential StepNameWithMetadata]]]]])
+    [:steps [:maybe [:sequential ::StepNameWithMetadata]]]]])
 
 (def ^:private LogSummaryFunction
   "A log summary function takes a `StepRunMetadata` and returns a string with a step-specific log message"
@@ -510,7 +510,7 @@
     :log-summary-fn (when log-summary-fn
                       (comp str log-summary-fn))}))
 
-(mu/defn- run-step-with-metadata :- StepNameWithMetadata
+(mu/defn- run-step-with-metadata :- ::StepNameWithMetadata
   "Runs `step` on `database` returning metadata from the run"
   [database :- ::i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition]

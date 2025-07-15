@@ -2,7 +2,7 @@
   "Utility functions used by the Queries in metabase-lib."
   (:require
    #?@(:cljs ([metabase.xrays.domain-entities.converters :as converters]))
-   [malli.registry :as mr]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli :as mu]))
 
 (mr/def ::Expression

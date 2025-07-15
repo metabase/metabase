@@ -183,7 +183,7 @@
   [database     :- ::i/DatabaseInstance
    table        :- ::i/TableInstance
    db-metadata  :- [:set ::i/TableMetadataField]
-   our-metadata :- [:set common/TableMetadataFieldWithID]]
+   our-metadata :- [:set ::common/TableMetadataFieldWithID]]
   (sync-util/sum-for [metabase-field our-metadata]
     ;; only update metadata for 'existing' Fields that are present in our Metadata (i.e., present in the application
     ;; database) and that are still considered active (i.e., present in DB metadata)

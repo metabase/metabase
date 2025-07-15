@@ -416,19 +416,19 @@
                                                               (with-join-alias field join-alias)))))
           conditions)))
 
-(mu/defn with-join-conditions :- lib.join.util/PartialJoin
+(mu/defn with-join-conditions :- ::lib.join.util/PartialJoin
   "Update the `:conditions` (filters) for a Join clause."
   {:style/indent [:form]}
-  [a-join     :- lib.join.util/PartialJoin
+  [a-join     :- ::lib.join.util/PartialJoin
    conditions :- [:maybe [:sequential [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]]]]
   (let [conditions (-> (mapv lib.common/->op-arg conditions)
                        (with-join-conditions-add-alias-to-rhses (lib.join.util/current-join-alias a-join)))]
     (u/assoc-dissoc a-join :conditions (not-empty conditions))))
 
-(mu/defn with-join-fields :- lib.join.util/PartialJoin
+(mu/defn with-join-fields :- ::lib.join.util/PartialJoin
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
   references."
-  [joinable :- lib.join.util/PartialJoin
+  [joinable :- ::lib.join.util/PartialJoin
    fields   :- [:maybe [:or [:enum :all :none] [:sequential some?]]]]
   (let [fields (cond
                  (keyword? fields) fields
@@ -604,12 +604,12 @@
 
 (mu/defn join-conditions :- [:maybe ::lib.schema.join/conditions]
   "Get all join conditions for the given join"
-  [a-join :- lib.join.util/PartialJoin]
+  [a-join :- ::lib.join.util/PartialJoin]
   (:conditions a-join))
 
 (mu/defn join-fields :- [:maybe ::lib.schema.join/fields]
   "Get all join conditions for the given join"
-  [a-join :- lib.join.util/PartialJoin]
+  [a-join :- ::lib.join.util/PartialJoin]
   (:fields a-join))
 
 (defn- raw-join-strategy->strategy-option [raw-strategy]
@@ -622,18 +622,18 @@
 (mu/defn raw-join-strategy :- ::lib.schema.join/strategy
   "Get the raw keyword strategy (type) of a given join, e.g. `:left-join` or `:right-join`. This is either the value
   of the optional `:strategy` key or the default, `:left-join`, if `:strategy` is not specified."
-  [a-join :- lib.join.util/PartialJoin]
+  [a-join :- ::lib.join.util/PartialJoin]
   (get a-join :strategy :left-join))
 
 (mu/defn join-strategy :- ::lib.schema.join/strategy.option
   "Get the strategy (type) of a given join, as a `:option/join.strategy` map. If `:stategy` is unspecified, returns
   the default, left join."
-  [a-join :- lib.join.util/PartialJoin]
+  [a-join :- ::lib.join.util/PartialJoin]
   (raw-join-strategy->strategy-option (raw-join-strategy a-join)))
 
-(mu/defn with-join-strategy :- lib.join.util/PartialJoin
+(mu/defn with-join-strategy :- ::lib.join.util/PartialJoin
   "Return a copy of `a-join` with its `:strategy` set to `strategy`."
-  [a-join   :- lib.join.util/PartialJoin
+  [a-join   :- ::lib.join.util/PartialJoin
    strategy :- [:or ::lib.schema.join/strategy ::lib.schema.join/strategy.option]]
   ;; unwrap the strategy to a raw keyword if needed.
   (assoc a-join :strategy (cond-> strategy
@@ -654,7 +654,7 @@
                (map raw-join-strategy->strategy-option))
          [:left-join :right-join :inner-join :full-join])))
 
-(mu/defn join-clause :- lib.join.util/PartialJoin
+(mu/defn join-clause :- ::lib.join.util/PartialJoin
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
   Saved Question? You should be able to join anything, and this should return a sensible MBQL join map. Uses a left join
   by default."
@@ -683,7 +683,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    a-join       :- [:or lib.join.util/PartialJoin Joinable]]
+    a-join       :- [:or ::lib.join.util/PartialJoin Joinable]]
    (let [a-join              (join-clause a-join)
          suggested-conditions (when (empty? (join-conditions a-join))
                                 (suggested-join-conditions query stage-number (joined-thing query a-join)))
@@ -699,7 +699,7 @@
 (mu/defn joined-thing :- [:maybe Joinable]
   "Return metadata about the origin of `a-join` using `metadata-providerable` as the source of information."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   a-join                :- lib.join.util/PartialJoin]
+   a-join                :- ::lib.join.util/PartialJoin]
   (let [origin (-> a-join :stages first)]
     (cond
       (:source-card origin)  (lib.metadata/card metadata-providerable (:source-card origin))

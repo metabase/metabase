@@ -4,7 +4,7 @@
    [buddy.core.hash :as buddy-hash]
    [buddy.core.nonce :as nonce]
    [clojure.core.memoize :as memo]
-   [malli.registry :as mr]
+   [metabase.util.malli.registry :as mr]
    [metabase.events.core :as events]
    [metabase.login-history.core :as login-history]
    [metabase.request.core :as request]

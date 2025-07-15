@@ -131,7 +131,9 @@
 
 (lib.hierarchy/derive :metric ::ref)
 
-(defn ref-def [[tag :as _clause]]
+(defn ref-def
+  "extracted function for fn schema for `::ref`"
+  [[tag :as _clause]]
   (lib.hierarchy/isa? tag ::ref))
 
 (mr/def ::ref

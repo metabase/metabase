@@ -1,7 +1,7 @@
 (ns metabase.queries.api.card
   "/api/card endpoints."
   (:require
-   [malli.registry :as mr]
+   [metabase.util.malli.registry :as mr]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]

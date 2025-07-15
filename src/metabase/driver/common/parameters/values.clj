@@ -194,7 +194,7 @@
 
 (mu/defmethod parse-tag :dimension :- [:maybe FieldFilter]
   [{field-filter :dimension, :as tag} :- mbql.s/TemplateTag
-   params                             :- [:maybe [:sequential mbql.s/Parameter]]]
+   params                             :- [:maybe [:sequential ::mbql.s/Parameter]]]
   (params/map->FieldFilter
    {:field (let [field-id (field-filter->field-id field-filter)]
              (or (lib.metadata/field (qp.store/metadata-provider) field-id)
@@ -284,7 +284,7 @@
 (mu/defn- param-value-for-raw-value-tag
   "Get the value that should be used for a raw value (i.e., non-Field filter) template tag from `params`."
   [tag    :- mbql.s/TemplateTag
-   params :- [:maybe [:sequential mbql.s/Parameter]]]
+   params :- [:maybe [:sequential ::mbql.s/Parameter]]]
   (let [matching-param (when-let [matching-params (not-empty (tag-params tag params))]
                          ;; double-check and make sure we didn't end up with multiple mappings or something crazy like that.
                          (when (> (count matching-params) 1)
@@ -420,7 +420,7 @@
   "Given a map `tag` (a value in the `:template-tags` dictionary) return the corresponding value from the `params`
    sequence. The `value` is something that can be compiled to SQL via `->replacement-snippet-info`."
   [tag    :- mbql.s/TemplateTag
-   params :- [:maybe [:sequential mbql.s/Parameter]]]
+   params :- [:maybe [:sequential ::mbql.s/Parameter]]]
   (try
     (parse-value-for-type (:type tag) (parse-tag tag params))
     (catch Throwable e

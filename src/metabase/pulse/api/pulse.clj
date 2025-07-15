@@ -358,7 +358,7 @@
    _query-params
    {:keys [cards channels] :as body} :- [:map
                                          [:name                ::ms/NonBlankString]
-                                         [:cards               [:+ models.pulse/CoercibleToCardRef]]
+                                         [:cards               [:+ ::models.pulse/CoercibleToCardRef]]
                                          [:channels            [:+ :map]]
                                          [:skip_if_empty       {:default false} [:maybe :boolean]]
                                          [:collection_id       {:optional true} [:maybe ::ms/PositiveInt]]

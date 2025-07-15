@@ -18,18 +18,10 @@
    [:description             {:optional true} [:maybe :string]]
    [:visibility_type         {:optional true} [:maybe :string]]])
 
-(mr/def ::DatabaseMetadataTable
-  "Schema for the expected output of `describe-database` for a Table."
-  [:ref ::DatabaseMetadataTable])
-
 (mr/def ::DatabaseMetadata
   [:map
-   [:tables [:set DatabaseMetadataTable]]
+   [:tables [:set ::DatabaseMetadataTable]]
    [:version {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
-
-(mr/def ::DatabaseMetadata
-  "Schema for the expected output of `describe-database`."
-  [:ref ::DatabaseMetadata])
 
 (mr/def ::TableMetadataField
   [:map
@@ -53,10 +45,6 @@
    [:database-required          {:optional true} :boolean]
    [:visibility-type            {:optional true} [:maybe :keyword]]])
 
-(mr/def ::TableMetadataField
-  "Schema for a given Field as provided in [[metabase.driver/describe-table]]."
-  [:ref ::TableMetadataField])
-
 (mr/def ::TableIndexMetadata
   [:set
    [:and
@@ -65,29 +53,16 @@
     [:multi {:dispatch :type}
      [:normal-column-index [:map [:value ::lib.schema.common/non-blank-string]]]
      [:nested-column-index [:map [:value [:sequential ::lib.schema.common/non-blank-string]]]]]]])
-
-(mr/def ::TableIndexMetadata
-  "Schema for a given Table as provided in [[metabase.driver/describe-table-indexes]]."
-  [:ref ::TableIndexMetadata])
-
 (mr/def ::FieldIndexMetadata
   [:map
    [:table-schema [:maybe ::lib.schema.common/non-blank-string]]
    [:table-name   ::lib.schema.common/non-blank-string]
    [:field-name   ::lib.schema.common/non-blank-string]])
 
-(mr/def ::FieldIndexMetadata
-  "Schema for a given result provided by [[metabase.driver/describe-indexes]]."
-  [:ref ::FieldIndexMetadata])
-
 (mr/def ::FieldMetadataEntry
   (-> (mr/schema ::TableMetadataField)
       (mut/assoc :table-schema [:maybe ::lib.schema.common/non-blank-string])
       (mut/assoc :table-name   ::lib.schema.common/non-blank-string)))
-
-(mr/def ::FieldMetadataEntry
-  "Schema for an item in the expected output of [[metabase.driver/describe-fields]]."
-  [:ref ::FieldMetadataEntry])
 
 ;;; not actually used; leaving here for now because it serves as documentation
 (comment
@@ -141,19 +116,11 @@
    (ms/InstanceOf :model/Table)
    ::no-kebab-case-keys])
 
-(mr/def ::TableInstance
-  "Schema for a valid instance of a Metabase Table."
-  [:ref ::TableInstance])
-
 (mr/def ::FieldInstance
   [:and
    [:and
     (ms/InstanceOf :model/Field)
     ::no-kebab-case-keys]])
-
-(mr/def ::FieldInstance
-  "Schema for a valid instance of a Metabase Field."
-  [:ref ::FieldInstance])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             FINGERPRINT VERSIONING                                             |

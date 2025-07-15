@@ -188,10 +188,10 @@
       (when-let [source-query (:source-query inner-query)]
         (has-window-function-aggregations? source-query))))
 
-(mu/defn- add-implicit-breakout-order-by :- mbql.s/MBQLQuery
+(mu/defn- add-implicit-breakout-order-by :- ::mbql.s/MBQLQuery
   "Fields specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that Field is already
   *explicitly* referenced in `order-by`."
-  [inner-query :- mbql.s/MBQLQuery]
+  [inner-query :- ::mbql.s/MBQLQuery]
   ;; Add a new [:asc <breakout-field>] clause for each breakout. The cool thing is `add-order-by-clause` will
   ;; automatically ignore new ones that are reference Fields already in the order-by clause
   (let [{breakouts :breakout, :as inner-query} (fix-order-by-field-refs inner-query)]

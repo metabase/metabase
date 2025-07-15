@@ -31,7 +31,6 @@
    [clojure.set :as set]
    [colorize.core :as colorize]
    [java-time.api :as t]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]

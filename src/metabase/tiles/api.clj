@@ -161,7 +161,7 @@
   [:map
    [:zoom      ::ms/Int]
    [:x         ::ms/Int]
-   [:y         ms/Int]
+   [:y         ::ms/Int]
    [:lat-field :string]
    [:lon-field :string]])
 

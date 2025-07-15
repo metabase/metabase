@@ -290,7 +290,7 @@
    [:last_name        {:optional true} [:maybe ::ms/NonBlankString]]
    [:email                             ::ms/Email]
    [:password         {:optional true} [:maybe ::ms/NonBlankString]]
-   [:login_attributes {:optional true} [:maybe LoginAttributes]]
+   [:login_attributes {:optional true} [:maybe ::LoginAttributes]]
    [:sso_source       {:optional true} [:maybe ::ms/NonBlankString]]
    [:locale           {:optional true} [:maybe ::ms/KeywordOrString]]
    [:type             {:optional true} [:maybe ::ms/KeywordOrString]]])
@@ -303,7 +303,7 @@
 
 (mu/defn insert-new-user!
   "Creates a new user, defaulting the password when not provided"
-  [new-user :- NewUser]
+  [new-user :- ::NewUser]
   (t2/insert-returning-instance! :model/User (update new-user :password #(or % (str (random-uuid))))))
 
 (defn serdes-synthesize-user!
@@ -316,7 +316,7 @@
   "Convenience function for inviting a new `User` and sending them a welcome email.
   This function will create the user, which will trigger the built-in system event
   notification to send an invite via email."
-  [new-user :- NewUser invitor :- Invitor setup? :- :boolean]
+  [new-user :- ::NewUser invitor :- Invitor setup? :- :boolean]
   ;; create the new user
   (u/prog1 (insert-new-user! new-user)
     ;; TODO make sure the email being sent synchronously.
@@ -332,7 +332,7 @@
 (mu/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
-  [new-user :- NewUser]
+  [new-user :- ::NewUser]
   (u/prog1 (insert-new-user! (assoc new-user :sso_source "google"))
     ;; send an email to everyone including the site admin if that's set
     (when (setting/get :send-new-sso-user-admin-email?)
@@ -342,7 +342,7 @@
 (mu/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
   will receive an email right away."
-  [new-user :- NewUser]
+  [new-user :- ::NewUser]
   (insert-new-user!
    (-> new-user
        ;; We should not store LDAP passwords

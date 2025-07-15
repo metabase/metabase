@@ -1,7 +1,7 @@
 (ns metabase.xrays.domain-entities.specs
   (:require
    [malli.core :as mc]
-   [malli.registry :as mr]
+   [metabase.util.malli.registry :as mr]
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]

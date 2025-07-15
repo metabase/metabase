@@ -63,7 +63,7 @@
 (mu/defn- add-source-metadata :- [:map
                                   [:source-metadata
                                    {:optional true}
-                                   [:maybe [:sequential mbql.s/SourceQueryMetadata]]]]
+                                   [:maybe [:sequential ::mbql.s/SourceQueryMetadata]]]]
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query} :- :map]
   (let [metadata ((if native-source-query?
                     native-source-query->metadata

@@ -1,7 +1,7 @@
 (ns metabase.xrays.domain-entities.core
   (:require
    [clojure.string :as str]
-   [malli.registry :as mr]
+   [metabase.util.malli.registry :as mr]
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]

@@ -39,7 +39,7 @@
      :xform    ...}"
   (:require
    [clojure.data :as data]
-   [malli.registry :as mr]
+   [metabase.util.malli.registry :as mr]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
