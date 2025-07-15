@@ -39,10 +39,12 @@ const StaticQuestionInner = ({
     withDownloads={withDownloads}
   >
     <Stack gap="sm">
-      <Group justify="space-between">
-        {withChartTypeSelector && <InteractiveQuestion.ChartTypeDropdown />}
-        {withDownloads && <InteractiveQuestion.DownloadWidgetDropdown />}
-      </Group>
+      {(withChartTypeSelector || withDownloads) && (
+        <Group justify="space-between">
+          {withChartTypeSelector && <InteractiveQuestion.ChartTypeDropdown />}
+          {withDownloads && <InteractiveQuestion.DownloadWidgetDropdown />}
+        </Group>
+      )}
       <InteractiveQuestion.QuestionVisualization
         height={height}
         width={width}
