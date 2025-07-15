@@ -22,7 +22,7 @@ export const useResponsiveButtons = ({
   const requiredWidth = getRequiredWidth();
   const isWidthInitialized =
     sortingButtonWidth + syncButtonWidth + doneButtonWidth > 0;
-  const showButtonLabels = isWidthInitialized
+  const showButtonLabel = isWidthInitialized
     ? buttonsContainerWidth >= requiredWidth
     : true;
 
@@ -50,9 +50,9 @@ export const useResponsiveButtons = ({
 
   return {
     buttonsContainerRef,
-    showButtonLabels,
+    showButtonLabel,
+    setDoneButtonWidth,
     setSortingButtonWidth,
     setSyncButtonWidth,
-    setDoneButtonWidth,
   };
 };

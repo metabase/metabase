@@ -42,10 +42,10 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const {
     buttonsContainerRef,
-    showButtonLabels,
+    showButtonLabel,
+    setDoneButtonWidth,
     setSortingButtonWidth,
     setSyncButtonWidth,
-    setDoneButtonWidth,
   } = useResponsiveButtons({
     hasFields,
     isSorting,
@@ -180,7 +180,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
               {!isSorting && hasFields && (
                 <ResponsiveButton
                   icon="sort_arrows"
-                  showLabel={showButtonLabels}
+                  showLabel={showButtonLabel}
                   onClick={() => setIsSorting(true)}
                   onRequestWidth={setSortingButtonWidth}
                 >{t`Sorting`}</ResponsiveButton>
@@ -189,7 +189,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
               {!isSorting && (
                 <ResponsiveButton
                   icon="gear_settings_filled"
-                  showLabel={showButtonLabels}
+                  showLabel={showButtonLabel}
                   onClick={onSyncOptionsClick}
                   onRequestWidth={setSyncButtonWidth}
                 >{t`Sync options`}</ResponsiveButton>
@@ -205,7 +205,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
               {isSorting && (
                 <ResponsiveButton
                   icon="check"
-                  showLabel={showButtonLabels}
+                  showLabel={showButtonLabel}
                   showIconWithLabel={false}
                   onClick={() => setIsSorting(false)}
                   onRequestWidth={setDoneButtonWidth}

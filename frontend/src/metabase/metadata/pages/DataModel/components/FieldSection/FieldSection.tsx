@@ -1,5 +1,4 @@
-import { useElementSize } from "@mantine/hooks";
-import { memo, useState } from "react";
+import { memo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
@@ -18,9 +17,9 @@ import { DataSection } from "./DataSection";
 import S from "./FieldSection.module.css";
 import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
+import { useResponsiveButtons } from "./hooks";
 
 const OUTLINE_SAFETY_MARGIN = 2;
-const BUTTONS_GAP = 16;
 
 interface Props {
   databaseId: DatabaseId;
@@ -42,25 +41,12 @@ const FieldSectionBase = ({
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
-  const { ref: buttonsContainerRef, width: buttonsContainerWidth } =
-    useElementSize();
-  const [previewButtonWidth, setPreviewButtonWidth] = useState(0);
-  const [fieldValuesButtonWidth, setFieldValuesButtonWidth] = useState(0);
-  const requiredWidth = getRequiredWidth();
-  const isWidthInitialized = previewButtonWidth + fieldValuesButtonWidth > 0;
-  const showButtonLabels = isWidthInitialized
-    ? buttonsContainerWidth >= requiredWidth
-    : true;
-
-  function getRequiredWidth() {
-    let width = fieldValuesButtonWidth;
-
-    if (!isPreviewOpen) {
-      width += previewButtonWidth + BUTTONS_GAP;
-    }
-
-    return width;
-  }
+  const {
+    buttonsContainerRef,
+    showButtonLabel,
+    setFieldValuesButtonWidth,
+    setPreviewButtonWidth,
+  } = useResponsiveButtons({ isPreviewOpen });
 
   const handleNameChange = async (name: string) => {
     if (field.display_name === name) {
@@ -152,10 +138,12 @@ const FieldSectionBase = ({
             ref={buttonsContainerRef}
             wrap="nowrap"
           >
+            {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
+
             {!isPreviewOpen && (
               <ResponsiveButton
                 icon="eye"
-                showLabel={showButtonLabels}
+                showLabel={showButtonLabel}
                 onClick={onPreviewClick}
                 onRequestWidth={setPreviewButtonWidth}
               >{t`Preview`}</ResponsiveButton>
@@ -163,7 +151,7 @@ const FieldSectionBase = ({
 
             <ResponsiveButton
               icon="gear_settings_filled"
-              showLabel={showButtonLabels}
+              showLabel={showButtonLabel}
               onClick={onFieldValuesClick}
               onRequestWidth={setFieldValuesButtonWidth}
             >{t`Field values`}</ResponsiveButton>
