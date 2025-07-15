@@ -186,5 +186,9 @@ function getDashcardTitle(dashcard: BaseDashboardCard) {
   if (isHeadingDashCard(dashcard)) {
     return dashcard.visualization_settings.text ?? t`Empty`;
   }
-  return dashcard.visualization_settings?.["card.title"] || dashcard.card.name;
+  const dashcardTitle = dashcard.visualization_settings?.["card.title"];
+  if (typeof dashcardTitle === "string") {
+    return dashcardTitle;
+  }
+  return dashcard.card.name ?? t`Card`;
 }
