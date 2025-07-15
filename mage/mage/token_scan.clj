@@ -96,18 +96,6 @@
          (map str/trim)
          (set))))
 
-(def ^:private our-ignored-files
-  (->> "/mage/resources/token_scanner/file_whitelist.txt"
-       (str u/project-root-directory)
-       slurp
-       str/split-lines
-       (mapv #(str u/project-root-directory "/" %))
-       set))
-
-(defn- ignored-files [files]
-  (set/union
-   (git-ignored-files files)
-   our-ignored-files))
 
 (defn- get-all-files
   "Get all files in the project (excluding auto-generated files and build artifacts)"
@@ -142,35 +130,43 @@
     (.awaitTermination executor 10 TimeUnit/SECONDS)
     (assoc merged :duration-ms duration-ms)))
 
+(defn- find-files-from-options [all-files arguments]
+  (cond
+    ;; --all-files flag
+    all-files (do
+                (when (seq arguments)
+                  (println (c/yellow "Ignoring specific files, scanning all files...")))
+                (get-all-files))
+    ;; Default: require specific files
+    ;; Arguments provided = specific files to scan
+    (seq arguments) arguments
+    :else (throw (ex-info
+                  nil
+                  {:mage/error    (c/yellow "No files specified. Use -a to scan all files or specify files to scan.")
+                   :babashka/exit 1}))))
+
 (defn run-scan
   "Main entry point for regex scanning"
   [{:keys [options arguments]}]
-  (let [{:keys [all-files verbose no-lines]} options
-        files (cond
-                ;; --all-files flag
-                all-files (get-all-files)
-                ;; Default: require specific files
-                ;; Arguments provided = specific files to scan
-                (seq arguments) arguments
-
-                :else (throw (ex-info
-                              nil
-                              {:mage/error (c/yellow "No files specified. Use -a to scan all files or specify files to scan.")
-                               :babashka/exit 1})))
-
-        ;; Filter out git-ignored files + whitelisted files
-        ignored (ignored-files files)
-        _ (u/debug "Ignored files:" (vec ignored))
-        files (remove ignored files)
-        _ (u/debug "Files to scan:" (vec files))
-        _     (doseq [file files]
-                (when-not (fs/exists? file)
-                  (throw (ex-info (str "Missing file: " file) {:babashka/exit 1}))))
-        _ (println "Scanning" (c/green (count files)) "and ignoring " (c/magenta (count ignored)) ".gitignore'd and whitelisted files...")
-        
-        {:keys [scanned duration-ms total-files files-with-matches total-matches] :as full-info}
-        (scan-files token-patterns files)
-        info (dissoc full-info :scanned :duration-ms)]
+  (let [{:keys [all-files
+                verbose
+                no-lines]} options
+        files              (find-files-from-options all-files arguments)
+        ignored            (git-ignored-files files) ;; Returns a set of git-ignored files
+        _                  (u/debug "Ignored files:" (vec ignored))
+        files'             (remove ignored files)
+        _                  (u/debug "Files to scan:" (vec files'))
+        _                  (doseq [file files']
+                             (u/debug "Checking file exists: " file "|" (fs/exists? file))
+                             (when-not (fs/exists? file)
+                               (let [relative-path (str (fs/relativize u/project-root-directory file))]
+                                 (throw (ex-info (str "Missing file: " relative-path) {:babashka/exit 1
+                                                                                       :relative-path relative-path
+                                                                                       :file file})))))
+        _                  (println "Scanning" (c/green (count files')) "and ignoring " (c/magenta (- (count files) (count files'))) ".gitignore'd and whitelisted files...")
+        {:keys [scanned duration-ms total-files files-with-matches total-matches]
+         :as   full-info}  (scan-files token-patterns files')
+        info               (dissoc full-info :scanned :duration-ms)]
 
     ;; Print results
     (doseq [{:keys [file matches error]} scanned]
@@ -191,7 +187,7 @@
 
     (when (> total-matches 0)
       (throw (ex-info nil
-                      {:outcome info
+                      {:outcome    info
                        :mage/error (str (c/red "Token Scanning found a potential secret.\n")
                                         (c/magenta "If you know your token is good add it to the token whitelist in mage/resources/token_scanner/token_whitelist.txt\n")
                                         (c/cyan (c/green "More info:") " https://github.com/metabase/metabase/blob/master/docs/developers-guide/security-token-scanner.md"))})))

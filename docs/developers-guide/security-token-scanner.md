@@ -23,16 +23,16 @@ The scanner runs automatically via `lint-staged` on staged files during git comm
 
 ```bash
 # Scan specific files
-./bin/mage -token-scan file1.txt file2.txt
+./bin/mage -token-scan deps.edn bb.edn
 
 # Scan all files in the project
 ./bin/mage -token-scan -a
 
 # Run with verbose output
-./bin/mage -token-scan -v file1.txt file2.txt
+./bin/mage -token-scan -v deps.edn bb.edn
 
 # Scan without showing line details
-./bin/mage -token-scan --no-lines file1.txt file2.txt
+./bin/mage -token-scan --no-lines deps.edn bb.edn
 ```
 
 ### Example output
@@ -49,24 +49,11 @@ Files with matches: 1
 Total matches:      1
 ```
 
-## Whitelisting legitimate tokens
+## Whitelisting tokens
 
 Sometimes you need to include token-like strings in source code for testing or examples. The scanner uses a whitelist file to avoid flagging known safe tokens.
 
-The whitelist is located at `mage/resources/token_scanner_whitelist.txt` and contains strings that should not be flagged as secrets:
-
-```
-# Common test/example tokens that appear in documentation
-sk-1234567890abcdef1234567890abcdef123456789012
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
-
-# Hash values from tests and examples
-430bb02a37bb2471176e54ca323d0940c4e0ee210c3ab04262cb6576fe4ded6d
-sha256:9ff56186de4dd0b9bb2a37c977c3a4c9358647cde60a16f11f4c05bded1fe77a
-
-# Slack bot tokens from examples
-xoxb-781236542736-2364535789652-GkwFDQoHqzXDVsC6GzqYUypD
-```
+The token whitelist is located at `mage/resources/token_scanner/token_whitelist.txt` and contains strings that should not be flagged as secrets.
 
 To whitelist a token, add the exact string to this file. Each line is treated as a substring that will be checked against the entire line containing the token using exact substring matching.
 
@@ -165,5 +152,5 @@ Use this sparingly and only when absolutely necessary.
 For issues with the scanner:
 
 1. Check the git hook output for detailed error messages
-2. Run the scanner locally to debug: `./bin/mage -token-scan -v file1.txt file2.txt`
+2. Run the scanner locally to debug: `./bin/mage -token-scan -v deps.edn bb.edn`
 3. Ask in the #security or #dev channels for help with patterns or exclusions

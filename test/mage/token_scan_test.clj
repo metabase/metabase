@@ -10,7 +10,7 @@
          (-> (token-scan/run-scan {:arguments [] :options {:all-files true}})
              (select-keys [:total-matches :files-with-matches])))))
 
-(def token-like-comment (str ";;" (apply str (repeat 100 \a))))
+(def token-like-comment (str ";;" (apply str (repeat 100 \a)) "\n"))
 (def this-file-path "test/mage/token_scan_test.clj")
 
 (deftest token-scan-finds-error
