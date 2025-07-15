@@ -1,0 +1,2 @@
+mage/resources/token_scanner_whitelist.txt
+test_resources/fake_ag_token.txt

@@ -1,13 +1,14 @@
 (ns mage.token-scan
   (:require
    [babashka.fs :as fs]
+   [babashka.process :as p]
+   [clojure.set :as set]
    [clojure.string :as str]
    [mage.color :as c]
    [mage.util :as u])
-  (:import [java.util.concurrent Executors Callable TimeUnit]))
+  (:import [java.util.concurrent Callable Executors TimeUnit]))
 
 (set! *warn-on-reflection* true)
-
 
 (def ^:private token-patterns
   "Token regex patterns to scan for and their names for reporting.
@@ -29,67 +30,12 @@
 
   Usually we use the ignore-marker but in e.g. markdown code blocks you cannot easily do that without affecting the formatting."
   (->>
-   (str u/project-root-directory "/mage/resources/token_scanner_whitelist.txt")
+   (str u/project-root-directory "/mage/resources/token_scanner/token_whitelist.txt")
    slurp
    str/split-lines))
 
-(defn white-listed? [line]
+(defn- white-listed? [line]
   (boolean (some #(str/includes? line %) token-like-whitelist)))
-
-(defn- exclude-path-str?
-  "Check if a file should be excluded from scanning (auto-generated, build artifacts, etc.)"
-  [path-str]
-  (or
-   ;; Version control and build directories
-   (str/includes? path-str "/.git/")
-   (str/includes? path-str "/node_modules/")
-   (str/includes? path-str "/target/")
-   (str/includes? path-str "/resources/frontend_client/")
-
-   ;; Build artifacts and generated files
-   (str/ends-with? path-str ".db")
-   (str/ends-with? path-str ".js.map")
-   (str/ends-with? path-str ".jar")
-   (str/ends-with? path-str ".class")
-   (str/ends-with? path-str ".min.js")
-   (str/ends-with? path-str ".bundle.js")
-   (str/ends-with? path-str ".hot.bundle.js")
-
-   ;; Checksum and hash files (likely to contain 64-char hashes)
-   (str/ends-with? path-str "/SHA256.sum")
-   (str/ends-with? path-str ".sha256")
-   (str/ends-with? path-str ".md5")
-
-   ;; Binary and compiled files
-   (str/ends-with? path-str ".so")
-   (str/ends-with? path-str ".dylib")
-   (str/ends-with? path-str ".dll")
-   (str/ends-with? path-str ".exe")
-   (str/ends-with? path-str "bin/bb")
-
-   ;; Image and media files
-   (str/ends-with? path-str ".png")
-   (str/ends-with? path-str ".jpg")
-   (str/ends-with? path-str ".jpeg")
-   (str/ends-with? path-str ".gif")
-   (str/ends-with? path-str ".svg")
-   (str/ends-with? path-str ".ico")
-
-   ;; Archive files
-   (str/ends-with? path-str ".zip")
-   (str/ends-with? path-str ".tar")
-   (str/ends-with? path-str ".gz")
-
-   ;; Generated documentation and test data
-   (str/includes? path-str "/stories-data/")
-   (str/includes? path-str "/test-data/")
-   (str/includes? path-str "/fixtures/")
-
-   ;; fake ag token file
-   (str/ends-with? path-str "test_resources/fake_ag_token.txt")
-
-   ;; docs about this feature
-   (str/ends-with? path-str "docs/developers-guide/security-token-scanner.md")))
 
 (defn- truncate-around-match
   "Truncate text around a regex match, showing ~100 chars before and after"
@@ -98,7 +44,7 @@
     (if (.find matcher)
       (let [match-start (.start matcher)
             match-end (.end matcher)
-            context-size 100
+            context-size 50
             start-pos (max 0 (- match-start context-size))
             end-pos (min (count text) (+ match-end context-size))
             prefix (if (> start-pos 0) "..." "")
@@ -133,19 +79,47 @@
        :matches []
        :error (str e)})))
 
+(defn- git-ignored-files
+  "Returns a set of files that are ignored by git."
+  [files]
+  (println
+   (c/yellow "Checking git ignore status for " (c/white (count files)) " files..."))
+  (let [proc (p/sh {:out :string
+                    :err :string
+                    :continue true
+                    :dir u/project-root-directory
+                    :in (str/join "\n" files)}
+                   "git" "check-ignore" "--stdin")
+        output (:out proc)]
+    (->> output str/split-lines
+         (remove str/blank?)
+         (map str/trim)
+         (set))))
+
+(def ^:private our-ignored-files
+  (->> "/mage/resources/token_scanner/file_whitelist.txt"
+       (str u/project-root-directory)
+       slurp
+       str/split-lines
+       (mapv #(str u/project-root-directory "/" %))
+       set))
+
+(defn- ignored-files [files]
+  (set/union
+   (git-ignored-files files)
+   our-ignored-files))
+
 (defn- get-all-files
   "Get all files in the project (excluding auto-generated files and build artifacts)"
   []
   (let [project-root u/project-root-directory]
     (->> (fs/glob project-root "**/*")
          (filter fs/regular-file?)
-         (map str)
-         (remove exclude-path-str?))))
-
+         (map str))))
 
 (defn- merge-scanned
   "Merge results from parallel scanning"
-  ([] {:total-files 0 :files-with-matches 0 :total-matches 0 :results []})
+  ([] {:total-files 0 :files-with-matches 0 :total-matches 0})
   ([acc] acc)
   ([acc scanned]
    (-> acc
@@ -166,23 +140,27 @@
         duration-ms (/ (- (System/nanoTime) start-time) 1e6)]
     (.shutdown executor)
     (.awaitTermination executor 10 TimeUnit/SECONDS)
-    (assoc merged
-           :duration-ms duration-ms)))
+    (assoc merged :duration-ms duration-ms)))
 
 (defn run-scan
   "Main entry point for regex scanning"
   [{:keys [options arguments]}]
   (let [{:keys [all-files verbose no-lines]} options
         files (cond
-                ;; Arguments provided = specific files to scan
-                (seq arguments) arguments
                 ;; --all-files flag
                 all-files (get-all-files)
                 ;; Default: require specific files
+                ;; Arguments provided = specific files to scan
+                (seq arguments) arguments
+
                 :else (throw (ex-info
                               nil
                               {:mage/error (c/yellow "No files specified. Use -a to scan all files or specify files to scan.")
                                :babashka/exit 1})))
+
+        ;; Filter out git-ignored files + whitelisted files
+        ignored (ignored-files files)
+        files (remove ignored files)
         
         _ (if (empty? files)
             (throw (ex-info
@@ -191,8 +169,9 @@
                      :babshka/exit 0}))
             (println "Scanning" (count files) "files"))
         
-        {:keys [scanned duration-ms total-files files-with-matches total-matches] :as x}
-        (scan-files token-patterns files)]
+        {:keys [scanned duration-ms total-files files-with-matches total-matches] :as full-info}
+        (scan-files token-patterns files)
+        info (dissoc full-info :scanned :duration-ms)]
 
     ;; Print results
     (doseq [{:keys [file matches error]} scanned]
@@ -213,8 +192,9 @@
 
     (when (> total-matches 0)
       (throw (ex-info nil
-                      {:results (dissoc x :scanned)
+                      {:outcome info
                        :mage/error (str (c/red "Token Scanning found a potential secret.\n")
-                                        (c/cyan "See: https://github.com/metabase/metabase/blob/master/docs/developers-guide/security-token-scanner.md"))})))
-    ;; Return results for potential further processing
-    scanned))
+                                        (c/magenta "If you know your token is good add it to the token whitelist in mage/resources/token_scanner/token_whitelist.txt\n")
+                                        (c/cyan (c/green "More info:") " https://github.com/metabase/metabase/blob/master/docs/developers-guide/security-token-scanner.md"))})))
+    ;; Return results for potential further processing + testing
+    info))
