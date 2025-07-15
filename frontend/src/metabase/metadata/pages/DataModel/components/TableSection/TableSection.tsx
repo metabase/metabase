@@ -1,4 +1,3 @@
-import { useElementSize } from "@mantine/hooks";
 import { memo, useState } from "react";
 import { t } from "ttag";
 
@@ -22,11 +21,9 @@ import { ResponsiveButton } from "../ResponsiveButton";
 
 import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
+import { useResponsiveButtons } from "./hooks";
 
 const OUTLINE_SAFETY_MARGIN = 2;
-const BUTTONS_GAP = 16;
-const LOADER_WIDTH = 16;
-const FIELD_ORDER_PICKER_WIDTH = 136;
 
 interface Props {
   params: RouteParams;
@@ -37,43 +34,23 @@ interface Props {
 const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const { fieldId, ...parsedParams } = parseRouteParams(params);
   const [updateTable] = useUpdateTableMutation();
-  const [updateTableSorting, { isLoading: isChangingSorting }] =
+  const [updateTableSorting, { isLoading: isUpdatingSorting }] =
     useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const [sendToast] = useToast();
   const [isSorting, setIsSorting] = useState(false);
-  const hasFields = table.fields && table.fields.length > 0;
-  const { ref: buttonsContainerRef, width: buttonsContainerWidth } =
-    useElementSize();
-  const [sortingButtonWidth, setSortingButtonWidth] = useState(0);
-  const [syncButtonWidth, setSyncButtonWidth] = useState(0);
-  const [doneButtonWidth, setDoneButtonWidth] = useState(0);
-  const requiredWidth = getRequiredWidth();
-  const isWidthInitialized =
-    sortingButtonWidth + syncButtonWidth + doneButtonWidth > 0;
-  const showButtonLabels = isWidthInitialized
-    ? buttonsContainerWidth >= requiredWidth
-    : true;
-
-  function getRequiredWidth() {
-    let width = 0;
-
-    if (isChangingSorting) {
-      width += LOADER_WIDTH + BUTTONS_GAP;
-    }
-
-    if (isSorting) {
-      width += FIELD_ORDER_PICKER_WIDTH + BUTTONS_GAP + doneButtonWidth;
-    } else {
-      width += syncButtonWidth;
-
-      if (hasFields) {
-        width += sortingButtonWidth + BUTTONS_GAP;
-      }
-    }
-
-    return width;
-  }
+  const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const {
+    buttonsContainerRef,
+    showButtonLabels,
+    setSortingButtonWidth,
+    setSyncButtonWidth,
+    setDoneButtonWidth,
+  } = useResponsiveButtons({
+    hasFields,
+    isSorting,
+    isUpdatingSorting,
+  });
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateTable({
@@ -194,7 +171,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
               ref={buttonsContainerRef}
               wrap="nowrap"
             >
-              {isChangingSorting && (
+              {isUpdatingSorting && (
                 <Loader data-testid="loading-indicator" size="xs" />
               )}
 
