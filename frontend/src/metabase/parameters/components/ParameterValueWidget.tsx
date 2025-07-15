@@ -13,11 +13,9 @@ import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Box, Icon, Popover, type PopoverProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   isDateParameter,
   isStringParameter,
-  isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   areParameterValuesIdentical,
@@ -35,7 +33,6 @@ export type ParameterValueWidgetProps = {
   placeholder?: string;
   isEditing?: boolean;
 
-  commitImmediately?: boolean;
   focusChanged?: (focused: boolean) => void;
   isFullscreen?: boolean;
   className?: string;
@@ -55,7 +52,6 @@ export type ParameterValueWidgetProps = {
 
 export const ParameterValueWidget = ({
   className,
-  commitImmediately = false,
   dashboard,
   enableRequiredBehavior,
   focusChanged,
@@ -81,7 +77,6 @@ export const ParameterValueWidget = ({
   const hasValue = !parameterHasNoDisplayValue(value);
   const hasDefaultValue = !parameterHasNoDisplayValue(parameter.default);
   const fieldHasValueOrFocus = parameter.value != null || isFocused;
-  const noPopover = hasNoPopover(parameter);
   const parameterTypeIcon = getParameterIconName(parameter);
   const showTypeIcon =
     !isEditing && !hasValue && !isFocused && !(variant === "subtle");
@@ -122,9 +117,7 @@ export const ParameterValueWidget = ({
       );
     }
 
-    if (!hasNoPopover(parameter)) {
-      return <WidgetStatus className={S.widgetStatus} status="empty" />;
-    }
+    return <WidgetStatus className={S.widgetStatus} status="empty" />;
   };
 
   const getRequiredActionIcon = () => {
@@ -177,68 +170,6 @@ export const ParameterValueWidget = ({
 
     return icon;
   };
-
-  const resetToDefault = () => {
-    const { required, default: defaultValue } = parameter;
-
-    if (required && defaultValue != null && !value) {
-      setValue(defaultValue);
-    }
-  };
-
-  const onFocusChanged = (isFocused: boolean) => {
-    focusChanged?.(isFocused);
-    setIsFocused(isFocused);
-
-    if (enableRequiredBehavior && !isFocused) {
-      resetToDefault();
-    }
-  };
-
-  if (noPopover) {
-    return (
-      <Sortable
-        id={parameter.id}
-        draggingStyle={{ opacity: 0.5 }}
-        disabled={!isSortable}
-        role="listitem"
-      >
-        <ParameterValueWidgetTrigger
-          className={cx(S.noPopover, className)}
-          variant={variant}
-          ariaLabel={parameter.name}
-          hasValue={hasValue}
-        >
-          {showTypeIcon && (
-            <Icon
-              name={parameterTypeIcon}
-              className={cx(CS.mr1, CS.flexNoShrink)}
-              size={16}
-            />
-          )}
-          {prefix}
-          <ParameterDropdownWidget
-            parameter={parameter}
-            parameters={parameters}
-            question={question}
-            dashboard={dashboard}
-            value={value}
-            setValue={setValue}
-            isEditing={isEditing}
-            placeholder={placeholder}
-            focusChanged={setIsFocused}
-            isFullscreen={isFullscreen}
-            commitImmediately={commitImmediately}
-            setParameterValueToDefault={setParameterValueToDefault}
-            enableRequiredBehavior={enableRequiredBehavior}
-            isSortable={isSortable}
-            onFocusChanged={onFocusChanged}
-          />
-          {getActionIcon()}
-        </ParameterValueWidgetTrigger>
-      </Sortable>
-    );
-  }
 
   const translatedPlaceholder = tc(placeholder);
 
@@ -319,34 +250,17 @@ export const ParameterValueWidget = ({
           value={value}
           setValue={setValue}
           isEditing={isEditing}
-          placeholder={placeholder}
           focusChanged={setIsFocused}
           isFullscreen={isFullscreen}
-          commitImmediately={commitImmediately}
           setParameterValueToDefault={setParameterValueToDefault}
           enableRequiredBehavior={enableRequiredBehavior}
           isSortable={isSortable}
-          onFocusChanged={onFocusChanged}
           onPopoverClose={close}
         />
       </Popover.Dropdown>
     </Popover>
   );
 };
-
-function hasNoPopover(parameter: UiParameter) {
-  // This is needed because isTextWidget check isn't complete,
-  // and returns true for dates too.
-  if (isDateParameter(parameter) || isTemporalUnitParameter(parameter)) {
-    return false;
-  }
-  return isTextWidget(parameter);
-}
-
-function isTextWidget(parameter: UiParameter) {
-  const canQuery = getQueryType(parameter) !== "none";
-  return parameter.hasVariableTemplateTagTarget && !canQuery;
-}
 
 function wrapArray<T>(value: T | T[]): T[] {
   if (Array.isArray(value)) {

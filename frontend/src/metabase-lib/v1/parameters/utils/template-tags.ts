@@ -57,6 +57,7 @@ export function getTemplateTagParameter(
     default: tag.default,
     required: tag.required,
     options: tag.options,
+    isMultiSelect: config?.isMultiSelect,
     values_query_type: config?.values_query_type,
     values_source_type: config?.values_source_type,
     values_source_config: config?.values_source_config,

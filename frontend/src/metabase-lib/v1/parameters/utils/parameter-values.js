@@ -160,7 +160,7 @@ export function getParameterValuesBySlug(parameters, parameterValuesById) {
 }
 
 export function getIsMultiSelect(parameter) {
-  return parameter.isMultiSelect ?? true;
+  return parameter.isMultiSelect ?? !parameter.hasVariableTemplateTagTarget;
 }
 
 export function hasValue(value) {

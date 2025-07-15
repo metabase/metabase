@@ -5,12 +5,13 @@ import _ from "underscore";
 import { connect } from "metabase/lib/redux";
 import { TemporalUnitSettings } from "metabase/parameters/components/ParameterSettings/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
+import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { setTemplateTagConfig } from "metabase/query_builder/actions";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box } from "metabase/ui";
+import { Box, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -18,6 +19,7 @@ import type Field from "metabase-lib/v1/metadata/Field";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
+import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
 import {
   getDefaultParameterOptions,
   getDefaultParameterWidgetType,
@@ -130,6 +132,7 @@ class TagEditorParamInner extends Component<
     }
 
     return {
+      isMultiSelect: false,
       values_source_type: originalParameter.values_source_type,
       values_source_config: originalParameter.values_source_config,
       values_query_type: originalParameter.values_query_type,
@@ -394,6 +397,25 @@ class TagEditorParamInner extends Component<
               onChangeQueryType={this.setQueryType}
               onChangeSourceSettings={this.setSourceSettings}
             />
+          </InputContainer>
+        )}
+
+        {parameter && isSingleOrMultiSelectable(parameter) && (
+          <InputContainer>
+            <ContainerLabel>{t`People can pick`}</ContainerLabel>
+            <Radio.Group
+              value={getIsMultiSelect(parameter).toString()}
+              onChange={(value) =>
+                setTemplateTagConfig(tag, {
+                  isMultiSelect: value === "true",
+                })
+              }
+            >
+              <Stack gap="xs">
+                <Radio label={t`Multiple values`} value="true" />
+                <Radio label={t`A single value`} value="false" />
+              </Stack>
+            </Radio.Group>
           </InputContainer>
         )}
 

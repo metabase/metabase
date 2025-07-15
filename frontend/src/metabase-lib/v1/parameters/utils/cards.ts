@@ -39,12 +39,14 @@ export function getCardUiParameters(
       return {
         ...parameter,
         fields: [field],
+        isMultiSelect: parameter.isMultiSelect ?? true,
         hasVariableTemplateTagTarget: false,
       };
     }
 
     return {
       ...parameter,
+      isMultiSelect: parameter.isMultiSelect ?? false,
       hasVariableTemplateTagTarget: !isDimensionTarget(target),
     };
   });
