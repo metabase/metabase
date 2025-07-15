@@ -64,10 +64,6 @@ export class AccordionList<
 > extends Component<Props<TItem, TSection>, State> {
   listRootRef: RefObject<HTMLDivElement>;
 
-  _initialSelectedRowIndex?: number;
-  _startIndex?: number;
-  _stopIndex?: number;
-
   constructor(props: Props<TItem, TSection>, context: unknown) {
     super(props, context);
 
@@ -266,7 +262,6 @@ export class AccordionList<
       alwaysTogglable = false,
       alwaysExpanded = false,
       hideSingleSectionTitle = false,
-      itemIsSelected = () => false,
       searchable = (section: TSection) =>
         section?.items && section.items.length > 10,
       sections,
@@ -357,9 +352,6 @@ export class AccordionList<
       ) {
         for (const { itemIndex, item } of items) {
           const isLastItem = itemIndex === section.items.length - 1;
-          if (itemIsSelected(item, itemIndex)) {
-            this._initialSelectedRowIndex = rows.length;
-          }
           rows.push({
             type: "item",
             section,
