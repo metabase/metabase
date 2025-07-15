@@ -86,11 +86,7 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
       }
       return (
         <SelectItem
-          title={
-            isHeadingDashCard(dashcard)
-              ? (dashcard.visualization_settings.text ?? t`Empty`)
-              : dashcard.card.name
-          }
+          title={getDashcardTitle(dashcard)}
           icon={getDashcardIcon(dashcard)}
           subtitle={isHeadingDashCard(dashcard) ? t`Heading` : t`Card`}
           checked={checked}
@@ -179,4 +175,11 @@ function getDashcardIcon(dashcard: BaseDashboardCard) {
     return "string";
   }
   return visualizations.get(dashcard.card.display)?.iconName ?? "beaker";
+}
+
+function getDashcardTitle(dashcard: BaseDashboardCard) {
+  if (isHeadingDashCard(dashcard)) {
+    return dashcard.visualization_settings.text ?? t`Empty`;
+  }
+  return dashcard.visualization_settings?.["card.title"] || dashcard.card.name;
 }

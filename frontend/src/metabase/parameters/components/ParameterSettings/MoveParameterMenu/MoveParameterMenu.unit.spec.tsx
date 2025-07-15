@@ -175,4 +175,20 @@ describe("MoveParameterMenu", () => {
     expect(screen.getByText("Tab 2")).toBeInTheDocument();
     expect(screen.queryByText("Tab 3")).not.toBeInTheDocument();
   });
+
+  it("should use daschard's 'card.title' setting when available", async () => {
+    await setup({
+      dashcards: [
+        {
+          ...TEST_DASHCARD,
+          visualization_settings: {
+            "card.title": "My custom card title",
+          },
+        },
+      ],
+    });
+
+    expect(screen.getByText("My custom card title")).toBeInTheDocument();
+    expect(screen.queryByText("My question card")).not.toBeInTheDocument();
+  });
 });
