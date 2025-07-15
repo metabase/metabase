@@ -22,7 +22,7 @@ const cardsFromDashboard = (dashboard?: Dashboard) => {
     include_xls: false,
     dashboard_card_id: card.id,
     dashboard_id: dashboard.id,
-    parameter_mappings: [], // card.parameter_mappings, //TODO: this ended up as "[]" ?
+    parameter_mappings: card.parameter_mappings, //TODO: this ended up as "[]" ?
   }));
 };
 
