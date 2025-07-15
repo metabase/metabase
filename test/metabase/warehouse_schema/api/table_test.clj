@@ -765,18 +765,18 @@
                                        :dataset_query {:query    {:source-table (mt/id :venues)}
                                                        :type     :query
                                                        :database (mt/id)}}]
-        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
-        (is (=? {:display_name      "Go Dubs!"
-                 :schema            "Everything else"
-                 :db_id             (:database_id card)
-                 :db                nil
-                 :id                (str "card__" (u/the-id card))
-                 :entity_id         (:entity_id card)
-                 :type              "question"}
-                (->> card
-                     u/the-id
-                     (format "table/card__%d/query_metadata")
-                     (mt/user-http-request :crowberto :get 200))))))))
+        (mt/with-no-data-perms-for-all-users!
+          (is (=? {:display_name      "Go Dubs!"
+                   :schema            "Everything else"
+                   :db_id             (:database_id card)
+                   :db                nil
+                   :id                (str "card__" (u/the-id card))
+                   :entity_id         (:entity_id card)
+                   :type              "question"}
+                  (->> card
+                       u/the-id
+                       (format "table/card__%d/query_metadata")
+                       (mt/user-http-request :crowberto :get 200)))))))))
 
 (deftest ^:parallel virtual-table-metadata-deleted-cards-test
   (testing "GET /api/table/card__:id/query_metadata for deleted cards (#48461)"
