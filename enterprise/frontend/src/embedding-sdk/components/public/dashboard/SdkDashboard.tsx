@@ -87,7 +87,7 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
   >;
 
 const SdkDashboardInner = ({
-  dashboardId: dashboardIdProp,
+  dashboardId,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -117,8 +117,8 @@ const SdkDashboardInner = ({
   });
 
   const { isLocaleLoading } = useLocale();
-  const { displayOptions, isLoading, dashboardId } = useSdkDashboardParams({
-    dashboardId: dashboardIdProp,
+  const { displayOptions } = useSdkDashboardParams({
+    dashboardId,
     withDownloads,
     withTitle,
     withCardTitle,
@@ -143,7 +143,7 @@ const SdkDashboardInner = ({
     }
   }, [dispatch, dashboardId]);
 
-  if (isLocaleLoading || isLoading) {
+  if (isLocaleLoading) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
         <SdkLoader />
@@ -151,10 +151,15 @@ const SdkDashboardInner = ({
     );
   }
 
-  if (!dashboardId || errorPage?.status === 404) {
+  // Passing an invalid entity ID format results in a 400 Bad Request.
+  // We can show this as a generic "not found" error on the frontend.
+  const isDashboardNotFound =
+    errorPage?.status === 404 || errorPage?.status === 400;
+
+  if (!dashboardId || isDashboardNotFound) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
-        <DashboardNotFoundError id={dashboardIdProp} />
+        <DashboardNotFoundError id={dashboardId} />
       </SdkDashboardStyledWrapper>
     );
   }
