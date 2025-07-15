@@ -1,3 +1,4 @@
+import { SdkBreadcrumb } from "embedding-sdk/components/private/Breadcrumb";
 import {
   BackButton,
   Breakout,
@@ -49,6 +50,7 @@ export const _InteractiveQuestion = (props: InteractiveQuestionProps) => (
 export const InteractiveQuestion =
   _InteractiveQuestion as typeof _InteractiveQuestion & {
     BackButton: typeof BackButton;
+    Breadcrumbs: typeof SdkBreadcrumb;
     Filter: typeof Filter;
     FilterDropdown: typeof FilterDropdown;
     ResetButton: typeof QuestionResetButton;
@@ -76,6 +78,7 @@ export const InteractiveQuestion =
   };
 
 InteractiveQuestion.BackButton = BackButton;
+InteractiveQuestion.Breadcrumbs = SdkBreadcrumb;
 InteractiveQuestion.Filter = Filter;
 InteractiveQuestion.FilterDropdown = FilterDropdown;
 InteractiveQuestion.ResetButton = QuestionResetButton;
