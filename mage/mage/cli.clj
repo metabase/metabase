@@ -31,7 +31,7 @@
   (if-not arg-schema
     arguments
     (let [decoded-args (try (mc/decode arg-schema arguments mtx/string-transformer)
-                            (catch Exception e arguments))]
+                            (catch Exception _e arguments))]
       #_:clj-kondo/ignore ;; TODO: don't run all linters on these files
       (if (mc/validate arg-schema decoded-args)
         decoded-args
