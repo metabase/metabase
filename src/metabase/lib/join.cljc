@@ -690,8 +690,8 @@
          summaries?          (has-summaries? query stage-number)
          a-join              (cond-> a-join
                                (seq suggested-conditions) (with-join-conditions suggested-conditions)
-                               ;; If there are aggregations or breakouts on this stage, drop the `:fields`.
-                               summaries?                 (with-join-fields nil))
+                               ;; If there are aggregations or breakouts on this stage, set `:fields` to `:none`.
+                               summaries?                 (with-join-fields :none))
          a-join              (add-default-alias query stage-number a-join)]
      (lib.util/update-query-stage query stage-number update :joins (fn [existing-joins]
                                                                      (conj (vec existing-joins) a-join))))))

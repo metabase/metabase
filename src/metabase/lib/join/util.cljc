@@ -35,7 +35,7 @@
   "A field or a partial join."
   [:or Field PartialJoin])
 
-(mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
+(mu/defn current-join-alias :- [:maybe ::lib.schema.join/alias]
   "Get the current join alias associated with something, if it has one."
   [field-or-join :- [:maybe FieldOrPartialJoin]]
   (case (lib.dispatch/dispatch-value field-or-join)
@@ -55,7 +55,7 @@
    field-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__%s" join-alias field-name))
 
-(mu/defn format-implicit-join-name :- ::lib.schema.common/non-blank-string
+(mu/defn format-implicit-join-name :- ::lib.schema.join/alias
   "Name for an implicit join against `table-name` via an FK field, e.g.
 
     CATEGORIES__via__CATEGORY_ID
@@ -66,9 +66,9 @@
 
   You should make sure this gets ran thru a unique-name fn e.g. one returned
   by [[metabase.lib.util/unique-name-generator]]."
-  [table-name              :- ::lib.schema.common/non-blank-string
-   fk-field-name    :- ::lib.schema.common/non-blank-string
-   fk-join-alias :- [:maybe ::lib.schema.common/non-blank-string]]
+  [table-name    :- ::lib.schema.common/non-blank-string
+   fk-field-name :- ::lib.schema.common/non-blank-string
+   fk-join-alias :- [:maybe ::lib.schema.join/alias]]
   (if fk-join-alias
     (lib.util/format "%s__via__%s__via__%s" table-name fk-field-name fk-join-alias)
     (lib.util/format "%s__via__%s" table-name fk-field-name)))

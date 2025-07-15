@@ -21,7 +21,11 @@
   (u/reduce-preserving-reduced
    (fn [query negative-item-offset]
      (let [items                (get-in query path-to-items)
+           _                    (assert (seq items)
+                                        (str "Invalid path " (pr-str path-to-items) " : no items at path (it is empty)"))
            absolute-item-number (+ negative-item-offset (count items)) ; e.g. [-3 -2 1] => [0 1 2]
+           _                    (assert (not (neg-int? absolute-item-number))
+                                        (str "Invalid index: " negative-item-offset " (there are only " (count items) " item(s))"))
            path-to-item         (conj (vec path-to-items) absolute-item-number)]
        (walk-item-fn query path-to-item f)))
    query
@@ -37,7 +41,7 @@
 (defn- walk-joins* [query path-to-joins f]
   (walk-items* query path-to-joins walk-join* f))
 
-(defn- walk-stage* [query path-to-stage f]
+(mu/defn- walk-stage* [query path-to-stage :- ::path f]
   (let [stage         (get-in query path-to-stage)
         path-to-joins (conj (vec path-to-stage) :joins)
         ;; only walk joins in MBQL stages, if someone tries to put them in a native stage ignore them since they're
@@ -87,6 +91,7 @@
   stages."
   [:maybe
    [:or
+    ::lib.schema/query
     ::lib.schema/stage
     [:sequential ::lib.schema/stage]]])
 
@@ -118,6 +123,8 @@
 
   You can replace a single stage or join with multiple by returning a vector of maps rather than a single map. Cool!
 
+  You can also return the entire updated query.
+
   To return a value right away, wrap it in [[reduced]], and subsequent walk calls will be skipped:
 
     ;; check whether any stage of a query has a `:source-card`
@@ -137,14 +144,15 @@
     (mu/fn [query     :- :map ; query can be invalid during the walk process, only needs to be valid again at the end.
             path-type :- ::path-type
             path      :- ::path]
-      (let [stage-or-join  (get-in query path)
-            stage-or-join' (or (f query path-type path stage-or-join)
-                               stage-or-join)]
+      (let [stage-or-join (get-in query path)
+            result        (or (f query path-type path stage-or-join)
+                              stage-or-join)]
         (cond
-          (reduced? stage-or-join')                 stage-or-join'
-          (identical? stage-or-join' stage-or-join) query
-          (sequential? stage-or-join')              (splice-at-point query path stage-or-join')
-          :else                                     (assoc-in query path stage-or-join')))))))
+          (reduced? result)                  result
+          (identical? result stage-or-join)  query
+          (sequential? result)               (splice-at-point query path result)
+          (= (:lib/type result) :mbql/query) result
+          :else                              (assoc-in query path result)))))))
 
 (mu/defn walk-stages :- ::lib.schema/query
   "Like [[walk]], but only walks the stages in a query. `f` is invoked like

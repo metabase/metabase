@@ -1042,3 +1042,33 @@
           (mt/with-native-query-testing-context query
             (is (= [[2]]
                    (mt/rows (qp/process-query query))))))))))
+
+(deftest ^:parallel filter-on-implicitly-joined-column-test
+  (testing "Should be able to filter on an column that was implicitly joined from a column in an explicit join (#59695)"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 (mt/application-database-metadata-provider (mt/id))
+                 {:cards [{:id            1
+                           :dataset-query (mt/mbql-query orders)}]})
+          query (lib/query
+                 mp
+                 (mt/mbql-query nil
+                   {:source-table "card__1"
+                    :joins        [{:source-table (mt/id :checkins)
+                                    :fields       :all
+                                    :strategy     :left-join
+                                    :alias        "CH"
+                                    :condition    [:=
+                                                   [:field "ID" {:base-type :type/BigInteger}]
+                                                   [:field (mt/id :checkins :id) {:base-type :type/BigInteger, :join-alias "CH"}]]}]
+                    :filter       [:=
+                                   [:field (mt/id :venues :price) {:base-type               :type/Text
+                                                                   :source-field            (mt/id :checkins :venue_id)
+                                                                   :source-field-join-alias "CH"}]
+                                   1]
+                    :order-by     [[:asc [:field (mt/id :venues :price) {:base-type               :type/Text
+                                                                         :source-field            (mt/id :checkins :venue_id)
+                                                                         :source-field-join-alias "CH"}]]]
+                    :limit        2}))]
+      (is (= [[667 85 177 128.82 8.05 136.87 nil "2020-02-12T23:59:13.486Z" 2 667 "2014-05-05T00:00:00Z" 13 86]
+              [657 83 31 105.65 0.0 105.65   nil "2019-11-11T05:52:50.656Z" 3 657 "2014-10-25T00:00:00Z" 6 41]]
+             (mt/rows (qp/process-query query)))))))
