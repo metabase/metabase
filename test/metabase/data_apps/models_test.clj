@@ -16,7 +16,7 @@
     (data-apps.tu/with-data-app-cleanup!
       (#'data-apps.models/prune-definitions! 0 0)
       (let [retention-per-app 5
-            retention-total   18
+            retention-total   5
 
            ;; Create an app with a bunch of releases with a bunch of interspersed definitions.
             num-versions      5
@@ -51,11 +51,12 @@
 
         (testing "Definitions were deleted"
          ;; We expect some deletions based on retention policies
-          (is (> deleted-count 0)))
+          (is (= 15 deleted-count)))
 
         (testing "Final count respects global retention limit"
-         ;; This is a lax inequality as we're also keeping additional protected definitions.
-          (is (<= retention-per-app (count revisions))))
+          ;; This is a lax inequality as we're also keeping additional protected definitions.
+          (is (<= (max (* 1 retention-per-app) retention-total)
+                  (count revisions))))
 
         (testing "All protected definitions remain"
           (is (set/superset? revisions (->> (range num-definitions)
@@ -118,11 +119,11 @@
 
         (testing "Definitions were deleted"
          ;; We expect some deletions based on retention policies
-          (is (> deleted-count 0)))
+          (is (= 21 deleted-count)))
 
         (testing "Final count respects global retention limit"
          ;; This is a lax inequality as we're also keeping additional protected definitions.
-          (is (<= (+ (max (* num-apps retention-per-app) retention-total))
+          (is (<= (max (* num-apps retention-per-app) retention-total)
                   (count remaining-pairs))))
 
         (testing "All protected definitions remain"
@@ -134,9 +135,9 @@
                      (mapcat (fn [app-id revisions]
                                (map (partial vector app-id) revisions))
                              app-ids
-                             [[2 5 10]
-                              [2 5 10]
-                              [2 5 6 7 8 9 10]
+                             [[2   5         10]
+                              [2   5         10]
+                              [2   5 6 7 8 9 10]
                               [2 4 5 6 7 8 9 10]
                               [2 4 5 6 7 8 9 10]]))
                remaining-pairs))
