@@ -8,14 +8,13 @@
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
-   (java.sql Timestamp)))
+   (java.time Instant)))
 
 (deftest prune-definitions-test
   ;; Prune *everything* unprotected to avoid flakes from other tests, or state in your dev database.
-  (#'data-apps.models/prune-definitions! 0 0)
   (testing "Pruning a single app with multiple releases"
     (data-apps.tu/with-data-app-cleanup!
-
+      (#'data-apps.models/prune-definitions! 0 0)
       (let [retention-per-app 5
             retention-total   18
 
@@ -100,14 +99,14 @@
                                                                                :creator_id      creator_id
                                                                                :revision_number (inc i)
                                                                                :config          data-apps.tu/default-app-definition-config
-                                                                               :created_at      (Timestamp. time)})]
+                                                                               :created_at      (Instant/ofEpochSecond time)})]
                                         ;; Create release for positions 1 and 4 (0-indexed) = revisions 2 and 5
                                             (when (#{1 4} i)
                                               (t2/insert! :model/DataAppRelease
                                                           {:app_id            app-id
                                                            :app_definition_id did
                                                            :creator_id        creator_id
-                                                           :created_at        (Timestamp. (+ time 100))}))))
+                                                           :created_at        (Instant/ofEpochSecond (+ time 100))}))))
                                         app-id)))
 
             deleted-count       (#'data-apps.models/prune-definitions! retention-per-app retention-total)
