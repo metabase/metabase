@@ -855,7 +855,7 @@
                                           (format "table/card__%d/query_metadata" (u/the-id card)))))))))))
 
 (deftest include-metrics-for-card-test
-  (testing "GET /api/table/:id/query_metadata"
+  (testing "GET /api/table/card__:id/query_metadata"
     (mt/with-temp [:model/Card model {:name          "Venues model"
                                       :database_id   (mt/id)
                                       :type          :model
