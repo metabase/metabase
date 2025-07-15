@@ -65,6 +65,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
         shard: [1, 2]
     env:
