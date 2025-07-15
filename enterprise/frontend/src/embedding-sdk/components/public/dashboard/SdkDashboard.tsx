@@ -6,13 +6,13 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
   DashboardNotFoundError,
   SdkError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,

@@ -7,11 +7,11 @@ import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 import {
   type QuestionMockLocationParameters,
   SdkQuestionProvider,
-} from "./SdkQuestion/context";
+} from "../SdkQuestion/context";
 import {
   InteractiveQuestionDefaultView,
   type InteractiveQuestionDefaultViewProps,
-} from "./SdkQuestionDefaultView";
+} from "../SdkQuestionDefaultView";
 
 interface InteractiveAdHocQuestionProps {
   questionPath: string; // route path to load a question, e.g. /question/140-best-selling-products - for saved, or /question/xxxxxxx for ad-hoc encoded question config

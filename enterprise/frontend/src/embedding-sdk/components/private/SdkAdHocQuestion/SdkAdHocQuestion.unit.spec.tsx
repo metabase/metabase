@@ -1,4 +1,4 @@
-import { getQuestionParameters } from "./InteractiveAdHocQuestion";
+import { getQuestionParameters } from "./SdkAdHocQuestion";
 
 describe("getQuestionParameters", () => {
   it("should generate proper URL params for ad-hoc question", () => {
