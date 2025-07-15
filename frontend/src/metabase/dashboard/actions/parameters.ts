@@ -51,6 +51,7 @@ import {
   getDashboardBeforeEditing,
   getDashboardComplete,
   getDashboardId,
+  getDashcardList,
   getDashcards,
   getDraftParameterValues,
   getFiltersToReset,
@@ -75,6 +76,7 @@ import {
   setDashboardAttributes,
   setMultipleDashCardAttributes,
 } from "./core";
+import { selectTab } from "./tabs";
 import { closeSidebar, setSidebar } from "./ui";
 
 type SingleParamUpdater = (p: Parameter) => Parameter;
@@ -195,42 +197,67 @@ export const moveParameter =
     }
 
     if (canUndo) {
+      const undoMove = () => {
+        dispatch(
+          moveParameter({
+            parameterId,
+            destination: parameterDashcard
+              ? {
+                  type: "dashcard",
+                  id: parameterDashcard.id,
+                }
+              : "top-nav",
+            canUndo: false,
+          }),
+        );
+      };
+
       dispatch(
         addUndo({
           message: t`Filter moved`,
           undo: true,
-          action: () =>
-            dispatch(
-              moveParameter({
-                parameterId,
-                destination: parameterDashcard
-                  ? {
-                      type: "dashcard",
-                      id: parameterDashcard.id,
-                    }
-                  : "top-nav",
-                canUndo: false,
-              }),
-            ),
+          action: undoMove,
+          extraAction: {
+            label: t`Show filter`,
+            action: () => {
+              dispatch(setEditingParameter(parameterId));
+            },
+          },
         }),
       );
     }
   };
 
 export const setEditingParameter =
-  (parameterId: ParameterId | null) => (dispatch: Dispatch) => {
-    if (parameterId != null) {
-      dispatch(
-        setSidebar({
-          name: SIDEBAR_NAME.editParameter,
-          props: {
-            parameterId,
-          },
-        }),
-      );
-    } else {
+  (parameterId: ParameterId | null) =>
+  (dispatch: Dispatch, getState: GetState) => {
+    if (!parameterId) {
       dispatch(closeSidebar());
+      return;
     }
+
+    const currentTabId = getSelectedTabId(getState());
+    const parameterDashcard = findDashCardForInlineParameter(
+      parameterId,
+      getDashcardList(getState()),
+    );
+
+    if (
+      parameterDashcard &&
+      currentTabId !== null &&
+      currentTabId !== parameterDashcard.dashboard_tab_id
+    ) {
+      dispatch(selectTab({ tabId: parameterDashcard.dashboard_tab_id }));
+    }
+
+    dispatch(
+      setSidebar({
+        name: SIDEBAR_NAME.editParameter,
+        props: {
+          parameterId,
+        },
+      }),
+    );
   };
 
 interface AddParameterPayload {
