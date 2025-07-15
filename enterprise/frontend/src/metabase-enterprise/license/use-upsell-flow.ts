@@ -8,6 +8,7 @@ import { useSelector } from "metabase/lib/redux";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 
 const NOTIFICATION_TIMEOUT = 30_000;
+const METABASE_INSTANCE_WINDOW_NAME = "metabase-instance";
 
 /**
  * This hook allows to create an upsell flow that listens to the events from the Store tab
@@ -57,6 +58,12 @@ export function useUpsellFlow({
   }
 
   useEffect(() => {
+    const { name } = window;
+    // Setting window name allows Store to move the focus back to the named window
+    if (name !== METABASE_INSTANCE_WINDOW_NAME) {
+      window.name = METABASE_INSTANCE_WINDOW_NAME;
+    }
+
     const listener = createListener({
       updateToken,
       storeOrigin,
@@ -65,6 +72,7 @@ export function useUpsellFlow({
     window.addEventListener("message", listener);
 
     return () => {
+      window.name = name;
       window.removeEventListener("message", listener);
     };
   }, [updateToken, storeOrigin]);
