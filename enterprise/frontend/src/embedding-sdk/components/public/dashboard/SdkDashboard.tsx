@@ -22,10 +22,12 @@ import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
+import { useBreadcrumbContext } from "embedding-sdk/hooks/use-breadcrumb-context";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { MetabaseQuestion } from "embedding-sdk/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
+import { useGetDashboardQuery } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -152,6 +154,19 @@ const SdkDashboardInner = ({
   });
 
   const { isLocaleLoading } = useLocale();
+  const { data: dashboard } = useGetDashboardQuery({ id: dashboardId });
+  const { updateCurrentLocation } = useBreadcrumbContext();
+
+  // Update breadcrumb when dashboard changes
+  useEffect(() => {
+    if (dashboard) {
+      updateCurrentLocation({
+        id: `dashboard-${dashboard.id}`,
+        name: dashboard.name,
+        type: "dashboard",
+      });
+    }
+  }, [dashboard, updateCurrentLocation]);
   const { displayOptions } = useSdkDashboardParams({
     dashboardId,
     withDownloads,

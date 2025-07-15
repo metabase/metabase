@@ -1,0 +1,81 @@
+import { createContext, type ReactNode, useCallback, useState } from "react";
+
+export interface BreadcrumbItem {
+  id: string;
+  name: string;
+  type: 'collection' | 'dashboard' | 'question' | 'drilldown';
+  action?: () => void; // undefined for current location
+  isCurrent?: boolean;
+}
+
+export interface BreadcrumbContextType {
+  breadcrumbs: BreadcrumbItem[];
+  setBreadcrumbs: (items: BreadcrumbItem[]) => void;
+  addBreadcrumb: (item: BreadcrumbItem) => void;
+  updateCurrentLocation: (item: BreadcrumbItem) => void;
+  navigateToBreadcrumb: (id: string) => void;
+  clearBreadcrumbs: () => void;
+}
+
+export const BreadcrumbContext = createContext<BreadcrumbContextType | null>(null);
+
+export interface BreadcrumbProviderProps {
+  children: ReactNode;
+}
+
+export const BreadcrumbProvider = ({ children }: BreadcrumbProviderProps) => {
+  const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
+
+  const addBreadcrumb = useCallback((item: BreadcrumbItem) => {
+    setBreadcrumbs(prev => {
+      // Mark previous current item as not current and add action
+      const updated = prev.map(breadcrumb => ({
+        ...breadcrumb,
+        isCurrent: false,
+        action: breadcrumb.action || (() => {})
+      }));
+      
+      // Add new item as current
+      return [...updated, { ...item, isCurrent: true, action: undefined }];
+    });
+  }, []);
+
+  const updateCurrentLocation = useCallback((item: BreadcrumbItem) => {
+    setBreadcrumbs(prev => {
+      if (prev.length === 0) {
+        return [{ ...item, isCurrent: true, action: undefined }];
+      }
+      
+      // Update the last item (current location)
+      const updated = [...prev];
+      updated[updated.length - 1] = { ...item, isCurrent: true, action: undefined };
+      return updated;
+    });
+  }, []);
+
+  const navigateToBreadcrumb = useCallback((id: string) => {
+    const breadcrumb = breadcrumbs.find(item => item.id === id);
+    if (breadcrumb?.action) {
+      breadcrumb.action();
+    }
+  }, [breadcrumbs]);
+
+  const clearBreadcrumbs = useCallback(() => {
+    setBreadcrumbs([]);
+  }, []);
+
+  const value: BreadcrumbContextType = {
+    breadcrumbs,
+    setBreadcrumbs,
+    addBreadcrumb,
+    updateCurrentLocation,
+    navigateToBreadcrumb,
+    clearBreadcrumbs,
+  };
+
+  return (
+    <BreadcrumbContext.Provider value={value}>
+      {children}
+    </BreadcrumbContext.Provider>
+  );
+};
