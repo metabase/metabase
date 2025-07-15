@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
@@ -62,6 +64,18 @@ export function EmbeddingDataPicker({
     isFetching: isSourceModelFetching,
   } = useSourceEntityCollectionId(query);
 
+  const defaultEmbeddingEntityTypes = useMemo(() => {
+    const modelsCount = dataSourceCountData?.data.filter(
+      (d) => d.model === "dataset",
+    ).length;
+
+    // If there are already models (datasets), we exclude tables
+    // by default, as tables add noise to the data picker.
+    return modelsCount && modelsCount > 0
+      ? DEFAULT_EMBEDDING_ENTITY_TYPES.filter((type) => type !== "table")
+      : DEFAULT_EMBEDDING_ENTITY_TYPES;
+  }, [dataSourceCountData]);
+
   if (isDataSourceCountLoading) {
     return null;
   }
@@ -70,6 +84,7 @@ export function EmbeddingDataPicker({
     !forceMultiStagedDataPicker &&
     dataSourceCountData != null &&
     dataSourceCountData.total < 100;
+
   if (shouldUseSimpleDataPicker) {
     const ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES: EmbeddingEntityType[] = [
       "model",
@@ -81,7 +96,7 @@ export function EmbeddingDataPicker({
     const simpleDataPickerEntityTypes =
       filteredEntityTypes.length > 0
         ? filteredEntityTypes
-        : DEFAULT_EMBEDDING_ENTITY_TYPES;
+        : defaultEmbeddingEntityTypes;
     return (
       <PLUGIN_EMBEDDING.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
