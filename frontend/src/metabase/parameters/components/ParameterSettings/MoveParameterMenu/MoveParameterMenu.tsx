@@ -72,7 +72,13 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
   const renderOption = useCallback(
     ({ option, checked }: { option: { value: string }; checked?: boolean }) => {
       if (option.value === TOP_NAV_VALUE) {
-        return <SelectItem title={t`Top of page`} icon="dashboard" />;
+        return (
+          <SelectItem
+            title={t`Top of page`}
+            icon="dashboard"
+            checked={checked}
+          />
+        );
       }
       const dashcard = dashcardMap[option.value];
       if (!dashcard) {
