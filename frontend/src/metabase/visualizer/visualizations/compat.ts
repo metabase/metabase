@@ -7,6 +7,7 @@ import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Dataset,
   DatasetColumn,
+  Field,
   VisualizerDataSourceId,
 } from "metabase-types/api";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
@@ -64,7 +65,7 @@ export function groupColumnsBySuitableVizSettings(
   >,
   settings: ComputedVisualizationSettings,
   datasets: Record<string, Dataset>,
-  columns: DatasetColumn[],
+  columns: DatasetColumn[] | Field[],
 ) {
   const { display, columns: ownColumns } = state;
   if (!display) {
@@ -105,27 +106,29 @@ export function groupColumnsBySuitableVizSettings(
   }
 }
 
-export function partitionTimeDimensions(columns: DatasetColumn[]): {
-  dimensions: DatasetColumn[];
-  timeDimensions: DatasetColumn[];
-  otherDimensions: DatasetColumn[];
+export function partitionTimeDimensions<T extends DatasetColumn[] | Field[]>(
+  columns: T,
+): {
+  dimensions: T;
+  timeDimensions: T;
+  otherDimensions: T;
 } {
   // Extract only dimension columns (exclude metrics and pivot group columns)
   const dimensions = columns.filter(
     (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
-  );
+  ) as T;
 
   // Partition temporal & non-temporal dimensions
   const [timeDimensions, otherDimensions] = _.partition(dimensions, (col) =>
     isDate(col),
-  );
+  ) as unknown as [T, T];
 
   return { dimensions, timeDimensions, otherDimensions };
 }
 
 function checkDimensionCompatibilityForCartesianCharts(
   ownColumns: DatasetColumn[],
-  targetColumns: DatasetColumn[],
+  targetColumns: DatasetColumn[] | Field[],
 ) {
   const {
     dimensions: ownDimensions,
