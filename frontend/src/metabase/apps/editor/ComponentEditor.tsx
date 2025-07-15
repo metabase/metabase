@@ -230,6 +230,7 @@ export function ComponentEditor({ params }: Props) {
         >
           <ComponentPreviewRoot configuration={componentConfiguration}>
             <EditableComponentTreeNode
+              configuration={componentConfiguration}
               componentContext={componentContext}
               selectedComponent={selectedComponent}
               component={componentConfiguration.root}
@@ -253,6 +254,7 @@ export function ComponentEditor({ params }: Props) {
               />
             ) : (
               <ComponentSettingsSidebar
+                componentConfiguration={componentConfiguration}
                 componentContext={componentContext}
                 component={selectedComponent}
                 onComponentSettingsChange={handleComponentSettingsChange}

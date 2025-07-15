@@ -16,6 +16,11 @@ export function useApps() {
   return getApps();
 }
 
+export function useCustomComponents() {
+  const apps = useApps();
+  return apps.filter((app) => app.type === "component");
+}
+
 export function useSaveApp() {
   return (app: ComponentConfiguration) => {
     const apps = getApps();
@@ -35,6 +40,10 @@ export function useSaveApp() {
 }
 
 export function useApp(id?: string) {
+  return getComponentById(id);
+}
+
+export function getComponentById(id?: string) {
   if (id) {
     const apps = getApps();
     return apps.find((a: ComponentConfiguration) => a.id === id);

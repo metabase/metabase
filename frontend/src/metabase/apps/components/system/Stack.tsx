@@ -2,10 +2,11 @@ import { getComponentStyleValue } from "metabase/apps/helpers";
 import type { ComponentContext } from "metabase/apps/hooks/use-component-context";
 import { Stack } from "metabase/ui";
 
-import type { ComponentDefinition } from "../../types";
+import type { ComponentConfiguration, ComponentDefinition } from "../../types";
 import { ComponentTreeNode } from "../ComponentTreeNode";
 
 type Props = {
+  configuration: ComponentConfiguration;
   componentContext: ComponentContext;
   component: ComponentDefinition;
   ChildComponent?: React.ComponentType<any>;
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export function StackSystemComponent({
+  configuration,
   componentContext,
   component,
   ChildComponent = ComponentTreeNode,
@@ -28,6 +30,7 @@ export function StackSystemComponent({
       {component.children?.map((child) => (
         <ChildComponent
           key={child.id}
+          configuration={configuration}
           componentContext={componentContext}
           component={child}
           parentComponent={component}

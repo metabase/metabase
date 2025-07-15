@@ -2,6 +2,8 @@ export type ComponentDataSource = {
   id: string;
   type: "table";
   tableId: number;
+  databaseId: number;
+  name?: string;
 };
 
 export type ComponentFormScope = {
@@ -36,6 +38,7 @@ export type ComponentDefinition = {
   id: string;
   componentId: string;
   value?: ComponentValue;
+  dataSourceId?: string;
   children?: ComponentDefinition[];
   style?: Record<string, string | number | boolean>;
 };

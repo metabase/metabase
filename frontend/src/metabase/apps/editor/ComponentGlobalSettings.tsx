@@ -101,6 +101,8 @@ export function ComponentGlobalSettings({
           id: uuid(),
           type: currentDataSource.type as "table",
           tableId: currentDataSource.tableId as number,
+          databaseId: currentDataSource.databaseId as number,
+          name: currentDataSource.name ?? "",
         },
       ],
     });
@@ -257,9 +259,14 @@ export function ComponentGlobalSettings({
             <SelectTable
               value={currentDataSource.tableId?.toString()}
               onChange={(value) => {
+                const table = tables?.find(
+                  (table) => table.id === Number(value),
+                );
                 setCurrentDataSource({
                   ...currentDataSource,
                   tableId: Number(value),
+                  databaseId: table?.db_id ?? 1,
+                  name: table?.display_name ?? "",
                 });
               }}
             />

@@ -1,97 +1,70 @@
-import { Select, Stack, TextInput } from "metabase/ui";
+import { Stack } from "metabase/ui";
 
+import { SYSTEM_COMPONENTS_MAP } from "../const/systemComponents";
 import type { ComponentContext } from "../hooks/use-component-context";
-import type { ComponentDefinition } from "../types";
+import type { ComponentConfiguration, ComponentDefinition } from "../types";
+
+import { DataComponentSelect } from "./DataComponentSelect";
+import { DataSourceSelect } from "./DataSourceSelect";
+import { DataValueSelect } from "./DataValueSelect";
 
 type Props = {
+  componentConfiguration: ComponentConfiguration;
   componentContext: ComponentContext;
   component: ComponentDefinition;
   onComponentSettingsChange: (settings: Partial<ComponentDefinition>) => void;
 };
 
 export function ComponentSettingsData({
+  componentConfiguration,
   componentContext,
   component,
   onComponentSettingsChange,
 }: Props) {
-  const handleChangeConstantValue = (value: string) => {
-    onComponentSettingsChange({
-      value: {
-        type: "constant",
-        value,
-      },
-    });
-  };
+  const DATA_VARIABLES =
+    SYSTEM_COMPONENTS_MAP[component.componentId]?.dataVariables;
 
-  const handleChangeContextField = (value: string) => {
-    onComponentSettingsChange({
-      value: {
-        type: "context",
-        field: value,
-      },
-    });
-  };
-
-  const handleChangeContextType = (value: string) => {
-    onComponentSettingsChange({
-      value: {
-        type: value as any,
-      },
-    });
-  };
+  if (!DATA_VARIABLES) {
+    return null;
+  }
 
   return (
     <Stack gap="md">
-      <Select
-        label="Source Type"
-        value={component.value?.type ?? "constant"}
-        onChange={handleChangeContextType}
-        data={[
-          {
-            label: "Constant Value",
-            value: "constant",
-          },
-          {
-            label: "Component Context",
-            value: "context",
-            disabled: componentContext.type !== "tableRow",
-          },
-          {
-            label: "Data Source Parameter",
-            value: "dataSource" as any,
-            disabled: true,
-          },
-          {
-            label: "Global Parameter",
-            value: "global" as any,
-            disabled: true,
-          },
-          {
-            label: "Form Value",
-            value: "form" as any,
-            disabled: true,
-          },
-        ]}
-      />
-      {component.value?.type === "constant" && (
-        <TextInput
-          label="Constant Value"
-          value={component.value?.value ?? ""}
-          onChange={(e) => {
-            handleChangeConstantValue(e.target.value);
-          }}
-        />
-      )}
-      {component.value?.type === "context" && (
-        <Select
-          label="Context Parameter"
-          value={component.value?.field ?? ""}
-          data={componentContext.parameters}
-          onChange={(value) => {
-            handleChangeContextField(value);
-          }}
-        />
-      )}
+      {DATA_VARIABLES.map((variable, index) => {
+        switch (variable.type) {
+          case "value":
+            return (
+              <DataValueSelect
+                key={index}
+                componentContext={componentContext}
+                component={component}
+                onComponentSettingsChange={onComponentSettingsChange}
+              />
+            );
+
+          case "dataSource":
+            return (
+              <DataSourceSelect
+                key={index}
+                componentConfiguration={componentConfiguration}
+                component={component}
+                onComponentSettingsChange={onComponentSettingsChange}
+              />
+            );
+
+          case "childComponentSelect":
+            return (
+              <DataComponentSelect
+                key={index}
+                component={component}
+                onComponentSettingsChange={onComponentSettingsChange}
+              />
+            );
+
+          default:
+            return null;
+        }
+      })}
     </Stack>
   );
 }

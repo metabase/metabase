@@ -4,18 +4,20 @@ import { Box, Tabs, Text, Title } from "metabase/ui";
 
 import { getComponentName } from "../helpers";
 import type { ComponentContext } from "../hooks/use-component-context";
-import type { ComponentDefinition } from "../types";
+import type { ComponentConfiguration, ComponentDefinition } from "../types";
 
 import { ComponentSettingsData } from "./ComponentSettingsData";
 import { ComponentSettingsStyle } from "./ComponentSettingsStyle";
 
 type Props = {
+  componentConfiguration: ComponentConfiguration;
   componentContext: ComponentContext;
   component: ComponentDefinition;
   onComponentSettingsChange: (settings: Partial<ComponentDefinition>) => void;
 };
 
 export function ComponentSettingsSidebar({
+  componentConfiguration,
   componentContext,
   component,
   onComponentSettingsChange,
@@ -44,6 +46,7 @@ export function ComponentSettingsSidebar({
         </Tabs.List>
         <Tabs.Panel value="data" py="md">
           <ComponentSettingsData
+            componentConfiguration={componentConfiguration}
             component={component}
             componentContext={componentContext}
             onComponentSettingsChange={onComponentSettingsChange}

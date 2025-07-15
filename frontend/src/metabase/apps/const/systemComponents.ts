@@ -37,6 +37,11 @@ export type StyleVariable = {
   options?: string[] | number[];
 };
 
+export type DataVariable = {
+  name: string;
+  type: string;
+};
+
 export type ComponentMetadata = {
   id: string;
   name: string;
@@ -45,6 +50,7 @@ export type ComponentMetadata = {
   icon: React.ElementType;
   defaultValue?: string;
   styleVariables?: StyleVariable[];
+  dataVariables?: DataVariable[];
   hasChildren?: boolean;
 };
 
@@ -82,6 +88,12 @@ export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
         key: "color",
         defaultValue: "var(--mb-color-text-primary)",
         type: "color",
+      },
+    ],
+    dataVariables: [
+      {
+        name: "Value",
+        type: "value",
       },
     ],
   },
@@ -123,6 +135,12 @@ export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
         key: "underline",
         defaultValue: false,
         type: "boolean",
+      },
+    ],
+    dataVariables: [
+      {
+        name: "Value",
+        type: "value",
       },
     ],
   },
@@ -273,6 +291,53 @@ export const SYSTEM_COMPONENTS: ComponentMetadata[] = [
     category: SystemComponentCategory.Data,
     description: "Display components in a list",
     icon: IconList,
+    styleVariables: [
+      {
+        name: "Wrap",
+        key: "wrap",
+        defaultValue: "wrap",
+        type: "string",
+        options: ["wrap", "nowrap"],
+      },
+      {
+        name: "Gap",
+        key: "gap",
+        defaultValue: "md",
+        type: "string",
+        options: SPACING_OPTIONS_WITH_ZERO,
+      },
+      {
+        name: "Direction",
+        key: "direction",
+        defaultValue: "column",
+        type: "string",
+        options: ["row", "column"],
+      },
+      {
+        name: "Align",
+        key: "align",
+        defaultValue: "flex-start",
+        type: "string",
+        options: FLEX_ALIGN_OPTIONS,
+      },
+      {
+        name: "Justify",
+        key: "justify",
+        defaultValue: "flex-start",
+        type: "string",
+        options: FLEX_ALIGN_OPTIONS,
+      },
+    ],
+    dataVariables: [
+      {
+        name: "Data Source",
+        type: "dataSource",
+      },
+      {
+        name: "List Component",
+        type: "childComponentSelect",
+      },
+    ],
   },
 ];
 

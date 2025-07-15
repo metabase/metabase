@@ -1,9 +1,13 @@
 import { getComponentStyleValue } from "metabase/apps/helpers";
 import type { ComponentContext } from "metabase/apps/hooks/use-component-context";
-import type { ComponentDefinition } from "metabase/apps/types";
+import type {
+  ComponentConfiguration,
+  ComponentDefinition,
+} from "metabase/apps/types";
 import { Paper } from "metabase/ui";
 
 type Props = {
+  configuration: ComponentConfiguration;
   componentContext: ComponentContext;
   component: ComponentDefinition;
   ChildComponent: React.ComponentType<{ component: ComponentDefinition }>;
@@ -11,6 +15,7 @@ type Props = {
 };
 
 export function CardSystemComponent({
+  configuration,
   componentContext,
   component,
   ChildComponent,
@@ -26,6 +31,7 @@ export function CardSystemComponent({
     >
       {child && (
         <ChildComponent
+          configuration={configuration}
           componentContext={componentContext}
           parentComponent={component}
           component={child}

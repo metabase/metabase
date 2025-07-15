@@ -8,12 +8,13 @@ import { ComponentTreeNode } from "../components/ComponentTreeNode";
 import { SystemComponentId } from "../const/systemComponents";
 import { getComponentName } from "../helpers";
 import type { ComponentContext } from "../hooks/use-component-context";
-import type { ComponentDefinition } from "../types";
+import type { ComponentConfiguration, ComponentDefinition } from "../types";
 
 import { ComponentPickPlaceholder } from "./ComponentPickPlaceholder";
 import S from "./EditableComponentTreeNode.module.css";
 
 type Props = {
+  configuration: ComponentConfiguration;
   componentContext: ComponentContext;
   parentComponent?: ComponentDefinition;
   component: ComponentDefinition;
@@ -27,6 +28,7 @@ type Props = {
 };
 
 export function EditableComponentTreeNode({
+  configuration,
   componentContext,
   parentComponent,
   component,
@@ -105,6 +107,7 @@ export function EditableComponentTreeNode({
         </>
       )}
       <ComponentTreeNode
+        configuration={configuration}
         componentContext={componentContext}
         component={component}
         ChildComponent={EditableComponentTreeNode}
