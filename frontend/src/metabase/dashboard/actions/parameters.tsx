@@ -1,7 +1,9 @@
+import cx from "classnames";
 import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { showAutoWireToast } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import {
   closeAddCardAutoWireToasts,
@@ -18,6 +20,7 @@ import {
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
@@ -214,7 +217,14 @@ export const moveParameter =
 
       dispatch(
         addUndo({
-          message: t`Filter moved`,
+          // Workaround to make the text show up fully without being truncated
+          message: (
+            <Text
+              className={cx(CS.flex, CS.flexFull, CS.flexNoShrink)}
+              c="text-white"
+              w="8rem"
+            >{t`Filter moved`}</Text>
+          ),
           undo: true,
           action: undoMove,
           extraAction: {
