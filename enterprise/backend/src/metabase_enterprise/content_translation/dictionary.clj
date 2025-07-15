@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.premium-features.core :as premium-features]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
    [toucan2.core :as t2]))
 
@@ -69,7 +70,19 @@
   (tru "Row {0}: Invalid format. Expected exactly 3 columns (Language, String, Translation)"
        (adjust-index index)))
 
-(defn process-rows
+(defn- header?
+  "Checks if a row is likely a by checking if it begins with language or locale works with both unparsed strings
+  and vectors"
+  [row]
+  (cond
+    (string? row)
+    (let [downcased (u/lower-case-en row)]
+      (or (str/starts-with? downcased "locale")
+          (str/starts-with? downcased "language")))
+    (vector? row)
+    (contains? #{"locale" "language"} (u/lower-case-en (first row)))))
+
+(defn- process-rows
   "Format, validate, and process rows from a CSV. Takes a collection of vectors and returns a map with the shape
   {:translations [{:locale :msgid :msgstr}], :errors [string]}, plus the set :seen for internal use."
   [rows]
@@ -84,17 +97,19 @@
                   (update :seen conj (dissoc translation :msgstr))
                   (update :translations conj translation)
                   (update :errors into errors))))]
-    (let [formatted-rows (map format-row rows)]
+    (let [[maybe-header & rest] rows
+          formatted-rows (map format-row (if (header? maybe-header)
+                                           rest
+                                           rows))]
       (reduce-kv collect-translation-and-errors
                  {:seen         #{}
                   :errors       []
                   :translations []}
                  (vec formatted-rows)))))
 
-(defn import-translations!
+(defn- import-translations!
   "Insert or update rows in the content_translation table."
   [rows]
-  (premium-features/assert-has-feature :content-translation (tru "Content translation"))
   (let [{:keys [translations errors]} (process-rows rows)]
     (when (seq errors)
       (throw (ex-info (tru "The file could not be uploaded due to the following error(s):")
@@ -109,36 +124,26 @@
         (when-not (empty? usable-rows)
           (t2/insert! :model/ContentTranslation usable-rows))))))
 
-(defn throw-informative-csv-error
-  "Throw an error that mentions the specific line number that fails. In the happy path, for the sake of efficiency, we
-  send the whole file to csv/read-csv. In this function, to learn the line number where the error arose, we send the
-  file to csv/read-csv again, line by line."
-  [file original-exception]
-  (with-open [reader (io/reader file)]
-    (let [lines (line-seq reader)]
-      (doseq [[i line] (map-indexed vector lines)]
-        (try
-          (doall (csv/read-csv (java.io.StringReader. line)))
-          (catch Exception e
-            (let [error-message (.getMessage ^Exception e)
-                  error-message (if (zero? i)
-                                  (tru "Header row: {0}" error-message)
-                                  (tru "Row {0}: {1}" i error-message))]
-              (throw (ex-info
-                      error-message
-                      {:status-code http-status-unprocessable
-                       :errors [error-message]})))))))
-    (let [error-message (.getMessage ^Exception original-exception)]
-      (throw (ex-info
-              error-message
-              {:status-code http-status-unprocessable
-               :errors [error-message]})))))
+(defn- maybe-read
+  [reader]
+  (let [lines (line-seq reader)]
+    (import-translations!
+     (for [[i line] (map-indexed vector lines)]
+       (try
+         (first (csv/read-csv (java.io.StringReader. line)))
+         (catch Exception e
+           (let [error-message (.getMessage ^Exception e)
+                 error-message (if (and (zero? i) (header? line))
+                                 (tru "Header row: {0}" error-message)
+                                 (tru "Row {0}: {1}" i error-message))]
+             (throw (ex-info
+                     error-message
+                     {:status-code http-status-unprocessable
+                      :errors [error-message]})))))))))
 
-(defn read-csv
+(defn read-and-import-csv!
   "Read CSV and catch error if the CSV is invalid."
   [file]
+  (premium-features/assert-has-feature :content-translation (tru "Content translation"))
   (with-open [reader (io/reader file)]
-    (try
-      (doall (csv/read-csv reader))
-      (catch Exception original-exception
-        (throw-informative-csv-error file original-exception)))))
+    (maybe-read reader)))
