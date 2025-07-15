@@ -4,10 +4,10 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [metabase-enterprise.semantic-search.db :as db]
+   [metabase-enterprise.semantic-search.embedding :as embedding]
    [nano-id.core :as nano-id]
-   [next.jdbc :as jdbc]
-   [semantic-search.db :as db]
-   [semantic-search.embedding :as embedding]))
+   [next.jdbc :as jdbc]))
 
 (def ^:dynamic *index-table-name*
   :search_index)

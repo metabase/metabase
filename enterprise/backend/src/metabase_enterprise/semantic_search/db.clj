@@ -8,20 +8,13 @@
 (defn- build-db-config
   "Build database configuration from environment variables"
   []
-  (if-let [db-url (env :pg-url)]
+  (if-let [db-url (env :mb-pgvector-db-url)]
     {:jdbcUrl db-url}
-    {:dbtype "postgres"
-     :host (env :pg-host "localhost")
-     :port (env :pg-port 55432)
-     :dbname (env :pg-database "mb_semantic_search")
-     :user (env :pg-user)
-     :password (env :pg-password)
-     :sslmode (env :pg-sslmode "prefer")}))
+    (throw (ex-info "MB_PGVECTOR_DB_URL environment variable is required for semantic search" {}))))
 
 (defn init-db!
   "Initialize database connection pool from environment variables.
-   Uses DB_URL if provided, otherwise falls back to individual env vars:
-   PG_HOST, PG_PORT, PG_USER, PG_PASSWORD, PG_DATABASE, PG_SSLMODE"
+   Requires MB_PGVECTOR_DB_URL environment variable."
   []
   (let [db-config (build-db-config)
         ds (jdbc/get-datasource db-config)]
