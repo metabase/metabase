@@ -1544,7 +1544,7 @@ describe("scenarios > admin > datamodel", () => {
 
     describe("Metadata", () => {
       describe("Semantic type", () => {
-        it("should allow to change the type to 'No semantic type'", () => {
+        it("should allow to change the type to 'No semantic type' (metabase#59052)", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1555,8 +1555,8 @@ describe("scenarios > admin > datamodel", () => {
 
           FieldSection.getSemanticTypeInput()
             .should("have.value", "Foreign Key")
-            .click();
-          H.popover().findByText("No semantic type").click();
+            // it should allow to just type to search (metabase#59052)
+            .type("no sema{downarrow}{enter}");
           cy.wait("@updateField");
           H.undoToast().should(
             "contain.text",
@@ -1582,7 +1582,7 @@ describe("scenarios > admin > datamodel", () => {
           );
         });
 
-        it("should allow to change the type to 'Foreign Key' and choose the target field", () => {
+        it("should allow to change the type to 'Foreign Key' and choose the target field (metabase#59052)", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1609,8 +1609,8 @@ describe("scenarios > admin > datamodel", () => {
 
           FieldSection.getSemanticTypeFkTarget()
             .should("have.value", "")
-            .click();
-          H.popover().findByText("Products → ID").click();
+            // it should allow to just type to search (metabase#59052)
+            .type("products{downarrow}{enter}");
           cy.wait("@updateField");
           H.undoToast().should(
             "contain.text",
@@ -1752,7 +1752,7 @@ describe("scenarios > admin > datamodel", () => {
           });
         });
 
-        it("should allow to change the type to 'Currency' and choose the currency", () => {
+        it("should allow to change the type to 'Currency' and choose the currency (metabase#59052)", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1784,8 +1784,8 @@ describe("scenarios > admin > datamodel", () => {
             .scrollIntoView()
             .should("be.visible")
             .and("have.value", "US Dollar")
-            .click();
-          H.popover().findByText("Canadian Dollar").click();
+            // it should allow to just type to search (metabase#59052)
+            .type("canadian{downarrow}{enter}");
           cy.wait("@updateField");
           verifyAndCloseToast("Semantic type of Tax updated");
 
