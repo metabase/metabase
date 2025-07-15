@@ -776,7 +776,7 @@
                   (->> card
                        u/the-id
                        (format "table/card__%d/query_metadata")
-                       (mt/user-http-request :crowberto :get 200)))))))))
+                       (mt/user-http-request :rasta :get 200)))))))))
 
 (deftest ^:parallel virtual-table-metadata-deleted-cards-test
   (testing "GET /api/table/card__:id/query_metadata for deleted cards (#48461)"
