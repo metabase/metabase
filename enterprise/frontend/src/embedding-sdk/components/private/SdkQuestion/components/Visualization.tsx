@@ -21,7 +21,7 @@ import { useSdkQuestionContext } from "../context";
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionQuestionVisualizationProps = FlexibleSizeProps;
+export type QuestionVisualizationProps = FlexibleSizeProps;
 
 /**
  * The main visualization component that renders the question results as a chart, table, or other visualization type.
@@ -35,7 +35,7 @@ export const QuestionVisualization = ({
   width,
   className,
   style,
-}: InteractiveQuestionQuestionVisualizationProps) => {
+}: QuestionVisualizationProps) => {
   const { isLocaleLoading } = useLocale();
   const {
     question,
