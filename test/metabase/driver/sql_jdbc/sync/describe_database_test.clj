@@ -301,3 +301,57 @@
                (.close (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn))
                (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn)
                (is (= 2 @connection-count))))))))))
+
+(deftest try-ensure-open-conn-sets-non-recursive-options-test
+  (testing "try-ensure-open-conn! sets connection options as non-recursive"
+    (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
+      (let [connection-option-calls (volatile! [])
+            is-default-options
+            (identical? (get-method sql-jdbc.execute/do-with-connection-with-options :sql-jdbc)
+                        (get-method sql-jdbc.execute/do-with-connection-with-options driver/*driver*))
+
+            orig-do-with-resolved-connection-data-source @#'sql-jdbc.execute/do-with-resolved-connection-data-source
+            closed-conn (proxy [Connection] []
+                          (isClosed [] true)
+                          (close [] nil))
+            new-conn (proxy [Connection] []
+                       (isClosed [] false)
+                       (close [] nil)
+                       (setReadOnly [read-only]
+                         (vswap! connection-option-calls conj [:setReadOnly read-only]))
+                       (setAutoCommit [auto-commit]
+                         (vswap! connection-option-calls conj [:setAutoCommit auto-commit]))
+                       (setTransactionIsolation [level]
+                         (vswap! connection-option-calls conj [:setTransactionIsolation level]))
+                       (setHoldability [holdability]
+                         (vswap! connection-option-calls conj [:setHoldability holdability])))]
+        (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                      (fn [driver db options]
+                        (if (:keep-open? options)
+                          (reify javax.sql.DataSource
+                            (getConnection [_] new-conn))
+                          (orig-do-with-resolved-connection-data-source driver db options)))
+
+                      sql-jdbc.execute/recursive-connection?
+                      (let [original-recursive-fn sql-jdbc.execute/recursive-connection?]
+                        (fn []
+                          (vswap! connection-option-calls conj [:recursive-connection-check])
+                          (original-recursive-fn)))]
+
+          (driver/do-with-resilient-connection
+           driver/*driver* (mt/id)
+           (fn [driver _db]
+             (let [result (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn)]
+               ;; Should return the new connection
+               (is (identical? new-conn result))
+
+               ;; Should have checked if this is a recursive connection
+               (is (some #(= % [:recursive-connection-check]) @connection-option-calls))
+
+               ;; Should have set connection options (since it's non-recursive)
+               (let [calls @connection-option-calls]
+                 (is (some #(and (= (first %) :setReadOnly) (true? (second %))) calls))
+                 (when is-default-options
+                   (is (some #(and (= (first %) :setAutoCommit) (true? (second %))) calls))
+                   (is (some #(= (first %) :setTransactionIsolation) calls))
+                   (is (some #(= (first %) :setHoldability) calls))))))))))))
