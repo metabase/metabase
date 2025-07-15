@@ -176,6 +176,8 @@ export class AccordionList<
   // resets the row height cache when the displayed rows change
   _clearRowHeightCache() {
     this._cache.clearAll();
+    this._forceUpdateList();
+
     // NOTE: unclear why this needs to be async
     this._forceUpdateTimeout = setTimeout(() => {
       this._forceUpdateTimeout = null;
