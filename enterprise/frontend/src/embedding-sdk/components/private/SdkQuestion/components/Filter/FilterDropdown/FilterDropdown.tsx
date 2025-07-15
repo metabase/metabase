@@ -20,7 +20,7 @@ import { FilterPicker } from "../FilterPicker/FilterPicker";
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionFilterDropdownProps = {
+export type FilterDropdownProps = {
   /**
    * Whether to show the icon for the column item
    */
@@ -32,7 +32,7 @@ const FilterDropdownInner = ({
   withColumnItemIcon,
   ...popoverProps
 }: Pick<UpdateQueryHookProps, "query"> &
-  InteractiveQuestionFilterDropdownProps &
+  FilterDropdownProps &
   Omit<PopoverProps, "children" | "onClose" | "opened">) => {
   const filters = useMemo(() => getFilterItems(query), [query]);
 
@@ -109,9 +109,7 @@ const FilterDropdownInner = ({
  * @category InteractiveQuestion
  * @param props
  */
-export const FilterDropdown = ({
-  withColumnItemIcon,
-}: InteractiveQuestionFilterDropdownProps) => {
+export const FilterDropdown = ({ withColumnItemIcon }: FilterDropdownProps) => {
   const { question } = useSdkQuestionContext();
 
   if (!question) {

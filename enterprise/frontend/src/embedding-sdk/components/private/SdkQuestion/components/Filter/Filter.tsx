@@ -12,7 +12,7 @@ import { FilterPicker } from "./FilterPicker";
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionFilterProps = {
+export type FilterProps = {
   /**
    * Whether to show the icon for the column item
    */
@@ -42,9 +42,7 @@ const AddFilterPopover = () => {
  * @category InteractiveQuestion
  * @param props
  */
-export const Filter = ({
-  withColumnItemIcon,
-}: InteractiveQuestionFilterProps) => (
+export const Filter = ({ withColumnItemIcon }: FilterProps) => (
   <Group>
     <DropdownFilterBadgeList withColumnItemIcon={withColumnItemIcon} />
     <AddFilterPopover />

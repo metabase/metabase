@@ -4,7 +4,7 @@ import { Group, Popover } from "metabase/ui";
 
 import { BadgeListItem } from "../util/BadgeList/BadgeListItem";
 
-import type { InteractiveQuestionFilterProps } from "./Filter";
+import type { FilterProps } from "./Filter";
 import { FilterPicker } from "./FilterPicker";
 import { type SDKFilterItem, useFilterData } from "./hooks/use-filter-data";
 
@@ -13,7 +13,7 @@ const DropdownFilterBadgeListContent = ({
   withColumnItemIcon,
 }: {
   item: SDKFilterItem;
-} & InteractiveQuestionFilterProps) => {
+} & FilterProps) => {
   const [opened, { open, close }] = useDisclosure(false);
 
   return (
@@ -39,7 +39,7 @@ const DropdownFilterBadgeListContent = ({
 
 export const DropdownFilterBadgeList = ({
   withColumnItemIcon,
-}: InteractiveQuestionFilterProps) => {
+}: FilterProps) => {
   const filterItems = useFilterData();
 
   return (
