@@ -27,7 +27,9 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-export const ossRoutes = {
+type RouteMap = Record<string, { path: string; testPattern: RegExp }>;
+
+export const ossRoutes: RouteMap = {
   root: { path: "", testPattern: /site name/i },
   general: { path: "/general", testPattern: /site name/i },
   email: { path: "/email", testPattern: /SMTP/i },
@@ -74,8 +76,6 @@ export const ossRoutes = {
   },
   cloud: { path: "/cloud", testPattern: /Migrate to Metabase Cloud/i },
 };
-
-type RouteMap = Record<string, { path: string; testPattern: RegExp }>;
 
 export const enterpriseRoutes: RouteMap = {
   license: { path: "/license", testPattern: /License/i },

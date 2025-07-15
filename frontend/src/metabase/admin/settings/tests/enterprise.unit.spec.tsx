@@ -1,4 +1,4 @@
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 
 import {
   setup as baseSetup,
@@ -39,7 +39,9 @@ describe("Admin Settings Routing - Enterprise without features", () => {
       "renders the $name route",
       async ({ path, testPattern }) => {
         await setup({ isAdmin: true, initialRoute: path });
-        expect(await screen.findByText(testPattern)).toBeInTheDocument();
+        await waitFor(() => {
+          expect(screen.queryAllByText(testPattern).length).toBeGreaterThan(0);
+        });
       },
     );
   });
