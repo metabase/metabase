@@ -8,8 +8,7 @@ const noop = () => {};
 export function useLazySelector<TSelected>(
   selector: ((state: SdkStoreState) => TSelected) | null | undefined,
 ): TSelected | null {
-  const metabaseProviderPropsStore = useMetabaseProviderPropsStore();
-  const reduxStore = metabaseProviderPropsStore?.reduxStore;
+  const { reduxStore } = useMetabaseProviderPropsStore();
 
   const subscribe = (notify: () => void) =>
     reduxStore && selector ? reduxStore.subscribe(notify) : noop;

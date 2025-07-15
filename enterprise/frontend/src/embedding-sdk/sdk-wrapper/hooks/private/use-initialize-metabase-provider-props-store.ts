@@ -36,8 +36,7 @@ export const useInitializeMetabaseProviderPropsStore = (
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useMemo(() => ensureMetabaseProviderPropsStore(initialProps), []);
 
-  const metabaseProviderPropsStore = useMetabaseProviderPropsStore();
-  const initialized = metabaseProviderPropsStore?.initialized ?? false;
+  const { initialized = false } = useMetabaseProviderPropsStore();
 
   useEffect(() => {
     incrementProvidersCount();
@@ -60,7 +59,7 @@ export const useInitializeMetabaseProviderPropsStore = (
 
   useEffect(() => {
     if (reduxStore && !initialized) {
-      ensureMetabaseProviderPropsStore().setProps({
+      ensureMetabaseProviderPropsStore().updateInternalProps({
         reduxStore,
         initialized: true,
       });
