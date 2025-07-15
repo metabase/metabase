@@ -12,13 +12,13 @@ import { useSdkQuestionContext } from "../../context";
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionDownloadWidgetProps = StackProps;
+export type DownloadWidgetProps = StackProps;
 
 const DownloadWidgetInner = ({
   question,
   result,
   ...rest
-}: InteractiveQuestionDownloadWidgetProps &
+}: DownloadWidgetProps &
   Pick<UseDownloadDataParams, "question" | "result">) => {
   const { withDownloads } = useSdkQuestionContext();
   const [, handleDownload] = useDownloadData({
@@ -45,9 +45,7 @@ const DownloadWidgetInner = ({
  * @category InteractiveQuestion
  * @param props
  */
-export const DownloadWidget = (
-  props: InteractiveQuestionDownloadWidgetProps,
-) => {
+export const DownloadWidget = (props: DownloadWidgetProps) => {
   const { question, queryResults } = useSdkQuestionContext();
   const [result] = queryResults ?? [];
 

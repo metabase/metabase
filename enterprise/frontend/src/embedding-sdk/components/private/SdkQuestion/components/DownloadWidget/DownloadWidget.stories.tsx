@@ -2,10 +2,7 @@ import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, type PopoverProps } from "metabase/ui";
 
-import {
-  DownloadWidget,
-  type InteractiveQuestionDownloadWidgetProps,
-} from "./DownloadWidget";
+import { DownloadWidget, type DownloadWidgetProps } from "./DownloadWidget";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
@@ -22,7 +19,7 @@ export default {
 };
 
 export const Default = {
-  render(args: InteractiveQuestionDownloadWidgetProps) {
+  render(args: DownloadWidgetProps) {
     return (
       <Box p="lg">
         <InteractiveQuestion questionId={QUESTION_ID}>
