@@ -83,10 +83,11 @@ interface ComparisonProps {
 function Comparison({ comparison, renderingContext }: ComparisonProps) {
   const { getColor } = renderingContext;
 
-  const changeDisplayValue =
-    comparison.changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
-      ? formatChange(comparison.percentChange)
-      : comparison.display.percentChange;
+  const isChanged =
+    comparison.changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE;
+  const changeDisplayValue = isChanged
+    ? formatChange(comparison.percentChange)
+    : comparison.display.percentChange;
 
   let icon: string | null = null;
 
@@ -129,7 +130,7 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
         <span style={styles.percentChange}>{changeDisplayValue}</span>
         <span style={styles.separator} />
         <span style={styles.comparisonDescription}>
-          {`${comparison.comparisonDescStr}: `}
+          {`${comparison.comparisonDescStr}${isChanged ? ": " : ""}`}
         </span>
         <span style={styles.comparisonValue}>
           {comparison.display.comparisonValue}

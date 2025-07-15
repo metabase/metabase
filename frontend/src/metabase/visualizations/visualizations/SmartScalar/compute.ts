@@ -333,19 +333,16 @@ function computeTrendAnotherColumn({
     (column) => column.name === comparison.column,
   );
 
-  if (columnIndex === -1) {
-    return {
-      comparisonValueStr: t`(No data)`,
-      comparisonDescStr: t`vs. N/A`,
-    };
-  }
-
   const column = cols[columnIndex];
-
+  const displayName = comparison.label || column.display_name;
   const lastRow = rows[latestRowIndex];
   const comparisonValue = lastRow[columnIndex];
 
-  const displayName = comparison.label || column.display_name;
+  if (columnIndex === -1 || comparisonValue == null) {
+    return {
+      comparisonDescStr: t`for ${displayName}`,
+    };
+  }
 
   return {
     comparisonDescStr: t`vs. ${displayName}`,
@@ -422,20 +419,22 @@ function computeComparisonPreviousValue({
 
   // if no row exists with non-null date and non-null value
   if (previousRowIndex === -1) {
-    return null;
+    return {
+      comparisonDescStr: t`for previous value`,
+    };
   }
 
   const prevDate = rows[previousRowIndex][dimensionColIndex] as string;
   const prevValue = rows[previousRowIndex][metricColIndex];
 
-  const comparisonDescStr = computeComparisonStrPreviousValue({
+  const comparisonPeriodStr = computeComparisonStrPreviousPeriod({
     nextDate,
     prevDate,
     dateUnitSettings,
   });
 
   return {
-    comparisonDescStr,
+    comparisonDescStr: t`vs. ${comparisonPeriodStr}`,
     comparisonValue: prevValue,
   };
 }
@@ -524,10 +523,10 @@ function computeComparisonPeriodsAgo({
   const prevDate = !isEmpty(rowPeriodsAgo)
     ? (rowPeriodsAgo?.[dimensionColIndex] as string)
     : computedPrevDate;
-  const comparisonDescStr =
+  const comparisonPeriodStr =
     dateUnitsAgo === 1
-      ? t`vs. previous ${dateUnitDisplay}`
-      : computeComparisonStrPreviousValue({
+      ? t`previous ${dateUnitDisplay}`
+      : computeComparisonStrPreviousPeriod({
           dateUnitSettings,
           nextDate,
           prevDate,
@@ -536,14 +535,14 @@ function computeComparisonPeriodsAgo({
   // if no row exists with date "X periods ago"
   if (isEmpty(rowPeriodsAgo)) {
     return {
-      comparisonDescStr,
+      comparisonDescStr: t`for ${comparisonPeriodStr}`,
     };
   }
 
   const prevValue = rowPeriodsAgo?.[metricColIndex];
 
   return {
-    comparisonDescStr,
+    comparisonDescStr: t`vs. ${comparisonPeriodStr}`,
     comparisonValue: prevValue,
   };
 }
@@ -634,7 +633,7 @@ function areDatesTheSame({
   return true;
 }
 
-function computeComparisonStrPreviousValue({
+function computeComparisonStrPreviousPeriod({
   dateUnitSettings,
   prevDate,
   nextDate,
@@ -657,7 +656,7 @@ function computeComparisonStrPreviousValue({
     options,
   });
 
-  return t`vs. ${formattedDateStr}`;
+  return String(formattedDateStr);
 }
 
 function formatDateStr({
@@ -689,8 +688,8 @@ export const CHANGE_TYPE_OPTIONS = {
   get MISSING() {
     return {
       CHANGE_TYPE: "PREVIOUS_VALUE_MISSING" as const,
-      PERCENT_CHANGE_STR: t`N/A`,
-      COMPARISON_VALUE_STR: t`(No data)`,
+      PERCENT_CHANGE_STR: t`No data`,
+      COMPARISON_VALUE_STR: "",
     };
   },
   get SAME() {
