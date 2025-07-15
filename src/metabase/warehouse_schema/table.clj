@@ -330,7 +330,7 @@
            dataset-query)
       (assoc :dataset_query dataset-query)
 
-      (and include-database?)
+      include-database?
       (assoc :db (when (and database (mi/can-read? database)) database))
 
       include-fields?
