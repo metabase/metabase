@@ -9,7 +9,7 @@ import { useSdkQuestionContext } from "../../context";
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionBackButtonProps = Omit<
+export type BackButtonProps = Omit<
   ActionIconProps & HTMLAttributes<HTMLButtonElement>,
   "noLink" | "onClick"
 >;
@@ -22,9 +22,7 @@ export type InteractiveQuestionBackButtonProps = Omit<
  * @category InteractiveQuestion
  * @param props
  */
-export const BackButton = ({
-  ...actionIconProps
-}: InteractiveQuestionBackButtonProps) => {
+export const BackButton = ({ ...actionIconProps }: BackButtonProps) => {
   const { onNavigateBack } = useSdkQuestionContext();
 
   if (!onNavigateBack) {
