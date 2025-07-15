@@ -91,6 +91,17 @@ const DashCardLoadingView = ({
   expectedDuration,
   display,
 }: LoadingViewProps & { display?: CardDisplayType }) => {
+  const getMessage = () => {
+    if (isSlow === "usually-fast") {
+      return t`This usually loads immediately, but is currently taking longer.`;
+    }
+    if (expectedDuration) {
+      jt`This usually takes an average of ${(
+        <span className={CS.textNoWrap}>{duration(expectedDuration)}</span>
+      )}, but is currently taking longer.`;
+    }
+  };
+
   return (
     <div
       data-testid="loading-indicator"
@@ -122,15 +133,7 @@ const DashCardLoadingView = ({
               <HoverCard.Dropdown ml={-8} className={EmbedFrameS.dropdown}>
                 <div className={cx(CS.p2, CS.textCentered)}>
                   <Text fw="bold">{t`Waiting for your data`}</Text>
-                  <Text lh="1.5">
-                    {isSlow === "usually-slow"
-                      ? jt`This usually takes an average of ${(
-                          <span className={CS.textNoWrap}>
-                            {duration(expectedDuration ?? 0)}
-                          </span>
-                        )}, but is currently taking longer.`
-                      : t`This usually loads immediately, but is currently taking longer.`}
-                  </Text>
+                  <Text lh="1.5">{getMessage()} </Text>
                 </div>
               </HoverCard.Dropdown>
             </HoverCard>
