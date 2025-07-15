@@ -8,16 +8,12 @@ import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series"
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
+  DatasetColumn,
   RawSeries,
   TransformedSeries,
   VisualizationDisplay,
+  Widget,
 } from "metabase-types/api";
-
-interface Widget {
-  id: string;
-  section: string;
-  props: Record<string, unknown>;
-}
 
 interface SeriesSettingsProps {
   currentWidget: Widget;
@@ -44,17 +40,21 @@ export const SeriesSettings = ({
     if (currentWidget?.props?.seriesKey !== undefined) {
       return "" + currentWidget.props.seriesKey;
     } else if (currentWidget?.props?.initialKey) {
-      const singleSeriesForColumn = transformedSeries?.find((single) => {
-        const metricColumn = single.data.cols[1];
-        if (metricColumn) {
-          return (
-            getColumnKey(metricColumn) === currentWidget?.props?.initialKey
-          );
-        }
-      });
+      if (!transformedSeries) {
+        return String(currentWidget?.props?.initialKey);
+      }
 
-      if (singleSeriesForColumn) {
-        return singleSeriesForColumn.card.name;
+      let column: DatasetColumn | undefined;
+
+      for (let i = 0; i < transformedSeries.length; i++) {
+        const single = transformedSeries[i];
+        column = single.data.cols.find((c) => {
+          return getColumnKey(c) === currentWidget?.props?.initialKey;
+        });
+
+        if (column) {
+          return column.display_name;
+        }
       }
     }
   }, [currentWidget, transformedSeries]);
@@ -133,7 +133,8 @@ export const SeriesSettings = ({
         new Set<string>(
           [styleWidget, formattingWidget]
             .filter(isNotNull)
-            .map((widget) => widget.section),
+            .map((widget) => widget.section)
+            .filter(isNotNull),
         ),
       ),
     [styleWidget, formattingWidget],

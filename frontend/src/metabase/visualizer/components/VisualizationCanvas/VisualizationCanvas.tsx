@@ -1,5 +1,5 @@
 import produce from "immer";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import metabot from "assets/img/metabot-96x96.svg";
@@ -22,10 +22,12 @@ import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import {
   getIsLoading,
+  getReferencedColumns,
   getVisualizationType,
   getVisualizerRawSeries,
 } from "metabase/visualizer/selectors";
-import type { RawSeries } from "metabase-types/api";
+import type { ClickObject } from "metabase-lib";
+import type { RawSeries, VisualizerColumnReference } from "metabase-types/api";
 
 import { TabularPreviewModal } from "../TabularPreviewModal";
 import { useVisualizerUi } from "../VisualizerUiContext";
@@ -51,14 +53,46 @@ function disableAxisLabels(rawSeries: RawSeries) {
 
 interface VisualizationCanvasProps {
   className?: string;
+  onColumnClick: (column: VisualizerColumnReference) => void;
+  onSeriesClick: (seriesKey: string) => void;
 }
 
-export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
+export function VisualizationCanvas({
+  className,
+  onColumnClick,
+  onSeriesClick,
+}: VisualizationCanvasProps) {
   const [isTabularPreviewOpen, setTabularPreviewOpen] = useState(false);
   const { isSwapAffordanceVisible } = useVisualizerUi();
 
   const display = useSelector(getVisualizationType);
   const isLoading = useSelector(getIsLoading);
+
+  const columnValuesMapping = useSelector(getReferencedColumns);
+
+  const handleVisualizationClick = useCallback(
+    (c: ClickObject | null) => {
+      // Means we have a breakout
+      if (c?.data?.length === 3) {
+        onSeriesClick(String(c.data[1].value));
+        return;
+      }
+
+      const columnName = c?.column?.name;
+
+      if (!columnName) {
+        return;
+      }
+
+      const column = columnValuesMapping.find((c) => c.name === columnName);
+      if (!column) {
+        return;
+      }
+
+      onColumnClick(column);
+    },
+    [columnValuesMapping, onColumnClick, onSeriesClick],
+  );
 
   let rawSeries = useSelector(getVisualizerRawSeries);
   if (display && isCartesianChart(display)) {
@@ -107,6 +141,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
             rawSeries={rawSeries}
             // TableInteractive crashes when trying to use metabase-lib
             isDashboard
+            handleVisualizationClick={handleVisualizationClick}
           />
         </Box>
 
