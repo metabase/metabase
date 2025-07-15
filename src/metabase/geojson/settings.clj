@@ -44,8 +44,8 @@
 
 (def ^:private CustomGeoJSON
   [:map-of :keyword [:map {:closed true}
-                     [:name                         ms/NonBlankString]
-                     [:url                          ms/NonBlankString]
+                     [:name                         ::ms/NonBlankString]
+                     [:url                          ::ms/NonBlankString]
                      [:region_key                   [:maybe :string]]
                      [:region_name                  [:maybe :string]]
                      [:builtin     {:optional true} :boolean]]])

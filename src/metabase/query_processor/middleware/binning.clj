@@ -21,12 +21,12 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private FieldIDOrName->Filters
-  [:map-of [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string] [:sequential mbql.s/Filter]])
+  [:map-of [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string] [:sequential ::mbql.s/Filter]])
 
 (mu/defn- filter->field-map :- FieldIDOrName->Filters
   "Find any comparison or `:between` filter and return a map of referenced Field ID or Name -> all the clauses the reference
   it."
-  [filter-clause :- [:maybe mbql.s/Filter]]
+  [filter-clause :- [:maybe ::mbql.s/Filter]]
   (reduce
    (partial merge-with concat)
    {}

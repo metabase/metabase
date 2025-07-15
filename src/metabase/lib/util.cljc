@@ -275,7 +275,7 @@
           :stages   (inner-query->stages (:query query))}
          (dissoc query :type :query)))
 
-(def LegacyOrPMBQLQuery
+(mr/def ::LegacyOrPMBQLQuery
   "Schema for a map that is either a legacy query OR a pMBQL query."
   [:or
    [:map

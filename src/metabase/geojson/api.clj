@@ -80,7 +80,7 @@
   "Fetch a custom GeoJSON file as defined in the [[metabase.geojson.settings/custom-geojson]] setting. (This just acts
   as a simple proxy for the file specified for `key`)."
   [{k :key, :as _route-params} :- [:map
-                                   [:key ms/NonBlankString]]
+                                   [:key ::ms/NonBlankString]]
    _query-params
    _body
    _request
@@ -100,7 +100,7 @@
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first."
   [_route-params
    {:keys [url], :as _query-params} :- [:map
-                                        [:url ms/NonBlankString]]
+                                        [:url ::ms/NonBlankString]]
    _body
    _request
    respond

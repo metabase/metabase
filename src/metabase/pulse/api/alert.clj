@@ -80,8 +80,8 @@
   The optional `user_id` will return alerts created by the corresponding user, but is ignored for non-admin users."
   [_route-params
    {:keys [archived user_id]} :- [:map
-                                  [:archived {:default false} [:maybe ms/BooleanValue]]
-                                  [:user_id  {:optional true} [:maybe ms/PositiveInt]]]]
+                                  [:archived {:default false} [:maybe ::ms/BooleanValue]]
+                                  [:user_id  {:optional true} [:maybe ::ms/PositiveInt]]]]
   (let [user-id (if api/*is-superuser?*
                   user_id
                   api/*current-user-id*)]
@@ -95,7 +95,7 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch an alert by ID"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (-> (notification.api/get-notification id)
       api/read-check
       notification->pulse))
@@ -103,6 +103,6 @@
 (api.macros/defendpoint :delete "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (notification.api/unsubscribe-user! id api/*current-user-id*)
   api/generic-204-no-content)

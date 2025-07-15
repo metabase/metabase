@@ -22,7 +22,7 @@
   [_route-params
    _query-params
    {:keys [card_ids]} :- [:map
-                          [:card_ids [:sequential ms/PositiveInt]]]]
+                          [:card_ids [:sequential ::ms/PositiveInt]]]]
   (let [id->card (t2/select-fn->fn :id identity :model/Card :id [:in card_ids])]
     (as-> card_ids $
       (mapv id->card $)
@@ -38,9 +38,9 @@
   [_route-params
    _query-params
    {:keys [card_ids], :as body} :- [:map
-                                    [:card_ids      [:sequential ms/PositiveInt]]
-                                    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                    [:dashboard_id  {:optional true} [:maybe ms/PositiveInt]]]]
+                                    [:card_ids      [:sequential ::ms/PositiveInt]]
+                                    [:collection_id {:optional true} [:maybe ::ms/PositiveInt]]
+                                    [:dashboard_id  {:optional true} [:maybe ::ms/PositiveInt]]]]
   (t2/with-transaction [_conn]
     (doseq [card-id card_ids]
       (api.card/update-card! card-id (select-keys body [:collection_id :dashboard_id]) true)))

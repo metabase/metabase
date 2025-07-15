@@ -130,9 +130,9 @@
 
 (mu/defn update-users-recent-views!
   "Updates the RecentViews table for a given user with a new view, and prunes old views."
-  [user-id :- [:maybe ms/PositiveInt]
+  [user-id :- [:maybe ::ms/PositiveInt]
    model :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection]
-   model-id :- ms/PositiveInt
+   model-id :- ::ms/PositiveInt
    context :- [:enum :view :selection]]
   (when user-id
     (t2/with-transaction [_conn]
@@ -159,7 +159,7 @@
     :left-join [[:report_dashboard :d]
                 [:= :recent_views.model_id :d.id]]}))
 
-(def Item
+(mr/def ::Item
   "The shape of a recent view item, returned from `GET /recent_views`."
   (mc/schema
    [:and {:registry {::official [:maybe [:enum :official "official"]]

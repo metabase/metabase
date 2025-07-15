@@ -48,9 +48,9 @@
    _query-params
    {:keys [conversation_id] :as body} :- [:map
                                           [:metabot_id {:optional true} :string]
-                                          [:message ms/NonBlankString]
+                                          [:message ::ms/NonBlankString]
                                           [:context ::metabot-v3.context/context]
-                                          [:conversation_id ms/UUIDString]
+                                          [:conversation_id ::ms/UUIDString]
                                           [:history [:maybe ::metabot-v3.client.schema/messages]]
                                           [:state :map]]]
   (metabot-v3.context/log body :llm.log/fe->be)
@@ -80,9 +80,9 @@
 
    body :- [:map
             [:metabot_id {:optional true} :string]
-            [:message ms/NonBlankString]
+            [:message ::ms/NonBlankString]
             [:context ::metabot-v3.context/context]
-            [:conversation_id ms/UUIDString]
+            [:conversation_id ::ms/UUIDString]
             [:history [:maybe ::metabot-v3.client.schema/messages]]
             [:state :map]]]
   (metabot-v3.context/log body :llm.log/fe->be)

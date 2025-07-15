@@ -1,21 +1,22 @@
 (ns metabase.xrays.domain-entities.specs
   (:require
    [malli.core :as mc]
+   [malli.registry :as mr]
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.util.yaml :as yaml]))
 
-(def MBQL
-  "MBQL clause (ie. a vector starting with a keyword)"
+(mr/def ::MBQL
+  "::MBQL clause (ie. a vector starting with a keyword)"
   [:fn
    {:decode/domain-entity-spec mbql.normalize/normalize
     :decode/transform-spec     mbql.normalize/normalize
-    :error/message             "valid MBQL clause"}
+    :error/message             "valid ::MBQL clause"}
    mbql.u/mbql-clause?])
 
-(def FieldType
+(mr/def ::FieldType
   "Field type designator -- a keyword derived from `type/*`"
   [:keyword
    (letfn [(decoder [k]
@@ -39,7 +40,7 @@
 (def ^:private Attributes
   [:sequential
    [:map
-    [:field         {:optional true} FieldType]
+    [:field         {:optional true} ::FieldType]
     [:domain_entity {:optional true} DomainEntityReference]
     [:has_many      {:optional true} [:map
                                       [:domain_entity DomainEntityReference]]]]])
@@ -50,10 +51,10 @@
                                  (for [dimension breakout-dimensions]
                                    (if (string? dimension)
                                      (do
-                                       (mc/assert FieldType (keyword "type" dimension))
+                                       (mc/assert ::FieldType (keyword "type" dimension))
                                        [:dimension dimension])
                                      dimension)))}
-   MBQL])
+   ::MBQL])
 
 (def ^:private ^{:arglists '([m])} add-name-from-key
   (partial m/map-kv-vals (fn [k v]
@@ -64,10 +65,10 @@
    {:decode/domain-entity-spec add-name-from-key}
    Identifier
    [:map
-    [:aggregation MBQL]
+    [:aggregation ::MBQL]
     [:name        Identifier]
     [:breakout    {:optional true} BreakoutDimensions]
-    [:filter      {:optional true} MBQL]
+    [:filter      {:optional true} ::MBQL]
     [:description {:optional true} Description]]])
 
 (def ^:private Segments
@@ -75,11 +76,11 @@
    {:decode/domain-entity-spec add-name-from-key}
    Identifier
    [:map
-    [:filter MBQL]
+    [:filter ::MBQL]
     [:name   Identifier]
     [:description {:optional true} Description]]])
 
-(def DomainEntitySpec
+(mr/def ::DomainEntitySpec
   "Domain entity spec"
   [:map
    [:name                DomainEntityReference]
@@ -101,7 +102,7 @@
         (assoc :type spec-type))))
 
 (defn- coerce-to-domain-entity-spec [spec]
-  (mc/coerce DomainEntitySpec
+  (mc/coerce ::DomainEntitySpec
              spec
              (mtx/transformer
               mtx/string-transformer

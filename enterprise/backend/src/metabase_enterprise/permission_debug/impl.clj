@@ -12,6 +12,7 @@
   "
   (:require
    [clojure.set :as set]
+   [malli.registry :as mr]
    [metabase.api.common :as api]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -24,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def DebuggerSchema
+(mr/def ::DebuggerSchema
   "Format of the response the Debugger will return"
   [:schema {:registry
             {::group-id :int
@@ -38,16 +39,16 @@
                                 [:suggestions [:map-of ::group-id :string]]]}}
    ::perm-debug-info])
 
-(def ActionType
+(mr/def ::ActionType
   "Type of the action in the debugger API to dispatch on"
   [:enum :card/read :card/query :card/download-data])
 
-(def DebuggerArguments
+(mr/def ::DebuggerArguments
   "Arguements for the Debugger function. The model type being operated on is infered by the requested action type"
   [:map
    [:user-id pos-int?]
    [:model-id :string]
-   [:action-type ActionType]])
+   [:action-type ::ActionType]])
 
 (defmulti debug-permissions
   "Debug permissions for a given entity and user.
@@ -67,8 +68,8 @@
         ::is-superuser
         action-type))))
 
-(mu/defmethod debug-permissions :default :- DebuggerSchema
-  [_debug-info-map :- DebuggerArguments]
+(mu/defmethod debug-permissions :default :- ::DebuggerSchema
+  [_debug-info-map :- ::DebuggerArguments]
   {:decision    "denied"
    :model-type  "invalid"
    :model-id    ""
@@ -77,8 +78,8 @@
    :data        {}
    :suggestions {}})
 
-(mu/defmethod debug-permissions ::is-superuser :- DebuggerSchema
-  [{:keys [action-type model-id]} :- DebuggerArguments]
+(mu/defmethod debug-permissions ::is-superuser :- ::DebuggerSchema
+  [{:keys [action-type model-id]} :- ::DebuggerArguments]
   ()
   {:decision    "allow"
    :model-type  (case (namespace action-type)
@@ -96,11 +97,11 @@
             api/*current-user-permissions-set* (delay (perms/user-permissions-set user-id))]
     (mi/can-read? model pk)))
 
-(mu/defn- merge-permission-check :- DebuggerSchema
+(mu/defn- merge-permission-check :- ::DebuggerSchema
   "Merges n permissions responses with right most wins semantics. model-type and model-id must match across
   permissions respones. If the decision is denied that should that precendence over limited which should be
   prefered over allowed when merging."
-  [& responses :- [:sequential DebuggerSchema]]
+  [& responses :- [:sequential ::DebuggerSchema]]
   (when (seq responses)
     (let [first-response (first responses)
           decision-precedence {"denied" 3 "limited" 2 "allow" 1}
@@ -139,8 +140,8 @@
               first-response
               (rest responses)))))
 
-(mu/defmethod debug-permissions :card/read :- DebuggerSchema
-  [{:keys [user-id model-id] :as _debug-info} :- DebuggerArguments]
+(mu/defmethod debug-permissions :card/read :- ::DebuggerSchema
+  [{:keys [user-id model-id] :as _debug-info} :- ::DebuggerArguments]
   (let [can-read? (user-can-read? :model/Card (Integer/parseInt model-id) user-id)]
     {:decision    (if can-read? "allow" "denied")
      :model-type  "card"
@@ -219,8 +220,8 @@
      (map (juxt (juxt :db_name :schema :table_name) :group_name))
      (reduce #(update %1 (first %2) set/union (set [(second %2)])) {}))))
 
-(mu/defmethod debug-permissions :card/query :- DebuggerSchema
-  [{:keys [user-id model-id] :as debug-info} :- DebuggerArguments]
+(mu/defmethod debug-permissions :card/query :- ::DebuggerSchema
+  [{:keys [user-id model-id] :as debug-info} :- ::DebuggerArguments]
   (merge-permission-check
    (debug-permissions (assoc debug-info :action-type :card/read))
    (let [card-id (Integer/parseInt model-id)
@@ -239,8 +240,8 @@
                      (not-empty blocked-by-group) (assoc :blocked-tables (format-blocked blocked-by-group)))
       :suggestions {}})))
 
-(mu/defmethod debug-permissions :card/download-data :- DebuggerSchema
-  [{:keys [user-id model-id] :as debug-info} :- DebuggerArguments]
+(mu/defmethod debug-permissions :card/download-data :- ::DebuggerSchema
+  [{:keys [user-id model-id] :as debug-info} :- ::DebuggerArguments]
   (merge-permission-check
    (debug-permissions (assoc debug-info :action-type :card/query))
    (let [card-id (Integer/parseInt model-id)

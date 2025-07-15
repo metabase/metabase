@@ -70,7 +70,7 @@
 
 (mu/defn- update-translation-count!
   "Update the entity-id translation counter with the results of a batch of entity-id translations."
-  [results :- [:sequential eid-translation/Status]]
+  [results :- [:sequential ::eid-translation/Status]]
   (let [processed-result (frequencies results)]
     (eid-translation.settings/entity-id-translation-counter!
      (merge-with + processed-result (eid-translation.settings/entity-id-translation-counter)))))
@@ -79,7 +79,7 @@
                                                     ;; We want to pass incorrectly formatted entity-ids through here,
                                                     ;; but this is assumed to be an entity-id:
                                                     :string
-                                                    [:map [:status eid-translation/Status]]]]
+                                                    [:map [:status ::eid-translation/Status]]]]
   "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
   [api-name eids]
   (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names

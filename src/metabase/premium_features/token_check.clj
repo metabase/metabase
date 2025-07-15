@@ -12,6 +12,7 @@
    [diehard.circuit-breaker :as dh.cb]
    [diehard.core :as dh]
    [environ.core :refer [env]]
+   [malli.registry :as mr]
    [metabase.config.core :as config]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
@@ -117,7 +118,7 @@
   (when (seq token)
     (format "%s/api/%s/v2/status" base-url token)))
 
-(def TokenStatus
+(mr/def ::TokenStatus
   "Schema for a response from the token status API."
   [:map
    [:valid                          :boolean]
@@ -219,7 +220,7 @@
     (when (> (t2/count :model/User :is_active true, :type :personal) max-users)
       (throw (Exception. (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users." max-users))))))
 
-(mu/defn- fetch-token-status* :- TokenStatus
+(mu/defn- fetch-token-status* :- ::TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
   [token :- TokenStr]
   ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.  We
@@ -268,7 +269,7 @@
 
 (declare token-valid-now?)
 
-(mu/defn- valid-token->features :- [:set ms/NonBlankString]
+(mu/defn- valid-token->features :- [:set ::ms/NonBlankString]
   [token :- TokenStr]
   (assert ((requiring-resolve 'metabase.app-db.core/db-is-set-up?)) "Metabase DB is not yet set up")
   (let [{:keys [valid status features error-details] :as token-status} (fetch-token-status token)]
@@ -324,7 +325,7 @@
                        (log/debug e "Error validating token"))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
-  (mu/defn ^:dynamic *token-features* :- [:set ms/NonBlankString]
+  (mu/defn ^:dynamic *token-features* :- [:set ::ms/NonBlankString]
     "Get the features associated with the system's premium features token."
     []
     (try

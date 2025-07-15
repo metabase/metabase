@@ -29,7 +29,11 @@
    (java.security.cert Certificate CertificateFactory X509Certificate)
    (java.security.spec PKCS8EncodedKeySpec)
    (javax.net SocketFactory)
-   (javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager)))
+   (javax.net.ssl
+    KeyManagerFactory
+    SSLContext
+    TrustManagerFactory
+    X509TrustManager)))
 
 (set! *warn-on-reflection* true)
 

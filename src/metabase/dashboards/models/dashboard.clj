@@ -243,11 +243,11 @@
 
 (def ^:private DashboardWithSeriesAndCard
   [:map
-   [:id ms/PositiveInt]
+   [:id ::ms/PositiveInt]
    [:dashcards [:sequential [:map
-                             [:card_id {:optional true} [:maybe ms/PositiveInt]]
+                             [:card_id {:optional true} [:maybe ::ms/PositiveInt]]
                              [:card {:optional true} [:maybe [:map
-                                                              [:id ms/PositiveInt]]]]]]]])
+                                                              [:id ::ms/PositiveInt]]]]]]]])
 
 (mu/defn update-dashcards!
   "Update the `dashcards` belonging to `dashboard`.
@@ -255,7 +255,7 @@
    are performed when finished, for example updating FieldValues for On-Demand DBs.
    Returns `nil`."
   [dashboard     :- DashboardWithSeriesAndCard
-   new-dashcards :- [:sequential ms/Map]]
+   new-dashcards :- [:sequential ::ms/Map]]
   (let [old-dashcards    (:dashcards dashboard)
         id->old-dashcard (m/index-by :id old-dashcards)
         old-dashcard-ids (set (keys id->old-dashcard))
@@ -339,11 +339,11 @@
 
 (def ^:private ParamWithMapping
   [:map
-   [:id ms/NonBlankString]
-   [:name ms/NonBlankString]
-   [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
+   [:id ::ms/NonBlankString]
+   [:name ::ms/NonBlankString]
+   [:mappings [:maybe [:set ::dashboard-card/ParamMapping]]]])
 
-(mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
+(mu/defn- dashboard->resolved-params :- [:map-of ::ms/NonBlankString ParamWithMapping]
   [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
   (let [param-key->mappings (apply
                              merge-with set/union

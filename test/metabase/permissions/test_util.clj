@@ -83,7 +83,7 @@
   ;; force creation of test-data if it is not already created
   (data/db)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
-    (doseq [[perm-type _] data-perms/Permissions
+    (doseq [[perm-type _] ::data-perms/Permissions
             db-id         (t2/select-pks-set :model/Database)]
       (data-perms/set-database-permission! (perms-group/all-users)
                                            db-id
@@ -102,7 +102,7 @@
   most permissive value for the All Users permission group for the duration of the test."
   [thunk]
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
-    (doseq [[perm-type _] data-perms/Permissions
+    (doseq [[perm-type _] ::data-perms/Permissions
             db-id         (t2/select-pks-set :model/Database)]
       (data-perms/set-database-permission! (perms-group/all-users)
                                            db-id

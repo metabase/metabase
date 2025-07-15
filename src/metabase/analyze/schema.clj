@@ -13,7 +13,7 @@
    ::no-kebab-case-keys])
 
 ;; TODO: fix memory issues with `mu/defn` and `ms/InstanceOf` so we don't need to do this
-(def Table
+(mr/def ::Table
   "Schema for a valid instance of a Metabase Table. Using this with `mu/defn` uses less memory than using `(ms/InstanceOf :model/Table)`"
   [:ref ::Table])
 
@@ -36,6 +36,6 @@
    (ms/InstanceOf :model/Field)
    ::qp-results-cased-map])
 
-(def Field
+(mr/def ::Field
   "Schema for a valid instance of a Metabase Field. Using this with `mu/defn` uses less memory than using `(ms/InstanceOf :model/Field)`"
   [:ref ::Field])

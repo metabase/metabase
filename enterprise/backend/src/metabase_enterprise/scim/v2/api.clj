@@ -4,6 +4,7 @@
 
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
+   [malli.registry :as mr]
    [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
@@ -27,69 +28,69 @@
 (def ^:private default-pagination-limit 100)
 (def ^:private default-pagination-offset 0)
 
-(def SCIMUser
+(mr/def ::SCIMUser
   "Malli schema for a SCIM user. This represents both users returned by the service provider (Metabase)
   as well as users sent by the client (i.e. Okta), with fields marked as optional if they may not be present
   in the latter."
   [:map
-   [:schemas [:sequential ms/NonBlankString]]
-   [:id {:optional true} ms/NonBlankString]
-   [:userName ms/NonBlankString]
+   [:schemas [:sequential ::ms/NonBlankString]]
+   [:id {:optional true} ::ms/NonBlankString]
+   [:userName ::ms/NonBlankString]
    [:name [:map
            [:givenName string?]
            [:familyName string?]]]
    [:emails [:sequential
              [:map
-              [:value ms/NonBlankString]
-              [:type {:optional true} ms/NonBlankString]
+              [:value ::ms/NonBlankString]
+              [:type {:optional true} ::ms/NonBlankString]
               [:primary {:optional true} boolean?]]]]
    [:groups
     {:optional true}
     [:sequential [:map
-                  [:value ms/NonBlankString]
-                  [:$ref {:optional true} ms/NonBlankString]
-                  [:display ms/NonBlankString]]]]
-   [:locale {:optional true} [:maybe ms/NonBlankString]]
+                  [:value ::ms/NonBlankString]
+                  [:$ref {:optional true} ::ms/NonBlankString]
+                  [:display ::ms/NonBlankString]]]]
+   [:locale {:optional true} [:maybe ::ms/NonBlankString]]
    [:active {:optional true} boolean?]])
 
-(def SCIMUserList
+(mr/def ::SCIMUserList
   "Malli schema for a list of SCIM users"
   [:map
-   [:schemas [:sequential ms/NonBlankString]]
-   [:totalResults ms/IntGreaterThanOrEqualToZero]
-   [:startIndex ms/IntGreaterThanOrEqualToZero]
-   [:itemsPerPage ms/IntGreaterThanOrEqualToZero]
-   [:Resources [:sequential SCIMUser]]])
+   [:schemas [:sequential ::ms/NonBlankString]]
+   [:totalResults ::ms/IntGreaterThanOrEqualToZero]
+   [:startIndex ::ms/IntGreaterThanOrEqualToZero]
+   [:itemsPerPage ::ms/IntGreaterThanOrEqualToZero]
+   [:Resources [:sequential ::SCIMUser]]])
 
-(def UserPatch
+(mr/def ::UserPatch
   "Malli schema for a user patch operation"
   [:map
-   [:schemas [:sequential ms/NonBlankString]]
+   [:schemas [:sequential ::ms/NonBlankString]]
    [:Operations
     [:sequential [:map
-                  [:op ms/NonBlankString]
-                  [:value [:or ms/NonBlankString ms/BooleanValue]]]]]])
+                  [:op ::ms/NonBlankString]
+                  [:value [:or ::ms/NonBlankString ::ms/BooleanValue]]]]]])
 
-(def SCIMGroup
+(mr/def ::SCIMGroup
   "Malli schema for a SCIM group."
   [:map
-   [:schemas [:sequential ms/NonBlankString]]
-   [:id {:optional true} ms/NonBlankString]
-   [:displayName ms/NonBlankString]
+   [:schemas [:sequential ::ms/NonBlankString]]
+   [:id {:optional true} ::ms/NonBlankString]
+   [:displayName ::ms/NonBlankString]
    [:members
     {:optional true}
     [:sequential [:map
-                  [:value ms/NonBlankString]
-                  [:$ref {:optional true} ms/NonBlankString]]]]])
+                  [:value ::ms/NonBlankString]
+                  [:$ref {:optional true} ::ms/NonBlankString]]]]])
 
-(def SCIMGroupList
+(mr/def ::SCIMGroupList
   "Malli schema for a list of SCIM groups"
   [:map
-   [:schemas [:sequential ms/NonBlankString]]
-   [:totalResults ms/IntGreaterThanOrEqualToZero]
-   [:startIndex ms/IntGreaterThanOrEqualToZero]
-   [:itemsPerPage ms/IntGreaterThanOrEqualToZero]
-   [:Resources [:sequential SCIMGroup]]])
+   [:schemas [:sequential ::ms/NonBlankString]]
+   [:totalResults ::ms/IntGreaterThanOrEqualToZero]
+   [:startIndex ::ms/IntGreaterThanOrEqualToZero]
+   [:itemsPerPage ::ms/IntGreaterThanOrEqualToZero]
+   [:Resources [:sequential ::SCIMGroup]]])
 
 (defn- throw-scim-error
   [status message]
@@ -148,7 +149,7 @@
                                                  (map membership->group)
                                                  (sort-by :entity_id)))))))
 
-(mu/defn ^:private mb-user->scim :- SCIMUser
+(mu/defn ^:private mb-user->scim :- ::SCIMUser
   "Given a Metabase user, returns a SCIM user."
   [user]
   {:schemas  [user-schema-uri]
@@ -169,7 +170,7 @@
    :active   (:is_active user)
    :meta     {:resourceType "User"}})
 
-(mu/defn ^:private scim-user->mb :- user/NewUser
+(mu/defn ^:private scim-user->mb :- ::user/NewUser
   "Given a SCIM user, returns a Metabase user."
   [user]
   (let [{email :userName name-obj :name locale :locale is-active? :active} user
@@ -203,9 +204,9 @@
   "Fetch a list of users."
   [_route-params
    {start-index :startIndex, c :count, filter-param :filter} :- [:map
-                                                                 [:startIndex {:optional true} [:maybe ms/PositiveInt]]
-                                                                 [:count      {:optional true} [:maybe ms/PositiveInt]]
-                                                                 [:filter     {:optional true} [:maybe ms/NonBlankString]]]]
+                                                                 [:startIndex {:optional true} [:maybe ::ms/PositiveInt]]
+                                                                 [:count      {:optional true} [:maybe ::ms/PositiveInt]]
+                                                                 [:filter     {:optional true} [:maybe ::ms/NonBlankString]]]]
   (with-prometheus-counters
     (let [limit          (or c default-pagination-limit)
           ;; SCIM start-index is 1-indexed, so we need to decrement it here
@@ -231,7 +232,7 @@
 (api.macros/defendpoint :get ["/Users/:id" :id #"[^/]+"]
   "Fetch a single user."
   [{:keys [id]} :- [:map
-                    [:id ms/NonBlankString]]]
+                    [:id ::ms/NonBlankString]]]
   (with-prometheus-counters
     (-> (get-user-by-entity-id id)
         (t2/hydrate :scim_user_group_memberships)
@@ -241,7 +242,7 @@
   "Create a single user."
   [_route-params
    _query-params
-   scim-user :- SCIMUser]
+   scim-user :- ::SCIMUser]
   (with-prometheus-counters
     (let [mb-user (scim-user->mb scim-user)
           email   (:email mb-user)]
@@ -258,7 +259,7 @@
   "Update a user."
   [{:keys [id]}
    _query-params
-   scim-user :- SCIMUser]
+   scim-user :- ::SCIMUser]
   (with-prometheus-counters
     (let [updates      (scim-user->mb scim-user)
           email        (-> scim-user :emails first :value)
@@ -283,9 +284,9 @@
 (api.macros/defendpoint :patch ["/Users/:id" :id #"[^/]+"]
   "Activate or deactivate a user. Supports specific replace operations, but not arbitrary patches."
   [{:keys [id]} :- [:map
-                    [:id ms/NonBlankString]]
+                    [:id ::ms/NonBlankString]]
    _query-params
-   patch-ops :- UserPatch]
+   patch-ops :- ::UserPatch]
   (with-prometheus-counters
     (t2/with-transaction [_conn]
       (let [user    (get-user-by-entity-id id)
@@ -342,7 +343,7 @@
                        [:not= :id (:id (perms/admin-group))]]})
       (throw-scim-error 404 "Group not found")))
 
-(mu/defn ^:private mb-group->scim :- SCIMGroup
+(mu/defn ^:private mb-group->scim :- ::SCIMGroup
   "Given a Metabase permissions group, returns a SCIM group."
   [group]
   {:schemas     [group-schema-uri]
@@ -369,9 +370,9 @@
   [_route-params
    {start-index :startIndex, c :count, filter-param :filter}
    :- [:map
-       [:startIndex {:optional true} [:maybe ms/PositiveInt]]
-       [:count      {:optional true} [:maybe ms/PositiveInt]]
-       [:filter     {:optional true} [:maybe ms/NonBlankString]]]]
+       [:startIndex {:optional true} [:maybe ::ms/PositiveInt]]
+       [:count      {:optional true} [:maybe ::ms/PositiveInt]]
+       [:filter     {:optional true} [:maybe ::ms/NonBlankString]]]]
   (with-prometheus-counters
     (let [limit          (or c default-pagination-limit)
           ;; SCIM start-index is 1-indexed, so we need to decrement it here
@@ -398,7 +399,7 @@
 (api.macros/defendpoint :get ["/Groups/:id" :id #"[^/]+"]
   "Fetch a single group."
   [{:keys [id]} :- [:map
-                    [:id ms/NonBlankString]]]
+                    [:id ::ms/NonBlankString]]]
   (with-prometheus-counters
     (-> (get-group-by-entity-id id)
         (t2/hydrate :scim_group_members)
@@ -419,7 +420,7 @@
   "Create a single group, and populates it if necessary."
   [_route-params
    _query-params
-   scim-group :- SCIMGroup]
+   scim-group :- ::SCIMGroup]
   (with-prometheus-counters
     (let [group-name (:displayName scim-group)
           entity-ids (map :value (:members scim-group))]
@@ -438,7 +439,7 @@
   "Update a group."
   [{:keys [id]}
    _query-params
-   scim-group :- SCIMGroup]
+   scim-group :- ::SCIMGroup]
   (with-prometheus-counters
     (let [group-name (:displayName scim-group)
           entity-ids (map :value (:members scim-group))]
@@ -455,7 +456,7 @@
 (api.macros/defendpoint :delete ["/Groups/:id" :id #"[^/]+"]
   "Delete a group."
   [{:keys [id]} :- [:map
-                    [:id ms/NonBlankString]]]
+                    [:id ::ms/NonBlankString]]]
   (with-prometheus-counters
     (let [group (get-group-by-entity-id id)]
       (t2/delete! :model/PermissionsGroup (u/the-id group))

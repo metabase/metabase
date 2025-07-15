@@ -1,6 +1,6 @@
 (ns metabase.lib.join.util
   "Some small join-related helper functions which are used from a few different namespaces."
-  (:require
+  (:require [malli.registry :as mr]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -10,7 +10,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
-(def JoinWithOptionalAlias
+(mr/def ::JoinWithOptionalAlias
   "A Join that may not yet have an `:alias`, which is normally required; [[join]] accepts this and will add a default
   alias if one is not present."
   [:merge
@@ -18,20 +18,20 @@
    [:map
     [:alias {:optional true} [:ref ::lib.schema.join/alias]]]])
 
-(def PartialJoin
+(mr/def ::PartialJoin
   "A join that may not yet have an `:alias` or `:conditions`."
   [:merge
    JoinWithOptionalAlias
    [:map
     [:conditions {:optional true} [:ref ::lib.schema.join/conditions]]]])
 
-(def Field
+(mr/def ::Field
   "A field in a join, either `:metabase.lib.schema.metadata/column` or a `:field` ref."
   [:or
    [:ref ::lib.schema.metadata/column]
    [:ref :mbql.clause/field]])
 
-(def FieldOrPartialJoin
+(mr/def ::FieldOrPartialJoin
   "A field or a partial join."
   [:or Field PartialJoin])
 

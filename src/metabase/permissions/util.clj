@@ -207,7 +207,7 @@
          admin-permissions-rx]
    "$"))
 
-(def Path "A permission path."
+(mr/def ::Path "A permission path."
   [:or {:title "Path"} [:re path-regex-v1] [:re path-regex-v2]])
 
 (def ^:private Kind
@@ -225,7 +225,7 @@
                       {:path path :result result})))
     (first result)))
 
-(def DataPath "A permissions path that's guaranteed to be a v1 data-permissions path"
+(mr/def ::DataPath "A permissions path that's guaranteed to be a v1 data-permissions path"
   [:re (u.regex/rx "^/" v1-data-permissions-rx "$")])
 
 (mu/defn classify-data-path :- DataKind
@@ -245,7 +245,7 @@
     ^Boolean [^String path]
     (path-validator path)))
 
-(def PathSchema
+(mr/def ::PathSchema
   "Schema for a permissions path with a valid format."
   [:re
    {:error/message "Valid permissions path"}

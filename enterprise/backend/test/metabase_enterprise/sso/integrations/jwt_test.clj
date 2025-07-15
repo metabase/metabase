@@ -588,7 +588,7 @@
                                                   :jwt jwt-payload)]
           (is
            (=?
-            {:id  (mt/malli=? ms/UUIDString)
+            {:id  (mt/malli=? ::ms/UUIDString)
              :iat jwt-iat-time
              :exp jwt-exp-time}
             (:body result)))))))

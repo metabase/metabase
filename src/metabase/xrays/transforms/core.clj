@@ -45,7 +45,7 @@
 (mu/defn- infer-resulting-dimensions :- DimensionBindings
   [bindings             :- Bindings
    {:keys [joins name]} :- Step
-   query                :- mbql.s/Query]
+   query                :- ::mbql.s/Query]
   (let [flattened-bindings (merge (apply merge (map (comp :dimensions bindings :source) joins))
                                   (get-in bindings [name :dimensions]))]
     (into {} (for [{:keys [name] :as col} (qp.preprocess/query->expected-cols query)]

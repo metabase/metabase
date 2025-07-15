@@ -435,7 +435,7 @@
    :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
-  (let [validator (mr/validator u.cron/CronScheduleString)]
+  (let [validator (mr/validator ::u.cron/CronScheduleString)]
     (partial mu/validate-throw validator)))
 
 (def transform-cron-string

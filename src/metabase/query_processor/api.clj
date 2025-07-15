@@ -140,8 +140,8 @@
                                                {:decode/api (fn [x]
                                                               (cond-> x
                                                                 (string? x) (json/decode viz-setting-key-fn)))}]]
-       [:format_rows            {:default false} ms/BooleanValue]
-       [:pivot_results          {:default false} ms/BooleanValue]]]
+       [:format_rows            {:default false} ::ms/BooleanValue]
+       [:pivot_results          {:default false} ::ms/BooleanValue]]]
   (let [viz-settings                  (-> visualization-settings
                                           (update :table.columns mbql.normalize/normalize)
                                           mb.viz/norm->db)
@@ -167,7 +167,7 @@
   [_route-params
    _query-params
    query :- [:map
-             [:database ms/PositiveInt]]]
+             [:database ::ms/PositiveInt]]]
   (queries/batch-fetch-query-metadata [query]))
 
 (api.macros/defendpoint :post "/native"
@@ -175,7 +175,7 @@
   [_route-params
    _query-params
    {:keys [database pretty] :as query} :- [:map
-                                           [:database ms/PositiveInt]
+                                           [:database ::ms/PositiveInt]
                                            [:pretty   {:default true} [:maybe :boolean]]]]
   (model-persistence/with-persisted-substituion-disabled
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
@@ -190,7 +190,7 @@
   [_route-params
    _query-params
    {:keys [database] :as query} :- [:map
-                                    [:database ms/PositiveInt]]]
+                                    [:database ::ms/PositiveInt]]]
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
@@ -238,7 +238,7 @@
 (api.macros/defendpoint :post "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
   [{:keys [query]} :- [:map
-                       [:query ms/NonBlankString]]
+                       [:query ::ms/NonBlankString]]
    _query-params
    {:keys     [parameter]
     field-ids :field_ids} :- [:map

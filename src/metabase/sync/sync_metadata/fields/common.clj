@@ -12,18 +12,18 @@
 
 (set! *warn-on-reflection* true)
 
-(def ParentID
+(mr/def ::ParentID
   "Schema for the `parent-id` of a Field, i.e. an optional ID."
   [:maybe ::lib.schema.id/field])
 
 (mr/def ::TableMetadataFieldWithID
   [:merge
-   i/TableMetadataField
+   ::i/TableMetadataField
    [:map
     [:id                             ::lib.schema.id/field]
     [:nested-fields {:optional true} [:set [:ref ::TableMetadataFieldWithID]]]]])
 
-(def TableMetadataFieldWithID
+(mr/def ::TableMetadataFieldWithID
   "Schema for `TableMetadataField` with an included ID of the corresponding Metabase Field object.
   `our-metadata` is always returned in this format. (The ID is needed in certain places so we know which Fields to
   retire, and the parent ID of any nested-fields.)"
@@ -36,15 +36,15 @@
     [:id {:optional true}            ::lib.schema.id/field]
     [:nested-fields {:optional true} [:set [:ref ::TableMetadataFieldWithOptionalID]]]]])
 
-(def TableMetadataFieldWithOptionalID
-  "Schema for either `i/TableMetadataField` (`db-metadata`) or `TableMetadataFieldWithID` (`our-metadata`)."
+(mr/def ::TableMetadataFieldWithOptionalID
+  "Schema for either `::i/TableMetadataField` (`db-metadata`) or `TableMetadataFieldWithID` (`our-metadata`)."
   [:ref ::TableMetadataFieldWithOptionalID])
 
 (mu/defn field-metadata-name-for-logging :- :string
   "Return a 'name for logging' for a map that conforms to the `TableMetadataField` schema.
 
       (field-metadata-name-for-logging table field-metadata) ; -> \"Table 'venues' Field 'name'\""
-  [table :- i/TableInstance field-metadata :- TableMetadataFieldWithOptionalID]
+  [table :- ::i/TableInstance field-metadata :- ::TableMetadataFieldWithOptionalID]
   (format "%s %s '%s'" (sync-util/name-for-logging table) "Field" (:name field-metadata)))
 
 (defn canonical-name
@@ -53,9 +53,9 @@
   [field]
   (u/lower-case-en (:name field)))
 
-(mu/defn semantic-type :- [:maybe ms/FieldSemanticOrRelationType]
+(mu/defn semantic-type :- [:maybe ::ms/FieldSemanticOrRelationType]
   "Determine a the appropriate `semantic-type` for a Field with `field-metadata`."
-  [field-metadata :- [:maybe i/TableMetadataField]]
+  [field-metadata :- [:maybe ::i/TableMetadataField]]
   (and field-metadata
        (or (:semantic-type field-metadata)
            (when (:pk? field-metadata) :type/PK))))
@@ -67,11 +67,11 @@
         ^String name2 (:name field-metadata2)]
     (and name1 name2 (.equalsIgnoreCase name1 name2))))
 
-(mu/defn matching-field-metadata :- [:maybe TableMetadataFieldWithOptionalID]
+(mu/defn matching-field-metadata :- [:maybe ::TableMetadataFieldWithOptionalID]
   "Find Metadata that matches `field-metadata` from a set of `other-metadata`, if any exists. Useful for finding the
   corresponding Metabase Field for field metadata from the DB, or vice versa. Will prefer exact matches."
-  [field-metadata :- TableMetadataFieldWithOptionalID
-   other-metadata :- [:set TableMetadataFieldWithOptionalID]]
+  [field-metadata :- ::TableMetadataFieldWithOptionalID
+   other-metadata :- [:set ::TableMetadataFieldWithOptionalID]]
   (let [matches (into [] (keep
                           (fn [other-field-metadata]
                             (when (canonical-names-equal? field-metadata other-field-metadata)

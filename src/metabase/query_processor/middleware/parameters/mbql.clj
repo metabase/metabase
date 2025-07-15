@@ -50,7 +50,7 @@
   "Convert `param-value` to a type appropriate for `param-type`.
   The frontend always passes parameters in as strings, which is what we want in most cases; for numbers, instead
   convert the parameters to integers or floating-point numbers."
-  [query param-type param-value field-clause :- mbql.s/Field]
+  [query param-type param-value field-clause :- ::mbql.s/Field]
   (cond
     ;; for `id` or `category` type params look up the base-type of the Field and see if it's a number or not.
     ;; If it *is* a number then recursively call this function and parse the param value as a number as appropriate.
@@ -68,7 +68,7 @@
     :else
     (to-numeric param-value)))
 
-(mu/defn- build-filter-clause :- [:maybe mbql.s/Filter]
+(mu/defn- build-filter-clause :- [:maybe ::mbql.s/Filter]
   [query {param-type :type, param-value :value, [_ field :as target] :target, :as param}]
   (cond
     (params.ops/operator? param-type)

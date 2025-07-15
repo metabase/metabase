@@ -46,7 +46,7 @@
 (def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
 (def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
 
-(mu/defn- ldap-login :- [:maybe [:map [:key ms/UUIDString]]]
+(mu/defn- ldap-login :- [:maybe [:map [:key ::ms/UUIDString]]]
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- request/DeviceInfo]
@@ -69,10 +69,10 @@
       (catch LDAPSDKException e
         (log/error e "Problem connecting to LDAP server, will fall back to local authentication")))))
 
-(mu/defn- email-login :- [:maybe [:map [:key ms/UUIDString]]]
+(mu/defn- email-login :- [:maybe [:map [:key ::ms/UUIDString]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
-  [username    :- ms/NonBlankString
-   password    :- [:maybe ms/NonBlankString]
+  [username    :- ::ms/NonBlankString
+   password    :- [:maybe ::ms/NonBlankString]
    device-info :- request/DeviceInfo]
   (if-let [user (t2/select-one [:model/User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
     (when (u.password/verify-password password (:password_salt user) (:password user))
@@ -94,11 +94,11 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(mu/defn- login :- session/SessionSchema
+(mu/defn- login :- ::session/SessionSchema
   "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
-  [username    :- ms/NonBlankString
-   password    :- ms/NonBlankString
+  [username    :- ::ms/NonBlankString
+   password    :- ::ms/NonBlankString
    device-info :- request/DeviceInfo]
   ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
   (or (ldap-login username password device-info)  ; First try LDAP if it's enabled
@@ -128,8 +128,8 @@
   [_route-params
    _query-params
    {:keys [username password]} :- [:map
-                                   [:username ms/NonBlankString]
-                                   [:password ms/NonBlankString]]
+                                   [:username ::ms/NonBlankString]
+                                   [:password ::ms/NonBlankString]]
    request]
   (let [ip-address   (request/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
@@ -198,7 +198,7 @@
   [_route-params
    _query-params
    {:keys [email]} :- [:map
-                       [:email ms/Email]]
+                       [:email ::ms/Email]]
    request]
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (let [request-source (request/ip-address request)]
@@ -237,8 +237,8 @@
   [_route-params
    _query-params
    {:keys [token password]} :- [:map
-                                [:token    ms/NonBlankString]
-                                [:password ms/ValidPassword]]
+                                [:token    ::ms/NonBlankString]
+                                [:password ::ms/ValidPassword]]
    request]
   (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
@@ -262,7 +262,7 @@
   "Check if a password reset token is valid and isn't expired."
   [_route-params
    {:keys [token]} :- [:map
-                       [:token ms/NonBlankString]]]
+                       [:token ::ms/NonBlankString]]]
   {:valid (boolean (valid-reset-token->user token))})
 
 (api.macros/defendpoint :get "/properties"
@@ -276,7 +276,7 @@
   [_route-params
    _query-params
    _body :- [:map
-             [:token ms/NonBlankString]]
+             [:token ::ms/NonBlankString]]
    request]
   (when-not (sso/google-auth-client-id)
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
@@ -305,8 +305,8 @@
   [_route-params
    _query-params
    _body :- [:map
-             [:password ms/ValidPassword]]]
-  ;; if we pass the [[ms/ValidPassword]] test we're g2g
+             [:password ::ms/ValidPassword]]]
+  ;; if we pass the [[::ms/ValidPassword]] test we're g2g
   {:valid true})
 
 (defn- +log-all-request-failures [handler]

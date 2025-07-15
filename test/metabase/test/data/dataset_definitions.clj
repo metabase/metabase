@@ -6,7 +6,13 @@
    [metabase.test.data.interface :as tx]
    [metabase.util.date-2 :as u.date])
   (:import
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Various Datasets                                                |

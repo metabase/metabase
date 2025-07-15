@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.protocols :as sql.protocols]
+   [malli.registry :as mr]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -100,7 +101,7 @@
 
 (sql/register-fn! ::percentile-cont #'format-percentile-cont)
 
-(def IdentifierType
+(mr/def ::IdentifierType
   "Malli schema for valid [[identifier]] types."
   [:enum
    :database
@@ -123,11 +124,11 @@
   (and (vector? x)
        (= (first x) ::identifier)))
 
-(def Identifier
+(mr/def ::Identifier
   "Malli schema for an [[identifier]]."
   [:tuple
    [:= ::identifier]
-   IdentifierType
+   ::IdentifierType
    [:sequential {:min 1} :string]])
 
 (defn- format-identifier [_tag [_identifier-type components :as _args]]
@@ -141,7 +142,7 @@
 
 (sql/register-fn! ::identifier #'format-identifier)
 
-(mu/defn identifier :- Identifier
+(mu/defn identifier :- ::Identifier
   "Define an identifier of type with `components`. Prefer this to using keywords for identifiers, as those do not
   properly handle identifiers with slashes in them.
 
@@ -150,8 +151,8 @@
 
   This function automatically unnests any Identifiers passed as arguments, removes nils, and converts all args to
   strings."
-  [identifier-type :- IdentifierType
-   & components    :- [:* {:min 1} [:maybe [:or :keyword ms/NonBlankString [:fn identifier?]]]]]
+  [identifier-type :- ::IdentifierType
+   & components    :- [:* {:min 1} [:maybe [:or :keyword ::ms/NonBlankString [:fn identifier?]]]]]
   [::identifier
    identifier-type
    (vec (for [component components
@@ -180,9 +181,9 @@
 
 (sql/register-fn! ::literal #'format-literal)
 
-(def Literal "A `literal` tagged string or keyword" [:tuple [:= ::literal] :string])
+(mr/def ::Literal "A `literal` tagged string or keyword" [:tuple [:= ::literal] :string])
 
-(mu/defn literal :- Literal
+(mu/defn literal :- ::Literal
   "Wrap keyword or string `s` in single quotes and a HoneySQL `raw` form.
 
   We'll try to escape single quotes in the literal, unless they're already escaped (either as `''` or as `\\`, but
@@ -231,7 +232,7 @@
    [:database-type
     {:optional true}
     [:and
-     ms/NonBlankString
+     ::ms/NonBlankString
      [:fn
       {:error/message "lowercased string"}
       (fn [s]
@@ -315,7 +316,7 @@
     (with-database-type-info :field \"text\")
     ;; -> [::typed :field \"text\"]"
   {:style/indent [:form]}
-  [honeysql-form db-type :- [:maybe ms/KeywordOrString]]
+  [honeysql-form db-type :- [:maybe ::ms/KeywordOrString]]
   (if (some? db-type)
     (with-type-info honeysql-form {:database-type db-type})
     (unwrap-typed-honeysql-form honeysql-form)))
@@ -336,7 +337,7 @@
   that may have a space in the name, for example Postgres enum types.
 
   Returns a typed HoneySQL form."
-  [sql-type :- ms/NonBlankString expr]
+  [sql-type :- ::ms/NonBlankString expr]
   (-> [:cast expr (identifier :type-name sql-type)]
       (with-database-type-info sql-type)))
 

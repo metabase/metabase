@@ -1,6 +1,6 @@
 (ns metabase.lib.filter
   (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case])
-  (:require
+  (:require [malli.registry :as mr]
    [inflections.core :as inflections]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -422,7 +422,7 @@
     stage-number :- [:maybe :int]]
    (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
 
-(def ColumnWithOperators
+(mr/def ::ColumnWithOperators
   "Malli schema for ColumnMetadata extended with the list of applicable operators."
   [:merge
    [:ref ::lib.schema.metadata/column]

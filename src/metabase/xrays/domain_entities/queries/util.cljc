@@ -2,31 +2,32 @@
   "Utility functions used by the Queries in metabase-lib."
   (:require
    #?@(:cljs ([metabase.xrays.domain-entities.converters :as converters]))
+   [malli.registry :as mr]
    [metabase.util.malli :as mu]))
 
-(def Expression
+(mr/def ::Expression
   "Schema for an Expression that's part of a query filter."
   :any)
 
-(def ExpressionMap
+(mr/def ::ExpressionMap
   "Malli schema for a map of expressions by name."
-  [:map-of string? Expression])
+  [:map-of string? ::Expression])
 
-(def ExpressionList
+(mr/def ::ExpressionList
   "Malli schema for a list of {:name :expression} maps."
-  [:vector [:map [:name string?] [:expression Expression]]])
+  [:vector [:map [:name string?] [:expression ::Expression]]])
 
 (def ^:private ->expression-map
-  #?(:cljs (converters/incoming ExpressionMap)
+  #?(:cljs (converters/incoming ::ExpressionMap)
      :clj  identity))
 
 (def ^:private expression-list->
-  #?(:cljs (converters/outgoing ExpressionList)
+  #?(:cljs (converters/outgoing ::ExpressionList)
      :clj  identity))
 
-(mu/defn ^:export expressions-list :- ExpressionList
+(mu/defn ^:export expressions-list :- ::ExpressionList
   "Turns a map of expressions by name into a list of `{:name name :expression expression}` objects."
-  [expressions :- ExpressionMap]
+  [expressions :- ::ExpressionMap]
   (->> expressions
        ->expression-map
        (mapv (fn [[name expr]] {:name name :expression expr}))
@@ -40,7 +41,7 @@
 
 (mu/defn ^:export unique-expression-name :- string?
   "Generates an expression name that's unique in the given map of expressions."
-  [expressions   :- ExpressionMap
+  [expressions   :- ::ExpressionMap
    original-name :- string?]
   (let [expression-names (-> expressions ->expression-map keys set)]
     (if (not (expression-names original-name))

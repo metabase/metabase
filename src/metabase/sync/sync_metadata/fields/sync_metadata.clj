@@ -27,10 +27,10 @@
 (mu/defn- update-field-metadata-if-needed! :- [:enum 0 1]
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
   base type, database type, semantic type, and comments/remarks; returns `1` if the Field was updated; `0` otherwise."
-  [database       :- i/DatabaseInstance
-   table          :- i/TableInstance
-   field-metadata :- i/TableMetadataField
-   metabase-field :- common/TableMetadataFieldWithID]
+  [database       :- ::i/DatabaseInstance
+   table          :- ::i/TableInstance
+   field-metadata :- ::i/TableMetadataField
+   metabase-field :- ::common/TableMetadataFieldWithID]
   (let [{old-database-type              :database-type
          old-base-type                  :base-type
          old-field-comment              :field-comment
@@ -165,24 +165,24 @@
 
 (declare update-metadata!)
 
-(mu/defn- update-nested-fields-metadata! :- ms/IntGreaterThanOrEqualToZero
+(mu/defn- update-nested-fields-metadata! :- ::ms/IntGreaterThanOrEqualToZero
   "Recursively call `update-metadata!` for all the nested Fields in a `metabase-field`."
-  [database       :- i/DatabaseInstance
-   table          :- i/TableInstance
-   field-metadata :- i/TableMetadataField
-   metabase-field :- common/TableMetadataFieldWithID]
+  [database       :- ::i/DatabaseInstance
+   table          :- ::i/TableInstance
+   field-metadata :- ::i/TableMetadataField
+   metabase-field :- ::common/TableMetadataFieldWithID]
   (let [nested-fields-metadata (:nested-fields field-metadata)
         metabase-nested-fields (:nested-fields metabase-field)]
     (if (seq metabase-nested-fields)
       (update-metadata! database table (set nested-fields-metadata) (set metabase-nested-fields))
       0)))
 
-(mu/defn update-metadata! :- ms/IntGreaterThanOrEqualToZero
+(mu/defn update-metadata! :- ::ms/IntGreaterThanOrEqualToZero
   "Make sure things like PK status and base-type are in sync with what has come back from the DB. Recursively updates
   nested Fields. Returns total number of Fields updated."
-  [database     :- i/DatabaseInstance
-   table        :- i/TableInstance
-   db-metadata  :- [:set i/TableMetadataField]
+  [database     :- ::i/DatabaseInstance
+   table        :- ::i/TableInstance
+   db-metadata  :- [:set ::i/TableMetadataField]
    our-metadata :- [:set common/TableMetadataFieldWithID]]
   (sync-util/sum-for [metabase-field our-metadata]
     ;; only update metadata for 'existing' Fields that are present in our Metadata (i.e., present in the application

@@ -27,7 +27,7 @@
 
 (def ^:private default-max-field-search-limit 1000)
 
-(mu/defn search-values :- [:maybe ms/FieldValuesList]
+(mu/defn search-values :- [:maybe ::ms/FieldValuesList]
   "Search for values of `search-field` that contain `value` (up to `limit`, if specified), and return pairs like
 
       [<value-of-field> <matching-value-of-search-field>].
@@ -49,8 +49,8 @@
    (search-values field search-field value nil))
   ([field
     search-field
-    value        :- [:maybe ms/NonBlankString]
-    maybe-limit  :- [:maybe ms/PositiveInt]]
+    value        :- [:maybe ::ms/NonBlankString]
+    maybe-limit  :- [:maybe ::ms/PositiveInt]]
    (try
      (let [field        (follow-fks field)
            search-field (follow-fks search-field)
@@ -60,7 +60,7 @@
        (log/error e "Error searching field values")
        []))))
 
-(mu/defn field->values :- ms/FieldValuesResult
+(mu/defn field->values :- ::ms/FieldValuesResult
   "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
   use-cases."
   [{has-field-values-type :has_field_values, field-id :id, has_more_values :has_more_values, :as field}]
@@ -73,7 +73,7 @@
      :has_more_values (boolean has_more_values)}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
 
-(mu/defn search-values-from-field-id :- ms/FieldValuesResult
+(mu/defn search-values-from-field-id :- ::ms/FieldValuesResult
   "Search for values of a field given by `field-id` that contain `query`."
   [field-id query]
   (let [field        (api/read-check (t2/select-one :model/Field :id field-id))

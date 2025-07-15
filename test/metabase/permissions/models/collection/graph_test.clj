@@ -354,7 +354,7 @@
 
                 (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
                   (is (malli= [:map
-                               [:id         ms/PositiveInt]
+                               [:id         ::ms/PositiveInt]
                                [:before     [:fn #(= % (mt/obj->json->obj (assoc before :namespace nil)))]]
                                [:after      [:fn #(= % {(keyword (str group-id)) {(keyword (str default-ab)) "write"}})]]
                                [:user_id    [:= (mt/user->id :crowberto)]]
@@ -373,7 +373,7 @@
 
                 (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
                   (is (malli= [:map
-                               [:id         ms/PositiveInt]
+                               [:id         ::ms/PositiveInt]
                                [:before     [:fn #(= % (mt/obj->json->obj (assoc before :namespace "currency")))]]
                                [:after      [:fn #(= % {(keyword (str group-id)) {(keyword (str currency-a)) "write"}})]]
                                [:user_id    [:= (mt/user->id :crowberto)]]

@@ -1,6 +1,6 @@
 (ns metabase.cache.models.cache-config
   "A model representing cache configuration."
-  (:require
+  (:require [malli.registry :as mr]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.app-db.core :as app-db]
@@ -10,7 +10,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def CachingModel "Caching is configurable for those models" [:enum "root" "database" "dashboard" "question"])
+(mr/def ::CachingModel "Caching is configurable for those models" [:enum "root" "database" "dashboard" "question"])
 
 (doto :model/CacheConfig
   (derive :metabase/model)

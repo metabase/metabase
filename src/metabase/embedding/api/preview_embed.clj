@@ -26,7 +26,7 @@
 (api.macros/defendpoint :get "/card/:token"
   "Fetch a Card you're considering embedding by passing a JWT `token`."
   [{:keys [token]} :- [:map
-                       [:token ms/NonBlankString]]]
+                       [:token ::ms/NonBlankString]]]
   (let [unsigned-token (check-and-unsign token)]
     (api.embed.common/card-for-unsigned-token unsigned-token
                                               :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
@@ -38,7 +38,7 @@
 (api.macros/defendpoint :get "/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [{:keys [token]} :- [:map
-                       [:token ms/NonBlankString]]
+                       [:token ::ms/NonBlankString]]
    query-params]
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
@@ -68,7 +68,7 @@
 (api.macros/defendpoint :get "/dashboard/:token"
   "Fetch a Dashboard you're considering embedding by passing a JWT `token`. "
   [{:keys [token]} :- [:map
-                       [:token ms/NonBlankString]]]
+                       [:token ::ms/NonBlankString]]]
   (let [unsigned-token (check-and-unsign token)]
     (api.embed.common/dashboard-for-unsigned-token unsigned-token
                                                    :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
@@ -92,9 +92,9 @@
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [{:keys [token dashcard-id card-id]} :- [:map
-                                           [:token       ms/NonBlankString]
-                                           [:dashcard-id ms/PositiveInt]
-                                           [:card-id     ms/PositiveInt]]
+                                           [:token       ::ms/NonBlankString]
+                                           [:dashcard-id ::ms/PositiveInt]
+                                           [:card-id     ::ms/PositiveInt]]
    query-params]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
@@ -112,7 +112,7 @@
 (api.macros/defendpoint :get "/pivot/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [{:keys [token]} :- [:map
-                       [:token ms/NonBlankString]]
+                       [:token ::ms/NonBlankString]]
    query-params]
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
@@ -127,9 +127,9 @@
 (api.macros/defendpoint :get "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [{:keys [token dashcard-id card-id]} :- [:map
-                                           [:token       ms/NonBlankString]
-                                           [:dashcard-id ms/PositiveInt]
-                                           [:card-id     ms/PositiveInt]]
+                                           [:token       ::ms/NonBlankString]
+                                           [:dashcard-id ::ms/PositiveInt]
+                                           [:card-id     ::ms/PositiveInt]]
    query-params]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])

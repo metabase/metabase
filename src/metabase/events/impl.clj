@@ -7,7 +7,7 @@
 
   On launch, all namespaces starting with `metabase.events.*` will get loaded automatically
   by [[initialize-events!]]."
-  (:require
+  (:require [malli.registry :as mr]
    [clojure.spec.alpha :as s]
    [metabase.events.schema :as events.schema]
    [metabase.models.interface :as mi]
@@ -26,7 +26,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def Topic
+(mr/def ::Topic
   "Malli schema for an event topic keyword."
   [:and
    qualified-keyword?

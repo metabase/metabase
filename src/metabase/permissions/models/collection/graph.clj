@@ -33,12 +33,12 @@
   "collection-id -> status"
   ; when doing a delta between old graph and new graph root won't always
   ; be present, which is why it's *optional*
-  [:map-of [:or [:= :root] ms/PositiveInt] CollectionPermissions])
+  [:map-of [:or [:= :root] ::ms/PositiveInt] CollectionPermissions])
 
 (def ^:private PermissionsGraph
   [:map {:closed true}
    [:revision {:optional true} [:maybe :int]]
-   [:groups   [:map-of ms/PositiveInt GroupPermissionsGraph]]])
+   [:groups   [:map-of ::ms/PositiveInt GroupPermissionsGraph]]])
 
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 ;;;
@@ -67,10 +67,10 @@
    (for [collection-id collection-ids]
      {collection-id (perms-type-for-collection permissions-set collection-id)})))
 
-(mu/defn- non-personal-collection-ids :- [:set ms/PositiveInt]
+(mu/defn- non-personal-collection-ids :- [:set ::ms/PositiveInt]
   "Return a set of IDs of all Collections that are neither Personal Collections nor descendants of Personal
   Collections (i.e., things that you can set Permissions for, and that should go in the graph.)"
-  [collection-namespace :- [:maybe ms/KeywordOrString]]
+  [collection-namespace :- [:maybe ::ms/KeywordOrString]]
   (let [personal-collection-ids (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])
         honeysql-form           {:select [[:id :id]]
                                  :from   [:collection]
@@ -128,7 +128,7 @@
   ([]
    (graph nil))
 
-  ([collection-namespace :- [:maybe ms/KeywordOrString]]
+  ([collection-namespace :- [:maybe ::ms/KeywordOrString]]
    (t2/with-transaction [_conn]
      (-> collection-namespace
          non-personal-collection-ids
@@ -140,9 +140,9 @@
 (mu/defn- update-collection-permissions!
   "Update the permissions for group ID with `group-id` on collection with ID
   `collection-id` in the optional `collection-namespace` to `new-collection-perms`."
-  [collection-namespace :- [:maybe ms/KeywordOrString]
-   group-id             :- ms/PositiveInt
-   collection-id        :- [:or [:= :root] ms/PositiveInt]
+  [collection-namespace :- [:maybe ::ms/KeywordOrString]
+   group-id             :- ::ms/PositiveInt
+   collection-id        :- [:or [:= :root] ::ms/PositiveInt]
    new-collection-perms :- CollectionPermissions]
   (let [collection-id (if (= collection-id :root)
                         (assoc (root-collection) :namespace collection-namespace)
@@ -155,8 +155,8 @@
       :none  nil)))
 
 (mu/defn- update-group-permissions!
-  [collection-namespace :- [:maybe ms/KeywordOrString]
-   group-id             :- ms/PositiveInt
+  [collection-namespace :- [:maybe ::ms/KeywordOrString]
+   group-id             :- ::ms/PositiveInt
    new-group-perms      :- GroupPermissionsGraph]
   (doseq [[collection-id new-perms] new-group-perms]
     (update-collection-permissions! collection-namespace group-id collection-id new-perms)))
@@ -194,7 +194,7 @@
   ([new-graph]
    (update-graph! nil new-graph false))
 
-  ([collection-namespace :- [:maybe ms/KeywordOrString]
+  ([collection-namespace :- [:maybe ::ms/KeywordOrString]
     new-graph            :- PermissionsGraph
     force?               :- [:maybe boolean?]]
    (let [old-graph          (graph collection-namespace)

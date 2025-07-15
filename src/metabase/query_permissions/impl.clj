@@ -156,7 +156,7 @@
 
 (mu/defn- card-instance :- [:and
                             (ms/InstanceOf :model/Card)
-                            [:map [:collection_id [:maybe ms/PositiveInt]]]]
+                            [:map [:collection_id [:maybe ::ms/PositiveInt]]]]
   [card-id :- ::lib.schema.id/card]
   (or (get *card-instances* card-id)
       (if (qp.store/initialized?)

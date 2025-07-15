@@ -28,7 +28,7 @@
                                  (if (i18n/localized-string? s)
                                    s
                                    (i18n/->UserLocalizedString s nil {})))}
-   i18n/LocalizedString])
+   ::i18n/LocalizedString])
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
@@ -302,7 +302,7 @@
        (map identifier)
        (perf/every? (identifiers dimensions))))
 
-(def DashboardTemplate
+(mr/def ::DashboardTemplate
   "Specification defining an automagic dashboard."
   [:and
    [:map
@@ -352,7 +352,7 @@
   (update dashboard-template :cards #(mapv ensure-default-card-sizes %)))
 
 (defn- coerce-to-dashboard-template [template]
-  (mc/coerce DashboardTemplate
+  (mc/coerce ::DashboardTemplate
              template
              (mtx/transformer
               mtx/string-transformer

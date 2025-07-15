@@ -126,7 +126,7 @@
   - `sort_column` - the column to sort by (default: name)
   - `sort_direction` - the direction to sort by (default: asc)"
   [{:keys [id]} :- [:map
-                    [:id [:or ms/PositiveInt [:= :root]]]]
+                    [:id [:or ::ms/PositiveInt [:= :root]]]]
    {:keys [before_date is_recursive sort_column sort_direction]} :- [:map
                                                                      [:before_date    {:optional true}  [:maybe :string]]
                                                                      [:is_recursive   {:default false}  :boolean]

@@ -23,10 +23,10 @@
 
 (def ^:private NewPulseCard
   [:map {:closed true}
-   [:card_id                            ms/PositiveInt]
-   [:pulse_id                           ms/PositiveInt]
-   [:dashboard_card_id                  ms/PositiveInt]
-   [:position          {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:card_id                            ::ms/PositiveInt]
+   [:pulse_id                           ::ms/PositiveInt]
+   [:dashboard_card_id                  ::ms/PositiveInt]
+   [:position          {:optional true} [:maybe ::ms/IntGreaterThanOrEqualToZero]]
    [:include_csv       {:optional true} [:maybe :boolean]]
    [:include_xls       {:optional true} [:maybe :boolean]]
    [:format_rows       {:optional true} [:maybe :boolean]]

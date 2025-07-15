@@ -111,7 +111,7 @@
   [:and
    [:map {:closed true}
     [:subject      :string]
-    [:recipients   [:or [:sequential ms/Email] [:set ms/Email]]]
+    [:recipients   [:or [:sequential ::ms/Email] [:set ::ms/Email]]]
     [:message-type [:enum :text :html :attachments]]
     [:message      [:or :string [:sequential :map]]]
     [:bcc?         {:optional true} [:maybe :boolean]]]
@@ -188,15 +188,15 @@
 
 (def ^:private SMTPSettings
   [:map {:closed true}
-   [:host                         ms/NonBlankString]
-   [:port                         ms/PositiveInt]
+   [:host                         ::ms/NonBlankString]
+   [:port                         ::ms/PositiveInt]
    ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
    [:user        {:optional true} [:maybe :string]]
    [:security    {:optional true} [:maybe [:enum :tls :ssl :none :starttls]]]
    [:pass        {:optional true} [:maybe :string]]
    [:sender      {:optional true} [:maybe :string]]
    [:sender-name {:optional true} [:maybe :string]]
-   [:reply-to    {:optional true} [:maybe [:sequential ms/Email]]]])
+   [:reply-to    {:optional true} [:maybe [:sequential ::ms/Email]]]])
 
 (mu/defn- test-smtp-settings :- SMTPStatus
   "Tests an SMTP configuration by attempting to connect and authenticate if an authenticated method is passed

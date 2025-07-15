@@ -39,8 +39,8 @@
   [_route-params
    {skip-graph? :skip-graph
     force? :force} :- [:map
-                       [:skip-graph {:default false} [:maybe ms/BooleanValue]]
-                       [:force      {:default false} [:maybe ms/BooleanValue]]]
+                       [:skip-graph {:default false} [:maybe ::ms/BooleanValue]]
+                       [:force      {:default false} [:maybe ::ms/BooleanValue]]]
    body :- :map]
   (api/check-superuser)
   (-> body

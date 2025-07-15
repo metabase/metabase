@@ -12,7 +12,7 @@
   [:map-of {:min 1} :any [:maybe :string]])
 
 (letfn [(legacy-field-or-expression-reference-fn [k]
-          ((comp (mr/validator mbql.s/Field)
+          ((comp (mr/validator ::mbql.s/Field)
                  mbql.normalize/normalize-tokens) k))]
   (mr/def ::legacy-field-or-expression-reference
     "Schema for a valid legacy `:field` or `:expression` reference (possibly not yet normalized)."

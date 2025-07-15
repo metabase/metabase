@@ -35,7 +35,7 @@
    :percent-email [:type/Email          percent-valid-threshold]
    :percent-state [:type/State          lower-percent-valid-threshold]})
 
-(mu/defn- infer-semantic-type-for-text-fingerprint :- [:maybe ms/FieldType]
+(mu/defn- infer-semantic-type-for-text-fingerprint :- [:maybe ::ms/FieldType]
   "Check various percentages inside the `text-fingerprint` and return the corresponding semantic type to mark the Field
   as if the percent passes the threshold."
   [text-fingerprint :- fingerprint.schema/TextFingerprint]

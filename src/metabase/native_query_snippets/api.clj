@@ -15,7 +15,7 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn- hydrated-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
-  [id :- ms/PositiveInt]
+  [id :- ::ms/PositiveInt]
   (-> (api/read-check (t2/select-one :model/NativeQuerySnippet :id id))
       (t2/hydrate :creator)))
 
@@ -23,7 +23,7 @@
   "Fetch all snippets"
   [_route-params
    {:keys [archived]} :- [:map
-                          [:archived {:default false} [:maybe ms/BooleanValue]]]]
+                          [:archived {:default false} [:maybe ::ms/BooleanValue]]]]
   (let [snippets (t2/select :model/NativeQuerySnippet
                             :archived archived
                             {:order-by [[:%lower.name :asc]]})]
@@ -32,7 +32,7 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch native query snippet with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (hydrated-native-query-snippet id))
 
 (defn- check-snippet-name-is-unique [snippet-name]
@@ -48,7 +48,7 @@
                                                         [:content       :string]
                                                         [:description   {:optional true} [:maybe :string]]
                                                         [:name          native-query-snippet/NativeQuerySnippetName]
-                                                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+                                                        [:collection_id {:optional true} [:maybe ::ms/PositiveInt]]]]
   (check-snippet-name-is-unique name)
   (let [snippet {:content       content
                  :creator_id    api/*current-user-id*
@@ -77,12 +77,12 @@
 (api.macros/defendpoint :put "/:id"
   "Update an existing `NativeQuerySnippet`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    body :- [:map
             [:archived      {:optional true} [:maybe :boolean]]
             [:content       {:optional true} [:maybe :string]]
             [:description   {:optional true} [:maybe :string]]
             [:name          {:optional true} [:maybe native-query-snippet/NativeQuerySnippetName]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+            [:collection_id {:optional true} [:maybe ::ms/PositiveInt]]]]
   (check-perms-and-update-snippet! id body))

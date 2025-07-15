@@ -291,10 +291,10 @@
 (mr/def ::NotificationHandler
   [:map
    ;; optional during insertion
-   [:notification_id {:optional true}       ms/PositiveInt]
+   [:notification_id {:optional true}       ::ms/PositiveInt]
    [:channel_type    {:decode/json keyword} [:fn #(= "channel" (-> % keyword namespace))]]
-   [:channel_id      {:optional true}       [:maybe ms/PositiveInt]]
-   [:template_id     {:optional true}       [:maybe ms/PositiveInt]]
+   [:channel_id      {:optional true}       [:maybe ::ms/PositiveInt]]
+   [:template_id     {:optional true}       [:maybe ::ms/PositiveInt]]
    [:active          {:optional true}       [:maybe :boolean]]])
 
 (defn- validate-notification-handler
@@ -332,16 +332,16 @@
   "Schema for :model/NotificationRecipient."
   [:merge [:map
            [:type (ms/enum-decode-keyword notification-recipient-types)]
-           [:notification_handler_id {:optional true} ms/PositiveInt]]
+           [:notification_handler_id {:optional true} ::ms/PositiveInt]]
    [:multi {:dispatch (comp keyword :type)}
     [:notification-recipient/user
      [:map
-      [:user_id                               ms/PositiveInt]
+      [:user_id                               ::ms/PositiveInt]
       [:permissions_group_id {:optional true} [:fn nil?]]
       [:details              {:optional true} [:fn empty?]]]]
     [:notification-recipient/group
      [:map
-      [:permissions_group_id                  ms/PositiveInt]
+      [:permissions_group_id                  ::ms/PositiveInt]
       [:user_id              {:optional true} [:fn nil?]]
       [:details              {:optional true} [:fn empty?]]]]
     [:notification-recipient/raw-value
@@ -398,7 +398,7 @@
 (mr/def ::NotificationCard
   "Schema for :model/NotificationCard."
   [:map
-   [:card_id                         ms/PositiveInt]
+   [:card_id                         ::ms/PositiveInt]
    [:card           {:optional true} [:maybe :map]]
    [:send_condition {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
    [:send_once      {:optional true} :boolean]])

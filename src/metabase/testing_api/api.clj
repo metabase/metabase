@@ -50,7 +50,7 @@
 (api.macros/defendpoint :post "/snapshot/:name"
   "Snapshot the database for testing purposes."
   [{snapshot-name :name} :- [:map
-                             [:name ms/NonBlankString]]]
+                             [:name ::ms/NonBlankString]]]
   (save-snapshot! snapshot-name)
   nil)
 
@@ -121,7 +121,7 @@
 (api.macros/defendpoint :post "/restore/:name"
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
-                             [:name ms/NonBlankString]]]
+                             [:name ::ms/NonBlankString]]]
   (.clear ^Queue @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
   (search/reindex!)
@@ -131,7 +131,7 @@
   "Simple echo hander. Fails when you POST with `?fail=true`."
   [_route-params
    {:keys [fail]} :- [:map
-                      [:fail {:default false} ms/BooleanValue]]
+                      [:fail {:default false} ::ms/BooleanValue]]
    body]
   (if fail
     {:status 400
@@ -144,8 +144,8 @@
   [_route-params
    _query-params
    {:keys [time add-ms]} :- [:map
-                             [:time   {:optional true} [:maybe ms/TemporalString]]
-                             [:add-ms {:optional true} [:maybe ms/Int]]]]
+                             [:time   {:optional true} [:maybe ::ms/TemporalString]]
+                             [:add-ms {:optional true} [:maybe ::ms/Int]]]]
   (let [clock (when-let [time' (cond
                                  time   (u.date/parse time)
                                  add-ms (t/plus (t/zoned-date-time)
@@ -160,8 +160,8 @@
   "Simple echo hander. Fails when you GET with `?fail=true`."
   [_route-params
    {:keys [fail body]} :- [:map
-                           [:fail {:default false} ms/BooleanValue]
-                           [:body ms/JSONString]]]
+                           [:fail {:default false} ::ms/BooleanValue]
+                           [:body ::ms/JSONString]]]
   (if fail
     {:status 400
      :body {:error-code "oops"}}
@@ -173,7 +173,7 @@
   [_route-params
    _query-params
    {:keys [id model date-str]} :- [:map
-                                   [:id       ms/PositiveInt]
+                                   [:id       ::ms/PositiveInt]
                                    [:model    :string]
                                    [:date-str {:optional true} [:maybe :string]]]]
   (let [date (if date-str

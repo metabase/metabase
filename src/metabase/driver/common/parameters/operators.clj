@@ -74,7 +74,7 @@
         (nil? l) (assoc :type :number/<=, :value [u])))
     param))
 
-(mu/defn to-clause :- mbql.s/Filter
+(mu/defn to-clause :- ::mbql.s/Filter
   "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
   [param]

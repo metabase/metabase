@@ -7,7 +7,7 @@
 
 (deftest ^:parallel ConnectionOptions-test
   (are [options error] (= error
-                          (me/humanize (mr/explain sql-jdbc.execute/ConnectionOptions options)))
+                          (me/humanize (mr/explain ::sql-jdbc.execute/ConnectionOptions options)))
     nil                              nil
     {}                               nil
     {:session-timezone nil}          nil

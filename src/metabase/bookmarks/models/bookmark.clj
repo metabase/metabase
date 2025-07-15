@@ -1,5 +1,5 @@
 (ns metabase.bookmarks.models.bookmark
-  (:require
+  (:require [malli.registry :as mr]
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.queries.schema :as queries.schema]
@@ -23,15 +23,15 @@
   [k]
   (-> (str/split (name k) #"\.") peek keyword))
 
-(def BookmarkResult
+(mr/def ::BookmarkResult
   "Shape of a bookmark returned for user. Id is a string because it is a concatenation of the model and the model's
   id. This is required for the frontend entity loading system and does not refer to any particular bookmark id,
   although the compound key can be inferred from it."
   [:map {:closed true}
    [:id                               :string]
    [:type                             [:enum "card" "collection" "dashboard"]]
-   [:item_id                          ms/PositiveInt]
-   [:name                             ms/NonBlankString]
+   [:item_id                          ::ms/PositiveInt]
+   [:name                             ::ms/NonBlankString]
    [:authority_level {:optional true} [:maybe :string]]
    [:card_type       {:optional true} [:maybe ::queries.schema/card-type]]
    [:description     {:optional true} [:maybe :string]]

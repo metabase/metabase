@@ -128,10 +128,10 @@
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
   [_route-params
    {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map
-                                                                                 [:archived                       {:default false} [:maybe ms/BooleanValue]]
-                                                                                 [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
-                                                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
-                                                                                 [:personal-only                  {:default false} [:maybe ms/BooleanValue]]]]
+                                                                                 [:archived                       {:default false} [:maybe ::ms/BooleanValue]]
+                                                                                 [:exclude-other-user-collections {:default false} [:maybe ::ms/BooleanValue]]
+                                                                                 [:namespace                      {:optional true} [:maybe ::ms/NonBlankString]]
+                                                                                 [:personal-only                  {:default false} [:maybe ::ms/BooleanValue]]]]
   (as->
    (select-collections {:archived                       (boolean archived)
                         :exclude-other-user-collections exclude-other-user-collections
@@ -200,9 +200,9 @@
            namespace shallow collection-id]} :- [:map
                                                  [:exclude-archived               {:default false} [:maybe :boolean]]
                                                  [:exclude-other-user-collections {:default false} [:maybe :boolean]]
-                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+                                                 [:namespace                      {:optional true} [:maybe ::ms/NonBlankString]]
                                                  [:shallow                        {:default false} [:maybe :boolean]]
-                                                 [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
+                                                 [:collection-id                  {:optional true} [:maybe ::ms/PositiveInt]]]]
   (let [archived    (if exclude-archived false nil)
         collections (select-collections {:archived                       archived
                                          :exclude-other-user-collections exclude-other-user-collections
@@ -946,7 +946,7 @@
 
 (mu/defn- collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
-  [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
+  [{collection-namespace :namespace, :as collection} :- ::collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
   (let [valid-models (for [model-kw [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
@@ -967,7 +967,7 @@
 (mu/defn- collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
   Works for either a normal Collection or the Root Collection."
-  [collection :- collection/CollectionWithLocationAndIDOrRoot]
+  [collection :- ::collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
       (t2/hydrate :parent_id
@@ -1041,7 +1041,7 @@
 
   To be eligible, a card must only appear in one dashboard (which is also in this collection), and must not already be a
   dashboard question."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map [:id ::ms/PositiveInt]]]
   (api/read-check :model/Collection id)
   (present-dashboard-question-candidates
    (dashboard-question-candidates id)))
@@ -1055,7 +1055,7 @@
 
 (mr/def ::MoveDashboardQuestionCandidatesResponse
   [:map
-   [:moved [:sequential ms/PositiveInt]]])
+   [:moved [:sequential ::ms/PositiveInt]]])
 
 (defn- move-dashboard-question-candidates
   "Move dash"
@@ -1073,11 +1073,11 @@
 
 (api.macros/defendpoint :post "/:id/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
   "Move candidate cards to the dashboards they appear in."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ::ms/PositiveInt]]
    _query-params
    {:keys [card_ids]} :- [:maybe
                           [:map [:card_ids {:optional true}
-                                 [:set ms/PositiveInt]]]]]
+                                 [:set ::ms/PositiveInt]]]]]
   (api/read-check :model/Collection id)
   {:moved (move-dashboard-question-candidates id card_ids)})
 
@@ -1087,7 +1087,7 @@
    _query-params
    {:keys [card_ids]} :- [:maybe
                           [:map [:card_ids {:optional true}
-                                 [:set ms/PositiveInt]]]]]
+                                 [:set ::ms/PositiveInt]]]]]
   {:moved (move-dashboard-question-candidates nil card_ids)})
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
@@ -1099,7 +1099,7 @@
   "Return the 'Root' Collection object with standard details added"
   [_route-params
    {:keys [namespace]} :- [:map
-                           [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
+                           [:namespace {:optional true} [:maybe ::ms/NonBlankString]]]]
   (-> (root-collection namespace)
       (api/read-check)
       (dissoc ::collection.root/is-root?)))
@@ -1138,14 +1138,14 @@
            include_can_run_adhoc_query
            show_dashboard_questions]} :- [:map
                                           [:models                      {:optional true} [:maybe Models]]
-                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
-                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                          [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
+                                          [:include_can_run_adhoc_query {:default false} [:maybe ::ms/BooleanValue]]
+                                          [:archived                    {:default false} [:maybe ::ms/BooleanValue]]
+                                          [:namespace                   {:optional true} [:maybe ::ms/NonBlankString]]
                                           [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
                                           [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
                                           [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                          [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]]]
+                                          [:official_collections_first  {:optional true} [:maybe ::ms/MaybeBooleanValue]]
+                                          [:show_dashboard_questions    {:optional true} [:maybe ::ms/MaybeBooleanValue]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -1204,11 +1204,11 @@
   [_route-params
    _query-params
    body :- [:map
-            [:name            ms/NonBlankString]
-            [:description     {:optional true} [:maybe ms/NonBlankString]]
-            [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
-            [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-            [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
+            [:name            ::ms/NonBlankString]
+            [:description     {:optional true} [:maybe ::ms/NonBlankString]]
+            [:parent_id       {:optional true} [:maybe ::ms/PositiveInt]]
+            [:namespace       {:optional true} [:maybe ::ms/NonBlankString]]
+            [:authority_level {:optional true} [:maybe ::collection/AuthorityLevel]]]]
   (create-collection! body))
 
 (defn- maybe-send-archived-notifications!
@@ -1277,21 +1277,21 @@
   "Fetch a graph of all Collection Permissions."
   [_route-params
    {:keys [namespace]} :- [:map
-                           [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
+                           [:namespace {:optional true} [:maybe ::ms/NonBlankString]]]]
   (api/check-superuser)
   (perms/graph namespace))
 
-(def CollectionID "an id for a [[Collection]]."
+(mr/def ::CollectionID "an id for a [[Collection]]."
   [pos-int? {:title "Collection ID"}])
 
-(def GroupID "an id for a [[PermissionsGroup]]."
+(mr/def ::GroupID "an id for a [[PermissionsGroup]]."
   [pos-int? {:title "Group ID"}])
 
-(def CollectionPermissions
+(mr/def ::CollectionPermissions
   "Malli enum for what sort of collection permissions we have. (:write :read or :none)"
   [:and keyword? [:enum :write :read :none]])
 
-(def GroupPermissionsGraph
+(mr/def ::GroupPermissionsGraph
   "Map describing permissions for a (Group x Collection)"
   [:map-of
    [:or
@@ -1301,7 +1301,7 @@
     CollectionID]
    CollectionPermissions])
 
-(def PermissionsGraph
+(mr/def ::PermissionsGraph
   "Map describing permissions for 1 or more groups.
   Revision # is used for consistency"
   [:map
@@ -1335,11 +1335,11 @@
   graph."
   [_route-params
    {:keys [skip-graph force]} :- [:map
-                                  [:force      {:default false} [:maybe ms/BooleanValue]]
-                                  [:skip-graph {:default false} [:maybe ms/BooleanValue]]]
+                                  [:force      {:default false} [:maybe ::ms/BooleanValue]]
+                                  [:skip-graph {:default false} [:maybe ::ms/BooleanValue]]]
    {:keys [namespace revision groups]} :- [:map
-                                           [:namespace {:optional true} [:maybe ms/NonBlankString]]
-                                           [:revision  {:optional true} [:maybe ms/Int]]
+                                           [:namespace {:optional true} [:maybe ::ms/NonBlankString]]
+                                           [:revision  {:optional true} [:maybe ::ms/Int]]
                                            [:groups    :map]]]
   (api/check-superuser)
   (update-graph! namespace
@@ -1352,21 +1352,21 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch a specific Collection with standard details added"
   [{:keys [id]} :- [:map
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                    [:id [:or ::ms/PositiveInt ::ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
     (collection-detail (api/read-check :model/Collection resolved-id))))
 
 (api.macros/defendpoint :put "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {authority-level :authority_level, :as collection-updates} :- [:map
-                                                                  [:name            {:optional true} [:maybe ms/NonBlankString]]
-                                                                  [:description     {:optional true} [:maybe ms/NonBlankString]]
-                                                                  [:archived        {:default false} [:maybe ms/BooleanValue]]
-                                                                  [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
-                                                                  [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
+                                                                  [:name            {:optional true} [:maybe ::ms/NonBlankString]]
+                                                                  [:description     {:optional true} [:maybe ::ms/NonBlankString]]
+                                                                  [:archived        {:default false} [:maybe ::ms/BooleanValue]]
+                                                                  [:parent_id       {:optional true} [:maybe ::ms/PositiveInt]]
+                                                                  [:authority_level {:optional true} [:maybe ::collection/AuthorityLevel]]]]
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
     ;; if authority_level is changing, make sure we're allowed to do that
@@ -1398,18 +1398,18 @@
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [{:keys [id]} :- [:map
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                    [:id [:or ::ms/PositiveInt ::ms/NanoIdString]]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first
            include_can_run_adhoc_query
            show_dashboard_questions]} :- [:map
                                           [:models                      {:optional true} [:maybe Models]]
-                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
+                                          [:archived                    {:default false} [:maybe ::ms/BooleanValue]]
+                                          [:include_can_run_adhoc_query {:default false} [:maybe ::ms/BooleanValue]]
                                           [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
                                           [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
                                           [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                          [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]]]
+                                          [:official_collections_first  {:optional true} [:maybe ::ms/MaybeBooleanValue]]
+                                          [:show_dashboard_questions    {:default false} [:maybe ::ms/BooleanValue]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)
         model-kwds (set (map keyword (u/one-or-many models)))
         collection (api/read-check :model/Collection resolved-id)]

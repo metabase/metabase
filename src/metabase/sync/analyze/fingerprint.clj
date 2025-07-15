@@ -32,21 +32,21 @@
    :last_analyzed       nil})
 
 (mu/defn- save-fingerprint!
-  [field       :- i/FieldInstance
+  [field       :- ::i/FieldInstance
    fingerprint :- [:maybe analyze/Fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
   (t2/update! :model/Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
 
 (mr/def ::FingerprintStats
   [:map
-   [:no-data-fingerprints   ms/IntGreaterThanOrEqualToZero]
-   [:failed-fingerprints    ms/IntGreaterThanOrEqualToZero]
-   [:updated-fingerprints   ms/IntGreaterThanOrEqualToZero]
-   [:fingerprints-attempted ms/IntGreaterThanOrEqualToZero]])
+   [:no-data-fingerprints   ::ms/IntGreaterThanOrEqualToZero]
+   [:failed-fingerprints    ::ms/IntGreaterThanOrEqualToZero]
+   [:updated-fingerprints   ::ms/IntGreaterThanOrEqualToZero]
+   [:fingerprints-attempted ::ms/IntGreaterThanOrEqualToZero]])
 
 (mu/defn empty-stats-map :- ::FingerprintStats
   "The default stats before any fingerprints happen"
-  [fields-count :- ms/IntGreaterThanOrEqualToZero]
+  [fields-count :- ::ms/IntGreaterThanOrEqualToZero]
   {:no-data-fingerprints   0
    :failed-fingerprints    0
    :updated-fingerprints   0
@@ -59,8 +59,8 @@
   1234)
 
 (mu/defn- fingerprint-fields!
-  [table  :- i/TableInstance
-   fields :- [:maybe [:sequential i/FieldInstance]]]
+  [table  :- ::i/TableInstance
+   fields :- [:maybe [:sequential ::i/FieldInstance]]]
   (let [rff (fn [_metadata]
               (redux/post-complete
                (analyze/fingerprint-fields fields)
@@ -104,10 +104,10 @@
 ;;        (fingerprint_version < 2 AND
 ;;         base_type IN ("type/Text", "type/SerializedJSON")))
 
-(mu/defn- base-types->descendants :- [:maybe [:set ms/FieldTypeKeywordOrString]]
+(mu/defn- base-types->descendants :- [:maybe [:set ::ms/FieldTypeKeywordOrString]]
   "Given a set of `base-types` return an expanded set that includes those base types as well as all of their
   descendants. These types are converted to strings so HoneySQL doesn't confuse them for columns."
-  [base-types :- [:set ms/FieldType]]
+  [base-types :- [:set ::ms/FieldType]]
   (into #{}
         (comp (mapcat (fn [base-type]
                         (cons base-type (descendants base-type))))
@@ -175,7 +175,7 @@
    {:where (cond-> fields-to-fingerprint-base-clause
              (not *refingerprint?*) (conj (cons :or (versions-clauses))))})
 
-  ([table :- i/TableInstance]
+  ([table :- ::i/TableInstance]
    (sql.helpers/where (honeysql-for-fields-that-need-fingerprint-updating)
                       [:= :table_id (u/the-id table)])))
 
@@ -186,13 +186,13 @@
 (mu/defn- fields-to-fingerprint :- [:maybe [:sequential i/FieldInstance]]
   "Return a sequences of Fields belonging to `table` for which we should generate (and save) fingerprints.
    This should include NEW fields that are active and visible."
-  [table :- i/TableInstance]
+  [table :- ::i/TableInstance]
   (seq (t2/select :model/Field
                   (honeysql-for-fields-that-need-fingerprint-updating table))))
 
 (mu/defn fingerprint-table!
   "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed."
-  [table :- i/TableInstance]
+  [table :- ::i/TableInstance]
   (if-let [fields (fields-to-fingerprint table)]
     (do
       (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
@@ -205,15 +205,15 @@
     (empty-stats-map 0)))
 
 (def ^:private LogProgressFn
-  [:=> [:cat :string [:schema i/TableInstance]] :any])
+  [:=> [:cat :string [:schema ::i/TableInstance]] :any])
 
 (mu/defn- fingerprint-fields-for-db!*
   "Invokes `fingerprint-table!` on every table in `database`"
-  ([database        :- i/DatabaseInstance
+  ([database        :- ::i/DatabaseInstance
     log-progress-fn :- LogProgressFn]
    (fingerprint-fields-for-db!* database log-progress-fn (constantly true)))
 
-  ([database        :- i/DatabaseInstance
+  ([database        :- ::i/DatabaseInstance
     log-progress-fn :- LogProgressFn
     continue?       :- [:=> [:cat ::FingerprintStats] :any]]
    (qp.store/with-metadata-provider (u/the-id database)
@@ -237,7 +237,7 @@
 
 (mu/defn fingerprint-fields-for-db!
   "Invokes [[fingerprint-table!]] on every table in `database`"
-  [database        :- i/DatabaseInstance
+  [database        :- ::i/DatabaseInstance
    log-progress-fn :- LogProgressFn]
   (if (driver.u/supports? (:engine database) :fingerprint database)
     (fingerprint-fields-for-db!* database log-progress-fn)
@@ -250,7 +250,7 @@
 
 (mu/defn refingerprint-fields-for-db!
   "Invokes [[fingeprint-fields!]] on every table in `database` up to some limit."
-  [database        :- i/DatabaseInstance
+  [database        :- ::i/DatabaseInstance
    log-progress-fn :- LogProgressFn]
   (binding [*refingerprint?* true]
     (fingerprint-fields-for-db!* database

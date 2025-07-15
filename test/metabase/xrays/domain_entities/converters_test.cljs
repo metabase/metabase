@@ -1,6 +1,7 @@
 (ns metabase.xrays.domain-entities.converters-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [malli.registry :as mr]
    [metabase.test.util.js :as test.js]
    [metabase.xrays.domain-entities.converters :as converters]))
 
@@ -38,14 +39,14 @@
         (is (= kw (-> kw kw-> ->kw)))
         (is (= s  (-> s  ->kw kw->)))))))
 
-(def HalfDeclared
+(mr/def ::HalfDeclared
   [:map
    [:declared-camel {:js/prop "declaredCamel"} string?]
    [:declared-snake string?]
    [:declared-kebab {:js/prop "declared-kebab"} string?]])
 
 (def ->half-declared
-  (converters/incoming HalfDeclared))
+  (converters/incoming ::HalfDeclared))
 
 (deftest map-basics-test
   (testing "incoming maps"
@@ -108,24 +109,24 @@
                               "undeclared_camel" 7
                               "undeclared_snake" 8
                               "undeclared_kebab" 9}
-                         ((converters/outgoing HalfDeclared) adjusted))))))))
+                         ((converters/outgoing ::HalfDeclared) adjusted))))))))
 
-(def Child
+(mr/def ::Child
   [:map [:inner-value {:js/prop "innerValue"} string?]])
 
-(def Parent
-  [:map [:child Child]])
+(mr/def ::Parent
+  [:map [:child ::Child]])
 
-(def Grandparent
-  [:map [:parent Parent]])
+(mr/def ::Grandparent
+  [:map [:parent ::Parent]])
 
 (deftest nesting-test
   (testing "deeply nested maps"
     (let [input     #js {"parent" #js {"child" #js {"innerValue" "asdf"}}}
           exp-clj   {:parent {:child {:inner-value "asdf"}}}
-          converted ((converters/incoming Grandparent) input)]
+          converted ((converters/incoming ::Grandparent) input)]
       (is (= exp-clj converted))
-      (is (test.js/= input ((converters/outgoing Grandparent) converted)))))
+      (is (test.js/= input ((converters/outgoing ::Grandparent) converted)))))
 
   (testing "nesting kitchen sink"
     (let [schema    [:map
@@ -189,7 +190,7 @@
 
 (deftest idempotency-test
   (testing "CLJS maps are not further converted"
-    (let [->parent (converters/incoming Parent)
+    (let [->parent (converters/incoming ::Parent)
           input    {:child {:inner-value "foo"}}]
       (is (identical? input (->parent input))))))
 

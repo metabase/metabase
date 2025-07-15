@@ -16,14 +16,14 @@
 (def ^:private Joins
   "Schema for a non-empty sequence of Joins. Unlike [[mbql.s/Joins]], this does not enforce the constraint that all join
   aliases be unique."
-  [:sequential {:min 1} mbql.s/Join])
+  [:sequential {:min 1} ::mbql.s/Join])
 
 (def ^:private UnresolvedMBQLQuery
   "Schema for the parts of the query we're modifying. For use in the various intermediate transformations in the
   middleware."
   [:map
-   [:joins [:sequential mbql.s/Join]]
-   [:fields {:optional true} mbql.s/Fields]])
+   [:joins [:sequential ::mbql.s/Join]]
+   [:fields {:optional true} ::mbql.s/Fields]])
 
 (def ^:private ResolvedMBQLQuery
   "Schema for the final results of this middleware."
@@ -184,7 +184,7 @@
     (append-join-fields-to-fields inner-query join-fields)))
 
 (mu/defn- resolve-joins-in-mbql-query :- ResolvedMBQLQuery
-  [query :- mbql.s/MBQLQuery]
+  [query :- ::mbql.s/MBQLQuery]
   (-> query
       (update :joins (comp resolve-join-source-queries resolve-references))
       merge-joins-fields))

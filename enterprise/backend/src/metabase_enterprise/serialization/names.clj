@@ -119,18 +119,18 @@
 ;; All the references in the dumps should resolved to entities already loaded.
 (def ^:private Context
   [:map {:closed true}
-   [:database   {:optional true} ms/PositiveInt]
-   [:table      {:optional true} ms/PositiveInt]
+   [:database   {:optional true} ::ms/PositiveInt]
+   [:table      {:optional true} ::ms/PositiveInt]
    [:schema     {:optional true} [:maybe :string]]
-   [:field      {:optional true} ms/PositiveInt]
-   [:metric     {:optional true} ms/PositiveInt]
-   [:segment    {:optional true} ms/PositiveInt]
-   [:card       {:optional true} ms/PositiveInt]
-   [:dashboard  {:optional true} ms/PositiveInt]
-   [:collection {:optional true} [:maybe ms/PositiveInt]] ; root collection
-   [:pulse      {:optional true} ms/PositiveInt]
-   [:user       {:optional true} ms/PositiveInt]
-   [:snippet    {:optional true} [:maybe ms/PositiveInt]]])
+   [:field      {:optional true} ::ms/PositiveInt]
+   [:metric     {:optional true} ::ms/PositiveInt]
+   [:segment    {:optional true} ::ms/PositiveInt]
+   [:card       {:optional true} ::ms/PositiveInt]
+   [:dashboard  {:optional true} ::ms/PositiveInt]
+   [:collection {:optional true} [:maybe ::ms/PositiveInt]] ; root collection
+   [:pulse      {:optional true} ::ms/PositiveInt]
+   [:user       {:optional true} ::ms/PositiveInt]
+   [:snippet    {:optional true} [:maybe ::ms/PositiveInt]]])
 
 (defmulti ^:private path->context*
   {:arglists '([context model model-attrs entity-name])}

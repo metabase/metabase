@@ -28,7 +28,7 @@
 (mu/defn normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
-  [token :- schema.helpers/KeywordOrString]
+  [token :- ::schema.helpers/KeywordOrString]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (-> (u/qualified-name token)
       str/lower-case
@@ -97,7 +97,7 @@
               ;; simplify the elements of the vector
               (mapv simplify-compound-filter x)))))
 
-(mu/defn combine-filter-clauses :- mbql.s/Filter
+(mu/defn combine-filter-clauses :- ::mbql.s/Filter
   "Combine two filter clauses into a single clause in a way that minimizes slapping a bunch of `:and`s together if
   possible."
   [filter-clause & more-filter-clauses]
@@ -125,27 +125,27 @@
                      (- (legacy-last-stage-number inner-query) stage-number))]
       (into [] (repeat elements :source-query)))))
 
-(mu/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
+(mu/defn add-filter-clause-to-inner-query :- ::mbql.s/MBQLQuery
   "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
   needed.
 
   Stage numbers work as in [[add-filter-clause]]."
   [inner-query  :- mbql.s/MBQLQuery
    stage-number :- [:maybe number?]
-   new-clause   :- [:maybe mbql.s/Filter]]
+   new-clause   :- [:maybe ::mbql.s/Filter]]
   (if (not new-clause)
     inner-query
     (let [path (stage-path inner-query stage-number)]
       (update-in inner-query (conj path :filter) combine-filter-clauses new-clause))))
 
-(mu/defn add-filter-clause :- mbql.s/Query
+(mu/defn add-filter-clause :- ::mbql.s/Query
   "Add an additional filter clause to an `outer-query` at stage `stage-number`
   or at the last stage if `stage-number` is `nil`. If `new-clause` is `nil` this is a no-op.
 
   Stage numbers can be negative: `-1` refers to the last stage, `-2` to the penultimate stage, etc."
-  [outer-query  :- mbql.s/Query
+  [outer-query  :- ::mbql.s/Query
    stage-number :- [:maybe number?]
-   new-clause   :- [:maybe mbql.s/Filter]]
+   new-clause   :- [:maybe ::mbql.s/Filter]]
   (update outer-query :query add-filter-clause-to-inner-query stage-number new-clause))
 
 (defn- map-stages*
@@ -463,12 +463,12 @@
   (cond-> clause
     (mbql.preds/FieldOrExpressionDef? clause) desugar-expression))
 
-(mu/defn desugar-filter-clause :- mbql.s/Filter
+(mu/defn desugar-filter-clause :- ::mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
   that needs to enumerate all the possible filter types (such as driver query processor implementations, or the
   implementation [[negate-filter-clause]] below.)"
-  [filter-clause :- mbql.s/Filter]
+  [filter-clause :- ::mbql.s/Filter]
   (-> filter-clause
       desugar-current-relative-datetime
       desugar-in
@@ -507,11 +507,11 @@
 (defmethod negate* :starts-with [clause] [:not clause])
 (defmethod negate* :ends-with   [clause] [:not clause])
 
-(mu/defn negate-filter-clause :- mbql.s/Filter
+(mu/defn negate-filter-clause :- ::mbql.s/Filter
   "Return the logical compliment of an MBQL filter clause, generally without using `:not` (except for the string
   filter clause types). Useful for generating highly optimized filter clauses and for drivers that do not support
   top-level `:not` filter clauses."
-  [filter-clause :- mbql.s/Filter]
+  [filter-clause :- ::mbql.s/Filter]
   (-> filter-clause desugar-filter-clause negate* simplify-compound-filter))
 
 (mu/defn query->source-table-id :- [:maybe pos-int?]
@@ -619,7 +619,7 @@
   ([query index]
    (aggregation-at-index query index 0))
 
-  ([query         :- mbql.s/Query
+  ([query         :- ::mbql.s/Query
     index         :- ::lib.schema.common/int-greater-than-or-equal-to-zero
     nesting-level :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
    (if (zero? nesting-level)
@@ -847,7 +847,7 @@
   [[_ _ opts]]
   opts)
 
-(mu/defn update-field-options :- mbql.s/Reference
+(mu/defn update-field-options :- ::mbql.s/Reference
   "Like [[clojure.core/update]], but for the options in a `:field`, `:expression`, or `:aggregation` clause."
   {:arglists '([field-or-ag-ref-or-expression-ref f & args])}
   [[clause-type id-or-name opts] :- mbql.s/Reference f & args]
@@ -947,7 +947,7 @@
     [:field field-form nil]
     (lib.util.match/match-lite-recursive field-form :field field-form)))
 
-(mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
+(mu/defn unwrap-field-or-expression-clause :- ::mbql.s/Field
   "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
   legacy compatibility."
   [field-or-ref-form]

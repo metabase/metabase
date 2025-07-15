@@ -9,7 +9,7 @@
     {:error/message "Valid percentage between (inclusive) 0 and 1."}
     #(<= 0 % 1)]])
 
-(def Percent
+(mr/def ::Percent
   "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."
   [:ref ::Percent])
 
@@ -18,7 +18,7 @@
    [:distinct-count {:optional true} :int]
    [:nil%           {:optional true} [:maybe Percent]]])
 
-(def GlobalFingerprint
+(mr/def ::GlobalFingerprint
   "Fingerprint values that Fields of all types should have."
   [:ref ::GlobalFingerprint])
 
@@ -31,7 +31,7 @@
    [:q3  {:optional true} [:maybe number?]]
    [:sd  {:optional true} [:maybe number?]]])
 
-(def NumberFingerprint
+(mr/def ::NumberFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Number`."
   [:ref ::NumberFingerprint])
 
@@ -43,7 +43,7 @@
    [:percent-state  {:optional true} [:maybe Percent]]
    [:average-length {:optional true} [:maybe number?]]])
 
-(def TextFingerprint
+(mr/def ::TextFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Text`."
   [:ref ::TextFingerprint])
 
@@ -52,7 +52,7 @@
    [:earliest {:optional true} [:maybe :string]]
    [:latest   {:optional true} [:maybe :string]]])
 
-(def TemporalFingerprint
+(mr/def ::TemporalFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Temporal`."
   [:ref ::TemporalFingerprint])
 
@@ -70,7 +70,7 @@
       {:error/message "Type-specific fingerprint with exactly one key"}
       f]]))
 
-(def TypeSpecificFingerprint
+(mr/def ::TypeSpecificFingerprint
   "Schema for type-specific fingerprint information."
   [:ref ::TypeSpecificFingerprint])
 
@@ -80,7 +80,7 @@
    [:type         {:optional true} TypeSpecificFingerprint]
    [:experimental {:optional true} :map]])
 
-(def Fingerprint
+(mr/def ::Fingerprint
   "Schema for a Field 'fingerprint' generated as part of the analysis stage. Used to power the 'classification'
    sub-stage of analysis. Stored as the `fingerprint` column of Field."
   [:ref ::Fingerprint])

@@ -86,7 +86,7 @@
    _query-params
    {:keys [slack-app-token slack-bug-report-channel]}
    :- [:map
-       [:slack-app-token          {:optional true} [:maybe ms/NonBlankString]]
+       [:slack-app-token          {:optional true} [:maybe ::ms/NonBlankString]]
        [:slack-bug-report-channel {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
   (try

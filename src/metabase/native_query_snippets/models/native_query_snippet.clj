@@ -1,5 +1,5 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
-  (:require
+  (:require [malli.registry :as mr]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -57,7 +57,7 @@
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
-(def NativeQuerySnippetName
+(mr/def ::NativeQuerySnippetName
   "Schema checking that snippet names do not include \"}\" or start with spaces."
   (mu/with-api-error-message
    [:fn (fn [x]

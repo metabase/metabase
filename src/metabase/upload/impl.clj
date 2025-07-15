@@ -588,10 +588,10 @@
   - `table-prefix`: the prefix to use for the table name (optional)."
   [{:keys [collection-id filename ^File file db-id schema-name table-prefix]}
    :- [:map
-       [:collection-id [:maybe ms/PositiveInt]]
+       [:collection-id [:maybe ::ms/PositiveInt]]
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
-       [:db-id ms/PositiveInt]
+       [:db-id ::ms/PositiveInt]
        [:schema-name {:optional true} [:maybe :string]]
        [:table-prefix {:optional true} [:maybe :string]]]]
   (let [database (or (t2/select-one :model/Database :id db-id)
@@ -960,7 +960,7 @@
   before auto-pk columns were introduced by metabase#36249, if it does not already exist."
   [{:keys [filename ^File file table-id action]}
    :- [:map
-       [:table-id ms/PositiveInt]
+       [:table-id ::ms/PositiveInt]
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
        [:action update-action-schema]]]
@@ -988,9 +988,9 @@
   [models :- [:sequential [:map
                            ;; query_type and dataset_query can be null in tests, so we make them nullable here.
                            ;; they should never be null in production
-                           [:dataset_query [:maybe ms/Map]]
+                           [:dataset_query [:maybe ::ms/Map]]
                            [:query_type    [:maybe [:or :string :keyword]]]
-                           [:table_id      [:maybe ms/PositiveInt]]
+                           [:table_id      [:maybe ::ms/PositiveInt]]
                            ;; is_upload can be provided for an optional optimization
                            [:is_upload {:optional true} [:maybe :any]]]]]
   (let [table-ids             (->> models

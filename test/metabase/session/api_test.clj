@@ -37,7 +37,7 @@
 
 (def ^:private SessionResponse
   [:map
-   [:id ms/UUIDString]])
+   [:id ::ms/UUIDString]])
 
 (def ^:private session-cookie request/metabase-session-cookie)
 
@@ -54,12 +54,12 @@
                     response))
         (testing "Login should record a LoginHistory item"
           (is (malli= [:map
-                       [:id                 ms/PositiveInt]
+                       [:id                 ::ms/PositiveInt]
                        [:timestamp          (ms/InstanceOfClass java.time.OffsetDateTime)]
                        [:user_id            [:= (mt/user->id :rasta)]]
-                       [:device_id          ms/UUIDString]
-                       [:device_description ms/NonBlankString]
-                       [:ip_address         ms/NonBlankString]
+                       [:device_id          ::ms/UUIDString]
+                       [:device_description ::ms/NonBlankString]
+                       [:ip_address         ::ms/NonBlankString]
                        [:active             [:= true]]]
                       (t2/select-one :model/LoginHistory :user_id (mt/user->id :rasta), :session_id (t2/select-one-fn :id :model/Session :key_hashed (session/hash-session-key (:id response)))))))))
     (testing "Test that 'remember me' checkbox sets Max-Age attribute on session cookie"
@@ -212,12 +212,12 @@
                (t2/select-one :model/Session :key_hashed session-key-hashed)))
         (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
           (is (malli= [:map
-                       [:id                 ms/PositiveInt]
+                       [:id                 ::ms/PositiveInt]
                        [:timestamp          (ms/InstanceOfClass java.time.OffsetDateTime)]
                        [:user_id            [:= (mt/user->id :rasta)]]
-                       [:device_id          ms/UUIDString]
-                       [:device_description ms/NonBlankString]
-                       [:ip_address         ms/NonBlankString]
+                       [:device_id          ::ms/UUIDString]
+                       [:device_description ::ms/NonBlankString]
+                       [:ip_address         ::ms/NonBlankString]
                        [:active             [:= false]]]
                       (t2/select-one :model/LoginHistory :id login-history-id))))))))
 

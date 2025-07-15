@@ -89,7 +89,7 @@
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
-                      [:uuid ms/UUIDString]]]
+                      [:uuid ::ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (u/prog1 (card-with-uuid uuid)
     (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*, :context :question})))
@@ -171,21 +171,21 @@
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
-                      [:uuid ms/UUIDString]]
+                      [:uuid ::ms/UUIDString]]
    {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+                            [:parameters {:optional true} [:maybe ::ms/JSONString]]]]
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)))
 
 (api.macros/defendpoint :get "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
   credentials. Public sharing must be enabled."
   [{:keys [uuid export-format]} :- [:map
-                                    [:uuid          ms/UUIDString]
+                                    [:uuid          ::ms/UUIDString]
                                     [:export-format ::qp.schema/export-format]]
    {:keys [parameters format_rows pivot_results]} :- [:map
                                                       [:format_rows   {:default false} :boolean]
                                                       [:pivot_results {:default false} :boolean]
-                                                      [:parameters    {:optional true} [:maybe ms/JSONString]]]]
+                                                      [:parameters    {:optional true} [:maybe ::ms/JSONString]]]]
   (process-query-for-card-with-public-uuid
    uuid
    export-format
@@ -247,7 +247,7 @@
 (api.macros/defendpoint :get "/dashboard/:uuid"
   "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
-                      [:uuid ms/UUIDString]]]
+                      [:uuid ::ms/UUIDString]]]
   (lib.metadata.jvm/with-metadata-provider-cache
     (public-sharing.validation/check-public-sharing-enabled)
     (u/prog1 (dashboard-with-uuid uuid)
@@ -286,11 +286,11 @@
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
   [{:keys [uuid dashcard-id card-id]} :- [:map
-                                          [:uuid        ms/UUIDString]
-                                          [:dashcard-id ms/PositiveInt]
-                                          [:card-id     ms/PositiveInt]]
+                                          [:uuid        ::ms/UUIDString]
+                                          [:dashcard-id ::ms/PositiveInt]
+                                          [:card-id     ::ms/PositiveInt]]
    {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+                            [:parameters {:optional true} [:maybe ::ms/JSONString]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
@@ -307,9 +307,9 @@
   "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the
   export formats. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid dashcard-id card-id export-format]} :- [:map
-                                                        [:uuid          ms/UUIDString]
-                                                        [:dashcard-id   ms/PositiveInt]
-                                                        [:card-id       ms/PositiveInt]
+                                                        [:uuid          ::ms/UUIDString]
+                                                        [:dashcard-id   ::ms/PositiveInt]
+                                                        [:card-id       ::ms/PositiveInt]
                                                         [:export-format ::qp.schema/export-format]]
    _query-parameters
    {:keys [format_rows pivot_results parameters]} :- [:map
@@ -319,8 +319,8 @@
                                                                                            (cond-> x
                                                                                              (string? x) json/decode+kw))}
                                                                                         [:sequential :map]]]
-                                                      [:format_rows   {:default false} ms/BooleanValue]
-                                                      [:pivot_results {:default false} ms/BooleanValue]]]
+                                                      [:format_rows   {:default false} ::ms/BooleanValue]
+                                                      [:pivot_results {:default false} ::ms/BooleanValue]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
@@ -338,10 +338,10 @@
 (api.macros/defendpoint :get "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [{:keys [uuid dashcard-id]} :- [:map
-                                  [:uuid        ms/UUIDString]
-                                  [:dashcard-id ms/PositiveInt]]
+                                  [:uuid        ::ms/UUIDString]
+                                  [:dashcard-id ::ms/PositiveInt]]
    {:keys [parameters]} :- [:map
-                            [:parameters ms/JSONString]]]
+                            [:parameters ::ms/JSONString]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid :archived false))
   (actions/fetch-values
@@ -355,8 +355,8 @@
 
    `parameters` should be the mapped dashboard parameters with values."
   [{:keys [uuid dashcard-id]} :- [:map
-                                  [:uuid        ms/UUIDString]
-                                  [:dashcard-id ms/PositiveInt]]
+                                  [:uuid        ::ms/UUIDString]
+                                  [:dashcard-id ::ms/PositiveInt]]
    _query-params
    {:keys [parameters], :as _body} :- [:map
                                        [:parameters {:optional true} [:maybe [:map-of :keyword :any]]]]]
@@ -394,7 +394,7 @@
   [_route-params
    {:keys [url maxheight maxwidth]}
    :- [:map
-       [:url       ms/NonBlankString]
+       [:url       ::ms/NonBlankString]
        [:format    {:optional true} [:maybe
                                      {:description (str "The format param is not used by the API, but is required as"
                                                         " part of the oEmbed spec: http://oembed.com/#section2 just"
@@ -414,7 +414,7 @@
 (api.macros/defendpoint :get "/action/:uuid"
   "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
-                      [:uuid ms/UUIDString]]]
+                      [:uuid ::ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [action (api/check-404 (actions/select-action :public_uuid uuid :archived false))]
     (actions/check-actions-enabled! action)
@@ -429,8 +429,8 @@
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/values"
   "Fetch values for a parameter on a public card."
   [{:keys [uuid param-key]} :- [:map
-                                [:uuid      ms/UUIDString]
-                                [:param-key ms/NonBlankString]]]
+                                [:uuid      ::ms/UUIDString]
+                                [:param-key ::ms/NonBlankString]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
@@ -439,9 +439,9 @@
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/search/:query"
   "Fetch values for a parameter on a public card containing `query`."
   [{:keys [uuid param-key query]} :- [:map
-                                      [:uuid      ms/UUIDString]
-                                      [:param-key ms/NonBlankString]
-                                      [:query     ms/NonBlankString]]]
+                                      [:uuid      ::ms/UUIDString]
+                                      [:param-key ::ms/NonBlankString]
+                                      [:query     ::ms/NonBlankString]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
@@ -450,8 +450,8 @@
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/remapping"
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of card with UUID `uuid`."
   [{:keys [uuid param-key]} :- [:map
-                                [:uuid      ms/UUIDString]
-                                [:param-key ms/NonBlankString]]
+                                [:uuid      ::ms/UUIDString]
+                                [:param-key ::ms/NonBlankString]]
    {:keys [value]}          :- [:map [:value :any]]]
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
@@ -460,8 +460,8 @@
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
   [{:keys [uuid param-key]} :- [:map
-                                [:uuid      ms/UUIDString]
-                                [:param-key ms/NonBlankString]]
+                                [:uuid      ::ms/UUIDString]
+                                [:param-key ::ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
   (lib.metadata.jvm/with-metadata-provider-cache
     (let [dashboard (dashboard-with-uuid uuid)]
@@ -472,9 +472,9 @@
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
   [{:keys [uuid param-key query]} :- [:map
-                                      [:uuid      ms/UUIDString]
-                                      [:param-key ms/NonBlankString]
-                                      [:query     ms/NonBlankString]]
+                                      [:uuid      ::ms/UUIDString]
+                                      [:param-key ::ms/NonBlankString]
+                                      [:query     ::ms/NonBlankString]]
    constraint-param-key->value]
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
@@ -484,8 +484,8 @@
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/remapping"
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of dashboard with UUID `uuid`."
   [{:keys [uuid param-key]} :- [:map
-                                [:uuid      ms/UUIDString]
-                                [:param-key ms/NonBlankString]]
+                                [:uuid      ::ms/UUIDString]
+                                [:param-key ::ms/NonBlankString]]
    {:keys [value]}          :- [:map [:value :any]]]
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
@@ -499,9 +499,9 @@
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
-                      [:uuid ms/UUIDString]]
+                      [:uuid ::ms/UUIDString]]
    {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+                            [:parameters {:optional true} [:maybe ::ms/JSONString]]]]
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)
                                            :qp qp.pivot/run-pivot-query))
 
@@ -509,11 +509,11 @@
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
   sharing must be enabled."
   [{:keys [uuid dashcard-id card-id]} :- [:map
-                                          [:uuid        ms/UUIDString]
-                                          [:card-id     ms/PositiveInt]
-                                          [:dashcard-id ms/PositiveInt]]
+                                          [:uuid        ::ms/UUIDString]
+                                          [:card-id     ::ms/PositiveInt]
+                                          [:dashcard-id ::ms/PositiveInt]]
    {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+                            [:parameters {:optional true} [:maybe ::ms/JSONString]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
@@ -541,7 +541,7 @@
 
    `parameters` should be the mapped dashboard parameters with values."
   [{:keys [uuid]} :- [:map
-                      [:uuid ms/UUIDString]]
+                      [:uuid ::ms/UUIDString]]
    _query-params
    {:keys [parameters], :as _body} :- [:map
                                        [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]
@@ -580,10 +580,10 @@
    :- [:merge
        :api.tiles/route-params
        [:map
-        [:uuid ms/UUIDString]]]
+        [:uuid ::ms/UUIDString]]]
    {:keys [parameters]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:parameters {:optional true} ::ms/JSONString]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card-id    (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))
         parameters (json/decode+kw parameters)
@@ -599,12 +599,12 @@
    :- [:merge
        :api.tiles/route-params
        [:map
-        [:uuid        ms/UUIDString]
-        [:dashcard-id ms/PositiveInt]
-        [:card-id     ms/PositiveInt]]]
+        [:uuid        ::ms/UUIDString]
+        [:dashcard-id ::ms/PositiveInt]
+        [:card-id     ::ms/PositiveInt]]]
    {:keys [parameters]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:parameters {:optional true} ::ms/JSONString]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))
         parameters   (json/decode+kw parameters)

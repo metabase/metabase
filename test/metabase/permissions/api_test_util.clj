@@ -6,7 +6,7 @@
    [metabase.util.malli.registry :as mr]))
 
 (def ^:private graph-output-schema
-  [:map-of @#'api.permission-graph/GroupId @#'api.permission-graph/StrictDbGraph])
+  [:map-of ::api.permission-graph/GroupId ::api.permission-graph/StrictDbGraph])
 
 (defn- decode-and-validate [schema value]
   (mr/validate schema (mc/decode schema value (mtx/string-transformer))))

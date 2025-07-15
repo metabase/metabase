@@ -22,7 +22,7 @@
                            [:authority_level   [:= "official"]]
                            [:id                :int]
                            [:location          [:= "/"]]
-                           [:entity_id         [:maybe ms/NanoIdString]]
+                           [:entity_id         [:maybe ::ms/NanoIdString]]
                            [:namespace         :nil]
                            [:created_at        [:fn
                                                 {:error/message "instance of java.time.temporal.Temporal"}

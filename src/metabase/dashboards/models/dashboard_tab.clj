@@ -71,7 +71,7 @@
 
 (mu/defn create-tabs! :- [:map-of neg-int? pos-int?]
   "Create the new tabs and returned a mapping from temporary tab ID to the new tab ID."
-  [dashboard-id :- ms/PositiveInt
+  [dashboard-id :- ::ms/PositiveInt
    new-tabs     :- [:sequential [:map [:id neg-int?]]]]
   (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab (->> new-tabs
                                                                        (map #(dissoc % :id))
@@ -80,8 +80,8 @@
 
 (mu/defn update-tabs! :- nil?
   "Updates tabs of a dashboard if changed."
-  [current-tabs :- [:sequential [:map [:id ms/PositiveInt]]]
-   new-tabs     :- [:sequential [:map [:id ms/PositiveInt]]]]
+  [current-tabs :- [:sequential [:map [:id ::ms/PositiveInt]]]
+   new-tabs     :- [:sequential [:map [:id ::ms/PositiveInt]]]]
   (let [update-ks       [:name :position]
         id->current-tab (m/index-by :id current-tabs)
         to-update-tabs  (filter
@@ -98,7 +98,7 @@
 
 (mu/defn delete-tabs! :- nil?
   "Delete tabs of a Dashboard"
-  [tab-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  [tab-ids :- [:sequential {:min 1} ::ms/PositiveInt]]
   (when (seq tab-ids)
     (t2/delete! :model/DashboardTab :id [:in tab-ids]))
   nil)

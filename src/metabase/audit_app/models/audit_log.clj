@@ -146,9 +146,9 @@
 (mu/defn construct-event
   :- [:map
       [:unqualified-topic simple-keyword?]
-      [:user-id [:maybe ms/PositiveInt]]
+      [:user-id [:maybe ::ms/PositiveInt]]
       [:model-name [:maybe :string]]
-      [:model-id [:maybe ms/PositiveInt]]
+      [:model-id [:maybe ::ms/PositiveInt]]
       [:details :map]]
   "Generates the data to be recorded in the Audit Log."
   ([topic :- :keyword

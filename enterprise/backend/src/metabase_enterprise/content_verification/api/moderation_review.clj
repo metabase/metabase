@@ -14,9 +14,9 @@
    {:keys [text moderated_item_id moderated_item_type status]}
    :- [:map
        [:text                {:optional true} [:maybe :string]]
-       [:moderated_item_id   ms/PositiveInt]
-       [:moderated_item_type moderation/moderated-item-types]
-       [:status              {:optional true} [:maybe moderation/Statuses]]]]
+       [:moderated_item_id   ::ms/PositiveInt]
+       [:moderated_item_type ::moderation/ModeratedItemTypes]
+       [:status              {:optional true} [:maybe ::moderation/Statuses]]]]
   (api/check-superuser)
   (let [review-data {:text                text
                      :moderated_item_id   moderated_item_id

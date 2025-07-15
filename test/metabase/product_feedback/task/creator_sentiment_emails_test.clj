@@ -56,7 +56,7 @@
                 (is (string? email-body))
                 (let [[_ query-params] (re-find #"creator\?context=(.*)\"" email-body)
                       decoded          (some-> query-params codecs/b64->str json/decode)]
-                  (is (=? {"instance" {"created_at"     (mt/malli=? ms/TemporalString)
+                  (is (=? {"instance" {"created_at"     (mt/malli=? ::ms/TemporalString)
                                        "plan"           (mt/malli=? :string)
                                        "version"        (mt/malli=? :string)
                                        "num_users"      (mt/malli=? :int)
@@ -64,7 +64,7 @@
                                        "num_databases"  (mt/malli=? :int)
                                        "num_questions"  (mt/malli=? :int)
                                        "num_models"     (mt/malli=? :int)}
-                           "user"     {"created_at"     (mt/malli=? ms/TemporalString)
+                           "user"     {"created_at"     (mt/malli=? ::ms/TemporalString)
                                        "num_dashboards" 4
                                        "num_questions"  7
                                        "num_models"     2}}

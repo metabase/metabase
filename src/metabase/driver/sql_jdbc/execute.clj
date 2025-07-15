@@ -5,7 +5,7 @@
   for JDBC drivers that do not support `java.time` classes can be found in
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
   #_{:clj-kondo/ignore [:metabase/modules]}
-  (:require
+  (:require [malli.registry :as mr]
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -51,7 +51,7 @@
 ;;; |                                        SQL JDBC Reducible QP Interface                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ConnectionOptions
+(mr/def ::ConnectionOptions
   "Malli schema for the options passed to [[do-with-connection-with-options]]."
   [:maybe
    [:map

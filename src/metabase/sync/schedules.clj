@@ -11,18 +11,18 @@
 (def ^:private CronSchedulesMap
   "Schema with values for a DB's schedules that can be put directly into the DB."
   [:map
-   [:metadata_sync_schedule      {:optional true} u.cron/CronScheduleString]
-   [:cache_field_values_schedule {:optional true} [:maybe u.cron/CronScheduleString]]])
+   [:metadata_sync_schedule      {:optional true} ::u.cron/CronScheduleString]
+   [:cache_field_values_schedule {:optional true} [:maybe ::u.cron/CronScheduleString]]])
 
 (mr/def ::ExpandedSchedulesMap
   (mu/with-api-error-message
    [:map
     {:error/message "Map of expanded schedule maps"}
-    [:cache_field_values {:optional true} [:maybe u.cron/ScheduleMap]]
-    [:metadata_sync      {:optional true} u.cron/ScheduleMap]]
+    [:cache_field_values {:optional true} [:maybe ::u.cron/ScheduleMap]]
+    [:metadata_sync      {:optional true} ::u.cron/ScheduleMap]]
    (deferred-tru "value must be a valid map of schedule maps for a DB.")))
 
-(def ExpandedSchedulesMap
+(mr/def ::ExpandedSchedulesMap
   "Schema for the `:schedules` key we add to the response containing 'expanded' versions of the CRON schedules.
    This same key is used in reverse to update the schedules."
   [:ref ::ExpandedSchedulesMap])

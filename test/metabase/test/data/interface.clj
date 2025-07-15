@@ -60,13 +60,13 @@
 
 (def ^:private FieldDefinitionSchema
   [:map {:closed true}
-   [:field-name                          ms/NonBlankString]
+   [:field-name                          ::ms/NonBlankString]
    [:base-type                           [:or
                                           [:map {:closed true}
-                                           [:natives [:map-of :keyword ms/NonBlankString]]]
+                                           [:natives [:map-of :keyword ::ms/NonBlankString]]]
                                           [:map {:closed true}
-                                           [:native ms/NonBlankString]]
-                                          ms/FieldType]]
+                                           [:native ::ms/NonBlankString]]
+                                          ::ms/FieldType]]
     ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
     ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
     ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
@@ -77,12 +77,12 @@
    [:pk?               {:optional true} [:maybe :boolean]]
    ;; should we create an index for this field?
    [:indexed?          {:optional true} [:maybe :boolean]]
-   [:semantic-type     {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
-   [:effective-type    {:optional true} [:maybe ms/FieldType]]
-   [:coercion-strategy {:optional true} [:maybe ms/CoercionStrategy]]
+   [:semantic-type     {:optional true} [:maybe ::ms/FieldSemanticOrRelationType]]
+   [:effective-type    {:optional true} [:maybe ::ms/FieldType]]
+   [:coercion-strategy {:optional true} [:maybe ::ms/CoercionStrategy]]
    [:visibility-type   {:optional true} [:maybe (into [:enum] field/visibility-types)]]
-   [:fk                {:optional true} [:maybe ms/KeywordOrString]]
-   [:field-comment     {:optional true} [:maybe ms/NonBlankString]]
+   [:fk                {:optional true} [:maybe ::ms/KeywordOrString]]
+   [:field-comment     {:optional true} [:maybe ::ms/NonBlankString]]
    [:nested-fields     {:optional true} [:maybe [:sequential :any]]]])
 
 (def ^:private ValidFieldDefinition
@@ -91,16 +91,16 @@
 (def ^:private ValidTableDefinition
   [:and
    [:map {:closed true}
-    [:table-name                     ms/NonBlankString]
+    [:table-name                     ::ms/NonBlankString]
     [:field-definitions              [:sequential ValidFieldDefinition]]
     [:rows                           [:sequential [:sequential :any]]]
-    [:table-comment {:optional true} [:maybe ms/NonBlankString]]]
+    [:table-comment {:optional true} [:maybe ::ms/NonBlankString]]]
    (ms/InstanceOfClass TableDefinition)])
 
 (def ^:private ValidDatabaseDefinition
   [:and
    [:map {:closed true}
-    [:database-name ms/NonBlankString] ; this must be unique
+    [:database-name ::ms/NonBlankString] ; this must be unique
     [:table-definitions [:sequential ValidTableDefinition]]]
    (ms/InstanceOfClass DatabaseDefinition)])
 
@@ -604,7 +604,7 @@
 (def ^:private DatasetTableDefinition
   "Schema for a Table in a test dataset defined by a `defdataset` form or in a dataset defnition EDN file."
   [:tuple
-   ms/NonBlankString
+   ::ms/NonBlankString
    [:sequential DatasetFieldDefinition]
    [:sequential [:sequential :any]]])
 
@@ -624,7 +624,7 @@
   ([tabledef :- DatasetTableDefinition]
    (apply dataset-table-definition tabledef))
 
-  ([table-name :- ms/NonBlankString
+  ([table-name :- ::ms/NonBlankString
     field-definition-maps
     rows]
    (map->TableDefinition
@@ -635,7 +635,7 @@
 (mu/defn dataset-definition :- ValidDatabaseDefinition
   "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
   comsumption by various test-data-loading methods."
-  [database-name :- ms/NonBlankString & table-definitions]
+  [database-name :- ::ms/NonBlankString & table-definitions]
   (mu/validate-throw
    (ms/InstanceOfClass DatabaseDefinition)
    (map->DatabaseDefinition
@@ -686,7 +686,7 @@
 (mu/defn edn-dataset-definition
   "Define a new test dataset using the definition in an EDN file in the `test/metabase/test/data/dataset_definitions/`
   directory. (Filename should be `dataset-name` + `.edn`.)"
-  [dataset-name :- ms/NonBlankString]
+  [dataset-name :- ::ms/NonBlankString]
   (let [get-def (delay
                   (let [file-contents (edn/read-string
                                        {:eof nil, :readers {'t #'u.date/parse}}
@@ -713,7 +713,7 @@
 (mu/defn transformed-dataset-definition
   "Create a dataset definition that is a transformation of an some other one, seqentially applying `transform-fns` to
   it. The results of `transform-fns` are cached."
-  [new-name :- ms/NonBlankString wrapped-definition & transform-fns]
+  [new-name :- ::ms/NonBlankString wrapped-definition & transform-fns]
   (let [transform-fn (apply comp (reverse transform-fns))
         get-def      (delay
                        (transform-fn
@@ -762,7 +762,7 @@
 (mu/defn- tabledef-with-name :- ValidTableDefinition
   "Return `TableDefinition` with `table-name` in `dbdef`."
   [{:keys [table-definitions]} :- (ms/InstanceOfClass DatabaseDefinition)
-   table-name :- ms/NonBlankString]
+   table-name :- ::ms/NonBlankString]
   (some
    (fn [{this-name :table-name, :as tabledef}]
      (when (= table-name this-name)
@@ -772,16 +772,16 @@
 (mu/defn- fielddefs-for-table-with-name :- [:sequential ValidFieldDefinition]
   "Return the `FieldDefinitions` associated with table with `table-name` in `dbdef`."
   [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
-   table-name :- ms/NonBlankString]
+   table-name :- ::ms/NonBlankString]
   (:field-definitions (tabledef-with-name dbdef table-name)))
 
-(mu/defn- tabledef->id->row :- [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]
+(mu/defn- tabledef->id->row :- [:map-of ::ms/PositiveInt [:map-of ::ms/NonBlankString :any]]
   [{:keys [field-definitions rows]} :- (ms/InstanceOfClass TableDefinition)]
   (let [field-names (map :field-name field-definitions)]
     (into {} (for [[i values] (m/indexed rows)]
                [(inc i) (zipmap field-names values)]))))
 
-(mu/defn- dbdef->table->id->row :- [:map-of ms/NonBlankString [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]]
+(mu/defn- dbdef->table->id->row :- [:map-of ::ms/NonBlankString [:map-of ::ms/PositiveInt [:map-of ::ms/NonBlankString :any]]]
   "Return a map of table name -> map of row ID -> map of column key -> value."
   [{:keys [table-definitions]} :- (ms/InstanceOfClass DatabaseDefinition)]
   (into {} (for [{:keys [table-name] :as tabledef} table-definitions]
@@ -789,7 +789,7 @@
 
 (mu/defn- nest-fielddefs
   [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
-   table-name :- ms/NonBlankString]
+   table-name :- ::ms/NonBlankString]
   (let [nest-fielddef (fn nest-fielddef [{:keys [fk field-name], :as fielddef}]
                         (if-not fk
                           [fielddef]
@@ -800,7 +800,7 @@
 
 (mu/defn- flatten-rows
   [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
-   table-name :- ms/NonBlankString]
+   table-name :- ::ms/NonBlankString]
   (let [nested-fielddefs (nest-fielddefs dbdef table-name)
         table->id->k->v  (dbdef->table->id->row dbdef)
         resolve-field    (fn resolve-field [table id field-name]
@@ -826,7 +826,7 @@
   "Create a flattened version of `dbdef` by following resolving all FKs and flattening all rows into the table with
   `table-name`. For use with timeseries databases like Druid."
   [dataset-definition
-   table-name :- ms/NonBlankString]
+   table-name :- ::ms/NonBlankString]
   (transformed-dataset-definition table-name dataset-definition
                                   (fn [dbdef]
                                     (assoc dbdef

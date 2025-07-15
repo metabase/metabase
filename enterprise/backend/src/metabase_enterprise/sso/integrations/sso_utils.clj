@@ -23,9 +23,9 @@
 
 (def ^:private UserAttributes
   [:map {:closed true}
-   [:first_name       [:maybe ms/NonBlankString]]
-   [:last_name        [:maybe ms/NonBlankString]]
-   [:email            ms/Email]
+   [:first_name       [:maybe ::ms/NonBlankString]]
+   [:last_name        [:maybe ::ms/NonBlankString]]
+   [:email            ::ms/Email]
    ;; TODO - we should avoid hardcoding this to make it easier to add new integrations. Maybe look at something like
    ;; the keys of `(methods sso/sso-get)`
    [:sso_source       [:enum :saml :jwt]]
@@ -81,7 +81,7 @@
   If a user exists but `is_active` is `false`, will return the user only if `reactivate?` is `true`. Otherwise it will
   be as if this user does not exist."
   [{:keys [email] :as user-from-sso} :- UserAttributes
-   reactivate? :- ms/BooleanValue]
+   reactivate? :- ::ms/BooleanValue]
   (let [;; if the user is not active, we will want to mark them as active if they are actually reactivated.
         new-user-data (merge user-from-sso {:is_active true})
         user-keys (keys new-user-data)]

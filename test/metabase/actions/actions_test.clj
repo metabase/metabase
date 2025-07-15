@@ -104,8 +104,8 @@
                     ;; check that we return the entire row
                     (is (malli= [:map {:closed true}
                                  [:created-row [:map {:closed true}
-                                                [(format-field-name :id)   ms/PositiveInt]
-                                                [(format-field-name :name) ms/NonBlankString]]]]
+                                                [(format-field-name :id)   ::ms/PositiveInt]
+                                                [(format-field-name :name) ::ms/NonBlankString]]]]
                                 result)))}
    {:action       :row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})

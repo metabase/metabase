@@ -159,8 +159,8 @@
 
 (mr/def :api.tiles/route-params
   [:map
-   [:zoom      ms/Int]
-   [:x         ms/Int]
+   [:zoom      ::ms/Int]
+   [:x         ::ms/Int]
    [:y         ms/Int]
    [:lat-field :string]
    [:lon-field :string]])
@@ -198,7 +198,7 @@
   "Generates a single tile image for an ad-hoc query."
   [{:keys [zoom x y lat-field lon-field]} :- :api.tiles/route-params
    {:keys [query]} :- [:map
-                       [:query ms/JSONString]]]
+                       [:query ::ms/JSONString]]]
   (let [query         (json/decode+kw query)
         lat-field     (mbql.normalize/normalize (json/decode+kw lat-field))
         lon-field     (mbql.normalize/normalize (json/decode+kw lon-field))
@@ -259,10 +259,10 @@
    :- [:merge
        :api.tiles/route-params
        [:map
-        [:card-id ms/PositiveInt]]]
+        [:card-id ::ms/PositiveInt]]]
    {:keys [parameters]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:parameters {:optional true} ::ms/JSONString]]]
   (let [parameters (json/decode+kw parameters)
         lat-field  (json/decode+kw lat-field)
         lon-field  (json/decode+kw lon-field)]
@@ -274,12 +274,12 @@
    :- [:merge
        :api.tiles/route-params
        [:map
-        [:dashboard-id ms/PositiveInt]
-        [:dashcard-id ms/PositiveInt]
-        [:card-id   ms/PositiveInt]]]
+        [:dashboard-id ::ms/PositiveInt]
+        [:dashcard-id ::ms/PositiveInt]
+        [:card-id   ::ms/PositiveInt]]]
    {:keys [parameters]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:parameters {:optional true} ::ms/JSONString]]]
   (let [parameters (json/decode+kw parameters)
         lat-field  (json/decode+kw lat-field)
         lon-field  (json/decode+kw lon-field)]

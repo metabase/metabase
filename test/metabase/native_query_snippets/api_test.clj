@@ -78,7 +78,7 @@
                 snippet-from-api (mt/user-http-request user :post 200 (snippet-url) snippet-input)]
             (is (malli=
                  [:map
-                  [:id          ms/PositiveInt]
+                  [:id          ::ms/PositiveInt]
                   [:name        [:= "test-snippet"]]
                   [:description [:= "Just null"]]
                   [:content     [:= "NULL"]]

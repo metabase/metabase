@@ -7,7 +7,7 @@
    If the format of the entity-id is invalid, the status is `:invalid-format`."
   [:ok :not-found :invalid-format])
 
-(def Status
+(mr/def ::Status
   "Malli enum for possible statuses for entity_id -> id translations."
   (into [:enum] statuses))
 

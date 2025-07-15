@@ -1,6 +1,6 @@
 (ns metabase.warehouses.api
   "/api/database endpoints."
-  (:require
+  (:require [malli.registry :as mr]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
@@ -44,11 +44,11 @@
 
 (set! *warn-on-reflection* true)
 
-(def DBEngineString
+(mr/def ::DBEngineString
   "Schema for a valid database engine name, e.g. `h2` or `postgres`."
   (mu/with-api-error-message
    [:and
-    ms/NonBlankString
+    ::ms/NonBlankString
     [:fn
      {:error/message "Valid database engine"}
      #(u/ignore-exceptions (driver/the-driver %))]]
@@ -309,7 +309,7 @@
        [:include_editable_data_model {:default false} [:maybe :boolean]]
        [:exclude_uneditable_details  {:default false} [:maybe :boolean]]
        [:include_only_uploadable     {:default false} [:maybe :boolean]]
-       [:router_database_id          {:optional true} [:maybe ms/PositiveInt]]]]
+       [:router_database_id          {:optional true} [:maybe ::ms/PositiveInt]]]]
   (let [include-tables?                 (= include "tables")
         include-saved-questions-tables? (and saved include-tables?)
         only-editable?                  (or include_only_uploadable exclude_uneditable_details)
@@ -360,14 +360,14 @@
 (mu/defn get-database
   "Retrieve database respecting `include-editable-data-model?`, `exclude-uneditable-details?` and `include-mirror-databases?`"
   ([id] (get-database id {}))
-  ([id :- ms/PositiveInt
+  ([id :- ::ms/PositiveInt
     {:keys [include-editable-data-model?
             exclude-uneditable-details?
             include-destination-databases?]}
     :- [:map
-        [:include-editable-data-model? {:optional true :default false} ms/MaybeBooleanValue]
-        [:exclude-uneditable-details? {:optional true :default false} ms/MaybeBooleanValue]
-        [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
+        [:include-editable-data-model? {:optional true :default false} ::ms/MaybeBooleanValue]
+        [:exclude-uneditable-details? {:optional true :default false} ::ms/MaybeBooleanValue]
+        [:include-destination-databases? {:optional true :default false} ::ms/MaybeBooleanValue]]]
    (let [filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))
          database               (api/check-404 (if include-destination-databases?
                                                  (t2/select-one :model/Database :id id)
@@ -380,10 +380,10 @@
 
 (mu/defn- check-database-exists
   ([id] (check-database-exists id {}))
-  ([id :- ms/PositiveInt
+  ([id :- ::ms/PositiveInt
     {:keys [include-destination-databases?]}
     :- [:map
-        [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
+        [:include-destination-databases? {:optional true :default false} ::ms/MaybeBooleanValue]]]
    (api/check-404 (if (and include-destination-databases? api/*is-superuser?*)
                     (t2/exists? :model/Database :id id)
                     (t2/exists? :model/Database :id id :router_database_id nil)))))
@@ -416,12 +416,12 @@
    in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
    database details."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {:keys [include include_editable_data_model exclude_uneditable_details]}
    :- [:map
        [:include {:optional true} [:maybe [:enum "tables" "tables.fields"]]]
-       [:include_editable_data_model {:optional true} ms/MaybeBooleanValue]
-       [:exclude_uneditable_details {:optional true} ms/MaybeBooleanValue]]]
+       [:include_editable_data_model {:optional true} ::ms/MaybeBooleanValue]
+       [:exclude_uneditable_details {:optional true} ::ms/MaybeBooleanValue]]]
   (present-database
    (get-database id {:include include
                      :include-editable-data-model? include_editable_data_model
@@ -479,7 +479,7 @@
   "Get usage info for a database.
   Returns a map with keys are models and values are the number of entities that use this database."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/check-superuser)
   (check-database-exists id)
   (let [table-ids (t2/select-pks-set :model/Table :db_id id)]
@@ -546,13 +546,13 @@
   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
   and tables, with no additional metadata."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {:keys [include_hidden include_editable_data_model remove_inactive skip_fields]}
    :- [:map
-       [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-       [:remove_inactive             {:default false} [:maybe ms/BooleanValue]]
-       [:skip_fields                 {:default false} [:maybe ms/BooleanValue]]]]
+       [:include_hidden              {:default false} [:maybe ::ms/BooleanValue]]
+       [:include_editable_data_model {:default false} [:maybe ::ms/BooleanValue]]
+       [:remove_inactive             {:default false} [:maybe ::ms/BooleanValue]]
+       [:skip_fields                 {:default false} [:maybe ::ms/BooleanValue]]]]
   (db-metadata id
                include_hidden
                include_editable_data_model
@@ -666,10 +666,10 @@
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {:keys [prefix substring]} :- [:map
-                                  [:prefix    {:optional true} [:maybe ms/NonBlankString]]
-                                  [:substring {:optional true} [:maybe ms/NonBlankString]]]]
+                                  [:prefix    {:optional true} [:maybe ::ms/NonBlankString]]
+                                  [:substring {:optional true} [:maybe ::ms/NonBlankString]]]]
   (api/read-check (get-database id))
   (when (and (str/blank? prefix) (str/blank? substring))
     (throw (ex-info (tru "Must include prefix or search") {:status-code 400})))
@@ -692,10 +692,10 @@
 
   This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {:keys [query include_dashboard_questions]} :- [:map
-                                                   [:query                       ms/NonBlankString]
-                                                   [:include_dashboard_questions {:optional true} ms/BooleanValue]]]
+                                                   [:query                       ::ms/NonBlankString]
+                                                   [:include_dashboard_questions {:optional true} ::ms/BooleanValue]]]
   (api/read-check (get-database id))
   (try
     (->> (autocomplete-cards id query include_dashboard_questions)
@@ -709,7 +709,7 @@
 (api.macros/defendpoint :get "/:id/fields"
   "Get a list of all `Fields` in `Database`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (get-database id)
   (let [fields (filter mi/can-read? (-> (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
                                                    :table_id        [:in (t2/select-fn-set :id :model/Table, :db_id id)]
@@ -730,7 +730,7 @@
 (api.macros/defendpoint :get "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {:keys [include_editable_data_model]}]
   (let [[db-perm-check field-perm-check] (if (Boolean/parseBoolean include_editable_data_model)
                                            [check-db-data-model-perms mi/can-write?]
@@ -816,14 +816,14 @@
    _query-params
    {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]}
    :- [:map
-       [:name              ms/NonBlankString]
+       [:name              ::ms/NonBlankString]
        [:engine            DBEngineString]
-       [:details           ms/Map]
-       [:is_full_sync      {:default true}   [:maybe ms/BooleanValue]]
-       [:is_on_demand      {:default false}  [:maybe ms/BooleanValue]]
-       [:schedules         {:optional true}  [:maybe sync.schedules/ExpandedSchedulesMap]]
+       [:details           ::ms/Map]
+       [:is_full_sync      {:default true}   [:maybe ::ms/BooleanValue]]
+       [:is_on_demand      {:default false}  [:maybe ::ms/BooleanValue]]
+       [:schedules         {:optional true}  [:maybe ::sync.schedules/ExpandedSchedulesMap]]
        [:auto_run_queries  {:optional true}  [:maybe :boolean]]
-       [:cache_ttl         {:optional true}  [:maybe ms/PositiveInt]]
+       [:cache_ttl         {:optional true}  [:maybe ::ms/PositiveInt]]
        [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]]]
   (api/check-superuser)
   (when cache_ttl
@@ -906,21 +906,21 @@
 (api.macros/defendpoint :put "/:id"
   "Update a `Database`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
            auto_run_queries refingerprint cache_ttl settings]} :- [:map
-                                                                   [:name               {:optional true} [:maybe ms/NonBlankString]]
+                                                                   [:name               {:optional true} [:maybe ::ms/NonBlankString]]
                                                                    [:engine             {:optional true} [:maybe DBEngineString]]
                                                                    [:refingerprint      {:optional true} [:maybe :boolean]]
-                                                                   [:details            {:optional true} [:maybe ms/Map]]
-                                                                   [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
+                                                                   [:details            {:optional true} [:maybe ::ms/Map]]
+                                                                   [:schedules          {:optional true} [:maybe ::sync.schedules/ExpandedSchedulesMap]]
                                                                    [:description        {:optional true} [:maybe :string]]
                                                                    [:caveats            {:optional true} [:maybe :string]]
                                                                    [:points_of_interest {:optional true} [:maybe :string]]
                                                                    [:auto_run_queries   {:optional true} [:maybe :boolean]]
-                                                                   [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
-                                                                   [:settings           {:optional true} [:maybe ms/Map]]]]
+                                                                   [:cache_ttl          {:optional true} [:maybe ::ms/PositiveInt]]
+                                                                   [:settings           {:optional true} [:maybe ::ms/Map]]]]
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (let [existing-database (api/write-check (t2/select-one :model/Database :id id))
         incoming-details  details
@@ -986,7 +986,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Delete a `Database`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/check-superuser)
   (api/let-404 [db (t2/select-one :model/Database :id id)]
     (api/check-403 (mi/can-write? db))
@@ -1002,7 +1002,7 @@
 (api.macros/defendpoint :post "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   ;; just wrap this in a future so it happens async
   (let [db (api/write-check (get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-manual-sync {:object db :user-id api/*current-user-id*})
@@ -1028,7 +1028,7 @@
   "Manually set the initial sync status of the `Database` and corresponding
   tables to be `complete` (see #20863)"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   ;; manual full sync needs to be async, but this is a simple update of `Database`
   (let [db     (api/write-check (get-database id {:exclude-uneditable-details? true}))
         tables (map api/write-check (:tables (first (add-tables [db]))))]
@@ -1051,7 +1051,7 @@
 (api.macros/defendpoint :post "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-manual-scan {:object db :user-id api/*current-user-id*})
@@ -1080,7 +1080,7 @@
 (api.macros/defendpoint :post "/:id/discard_values"
   "Discards all saved field values for this `Database`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (let [db (api/write-check (get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-discard-field-values {:object db :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/simple_event {:event "database_discard_field_values" :target_id id})
@@ -1111,7 +1111,7 @@
 (api.macros/defendpoint :get "/:id/syncable_schemas"
   "Returns a list of all syncable schemas found for the database `id`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (let [db (get-database id)]
     (api/check-403 (or (:is_attached_dwh db)
                        (and (mi/can-write? db)
@@ -1150,10 +1150,10 @@
 (api.macros/defendpoint :get "/:id/schemas"
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {:keys [include_editable_data_model include_hidden]} :- [:map
-                                                            [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                            [:include_hidden              {:default false} [:maybe ms/BooleanValue]]]]
+                                                            [:include_editable_data_model {:default false} [:maybe ::ms/BooleanValue]]
+                                                            [:include_hidden              {:default false} [:maybe ::ms/BooleanValue]]]]
   (database-schemas id {:include-editable-data-model? include_editable_data_model
                         :include-hidden? include_hidden}))
 
@@ -1209,10 +1209,10 @@
 (api.macros/defendpoint :get "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
   [{:keys [id schema]} :- [:map
-                           [:id ms/PositiveInt]]
+                           [:id ::ms/PositiveInt]]
    {:keys [include_hidden include_editable_data_model]} :- [:map
-                                                            [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                            [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
+                                                            [:include_hidden              {:default false} [:maybe ::ms/BooleanValue]]
+                                                            [:include_editable_data_model {:default false} [:maybe ::ms/BooleanValue]]]]
   (api/check-404 (seq (schema-tables-list
                        id
                        schema
@@ -1222,10 +1222,10 @@
 (api.macros/defendpoint :get "/:id/schema/"
   "Return a list of Tables for a Database whose `schema` is `nil` or an empty string."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {:keys [include_hidden include_editable_data_model]} :- [:map
-                                                            [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                            [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
+                                                            [:include_hidden              {:default false} [:maybe ::ms/BooleanValue]]
+                                                            [:include_editable_data_model {:default false} [:maybe ::ms/BooleanValue]]]]
   (api/check-404 (seq (concat (schema-tables-list id nil include_hidden include_editable_data_model)
                               (schema-tables-list id "" include_hidden include_editable_data_model)))))
 
@@ -1243,7 +1243,7 @@
 
 (api.macros/defendpoint :get "/:id/healthcheck"
   "Reports whether the database can currently connect"
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map [:id ::ms/PositiveInt]]]
   (let [{:keys [engine details]} (t2/select-one :model/Database :id id)]
     ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
     (binding [driver.settings/*allow-testing-h2-connections* true]

@@ -1,5 +1,6 @@
 (ns metabase.content-verification.models.moderation-review
   (:require
+   [malli.registry :as mr]
    [metabase.app-db.core :as app-db]
    [metabase.content-verification.impl :as moderation]
    [metabase.models.interface :as mi]
@@ -12,19 +13,19 @@
   "Schema enum of the acceptable values for the `status` column"
   #{"verified" nil})
 
-(def Statuses
+(mr/def ::Statuses
   "Schema of valid statuses"
   [:maybe (into [:enum] statuses)])
 
 ;;; currently unused, but I'm leaving this in commented out because it serves as documentation
 (comment
-  (def ReviewChanges
+  (mr/def ::ReviewChanges
     "Schema for a ModerationReview that's being updated (so most keys are optional)"
     [:map
      [:id                  {:optional true} mu/IntGreaterThanZero]
      [:moderated_item_id   {:optional true} mu/IntGreaterThanZero]
-     [:moderated_item_type {:optional true} moderation/moderated-item-types]
-     [:status              {:optional true} Statuses]
+     [:moderated_item_type {:optional true} ::moderation/ModeratedItemTypes]
+     [:status              {:optional true} ::Statuses]
      [:text                {:optional true} [:maybe :string]]]))
 
 (methodical/defmethod t2/table-name :model/ModerationReview [_model] :moderation_review)
@@ -67,10 +68,10 @@
   "Create a new ModerationReview"
   [params :-
    [:map
-    [:moderated_item_id       ms/PositiveInt]
-    [:moderated_item_type     moderation/moderated-item-types]
-    [:moderator_id            ms/PositiveInt]
-    [:status              {:optional true} Statuses]
+    [:moderated_item_id       ::ms/PositiveInt]
+    [:moderated_item_type     ::moderation/ModeratedItemTypes]
+    [:moderator_id            ::ms/PositiveInt]
+    [:status              {:optional true} ::Statuses]
     [:text                {:optional true} [:maybe :string]]]]
   (t2/with-transaction [_conn]
     (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))

@@ -157,7 +157,7 @@
   :default    true)
 
 (def ^:private ReplyToAddresses
-  [:maybe [:sequential ms/Email]])
+  [:maybe [:sequential ::ms/Email]])
 
 (def ^:private ^{:arglists '([reply-to-addresses])} validate-reply-to-addresses
   (mr/validator ReplyToAddresses))

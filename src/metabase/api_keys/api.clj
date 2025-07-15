@@ -55,8 +55,8 @@
   [_route-params
    _query-params
    {:keys [group_id name] :as _body} :- [:map
-                                         [:group_id ms/PositiveInt]
-                                         [:name     ms/NonBlankString]]]
+                                         [:group_id ::ms/PositiveInt]
+                                         [:name     ::ms/NonBlankString]]]
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/ApiKey :name name))
               "name" "An API key with this name already exists.")
@@ -92,11 +92,11 @@
 (api.macros/defendpoint :put "/:id"
   "Update an API key by changing its group and/or its name"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {:keys [group_id name] :as _body} :- [:map
-                                         [:group_id {:optional true} [:maybe ms/PositiveInt]]
-                                         [:name     {:optional true} [:maybe ms/NonBlankString]]]]
+                                         [:group_id {:optional true} [:maybe ::ms/PositiveInt]]
+                                         [:name     {:optional true} [:maybe ::ms/NonBlankString]]]]
   (api/check-superuser)
   (let [api-key-before (-> (t2/select-one :model/ApiKey :id id)
                            ;; hydrate the group_name for audit logging
@@ -121,7 +121,7 @@
 (api.macros/defendpoint :put "/:id/regenerate"
   "Regenerate an API Key"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/check-superuser)
   (let [api-key-before (-> (t2/select-one :model/ApiKey id)
                            (t2/hydrate :group)
@@ -150,7 +150,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Delete an ApiKey"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/check-superuser)
   (let [api-key (-> (t2/select-one :model/ApiKey id)
                     (t2/hydrate :group)

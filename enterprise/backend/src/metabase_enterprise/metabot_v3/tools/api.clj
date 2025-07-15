@@ -323,12 +323,12 @@
      [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
       [:type [:= :query]]
       [:query_id :string]
-      [:query mbql.s/Query]
+      [:query ::mbql.s/Query]
       [:result_columns [:sequential ::column]]]]]
    [:map
     [:output :string]]])
 
-(mr/def ::tool-request [:map [:conversation_id ms/UUIDString]])
+(mr/def ::tool-request [:map [:conversation_id ::ms/UUIDString]])
 
 (mr/def ::answer-sources-arguments
   [:and

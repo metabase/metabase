@@ -21,7 +21,7 @@
   (mr/def ::CronScheduleString
     (mu/with-api-error-message
      [:and
-      ms/NonBlankString
+      ::ms/NonBlankString
       [:fn
        {:error/fn (fn [{:keys [value]} _]
                     (try
@@ -31,7 +31,7 @@
        f]]
      (i18n/deferred-tru "value must be a valid Quartz cron schedule string."))))
 
-(def CronScheduleString
+(mr/def ::CronScheduleString
   "Malli Schema for a valid cron schedule string."
   [:ref ::CronScheduleString])
 
@@ -52,7 +52,7 @@
     [:schedule_minute {:optional true} [:maybe ::CronMinute]]]
    (i18n/deferred-tru "value must be a valid schedule map. See schema in metabase.util.cron for details.")))
 
-(def ScheduleMap
+(mr/def ::ScheduleMap
   "Schema for a frontend-parsable schedule map. Used for Pulses and DB scheduling."
   [:ref ::ScheduleMap])
 

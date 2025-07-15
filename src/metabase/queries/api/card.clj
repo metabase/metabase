@@ -1,6 +1,7 @@
 (ns metabase.queries.api.card
   "/api/card endpoints."
   (:require
+   [malli.registry :as mr]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
@@ -160,7 +161,7 @@
   [_route-params
    {:keys [f], model-id :model_id} :- [:map
                                        [:f        {:default :all}  (into [:enum] card-filter-options)]
-                                       [:model_id {:optional true} [:maybe ms/PositiveInt]]]]
+                                       [:model_id {:optional true} [:maybe ::ms/PositiveInt]]]]
   (when (contains? #{:database :table :using_model :using_segment} f)
     (api/checkp (integer? model-id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
                                                        (name f)))
@@ -223,7 +224,7 @@
 (api.macros/defendpoint :get "/:id"
   "Get `Card` with ID."
   [{:keys [id]} :- [:map
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                    [:id [:or ::ms/PositiveInt ::ms/NanoIdString]]]
    {ignore-view? :ignore_view, :keys [context]} :- [:map
                                                     [:ignore_view {:optional true} [:maybe :boolean]]
                                                     [:context     {:optional true} [:maybe [:enum :collection]]]]]
@@ -245,7 +246,7 @@
 (api.macros/defendpoint :get "/:id/dashboards"
   "Get a list of `{:name ... :id ...}` pairs for all the dashboards this card appears in."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (let [card (get-card id)
         dashboards (:in_dashboards (t2/hydrate card :in_dashboards))]
     (doseq [dashboard dashboards]
@@ -430,8 +431,8 @@
                     [:id int?]]
    {:keys [last_cursor query exclude_ids]}
    :- [:map
-       [:last_cursor {:optional true} [:maybe ms/PositiveInt]]
-       [:query       {:optional true} [:maybe ms/NonBlankString]]
+       [:last_cursor {:optional true} [:maybe ::ms/PositiveInt]]
+       [:query       {:optional true} [:maybe ::ms/NonBlankString]]
        [:exclude_ids {:optional true} [:maybe [:fn
                                                {:error/fn (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))}
                                                (fn [ids]
@@ -495,22 +496,22 @@
    {query         :dataset_query
     card-type     :type
     :as           body} :- [:map
-                            [:name                   ms/NonBlankString]
+                            [:name                   ::ms/NonBlankString]
                             [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
-                            [:dataset_query          ms/Map]
+                            [:dataset_query          ::ms/Map]
                             ;; TODO: Make entity_id a NanoID regex schema?
-                            [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
+                            [:entity_id              {:optional true} [:maybe ::ms/NonBlankString]]
                             [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
                             [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
-                            [:description            {:optional true} [:maybe ms/NonBlankString]]
-                            [:display                ms/NonBlankString]
-                            [:visualization_settings ms/Map]
-                            [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-                            [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
-                            [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
-                            [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-                            [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-                            [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
+                            [:description            {:optional true} [:maybe ::ms/NonBlankString]]
+                            [:display                ::ms/NonBlankString]
+                            [:visualization_settings ::ms/Map]
+                            [:collection_id          {:optional true} [:maybe ::ms/PositiveInt]]
+                            [:collection_position    {:optional true} [:maybe ::ms/PositiveInt]]
+                            [:result_metadata        {:optional true} [:maybe ::analyze/ResultsMetadata]]
+                            [:cache_ttl              {:optional true} [:maybe ::ms/PositiveInt]]
+                            [:dashboard_id           {:optional true} [:maybe ::ms/PositiveInt]]
+                            [:dashboard_tab_id       {:optional true} [:maybe ::ms/PositiveInt]]]]
   (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
   (query-perms/check-run-permissions-for-query query)
@@ -527,7 +528,7 @@
 (api.macros/defendpoint :post "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (let [orig-card (api/read-check :model/Card id)
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
@@ -558,25 +559,25 @@
     (check-allowed-to-remove-from-existing-dashboards card-before-update))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
-(def ^:private CardUpdateSchema
+(mr/def ^:private ::CardUpdateSchema
   [:map
-   [:name                   {:optional true} [:maybe ms/NonBlankString]]
+   [:name                   {:optional true} [:maybe ::ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
-   [:dataset_query          {:optional true} [:maybe ms/Map]]
+   [:dataset_query          {:optional true} [:maybe ::ms/Map]]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
-   [:display                {:optional true} [:maybe ms/NonBlankString]]
+   [:display                {:optional true} [:maybe ::ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:visualization_settings {:optional true} [:maybe ::ms/Map]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:enable_embedding       {:optional true} [:maybe :boolean]]
-   [:embedding_params       {:optional true} [:maybe ms/EmbeddingParams]]
-   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
-   [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
-   [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
+   [:embedding_params       {:optional true} [:maybe ::ms/EmbeddingParams]]
+   [:collection_id          {:optional true} [:maybe ::ms/PositiveInt]]
+   [:collection_position    {:optional true} [:maybe ::ms/PositiveInt]]
+   [:result_metadata        {:optional true} [:maybe ::analyze/ResultsMetadata]]
+   [:cache_ttl              {:optional true} [:maybe ::ms/PositiveInt]]
    [:collection_preview     {:optional true} [:maybe :boolean]]
-   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
+   [:dashboard_id           {:optional true} [:maybe ::ms/PositiveInt]]
+   [:dashboard_tab_id       {:optional true} [:maybe ::ms/PositiveInt]]])
 
 (defn- maybe-populate-collection-id
   "`card-updates` may contain either or both of a `collection_id` and a `dashboard_id`.
@@ -593,10 +594,10 @@
 
 (mu/defn update-card!
   "Updates a card - impl"
-  [id :- ms/PositiveInt
+  [id :- ::ms/PositiveInt
    {:keys [dataset_query
            result_metadata
-           type] :as card-updates} :- CardUpdateSchema
+           type] :as card-updates} :- ::CardUpdateSchema
    delete-old-dashcards? :- :boolean]
   (check-if-card-can-be-saved dataset_query type)
   (when-some [query (dataset-query->query dataset_query)]
@@ -666,16 +667,16 @@
 (api.macros/defendpoint :put "/:id"
   "Update a `Card`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {delete-old-dashcards? :delete_old_dashcards} :- [:map
                                                      [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
-   body :- CardUpdateSchema]
+   body :- ::CardUpdateSchema]
   (update-card! id body (boolean delete-old-dashcards?)))
 
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                    [:id [:or ::ms/PositiveInt ::ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)]
     (queries.metadata/batch-fetch-card-metadata [(get-card resolved-id)])))
 
@@ -684,7 +685,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Hard delete a Card. To soft delete, use `PUT /api/card/:id`"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (let [card (api/write-check :model/Card id)]
     (t2/delete! :model/Card :id id)
     (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
@@ -768,8 +769,8 @@
   [_route-params
    _query-params
    {:keys [card_ids collection_id]} :- [:map
-                                        [:card_ids      [:sequential ms/PositiveInt]]
-                                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+                                        [:card_ids      [:sequential ::ms/PositiveInt]]
+                                        [:collection_id {:optional true} [:maybe ::ms/PositiveInt]]]]
   (move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 
@@ -778,13 +779,13 @@
 (api.macros/defendpoint :post "/:card-id/query"
   "Run the query associated with a Card."
   [{:keys [card-id]} :- [:map
-                         [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
+                         [:card-id [:or ::ms/PositiveInt ::ms/NanoIdString]]]
    _query-params
    {:keys [parameters ignore_cache dashboard_id collection_preview]}
    :- [:map
        [:ignore_cache       {:default false} :boolean]
        [:collection_preview {:optional true} [:maybe :boolean]]
-       [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
+       [:dashboard_id       {:optional true} [:maybe ::ms/PositiveInt]]]]
   ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
   ;;
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
@@ -806,7 +807,7 @@
   or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use
   HTML `form` actions)."
   [{:keys [card-id export-format]} :- [:map
-                                       [:card-id       ms/PositiveInt]
+                                       [:card-id       ::ms/PositiveInt]
                                        [:export-format ::qp.schema/export-format]]
    _query-params
    {:keys          [parameters]
@@ -825,8 +826,8 @@
                                          ;; here... [[::parameters.schema/parameter]] is used for other endpoints in this namespace but
                                          ;; it breaks existing tests
                                          [:sequential [:map-of :keyword :any]]]]
-       [:format_rows   {:default false} ms/BooleanValue]
-       [:pivot_results {:default false} ms/BooleanValue]]]
+       [:format_rows   {:default false} ::ms/BooleanValue]
+       [:pivot_results {:default false} ::ms/BooleanValue]]]
   (qp.card/process-query-for-card
    card-id export-format
    :parameters  parameters
@@ -846,7 +847,7 @@
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled."
   [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
+                         [:card-id ::ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Card card-id))
@@ -860,7 +861,7 @@
 (api.macros/defendpoint :delete "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
   [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
+                         [:card-id ::ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
@@ -872,7 +873,7 @@
 (api.macros/defendpoint :post "/pivot/:card-id/query"
   "Run the query associated with a Card."
   [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]
+                         [:card-id ::ms/PositiveInt]]
    _query-params
    {:keys [parameters ignore_cache]
     :or   {ignore_cache false}} :- [:map
@@ -888,8 +889,8 @@
     ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/card/1/params/abc/values"
   [{:keys [card-id param-key]} :- [:map
-                                   [:card-id   ms/PositiveInt]
-                                   [:param-key ms/NonBlankString]]]
+                                   [:card-id   ::ms/PositiveInt]
+                                   [:param-key ::ms/NonBlankString]]]
   (queries.card/card-param-values (api/read-check :model/Card card-id) param-key))
 
 (api.macros/defendpoint :get "/:card-id/params/:param-key/search/:query"
@@ -900,9 +901,9 @@
 
   Currently limited to first 1000 results."
   [{:keys [card-id param-key query]} :- [:map
-                                         [:card-id   ms/PositiveInt]
-                                         [:param-key ms/NonBlankString]
-                                         [:query     ms/NonBlankString]]]
+                                         [:card-id   ::ms/PositiveInt]
+                                         [:param-key ::ms/NonBlankString]
+                                         [:query     ::ms/NonBlankString]]]
   (queries.card/card-param-values (api/read-check :model/Card card-id) param-key query))
 
 (api.macros/defendpoint :get "/:id/params/:param-key/remapping"
@@ -911,7 +912,7 @@
     ;; fetch the remapped value for Card 1 parameter 'abc' for value 100
     GET /api/card/1/params/abc/remapping?value=100"
   [{:keys [id param-key]} :- [:map
-                              [:id ms/PositiveInt]
+                              [:id ::ms/PositiveInt]
                               [:param-key :string]]
    {:keys [value]}        :- [:map [:value :string]]]
   (-> (api/read-check :model/Card id)

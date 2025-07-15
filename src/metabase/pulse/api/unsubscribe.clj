@@ -31,7 +31,7 @@
   [_route-params
    _query-params
    {:keys [email hash pulse-id]} :- [:map
-                                     [:pulse-id ms/PositiveInt]
+                                     [:pulse-id ::ms/PositiveInt]
                                      [:email    :string]
                                      [:hash     :string]]
    request]
@@ -52,7 +52,7 @@
   [_route-params
    _query-params
    {:keys [email hash pulse-id]} :- [:map
-                                     [:pulse-id ms/PositiveInt]
+                                     [:pulse-id ::ms/PositiveInt]
                                      [:email    :string]
                                      [:hash     :string]]
    request]

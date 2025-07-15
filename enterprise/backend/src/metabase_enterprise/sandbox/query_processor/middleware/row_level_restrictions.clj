@@ -121,8 +121,8 @@
   (mapv (partial attr-remapping->parameter (:login_attributes @*current-user*))
         attribute-remappings))
 
-(mu/defn- preprocess-source-query :- mbql.s/SourceQuery
-  [source-query :- mbql.s/SourceQuery]
+(mu/defn- preprocess-source-query :- ::mbql.s/SourceQuery
+  [source-query :- ::mbql.s/SourceQuery]
   (try
     (let [query        {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                         :type     :query
@@ -231,7 +231,7 @@
 
 (mu/defn- gtap->source :- [:map
                            [:source-query :any]
-                           [:source-metadata {:optional true} [:sequential mbql.s/SourceQueryMetadata]]]
+                           [:source-metadata {:optional true} [:sequential ::mbql.s/SourceQueryMetadata]]]
   "Get the source query associated with a `gtap`."
   [{card-id :card_id, table-id :table_id, :as gtap} :- :map]
   (-> ((if card-id

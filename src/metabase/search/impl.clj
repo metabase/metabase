@@ -6,7 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
@@ -243,7 +243,7 @@
 
 (mr/def ::search-context.input
   [:map {:closed true}
-   [:search-string                                        [:maybe ms/NonBlankString]]
+   [:search-string                                        [:maybe ::ms/NonBlankString]]
    [:context                             {:optional true} [:maybe :keyword]]
    [:models                                               [:maybe [:set SearchableModel]]]
    [:current-user-id                                      pos-int?]
@@ -252,19 +252,19 @@
    [:is-superuser?                                        :boolean]
    [:current-user-perms                                   [:set perms/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
-   [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
-   [:created-by                          {:optional true} [:maybe [:set ms/PositiveInt]]]
+   [:created-at                          {:optional true} [:maybe ::ms/NonBlankString]]
+   [:created-by                          {:optional true} [:maybe [:set ::ms/PositiveInt]]]
    [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
-   [:last-edited-at                      {:optional true} [:maybe ms/NonBlankString]]
-   [:last-edited-by                      {:optional true} [:maybe [:set ms/PositiveInt]]]
-   [:limit                               {:optional true} [:maybe ms/Int]]
-   [:offset                              {:optional true} [:maybe ms/Int]]
-   [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
+   [:last-edited-at                      {:optional true} [:maybe ::ms/NonBlankString]]
+   [:last-edited-by                      {:optional true} [:maybe [:set ::ms/PositiveInt]]]
+   [:limit                               {:optional true} [:maybe ::ms/Int]]
+   [:offset                              {:optional true} [:maybe ::ms/Int]]
+   [:table-db-id                         {:optional true} [:maybe ::ms/PositiveInt]]
    [:search-engine                       {:optional true} [:maybe string?]]
    [:search-native-query                 {:optional true} [:maybe true?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
-   [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
+   [:ids                                 {:optional true} [:maybe [:set ::ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
    [:include-metadata?                   {:optional true} [:maybe boolean?]]])
@@ -421,7 +421,7 @@
 
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
-  [search-ctx :- search.config/SearchContext]
+  [search-ctx :- ::search.config/SearchContext]
   (let [reducible-results (search.engine/results search-ctx)
         scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
         xf                (comp

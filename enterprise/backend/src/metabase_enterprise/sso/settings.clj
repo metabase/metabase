@@ -17,7 +17,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private GroupMappings
-  [:maybe [:map-of ms/KeywordOrString [:sequential ms/PositiveInt]]])
+  [:maybe [:map-of ::ms/KeywordOrString [:sequential ::ms/PositiveInt]]])
 
 (def ^:private ^{:arglists '([group-mappings])} validate-group-mappings
   (mr/validator GroupMappings))

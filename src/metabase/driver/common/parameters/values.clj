@@ -88,7 +88,7 @@
 
   Targeting template tags by ID is preferable (as of version 44) but targeting by name is supported for backwards
   compatibility."
-  [tag :- mbql.s/TemplateTag]
+  [tag :- ::mbql.s/TemplateTag]
   (let [target-type (case (:type tag)
                       :dimension     :dimension
                       :variable)]
@@ -112,8 +112,8 @@
 
 (mu/defn- tag-params
   "Return params from the provided `params` list targeting the provided `tag`."
-  [tag    :- mbql.s/TemplateTag
-   params :- [:maybe [:sequential mbql.s/Parameter]]]
+  [tag    :- ::mbql.s/TemplateTag
+   params :- [:maybe [:sequential ::mbql.s/Parameter]]]
   (let [tag-target? (tag-target-pred tag)]
     (seq (for [param params
                :when (tag-target? (:target param))]
@@ -134,7 +134,7 @@
   "Get parameter value(s) for a Field filter. Returns map if there is a normal single value, or a vector of maps for
   multiple values."
   [tag    :- mbql.s/TemplateTag
-   params :- [:maybe [:sequential mbql.s/Parameter]]]
+   params :- [:maybe [:sequential ::mbql.s/Parameter]]]
   (let [matching-params  (tag-params tag params)
         tag-opts         (:options tag)
         normalize-params (fn [params]

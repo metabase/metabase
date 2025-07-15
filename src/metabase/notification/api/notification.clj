@@ -94,11 +94,11 @@
   [_route-params
    {:keys [creator_id creator_or_recipient_id recipient_id card_id include_inactive payload_type]} :-
    [:map
-    [:creator_id              {:optional true} ms/PositiveInt]
-    [:recipient_id            {:optional true} ms/PositiveInt]
-    [:creator_or_recipient_id {:optional true} ms/PositiveInt]
-    [:card_id                 {:optional true} ms/PositiveInt]
-    [:include_inactive        {:optional true} ms/BooleanValue]
+    [:creator_id              {:optional true} ::ms/PositiveInt]
+    [:recipient_id            {:optional true} ::ms/PositiveInt]
+    [:creator_or_recipient_id {:optional true} ::ms/PositiveInt]
+    [:card_id                 {:optional true} ::ms/PositiveInt]
+    [:include_inactive        {:optional true} ::ms/BooleanValue]
     [:pyaload_type            {:optional true} [:maybe (into [:enum] models.notification/notification-types)]]]]
   (list-notifications {:creator_id              creator_id
                        :recipient_id            recipient_id
@@ -109,7 +109,7 @@
 
 (api.macros/defendpoint :get "/:id"
   "Get a notification by id."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map [:id ::ms/PositiveInt]]]
   (-> (get-notification id)
       api/read-check))
 
@@ -179,7 +179,7 @@
 (api.macros/defendpoint :put "/:id"
   "Update a notification, can also update its subscriptions, handlers.
   Return the updated notification."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ::ms/PositiveInt]]
    _query
    body :- ::models.notification/FullyHydratedNotification]
   (let [existing-notification (get-notification id)]
@@ -194,9 +194,9 @@
 
 (api.macros/defendpoint :post "/:id/send"
   "Send a notification by id."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ::ms/PositiveInt]]
    _query
-   {:keys [handler_ids]} :- [:map [:handler_ids {:optional true} [:sequential ms/PositiveInt]]]]
+   {:keys [handler_ids]} :- [:map [:handler_ids {:optional true} [:sequential ::ms/PositiveInt]]]]
   (let [notification (get-notification id)]
     (api/read-check notification)
     (cond-> notification
@@ -244,6 +244,6 @@
 
 (api.macros/defendpoint :post "/:id/unsubscribe"
   "Unsubscribe current user from a notification."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map [:id ::ms/PositiveInt]]]
   (unsubscribe-user! id api/*current-user-id*)
   api/generic-204-no-content)

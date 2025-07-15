@@ -1,5 +1,5 @@
 (ns metabase.users.models.user
-  (:require
+  (:require [malli.registry :as mr]
    [clojure.data :as data]
    [clojure.string :as str]
    [metabase.api.common :as api]
@@ -276,29 +276,29 @@
 
 (declare form-password-reset-url set-password-reset-token!)
 
-(def LoginAttributes
+(mr/def ::LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
   (mu/with-api-error-message
-   [:map-of ms/KeywordOrString :any]
+   [:map-of ::ms/KeywordOrString :any]
    (deferred-tru "login attribute keys must be a keyword or string")))
 
-(def NewUser
+(mr/def ::NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
   [:map
-   [:first_name       {:optional true} [:maybe ms/NonBlankString]]
-   [:last_name        {:optional true} [:maybe ms/NonBlankString]]
-   [:email                             ms/Email]
-   [:password         {:optional true} [:maybe ms/NonBlankString]]
+   [:first_name       {:optional true} [:maybe ::ms/NonBlankString]]
+   [:last_name        {:optional true} [:maybe ::ms/NonBlankString]]
+   [:email                             ::ms/Email]
+   [:password         {:optional true} [:maybe ::ms/NonBlankString]]
    [:login_attributes {:optional true} [:maybe LoginAttributes]]
-   [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
-   [:locale           {:optional true} [:maybe ms/KeywordOrString]]
-   [:type             {:optional true} [:maybe ms/KeywordOrString]]])
+   [:sso_source       {:optional true} [:maybe ::ms/NonBlankString]]
+   [:locale           {:optional true} [:maybe ::ms/KeywordOrString]]
+   [:type             {:optional true} [:maybe ::ms/KeywordOrString]]])
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
   [:map
-   [:email      ms/Email]
-   [:first_name [:maybe ms/NonBlankString]]])
+   [:email      ::ms/Email]
+   [:first_name [:maybe ::ms/NonBlankString]]])
 
 (mu/defn insert-new-user!
   "Creates a new user, defaulting the password when not provided"

@@ -53,7 +53,7 @@
 (api.macros/defendpoint :get "/:id"
   "Get `Table` with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {:keys [include_editable_data_model]}
    :- [:map
        [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
@@ -66,7 +66,7 @@
 
 (api.macros/defendpoint :get "/:table-id/data"
   "Get the data for the given table"
-  [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]]
+  [{:keys [table-id]} :- [:map [:table-id ::ms/PositiveInt]]]
   (let [table (t2/select-one :model/Table :id table-id)
         db-id (:db_id table)]
     (api/read-check table)
@@ -141,11 +141,11 @@
 (api.macros/defendpoint :put "/:id"
   "Update `Table` with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    body :- [:map
-            [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-            [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
+            [:display_name            {:optional true} [:maybe ::ms/NonBlankString]]
+            [:entity_type             {:optional true} [:maybe ::ms/EntityTypeKeywordOrString]]
             [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
             [:description             {:optional true} [:maybe :string]]
             [:caveats                 {:optional true} [:maybe :string]]
@@ -159,9 +159,9 @@
   [_route-params
    _query-params
    {:keys [ids], :as body} :- [:map
-                               [:ids                     [:sequential ms/PositiveInt]]
-                               [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-                               [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
+                               [:ids                     [:sequential ::ms/PositiveInt]]
+                               [:display_name            {:optional true} [:maybe ::ms/NonBlankString]]
+                               [:entity_type             {:optional true} [:maybe ::ms/EntityTypeKeywordOrString]]
                                [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
                                [:description             {:optional true} [:maybe :string]]
                                [:caveats                 {:optional true} [:maybe :string]]
@@ -181,12 +181,12 @@
 
    These options are provided for use in the Admin Edit Metadata page."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model]}
    :- [:map
-       [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
-       [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
-       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
+       [:include_sensitive_fields    {:default false} [:maybe ::ms/BooleanValue]]
+       [:include_hidden_fields       {:default false} [:maybe ::ms/BooleanValue]]
+       [:include_editable_data_model {:default false} [:maybe ::ms/BooleanValue]]]]
   (schema.table/fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                                :include-hidden-fields?       include_hidden_fields
                                                :include-editable-data-model? include_editable_data_model}))
@@ -194,20 +194,20 @@
 (api.macros/defendpoint :get "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (first (schema.table/batch-fetch-card-query-metadatas [id])))
 
 (api.macros/defendpoint :get "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend."
   [_route-params :- [:map
-                     [:id ms/PositiveInt]]]
+                     [:id ::ms/PositiveInt]]]
   []) ; return empty array
 
 (api.macros/defendpoint :get "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (t2/select-pks-set :model/Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
     (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)]
@@ -223,7 +223,7 @@
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (let [table (api/write-check (t2/select-one :model/Table :id id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
@@ -240,7 +240,7 @@
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/write-check (t2/select-one :model/Table :id id))
   (when-let [field-ids (t2/select-pks-set :model/Field :table_id id)]
     (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids]))
@@ -249,23 +249,23 @@
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (-> (t2/select-one :model/Table :id id) api/read-check xrays/related))
 
 (api.macros/defendpoint :put "/:id/fields/order" :- [:map
                                                      [:success [:= true]]]
   "Reorder fields"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
-   field-order :- [:sequential ms/PositiveInt]]
+   field-order :- [:sequential ::ms/PositiveInt]]
   (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field-order))
   {:success true})
 
 (mu/defn- update-csv!
   "This helper function exists to make testing the POST /api/table/:id/{action}-csv endpoints easier."
   [options :- [:map
-               [:table-id ms/PositiveInt]
+               [:table-id ::ms/PositiveInt]
                [:filename :string]
                [:file (ms/InstanceOfClass java.io.File)]
                [:action upload/update-action-schema]]]
@@ -286,7 +286,7 @@
   uploading a CSV file."
   {:multipart true}
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    _body
    {:keys [multipart-params], :as _request} :- [:map
@@ -306,7 +306,7 @@
   been created by uploading a CSV file."
   {:multipart true}
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    _body
    {:keys [multipart-params], :as _request} :- [:map
@@ -324,7 +324,7 @@
 (api.macros/defendpoint :post "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (let [table (api/write-check (t2/select-one :model/Table :id id))
         database (api/write-check (warehouses/get-database (:db_id table) {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/table-manual-sync {:object table :user-id api/*current-user-id*})

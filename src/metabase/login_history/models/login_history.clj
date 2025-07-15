@@ -46,7 +46,7 @@
 (mu/defn record-login-history!
   "Record a login event in the LoginHistory table."
   [session-id :- [:not uuid?]
-   user-id :- ms/PositiveInt
+   user-id :- ::ms/PositiveInt
    device-info :- request/DeviceInfo]
   (let [login-history (merge {:user_id    user-id
                               :session_id session-id}

@@ -10,7 +10,6 @@
 (p/import-vars
  [metabase.content-verification.impl
   moderated-item-type->model
-  moderated-item-types
   moderation-reviews-for-items
   moderation-status
   moderation-user-details]

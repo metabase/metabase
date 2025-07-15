@@ -45,8 +45,8 @@
   [_route-params
    _query-params
    {channel-name :name, :as body} :- [:map
-                                      [:name        ms/NonBlankString]
-                                      [:description {:optional true} [:maybe ms/NonBlankString]]
+                                      [:name        ::ms/NonBlankString]
+                                      [:description {:optional true} [:maybe ::ms/NonBlankString]]
                                       [:type        ChannelType]
                                       [:details     :map]
                                       [:active      {:optional true} [:maybe {:default true} :boolean]]]]
@@ -60,17 +60,17 @@
 (api.macros/defendpoint :get "/:id"
   "Get a channel"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (-> (t2/select-one :model/Channel id) api/read-check remove-details-if-needed))
 
 (api.macros/defendpoint :put "/:id"
   "Update a channel"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    body :- [:map
-            [:name        {:optional true} [:maybe ms/NonBlankString]]
-            [:description {:optional true} [:maybe ms/NonBlankString]]
+            [:name        {:optional true} [:maybe ::ms/NonBlankString]]
+            [:description {:optional true} [:maybe ::ms/NonBlankString]]
             [:type        {:optional true} [:maybe ChannelType]]
             [:details     {:optional true} [:maybe :map]]
             [:active      {:optional true} [:maybe :boolean]]]]

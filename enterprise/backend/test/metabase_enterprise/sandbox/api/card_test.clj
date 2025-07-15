@@ -118,8 +118,8 @@
                            [:blocked :query-builder-and-native]
                            [:blocked :query-builder]]]
         (is (= (count cases)
-               (- (* (-> data-perms/Permissions :perms/view-data :values count)
-                     (-> data-perms/Permissions :perms/create-queries :values count))
+               (- (* (-> ::data-perms/Permissions :perms/view-data :values count)
+                     (-> ::data-perms/Permissions :perms/create-queries :values count))
                   (count invalid-cases)))
             "Please test these permissions settings behaviors exhaustively: if you add perms, add the tests for them.")
         (mt/with-no-data-perms-for-all-users!

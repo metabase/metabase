@@ -1,6 +1,6 @@
 (ns metabase.request.util
   "Utility functions for HTTP (Ring) requests, and for getting device/location info from `User-Agent`/IP Address, etc."
-  (:require
+  (:require [malli.registry :as mr]
    [clj-http.client :as http]
    [clojure.string :as str]
    [java-time.api :as t]
@@ -95,13 +95,13 @@
             ;; strip out non-ip-address characters like square brackets which we get sometimes
             (str/replace #"[^0-9a-fA-F.:]" ""))))
 
-(def DeviceInfo
+(mr/def ::DeviceInfo
   "Schema for the device info returned by `device-info`."
   [:map {:closed true}
-   [:device_id          ms/NonBlankString]
-   [:device_description ms/NonBlankString]
-   [:embedded           ms/BooleanValue]
-   [:ip_address         ms/NonBlankString]])
+   [:device_id          ::ms/NonBlankString]
+   [:device_description ::ms/NonBlankString]
+   [:embedded           ::ms/BooleanValue]
+   [:ip_address         ::ms/NonBlankString]])
 
 (mu/defn device-info :- DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
@@ -150,9 +150,9 @@
 (def ^:private IPAddress->Info
   [:map-of
    [:and {:error/message "valid IP address string"}
-    ms/NonBlankString [:fn u/ip-address?]]
+    ::ms/NonBlankString [:fn u/ip-address?]]
    [:map {:closed true}
-    [:description ms/NonBlankString]
+    [:description ::ms/NonBlankString]
     [:timezone    [:maybe (ms/InstanceOfClass ZoneId)]]]])
 
 ;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible

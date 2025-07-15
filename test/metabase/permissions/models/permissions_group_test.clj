@@ -71,8 +71,8 @@
 
 (mu/defn- group-has-full-access?
   "Does a group have permissions for `object` and *all* of its children?"
-  [group-id :- ms/PositiveInt
-   db-id    :- ms/PositiveInt]
+  [group-id :- ::ms/PositiveInt
+   db-id    :- ::ms/PositiveInt]
   (is (= #{:unrestricted}
          (t2/select-fn-set :value
                            :model/DataPermissions

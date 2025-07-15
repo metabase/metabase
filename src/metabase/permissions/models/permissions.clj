@@ -250,16 +250,16 @@
   [permissions-set perm-type]
   (set-has-full-permissions? permissions-set (permissions.path/application-perms-path perm-type)))
 
-(mu/defn perms-objects-set-for-parent-collection :- [:set perms.u/PathSchema]
+(mu/defn perms-objects-set-for-parent-collection :- [:set ::perms.u/PathSchema]
   "Implementation of `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
   This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`) or for the Root
   Collection if `collection_id` is `nil`."
   ([this read-or-write]
    (perms-objects-set-for-parent-collection nil this read-or-write))
 
-  ([collection-namespace :- [:maybe ms/KeywordOrString]
+  ([collection-namespace :- [:maybe ::ms/KeywordOrString]
     this                 :- [:map
-                             [:collection_id [:maybe ms/PositiveInt]]]
+                             [:collection_id [:maybe ::ms/PositiveInt]]]
     read-or-write        :- [:enum :read :write]]
    ;; based on value of read-or-write determine the approprite function used to calculate the perms path
    (let [path-fn (case read-or-write
@@ -350,7 +350,7 @@
 
   NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
   `revoke-data-perms!` elsewhere instead of calling this directly."
-  [group-or-id :- [:or :map ms/PositiveInt] path :- perms.u/PathSchema & other-conditions]
+  [group-or-id :- [:or :map ::ms/PositiveInt] path :- ::perms.u/PathSchema & other-conditions]
   (let [paths (conj (perms.u/->v2-path path) path)
         where {:where (apply list
                              :and
@@ -435,7 +435,7 @@
 (mu/defn- check-is-modifiable-collection
   "Check whether `collection-or-id` refers to a collection that can have permissions modified. Personal collections, the
   Trash, and descendants of those can't have their permissions modified."
-  [collection-or-id :- permissions.path/MapOrID]
+  [collection-or-id :- ::permissions.path/MapOrID]
   ;; skip the whole thing for the root collection, we know it's not a personal collection, trash, or descendant of one
   ;; of them.
   (when-not (:metabase.collections.models.collection.root/is-root? collection-or-id)
@@ -453,7 +453,7 @@
 
 (mu/defn revoke-collection-permissions!
   "Revoke all access for `group-or-id` to a Collection."
-  [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
+  [group-or-id :- ::permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (delete-related-permissions! group-or-id (permissions.path/collection-readwrite-path collection-or-id)))
 

@@ -103,7 +103,7 @@
     (let [[operator opts lhs rhs] condition]
       [operator opts lhs (apply f rhs args)])))
 
-(mu/defn- with-join-alias-update-join-conditions :- lib.join.util/PartialJoin
+(mu/defn- with-join-alias-update-join-conditions :- ::lib.join.util/PartialJoin
   "Impl for [[with-join-alias]] for a join: recursively update the `:join-alias` for inside the `:conditions` of the
   join.
 
@@ -114,7 +114,7 @@
   [[join-condition-operators]], the LHS expression with columns from [[join-condition-lhs-columns]], the RHS expression
   with columns from [[join-condition-rhs-columns]]). This currently doesn't handle more complex filter clauses that
   were created without the 'normal' MLv2 functions used by the frontend; we can add this in the future if we need it."
-  [join      :- lib.join.util/PartialJoin
+  [join      :- ::lib.join.util/PartialJoin
    old-alias :- [:maybe ::lib.schema.common/non-blank-string]
    new-alias :- [:maybe ::lib.schema.common/non-blank-string]]
   (cond
@@ -148,11 +148,11 @@
         (with-join-alias-update-join-fields new-alias)
         (with-join-alias-update-join-conditions old-alias new-alias))))
 
-(mu/defn with-join-alias :- lib.join.util/FieldOrPartialJoin
+(mu/defn with-join-alias :- ::lib.join.util/FieldOrPartialJoin
   "Add OR REMOVE a specific `join-alias` to `field-or-join`, which is either a `:field`/Field metadata, or a join map.
   Does not recursively update other references (yet; we can add this in the future)."
   {:style/indent [:form]}
-  [field-or-join :- lib.join.util/FieldOrPartialJoin
+  [field-or-join :- ::lib.join.util/FieldOrPartialJoin
    join-alias    :- [:maybe ::lib.schema.common/non-blank-string]]
   (case (lib.dispatch/dispatch-value field-or-join)
     :field
@@ -565,7 +565,7 @@
   new one."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   a-join       :- lib.join.util/JoinWithOptionalAlias]
+   a-join       :- ::lib.join.util/JoinWithOptionalAlias]
   (if (and (contains? a-join :alias) (not (contains? a-join ::replace-alias)))
     ;; if the join clause comes with an alias and doesn't need a new one, keep it and assume that the condition fields
     ;; have the right join-aliases too

@@ -28,7 +28,7 @@
   "Get revisions of an object."
   [_route-params
    {:keys [entity id]} :- [:map
-                           [:id     ms/PositiveInt]
+                           [:id     ::ms/PositiveInt]
                            [:entity Entity]]]
   (let [[model instance] (model-and-instance entity id)]
     (when (api/read-check instance)
@@ -39,9 +39,9 @@
   [_route-params
    _query-params
    {:keys [entity id], revision-id :revision_id} :- [:map
-                                                     [:id          ms/PositiveInt]
+                                                     [:id          ::ms/PositiveInt]
                                                      [:entity      Entity]
-                                                     [:revision_id ms/PositiveInt]]]
+                                                     [:revision_id ::ms/PositiveInt]]]
   (let [[model instance] (model-and-instance entity id)
         _                (api/write-check instance)
         revision         (api/check-404 (t2/select-one :model/Revision :model (name model), :model_id id, :id revision-id))]
@@ -61,7 +61,7 @@
   "Fetch `Revisions` for an object with ID."
   [{:keys [id entity]} :- [:map
                            [:entity Entity]
-                           [:id     ms/PositiveInt]]]
+                           [:id     ::ms/PositiveInt]]]
   (let [model (entity->model entity)]
     (assert (keyword? model))
     (api/read-check model id)

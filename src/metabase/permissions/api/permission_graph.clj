@@ -3,7 +3,7 @@
 
   The strategy here is to use s/conform to tag every value that needs to be converted with the conversion strategy,
   then postwalk to actually perform the conversion."
-  (:require
+  (:require [malli.registry :as mr]
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as gen]
    [clojure.walk :as walk]
@@ -37,7 +37,7 @@
     kw-int
     (parse-long (name kw-int))))
 
-(def DecodableKwInt
+(mr/def ::DecodableKwInt
   "Integer malli schema that knows how to decode itself from the :123 sort of shape used in perm-graphs"
   [:int {:decode/perm-graph kw-int->int-decoder}])
 
@@ -96,7 +96,7 @@
    [:native {:optional true} Native]
    [:schemas {:optional true} Schemas]])
 
-(def StrictDataPerms
+(mr/def ::StrictDataPerms
   "Data perms that care about how view-data and make-queries are related to one another.
   If you have write access for native queries, you must have data access to all schemas."
   [:and
@@ -105,7 +105,7 @@
     (fn [{:keys [native schemas]}]
       (not (and (= native :write) schemas (not (#{:all :impersonated} schemas)))))]])
 
-(def StrictDbGraph
+(mr/def ::StrictDbGraph
   "like db-graph, but with added validations:
    - Ensures 'view-data' is not 'blocked' if 'create-queries' is 'query-builder-and-native'."
   [:schema {:registry {"StrictDataPerms" StrictDataPerms}}
@@ -124,12 +124,12 @@
         (let [{:keys [create-queries view-data]} db-entry]
           (not (and (= create-queries :query-builder-and-native) (= view-data :blocked)))))]]]])
 
-(def DataPermissionsGraph
+(mr/def ::DataPermissionsGraph
   "Used to transform, and verify data permissions graph"
   [:map
    [:groups [:map-of GroupId [:maybe StrictDbGraph]]]])
 
-(def StrictApiPermissionsGraph
+(mr/def ::StrictApiPermissionsGraph
   "Top level strict data graph schema expected over the API. Includes revision ID for avoiding concurrent updates."
   [:map
    [:revision {:optional true} [:maybe int?]]

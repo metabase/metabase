@@ -143,19 +143,19 @@
    :group-base           (sso.settings/ldap-group-base)
    :group-mappings       (sso.settings/ldap-group-mappings)})
 
-(mu/defn find-user :- [:maybe default-impl/UserInfo]
+(mu/defn find-user :- [:maybe ::default-impl/UserInfo]
   "Get user information for the supplied username."
-  ([username :- ms/NonBlankString]
+  ([username :- ::ms/NonBlankString]
    (with-ldap-connection [conn]
      (find-user conn username)))
 
   ([ldap-connection :- (ms/InstanceOfClass LDAPConnectionPool)
-    username        :- ms/NonBlankString]
+    username        :- ::ms/NonBlankString]
    (default-impl/find-user ldap-connection username (ldap-settings))))
 
 (mu/defn fetch-or-create-user! :- (ms/InstanceOf :model/User)
   "Using the `user-info` (from [[find-user]]) get the corresponding Metabase user, creating it if necessary."
-  [user-info :- default-impl/UserInfo]
+  [user-info :- ::default-impl/UserInfo]
   (default-impl/fetch-or-create-user! user-info (ldap-settings)))
 
 (defn humanize-error-messages

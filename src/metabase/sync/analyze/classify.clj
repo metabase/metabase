@@ -43,8 +43,8 @@
 
 (def ^:private FieldOrTableInstance
   [:or
-   i/FieldInstance
-   i/TableInstance])
+   ::i/FieldInstance
+   ::i/TableInstance])
 
 (mu/defn- save-model-updates!
   "Save the updates in `updated-model` (can be either a `Field` or `Table`)."
@@ -69,7 +69,7 @@
 (mu/defn- classify!
   "Run various classifiers on `field` and its `fingerprint`, and save any detected changes.
    Returns updated `field`"
-  ([field :- i/FieldInstance opts]
+  ([field :- ::i/FieldInstance opts]
    (classify! field opts
               (or (:fingerprint field)
                   (when (qp.store/initialized?)
@@ -97,7 +97,7 @@
 (mu/defn- fields-to-classify :- [:maybe [:sequential i/FieldInstance]]
   "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
-  [table :- i/TableInstance]
+  [table :- ::i/TableInstance]
   (seq (apply t2/select :model/Field
               :table_id (u/the-id table)
               :active true
@@ -107,7 +107,7 @@
 (mu/defn classify-fields!
   "Run various classifiers on the appropriate `fields` in a `table` that have not been previously analyzed. These do
   things like inferring (and setting) the semantic types and preview display status for Fields belonging to `table`."
-  [table :- i/TableInstance]
+  [table :- ::i/TableInstance]
   (let [table-id (:id table)]
     (when-let [fields (fields-to-classify table)]
       (let [existing-name-field (t2/count :model/Field
@@ -131,7 +131,7 @@
 
 (mu/defn ^:always-validate classify-table!
   "Run various classifiers on the `table`. These do things like inferring (and setting) entitiy type of `table`."
-  [table :- i/TableInstance]
+  [table :- ::i/TableInstance]
   (let [updated-table (sync-util/with-error-handling (format "Error running classifier on %s"
                                                              (sync-util/name-for-logging table))
                         (analyze/infer-entity-type-by-name table))]
@@ -141,7 +141,7 @@
 
 (mu/defn classify-tables-for-db!
   "Classify all tables found in a given database"
-  [database :- i/DatabaseInstance
+  [database :- ::i/DatabaseInstance
    log-progress-fn]
   (let [tables (sync-util/reducible-sync-tables database)]
     (reduce (fn [acc table]
@@ -155,7 +155,7 @@
 
 (mu/defn classify-fields-for-db!
   "Classify all fields found in a given database"
-  [database :- i/DatabaseInstance
+  [database :- ::i/DatabaseInstance
    log-progress-fn]
   (let [tables (sync-util/reducible-sync-tables database)]
     (transduce (map (fn [table]

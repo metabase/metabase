@@ -1,5 +1,5 @@
 (ns metabase.dashboards.models.dashboard-card
-  (:require
+  (:require [malli.registry :as mr]
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
@@ -111,7 +111,7 @@
 
 (mu/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
-  [id :- ms/PositiveInt]
+  [id :- ::ms/PositiveInt]
   (-> (t2/select-one :model/DashboardCard :id id)
       (t2/hydrate :series)))
 
@@ -156,13 +156,13 @@
 
 (def ^:private DashboardCardUpdates
   [:map
-   [:id                                      ms/PositiveInt]
-   [:action_id              {:optional true} [:maybe ms/PositiveInt]]
+   [:id                                      ::ms/PositiveInt]
+   [:action_id              {:optional true} [:maybe ::ms/PositiveInt]]
    [:parameter_mappings     {:optional true} [:maybe [:sequential :map]]]
    [:visualization_settings {:optional true} [:maybe :map]]
-   [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
+   [:inline_parameters      {:optional true} [:maybe [:sequential ::ms/NonBlankString]]]
    ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
-   [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
+   [:series                 {:optional true} [:maybe [:sequential ::ms/PositiveInt]]]])
 
 (defn- shallow-updates
   "Returns the keys in `new` that have different values than the corresponding keys in `old`"
@@ -190,25 +190,25 @@
         (update-dashboard-cards-series! {dashcard-id series}))
       nil)))
 
-(def ParamMapping
+(mr/def ::ParamMapping
   "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
   [:and
    [:map-of :keyword :any]
    [:map
     ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed (#40021)
-    [:parameter_id ms/NonBlankString]
+    [:parameter_id ::ms/NonBlankString]
     #_[:target       :any]]])
 
 (def ^:private NewDashboardCard
   ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys (#40021)
   [:map
-   [:dashboard_id                            ms/PositiveInt]
-   [:action_id              {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_id                            ::ms/PositiveInt]
+   [:action_id              {:optional true} [:maybe ::ms/PositiveInt]]
    ;; TODO - use ParamMapping. Breaks too many tests right now tho (#40021)
    [:parameter_mappings     {:optional true} [:maybe [:sequential map?]]]
    [:visualization_settings {:optional true} [:maybe map?]]
-   [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-   [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
+   [:inline_parameters      {:optional true} [:maybe [:sequential ::ms/NonBlankString]]]
+   [:series                 {:optional true} [:maybe [:sequential ::ms/PositiveInt]]]])
 
 (mu/defn create-dashboard-cards!
   "Create a new DashboardCard by inserting it into the database along with all associated pieces of data such as

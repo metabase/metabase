@@ -141,7 +141,7 @@
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 
-(mu/defn parameter->values :- ms/FieldValuesResult
+(mu/defn parameter->values :- ::ms/FieldValuesResult
   "Given a parameter with a custom-values source, return the values.
 
   `default-case-thunk` is a 0-arity function that returns values list when:

@@ -32,7 +32,7 @@
 (def ^:private EmailMessage
   [:map
    [:subject                         :string]
-   [:recipients                      [:sequential ms/Email]]
+   [:recipients                      [:sequential ::ms/Email]]
    [:message-type                    [:enum :attachments :html :text]]
    [:message                         :any]
    [:recipient-type {:optional true} [:maybe (ms/enum-keywords-and-strings :cc :bcc)]]])

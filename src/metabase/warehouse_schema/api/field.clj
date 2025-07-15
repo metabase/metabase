@@ -40,9 +40,9 @@
 (api.macros/defendpoint :get "/:id"
   "Get `Field` with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {include-editable-data-model? :include_editable_data_model} :- [:map
-                                                                   [:include_editable_data_model {:default false} ms/BooleanValue]]]
+                                                                   [:include_editable_data_model {:default false} ::ms/BooleanValue]]]
   (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?}))
 
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
@@ -99,23 +99,23 @@
 (api.macros/defendpoint :put "/:id"
   "Update `Field` with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {display-name      :display_name
     coercion-strategy :coercion_strategy
     json-unfolding    :json_unfolding
     :as body} :- [:map
-                  [:caveats            {:optional true} [:maybe ms/NonBlankString]]
-                  [:description        {:optional true} [:maybe ms/NonBlankString]]
-                  [:display_name       {:optional true} [:maybe ms/NonBlankString]]
-                  [:fk_target_field_id {:optional true} [:maybe ms/PositiveInt]]
-                  [:points_of_interest {:optional true} [:maybe ms/NonBlankString]]
-                  [:semantic_type      {:optional true} [:maybe ms/FieldSemanticOrRelationTypeKeywordOrString]]
-                  [:coercion_strategy  {:optional true} [:maybe ms/CoercionStrategyKeywordOrString]]
+                  [:caveats            {:optional true} [:maybe ::ms/NonBlankString]]
+                  [:description        {:optional true} [:maybe ::ms/NonBlankString]]
+                  [:display_name       {:optional true} [:maybe ::ms/NonBlankString]]
+                  [:fk_target_field_id {:optional true} [:maybe ::ms/PositiveInt]]
+                  [:points_of_interest {:optional true} [:maybe ::ms/NonBlankString]]
+                  [:semantic_type      {:optional true} [:maybe ::ms/FieldSemanticOrRelationTypeKeywordOrString]]
+                  [:coercion_strategy  {:optional true} [:maybe CoercionStrategyKeywordOrString]]
                   [:visibility_type    {:optional true} [:maybe FieldVisibilityType]]
                   [:has_field_values   {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]
-                  [:settings           {:optional true} [:maybe ms/Map]]
-                  [:nfc_path           {:optional true} [:maybe [:sequential ms/NonBlankString]]]
+                  [:settings           {:optional true} [:maybe ::ms/Map]]
+                  [:nfc_path           {:optional true} [:maybe [:sequential ::ms/NonBlankString]]]
                   [:json_unfolding     {:optional true} [:maybe :boolean]]]]
   (let [field             (t2/hydrate (api/write-check :model/Field id) :dimensions)
         new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
@@ -171,7 +171,7 @@
 (api.macros/defendpoint :get "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (let [field (api/read-check :model/Field id)]
     [[:count     (metadata-from-qp/field-count field)]
      [:distincts (metadata-from-qp/field-distinct-count field)]]))
@@ -181,13 +181,13 @@
 (api.macros/defendpoint :post "/:id/dimension"
   "Sets the dimension for the given field at ID"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {dimension-type :type, dimension-name :name, human-readable-field-id :human_readable_field_id}
    :- [:map
        [:type                    [:enum "internal" "external"]]
-       [:name                    ms/NonBlankString]
-       [:human_readable_field_id {:optional true} [:maybe ms/PositiveInt]]]]
+       [:name                    ::ms/NonBlankString]
+       [:human_readable_field_id {:optional true} [:maybe ::ms/PositiveInt]]]]
   (api/write-check :model/Field id)
   (api/check (or (= dimension-type "internal")
                  (and (= dimension-type "external")
@@ -208,7 +208,7 @@
 (api.macros/defendpoint :delete "/:id/dimension"
   "Remove the dimension associated to field at ID"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/write-check :model/Field id)
   (t2/delete! :model/Dimension :field_id id)
   api/generic-204-no-content)
@@ -218,7 +218,7 @@
   remapped Field), and (if defined by a User) a map of human-readable remapped values. If `has_field_values` is not
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (let [field (api/read-check (t2/select-one :model/Field :id id))]
     (parameters.field/field->values field)))
 
@@ -237,10 +237,10 @@
   "Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {value-pairs :values} :- [:map
-                             [:values [:sequential [:or [:tuple :any] [:tuple :any ms/NonBlankString]]]]]]
+                             [:values [:sequential [:or [:tuple :any] [:tuple :any ::ms/NonBlankString]]]]]]
   (let [field (api/write-check :model/Field id)]
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
@@ -258,7 +258,7 @@
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (analytics/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
   (let [field (api/write-check (t2/select-one :model/Field :id id))]
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
@@ -272,7 +272,7 @@
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (field-values/clear-field-values-for-field! (api/write-check (t2/select-one :model/Field :id id)))
   {:status :success})
 
@@ -288,10 +288,10 @@
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   [[metabase.parameters.field/search-values]] for a more detailed explanation."
   [{:keys [id search-id]} :- [:map
-                              [:id        ms/PositiveInt]
-                              [:search-id ms/PositiveInt]]
+                              [:id        ::ms/PositiveInt]
+                              [:search-id ::ms/PositiveInt]]
    {:keys [value]} :- [:map
-                       [:value ms/NonBlankString]]]
+                       [:value ::ms/NonBlankString]]]
   (let [field        (api/check-404 (t2/select-one :model/Field :id id))
         search-field (api/check-404 (t2/select-one :model/Field :id search-id))]
     (api/check-403 (mi/can-read? field))
@@ -338,10 +338,10 @@
 (api.macros/defendpoint :get "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
   [{:keys [id remapped-id]} :- [:map
-                                [:id          ms/PositiveInt]
-                                [:remapped-id ms/PositiveInt]]
+                                [:id          ::ms/PositiveInt]
+                                [:remapped-id ::ms/PositiveInt]]
    {:keys [value]} :- [:map
-                       [:value ms/NonBlankString]]]
+                       [:value ::ms/NonBlankString]]]
   (let [field          (api/read-check :model/Field id)
         remapped-field (api/read-check :model/Field remapped-id)
         value          (parse-query-param-value-for-field field value)]
@@ -350,5 +350,5 @@
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (-> (t2/select-one :model/Field :id id) api/read-check xrays/related))

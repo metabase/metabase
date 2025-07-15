@@ -12,7 +12,7 @@
   (t2/select-one-fn :dbms_version :model/Database :id (u/the-id db-or-id)))
 
 (defn- check-dbms-version [dbms-version]
-  (me/humanize (mr/explain [:maybe sync-dbms-ver/DBMSVersion] dbms-version)))
+  (me/humanize (mr/explain [:maybe ::sync-dbms-ver/DBMSVersion] dbms-version)))
 
 (deftest dbms-version-test
   (mt/test-drivers (mt/normal-drivers)

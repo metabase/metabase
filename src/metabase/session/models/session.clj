@@ -4,6 +4,7 @@
    [buddy.core.hash :as buddy-hash]
    [buddy.core.nonce :as nonce]
    [clojure.core.memoize :as memo]
+   [malli.registry :as mr]
    [metabase.events.core :as events]
    [metabase.login-history.core :as login-history]
    [metabase.request.core :as request]
@@ -47,10 +48,10 @@
 
 (def ^:private CreateSessionUserInfo
   [:map
-   [:id ms/PositiveInt]
+   [:id ::ms/PositiveInt]
    [:last_login :any]])
 
-(def SessionSchema
+(mr/def ::SessionSchema
   "Schema for a Session."
   [:and
    [:map-of :keyword :any]
@@ -79,7 +80,7 @@
   []
   (string/random-string 12))
 
-(mu/defmethod create-session! :sso :- SessionSchema
+(mu/defmethod create-session! :sso :- ::SessionSchema
   [_ user :- CreateSessionUserInfo device-info :- request/DeviceInfo]
   (let [session-key (generate-session-key)
         session-key-hashed (hash-session-key session-key)
@@ -96,7 +97,7 @@
     (login-history/record-login-history! session-id user device-info)
     (assoc session :key session-key)))
 
-(mu/defmethod create-session! :password :- SessionSchema
+(mu/defmethod create-session! :password :- ::SessionSchema
   [session-type
    user :- CreateSessionUserInfo
    device-info :- request/DeviceInfo]

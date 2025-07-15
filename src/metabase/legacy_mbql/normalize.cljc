@@ -973,7 +973,7 @@
   [field]
   (mbql.u/update-field-options field dissoc :temporal-unit :original-temporal-unit))
 
-(mu/defn ^:private replace-relative-date-filters :- mbql.s/Filter
+(mu/defn ^:private replace-relative-date-filters :- ::mbql.s/Filter
   "Replaces broken relative date filter clauses with `:relative-time-interval` calls.
 
   Previously we generated a complex expression for relative date filters with an offset on the FE. It turned out that
@@ -982,7 +982,7 @@
   clearly while hiding the implementation details; it also fixed the underlying expression. Here we match the old
   expression and convert it to a `:relative-time-interval` call, honoring the original user intent. See #46211 and
   #46438 for details."
-  [filter-clause :- mbql.s/Filter]
+  [filter-clause :- ::mbql.s/Filter]
   (lib.util.match/replace filter-clause
     [:between
      [:+
@@ -1006,9 +1006,9 @@
          offset-unit]
         &match))))
 
-(mu/defn ^:private replace-exclude-date-filters :- mbql.s/Filter
+(mu/defn ^:private replace-exclude-date-filters :- ::mbql.s/Filter
   "Replaces legacy exclude date filter clauses that rely on temporal bucketing with `:temporal-extract` function calls."
-  [filter-clause :- mbql.s/Filter]
+  [filter-clause :- ::mbql.s/Filter]
   (lib.util.match/replace filter-clause
     [:!=
      (field :guard (every-pred mbql.preds/Field? (temporal-unit-is? #{:hour-of-day})))

@@ -305,7 +305,7 @@
     (testing "MBQL queries should come back with valid results metadata"
       (let [metadata (results-metadata (mt/query venues))]
         (is (seq metadata))
-        (is (not (me/humanize (mr/explain qr/ResultsMetadata metadata))))))))
+        (is (not (me/humanize (mr/explain ::qr/ResultsMetadata metadata))))))))
 
 (deftest ^:parallel valid-results-metadata-test-2
   (mt/test-drivers (mt/normal-drivers)
@@ -314,7 +314,7 @@
                          (assoc-in [:info :card-entity-id] (u/generate-nano-id))
                          results-metadata)]
         (is (seq metadata))
-        (is (not (me/humanize (mr/explain qr/ResultsMetadata metadata))))))))
+        (is (not (me/humanize (mr/explain ::qr/ResultsMetadata metadata))))))))
 
 (deftest ^:parallel native-query-datetime-metadata-test
   (testing "Make sure base types inferred by the `annotate` middleware come back with the results metadata"

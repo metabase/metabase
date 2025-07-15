@@ -58,7 +58,7 @@
   "Group Membership info of a User.
   In which :is_group_manager is only included if `advanced-permissions` is enabled."
   [:map
-   [:id ms/PositiveInt]
+   [:id ::ms/PositiveInt]
    [:is_group_manager
     {:optional true, :description "Only relevant if `advanced-permissions` is enabled. If it is, you should always include this key."}
     :boolean]])
@@ -182,8 +182,8 @@
    :- [:map
        [:status              {:optional true} [:maybe :string]]
        [:query               {:optional true} [:maybe :string]]
-       [:group_id            {:optional true} [:maybe ms/PositiveInt]]
-       [:include_deactivated {:default false} [:maybe ms/BooleanValue]]]]
+       [:group_id            {:optional true} [:maybe ::ms/PositiveInt]]
+       [:include_deactivated {:default false} [:maybe ::ms/BooleanValue]]]]
   (or
    api/*is-superuser?*
    (if group_id
@@ -340,7 +340,7 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -377,11 +377,11 @@
   [_route-params
    _query-params
    body :- [:map
-            [:first_name             {:optional true} [:maybe ms/NonBlankString]]
-            [:last_name              {:optional true} [:maybe ms/NonBlankString]]
-            [:email                  ms/Email]
+            [:first_name             {:optional true} [:maybe ::ms/NonBlankString]]
+            [:last_name              {:optional true} [:maybe ::ms/NonBlankString]]
+            [:email                  ::ms/Email]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
-            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]]
+            [:login_attributes       {:optional true} [:maybe ::user/LoginAttributes]]]]
   (invite-user body))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -414,18 +414,18 @@
   Self or superusers can update user info and groups.
   Group Managers can only add/remove users from groups they are manager of."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {:keys [email first_name last_name user_group_memberships is_superuser] :as body}
    :- [:map
-       [:email                  {:optional true} [:maybe ms/Email]]
-       [:first_name             {:optional true} [:maybe ms/NonBlankString]]
-       [:last_name              {:optional true} [:maybe ms/NonBlankString]]
+       [:email                  {:optional true} [:maybe ::ms/Email]]
+       [:first_name             {:optional true} [:maybe ::ms/NonBlankString]]
+       [:last_name              {:optional true} [:maybe ::ms/NonBlankString]]
        [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
        [:is_superuser           {:optional true} [:maybe :boolean]]
        [:is_group_manager       {:optional true} [:maybe :boolean]]
-       [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]
-       [:locale                 {:optional true} [:maybe ms/ValidLocale]]]]
+       [:login_attributes       {:optional true} [:maybe ::user/LoginAttributes]]
+       [:locale                 {:optional true} [:maybe ::ms/ValidLocale]]]]
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -486,7 +486,7 @@
 (api.macros/defendpoint :put "/:id/reactivate"
   "Reactivate user at `:id`"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/check-superuser)
   (check-not-internal-user id)
   (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source]
@@ -506,10 +506,10 @@
 (api.macros/defendpoint :put "/:id/password"
   "Update a user's password."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {:keys [password old_password]} :- [:map
-                                       [:password ms/ValidPassword]]
+                                       [:password ::ms/ValidPassword]]
    request]
   (check-self-or-superuser id)
   (api/let-404 [user (t2/select-one [:model/User :id :last_login :password_salt :password],
@@ -537,7 +537,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/check-superuser)
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
@@ -554,7 +554,7 @@
 (api.macros/defendpoint :put "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [{:keys [id modal]} :- [:map
-                          [:id ms/PositiveInt]]]
+                          [:id ::ms/PositiveInt]]]
   (check-self-or-superuser id)
   (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb

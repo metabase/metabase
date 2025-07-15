@@ -77,11 +77,11 @@
                                                            :type         :text}}}}
           bad-query     (assoc-in correct-query [:native :template-tags "foo" :name] "filter")]
       (testing (str "correct-query " (pr-str correct-query))
-        (is (not (me/humanize (mr/explain mbql.s/Query correct-query))))
+        (is (not (me/humanize (mr/explain ::mbql.s/Query correct-query))))
         (is (= correct-query
                (mbql.s/validate-query correct-query))))
       (testing (str "bad-query " (pr-str bad-query))
-        (is (me/humanize (mr/explain mbql.s/Query bad-query)))
+        (is (me/humanize (mr/explain ::mbql.s/Query bad-query)))
         (is (thrown-with-msg?
              #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
              #"keys in template tag map must match the :name of their values"
@@ -101,7 +101,7 @@
                     {:name "Avg discount", :display-name "Avg discount"}]],
                   :aggregation-idents {0 "ZOn_HshYdSEeteY5ArmS9"}},
                  :parameters []}]
-      (is (not (me/humanize (mr/explain mbql.s/Query query))))
+      (is (not (me/humanize (mr/explain ::mbql.s/Query query))))
       (is (= query (mbql.s/validate-query query))))))
 
 (deftest ^:parallel year-of-era-test
@@ -115,13 +115,13 @@
                   :aggregation-idents {0 "sAl2I4RGqYvmLw1lfJinY"},
                   :breakout-idents {0 "N7YYtmSRsForQqViDhkrg"}},
                  :parameters []}]
-      (is (not (me/humanize (mr/explain mbql.s/Query query))))
+      (is (not (me/humanize (mr/explain ::mbql.s/Query query))))
       (is (= query (mbql.s/validate-query query))))))
 
 (deftest ^:parallel aggregation-reference-test
   (are [schema] (nil? (me/humanize (mr/explain schema [:aggregation 0])))
     mbql.s/aggregation
-    mbql.s/Reference))
+    ::mbql.s/Reference))
 
 (deftest ^:parallel native-query-test
   (let [parameter-dimension    [:dimension [:template-tag "date_range"]]
@@ -137,8 +137,8 @@
                         :type         :dimension
                         :widget-type  :date/all-options
                         :dimension    template-tag-dimension}]
-      (is (nil? (me/humanize (mr/explain mbql.s/Parameter parameter))))
-      (is (nil? (me/humanize (mr/explain mbql.s/TemplateTag template-tag))))
+      (is (nil? (me/humanize (mr/explain ::mbql.s/Parameter parameter))))
+      (is (nil? (me/humanize (mr/explain ::mbql.s/TemplateTag template-tag))))
       (let [query {:database 1
                    :type     :native
                    :native   {:query         (str/join \newline  ["SELECT dayname(\"TIMESTAMP\") as \"day\""
@@ -148,7 +148,7 @@
                                                                   " LIMIT 1"])
                               :template-tags {"date_range" template-tag}
                               :parameters    [parameter]}}]
-        (is (nil? (me/humanize (mr/explain mbql.s/Query query))))))))
+        (is (nil? (me/humanize (mr/explain ::mbql.s/Query query))))))))
 
 (deftest ^:parallel value-test
   (let [value [:value
@@ -165,7 +165,7 @@
       [:or mbql.s/absolute-datetime mbql.s/value])))
 
 (deftest ^:parallel expression-value-wrapped-literals-test
-  (are [value] (not (me/humanize (mr/explain mbql.s/MBQLQuery
+  (are [value] (not (me/humanize (mr/explain ::mbql.s/MBQLQuery
                                              {:source-table 1, :expressions {"expr" [:value value nil]}})))
     ""
     "192.168.1.1"
@@ -179,7 +179,7 @@
 
 (deftest ^:parallel expression-unwrapped-literals-test
   (are [value] (= {:expressions {"expr" ["valid instance of one of these MBQL clauses: :expression, :field"]}}
-                  (me/humanize (mr/explain mbql.s/MBQLQuery
+                  (me/humanize (mr/explain ::mbql.s/MBQLQuery
                                            {:source-table 1, :expressions {"expr" value}})))
     ""
     "192.168.1.1"

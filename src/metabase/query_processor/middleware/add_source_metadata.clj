@@ -27,11 +27,11 @@
                   (every? #(lib.util.match/match-one % [:field (_ :guard string?) _])
                           fields))))))
 
-(mu/defn- native-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
+(mu/defn- native-source-query->metadata :- [:maybe [:sequential ::mbql.s/SourceQueryMetadata]]
   "Given a `source-query`, return the source metadata that should be added at the parent level (i.e., at the same
   level where this `source-query` was present.) This metadata is used by other middleware to determine what Fields to
   expect from the source query."
-  [{nested-source-metadata :source-metadata, :as source-query} :- mbql.s/SourceQuery]
+  [{nested-source-metadata :source-metadata, :as source-query} :- ::mbql.s/SourceQuery]
   ;; If the source query has a nested source with metadata and does not change the fields that come back, return
   ;; metadata as-is
   (if (has-same-fields-as-nested-source? source-query)
@@ -44,9 +44,9 @@
                   {:source-query source-query}))
       nil)))
 
-(mu/defn mbql-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
+(mu/defn mbql-source-query->metadata :- [:maybe [:sequential ::mbql.s/SourceQueryMetadata]]
   "Preprocess a `source-query` so we can determine the result columns."
-  [source-query :- mbql.s/MBQLQuery]
+  [source-query :- ::mbql.s/MBQLQuery]
   (try
     (let [cols (request/as-admin
                  ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)

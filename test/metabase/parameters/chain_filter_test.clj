@@ -61,7 +61,7 @@
                                                             :op op
                                                             :value value
                                                             :options nil})
-                             (mr/explain mbql.s/Filter)
+                             (mr/explain ::mbql.s/Filter)
                              me/humanize))
           :starts-with :ends-with :contains :does-not-contain)))))
 

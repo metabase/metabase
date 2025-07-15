@@ -34,7 +34,7 @@
 (p/import-def metabase.sso.ldap/fetch-or-create-user! fetch-or-create-ldap-user!)
 
 #_{:clj-kondo/ignore [:missing-docstring]}
-(p/import-def metabase.sso.ldap.default-implementation/UserInfo LDAPUserInfo)
+(p/import-def ::metabase.sso.ldap.default-implementation/UserInfo LDAPUserInfo)
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.sso.ldap.default-implementation/all-mapped-group-ids all-mapped-ldap-group-ids)

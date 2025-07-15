@@ -67,7 +67,7 @@
   [[_ tag] card]
   (get-in card [:dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
-(mu/defn param-target->field-clause :- [:maybe mbql.s/Field]
+(mu/defn param-target->field-clause :- [:maybe ::mbql.s/Field]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target card]
@@ -149,7 +149,7 @@
   "Get the Fields (as a map of Parameter ID -> Fields) that should be returned for hydrated `:param_fields` for a Card
   or Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
-  [param-id->field-ids :- [:map-of ms/NonBlankString [:set ::lib.schema.id/field]]]
+  [param-id->field-ids :- [:map-of ::ms/NonBlankString [:set ::lib.schema.id/field]]]
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
                           (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
@@ -281,7 +281,7 @@
              (ensure-filterable-columns-for-card card stage-number)
              (field-id-from-dashcards-filterable-columns param-dashcard-info stage-number)))))))
 
-(mu/defn dashcards->param-id->field-ids* :- [:map-of ms/NonBlankString [:set ::lib.schema.id/field]]
+(mu/defn dashcards->param-id->field-ids* :- [:map-of ::ms/NonBlankString [:set ::lib.schema.id/field]]
   "Return map of parameter ids to mapped field ids."
   [dashcards]
   (letfn [(dashcard->param-dashcard-info [dashcard]
@@ -295,7 +295,7 @@
 
 (declare card->template-tag-param-id->field-ids)
 
-(mu/defn- dashcards->param-id->field-ids :- [:map-of ms/NonBlankString [:set ::lib.schema.id/field]]
+(mu/defn- dashcards->param-id->field-ids :- [:map-of ::ms/NonBlankString [:set ::lib.schema.id/field]]
   "Return a map of Parameter ID to the set of Field IDs referenced by parameters in the Cards on the given `dashcards`,
   or `nil` if none are referenced. `dashcards` must be hydrated with :card."
   [dashcards]

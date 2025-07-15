@@ -2,7 +2,7 @@
   "Collections are used to organize Cards, Dashboards, and Pulses; as of v0.30, they are the primary way we determine
   permissions for these objects."
   (:refer-clojure :exclude [ancestors descendants])
-  (:require
+  (:require [malli.registry :as mr]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -140,7 +140,7 @@
   ([_model pk :- pos-int?]
    (mi/can-read? (t2/select-one :model/Collection :id pk))))
 
-(def AuthorityLevel
+(mr/def ::AuthorityLevel
   "Malli Schema for valid collection authority levels."
   [:enum "official"])
 
@@ -199,7 +199,7 @@
   "Build a 'location path' from a sequence of `collections-or-ids`.
 
      (location-path 10 20) ; -> \"/10/20/\""
-  [& collections-or-ids :- [:* [:or ms/PositiveInt :map]]]
+  [& collections-or-ids :- [:* [:or ::ms/PositiveInt :map]]]
   (if-not (seq collections-or-ids)
     "/"
     (str
@@ -208,14 +208,14 @@
                      (u/the-id collection-or-id)))
      "/")))
 
-(mu/defn location-path->ids :- [:sequential ms/PositiveInt]
+(mu/defn location-path->ids :- [:sequential ::ms/PositiveInt]
   "'Explode' a `location-path` into a sequence of Collection IDs, and parse them as integers.
 
      (location-path->ids \"/10/20/\") ; -> [10 20]"
   [location-path :- LocationPath]
   (unchecked-location-path->ids location-path))
 
-(mu/defn location-path->parent-id :- [:maybe ms/PositiveInt]
+(mu/defn location-path->parent-id :- [:maybe ::ms/PositiveInt]
   "Given a `location-path` fetch the ID of the direct of a Collection.
 
      (location-path->parent-id \"/10/20/\") ; -> 20"
@@ -278,14 +278,14 @@
    [:map
     [:location LocationPath]]])
 
-(def CollectionWithLocationAndIDOrRoot
+(mr/def ::CollectionWithLocationAndIDOrRoot
   "Schema for a valid `CollectionInstance` that has valid `:location` and `:id` properties, or the special
   `root-collection` placeholder object."
   [:or
    RootCollection
    [:map
     [:location LocationPath]
-    [:id       ms/PositiveInt]]])
+    [:id       ::ms/PositiveInt]]])
 
 (mu/defn- parent :- CollectionWithLocationAndIDOrRoot
   "Fetch the parent Collection of `collection`, or the Root Collection special placeholder object if this is a
@@ -309,7 +309,7 @@
     "/"
     (str location (u/the-id collection) "/")))
 
-(mu/defn descendant-ids :- [:maybe [:set ms/PositiveInt]]
+(mu/defn descendant-ids :- [:maybe [:set ::ms/PositiveInt]]
   "Return a set of IDs of all descendant Collections of a `collection`."
   [collection :- CollectionWithLocationAndIDOrRoot]
   (t2/select-pks-set :model/Collection :location [:like (str (children-location collection) \%)]))
@@ -318,7 +318,7 @@
 ;;; |                                              Personal Collections                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn format-personal-collection-name :- ms/NonBlankString
+(mu/defn format-personal-collection-name :- ::ms/NonBlankString
   "Constructs the personal collection name from user name.
   When displaying to users we'll tranlsate it to user's locale,
   but to keeps things consistent in the database, we'll store the name in site's locale.
@@ -335,7 +335,7 @@
       (and first-name last-name) (trs "{0} {1}''s Personal Collection" first-name last-name)
       :else                      (trs "{0}''s Personal Collection" (or first-name last-name email)))))
 
-(mu/defn user->personal-collection-names :- ms/Map
+(mu/defn user->personal-collection-names :- ::ms/Map
   "Come up with a nice name for the Personal Collection for the passed `user-or-ids`.
   Returns a map of user-id -> name"
   [user-or-ids user-or-site]
@@ -344,7 +344,7 @@
                                [:model/User :first_name :last_name :email :id]
                                :id [:in ids]))))
 
-(mu/defn user->personal-collection-name :- ms/NonBlankString
+(mu/defn user->personal-collection-name :- ::ms/NonBlankString
   "Calls `user->personal-collection-names` for a single user-id and returns the name"
   [user-or-id user-or-site]
   (first (vals (user->personal-collection-names [user-or-id] user-or-site))))
@@ -372,7 +372,7 @@
   neccesarily non-nil)."
   [:map
    [:location          LocationPath]
-   [:personal_owner_id [:maybe ms/PositiveInt]]])
+   [:personal_owner_id [:maybe ::ms/PositiveInt]]])
 
 (mu/defn is-personal-collection-or-descendant-of-one? :- :boolean
   "Is `collection` a Personal Collection, or a descendant of one?"
@@ -426,7 +426,7 @@
    ;; large
    :ttl/threshold (* 60 60 1000)))
 
-(mu/defn user->personal-collection-and-descendant-ids :- [:sequential ms/PositiveInt]
+(mu/defn user->personal-collection-and-descendant-ids :- [:sequential ::ms/PositiveInt]
   "Somewhat-optimized function that fetches the ID of a User's Personal Collection as well as the IDs of all descendants
   of that Collection. Exists because this needs to be known to calculate the Current User's permissions set, which is
   done for every API call; this function is an attempt to make fetching this information as efficient as reasonably
@@ -499,7 +499,7 @@
   "Includes the possible values for visible collections, possibly including `\"root\"` to represent the root
   collection."
   [:set
-   [:or [:= "root"] ms/PositiveInt]])
+   [:or [:= "root"] ::ms/PositiveInt]])
 
 (def ^:private CollectionVisibilityConfig
   [:map
@@ -831,7 +831,7 @@
                   (effective-ancestors* collection collection-id->collection)))
          collections)))
 
-(mu/defn- parent-id* :- [:maybe ms/PositiveInt]
+(mu/defn- parent-id* :- [:maybe ::ms/PositiveInt]
   [{:keys [location]} :- CollectionWithLocationOrRoot]
   (some-> location location-path->parent-id))
 
@@ -1039,7 +1039,7 @@
    (cons (perms/collection-readwrite-path new-parent)
          (perms-for-collection-and-descendants collection))))
 
-(mu/defn- collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
+(mu/defn- collection->descendant-ids :- [:maybe [:set ::ms/PositiveInt]]
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
   (apply t2/select-pks-set :model/Collection
          :location [:like (str (children-location collection) "%")]
@@ -1082,7 +1082,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot
    ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
-   updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]]]]
+   updates :- [:map [:parent_id {:optional true} [:maybe ::ms/PositiveInt]]]]
   (assert (:archive_operation_id collection))
   (when (not (contains? updates :parent_id))
     (api/check-400
@@ -1134,7 +1134,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot
    ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
-   updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]
+   updates :- [:map [:parent_id {:optional true} [:maybe ::ms/PositiveInt]
                      :archived :boolean]]]
   (if (:archived updates)
     (archive-collection! collection)

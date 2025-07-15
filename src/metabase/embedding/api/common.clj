@@ -106,11 +106,11 @@
       :parameters))
 
 (mu/defn- resolve-dashboard-parameters :- [:sequential [:map
-                                                        [:id ms/NonBlankString]]]
+                                                        [:id ::ms/NonBlankString]]]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
   that can be passed to various functions in the [[metabase.dashboards.api]] namespace such as
   [[metabase.dashboards.api/process-query-for-dashcard]]."
-  [dashboard-id :- ms/PositiveInt
+  [dashboard-id :- ::ms/PositiveInt
    slug->value  :- :map]
   (let [parameters (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id)
         slug->id (into {} (map (juxt :slug :id)) parameters)
@@ -161,7 +161,7 @@
   that ones that are required are specified by checking them against a Card or Dashboard's `object-embedding-params`
   (the object's value of `:embedding_params`). Throws a 400 if any of the checks fail. If all checks are successful,
   returns a *merged* parameters map."
-  [object-embedding-params :- ms/EmbeddingParams
+  [object-embedding-params :- ::ms/EmbeddingParams
    token-params            :- [:map-of :keyword :any]
    user-params             :- [:map-of :keyword :any]]
   (check-param-sets object-embedding-params
@@ -175,7 +175,7 @@
                        (not-empty v)
                        v)))))
 
-(mu/defn- param-values-merged-params :- [:map-of ms/NonBlankString :any]
+(mu/defn- param-values-merged-params :- [:map-of ::ms/NonBlankString :any]
   [id->slug slug->id embedding-params token-params id-query-params]
   (let [slug-query-params  (into {}
                                  (for [[id v] id-query-params]
@@ -226,7 +226,7 @@
   "Remove the `:parameters` for `dashboard-or-card` that listed as `disabled` or `locked` in the `embedding-params`
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
-  [dashboard-or-card embedding-params :- ms/EmbeddingParams]
+  [dashboard-or-card embedding-params :- ::ms/EmbeddingParams]
   (let [params-to-remove (get-params-to-remove (:parameters dashboard-or-card) embedding-params)]
     (update dashboard-or-card :parameters remove-params-in-set params-to-remove)))
 
@@ -261,7 +261,7 @@
 
 (mu/defn- apply-slug->value :- [:maybe [:sequential
                                         [:map
-                                         [:slug ms/NonBlankString]
+                                         [:slug ::ms/NonBlankString]
                                          [:type :keyword]
                                          [:target :any]
                                          [:value :any]]]]

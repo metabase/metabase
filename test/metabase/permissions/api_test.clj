@@ -36,13 +36,13 @@
                 (is (malli= [:map
                              [:id           [:= (:id (perms-group/all-users))]]
                              [:name         [:= "All Users"]]
-                             [:member_count ms/PositiveInt]]
+                             [:member_count ::ms/PositiveInt]]
                             (get id->group (:id (perms-group/all-users))))))
               (testing "Administrators Group should be returned"
                 (is (malli= [:map
                              [:id           [:= (:id (perms-group/admin))]]
                              [:name         [:= "Administrators"]]
-                             [:member_count ms/PositiveInt]]
+                             [:member_count ::ms/PositiveInt]]
                             (get id->group (:id (perms-group/admin)))))))]
       (let [id->group (m/index-by :id (fetch-groups))]
         (check-default-groups-returned id->group))
@@ -53,8 +53,8 @@
             (check-default-groups-returned id->group)
             (testing "empty group should be returned"
               (is (malli= [:map
-                           [:id           ms/PositiveInt]
-                           [:name         ms/NonBlankString]
+                           [:id           ::ms/PositiveInt]
+                           [:name         ::ms/NonBlankString]
                            [:member_count [:= 0]]]
                           (get id->group (:id group)))))))))
     (testing "requires superuser"
@@ -82,21 +82,21 @@
                    [:last_name     [:= "Corv"]]
                    [:email         [:= "crowberto@metabase.com"]]
                    [:user_id       [:= (mt/user->id :crowberto)]]
-                   [:membership_id ms/PositiveInt]]
+                   [:membership_id ::ms/PositiveInt]]
                   (get id->member (mt/user->id :crowberto))))
       (is (malli= [:map
                    [:first_name    [:= "Lucky"]]
                    [:last_name     [:= "Pigeon"]]
                    [:email         [:= "lucky@metabase.com"]]
                    [:user_id       [:= (mt/user->id :lucky)]]
-                   [:membership_id ms/PositiveInt]]
+                   [:membership_id ::ms/PositiveInt]]
                   (get id->member (mt/user->id :lucky))))
       (is (malli= [:map
                    [:first_name    [:= "Rasta"]]
                    [:last_name     [:= "Toucan"]]
                    [:email         [:= "rasta@metabase.com"]]
                    [:user_id       [:= (mt/user->id :rasta)]]
-                   [:membership_id ms/PositiveInt]]
+                   [:membership_id ::ms/PositiveInt]]
                   (get id->member (mt/user->id :rasta))))
       (testing "Should *not* include inactive users"
         (is (nil?
@@ -372,10 +372,10 @@
 
     (testing "Return a graph of membership"
       (let [result (mt/user-http-request :crowberto :get 200 "permissions/membership")]
-        (is (malli= [:map-of ms/PositiveInt [:sequential [:map
-                                                          [:membership_id    ms/PositiveInt]
-                                                          [:group_id         ms/PositiveInt]
-                                                          [:user_id          ms/PositiveInt]
+        (is (malli= [:map-of ::ms/PositiveInt [:sequential [:map
+                                                          [:membership_id    ::ms/PositiveInt]
+                                                          [:group_id         ::ms/PositiveInt]
+                                                          [:user_id          ::ms/PositiveInt]
                                                           [:is_group_manager :boolean]]]]
                     result))
         (is (= (t2/select-fn-set :id 'User)

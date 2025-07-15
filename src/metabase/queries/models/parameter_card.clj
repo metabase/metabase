@@ -69,8 +69,8 @@
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,
   or delete appropriate ParameterCards for each parameter in the dashboard"
-  [parameterized-object-type :- ms/NonBlankString
-   parameterized-object-id   :- ms/PositiveInt
+  [parameterized-object-type :- ::ms/NonBlankString
+   parameterized-object-id   :- ::ms/PositiveInt
    parameters                :- [:maybe [:sequential ::parameters.schema/parameter]]]
   (let [upsertable?           (fn [{:keys [values_source_type values_source_config id]}]
                                 (and values_source_type id (:card_id values_source_config)

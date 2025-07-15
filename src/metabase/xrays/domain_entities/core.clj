@@ -1,45 +1,46 @@
 (ns metabase.xrays.domain-entities.core
   (:require
    [clojure.string :as str]
+   [malli.registry :as mr]
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.xrays.domain-entities.specs :refer [domain-entity-specs MBQL]]
+   [metabase.xrays.domain-entities.specs :as domain-entity-specs]
    [toucan2.core :as t2]))
 
 (def ^:private ^{:arglists '([field])} field-type
   "Return the most specific type of a given field."
   (some-fn :semantic_type :base_type))
 
-(def SourceName
+(mr/def ::SourceName
   "A reference to a `SourceEntity`."
   :string)
 
 (def ^:private DimensionReference :string)
 
-(def DimensionBindings
-  "Mapping from dimension name to the corresponding instantiated MBQL snippet"
-  [:map-of DimensionReference MBQL])
+(mr/def ::DimensionBindings
+  "Mapping from dimension name to the corresponding instantiated ::domain-entity-specs/MBQL snippet"
+  [:map-of DimensionReference ::domain-entity-specs/MBQL])
 
-(def SourceEntity
+(mr/def ::SourceEntity
   "A source for a card. Can be either a table or another card."
   [:or (ms/InstanceOf :model/Table) (ms/InstanceOf :model/Card)])
 
-(def Bindings
+(mr/def ::Bindings
   "Top-level lexical context mapping source names to their corresponding entity and constituent dimensions. See also
   `DimensionBindings`."
   [:map-of
-   SourceName
+   ::SourceName
    [:map
-    [:dimensions DimensionBindings]
-    [:entity {:optional true} SourceEntity]]])
+    [:dimensions ::DimensionBindings]
+    [:entity {:optional true} ::SourceEntity]]])
 
-(mu/defn- get-dimension-binding :- MBQL
-  [bindings            :- Bindings
-   source              :- SourceName
+(mu/defn- get-dimension-binding :- ::domain-entity-specs/MBQL
+  [bindings            :- ::Bindings
+   source              :- ::SourceName
    dimension-reference :- DimensionReference]
   (let [[table-or-dimension maybe-dimension] (str/split dimension-reference #"\.")]
     (if maybe-dimension
@@ -50,16 +51,16 @@
 
 (mu/defn resolve-dimension-clauses
   "Instantiate all dimension reference in given (nested) structure"
-  [bindings :- Bindings
-   source   :- SourceName
+  [bindings :- ::Bindings
+   source   :- ::SourceName
    obj]
   (lib.util.match/replace obj
     [:dimension dimension] (->> dimension
                                 (get-dimension-binding bindings source)
                                 (resolve-dimension-clauses bindings source))))
 
-(mu/defn mbql-reference :- MBQL
-  "Return MBQL clause for a given field-like object."
+(mu/defn mbql-reference :- ::domain-entity-specs/MBQL
+  "Return ::domain-entity-specs/MBQL clause for a given field-like object."
   [{:keys [id name base_type]}]
   (if id
     [:field id nil]
@@ -112,7 +113,7 @@
   "Find the best fitting domain entity for given table."
   [table]
   (let [table (t2/hydrate table :fields)]
-    (some->> @domain-entity-specs
+    (some->> @domain-entity-specs/domain-entity-specs
              vals
              (filter (partial satisfies-requierments? table))
              best-match

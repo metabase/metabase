@@ -9,6 +9,7 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
@@ -70,7 +71,7 @@
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
-(def NonBlankString
+(mr/def ::NonBlankString
   "Schema for a string that cannot be blank."
   (mu/with-api-error-message
    ;; this is directly copied from [[:metabase.lib.schema.common/non-blank-string]] -- unfortunately using it here would
@@ -86,7 +87,7 @@
      (complement str/blank?)]]
    (deferred-tru "value must be a non-blank string.")))
 
-(def IntGreaterThanOrEqualToZero
+(mr/def ::IntGreaterThanOrEqualToZero
   "Schema representing an integer than must also be greater than or equal to zero."
   (let [message (deferred-tru "value must be an integer greater or equal to than zero.")]
     [:int
@@ -96,7 +97,7 @@
                      (str message))
       :api/regex   #"\d+"}]))
 
-(def Int
+(mr/def ::Int
   "Schema representing an integer."
   (let [message (deferred-tru "value must be an integer.")]
     [:int
@@ -105,7 +106,7 @@
                      (str message))
       :api/regex   #"-?\d+"}]))
 
-(def PositiveInt
+(mr/def ::PositiveInt
   "Schema representing an integer than must also be greater than zero."
   (let [message (deferred-tru "value must be an integer greater than zero.")]
     [:int
@@ -115,19 +116,19 @@
                      (str message))
       :api/regex   #"[1-9]\d*"}]))
 
-(def KeywordOrString
+(mr/def ::KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
   (mu/with-api-error-message
    [:or :string :keyword]
    (deferred-tru "value must be a keyword or string.")))
 
-(def FieldType
+(mr/def ::FieldType
   "Schema for a valid Field base or effective (data) type (does it derive from `:type/*`)?"
   (mu/with-api-error-message
    [:fn #(isa? % :type/*)]
    (deferred-tru "value must be a valid field type.")))
 
-(def FieldSemanticOrRelationType
+(mr/def ::FieldSemanticOrRelationType
   "Schema for a valid Field semantic *or* Relation type. This is currently needed because the `semantic_column` is used
   to store either the semantic type or relation type info. When this is changed in the future we can get rid of this
   schema. See #15486."
@@ -135,13 +136,13 @@
    [:fn (fn [k] (or (isa? k :Semantic/*) (isa? k :Relation/*)))]
    (deferred-tru "value must be a valid field semantic or relation type.")))
 
-(def CoercionStrategy
+(mr/def ::CoercionStrategy
   "Schema for a valid Field coercion strategy (does it derive from `:Coercion/*`)?"
   (mu/with-api-error-message
    [:fn #(isa? % :Coercion/*)]
    (deferred-tru "value must be a valid coercion strategy.")))
 
-(def FieldTypeKeywordOrString
+(mr/def ::FieldTypeKeywordOrString
   "Like `FieldType` (e.g. a valid derivative of `:type/*`) but allows either a keyword or a string.
    This is useful especially for validating API input or objects coming out of the DB as it is unlikely
    those values will be encoded as keywords at that point."
@@ -149,7 +150,7 @@
    [:fn #(isa? (keyword %) :type/*)]
    (deferred-tru "value must be a valid field data type (keyword or string).")))
 
-(def FieldSemanticOrRelationTypeKeywordOrString
+(mr/def ::FieldSemanticOrRelationTypeKeywordOrString
   "Like `FieldSemanticOrRelationType` but accepts either a keyword or string."
   (mu/with-api-error-message
    [:fn (fn [k]
@@ -158,25 +159,25 @@
                 (isa? k :Relation/*))))]
    (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
 
-(def CoercionStrategyKeywordOrString
+(mr/def ::CoercionStrategyKeywordOrString
   "Like `CoercionStrategy` but accepts either a keyword or string."
   (mu/with-api-error-message
    [:fn #(isa? (keyword %) :Coercion/*)]
    (deferred-tru "value must be a valid coercion strategy (keyword or string).")))
 
-(def EntityTypeKeywordOrString
+(mr/def ::EntityTypeKeywordOrString
   "Validates entity type derivatives of `:entity/*`. Allows strings or keywords"
   (mu/with-api-error-message
    [:fn #(isa? (keyword %) :entity/*)]
    (deferred-tru "value must be a valid entity type (keyword or string).")))
 
-(def Map
+(mr/def ::Map
   "Schema for a valid map."
   (mu/with-api-error-message
    :map
    (deferred-tru "Value must be a map.")))
 
-(def Email
+(mr/def ::Email
   "Schema for a valid email string."
   (mu/with-api-error-message
    [:and
@@ -184,13 +185,13 @@
     [:fn {:error/message "valid email address"} u/email?]]
    (deferred-tru "value must be a valid email address.")))
 
-(def Url
+(mr/def ::Url
   "Schema for a valid URL string."
   (mu/with-api-error-message
    [:fn u/url?]
    (deferred-tru "value must be a valid URL.")))
 
-(def ValidPassword
+(mr/def ::ValidPassword
   "Schema for a valid password of sufficient complexity which is not found on a common password list."
   (mu/with-api-error-message
    [:and
@@ -198,7 +199,7 @@
     [:fn {:error/message "valid password that is not too common"} (every-pred string? #'u.password/is-valid?)]]
    (deferred-tru "password is too common.")))
 
-(def TemporalString
+(mr/def ::TemporalString
   "Schema for a string that can be parsed by date2/parse."
   (mu/with-api-error-message
    [:and
@@ -206,7 +207,7 @@
     [:fn #(u/ignore-exceptions (boolean (u.date/parse %)))]]
    (deferred-tru "value must be a valid date string")))
 
-(def JSONString
+(mr/def ::JSONString
   "Schema for a string that is valid serialized JSON."
   (mu/with-api-error-message
    [:and
@@ -218,7 +219,7 @@
               false))]]
    (deferred-tru "value must be a valid JSON string.")))
 
-(def BooleanValue
+(mr/def ::BooleanValue
   "Schema for a valid representation of a boolean
   (one of `\"true\"` or `true` or `\"false\"` or `false`.).
   Used by [[metabase.api.common/defendpoint]] to coerce the value for this schema to a boolean.
@@ -229,7 +230,7 @@
       (mu/with-api-error-message
        (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
 
-(def MaybeBooleanValue
+(mr/def ::MaybeBooleanValue
   "Same as above, but allows distinguishing between `nil` (the user did not specify a value)
   and `false` (the user specified `false`)."
   (-> [:enum {:decode/json (fn [b] (some->> b (contains? #{"true" true})))
@@ -238,28 +239,28 @@
       (mu/with-api-error-message
        (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
 
-(def RemappedFieldValue
+(mr/def ::RemappedFieldValue
   "Has two components:
     1. <value-of-field>          (can be anything)
     2. <value-of-remapped-field> (must be a string)"
   [:tuple :any :string])
 
-(def NonRemappedFieldValue
+(mr/def ::NonRemappedFieldValue
   "Has one component: <value-of-field>"
   [:tuple :any])
 
-(def FieldValuesList
+(mr/def ::FieldValuesList
   "Schema for a valid list of values for a field, in contexts where the field can have a remapped field."
-  [:sequential [:or RemappedFieldValue NonRemappedFieldValue]])
+  [:sequential [:or ::RemappedFieldValue ::NonRemappedFieldValue]])
 
-(def FieldValuesResult
+(mr/def ::FieldValuesResult
   "Schema for a value result of fetching the values for a field, in contexts where the field can have a remapped field."
   [:map
    [:has_more_values :boolean]
-   [:values FieldValuesList]])
+   [:values ::FieldValuesList]])
 
 ;;; TODO -- move to `embedding`
-(def EmbeddingParams
+(mr/def ::EmbeddingParams
   "Schema for a valid map of embedding params."
   (mu/with-api-error-message
    [:maybe [:map-of
@@ -267,23 +268,22 @@
             [:enum "disabled" "enabled" "locked"]]]
    (deferred-tru "value must be a valid embedding params map.")))
 
-(def ValidLocale
+(mr/def ::ValidLocale
   "Schema for a valid ISO Locale code e.g. `en` or `en-US`. Case-insensitive and allows dashes or underscores."
   (mu/with-api-error-message
-   [:and
-    NonBlankString
-    [:fn
-     {:error/message "valid locale"}
-     i18n/available-locale?]]
-   (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. ''en'' or ''en_US''.")))
+    [:and ::NonBlankString
+     [:fn
+      {:error/message "valid locale"}
+      i18n/available-locale?]]
+    (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. ''en'' or ''en_US''.")))
 
-(def NanoIdString
+(mr/def ::NanoIdString
   "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
   (mu/with-api-error-message
    [:re #"^[A-Za-z0-9_\-]{21}$"]
    (deferred-tru "String must be a valid 21-character NanoID string.")))
 
-(def UUIDString
+(mr/def ::UUIDString
   "Schema for a UUID string"
   (mu/with-api-error-message
    [:re u/uuid-regex]
@@ -311,7 +311,7 @@
                       true))
                   true m)))])
 
-(def File
+(mr/def ::File
   "Schema for a file coming in HTTP request from multipart/form-data"
   [:map {:closed true}
    [:content-type string?]

@@ -12,7 +12,11 @@
    [toucan2.core :as t2])
   (:import
    (com.snowplowanalytics.snowplow.tracker Snowplow Subject Tracker)
-   (com.snowplowanalytics.snowplow.tracker.configuration EmitterConfiguration NetworkConfiguration SubjectConfiguration TrackerConfiguration)
+   (com.snowplowanalytics.snowplow.tracker.configuration
+    EmitterConfiguration
+    NetworkConfiguration
+    SubjectConfiguration
+    TrackerConfiguration)
    (com.snowplowanalytics.snowplow.tracker.events SelfDescribing SelfDescribing$Builder2)
    (com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter)
    (com.snowplowanalytics.snowplow.tracker.payload SelfDescribingJson)

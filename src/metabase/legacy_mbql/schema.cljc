@@ -358,7 +358,7 @@
    {:doc/title "`:field` or `:expression` ref"}
    (one-of expression field)])
 
-(def Field
+(mr/def ::Field
   "Schema for either a `:field` clause (reference to a Field) or an `:expression` clause (reference to an expression)."
   [:ref ::Field])
 
@@ -385,9 +385,10 @@
 (mr/def ::Reference
   (one-of aggregation expression field))
 
-(def Reference
-  "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
-  [:ref ::Reference])
+;; TODO before merge: Deffing a reference to the mr/def schema. I think this can go away
+;; (mr/def ::Reference
+;;   "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
+;;   [:ref ::Reference])
 
 (defclause ^{:added "0.50.0"} offset
   opts [:ref ::lib.schema.common/options]
@@ -418,7 +419,7 @@
    [:string            :string]
    [:string-expression StringExpression]
    [:value             value]
-   [:else              Field]])
+   [:else              ::Field]])
 
 (def ^:private StringExpressionArg
   [:ref ::StringExpressionArg])
@@ -452,13 +453,9 @@
   "Schema for the definition of an arithmetic expression."
   [:ref ::BooleanExpression])
 
-(def DatetimeExpression
+(mr/def ::DatetimeExpression
   "Schema for the definition of a date function expression."
   [:ref ::DatetimeExpression])
-
-(def Aggregation
-  "Schema for anything that is a valid `:aggregation` clause."
-  [:ref ::Aggregation])
 
 (mr/def ::NumericExpressionArg
   [:multi
@@ -472,7 +469,7 @@
                        :else                            :field))}
    [:number             number?]
    [:numeric-expression NumericExpression]
-   [:aggregation        Aggregation]
+   [:aggregation        ::Aggregation]
    [:value              value]
    [:field              Reference]])
 (def ^:private NumericExpressionArg
@@ -487,10 +484,10 @@
                        (is-clause? :value x)             :value
                        (is-clause? datetime-functions x) :datetime-expression
                        :else                             :else))}
-   [:aggregation         Aggregation]
+   [:aggregation         ::Aggregation]
    [:value               value]
    [:datetime-expression DatetimeExpression]
-   [:else                [:or [:ref ::DateOrDatetimeLiteral] Field]]])
+   [:else                [:or [:ref ::DateOrDatetimeLiteral] ::Field]]])
 
 (def ^:private DateTimeExpressionArg
   [:ref ::DateTimeExpressionArg])
@@ -515,11 +512,11 @@
    [:boolean-expression   BooleanExpression]
    [:numeric-expression   NumericExpression]
    [:datetime-expression  DatetimeExpression]
-   [:aggregation          Aggregation]
+   [:aggregation          ::Aggregation]
    [:string               :string]
    [:string-expression    StringExpression]
    [:value                value]
-   [:else                 Field]])
+   [:else                 ::Field]])
 
 (def ^:private ExpressionArg
   [:ref ::ExpressionArg])
@@ -742,7 +739,7 @@
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
-(def Filter
+(mr/def ::Filter
   "Schema for a valid MBQL `:filter` clause."
   [:ref ::Filter])
 
@@ -767,7 +764,7 @@
                        :relative-datetime
                        :else))}
    [:relative-datetime relative-datetime]
-   [:else              Field]])
+   [:else              ::Field]])
 
 (mr/def ::EqualityComparable
   [:maybe
@@ -842,12 +839,12 @@
   lon-max   OrderComparable)
 
 ;; SUGAR CLAUSES: These are rewritten as `[:= <field> nil]` and `[:not= <field> nil]` respectively
-(defclause ^:sugar is-null,  field Field)
-(defclause ^:sugar not-null, field Field)
+(defclause ^:sugar is-null,  field ::Field)
+(defclause ^:sugar not-null, field ::Field)
 
-(def Emptyable
+(mr/def ::Emptyable
   "Schema for a valid is-empty or not-empty argument."
-  [:or StringExpressionArg Field])
+  [:or StringExpressionArg ::Field])
 
 ;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and
 ;; `[:and [:not= <field> nil] [:not= <field> ""]]`
@@ -899,7 +896,7 @@
 
 ;; Filter subclause. Syntactic sugar for specifying a specific time interval.
 ;;
-;; Return rows where datetime Field 100's value is in the current month
+;; Return rows where datetime ::Field 100's value is in the current month
 ;;
 ;;    [:time-interval [:field 100 nil] :current :month]
 ;;
@@ -910,7 +907,7 @@
 ;;
 ;; SUGAR: This is automatically rewritten as a filter clause with a relative-datetime value
 (defclause ^:sugar time-interval
-  field   Field
+  field   ::Field
   n       [:or
            :int
            [:enum :current :last :next]]
@@ -918,12 +915,12 @@
   options (optional TimeIntervalOptions))
 
 (defclause ^:sugar during
-  field   Field
+  field   ::Field
   value   [:or ::lib.schema.literal/date ::lib.schema.literal/datetime]
   unit    ::DateTimeUnit)
 
 (defclause ^:sugar relative-time-interval
-  col           Field
+  col           ::Field
   value         :int
   bucket        [:ref ::RelativeDatetimeUnit]
   offset-value  :int
@@ -965,7 +962,7 @@
    [:boolean  BooleanExpression]
    [:value    value]
    [:segment  segment]
-   [:else     Field]])
+   [:else     ::Field]])
 
 (def ^:private CaseClause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
@@ -1019,7 +1016,7 @@
    [:if       case:if]
    [:offset   offset]
    [:value    value]
-   [:else     Field]])
+   [:else     ::Field]])
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 
@@ -1027,8 +1024,8 @@
 
 ;; cum-sum and cum-count are SUGAR because they're implemented in middleware. The clauses are swapped out with
 ;; `count` and `sum` aggregations respectively and summation is done in Clojure-land
-(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar count,     field (optional Field))
-(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar cum-count, field (optional Field))
+(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar count,     field (optional ::Field))
+(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar cum-count, field (optional ::Field))
 
 ;; technically aggregations besides count can also accept expressions as args, e.g.
 ;;
@@ -1293,7 +1290,7 @@
    [:temporal-unit [:ref ::TemplateTag:TemporalUnit]]
    [::mc/default   [:ref ::TemplateTag:RawValue]]])
 
-(def TemplateTag
+(mr/def ::TemplateTag
   "Alias for ::TemplateTag; prefer that going forward."
   [:ref ::TemplateTag])
 (letfn [(f [m]
@@ -1317,7 +1314,7 @@
    ;; collection (table) this query should run against. Needed for MongoDB
    [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
-(def NativeQuery
+(mr/def ::NativeQuery
   "Schema for a valid, normalized native [inner] query."
   [:merge
    NativeQuery:Common
@@ -1332,11 +1329,7 @@
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
 
-(def MBQLQuery
-  "Schema for a valid, normalized MBQL [inner] query."
-  [:ref ::MBQLQuery])
-
-(def SourceQuery
+(mr/def ::SourceQuery
   "Schema for a valid value for a `:source-query` clause."
   [:multi
    {:dispatch (fn [x]
@@ -1347,7 +1340,7 @@
    ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
    ;; queries).
    [:native [:ref ::NativeSourceQuery]]
-   [:mbql   MBQLQuery]])
+   [:mbql   ::MBQLQuery]])
 
 (mr/def ::SourceQueryMetadata
   "Schema for the expected keys for a single column in `:source-metadata` (`:source-metadata` is a sequence of these
@@ -1366,7 +1359,7 @@
    ;; you'll need to provide this in order to use BINNING
    [:fingerprint   {:optional true} [:maybe :map]]])
 
-(def SourceQueryMetadata
+(mr/def ::SourceQueryMetadata
   "Alias for ::SourceQueryMetadata -- prefer that instead."
   ;; TODO - there is a very similar schema in `metabase.analyze.query-results`; see if we can merge them
   [:ref ::SourceQueryMetadata])
@@ -1388,21 +1381,18 @@
   "Valid values of the `:strategy` key in a join map."
   #{:left-join :right-join :inner-join :full-join})
 
-(def JoinStrategy
+(mr/def ::JoinStrategy
   "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
   These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
   driver supports `:full-join` before generating a Join clause using that strategy."
   (into [:enum] join-strategies))
 
-(def Fields
-  "Schema for valid values of the MBQL `:fields` clause."
-  [:ref ::Fields])
 
 (def ^:private JoinFields
   [:or
    {:error/message "Valid join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`."}
    [:enum :all :none]
-   Fields])
+   ::Fields])
 
 (mr/def ::Join
   "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly
@@ -1500,22 +1490,23 @@
      (some-fn :source-table :source-query)
      (complement (every-pred :source-table :source-query)))]])
 
-(def Join
+(mr/def ::Join
   "Alias for ::Join. Prefer that going forward."
   [:ref ::Join])
 
 (mr/def ::Joins
   "Schema for a valid sequence of `Join`s. Must be a non-empty sequence, and `:alias`, if specified, must be unique."
   [:and
-   (helpers/non-empty [:sequential Join])
+   (helpers/non-empty [:sequential ::Join])
    [:fn
     {:error/message "All join aliases must be unique."}
     #(helpers/empty-or-distinct? (filter some? (map :alias %)))]])
 
 (mr/def ::Fields
+  "Schema for valid values of the MBQL `:fields` clause."
   [:schema
    {:error/message "Distinct, non-empty sequence of Field clauses"}
-   (helpers/distinct [:sequential {:min 1} Field])])
+   (helpers/distinct [:sequential {:min 1} ::Field])])
 
 (mr/def ::Page
   "`page` = page num, starting with 1. `items` = number of items per page.
@@ -1561,9 +1552,9 @@
      [:map
       [:source-query       {:optional true} SourceQuery]
       [:source-table       {:optional true} SourceTable]
-      [:aggregation        {:optional true} [:sequential {:min 1} Aggregation]]
+      [:aggregation        {:optional true} [:sequential {:min 1} ::Aggregation]]
       [:aggregation-idents {:optional true} [:ref ::IndexedIdents]]
-      [:breakout           {:optional true} [:sequential {:min 1} Field]]
+      [:breakout           {:optional true} [:sequential {:min 1} ::Field]]
       [:breakout-idents    {:optional true} [:ref ::IndexedIdents]]
       [:expressions        {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
       [:expression-idents  {:optional true} [:ref ::ExpressionIdents]]
@@ -1631,9 +1622,9 @@
 (def ^:private ParameterTarget
   "Schema for the value of `:target` in a [[Parameter]]."
   ;; not 100% sure about this but `field` on its own comes from a Dashboard parameter and when it's wrapped in
-  ;; `dimension` it comes from a Field filter template tag parameter (don't quote me on this -- working theory)
+  ;; `dimension` it comes from a ::Field filter template tag parameter (don't quote me on this -- working theory)
   [:or
-   Field
+   ::Field
    (one-of dimension variable)])
 
 (mr/def ::Parameter
@@ -1644,14 +1635,14 @@
    [:map
     [:target {:optional true} ParameterTarget]]])
 
-(def Parameter
+(mr/def ::Parameter
   "Alias for ::Parameter. Prefer using that directly going forward."
   [:ref ::Parameter])
 
 (mr/def ::ParameterList
   [:maybe [:sequential Parameter]])
 
-(def ParameterList
+(mr/def ::ParameterList
   "Schema for a list of `:parameters` as passed in to a query."
   [:ref ::ParameterList])
 
@@ -1795,10 +1786,6 @@
   [:fn
    {:error/message "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)"}
    (complement :source-metadata)])
-
-(def Query
-  "Schema for an [outer] query, e.g. the sort of thing you'd pass to the query processor or save in `Card.dataset_query`."
-  [:ref ::Query])
 
 (mr/def ::Query
   [:and

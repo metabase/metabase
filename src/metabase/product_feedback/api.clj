@@ -11,9 +11,9 @@
 
 (mu/defn send-feedback!
   "Sends the feedback to the api endpoint"
-  [comments :- [:maybe ms/NonBlankString]
-   source :- ms/NonBlankString
-   email :- [:maybe ms/NonBlankString]]
+  [comments :- [:maybe ::ms/NonBlankString]
+   source :- ::ms/NonBlankString
+   email :- [:maybe ::ms/NonBlankString]]
   (try
     (http/post (or product-feedback.settings/product-feedback-url
                    ;; this error should mostly be dev-facing
@@ -32,9 +32,9 @@
   [_route-params
    _query-params
    {:keys [comments source email]} :- [:map
-                                       [:comments {:optional true} [:maybe ms/NonBlankString]]
-                                       [:source   ms/NonBlankString]
-                                       [:email    {:optional true} [:maybe ms/NonBlankString]]]]
+                                       [:comments {:optional true} [:maybe ::ms/NonBlankString]]
+                                       [:source   ::ms/NonBlankString]
+                                       [:email    {:optional true} [:maybe ::ms/NonBlankString]]]]
   (future (send-feedback! comments source email))
   api/generic-204-no-content)
 

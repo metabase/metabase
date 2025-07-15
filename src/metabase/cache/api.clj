@@ -25,8 +25,8 @@
 (mr/def ::cache-strategy.ttl
   [:map {:closed true}
    [:type            [:= :ttl]]
-   [:multiplier      ms/PositiveInt]
-   [:min_duration_ms ms/IntGreaterThanOrEqualToZero]])
+   [:multiplier      ::ms/PositiveInt]
+   [:min_duration_ms ::ms/IntGreaterThanOrEqualToZero]])
 
 (mr/def ::cache-strategy.oss
   "Schema for a caching strategy (OSS)"
@@ -39,14 +39,14 @@
 (mr/def ::cache-strategy.ee.duration
   [:map {:closed true}
    [:type                  [:= :duration]]
-   [:duration              ms/PositiveInt]
+   [:duration              ::ms/PositiveInt]
    [:unit                  [:enum "hours" "minutes" "seconds" "days"]]
    [:refresh_automatically {:optional true} [:maybe :boolean]]])
 
 (mr/def ::cache-strategy.ee.schedule
   [:map {:closed true}
    [:type                  [:= :schedule]]
-   [:schedule              u.cron/CronScheduleString]
+   [:schedule              ::u.cron/CronScheduleString]
    [:refresh_automatically {:optional true} [:maybe :boolean]]])
 
 (mr/def ::cache-strategy.ee
@@ -105,11 +105,11 @@
   [_route-params
    {:keys [model collection id]}
    :- [:map
-       [:model      {:default ["root"]} (mu/with (ms/QueryVectorOf cache-config/CachingModel)
+       [:model      {:default ["root"]} (mu/with (ms/QueryVectorOf ::cache-config/CachingModel)
                                                  {:description "Type of model"})]
-       [:collection {:optional true} (mu/with [:maybe ms/PositiveInt]
+       [:collection {:optional true} (mu/with [:maybe ::ms/PositiveInt]
                                               {:description "Collection id to filter results. Returns everything if not supplied."})]
-       [:id         {:optional true} (mu/with [:maybe ms/PositiveInt]
+       [:id         {:optional true} (mu/with [:maybe ::ms/PositiveInt]
                                               {:description "Model id to get configuration for."})]]]
   (when (and (not (premium-features/enable-cache-granular-controls?))
              (not= model ["root"]))
@@ -122,8 +122,8 @@
   [_route-params
    _query-params
    {:keys [model model_id] :as config} :- [:map
-                                           [:model    cache-config/CachingModel]
-                                           [:model_id ms/IntGreaterThanOrEqualToZero]
+                                           [:model    ::cache-config/CachingModel]
+                                           [:model_id ::ms/IntGreaterThanOrEqualToZero]
                                            [:strategy ::cache-strategy]]]
   (assert-valid-models model [model_id] (premium-features/enable-cache-granular-controls?))
   (check-cache-access model model_id)
@@ -135,7 +135,7 @@
    _query-params
    {:keys [model model_id]} :- [:map
                                 [:model    cache-config/CachingModel]
-                                [:model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]
+                                [:model_id (ms/QueryVectorOf ::ms/IntGreaterThanOrEqualToZero)]]]
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
   (doseq [id model_id] (check-cache-access model id))
   (cache-config/delete! api/*current-user-id* model model_id)
@@ -155,11 +155,11 @@
        [:include   {:optional true} [:maybe {:description "All cache configuration overrides should invalidate cache too"}
                                      [:= :overrides]]]
        [:database  {:optional true} [:maybe {:description "A list of database ids"}
-                                     (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+                                     (ms/QueryVectorOf ::ms/IntGreaterThanOrEqualToZero)]]
        [:dashboard {:optional true} [:maybe {:description "A list of dashboard ids"}
-                                     (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+                                     (ms/QueryVectorOf ::ms/IntGreaterThanOrEqualToZero)]]
        [:question  {:optional true} [:maybe {:description "A list of question ids"}
-                                     (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+                                     (ms/QueryVectorOf ::ms/IntGreaterThanOrEqualToZero)]]]]
   (when-not (premium-features/enable-cache-granular-controls?)
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
 

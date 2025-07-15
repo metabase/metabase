@@ -27,7 +27,7 @@
   You should only use this function for places where you are not using HoneySQL, such as queries written directly in
   SQL. For HoneySQL forms, `Identifier` is converted to SQL automatically when it is compiled."
   [driver          :- :keyword
-   identifier-type :- h2x/IdentifierType
+   identifier-type :- ::h2x/IdentifierType
    & components]
   (first
    (sql.qp/format-honeysql driver (apply h2x/identifier identifier-type components))))
@@ -51,7 +51,7 @@
 
      (increment-identifier :my_col)   ; -> :my_col_2
      (increment-identifier :my_col_2) ; -> :my_col_3"
-  [[_tag identifier-type components] :- h2x/Identifier]
+  [[_tag identifier-type components] :- ::h2x/Identifier]
   (let [components' (concat
                      (butlast components)
                      [(increment-identifier-string (u/qualified-name (last components)))])]

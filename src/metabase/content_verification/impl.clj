@@ -5,7 +5,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(def moderated-item-types
+(def ModeratedItemTypes
   "Schema enum of the acceptable values for the `moderated_item_type` column"
   [:enum "card" :card "dashboard" :dashboard])
 

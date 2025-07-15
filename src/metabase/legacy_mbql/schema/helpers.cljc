@@ -88,7 +88,7 @@
             [:ref schema]
             schema)])))
 
-(def KeywordOrString
+(mr/def ::KeywordOrString
   "Schema for any keyword or string."
   [:or :keyword :string])
 

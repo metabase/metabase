@@ -25,7 +25,7 @@
        (remove #(#{:sensitive :retired} (:visibility-type %)))
        (sort-by (juxt :position (comp u/lower-case-en :name)))))
 
-(mu/defn sorted-implicit-fields-for-table :- mbql.s/Fields
+(mu/defn sorted-implicit-fields-for-table :- ::mbql.s/Fields
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
   in [[metabase.query-processor.sort]], for all the Fields in a given Table."
   [table-id :- ::lib.schema.id/table]
@@ -52,9 +52,9 @@
                       (into (filter (comp (some-fn :binning :temporal-unit) #(get % 2))) field-refs)))
                   #{})))
 
-(mu/defn- source-metadata->fields :- mbql.s/Fields
+(mu/defn- source-metadata->fields :- ::mbql.s/Fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
-  [source-metadata :- [:sequential {:min 1} mbql.s/SourceQueryMetadata]]
+  [source-metadata :- [:sequential {:min 1} ::mbql.s/SourceQueryMetadata]]
   ;; We want to allow columns to be bucketed or binned in several different ways.
   ;; Such columns would be collapsed into a single column if referenced by ID,
   ;; so we make sure that they get a reference by name, which is unique.
@@ -105,7 +105,7 @@
   *  The query has no aggregations"
   [{:keys        [fields source-table source-query source-metadata]
     breakouts    :breakout
-    aggregations :aggregation} :- mbql.s/MBQLQuery]
+    aggregations :aggregation} :- ::mbql.s/MBQLQuery]
   ;; if someone is trying to include an explicit `source-query` but isn't specifiying `source-metadata` warn that
   ;; there's nothing we can do to help them
   (when (and source-query

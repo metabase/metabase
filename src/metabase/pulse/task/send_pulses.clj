@@ -70,12 +70,12 @@
   "Build a Quartz trigger to send a pulse to a list of channel-ids."
   ^CronTrigger
   ([pulse-id     :- pos-int?
-    schedule-map :- u.cron/ScheduleMap
+    schedule-map :- ::u.cron/ScheduleMap
     pc-ids       :- [:set pos-int?]
     timezone     :- :string]
    (send-pulse-trigger pulse-id schedule-map pc-ids timezone 6))
   ([pulse-id     :- pos-int?
-    schedule-map :- u.cron/ScheduleMap
+    schedule-map :- ::u.cron/ScheduleMap
     pc-ids       :- [:set pos-int?]
     timezone     :- :string
     priority     :- pos-int?]

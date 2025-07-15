@@ -59,7 +59,7 @@
 (api.macros/defendpoint :get "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards ordered by interestingness."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (-> (t2/select-one :model/Database :id id)
       api/read-check
       automagic-dashboards.core/candidate-tables))
@@ -283,7 +283,7 @@
   "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."
   [{:keys [entity entity-id-or-query prefix dashboard-template]} :- [:map
                                                                      [:entity             Entity]
-                                                                     [:entity-id-or-query ms/NonBlankString]
+                                                                     [:entity-id-or-query ::ms/NonBlankString]
                                                                      [:prefix             Prefix]
                                                                      [:dashboard-template DashboardTemplate]]
    {:keys [show]} :- [:map
@@ -297,7 +297,7 @@
   `cell-query`."
   [{:keys [entity entity-id-or-query cell-query]} :- [:map
                                                       [:entity             Entity]
-                                                      [:entity-id-or-query ms/NonBlankString]
+                                                      [:entity-id-or-query ::ms/NonBlankString]
                                                       [:cell-query         Base64EncodedJSON]]
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
@@ -310,7 +310,7 @@
   dashboard-template `dashboard-template`."
   [{:keys [entity entity-id-or-query cell-query prefix dashboard-template]} :- [:map
                                                                                 [:entity             Entity]
-                                                                                [:entity-id-or-query ms/NonBlankString]
+                                                                                [:entity-id-or-query ::ms/NonBlankString]
                                                                                 [:prefix             Prefix]
                                                                                 [:dashboard-template DashboardTemplate]
                                                                                 [:cell-query         Base64EncodedJSON]]
@@ -326,7 +326,7 @@
   with id `comparison-entity-id-or-query.`"
   [{:keys [entity entity-id-or-query comparison-entity
            comparison-entity-id-or-query]} :- [:map
-                                               [:entity-id-or-query ms/NonBlankString]
+                                               [:entity-id-or-query ::ms/NonBlankString]
                                                [:entity             Entity]
                                                [:comparison-entity  ComparisonEntity]]
    {:keys [show]} :- [:map
@@ -344,7 +344,7 @@
   [{:keys [entity entity-id-or-query prefix dashboard-template
            comparison-entity comparison-entity-id-or-query]} :- [:map
                                                                  [:entity             Entity]
-                                                                 [:entity-id-or-query ms/NonBlankString]
+                                                                 [:entity-id-or-query ::ms/NonBlankString]
                                                                  [:prefix             Prefix]
                                                                  [:dashboard-template DashboardTemplate]
                                                                  [:comparison-entity  ComparisonEntity]]
@@ -365,7 +365,7 @@
   [{:keys [entity entity-id-or-query cell-query
            comparison-entity comparison-entity-id-or-query]} :- [:map
                                                                  [:entity             Entity]
-                                                                 [:entity-id-or-query ms/NonBlankString]
+                                                                 [:entity-id-or-query ::ms/NonBlankString]
                                                                  [:cell-query         Base64EncodedJSON]
                                                                  [:comparison-entity  ComparisonEntity]]
    {:keys [show]} :- [:map
@@ -384,7 +384,7 @@
   [{:keys [entity entity-id-or-query cell-query prefix dashboard-template
            comparison-entity comparison-entity-id-or-query]} :- [:map
                                                                  [:entity             Entity]
-                                                                 [:entity-id-or-query ms/NonBlankString]
+                                                                 [:entity-id-or-query ::ms/NonBlankString]
                                                                  [:prefix             Prefix]
                                                                  [:dashboard-template DashboardTemplate]
                                                                  [:cell-query         Base64EncodedJSON]

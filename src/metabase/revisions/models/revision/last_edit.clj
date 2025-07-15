@@ -7,7 +7,7 @@
   This constructs `:last-edit-info`, a map with keys `:timestamp`, `:id`, `:first_name`, `:last_name`, and
   `:email`. It is not a full User object (missing some superuser metadata, last login time, and a common name). This
   was done to prevent another db call and hooking up timestamps to users but this can be added if preferred."
-  (:require
+  (:require [malli.registry :as mr]
    [clj-time.core :as time]
    [clojure.set :as set]
    [medley.core :as m]
@@ -23,12 +23,12 @@
   "Schema of the `:last-edit-info` map. A subset of a user with a timestamp indicating when the last edit was."
   [:map
    [:timestamp  [:maybe :any]]
-   [:id         [:maybe ms/PositiveInt]]
+   [:id         [:maybe ::ms/PositiveInt]]
    [:first_name [:maybe :string]]
    [:last_name  [:maybe :string]]
    [:email      [:maybe :string]]])
 
-(def MaybeAnnotated
+(mr/def ::MaybeAnnotated
   "Spec for an item annotated with last-edit-info. Items are cards or dashboards. Optional because we may not always
   have revision history for all cards/dashboards."
   [:map

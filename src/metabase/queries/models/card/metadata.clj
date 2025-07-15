@@ -104,7 +104,7 @@ saved later when it is ready."
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
   [{:keys [original-query query metadata original-metadata model? entity-id], :as options}]
   (let [valid-metadata? (and metadata
-                             (mr/validate analyze/ResultsMetadata metadata))]
+                             (mr/validate ::analyze/ResultsMetadata metadata))]
     (cond
       (or
        ;; query didn't change, preserve existing metadata

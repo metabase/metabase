@@ -110,7 +110,7 @@
    :type                  mi/transform-keyword})
 
 (defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
-  (when-not (mr/validate [:maybe [:sequential [:maybe ms/NonBlankString]]] human-readable-values)
+  (when-not (mr/validate [:maybe [:sequential [:maybe ::ms/NonBlankString]]] human-readable-values)
     (throw (ex-info (tru "Invalid human-readable-values: values must be a sequence; each item must be nil or a string")
                     {:human-readable-values human-readable-values
                      :status-code           400}))))

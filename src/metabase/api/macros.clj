@@ -481,7 +481,7 @@
      (fn [_route-params _query-params body-params-1234 _request]
        (let [body (decode-and-validate-params :body
                                               [:map
-                                               [:name ms/NonBlankString]
+                                               [:name ::ms/NonBlankString]
                                                [:default {:optional true} [:maybe :boolean]]]
                                               body-params-1234)]
          ...)))
@@ -489,7 +489,7 @@
   we're defining something closer to
 
     (let [body-schema-5678 [:map
-                            [:name ms/NonBlankString]
+                            [:name ::ms/NonBlankString]
                             [:default {:optional true} [:maybe :boolean]]]]
       (-core-fn
        (fn [_route-params _query-params body-params-1234 _request]

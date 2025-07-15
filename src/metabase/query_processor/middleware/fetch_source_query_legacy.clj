@@ -23,9 +23,9 @@
 ;; entire query
 (def ^:private SourceQueryAndMetadata
   [:map
-   [:source-query    mbql.s/SourceQuery]
+   [:source-query    ::mbql.s/SourceQuery]
    [:database        ::mbql.s/DatabaseID]
-   [:source-metadata [:maybe [:sequential mbql.s/SourceQueryMetadata]]]
+   [:source-metadata [:maybe [:sequential ::mbql.s/SourceQueryMetadata]]]
    [:source-query/model?   {:optional true} :boolean]
    [:persisted-info/native {:optional true} :string]])
 

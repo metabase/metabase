@@ -20,7 +20,7 @@
 (api.macros/defendpoint :put "/:id/attributes"
   "Update the `login_attributes` for a User."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {:keys [login_attributes]} :- [:map
                                   [:login_attributes {:optional true} [:maybe UserAttributes]]]]

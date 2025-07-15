@@ -32,7 +32,7 @@
     {:case-sensitive false}))
 
 (mu/defn- param->fields
-  [param :- mbql.s/Parameter]
+  [param :- ::mbql.s/Parameter]
   (let [op      (param-type->op (:type param))
         options (or (:options param) (param-type->default-options (:type param)))]
     (for [field-id (params/dashboard-param->field-ids param)]
@@ -40,7 +40,7 @@
        :op       op
        :options  options})))
 
-(mu/defn ^:private chain-filter-constraints :- chain-filter/Constraints
+(mu/defn ^:private chain-filter-constraints :- ::chain-filter/Constraints
   [dashboard                   :- :map
    constraint-param-key->value :- [:map-of string? any?]]
   (vec (for [[param-key value] constraint-param-key->value
@@ -83,17 +83,17 @@
                  2 second
                  1 first)))))
 
-(mu/defn chain-filter :- ms/FieldValuesResult
+(mu/defn chain-filter :- ::ms/FieldValuesResult
   "C H A I N filters!
 
   Used to query for values that populate chained filter dropdowns and text search boxes."
   ([dashboard param-key constraint-param-key->value]
    (chain-filter dashboard param-key constraint-param-key->value nil))
 
-  ([dashboard                   :- ms/Map
-    param-key                   :- ms/NonBlankString
+  ([dashboard                   :- ::ms/Map
+    param-key                   :- ::ms/NonBlankString
     constraint-param-key->value :- [:map-of string? any?]
-    query                       :- [:maybe ms/NonBlankString]]
+    query                       :- [:maybe ::ms/NonBlankString]]
    (let [dashboard   (cond-> dashboard
                        (nil? (:resolved-params dashboard)) (t2/hydrate :resolved-params))
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
@@ -131,9 +131,9 @@
    (param-values dashboard param-key constraint-param-key->value nil))
 
   ([dashboard                   :- :map
-    param-key                   :- ms/NonBlankString
+    param-key                   :- ::ms/NonBlankString
     constraint-param-key->value :- [:map-of string? any?]
-    query                       :- [:maybe ms/NonBlankString]]
+    query                       :- [:maybe ::ms/NonBlankString]]
    (let [dashboard (t2/hydrate dashboard :resolved-params)
          param     (get (:resolved-params dashboard) param-key)]
      (when-not param

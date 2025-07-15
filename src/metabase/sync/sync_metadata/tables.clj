@@ -82,8 +82,8 @@
 
 (mu/defn- update-database-metadata!
   "If there is a version in the db-metadata update the DB to have that in the DB model"
-  [database    :- i/DatabaseInstance
-   db-metadata :- i/DatabaseMetadata]
+  [database    :- ::i/DatabaseInstance
+   db-metadata :- ::i/DatabaseMetadata]
   (log/infof "Found new version for DB: %s" (:version db-metadata))
   (t2/update! :model/Database (u/the-id database)
               {:details
@@ -156,8 +156,8 @@
 
 (mu/defn- create-or-reactivate-tables!
   "Create `new-tables` for database, or if they already exist, mark them as active."
-  [database :- i/DatabaseInstance
-   new-table-metadatas :- [:set i/DatabaseMetadataTable]]
+  [database :- ::i/DatabaseInstance
+   new-table-metadatas :- [:set ::i/DatabaseMetadataTable]]
   (doseq [table-metadata new-table-metadatas]
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
@@ -166,7 +166,7 @@
 
 (mu/defn- retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
-  [database   :- i/DatabaseInstance
+  [database   :- ::i/DatabaseInstance
    old-tables :- [:set [:map
                         [:name ::lib.schema.common/non-blank-string]
                         [:schema [:maybe ::lib.schema.common/non-blank-string]]]]]
@@ -185,7 +185,7 @@
 
 (mu/defn- update-table-metadata-if-needed!
   "Update the table metadata if it has changed."
-  [table-metadata :- i/DatabaseMetadataTable
+  [table-metadata :- ::i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)
    metabase-database :- (ms/InstanceOf :model/Database)]
   (log/infof "Updating table metadata for %s" (sync-util/name-for-logging metabase-table))
@@ -218,7 +218,7 @@
       (t2/update! :model/Table (:id metabase-table) changes))))
 
 (mu/defn- update-tables-metadata-if-needed!
-  [table-metadatas :- [:set i/DatabaseMetadataTable]
+  [table-metadatas :- [:set ::i/DatabaseMetadataTable]
    metabase-tables :- [:set (ms/InstanceOf :model/Table)]
    metabase-database :- (ms/InstanceOf :model/Database)]
   (let [name+schema->table-metadata (m/index-by (juxt :name :schema) table-metadatas)
@@ -228,17 +228,17 @@
                                         (name+schema->metabase-table name+schema)
                                         metabase-database))))
 
-(mu/defn- table-set :- [:set i/DatabaseMetadataTable]
+(mu/defn- table-set :- [:set ::i/DatabaseMetadataTable]
   "So there exist tables for the user and metabase metadata tables for internal usage by metabase.
   Get set of user tables only, excluding metabase metadata tables."
-  [db-metadata :- i/DatabaseMetadata]
+  [db-metadata :- ::i/DatabaseMetadata]
   (into #{}
         (remove metabase-metadata/is-metabase-metadata-table?)
         (:tables db-metadata)))
 
 (mu/defn- db->our-metadata :- [:set (ms/InstanceOf :model/Table)]
   "Return information about what Tables we have for this DB in the Metabase application DB."
-  [database :- i/DatabaseInstance]
+  [database :- ::i/DatabaseInstance]
   (set (t2/select [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count
                    :visibility_type :initial_sync_status]
                   :db_id  (u/the-id database)
@@ -271,10 +271,10 @@
   "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's
   implementation of `describe-database`.
   Also syncs the database metadata taken from describe-database if there is any"
-  ([database :- i/DatabaseInstance]
+  ([database :- ::i/DatabaseInstance]
    (sync-tables-and-database! database (fetch-metadata/db-metadata database)))
 
-  ([database :- i/DatabaseInstance db-metadata]
+  ([database :- ::i/DatabaseInstance db-metadata]
    ;; determine what's changed between what info we have and what's in the DB
    (let [driver (driver.u/database->driver database)
          db-table-metadatas    (table-set db-metadata)

@@ -91,9 +91,9 @@
     dashboard-id         :dashboard_id
     creator-or-recipient :creator_or_recipient}
    :- [:map
-       [:archived             {:default false} [:maybe ms/BooleanValue]]
-       [:dashboard_id         {:optional true} [:maybe ms/PositiveInt]]
-       [:creator_or_recipient {:default false} [:maybe ms/BooleanValue]]]]
+       [:archived             {:default false} [:maybe ::ms/BooleanValue]]
+       [:dashboard_id         {:optional true} [:maybe ::ms/PositiveInt]]
+       [:creator_or_recipient {:default false} [:maybe ::ms/BooleanValue]]]]
   (let [creator-or-recipient creator-or-recipient
         archived?            archived
         pulses               (->> (models.pulse/retrieve-pulses {:archived?    archived?
@@ -124,13 +124,13 @@
     collection-position :collection_position
     dashboard-id        :dashboard_id}
    :- [:map
-       [:name                ms/NonBlankString]
-       [:cards               [:+ models.pulse/CoercibleToCardRef]]
+       [:name                ::ms/NonBlankString]
+       [:cards               [:+ ::models.pulse/CoercibleToCardRef]]
        [:channels            [:+ :map]]
        [:skip_if_empty       {:default false} [:maybe :boolean]]
-       [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
-       [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-       [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
+       [:collection_id       {:optional true} [:maybe ::ms/PositiveInt]]
+       [:collection_position {:optional true} [:maybe ::ms/PositiveInt]]
+       [:dashboard_id        {:optional true} [:maybe ::ms/PositiveInt]]
        [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
   (perms/check-has-application-permission :subscription false)
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
@@ -163,7 +163,7 @@
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
   we still return it but with some sensitive metadata removed."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/let-404 [pulse (models.pulse/retrieve-pulse id)]
     (api/check-403 (mi/can-read? pulse))
     (-> pulse
@@ -191,16 +191,16 @@
 (api.macros/defendpoint :put "/:id"
   "Update a Pulse with `id`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {:keys [cards], :as pulse-updates} :- [:map
-                                          [:name          {:optional true} [:maybe ms/NonBlankString]]
-                                          [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
+                                          [:name          {:optional true} [:maybe ::ms/NonBlankString]]
+                                          [:cards         {:optional true} [:maybe [:+ ::models.pulse/CoercibleToCardRef]]]
                                           [:channels      {:optional true} [:maybe [:+ :map]]]
                                           [:skip_if_empty {:default false} [:maybe :boolean]]
-                                          [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                          [:collection_id {:optional true} [:maybe ::ms/PositiveInt]]
                                           [:archived      {:default false} [:maybe :boolean]]
-                                          [:parameters    {:optional true} [:maybe [:sequential ms/Map]]]]]
+                                          [:parameters    {:optional true} [:maybe [:sequential ::ms/Map]]]]]
   ;; do various perms checks
   (try
     (perms/check-has-application-permission :monitoring)
@@ -284,7 +284,7 @@
 (api.macros/defendpoint :get "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (let [card   (api/read-check :model/Card id)
         result (pulse-card-query-results card)]
     {:status 200
@@ -303,7 +303,7 @@
   allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to these
   routes at the bottom of this namespace using `metabase.api.common/define-routes`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/read-check :model/Dashboard id)
   {:status  200
    :headers {"Content-Type" "text/html"}
@@ -320,7 +320,7 @@
 (api.macros/defendpoint :get "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (let [card      (api/read-check :model/Card id)
         result    (pulse-card-query-results card)
         data      (:data result)
@@ -342,7 +342,7 @@
 (api.macros/defendpoint :get "/preview_card_png/:id"
   "Get PNG rendering of a Card with `id`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (let [card   (api/read-check :model/Card id)
         result (pulse-card-query-results card)
         ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
@@ -357,13 +357,13 @@
   [_route-params
    _query-params
    {:keys [cards channels] :as body} :- [:map
-                                         [:name                ms/NonBlankString]
+                                         [:name                ::ms/NonBlankString]
                                          [:cards               [:+ models.pulse/CoercibleToCardRef]]
                                          [:channels            [:+ :map]]
                                          [:skip_if_empty       {:default false} [:maybe :boolean]]
-                                         [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
-                                         [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]]]
+                                         [:collection_id       {:optional true} [:maybe ::ms/PositiveInt]]
+                                         [:collection_position {:optional true} [:maybe ::ms/PositiveInt]]
+                                         [:dashboard_id        {:optional true} [:maybe ::ms/PositiveInt]]]]
   ;; Check permissions on cards that exist. Placeholders and iframes don't matter.
   (check-card-read-permissions
    (remove (fn [{:keys [id display]}]
@@ -380,7 +380,7 @@
 (api.macros/defendpoint :delete "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/let-404 [pulse-id (t2/select-one-pk :model/Pulse :id id)
                 pc-id    (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id :channel_type "email")
                 pcr-id   (t2/select-one-pk :model/PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]

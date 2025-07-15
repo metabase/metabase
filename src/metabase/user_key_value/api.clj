@@ -13,8 +13,8 @@
 (api.macros/defendpoint :put "/namespace/:namespace/key/:key"
   "Upsert a KV-pair for the user"
   [{nmspace :namespace, k :key} :- [:map
-                                    [:key       ms/NonBlankString]
-                                    [:namespace ms/NonBlankString]]
+                                    [:key       ::ms/NonBlankString]
+                                    [:namespace ::ms/NonBlankString]]
    _query-params
    {v :value, expires-at :expires_at} :- [:map
                                           [:value      {:optional true} :any]
@@ -38,14 +38,14 @@
 (api.macros/defendpoint :get "/namespace/:namespace/key/:key"
   "Get a value for the user"
   [{nmspace :namespace, k :key} :- [:map
-                                    [:key       ms/NonBlankString]
-                                    [:namespace ms/NonBlankString]]]
+                                    [:key       ::ms/NonBlankString]
+                                    [:namespace ::ms/NonBlankString]]]
   (user-key-value/retrieve api/*current-user-id* nmspace k))
 
 (api.macros/defendpoint :get "/namespace/:namespace"
   "Returns all KV pairs in a given namespace for the current user"
   [{nmspace :namespace} :- [:map
-                            [:namespace ms/NonBlankString]]]
+                            [:namespace ::ms/NonBlankString]]]
   (user-key-value/retrieve-all api/*current-user-id* nmspace))
 
 (api.macros/defendpoint :delete "/namespace/:namespace/key/:key"

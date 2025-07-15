@@ -22,9 +22,9 @@
        (log/errorf e# "Error while fetching metdata with '%s'" ~function-name)
        (throw e#))))
 
-(mu/defn db-metadata :- i/DatabaseMetadata
+(mu/defn db-metadata :- ::i/DatabaseMetadata
   "Get basic Metadata about a `database` and its Tables. Doesn't include information about the Fields."
-  [database :- i/DatabaseInstance]
+  [database :- ::i/DatabaseInstance]
   (log-if-error "db-metadata"
     (driver/describe-database (driver.u/database->driver database) database)))
 
@@ -36,12 +36,12 @@
       (driver.u/supports? driver :nested-field-columns database)
       (set/union ((requiring-resolve 'metabase.driver.sql-jdbc.sync/describe-nested-field-columns) driver database table)))))
 
-(mu/defn table-fields-metadata :- [:set i/TableMetadataField]
+(mu/defn table-fields-metadata :- [:set ::i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
   implementation of [[driver/describe-table]], or [[driver/describe-fields]] if implemented. Also includes nested field
   column metadata."
-  [database :- i/DatabaseInstance
-   table    :- i/TableInstance]
+  [database :- ::i/DatabaseInstance
+   table    :- ::i/TableInstance]
   (log-if-error "table-fields-metadata"
     (let [driver (driver.u/database->driver database)
           result (if (driver.u/supports? driver :describe-fields database)
@@ -67,7 +67,7 @@
   "Effectively a wrapper for [[metabase.driver/describe-fields]] that also validates the output against the schema.
   If the driver doesn't support [[metabase.driver/describe-fields]] it uses [[driver/describe-table]] instead.
   This will be deprecated in "
-  [database :- i/DatabaseInstance & {:as args}]
+  [database :- ::i/DatabaseInstance & {:as args}]
   (log-if-error "fields-metadata"
     (let [driver             (driver.u/database->driver database)
           describe-fields-fn (if (driver.u/supports? driver :describe-fields database)
@@ -80,7 +80,7 @@
       (cond->> (describe-fields-fn driver database args)
         ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
         (mu.fn/instrument-ns? *ns*)
-        (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))))
+        (eduction (map #(mu.fn/validate-output {} ::i/FieldMetadataEntry %)))))))
 
 (defn- describe-fks-using-describe-table-fks
   "Replaces [[metabase.driver/describe-fks]] for drivers that haven't implemented it. Uses [[driver/describe-table-fks]]
@@ -103,7 +103,7 @@
   "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema.
   If the driver doesn't support [[metabase.driver/describe-fks]] it uses [[driver/describe-table-fks]] instead.
   This will be deprecated in "
-  [database :- i/DatabaseInstance & {:as args}]
+  [database :- ::i/DatabaseInstance & {:as args}]
   (log-if-error "fk-metadata"
     (let [driver (driver.u/database->driver database)]
       (when (driver.u/supports? driver :metadata/key-constraints database)
@@ -115,11 +115,11 @@
           (cond->> (describe-fks-fn driver database args)
             ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
             (mu.fn/instrument-ns? *ns*)
-            (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %)))))))))
+            (eduction (map #(mu.fn/validate-output {} ::i/FKMetadataEntry %)))))))))
 
-(mu/defn index-metadata :- [:maybe i/TableIndexMetadata]
+(mu/defn index-metadata :- [:maybe ::i/TableIndexMetadata]
   "Get information about the indexes belonging to `table`."
-  [database :- i/DatabaseInstance
-   table    :- i/TableInstance]
+  [database :- ::i/DatabaseInstance
+   table    :- ::i/TableInstance]
   (log-if-error "index-metadata"
     (driver/describe-table-indexes (driver.u/database->driver database) database table)))

@@ -41,7 +41,7 @@
 ;;  - If a user does not have any value for the permission when it is fetched, the *least* permissive value is used as a
 ;;    fallback.
 
-(def Permissions
+(mr/def ::Permissions
   "Permissions which apply to individual databases or tables."
   ;; `legacy-no-self-service` is a deprecated permission which behaves the same as `:unrestricted` but does not override
   ;; `:blocked` in other groups
@@ -51,12 +51,12 @@
    :perms/manage-table-metadata {:model :model/Table :values [:yes :no]}
    :perms/manage-database       {:model :model/Database :values [:yes :no]}})
 
-(def PermissionType
+(mr/def ::PermissionType
   "Malli spec for valid permission types."
   (into [:enum {:error/message "Invalid permission type"}]
         (keys Permissions)))
 
-(def PermissionValue
+(mr/def ::PermissionValue
   "Malli spec for a keyword that matches any value in [[Permissions]]."
   (into [:enum {:error/message "Invalid permission value"}]
         (distinct (mapcat :values (vals Permissions)))))

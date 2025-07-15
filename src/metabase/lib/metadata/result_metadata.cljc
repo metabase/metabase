@@ -34,7 +34,7 @@
   [:enum :aggregation :fields :breakout :native])
 
 (mr/def ::super-broken-legacy-field-ref
-  mbql.s/Reference)
+  ::mbql.s/Reference)
 
 (mr/def ::col
   ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they

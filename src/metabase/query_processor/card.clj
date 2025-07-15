@@ -215,7 +215,7 @@
   "Unless [[*allow-arbitrary-mbql-parameters*]] is truthy, check to make all supplied `parameters` actually match up
   with template tags in the query for Card with `card-id`."
   [card-id    :- ::lib.schema.id/card
-   parameters :- mbql.s/ParameterList]
+   parameters :- ::mbql.s/ParameterList]
   (when-not *allow-arbitrary-mbql-parameters*
     (let [template-tags (card-template-tag-parameters card-id)]
       (doseq [request-parameter parameters

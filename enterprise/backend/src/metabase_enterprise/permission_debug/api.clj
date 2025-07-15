@@ -6,7 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]))
 
-(api.macros/defendpoint :get "/" :- permission-debug.impl/DebuggerSchema
+(api.macros/defendpoint :get "/" :- ::permission-debug.impl/DebuggerSchema
   "This endpoint expects a `user_id`, a `model_id` to debug permissions against, and `action_type`.
   The type of model we are debugging against is inferred by the `action_type`.
 
@@ -66,7 +66,7 @@
     :or {}} :- [:map
                 [:user_id pos-int?]
                 [:model_id :string]
-                [:action_type permission-debug.impl/ActionType]]
+                [:action_type ::permission-debug.impl/ActionType]]
    _body]
   (permission-debug.impl/debug-permissions
    {:user-id user_id

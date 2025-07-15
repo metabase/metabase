@@ -119,10 +119,10 @@
     (assert (or (isa? semantic-type :Semantic/*)
                 (isa? semantic-type :Relation/*)))))
 
-(mu/defn- semantic-type-for-name-and-base-type :- [:maybe ms/FieldSemanticOrRelationType]
+(mu/defn- semantic-type-for-name-and-base-type :- [:maybe ::ms/FieldSemanticOrRelationType]
   "If `name` and `base-type` matches a known pattern, return the `semantic-type` we should assign to it."
-  [field-name :- ms/NonBlankString
-   base-type  :- ms/FieldType]
+  [field-name :- ::ms/NonBlankString
+   base-type  :- ::ms/FieldType]
   (let [field-name (u/lower-case-en field-name)]
     (some (fn [[name-pattern valid-base-types semantic-type]]
             (when (and (some (partial isa? base-type) valid-base-types)

@@ -6,7 +6,7 @@
      :replacement-snippet     \"= ?\"
      ;; ; any prepared statement args (values for `?` placeholders) needed for the replacement snippet
      :prepared-statement-args [#t \"2017-01-01\"]}"
-  (:require
+  (:require [malli.registry :as mr]
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -41,7 +41,7 @@
   (fn [driver x] [(driver/dispatch-on-initialized-driver driver) (class x)])
   :hierarchy #'driver/hierarchy)
 
-(def PreparedStatementSubstitution
+(mr/def ::PreparedStatementSubstitution
   "Represents the SQL string replace value (usually ?) and the typed parameter value"
   [:map
    [:sql-string   :string]
