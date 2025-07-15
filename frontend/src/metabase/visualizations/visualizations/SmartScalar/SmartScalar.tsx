@@ -161,13 +161,12 @@ export function SmartScalar({
   );
 }
 
-function ScalarPeriod({
-  period,
-  onClick,
-}: {
+interface ScalarPeriodProps {
   period: string | number | JSX.Element | null;
   onClick?: () => void;
-}) {
+}
+
+function ScalarPeriod({ period, onClick }: ScalarPeriodProps) {
   return (
     <ScalarTitleContainer data-testid="scalar-period" lines={1}>
       <Text
@@ -212,17 +211,19 @@ const Separator = ({ inTooltip }: { inTooltip?: boolean }) => {
   );
 };
 
+interface PreviousValueComparisonProps {
+  comparison: ComparisonResult;
+  width: number;
+  fontFamily: string;
+  formatOptions: ColumnSettings;
+}
+
 function PreviousValueComparison({
   comparison,
   width,
   fontFamily,
   formatOptions,
-}: {
-  comparison: ComparisonResult;
-  width: number;
-  fontFamily: string;
-  formatOptions: ColumnSettings;
-}) {
+}: PreviousValueComparisonProps) {
   const fontSize = "0.875rem";
 
   const {

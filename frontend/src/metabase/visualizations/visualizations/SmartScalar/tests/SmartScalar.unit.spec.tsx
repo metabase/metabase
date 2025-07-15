@@ -16,6 +16,8 @@ import {
 
 registerVisualizations();
 
+const createMockInsights = (insights: Partial<Insight>[]) => insights;
+
 const setup = (series: Series, width = 800) =>
   renderWithProviders(<Visualization rawSeries={series} width={width} />);
 
@@ -26,7 +28,7 @@ describe("SmartScalar", () => {
         ["2019-10-01T00:00:00", 100],
         ["2019-11-01T00:00:00", 120],
       ];
-      const insights = [{ unit: "month", col: "Count" }] as Insight[];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
       setup(series({ rows, insights }));
 
@@ -41,7 +43,7 @@ describe("SmartScalar", () => {
         ["2019-10-01T00:00:00", 100],
         ["2019-11-01T00:00:00", 120],
       ];
-      const insights = [{ unit: "month", col: "Count" }] as Insight[];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
       setup(series({ rows, insights }));
 
@@ -57,7 +59,7 @@ describe("SmartScalar", () => {
         ["2019-10-01T00:00:00", 0],
         ["2019-11-01T00:00:00", 100],
       ];
-      const insights = [{ unit: "month", col: "Count" }] as Insight[];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
       setup(series({ rows, insights }), 400);
 
@@ -75,7 +77,7 @@ describe("SmartScalar", () => {
         ["2019-10-01T00:00:00", 100],
         ["2019-11-01T00:00:00", 80],
       ];
-      const insights = [{ unit: "month", col: "Count" }] as Insight[];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
       setup(series({ rows, insights }));
 
@@ -95,7 +97,7 @@ describe("SmartScalar", () => {
         ["2019-10-01T00:00:00", 0],
         ["2019-11-01T00:00:00", -100],
       ];
-      const insights = [{ unit: "month", col: "Count" }] as Insight[];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
       setup(series({ rows, insights }), 400);
 
@@ -113,7 +115,7 @@ describe("SmartScalar", () => {
         ["2019-10-01T00:00:00", 100],
         ["2019-11-01T00:00:00", 100],
       ];
-      const insights = [{ unit: "month", col: "Count" }] as Insight[];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
       setup(series({ rows, insights }), 400);
 
@@ -128,7 +130,7 @@ describe("SmartScalar", () => {
         ["2019-10-01T00:00:00", null],
         ["2019-11-01T00:00:00", 100],
       ];
-      const insights = [{ unit: "month", col: "Count" }] as Insight[];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
       setup(series({ rows, insights }), 400);
 
@@ -151,7 +153,7 @@ describe("SmartScalar", () => {
         ["2019-10-01T00:00:00", 100],
         ["2019-11-01T00:00:00", 81005],
       ];
-      const insights = [{ unit: "month", col: "Count" }] as Insight[];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
       setup(series({ rows, insights }), width);
 
@@ -164,7 +166,7 @@ describe("SmartScalar", () => {
         ["2019-10-01T00:00:00", 100],
         ["2019-11-01T00:00:00", 810750.54],
       ];
-      const insights = [{ unit: "month", col: "Count" }] as Insight[];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
       setup(series({ rows, insights }), width);
 
@@ -176,7 +178,7 @@ describe("SmartScalar", () => {
         ["2019-10-01T00:00:00", 50],
         ["2019-11-01T00:00:00", 100],
       ];
-      const insights = [{ unit: "month", col: "Count" }] as Insight[];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
       setup(series({ rows, insights }), 50);
 
@@ -213,10 +215,10 @@ describe("SmartScalar", () => {
       ["2019-10-01T00:00:00", 100, 200],
       ["2019-11-01T00:00:00", 120, 220],
     ];
-    const insights = [
+    const insights = createMockInsights([
       { unit: "month", col: "Count" },
       { unit: "month", col: "Sum" },
-    ] as Insight[];
+    ]);
 
     it("should use first non-date column (Count) by default", () => {
       setup(
@@ -259,7 +261,7 @@ describe("SmartScalar", () => {
           ["2019-10-01T00:00:00", null],
           ["2019-11-01T00:00:00", 100],
         ];
-        const insights = [{ unit: "month", col: "Count" }] as Insight[];
+        const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
         setup(
           series({ rows, insights, comparisonType: PREVIOUS_VALUE_COMPARISON }),
@@ -277,7 +279,7 @@ describe("SmartScalar", () => {
           ["2019-10-01T00:00:00", null],
           ["2019-11-01T00:00:00", 100],
         ];
-        const insights = [{ unit: "month", col: "Count" }] as Insight[];
+        const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
         setup(
           series({ rows, insights, comparisonType: PREVIOUS_VALUE_COMPARISON }),
@@ -299,7 +301,7 @@ describe("SmartScalar", () => {
           ["2019-10-01T00:00:00", null],
           ["2019-11-01T00:00:00", 100],
         ];
-        const insights = [{ unit: "month", col: "Count" }] as Insight[];
+        const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
         setup(
           series({
@@ -324,7 +326,7 @@ describe("SmartScalar", () => {
         ["2019-10-01T00:00:00", 100],
         ["2019-11-01T00:00:00", 120],
       ];
-      const insights = [{ unit: "month", col: "Count" }] as Insight[];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
       setup(
         series({
@@ -349,7 +351,7 @@ describe("SmartScalar", () => {
       ["2019-11-01T00:00:00", 100],
       ["2019-12-01T00:00:00", null],
     ];
-    const insights = [{ unit: "month", col: "Count" }] as Insight[];
+    const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
     setup(
       series({
