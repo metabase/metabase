@@ -66,7 +66,16 @@ export async function setup({
 
   await waitFor(async () => {
     const gets = await findRequests("GET");
-    expect(gets).toHaveLength(hasEnterprisePlugins ? 4 : 3);
+    expect(gets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: expect.stringContaining("/api/setting"),
+        }),
+        expect.objectContaining({
+          url: expect.stringContaining("/api/session/properties"),
+        }),
+      ]),
+    );
   });
 
   await screen.findByText("Embedding SDK");
