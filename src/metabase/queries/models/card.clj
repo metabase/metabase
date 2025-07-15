@@ -1346,18 +1346,19 @@
   [{:keys [dataset_query]}]
   (if (nil? dataset_query)
     (json/encode [])
-    (let [dataset-query     (json/decode+kw dataset_query)
-          metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
-          lib-query         (lib/query metadata-provider dataset-query)
-          columns           (lib/returned-columns lib-query)
+    (lib.metadata.jvm/with-metadata-provider-cache
+      (let [dataset-query     (json/decode+kw dataset_query)
+            metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
+            lib-query         (lib/query metadata-provider dataset-query)
+            columns           (lib/returned-columns lib-query)
           ;; Dimensions are columns that are not aggregations
-          dimensions        (remove (comp #{:source/aggregations} :lib/source) columns)
-          dim-ids           (->> dimensions
-                                 (remove lib.types/temporal?)
-                                 (filter :id)
-                                 (map :id)
-                                 (sort))]
-      (json/encode (or dim-ids [])))))
+            dimensions        (remove (comp #{:source/aggregations} :lib/source) columns)
+            dim-ids           (->> dimensions
+                                   (remove lib.types/temporal?)
+                                   (filter :id)
+                                   (map :id)
+                                   (sort))]
+        (json/encode (or dim-ids []))))))
 
 (def ^:private base-search-spec
   {:model        :model/Card
