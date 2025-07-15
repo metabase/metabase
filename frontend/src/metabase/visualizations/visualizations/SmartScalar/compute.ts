@@ -4,15 +4,73 @@ import _ from "underscore";
 
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import { formatValue } from "metabase/lib/formatting/value";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import { isEmpty } from "metabase/lib/validate";
 import { computeChange } from "metabase/visualizations/lib/numeric";
+import type {
+  ColorGetter,
+  ColumnSettings,
+} from "metabase/visualizations/types";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import * as Lib from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
+import type {
+  DatasetColumn,
+  DatasetQuery,
+  DateTimeAbsoluteUnit,
+  RowValue,
+  RowValues,
+  Series,
+  SmartScalarComparison,
+  SmartScalarComparisonAnotherColumn,
+  SmartScalarComparisonPeriodsAgo,
+  SmartScalarComparisonPreviousPeriod,
+  SmartScalarComparisonStaticNumber,
+  VisualizationSettings,
+} from "metabase-types/api";
+import type { Insight } from "metabase-types/api/insight";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
-export function computeTrend(series, insights, settings, { getColor }) {
+export type ComparisonResult = {
+  changeArrowIconName: ChangeArrowType | undefined;
+  changeColor: string | undefined;
+  changeType: ChangeType;
+  comparisonDescStr: string | undefined;
+  comparisonValue: RowValue | undefined;
+  display: {
+    percentChange: string;
+    comparisonValue: string | number | JSX.Element | null;
+  };
+  percentChange: number | undefined;
+};
+
+interface DateUnitSettings {
+  dateColumn: DatasetColumn;
+  dateColumnSettings: ColumnSettings;
+  dateUnit?: DateTimeAbsoluteUnit;
+  queryType: DatasetQuery["type"];
+}
+
+interface MetricData {
+  clicked: Lib.ClickObject;
+  date: string;
+  dateUnitSettings: DateUnitSettings;
+  formatOptions: ColumnSettings;
+  indexData: {
+    dimensionColIndex: number;
+    metricColIndex: number;
+    latestRowIndex: number;
+  };
+  value: RowValue;
+}
+
+export function computeTrend(
+  series: Series,
+  insights: Insight[] | null | undefined,
+  settings: VisualizationSettings,
+  { getColor }: { getColor: ColorGetter },
+) {
   try {
     const comparisons = settings["scalar.comparisons"] || [];
     const currentMetricData = getCurrentMetricData({
@@ -49,7 +107,7 @@ export function computeTrend(series, insights, settings, { getColor }) {
     };
   } catch (error) {
     return {
-      error,
+      error: error as Error,
     };
   }
 }
@@ -60,7 +118,13 @@ function buildComparisonObject({
   series,
   settings,
   getColor,
-}) {
+}: {
+  comparison: SmartScalarComparison;
+  currentMetricData: MetricData;
+  series: Series;
+  settings: VisualizationSettings;
+  getColor: ColorGetter;
+}): ComparisonResult {
   const { formatOptions, value } = currentMetricData;
 
   const { comparisonDescStr, comparisonValue } =
@@ -85,7 +149,7 @@ function buildComparisonObject({
     percentChange,
   });
 
-  const changeColor = !isEmpty(changeArrowIconName)
+  const changeColor = changeArrowIconName
     ? getArrowColor(
         changeArrowIconName,
         settings["scalar.switch_positive_negative"],
@@ -107,7 +171,15 @@ function buildComparisonObject({
   };
 }
 
-function computeComparison({ comparison, currentMetricData, series }) {
+function computeComparison({
+  comparison,
+  currentMetricData,
+  series,
+}: {
+  comparison: SmartScalarComparison;
+  currentMetricData: MetricData;
+  series: Series;
+}) {
   const { type } = comparison;
 
   if (type === COMPARISON_TYPES.ANOTHER_COLUMN) {
@@ -143,7 +215,15 @@ function computeComparison({ comparison, currentMetricData, series }) {
   throw Error("Invalid comparison type specified.");
 }
 
-function getCurrentMetricData({ series, insights, settings }) {
+function getCurrentMetricData({
+  series,
+  insights,
+  settings,
+}: {
+  series: Series;
+  insights: Insight[] | null | undefined;
+  settings: VisualizationSettings;
+}): MetricData {
   const [
     {
       card: {
@@ -181,7 +261,7 @@ function getCurrentMetricData({ series, insights, settings }) {
   if (latestRowIndex === -1) {
     throw Error("No rows contain a valid value.");
   }
-  const date = rows[latestRowIndex][dimensionColIndex];
+  const date = rows[latestRowIndex][dimensionColIndex] as string;
   const value = rows[latestRowIndex][metricColIndex];
 
   // get metric column metadata
@@ -191,12 +271,12 @@ function getCurrentMetricData({ series, insights, settings }) {
   );
   const dateUnit = metricInsight?.unit;
   const dateColumn = cols[dimensionColIndex];
-  const dateColummnWithUnit = { ...dateColumn };
-  dateColummnWithUnit.unit ??= dateUnit;
-  const dateColumnSettings = settings?.column?.(dateColummnWithUnit) ?? {};
+  const dateColumnWithUnit = { ...dateColumn };
+  dateColumnWithUnit.unit ??= dateUnit;
+  const dateColumnSettings = settings?.column?.(dateColumnWithUnit) ?? {};
 
-  const dateUnitSettings = {
-    dateColumn: dateColummnWithUnit,
+  const dateUnitSettings: DateUnitSettings = {
+    dateColumn: dateColumnWithUnit,
     dateColumnSettings,
     dateUnit,
     queryType,
@@ -207,7 +287,7 @@ function getCurrentMetricData({ series, insights, settings }) {
     compact: settings["scalar.compact_primary_number"],
   };
 
-  const clicked = {
+  const clicked: Lib.ClickObject = {
     value,
     column: cols[metricColIndex],
     dimensions: [
@@ -237,7 +317,15 @@ function getCurrentMetricData({ series, insights, settings }) {
   };
 }
 
-function computeTrendAnotherColumn({ comparison, currentMetricData, series }) {
+function computeTrendAnotherColumn({
+  comparison,
+  currentMetricData,
+  series,
+}: {
+  comparison: SmartScalarComparisonAnotherColumn;
+  currentMetricData: MetricData;
+  series: Series;
+}) {
   const { latestRowIndex } = currentMetricData.indexData;
   const { cols, rows } = series[0].data;
 
@@ -265,7 +353,11 @@ function computeTrendAnotherColumn({ comparison, currentMetricData, series }) {
   };
 }
 
-function computeTrendStaticValue({ comparison }) {
+function computeTrendStaticValue({
+  comparison,
+}: {
+  comparison: SmartScalarComparisonStaticNumber;
+}) {
   const { value, label } = comparison;
   return {
     comparisonDescStr: t`vs. ${label}`,
@@ -273,7 +365,13 @@ function computeTrendStaticValue({ comparison }) {
   };
 }
 
-function computeTrendPreviousValue({ currentMetricData, series }) {
+function computeTrendPreviousValue({
+  currentMetricData,
+  series,
+}: {
+  currentMetricData: MetricData;
+  series: Series;
+}) {
   const [
     {
       data: { rows },
@@ -303,6 +401,13 @@ function computeComparisonPreviousValue({
   nextValueRowIndex,
   nextDate,
   dateUnitSettings,
+}: {
+  rows: RowValues[];
+  dimensionColIndex: number;
+  metricColIndex: number;
+  nextValueRowIndex: number;
+  nextDate: string | undefined;
+  dateUnitSettings: DateUnitSettings;
 }) {
   const previousRowIndex = _.findLastIndex(rows, (row, i) => {
     if (i >= nextValueRowIndex) {
@@ -320,7 +425,7 @@ function computeComparisonPreviousValue({
     return null;
   }
 
-  const prevDate = rows[previousRowIndex][dimensionColIndex];
+  const prevDate = rows[previousRowIndex][dimensionColIndex] as string;
   const prevValue = rows[previousRowIndex][metricColIndex];
 
   const comparisonDescStr = computeComparisonStrPreviousValue({
@@ -335,7 +440,18 @@ function computeComparisonPreviousValue({
   };
 }
 
-function computeTrendPeriodsAgo({ comparison, currentMetricData, series }) {
+function computeTrendPeriodsAgo({
+  comparison,
+  currentMetricData,
+  series,
+}: {
+  comparison: (
+    | SmartScalarComparisonPreviousPeriod
+    | SmartScalarComparisonPeriodsAgo
+  ) & { value?: number };
+  currentMetricData: MetricData;
+  series: Series;
+}) {
   const [
     {
       data: { rows },
@@ -377,6 +493,14 @@ function computeComparisonPeriodsAgo({
   nextDate,
   dateUnitSettings,
   dateUnitsAgo,
+}: {
+  rows: RowValues[];
+  dimensionColIndex: number;
+  metricColIndex: number;
+  nextValueRowIndex: number;
+  nextDate: string | undefined;
+  dateUnitSettings: DateUnitSettings;
+  dateUnitsAgo: number;
 }) {
   const dateUnitDisplay = Lib.describeTemporalUnit(
     dateUnitSettings.dateUnit,
@@ -398,7 +522,7 @@ function computeComparisonPeriodsAgo({
   });
 
   const prevDate = !isEmpty(rowPeriodsAgo)
-    ? rowPeriodsAgo[dimensionColIndex]
+    ? (rowPeriodsAgo?.[dimensionColIndex] as string)
     : computedPrevDate;
   const comparisonDescStr =
     dateUnitsAgo === 1
@@ -416,7 +540,7 @@ function computeComparisonPeriodsAgo({
     };
   }
 
-  const prevValue = rowPeriodsAgo[metricColIndex];
+  const prevValue = rowPeriodsAgo?.[metricColIndex];
 
   return {
     comparisonDescStr,
@@ -432,6 +556,14 @@ function getRowOfPeriodsAgo({
   metricColIndex,
   nextValueRowIndex,
   rows,
+}: {
+  prevDate: string | undefined;
+  dateUnit: DateTimeAbsoluteUnit | undefined;
+  dateUnitsAgo: number;
+  dimensionColIndex: number;
+  metricColIndex: number;
+  nextValueRowIndex: number;
+  rows: RowValues[];
 }) {
   const targetDate = dayjs.parseZone(prevDate);
   // skip the latest element since that is our current value
@@ -449,10 +581,13 @@ function getRowOfPeriodsAgo({
 
   for (let i = searchIndexStart; i >= searchIndexEnd; i--) {
     const candidateRow = rows[i];
-    const candidateDate = dayjs.parseZone(candidateRow[dimensionColIndex]);
+    const candidateDate = dayjs.parseZone(
+      candidateRow?.[dimensionColIndex] as string | undefined,
+    );
     const candidateValue = candidateRow[metricColIndex];
 
     if (
+      dateUnit &&
       areDatesTheSame({ candidateDate, dateUnit, targetDate }) &&
       !isEmpty(candidateValue)
     ) {
@@ -469,7 +604,15 @@ function getRowOfPeriodsAgo({
   return undefined;
 }
 
-function areDatesTheSame({ candidateDate, targetDate, dateUnit }) {
+function areDatesTheSame({
+  candidateDate,
+  targetDate,
+  dateUnit,
+}: {
+  candidateDate: dayjs.Dayjs;
+  targetDate: dayjs.Dayjs;
+  dateUnit: DateTimeAbsoluteUnit;
+}) {
   if (targetDate.diff(candidateDate, dateUnit) !== 0) {
     return false;
   }
@@ -495,6 +638,10 @@ function computeComparisonStrPreviousValue({
   dateUnitSettings,
   prevDate,
   nextDate,
+}: {
+  dateUnitSettings: DateUnitSettings;
+  prevDate: string;
+  nextDate: string | undefined;
 }) {
   const isSameDay = dayjs.parseZone(prevDate).isSame(nextDate, "day");
   const isSameYear = dayjs.parseZone(prevDate).isSame(nextDate, "year");
@@ -513,11 +660,19 @@ function computeComparisonStrPreviousValue({
   return t`vs. ${formattedDateStr}`;
 }
 
-function formatDateStr({ date, dateUnitSettings, options }) {
+function formatDateStr({
+  date,
+  dateUnitSettings,
+  options,
+}: {
+  date: string;
+  dateUnitSettings: DateUnitSettings;
+  options?: OptionsType;
+}) {
   const { dateColumn, dateColumnSettings, dateUnit, queryType } =
     dateUnitSettings;
 
-  if (isEmpty(dateUnit) || queryType === "native") {
+  if (!dateUnit || queryType === "native") {
     return formatValue(date, {
       ...dateColumnSettings,
       column: dateColumn,
@@ -533,34 +688,44 @@ function formatDateStr({ date, dateUnitSettings, options }) {
 export const CHANGE_TYPE_OPTIONS = {
   get MISSING() {
     return {
-      CHANGE_TYPE: "PREVIOUS_VALUE_MISSING",
+      CHANGE_TYPE: "PREVIOUS_VALUE_MISSING" as const,
       PERCENT_CHANGE_STR: t`N/A`,
       COMPARISON_VALUE_STR: t`(No data)`,
     };
   },
   get SAME() {
     return {
-      CHANGE_TYPE: "PREVIOUS_VALUE_SAME",
+      CHANGE_TYPE: "PREVIOUS_VALUE_SAME" as const,
       PERCENT_CHANGE_STR: t`No change`,
       COMPARISON_VALUE_STR: "",
     };
   },
   get CHANGED() {
     return {
-      CHANGE_TYPE: "PREVIOUS_VALUE_CHANGED",
+      CHANGE_TYPE: "PREVIOUS_VALUE_CHANGED" as const,
     };
   },
 };
 
+type ChangeType =
+  (typeof CHANGE_TYPE_OPTIONS)[keyof typeof CHANGE_TYPE_OPTIONS]["CHANGE_TYPE"];
+
 export const CHANGE_ARROW_ICONS = {
   ARROW_UP: "arrow_up",
   ARROW_DOWN: "arrow_down",
-};
+} as const;
+
+type ChangeArrowType =
+  (typeof CHANGE_ARROW_ICONS)[keyof typeof CHANGE_ARROW_ICONS];
 
 function computeChangeTypeWithOptions({
   comparisonValue,
   formatOptions,
   percentChange,
+}: {
+  comparisonValue: RowValue | undefined;
+  formatOptions: ColumnSettings;
+  percentChange: number | undefined;
 }) {
   if (isEmpty(comparisonValue)) {
     return {
@@ -581,18 +746,18 @@ function computeChangeTypeWithOptions({
   return {
     changeType: CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE,
     changeArrowIconName:
-      percentChange < 0
+      percentChange != null && percentChange < 0
         ? CHANGE_ARROW_ICONS.ARROW_DOWN
         : CHANGE_ARROW_ICONS.ARROW_UP,
-    percentChangeStr: formatChange(percentChange),
+    percentChangeStr: percentChange ? formatChange(percentChange) : "",
     comparisonValueStr: formatValue(comparisonValue, formatOptions),
   };
 }
 
 function getArrowColor(
-  changeArrowIconName,
-  shouldSwitchPositiveNegative,
-  { getColor },
+  changeArrowIconName: ChangeArrowType,
+  shouldSwitchPositiveNegative: boolean | undefined,
+  { getColor }: { getColor: ColorGetter },
 ) {
   const arrowIconColorNames = shouldSwitchPositiveNegative
     ? {

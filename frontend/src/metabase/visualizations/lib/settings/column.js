@@ -44,9 +44,23 @@ import {
 
 import { nestedSettings } from "./nested";
 
+/**
+ * @typedef {import("metabase-types/api").Series} Series
+ * @typedef {import("metabase-types/api").DatasetColumn} DatasetColumn
+ * @typedef {(series: Series, vizSettings) => DatasetColumn[]} GetColumnsFn
+ */
+
+/** @type {GetColumnsFn} */
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
   [].concat(...series.map((s) => (s.data && s.data.cols) || []));
 
+/**
+ * @param {Object}        [settings]
+ * @param {GetColumnsFn}  [settings.getColumns]
+ * @param {boolean}       [settings.hidden]
+ * @param {string}        [settings.section]
+ * @param {string[]}      [settings.readDependencies]
+ */
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   hidden,
@@ -60,7 +74,7 @@ export function columnSettings({
     getObjectSettings: getObjectColumnSettings,
     getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
     component: ChartNestedSettingColumns,
-    getInheritedSettingsForObject: getInhertiedSettingsForColumn,
+    getInheritedSettingsForObject: getInheritedSettingsForColumn,
     useRawSeries: true,
     hidden,
     ...def,
@@ -83,7 +97,7 @@ function getLocalSettingsForColumn(column) {
   return column.settings || {};
 }
 
-function getInhertiedSettingsForColumn(column) {
+function getInheritedSettingsForColumn(column) {
   return {
     ...getGlobalSettingsForColumn(),
     ...getLocalSettingsForColumn(column),

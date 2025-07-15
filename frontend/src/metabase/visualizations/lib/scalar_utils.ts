@@ -1,5 +1,6 @@
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { formatValue } from "metabase/lib/formatting/value";
+import type { RowValue } from "metabase-types/api";
 
 export const COMPACT_MAX_WIDTH = 250;
 export const COMPACT_WIDTH_PER_DIGIT = 25;
@@ -14,7 +15,7 @@ function checkShouldCompact(fullValue: string, width: number) {
 }
 
 export function compactifyValue(
-  value: number,
+  value: RowValue,
   width: number,
   formatOptions: OptionsType = {},
 ) {
