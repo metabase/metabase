@@ -6,6 +6,10 @@ export function QuestionTitle() {
   const { question } = useInteractiveQuestionContext();
   const titleText = getQuestionTitle({ question });
 
+  if (titleText === null) {
+    return null;
+  }
+
   return (
     <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
       {titleText}

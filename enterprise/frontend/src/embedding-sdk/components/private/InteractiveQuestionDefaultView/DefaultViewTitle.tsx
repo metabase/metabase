@@ -67,9 +67,11 @@ export const DefaultViewTitle = ({
     return (
       <DefaultViewTitleText
         title={
-          <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
-            {titleText}
-          </Text>
+          titleText && (
+            <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
+              {titleText}
+            </Text>
+          )
         }
         withResetButton={withResetButton}
         isQuestionChanged={isQuestionChanged}
