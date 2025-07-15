@@ -51,7 +51,7 @@ export const DatabaseRoutingSection = ({
   const dbSupportsRouting = database.features?.includes("database-routing");
   const engine = engines[database.engine ?? ""];
   const dbRoutingInfo =
-    engine?.["extra-info"]?.["db-routing-info"] ??
+    engine?.["extra-info"]?.["db-routing-info"]?.text ??
     // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
     t`When someone views a question using data from this database, Metabase will send the queries to the destination database set by the person's user attribute. Each destination database must have identical schemas.`;
   const shouldHideSection =

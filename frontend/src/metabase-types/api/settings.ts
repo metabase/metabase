@@ -36,7 +36,9 @@ export interface Engine {
   source: EngineSource;
   "superseded-by": string | null;
   "extra-info": {
-    "db-routing-info": string | null;
+    "db-routing-info": {
+      text: string;
+    };
   } | null;
 }
 

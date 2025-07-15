@@ -43,12 +43,6 @@
   [{:keys [connection-properties]}]
   (into [] (mapcat #(u/one-or-many (parse-connection-property %))) connection-properties))
 
-(defn- parse-extra-info
-  "Parse the extra info included in the plugin manifest. Currently only supports `db-routing-info`, but could
-   also be used for other info like DB flavors (e.g. supabase, neon)."
-  [{:keys [db-routing-info]}]
-  {:db-routing-info (:text db-routing-info)})
-
 (defn- make-initialize! [driver add-to-classpath! init-steps]
   (fn [_]
     ;; First things first: add the driver to the classpath!
@@ -77,8 +71,7 @@
     {driver-name :name, :keys [abstract display-name parent], :or {abstract false}, :as driver-info} :driver}]
   {:pre [(map? driver-info)]}
   (let [driver           (keyword driver-name)
-        connection-props (parse-connection-properties driver-info)
-        extra-info       (parse-extra-info extra-info)]
+        connection-props (parse-connection-properties driver-info)]
     ;; Make sure the driver has required properties like driver-name
     (when-not (seq driver-name)
       (throw (ex-info (trs "Cannot initialize plugin: missing required property `driver-name`")
@@ -102,19 +95,18 @@
     (log/debug (u/format-color :magenta "Registering lazy loading driver %s..." driver))
     (driver/register! driver, :parent (set (map keyword (u/one-or-many parent))), :abstract? abstract)))
 
-(defn- parse-yaml-section [manifest section parser]
+(defn- parse-yaml-section [manifest section]
   (some-> manifest
           yaml/parse-string
           section
           u/one-or-many
-          first
-          parser))
+          first))
 
 (defn- load-connection-properties
   [driver]
   (let [manifest   (slurp (str (io/file "modules/drivers/" (name driver) "resources/metabase-plugin.yaml")))
-        properties (parse-yaml-section manifest :driver parse-connection-properties)
-        extras     (parse-yaml-section manifest :extra parse-extra-info)]
+        properties (parse-connection-properties (parse-yaml-section manifest :driver))
+        extras     (parse-yaml-section manifest :extra)]
     (.addMethod ^MultiFn driver/connection-properties driver (constantly properties))
     (.addMethod ^MultiFn driver/extra-info driver (constantly extras))))
 

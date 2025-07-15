@@ -30,7 +30,9 @@ const setup = (database: Partial<Database>) => {
             "bigquery-cloud-sdk": createMockEngine({
               "driver-name": "Big Query",
               "extra-info": {
-                "db-routing-info": "custom db routing info.",
+                "db-routing-info": {
+                  text: "custom db routing info.",
+                },
               },
             }),
           }),

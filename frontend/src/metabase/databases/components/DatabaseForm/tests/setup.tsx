@@ -85,9 +85,7 @@ export const TEST_ENGINES: Record<string, Engine> = {
     ],
     "driver-name": "H2",
     "superseded-by": null,
-    "extra-info": {
-      "db-routing-info": null,
-    },
+    "extra-info": null,
   },
 };
 
