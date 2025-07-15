@@ -167,6 +167,7 @@ const SdkDashboardInner = ({
       });
     }
   }, [dashboard, updateCurrentLocation]);
+  
   const { displayOptions } = useSdkDashboardParams({
     dashboardId,
     withDownloads,

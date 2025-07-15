@@ -114,12 +114,11 @@ export const CollectionBrowserInner = ({
     useState<CollectionId>(baseCollectionId);
 
   const { data: currentCollection } = useGetCollectionQuery({ id: currentCollectionId });
-  const { updateCurrentLocation, addBreadcrumb, clearBreadcrumbs } = useBreadcrumbContext();
+  const { updateCurrentLocation } = useBreadcrumbContext();
 
   useEffect(() => {
     setCurrentCollectionId(baseCollectionId);
-    clearBreadcrumbs();
-  }, [baseCollectionId, clearBreadcrumbs]);
+  }, [baseCollectionId]);
 
   // Update breadcrumb when collection changes
   useEffect(() => {
@@ -138,16 +137,6 @@ export const CollectionBrowserInner = ({
     }
 
     if (item.model === "collection") {
-      // Add current collection as breadcrumb before navigating
-      if (currentCollection) {
-        addBreadcrumb({
-          id: `collection-${currentCollectionId}`,
-          name: currentCollection.name,
-          type: 'collection',
-          action: () => setCurrentCollectionId(currentCollectionId),
-        });
-      }
-      
       setCurrentCollectionId(item.id as CollectionId);
     }
   };

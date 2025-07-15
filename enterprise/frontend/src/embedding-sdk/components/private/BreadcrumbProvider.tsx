@@ -42,14 +42,28 @@ export const BreadcrumbProvider = ({ children }: BreadcrumbProviderProps) => {
 
   const updateCurrentLocation = useCallback((item: BreadcrumbItem) => {
     setBreadcrumbs(prev => {
-      if (prev.length === 0) {
-        return [{ ...item, isCurrent: true, action: undefined }];
+      // If this is the same as the current location, don't change anything
+      if (prev.length > 0 && prev[prev.length - 1].id === item.id) {
+        return prev;
       }
       
-      // Update the last item (current location)
-      const updated = [...prev];
-      updated[updated.length - 1] = { ...item, isCurrent: true, action: undefined };
-      return updated;
+      // If we have previous breadcrumbs, add the previous current location as a clickable breadcrumb
+      if (prev.length > 0) {
+        const updated = [...prev];
+        const previousCurrent = updated[updated.length - 1];
+        
+        // Make the previous current location clickable
+        updated[updated.length - 1] = {
+          ...previousCurrent,
+          isCurrent: false,
+        };
+        
+        // Add the new current location
+        return [...updated, { ...item, isCurrent: true, action: undefined }];
+      }
+      
+      // First breadcrumb
+      return [{ ...item, isCurrent: true, action: undefined }];
     });
   }, []);
 
