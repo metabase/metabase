@@ -1,9 +1,14 @@
 (ns metabase-enterprise.semantic-search.db
-  (:require [clojure.tools.logging :as log]
-            [environ.core :refer [env]]
-            [next.jdbc :as jdbc]))
+  (:require
+   [environ.core :refer [env]]
+   [metabase.util.log :as log]
+   [next.jdbc :as jdbc]))
 
-(def data-source (atom nil))
+(set! *warn-on-reflection* true)
+
+(def data-source
+  "Atom to hold the JDBC data source for the semantic search database."
+  (atom nil))
 
 (defn- build-db-config
   "Build database configuration from environment variables"
@@ -20,28 +25,18 @@
         ds (jdbc/get-datasource db-config)]
     (reset! data-source ds)))
 
-(defn maybe-init-db!
-  "Initialize the database connection pool if it hasn't been initialized yet."
-  []
-  (when (nil? @data-source)
-    (init-db!)))
-
-(defn execute! [query & params]
-  (jdbc/execute! @data-source query params))
-
-(defn execute-one! [query & params]
-  (jdbc/execute-one! @data-source query params))
-
 (defn test-connection!
   "Test database connectivity"
   []
-  (try
-    (let [result (execute-one! ["SELECT 1 as test"])]
-      (log/info "Database connection successful:" result)
-      result)
-    (catch Exception e
-      (log/error "Database connection failed:" (.getMessage e))
-      (throw e))))
+  (if @data-source
+    (try
+      (let [result (jdbc/execute-one! @data-source ["SELECT 1 as test"])]
+        (log/info "Database connection successful:" result)
+        result)
+      (catch Exception e
+        (log/error "Database connection failed:" (.getMessage e))
+        (throw e)))
+    (throw (ex-info "Database connection pool is not initialized. Call init-db! first." {}))))
 
 (comment
   (init-db!)
