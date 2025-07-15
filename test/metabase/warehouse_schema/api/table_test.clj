@@ -706,6 +706,7 @@
                   {:display_name      "Go Dubs!"
                    :schema            "Everything else"
                    :db_id             (:database_id card)
+                   :db                {:id (:database_id card)}
                    :id                card-virtual-table-id
                    :entity_id         (:entity_id card)
                    :type              "question"
@@ -751,6 +752,27 @@
                                                  :semantic_type  "type/Latitude"
                                                  :fingerprint    (name->fingerprint :latitude)
                                                  :field_ref      ["field" "LATITUDE" {:base-type "type/Float"}]})]))})
+                (->> card
+                     u/the-id
+                     (format "table/card__%d/query_metadata")
+                     (mt/user-http-request :crowberto :get 200))))))))
+
+(deftest ^:parallel virtual-table-metadata-permission-test
+  (testing "GET /api/table/:id/query_metadata"
+    (testing "Make sure we do not leak the database info when the user does not have data perms"
+      (mt/with-temp [:model/Card card {:name          "Go Dubs!"
+                                       :database_id   (mt/id)
+                                       :dataset_query {:query    {:source-table (mt/id :venues)}
+                                                       :type     :query
+                                                       :database (mt/id)}}]
+        (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+        (is (=? {:display_name      "Go Dubs!"
+                 :schema            "Everything else"
+                 :db_id             (:database_id card)
+                 :db                nil
+                 :id                (str "card__" (u/the-id card))
+                 :entity_id         (:entity_id card)
+                 :type              "question"}
                 (->> card
                      u/the-id
                      (format "table/card__%d/query_metadata")

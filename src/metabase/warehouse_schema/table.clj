@@ -312,10 +312,11 @@
 (defn card->virtual-table
   "Return metadata for a 'virtual' table for a `card` in the Saved Questions 'virtual' database. Optionally include
   'virtual' fields as well."
-  [{:keys [database_id] :as card} & {:keys [include-fields? databases card-id->metadata-fields]}]
+  [{:keys [database_id] :as card} & {:keys [include-database? include-fields? databases card-id->metadata-fields]}]
   ;; if collection isn't already hydrated then do so
-  (let [card-type (:type card)
-        dataset-query (:dataset_query card)]
+  (let [card-type     (:type card)
+        dataset-query (:dataset_query card)
+        database     (databases database_id)]
     (cond-> {:id               (str "card__" (u/the-id card))
              :db_id            (:database_id card)
              :display_name     (:name card)
@@ -328,6 +329,9 @@
       (and (= card-type :metric)
            dataset-query)
       (assoc :dataset_query dataset-query)
+
+      (and include-database?)
+      (assoc :db (when (and database (mi/can-read? database)) database))
 
       include-fields?
       (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
@@ -353,7 +357,7 @@
 
 (defn batch-fetch-card-query-metadatas
   "Return metadata for the 'virtual' tables for a Cards. Unreadable cards are silently skipped."
-  [ids]
+  [ids {:keys [include-database?]}]
   (when (seq ids)
     (let [cards (t2/select :model/Card
                            {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
@@ -394,7 +398,8 @@
         (let [trust-semantic-keys? (and (= (:type card) :model)
                                         (= (-> card :dataset_query :type) :native))]
           (-> card
-              (card->virtual-table :include-fields? true
+              (card->virtual-table :include-database? include-database?
+                                   :include-fields? true
                                    :databases dbs
                                    :card-id->metadata-fields card-id->metadata-fields)
               (assoc-dimension-options (-> card :database_id dbs))
