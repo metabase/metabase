@@ -24,6 +24,7 @@ import {
   FullscreenToggle,
   NightModeToggleButton,
 } from "../DashboardHeader/buttons";
+import { DashboardParameterList } from "../DashboardParameterList";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
 import { DashboardTabs } from "../DashboardTabs";
@@ -31,7 +32,7 @@ import { DashboardTitle } from "../DashboardTitle";
 import { RefreshWidget } from "../RefreshWidget";
 
 import S from "./Dashboard.module.css";
-import { Grid, ParametersList } from "./components";
+import { Grid } from "./components";
 
 const DashboardDefaultView = ({ className }: { className?: string }) => {
   const {
@@ -223,7 +224,7 @@ type DashboardComponentType = typeof DashboardDefaultView & {
   Grid: typeof Grid;
   Title: typeof DashboardTitle;
   Tabs: typeof DashboardTabs;
-  ParametersList: typeof ParametersList;
+  ParametersList: typeof DashboardParameterList;
   FullscreenButton: typeof FullscreenToggle;
   ExportAsPdfButton: typeof ExportAsPdfButton;
   InfoButton: typeof DashboardInfoButton;
@@ -236,7 +237,7 @@ DashboardComponent.Header = DashboardHeader;
 DashboardComponent.Grid = Grid;
 DashboardComponent.Title = DashboardTitle;
 DashboardComponent.Tabs = DashboardTabs;
-DashboardComponent.ParametersList = ParametersList;
+DashboardComponent.ParametersList = DashboardParameterList;
 DashboardComponent.FullscreenButton = FullscreenToggle;
 DashboardComponent.ExportAsPdfButton = ExportAsPdfButton;
 DashboardComponent.InfoButton = DashboardInfoButton;
