@@ -25,7 +25,7 @@ describe("issue 9357", () => {
 
   it(
     "should reorder template tags by drag and drop (metabase#9357)",
-    { viewportWidth: 1280, viewportHeight: 800 },
+    { viewportWidth: 800, viewportHeight: 600 },
     () => {
       H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery(
@@ -36,7 +36,7 @@ describe("issue 9357", () => {
       H.moveDnDKitElement(
         cy.get("fieldset").findAllByRole("listitem").first(),
         {
-          horizontal: 430,
+          vertical: 50,
         },
       );
 
