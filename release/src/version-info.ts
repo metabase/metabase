@@ -1,5 +1,4 @@
 import fetch from "node-fetch";
-import _ from "underscore";
 
 import { getMilestoneIssues } from "./github";
 import type {

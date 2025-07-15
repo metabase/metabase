@@ -2,6 +2,7 @@ const { H } = cy;
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
+  USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -645,7 +646,7 @@ describe("issue 33439", () => {
       name: "Date",
     });
     H.popover().within(() => {
-      cy.findByText("Unsupported function convert-timezone");
+      cy.findByText("Unsupported function convertTimezone");
       cy.button("Done").should("be.disabled");
     });
   });
@@ -3045,5 +3046,182 @@ describe("Issue 42942", () => {
       "Total is greater than or equal to 90",
     );
     H.queryBuilderFiltersPanel().findByText("Total is less than 90.75");
+  });
+});
+
+describe("Issue 48771", () => {
+  const MODEL_NAME = "M1";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion({
+      name: MODEL_NAME,
+      type: "model",
+      native: {
+        database: SAMPLE_DB_ID,
+        query: "SELECT 1 AS ID",
+      },
+    }).then(({ body: model }) => {
+      H.createQuestion(
+        {
+          type: "question",
+          query: {
+            filter: [
+              ">=",
+              [
+                "field",
+                "count",
+                {
+                  "base-type": "type/Integer",
+                },
+              ],
+              0.5,
+            ],
+            "source-query": {
+              database: SAMPLE_DB_ID,
+              "source-table": ORDERS_ID,
+              joins: [
+                {
+                  "source-table": `card__${model.id}`,
+                  fields: "all",
+                  alias: MODEL_NAME,
+                  strategy: "left-join",
+                  condition: [
+                    "=",
+                    ["field", ORDERS.ID, { "base-type": "type/Integer" }],
+                    [
+                      "field",
+                      "ID",
+                      { "join-alias": MODEL_NAME, "base-type": "type/Integer" },
+                    ],
+                  ],
+                },
+              ],
+              aggregation: [["count"]],
+              breakout: [["field", ORDERS.CREATED_AT, null]],
+            },
+          },
+        },
+        { visitQuestion: true, wrapId: true },
+      );
+    });
+
+    cy.log("give nosql user access to root collection");
+    cy.updateCollectionGraph({
+      [USER_GROUPS.NOSQL_GROUP]: { root: "write" },
+    });
+
+    cy.signOut();
+    cy.signIn("nosql");
+  });
+
+  it("should allow to add a filter after summary stage (metabase#48771)", () => {
+    H.visitQuestion("@questionId");
+    H.openNotebook();
+
+    H.getNotebookStep("filter", { stage: 1 })
+      .findByText("Count is greater than or equal to 0.5")
+      .click();
+
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").clear().type("0.7");
+      cy.button("Update filter").click();
+    });
+    H.visualize();
+  });
+});
+
+describe("Issue 42817", () => {
+  const NATIVE_QUESTION_NAME = "NativeOrders";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion({
+      name: NATIVE_QUESTION_NAME,
+      database: SAMPLE_DB_ID,
+      native: {
+        query: "SELECT ID, CREATED_AT FROM orders",
+      },
+    }).then(({ body: question }) => {
+      H.visitQuestionAdhoc({
+        display: "line",
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                fields: "all",
+                alias: NATIVE_QUESTION_NAME,
+                "source-table": `card__${question.id}`,
+                strategy: "left-join",
+                condition: [
+                  "=",
+                  [
+                    "field",
+                    ORDERS.ID,
+                    {
+                      "base-type": "type/BigInteger",
+                    },
+                  ],
+                  [
+                    "field",
+                    "ID",
+                    {
+                      "base-type": "type/BigInteger",
+                      "join-alias": NATIVE_QUESTION_NAME,
+                    },
+                  ],
+                ],
+              },
+            ],
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                "CREATED_AT",
+
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "day",
+                  "join-alias": "NativeOrders",
+                },
+              ],
+            ],
+            filter: [
+              "between",
+              [
+                "field",
+                "CREATED_AT",
+                {
+                  "base-type": "type/Date",
+                  "inherited-temporal-unit": "day",
+                  "temporal-unit": "day",
+                  "join-alias": "NativeOrders",
+                },
+              ],
+              "2023-06-23T00:00Z",
+              "2023-07-03T00:00Z",
+            ],
+          },
+        },
+      });
+    });
+  });
+
+  it("should be possible to drill down into a question with datetime buckets and a native join (metabase#42817)", () => {
+    H.echartsContainer().get("path[fill='#fff']").first().click();
+
+    H.popover().findByText("See this day by hour").click();
+
+    cy.findByTestId("query-visualization-root")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+
+    H.echartsContainer().should("be.visible");
   });
 });

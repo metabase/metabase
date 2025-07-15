@@ -38,9 +38,11 @@ interface Props {
 
 export const DataModel = ({ children, location, params }: Props) => {
   const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
-  const { data: databasesData } = useListDatabasesQuery({
-    include_editable_data_model: true,
-  });
+  const { data: databasesData, isLoading: isLoadingDatabases } =
+    useListDatabasesQuery({ include_editable_data_model: true });
+  const databaseExists = databasesData?.data?.some(
+    (database) => database.id === databaseId,
+  );
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
   const [isPreviewOpen, { close: closePreview, open: openPreview }] =
     useDisclosure();
@@ -55,7 +57,7 @@ export const DataModel = ({ children, location, params }: Props) => {
   const {
     data: table,
     error,
-    isLoading,
+    isLoading: isLoadingTables,
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(tableId));
   const fieldsByName = useMemo(() => {
     return _.indexBy(table?.fields ?? [], (field) => field.name);
@@ -64,6 +66,7 @@ export const DataModel = ({ children, location, params }: Props) => {
   const parentName = field?.nfc_path?.[0] ?? "";
   const parentField = fieldsByName[parentName];
   const [previewType, setPreviewType] = useState<PreviewType>("table");
+  const isLoading = isLoadingTables || isLoadingDatabases;
 
   useWindowEvent(
     "keydown",
@@ -91,7 +94,7 @@ export const DataModel = ({ children, location, params }: Props) => {
   }
 
   return (
-    <Flex bg="accent-gray-light" h="100%">
+    <Flex bg="accent-gray-light" data-testid="data-model" h="100%">
       <Stack
         bg="bg-white"
         className={S.column}
@@ -116,11 +119,26 @@ export const DataModel = ({ children, location, params }: Props) => {
 
       {!isSegments && (
         <>
+          {databaseId != null &&
+            tableId == null &&
+            databaseExists === false && (
+              <Stack
+                className={S.column}
+                h="100%"
+                justify="center"
+                miw={rem(400)}
+                p="xl"
+              >
+                <LoadingAndErrorWrapper error={t`Not found.`} />
+              </Stack>
+            )}
+
           {tableId && (
-            <Box
+            <Stack
               className={S.column}
               flex={COLUMN_CONFIG.table.flex}
               h="100%"
+              justify={error ? "center" : undefined}
               maw={COLUMN_CONFIG.table.max}
               miw={COLUMN_CONFIG.table.min}
             >
@@ -138,43 +156,49 @@ export const DataModel = ({ children, location, params }: Props) => {
                   />
                 )}
               </LoadingAndErrorWrapper>
-            </Box>
+            </Stack>
           )}
 
           {!isEmptyStateShown && (
-            <Box
+            <Stack
               className={S.column}
               flex={COLUMN_CONFIG.field.flex}
               h="100%"
+              justify={
+                (!isLoading && !error && !field) || error ? "center" : undefined
+              }
               maw={COLUMN_CONFIG.field.max}
               miw={COLUMN_CONFIG.field.min}
             >
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                <Flex justify="space-between" w="100%">
-                  {field && (
-                    <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
-                      <FieldSection
-                        databaseId={databaseId}
-                        field={field}
-                        parent={parentField}
-                        isPreviewOpen={isPreviewOpen}
-                        /**
-                         * Make sure internal component state is reset when changing fields.
-                         * This is to avoid state mix-up with optimistic updates.
-                         */
-                        key={getRawTableFieldId(field)}
-                        onFieldValuesClick={openFieldValuesModal}
-                        onPreviewClick={openPreview}
-                      />
-                    </Box>
-                  )}
-                </Flex>
+                {field && (
+                  <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
+                    <FieldSection
+                      databaseId={databaseId}
+                      field={field}
+                      parent={parentField}
+                      isPreviewOpen={isPreviewOpen}
+                      /**
+                       * Make sure internal component state is reset when changing fields.
+                       * This is to avoid state mix-up with optimistic updates.
+                       */
+                      key={getRawTableFieldId(field)}
+                      onFieldValuesClick={openFieldValuesModal}
+                      onPreviewClick={openPreview}
+                    />
+                  </Box>
+                )}
               </LoadingAndErrorWrapper>
-            </Box>
+
+              {!isLoading && !error && !field && (
+                <LoadingAndErrorWrapper error={t`Not found.`} />
+              )}
+            </Stack>
           )}
 
           {!isEmptyStateShown && field && table && isPreviewOpen && (
             <Box
+              bg="accent-gray-light"
               flex={COLUMN_CONFIG.preview.flex}
               h="100%"
               p="xl"
@@ -206,12 +230,12 @@ export const DataModel = ({ children, location, params }: Props) => {
                 <EmptyState
                   illustrationElement={<img src={EmptyDashboardBot} />}
                   title={
-                    tableId
+                    table
                       ? t`Edit the table and fields`
                       : t`Start by selecting data to model`
                   }
                   message={
-                    tableId
+                    table
                       ? t`Select a field to edit it. Then change the display name, semantic type or filtering behavior.`
                       : t`Browse your databases to find the table you’d like to edit.`
                   }

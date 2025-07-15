@@ -105,3 +105,8 @@ jobs:
       # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
       # list of changed specs files, then only specs are changed and we can run only those specs
       specs: ${{ needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files && needs.files-changed.outputs.e2e_specs_files || '' }}
+
+  sdk-tests:
+    needs: files-changed
+    uses: ./.github/workflows/embedding-sdk.yml
+    secrets: inherit
