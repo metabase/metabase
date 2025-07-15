@@ -50,10 +50,10 @@
     {:type "section"
      :text
      {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}]
-   include-image?
-   (conj {:type "image"
-          :slack_file {:id "Test card.png"}
-          :alt_text "Test card"})))
+    include-image?
+    (conj {:type "image"
+           :slack_file {:id "Test card.png"}
+           :alt_text "Test card"})))
 
 (defn do-with-pulse-for-card
   "Creates a Pulse and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if specified), then
