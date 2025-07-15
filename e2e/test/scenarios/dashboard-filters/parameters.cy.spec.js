@@ -1306,8 +1306,16 @@ describe("scenarios > dashboard > parameters", () => {
         H.updateDashboardCards({
           dashboard_id: dashcard.dashboard_id,
           cards: [
+            createMockHeadingDashboardCard({
+              inline_parameters: [categoryParameter.id],
+              size_x: 24,
+              size_y: 1,
+            }),
             {
               id: dashcard.id,
+              row: 1,
+              size_x: 12,
+              size_y: 6,
               inline_parameters: [categoryParameter.id],
               parameter_mappings: [
                 {
@@ -1349,7 +1357,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       H.getDashboardCard(1).within(() => {
-        cy.findByText("Gadget").should("be.visible");
+        cy.findAllByText("Gadget").should("be.visible");
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gizmo").should("not.exist");
         cy.findByText("Widget").should("not.exist");
@@ -2320,7 +2328,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       cy.location().should(({ search }) => {
         expect(search).to.match(
-          /\?category=Widget&category_1=Doohickey&count=5000/,
+          /\?category-\d+=Widget&category_1-\d+=Doohickey&count=5000/,
         );
       });
     });
@@ -2525,7 +2533,8 @@ H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
     H.sidebar()
       .findByText("This label is already in use.")
       .should("be.visible");
-    cy.button("Done").click();
+
+    H.sidebar().button("Remove").click();
 
     // Question-level Category
     H.setDashCardFilter(0, "Text or Category", "Is", "Category");
@@ -2537,14 +2546,14 @@ H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
     // Dashboard-level Category
     H.filterWidget().contains("Category").click();
     H.popover().within(() => {
-      cy.findByPlaceholderText("Enter some text").type("Gadget");
+      cy.findByText("Gadget").click();
       cy.button("Add filter").click();
     });
 
     // Question dashcard Category
     H.getDashboardCard(0).findByTestId("parameter-widget").click();
     H.popover().within(() => {
-      cy.findByPlaceholderText("Enter some text").type("Gizmo");
+      cy.findByText("Gizmo").click();
       cy.button("Add filter").click();
     });
 
@@ -2552,9 +2561,24 @@ H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
     // Verify URL has unique slugs for inline parameters
     cy.url().should(
       "match",
-      /\/dashboard\/2\?category=Gadget&category-\d+=Gizmo/,
+      /\/dashboard\/\d+\?category=Gadget&category-\d+=Gizmo/,
     );
-    cy.visit("/dashboard/2?category=Widget&category-5=Gadget");
+
+    // Capture current URL and construct new URL with same parameter names but different values
+    cy.location().then(({ pathname, search }) => {
+      const params = new URLSearchParams(search);
+
+      // Update parameter values while preserving parameter names
+      params.set("category", "Widget");
+      const categoryParam = [...params.keys()].find((key) =>
+        key.startsWith("category-"),
+      );
+      if (categoryParam) {
+        params.set(categoryParam, "Gadget");
+      }
+
+      cy.visit(`${pathname}?${params.toString()}`);
+    });
 
     // Ensure values from the URL are applied correctly
     cy.findByTestId("dashboard-parameters-widget-container")
