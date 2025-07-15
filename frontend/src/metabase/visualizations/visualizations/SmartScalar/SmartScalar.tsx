@@ -120,8 +120,12 @@ export function SmartScalar({
 
   return (
     <ScalarWrapper>
-      <Flex direction="column" w={isDashboard ? "100%" : "auto"}>
-        {isPeriodVisible(innerHeight) && <ScalarPeriod period={display.date} />}
+      <Flex direction="column" w={isDashboard ? "100%" : "auto"} h="100%">
+        <Flex flex={1} align="flex-end">
+          {isPeriodVisible(innerHeight) && (
+            <ScalarPeriod period={display.date} />
+          )}
+        </Flex>
         <ScalarContainer
           isSmartScalar
           className={cx(
@@ -138,16 +142,18 @@ export function SmartScalar({
             <ScalarValue gridSize={gridSize} value={String(displayValue)} />
           </span>
         </ScalarContainer>
-        {comparisons.map((comparison, index) => (
-          <Box maw="100%" key={index} data-testid="scalar-previous-value">
-            <PreviousValueComparison
-              comparison={comparison}
-              fontFamily={fontFamily}
-              formatOptions={formatOptions}
-              width={width}
-            />
-          </Box>
-        ))}
+        <Box flex={1} className={CS.overflowHidden}>
+          {comparisons.map((comparison, index) => (
+            <Box maw="100%" key={index} data-testid="scalar-previous-value">
+              <PreviousValueComparison
+                comparison={comparison}
+                fontFamily={fontFamily}
+                formatOptions={formatOptions}
+                width={width}
+              />
+            </Box>
+          ))}
+        </Box>
       </Flex>
     </ScalarWrapper>
   );
