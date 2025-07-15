@@ -111,7 +111,7 @@
                   [:fk_target_field_id {:optional true} [:maybe ::ms/PositiveInt]]
                   [:points_of_interest {:optional true} [:maybe ::ms/NonBlankString]]
                   [:semantic_type      {:optional true} [:maybe ::ms/FieldSemanticOrRelationTypeKeywordOrString]]
-                  [:coercion_strategy  {:optional true} [:maybe CoercionStrategyKeywordOrString]]
+                  [:coercion_strategy  {:optional true} [:maybe ::CoercionStrategyKeywordOrString]]
                   [:visibility_type    {:optional true} [:maybe FieldVisibilityType]]
                   [:has_field_values   {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]
                   [:settings           {:optional true} [:maybe ::ms/Map]]

@@ -9,14 +9,10 @@
     {:error/message "Valid percentage between (inclusive) 0 and 1."}
     #(<= 0 % 1)]])
 
-(mr/def ::Percent
-  "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."
-  [:ref ::Percent])
-
 (mr/def ::GlobalFingerprint
   [:map
    [:distinct-count {:optional true} :int]
-   [:nil%           {:optional true} [:maybe Percent]]])
+   [:nil%           {:optional true} [:maybe ::Percent]]])
 
 (mr/def ::GlobalFingerprint
   "Fingerprint values that Fields of all types should have."
@@ -37,10 +33,10 @@
 
 (mr/def ::TextFingerprint
   [:map
-   [:percent-json   {:optional true} [:maybe Percent]]
-   [:percent-url    {:optional true} [:maybe Percent]]
-   [:percent-email  {:optional true} [:maybe Percent]]
-   [:percent-state  {:optional true} [:maybe Percent]]
+   [:percent-json   {:optional true} [:maybe ::Percent]]
+   [:percent-url    {:optional true} [:maybe ::Percent]]
+   [:percent-email  {:optional true} [:maybe ::Percent]]
+   [:percent-state  {:optional true} [:maybe ::Percent]]
    [:average-length {:optional true} [:maybe number?]]])
 
 (mr/def ::TextFingerprint
@@ -61,11 +57,11 @@
   (mr/def ::TypeSpecificFingerprint
     [:and
      [:map
-      [:type/Number   {:optional true} NumberFingerprint]
-      [:type/Text     {:optional true} TextFingerprint]
+      [:type/Number   {:optional true} ::NumberFingerprint]
+      [:type/Text     {:optional true} ::TextFingerprint]
       ;; temporal fingerprints are keyed by `:type/DateTime` for historical reasons. `DateTime` used to be the parent of
       ;; all temporal MB types.
-      [:type/DateTime {:optional true} TemporalFingerprint]]
+      [:type/DateTime {:optional true} ::TemporalFingerprint]]
      [:fn
       {:error/message "Type-specific fingerprint with exactly one key"}
       f]]))
@@ -76,8 +72,8 @@
 
 (mr/def ::Fingerprint
   [:map
-   [:global       {:optional true} GlobalFingerprint]
-   [:type         {:optional true} TypeSpecificFingerprint]
+   [:global       {:optional true} ::GlobalFingerprint]
+   [:type         {:optional true} ::TypeSpecificFingerprint]
    [:experimental {:optional true} :map]])
 
 (mr/def ::Fingerprint

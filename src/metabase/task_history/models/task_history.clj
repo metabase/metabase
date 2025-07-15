@@ -1,15 +1,16 @@
 (ns metabase.task-history.models.task-history
-  (:require [malli.registry :as mr]
-   [java-time.api :as t]
-   [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.util :as u]
-   [metabase.util.json :as json]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+  (:require
+    [java-time.api :as t]
+    [metabase.models.interface :as mi]
+    [metabase.permissions.core :as perms]
+    [metabase.premium-features.core :as premium-features]
+    [metabase.util :as u]
+    [metabase.util.json :as json]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [methodical.core :as methodical]
+    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

@@ -245,12 +245,12 @@
   [:map {:closed true}
    [:search-string                                        [:maybe ::ms/NonBlankString]]
    [:context                             {:optional true} [:maybe :keyword]]
-   [:models                                               [:maybe [:set SearchableModel]]]
+   [:models                                               [:maybe [:set ::search.config/SearchableModel]]]
    [:current-user-id                                      pos-int?]
    [:is-impersonated-user?               {:optional true} :boolean]
    [:is-sandboxed-user?                  {:optional true} :boolean]
    [:is-superuser?                                        :boolean]
-   [:current-user-perms                                   [:set perms/PathSchema]]
+   [:current-user-perms                                   [:set ::perms/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ::ms/NonBlankString]]
    [:created-by                          {:optional true} [:maybe [:set ::ms/PositiveInt]]]
@@ -269,7 +269,7 @@
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
    [:include-metadata?                   {:optional true} [:maybe boolean?]]])
 
-(mu/defn search-context :- SearchContext
+(mu/defn search-context :- ::search.config/SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
   [{:keys [archived
            context

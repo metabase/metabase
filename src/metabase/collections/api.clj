@@ -1298,19 +1298,19 @@
     ;; We need the [:and keyword ...] piece to make decoding "root" work. There's a merged fix for this, but it hasn't
     ;; been released as of malli 0.9.2. When the malli version gets bumped, we should remove this.
     [:and keyword? [:= :root]]
-    CollectionID]
-   CollectionPermissions])
+    ::CollectionID]
+   ::CollectionPermissions])
 
 (mr/def ::PermissionsGraph
   "Map describing permissions for 1 or more groups.
   Revision # is used for consistency"
   [:map
    [:revision {:optional true} [:maybe int?]]
-   [:groups [:map-of GroupID GroupPermissionsGraph]]])
+   [:groups [:map-of ::GroupID ::GroupPermissionsGraph]]])
 
 (def ^:private graph-decoder
   "Building it this way is a lot faster then calling mc/decode <value> <schema> <transformer>"
-  (mc/decoder PermissionsGraph (mtx/string-transformer)))
+  (mc/decoder (mr/schema ::PermissionsGraph) (mtx/string-transformer)))
 
 (defn- decode-graph [permission-graph]
   ;; TODO: should use a coercer for this?

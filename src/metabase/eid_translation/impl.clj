@@ -1,4 +1,6 @@
-(ns metabase.eid-translation.impl)
+(ns metabase.eid-translation.impl
+  (:require
+   [metabase.util.malli.registry :as mr]))
 
 (def statuses
   "Possible statuses from an entity-id -> id translation:

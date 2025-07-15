@@ -165,7 +165,7 @@
         (t2/select-one [:model/Card :collection_id :card_schema] :id card-id))
       (throw (Exception. (tru "Card {0} does not exist." card-id)))))
 
-(mu/defn- source-card-read-perms :- [:set perms/PathSchema]
+(mu/defn- source-card-read-perms :- [:set ::perms/PathSchema]
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
   [source-card-id :- ::lib.schema.id/card]

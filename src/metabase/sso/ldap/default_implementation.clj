@@ -1,16 +1,17 @@
 (ns metabase.sso.ldap.default-implementation
   "Default LDAP integration. This integration is used by OSS or for EE if enterprise features are not enabled."
-  (:require [malli.registry :as mr]
-   [clj-ldap.client :as ldap]
-   [clojure.string :as str]
-   [metabase.premium-features.core :refer [defenterprise-schema]]
-   [metabase.sso.common :as sso.common]
-   [metabase.users.models.user :as user]
-   [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+  (:require
+    [clj-ldap.client :as ldap]
+    [clojure.string :as str]
+    [metabase.premium-features.core :refer [defenterprise-schema]]
+    [metabase.sso.common :as sso.common]
+    [metabase.users.models.user :as user]
+    [metabase.util :as u]
+    [metabase.util.log :as log]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [toucan2.core :as t2])
   (:import
    (com.unboundid.ldap.sdk DN Filter LDAPConnectionPool)))
 

@@ -1,13 +1,14 @@
 (ns metabase.bookmarks.models.bookmark
-  (:require [malli.registry :as mr]
-   [clojure.string :as str]
-   [metabase.app-db.core :as mdb]
-   [metabase.queries.schema :as queries.schema]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+  (:require
+    [clojure.string :as str]
+    [metabase.app-db.core :as mdb]
+    [metabase.queries.schema :as queries.schema]
+    [metabase.util.honey-sql-2 :as h2x]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [methodical.core :as methodical]
+    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/CardBookmark       [_model] :card_bookmark)
 (methodical/defmethod t2/table-name :model/DashboardBookmark  [_model] :dashboard_bookmark)

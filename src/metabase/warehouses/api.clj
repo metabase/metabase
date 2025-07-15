@@ -1,46 +1,47 @@
 (ns metabase.warehouses.api
   "/api/database endpoints."
-  (:require [malli.registry :as mr]
-   [clojure.string :as str]
-   [medley.core :as m]
-   [metabase.analytics.core :as analytics]
-   [metabase.api.common :as api]
-   [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as mdb]
-   [metabase.classloader.core :as classloader]
-   [metabase.collections.models.collection :as collection]
-   [metabase.config.core :as config]
-   [metabase.database-routing.core :as database-routing]
-   [metabase.driver :as driver]
-   [metabase.driver.settings :as driver.settings]
-   [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.queries.schema :as queries.schema]
-   [metabase.request.core :as request]
-   [metabase.sample-data.core :as sample-data]
-   [metabase.secrets.core :as secret]
-   [metabase.sync.core :as sync]
-   [metabase.sync.schedules :as sync.schedules]
-   [metabase.sync.util :as sync-util]
-   [metabase.upload.core :as upload]
-   [metabase.util :as u]
-   [metabase.util.cron :as u.cron]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.quick-task :as quick-task]
-   [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
-   [metabase.warehouse-schema.table :as schema.table]
-   [metabase.warehouses.models.database :as database]
-   [toucan2.core :as t2]))
+  (:require
+    [clojure.string :as str]
+    [medley.core :as m]
+    [metabase.analytics.core :as analytics]
+    [metabase.api.common :as api]
+    [metabase.api.macros :as api.macros]
+    [metabase.app-db.core :as mdb]
+    [metabase.classloader.core :as classloader]
+    [metabase.collections.models.collection :as collection]
+    [metabase.config.core :as config]
+    [metabase.database-routing.core :as database-routing]
+    [metabase.driver :as driver]
+    [metabase.driver.settings :as driver.settings]
+    [metabase.driver.util :as driver.u]
+    [metabase.events.core :as events]
+    [metabase.lib-be.core :as lib-be]
+    [metabase.lib.schema.id :as lib.schema.id]
+    [metabase.lib.util.match :as lib.util.match]
+    [metabase.models.interface :as mi]
+    [metabase.permissions.core :as perms]
+    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+    [metabase.queries.schema :as queries.schema]
+    [metabase.request.core :as request]
+    [metabase.sample-data.core :as sample-data]
+    [metabase.secrets.core :as secret]
+    [metabase.sync.core :as sync]
+    [metabase.sync.schedules :as sync.schedules]
+    [metabase.sync.util :as sync-util]
+    [metabase.upload.core :as upload]
+    [metabase.util :as u]
+    [metabase.util.cron :as u.cron]
+    [metabase.util.honey-sql-2 :as h2x]
+    [metabase.util.i18n :refer [deferred-tru trs tru]]
+    [metabase.util.log :as log]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [metabase.util.quick-task :as quick-task]
+    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
+    [metabase.warehouse-schema.table :as schema.table]
+    [metabase.warehouses.models.database :as database]
+    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -793,7 +794,7 @@
   try twice: once with SSL, and a second time without if the first fails. If either attempt is successful, returns
   the details used to successfully connect. Otherwise returns a map with the connection error message. (This map will
   also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
-  [engine  :- DBEngineString
+  [engine  :- ::DBEngineString
    details :- :map]
   (let [;; Try SSL first if SSL is supported and not already enabled
         ;; If not successful or not applicable, details-with-ssl will be nil
@@ -817,7 +818,7 @@
    {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]}
    :- [:map
        [:name              ::ms/NonBlankString]
-       [:engine            DBEngineString]
+       [:engine            ::DBEngineString]
        [:details           ::ms/Map]
        [:is_full_sync      {:default true}   [:maybe ::ms/BooleanValue]]
        [:is_on_demand      {:default false}  [:maybe ::ms/BooleanValue]]
@@ -872,7 +873,7 @@
    _query-params
    {{:keys [engine details]} :details} :- [:map
                                            [:details [:map
-                                                      [:engine  DBEngineString]
+                                                      [:engine  ::DBEngineString]
                                                       [:details :map]]]]]
   (api/check-superuser)
   (let [details-or-error (test-connection-details engine details)]
@@ -911,7 +912,7 @@
    {:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
            auto_run_queries refingerprint cache_ttl settings]} :- [:map
                                                                    [:name               {:optional true} [:maybe ::ms/NonBlankString]]
-                                                                   [:engine             {:optional true} [:maybe DBEngineString]]
+                                                                   [:engine             {:optional true} [:maybe ::DBEngineString]]
                                                                    [:refingerprint      {:optional true} [:maybe :boolean]]
                                                                    [:details            {:optional true} [:maybe ::ms/Map]]
                                                                    [:schedules          {:optional true} [:maybe ::sync.schedules/ExpandedSchedulesMap]]

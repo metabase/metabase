@@ -7,18 +7,19 @@
 
   On launch, all namespaces starting with `metabase.events.*` will get loaded automatically
   by [[initialize-events!]]."
-  (:require [malli.registry :as mr]
-   [clojure.spec.alpha :as s]
-   [metabase.events.schema :as events.schema]
-   [metabase.models.interface :as mi]
-   [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.methodical.null-cache :as u.methodical.null-cache]
-   [metabase.util.methodical.unsorted-dispatcher :as u.methodical.unsorted-dispatcher]
-   [methodical.core :as methodical]
-   [potemkin :as p]))
+  (:require
+    [clojure.spec.alpha :as s]
+    [metabase.events.schema :as events.schema]
+    [metabase.models.interface :as mi]
+    [metabase.util :as u]
+    [metabase.util.i18n :as i18n]
+    [metabase.util.log :as log]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.methodical.null-cache :as u.methodical.null-cache]
+    [metabase.util.methodical.unsorted-dispatcher :as u.methodical.unsorted-dispatcher]
+    [methodical.core :as methodical]
+    [potemkin :as p]))
 
 (p/import-vars
  [events.schema

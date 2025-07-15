@@ -1,9 +1,10 @@
 (ns metabase.sync.sync-metadata.dbms-version
-  (:require [malli.registry :as mr]
+  (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 

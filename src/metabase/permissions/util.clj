@@ -216,7 +216,7 @@
 (mu/defn classify-path :- Kind
   "Classifies a permission [[metabase.permissions.models.permissions/Path]] into
   a [[metabase.permissions.models.permissions/Kind]], or throws."
-  [path :- Path]
+  [path :- ::Path]
   (let [result (keep (fn [[permission-rx kind]]
                        (when (re-matches (u.regex/rx permission-rx) path) kind))
                      rx->kind)]
@@ -231,7 +231,7 @@
 (mu/defn classify-data-path :- DataKind
   "Classifies data path permissions [[metabase.permissions.models.permissions/DataPath]] into
   a [[metabase.permissions.models.permissions/DataKind]]"
-  [data-path :- DataPath]
+  [data-path :- ::DataPath]
   (let [result (keep (fn [[data-rx kind]]
                        (when (re-matches (u.regex/rx [:and "^/" data-rx]) data-path) kind))
                      data-rx->data-kind)]
@@ -239,7 +239,7 @@
       (throw (ex-info "Unclassified data path!!" {:data-path data-path :result result})))
     (first result)))
 
-(let [path-validator (mr/validator Path)]
+(let [path-validator (mr/validator ::Path)]
   (defn valid-path?
     "Is `path` a valid, known permissions path?"
     ^Boolean [^String path]
@@ -251,7 +251,7 @@
    {:error/message "Valid permissions path"}
    (re-pattern (str "^/(" path-char-rx "*/)*$"))])
 
-(let [path-format-validator (mr/validator PathSchema)]
+(let [path-format-validator (mr/validator ::PathSchema)]
   (defn valid-path-format?
     "Is `path` a string with a valid permissions path format? This is a less strict version of [[valid-path?]] which
   just checks that the path components contain alphanumeric characters or dashes, separated by slashes

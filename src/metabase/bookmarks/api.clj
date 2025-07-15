@@ -4,12 +4,13 @@
   necessarily support request bodies. The POST is therefore shaped in this same manner. Since there are three
   underlying tables the id on the actual bookmark itself is not unique among \"bookmarks\" and is not a good
   identifier for using in the API."
-  (:require [malli.registry :as mr]
-   [metabase.api.common :as api]
-   [metabase.api.macros :as api.macros]
-   [metabase.bookmarks.models.bookmark :as bookmark]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+  (:require
+    [metabase.api.common :as api]
+    [metabase.api.macros :as api.macros]
+    [metabase.bookmarks.models.bookmark :as bookmark]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [toucan2.core :as t2]))
 
 (mr/def ::Models
   "Schema enumerating bookmarkable models."

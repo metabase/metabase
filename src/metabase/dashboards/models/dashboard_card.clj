@@ -1,16 +1,17 @@
 (ns metabase.dashboards.models.dashboard-card
-  (:require [malli.registry :as mr]
-   [clojure.set :as set]
-   [medley.core :as m]
-   [metabase.app-db.core :as mdb]
-   [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
-   [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+  (:require
+    [clojure.set :as set]
+    [medley.core :as m]
+    [metabase.app-db.core :as mdb]
+    [metabase.models.interface :as mi]
+    [metabase.models.serialization :as serdes]
+    [metabase.util :as u]
+    [metabase.util.honey-sql-2 :as h2x]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [methodical.core :as methodical]
+    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/DashboardCard [_model] :report_dashboardcard)
 

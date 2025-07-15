@@ -1,10 +1,11 @@
 (ns metabase.timeline.models.timeline-event
-  (:require [malli.registry :as mr]
-   [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
-   [metabase.util.honey-sql-2 :as h2x]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+  (:require
+    [metabase.models.interface :as mi]
+    [metabase.models.serialization :as serdes]
+    [metabase.util.honey-sql-2 :as h2x]
+    [metabase.util.malli.registry :as mr]
+    [methodical.core :as methodical]
+    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/TimelineEvent  [_model] :timeline_event)
 

@@ -2,36 +2,36 @@
   "Collections are used to organize Cards, Dashboards, and Pulses; as of v0.30, they are the primary way we determine
   permissions for these objects."
   (:refer-clojure :exclude [ancestors descendants])
-  (:require [malli.registry :as mr]
-   [clojure.core.memoize :as memoize]
-   [clojure.set :as set]
-   [clojure.string :as str]
-   [metabase.api-keys.core :as api-key]
-   [metabase.api.common
+  (:require
+    [clojure.core.memoize :as memoize]
+    [clojure.set :as set]
+    [clojure.string :as str]
+    [metabase.api-keys.core :as api-key]
+    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
-   [metabase.app-db.core :as mdb]
-   [metabase.audit-app.core :as audit]
-   [metabase.collections.models.collection.root :as collection.root]
-   [metabase.config.core :as config :refer [*request-id*]]
-   [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
-   [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
-   ;; Trying to use metabase.search would cause a circular reference ;_;
-   [metabase.search.spec :as search.spec]
-   [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru deferred-tru]]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [potemkin :as p]
-   [toucan2.core :as t2]
-   [toucan2.protocols :as t2.protocols]
-   [toucan2.realize :as t2.realize]))
+    [metabase.app-db.core :as mdb]
+    [metabase.audit-app.core :as audit]
+    [metabase.collections.models.collection.root :as collection.root]
+    [metabase.config.core :as config :refer [*request-id*]]
+    [metabase.events.core :as events]
+    [metabase.models.interface :as mi]
+    [metabase.models.serialization :as serdes]
+    [metabase.permissions.core :as perms]
+    [metabase.premium-features.core :as premium-features] ;; Trying to use metabase.search would cause a circular reference ;_;
+    [metabase.search.spec :as search.spec]
+    [metabase.util :as u]
+    [metabase.util.honey-sql-2 :as h2x]
+    [metabase.util.i18n :refer [deferred-tru trs tru]]
+    [metabase.util.log :as log]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [methodical.core :as methodical]
+    [potemkin :as p]
+    [toucan2.core :as t2]
+    [toucan2.protocols :as t2.protocols]
+    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
@@ -963,7 +963,7 @@
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn perms-for-collection-and-descendants :- [:set perms/PathSchema]
+(mu/defn perms-for-collection-and-descendants :- [:set ::perms/PathSchema]
   "Return the set of write permissions for this collection and all its descendants.
 
   This is useful for operations that need to modify a collection *and* its descendants - for example, moving
@@ -989,7 +989,7 @@
                            (t2/select-pks-set :model/Collection :location [:like (str (children-location collection) "%")]))]
      (perms/collection-readwrite-path collection-or-id))))
 
-(mu/defn perms-for-archiving :- [:set perms/PathSchema]
+(mu/defn perms-for-archiving :- [:set ::perms/PathSchema]
   "Return the set of Permissions needed to archive or unarchive a `collection`. Since archiving a Collection is
   *recursive* (i.e., it applies to all the descendant Collections of that Collection), we require write ('curate')
   permissions for the Collection itself and all its descendants, but not for its parent Collection.
@@ -1007,7 +1007,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (perms-for-collection-and-descendants collection))
 
-(mu/defn perms-for-moving :- [:set perms/PathSchema]
+(mu/defn perms-for-moving :- [:set ::perms/PathSchema]
   "Return the set of Permissions needed to move a `collection`. Moving is recursive, so we require
   perms for the Collection and its descendants, plus permissions for the new parent Collection.
 

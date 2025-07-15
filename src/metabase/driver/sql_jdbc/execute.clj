@@ -5,26 +5,27 @@
   for JDBC drivers that do not support `java.time` classes can be found in
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
   #_{:clj-kondo/ignore [:metabase/modules]}
-  (:require [malli.registry :as mr]
-   [clojure.core.async :as a]
-   [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
-   [java-time.api :as t]
-   [medley.core :as m]
-   [metabase.driver :as driver]
-   [metabase.driver-api.core :as driver-api]
-   [metabase.driver.settings :as driver.settings]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
-   [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
-   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
-   [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]
-   [potemkin :as p])
+  (:require
+    [clojure.core.async :as a]
+    [clojure.java.jdbc :as jdbc]
+    [clojure.string :as str]
+    [java-time.api :as t]
+    [medley.core :as m]
+    [metabase.driver :as driver]
+    [metabase.driver-api.core :as driver-api]
+    [metabase.driver.settings :as driver.settings]
+    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
+    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
+    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+    [metabase.premium-features.core :refer [defenterprise]]
+    [metabase.util :as u]
+    [metabase.util.i18n :refer [tru]]
+    [metabase.util.log :as log]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.performance :as perf]
+    [potemkin :as p])
   (:import
    (java.sql
     Connection
@@ -278,7 +279,7 @@
   {:added "0.47.0", :arglists '(^javax.sql.DataSource [driver db-or-id-or-spec options])}
   [driver           :- :keyword
    db-or-id-or-spec :- DbOrIdOrSpec
-   {:keys [^String session-timezone], :as _options} :- ConnectionOptions]
+   {:keys [^String session-timezone], :as _options} :- ::ConnectionOptions]
   (if-not (u/id db-or-id-or-spec)
     ;; not a Database or Database ID... this is a raw `clojure.java.jdbc` spec, use that
     ;; directly.
@@ -336,7 +337,7 @@
   {:added "0.47.0"}
   [driver           :- :keyword
    db-or-id-or-spec :- [:or :int :map]
-   options          :- ConnectionOptions
+   options          :- ::ConnectionOptions
    f                :- fn?]
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (if-let [conn (:connection db-or-id-or-spec)]
@@ -351,7 +352,7 @@
   [driver                                                 :- :keyword
    db-or-id-or-spec
    ^Connection conn                                       :- (driver-api/instance-of-class Connection)
-   {:keys [^String session-timezone write?], :as options} :- ConnectionOptions]
+   {:keys [^String session-timezone write?], :as options} :- ::ConnectionOptions]
   (when-not (recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)

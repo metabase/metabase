@@ -224,7 +224,7 @@
    [:context               {:optional true} [:maybe :keyword]]
    [:is-impersonated-user? {:optional true} [:maybe :boolean]]
    [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
-   [:current-user-perms [:set perms/PathSchema]]
+   [:current-user-perms [:set ::perms/PathSchema]]
 
    [:model-ancestors?   :boolean]
    [:models             [:set ::SearchableModel]]

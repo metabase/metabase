@@ -61,36 +61,37 @@
   FROM category
   WHERE lower(name) LIKE '%cam'
   AND field_2 = \"abc\""
-  (:require [malli.registry :as mr]
-   [clojure.core.memoize :as memoize]
-   [clojure.set :as set]
-   [clojure.string :as str]
-   [honey.sql :as sql]
-   [metabase.app-db.core :as mdb]
-   [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.ident :as lib.ident]
-   [metabase.lib.util.match :as lib.util.match]
-   [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
-   [metabase.parameters.field-values :as params.field-values]
-   [metabase.parameters.params :as params]
-   [metabase.parameters.schema :as parameters.schema]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.setup :as qp.setup]
-   [metabase.types.core :as types]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
-   [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouses.models.database :as database]
-   [toucan2.core :as t2]))
+  (:require
+    [clojure.core.memoize :as memoize]
+    [clojure.set :as set]
+    [clojure.string :as str]
+    [honey.sql :as sql]
+    [metabase.app-db.core :as mdb]
+    [metabase.driver.common.parameters.dates :as params.dates]
+    [metabase.legacy-mbql.util :as mbql.u]
+    [metabase.lib.ident :as lib.ident]
+    [metabase.lib.util.match :as lib.util.match]
+    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
+    [metabase.parameters.field-values :as params.field-values]
+    [metabase.parameters.params :as params]
+    [metabase.parameters.schema :as parameters.schema]
+    [metabase.query-processor :as qp]
+    [metabase.query-processor.compile :as qp.compile]
+    [metabase.query-processor.middleware.permissions :as qp.perms]
+    [metabase.query-processor.preprocess :as qp.preprocess]
+    [metabase.query-processor.setup :as qp.setup]
+    [metabase.types.core :as types]
+    [metabase.util :as u]
+    [metabase.util.i18n :refer [tru]]
+    [metabase.util.log :as log]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
+    [metabase.warehouse-schema.models.field :as field]
+    [metabase.warehouse-schema.models.field-values :as field-values]
+    [metabase.warehouses.models.database :as database]
+    [toucan2.core :as t2]))
 
 ;; so the hydration method for name_field is loaded
 (comment params/keep-me)
@@ -105,7 +106,7 @@
 
 (mr/def ::Constraints
   "Schema for a list of Constraints."
-  [:sequential Constraint])
+  [:sequential ::Constraint])
 
 (def ^:dynamic *enable-reverse-joins*
   "Whether to chain filter via joins where we must follow relationships in reverse, e.g. child -> parent (e.g.
@@ -130,7 +131,7 @@
 (mu/defn- filter-clause
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
   [source-table-id
-   {:keys [field-id op value options]} :- Constraint]
+   {:keys [field-id op value options]} :- ::Constraint]
   (let [{:keys [base_type] :as field-metadata} (memoized-field-types-by-id field-id)
         field-clause (let [this-field-table-id (field/field-id->table-id field-id)]
                        [:field field-id (merge (when base_type
@@ -392,7 +393,7 @@
 (mu/defn- chain-filter-mbql-query
   "Generate the MBQL query powering `chain-filter`."
   [field-id                          :- ::ms/PositiveInt
-   constraints                       :- [:maybe Constraints]
+   constraints                       :- [:maybe ::Constraints]
    {:keys [original-field-id limit]} :- [:maybe Options]]
   {:database (field/field-id->database-id field-id)
    :type     :query
@@ -446,7 +447,7 @@
 (mu/defn- unremapped-chain-filter :- ::ms/FieldValuesResult
   "Chain filtering without all the fancy remapping stuff on top of it."
   [field-id    :- ::ms/PositiveInt
-   constraints :- [:maybe Constraints]
+   constraints :- [:maybe ::Constraints]
    options     :- [:maybe Options]]
   (let [mbql-query (chain-filter-mbql-query field-id constraints options)]
     (log/debugf "Chain filter MBQL query:\n%s" (u/pprint-to-str 'magenta mbql-query))
@@ -600,7 +601,7 @@
 
   For remapped columns, this returns results as a sequence of `[value remapped-value]` pairs."
   [field-id    :- ::ms/PositiveInt
-   constraints :- [:maybe Constraints]
+   constraints :- [:maybe ::Constraints]
    & options]
   (assert (even? (count options)))
   (let [{:as options}         options
@@ -659,7 +660,7 @@
 
 (mu/defn- unremapped-chain-filter-search
   [field-id    :- ::ms/PositiveInt
-   constraints :- [:maybe Constraints]
+   constraints :- [:maybe ::Constraints]
    query       :- ::ms/NonBlankString
    options     :- [:maybe Options]]
   (check-valid-search-field field-id)
@@ -682,7 +683,7 @@
   database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."
   [field-id          :- ::ms/PositiveInt
    v->human-readable :- ::parameters.schema/human-readable-remapping-map
-   constraints       :- [:maybe Constraints]
+   constraints       :- [:maybe ::Constraints]
    query             :- ::ms/NonBlankString
    options           :- [:maybe Options]]
   (or (when-let [unremapped-values (not-empty (matching-unremapped-values query v->human-readable))]
@@ -728,7 +729,7 @@
   "Convenience version of `chain-filter` that adds a constraint to only return values of Field with `field-id`
   containing String `query`. Powers the `search/:query` version of the chain filter endpoint."
   [field-id          :- ::ms/PositiveInt
-   constraints       :- [:maybe Constraints]
+   constraints       :- [:maybe ::Constraints]
    query             :- [:maybe ::ms/NonBlankString]
    & options]
   (assert (even? (count options)))

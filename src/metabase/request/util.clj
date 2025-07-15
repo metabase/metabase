@@ -1,18 +1,19 @@
 (ns metabase.request.util
   "Utility functions for HTTP (Ring) requests, and for getting device/location info from `User-Agent`/IP Address, etc."
-  (:require [malli.registry :as mr]
-   [clj-http.client :as http]
-   [clojure.string :as str]
-   [java-time.api :as t]
-   [metabase.config.core :as config]
-   [metabase.request.settings :as request.settings]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [user-agent :as user-agent])
+  (:require
+    [clj-http.client :as http]
+    [clojure.string :as str]
+    [java-time.api :as t]
+    [metabase.config.core :as config]
+    [metabase.request.settings :as request.settings]
+    [metabase.util :as u]
+    [metabase.util.i18n :refer [trs tru]]
+    [metabase.util.json :as json]
+    [metabase.util.log :as log]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [user-agent :as user-agent])
   (:import
    (java.time ZoneId)))
 

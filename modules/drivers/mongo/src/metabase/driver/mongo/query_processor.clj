@@ -1634,7 +1634,7 @@ function(bin) {
             handle-page])))
 
 (mu/defn- generate-aggregation-pipeline :- [:map
-                                            [:projections Projections]
+                                            [:projections ::Projections]
                                             [:query Pipeline]]
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
   [inner-query :- driver-api/MBQLQuery]

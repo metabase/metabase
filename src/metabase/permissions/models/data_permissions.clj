@@ -41,7 +41,7 @@
 ;;  - If a user does not have any value for the permission when it is fetched, the *least* permissive value is used as a
 ;;    fallback.
 
-(mr/def ::Permissions
+(def Permissions
   "Permissions which apply to individual databases or tables."
   ;; `legacy-no-self-service` is a deprecated permission which behaves the same as `:unrestricted` but does not override
   ;; `:blocked` in other groups
@@ -76,9 +76,9 @@
 
 (mu/defn at-least-as-permissive?
   "Returns true if value1 is at least as permissive as value2 for the given permission type."
-  [perm-type :- PermissionType
-   value1    :- PermissionValue
-   value2    :- PermissionValue]
+  [perm-type :- ::PermissionType
+   value1    :- ::PermissionValue
+   value2    :- ::PermissionValue]
   (let [^PersistentVector values (-> Permissions perm-type :values)]
     (<= (.indexOf values value1)
         (.indexOf values value2))))
@@ -242,7 +242,7 @@
     api/*is-superuser?*
     (t2/select-one-fn :is_superuser :model/User :id user-id)))
 
-(mu/defn database-permission-for-user :- PermissionValue
+(mu/defn database-permission-for-user :- ::PermissionValue
   "Returns the effective permission value for a given user, permission type, and database ID. If the user has
   multiple permissions for the given type in different groups, they are coalesced into a single value."
   [user-id perm-type database-id]
@@ -286,7 +286,7 @@
 (defn- get-additional-table-permission! [{:keys [db-id table-id]} perm-type]
   (get-in *additional-table-permissions* [db-id table-id perm-type]))
 
-(mu/defn table-permission-for-groups :- PermissionValue
+(mu/defn table-permission-for-groups :- ::PermissionValue
   "Returns the effective permission value provided by a set of *group-ids*, for a provided permission type, database
   ID, and table ID."
   [group-ids perm-type database-id table-id]
@@ -316,7 +316,7 @@
                            (table-permission-for-groups group-ids perm-type database-id table-id)
                            perm-value))
 
-(mu/defn table-permission-for-user :- PermissionValue
+(mu/defn table-permission-for-user :- ::PermissionValue
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
   has multiple permissions for the given type in different groups, they are coalesced into a single value."
   [user-id perm-type database-id table-id]
@@ -353,7 +353,7 @@
        vals
        set))
 
-(mu/defn full-schema-permission-for-user :- PermissionValue
+(mu/defn full-schema-permission-for-user :- ::PermissionValue
   "Returns the effective *schema-level* permission value for a given user, permission type, and database ID, and
   schema name. If the user has multiple permissions for the given type in different groups, they are coalesced into a
   single value. The schema-level permission is the *most* restrictive table-level permission within that schema."
@@ -377,7 +377,7 @@
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
-(mu/defn full-db-permission-for-user :- PermissionValue
+(mu/defn full-db-permission-for-user :- ::PermissionValue
   "Returns the effective *db-level* permission value for a given user, permission type, and database ID. If the user
   has multiple permissions for the given type in different groups, they are coalesced into a single value. The
   db-level permission is the *most* restrictive table-level permission within that database."
@@ -399,7 +399,7 @@
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
-(mu/defn schema-permission-for-user :- PermissionValue
+(mu/defn schema-permission-for-user :- ::PermissionValue
   "Returns the effective *schema-level* permission value for a given user, permission type, and database ID, and
   schema name. If the user has multiple permissions for the given type in different groups, they are coalesced into a
   single value. The schema-level permission is the *least* restrictive table-level permission within that schema.
@@ -431,7 +431,7 @@
                            (schema-permission-for-user user-id perm-type database-id schema)
                            perm-value))
 
-(mu/defn most-permissive-database-permission-for-user :- PermissionValue
+(mu/defn most-permissive-database-permission-for-user :- ::PermissionValue
   "Similar to checking _partial_ permissions with permissions paths - what is the *most permissive* permission the
   user has on any of the tables within this database?"
   [user-id perm-type database-id]
@@ -446,7 +446,7 @@
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
-(mu/defn native-download-permission-for-user :- PermissionValue
+(mu/defn native-download-permission-for-user :- ::PermissionValue
   "Returns the effective download permission value for a given user and database ID, for native queries on the database.
   For each group, the native download permission for a database is equal to the lowest permission level of any table in
   the database."
@@ -560,13 +560,13 @@
 (def ^:private Graph
   [:map-of [:int {:title "group-id" :min 0}]
    [:map-of [:int {:title "db-id" :min 0}]
-    [:map-of PermissionType
+    [:map-of ::PermissionType
      [:or
-      PermissionValue
+      ::PermissionValue
       [:map-of [:string {:title "schema"}]
        [:map-of
         [:int {:title "table-id" :min 0}]
-        PermissionValue]]]]]])
+        ::PermissionValue]]]]]])
 
 (mu/defn data-permissions-graph :- Graph
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
@@ -605,8 +605,8 @@
 
 (defn- assert-valid-permission
   [{:keys [perm_type perm_value] :as permission}]
-  (when-not (mr/validate PermissionType perm_type)
-    (throw (ex-info (str/join (mu/explain PermissionType perm_type)) permission)))
+  (when-not (mr/validate ::PermissionType perm_type)
+    (throw (ex-info (str/join (mu/explain ::PermissionType perm_type)) permission)))
   (assert-value-matches-perm-type perm_type perm_value))
 
 (t2/define-before-insert :model/DataPermissions
@@ -634,7 +634,7 @@
   - :to-insert - sequence of DataPermissions models to insert "
   [group-or-id :- TheIdable
    db-or-id    :- TheIdable
-   perm-type   :- PermissionType
+   perm-type   :- ::PermissionType
    value       :- :keyword]
   (let [group-id (u/the-id group-or-id)
         db-id    (u/the-id db-or-id)
@@ -666,7 +666,7 @@
   Block permissions (i.e. :perms/view-data :blocked) can be set at the table or database-level."
   [group-or-id :- TheIdable
    db-or-id    :- TheIdable
-   perm-type   :- PermissionType
+   perm-type   :- ::PermissionType
    value       :- :keyword]
   (t2/with-transaction [_conn]
     (let [{:keys [to-insert to-delete]} (build-database-permission group-or-id db-or-id perm-type value)]
@@ -869,7 +869,7 @@
   - :to-delete - sequence of DataPermissions models to delete
   - :to-insert - sequence of DataPermissions models to insert "
   [group-or-id :- TheIdable
-   perm-type   :- PermissionType
+   perm-type   :- ::PermissionType
    table-perms :- [:map-of TheIdable :keyword]]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} cannot be set on tables." perm-type)
@@ -920,7 +920,7 @@
   is removed and table-level rows are are added for all of its tables. Similarly, if setting a table-level permission to a value
   that results in all of the database's tables having the same permission, it is replaced with a single database-level row."
   [group-or-id :- TheIdable
-   perm-type   :- PermissionType
+   perm-type   :- ::PermissionType
    table-perms :- [:map-of TheIdable :keyword]]
   (t2/with-transaction [_conn]
     (let [{:keys [to-delete to-insert]} (build-table-permissions group-or-id perm-type table-perms)]
@@ -933,7 +933,7 @@
   "Sets permissions for a single table to the specified value for a given group."
   [group-or-id :- TheIdable
    table-or-id :- TheIdable
-   perm-type   :- PermissionType
+   perm-type   :- ::PermissionType
    value       :- :keyword]
   (set-table-permissions! group-or-id perm-type {table-or-id value}))
 
@@ -969,7 +969,7 @@
     - Otherwise we use the provided `default-value`."
   [groups-or-ids :- [:sequential TheIdable]
    table-or-id   :- TheIdable
-   perm-type     :- PermissionType
+   perm-type     :- ::PermissionType
    default-value :- :keyword]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} cannot be set on tables." perm-type)

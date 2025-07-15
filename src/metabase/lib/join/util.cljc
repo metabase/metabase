@@ -1,6 +1,6 @@
 (ns metabase.lib.join.util
   "Some small join-related helper functions which are used from a few different namespaces."
-  (:require [malli.registry :as mr]
+  (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -8,7 +8,8 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (mr/def ::JoinWithOptionalAlias
   "A Join that may not yet have an `:alias`, which is normally required; [[join]] accepts this and will add a default
@@ -21,7 +22,7 @@
 (mr/def ::PartialJoin
   "A join that may not yet have an `:alias` or `:conditions`."
   [:merge
-   JoinWithOptionalAlias
+   ::JoinWithOptionalAlias
    [:map
     [:conditions {:optional true} [:ref ::lib.schema.join/conditions]]]])
 
@@ -33,11 +34,11 @@
 
 (mr/def ::FieldOrPartialJoin
   "A field or a partial join."
-  [:or Field PartialJoin])
+  [:or ::Field ::PartialJoin])
 
 (mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
   "Get the current join alias associated with something, if it has one."
-  [field-or-join :- [:maybe FieldOrPartialJoin]]
+  [field-or-join :- [:maybe ::FieldOrPartialJoin]]
   (case (lib.dispatch/dispatch-value field-or-join)
     :dispatch-type/nil nil
     :field             (:join-alias (lib.options/options field-or-join))

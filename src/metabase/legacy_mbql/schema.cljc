@@ -471,7 +471,8 @@
    [:numeric-expression NumericExpression]
    [:aggregation        ::Aggregation]
    [:value              value]
-   [:field              Reference]])
+   [:field              ::Reference]])
+
 (def ^:private NumericExpressionArg
   [:ref ::NumericExpressionArg])
 
@@ -486,7 +487,7 @@
                        :else                             :else))}
    [:aggregation         ::Aggregation]
    [:value               value]
-   [:datetime-expression DatetimeExpression]
+   [:datetime-expression ::DatetimeExpression]
    [:else                [:or [:ref ::DateOrDatetimeLiteral] ::Field]]])
 
 (def ^:private DateTimeExpressionArg
@@ -511,7 +512,7 @@
    [:boolean              :boolean]
    [:boolean-expression   BooleanExpression]
    [:numeric-expression   NumericExpression]
-   [:datetime-expression  DatetimeExpression]
+   [:datetime-expression  ::DatetimeExpression]
    [:aggregation          ::Aggregation]
    [:string               :string]
    [:string-expression    StringExpression]
@@ -739,21 +740,17 @@
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
-(mr/def ::Filter
-  "Schema for a valid MBQL `:filter` clause."
-  [:ref ::Filter])
-
 (defclause and
-  first-clause  Filter
-  second-clause Filter
-  other-clauses (rest Filter))
+  first-clause  ::Filter
+  second-clause ::Filter
+  other-clauses (rest ::Filter))
 
 (defclause or
-  first-clause  Filter
-  second-clause Filter
-  other-clauses (rest Filter))
+  first-clause  ::Filter
+  second-clause ::Filter
+  other-clauses (rest ::Filter))
 
-(defclause not, clause Filter)
+(defclause not, clause ::Filter)
 
 (def ^:private FieldOrExpressionRefOrRelativeDatetime
   [:multi
@@ -848,8 +845,8 @@
 
 ;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and
 ;; `[:and [:not= <field> nil] [:not= <field> ""]]`
-(defclause ^:sugar is-empty  field Emptyable)
-(defclause ^:sugar not-empty field Emptyable)
+(defclause ^:sugar is-empty  field ::Emptyable)
+(defclause ^:sugar not-empty field ::Emptyable)
 
 (def ^:private StringFilterOptions
   [:map
@@ -956,7 +953,7 @@
                        (is-clause? :value x)             :value
                        (is-clause? :segment x)           :segment
                        :else                             :else))}
-   [:datetime DatetimeExpression]
+   [:datetime ::DatetimeExpression]
    [:numeric  NumericExpression]
    [:string   StringExpression]
    [:boolean  BooleanExpression]
@@ -965,7 +962,7 @@
    [:else     ::Field]])
 
 (def ^:private CaseClause
-  [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
+  [:tuple {:error/message ":case subclause"} ::Filter ExpressionArg])
 
 (def ^:private CaseClauses
   [:maybe [:sequential CaseClause]])
@@ -1011,7 +1008,7 @@
    [:numeric  NumericExpression]
    [:string   StringExpression]
    [:boolean  BooleanExpression]
-   [:datetime DatetimeExpression]
+   [:datetime ::DatetimeExpression]
    [:case     case]
    [:if       case:if]
    [:offset   offset]
@@ -1043,16 +1040,16 @@
 (defclause ^{:requires-features #{:basic-aggregations}} max,      field-or-expression [:ref ::FieldOrExpressionDef])
 
 (defclause ^{:requires-features #{:distinct-where}} distinct-where
-  field-or-expression [:ref ::FieldOrExpressionDef], pred Filter)
+  field-or-expression [:ref ::FieldOrExpressionDef], pred ::Filter)
 
 (defclause ^{:requires-features #{:basic-aggregations}} sum-where
-  field-or-expression [:ref ::FieldOrExpressionDef], pred Filter)
+  field-or-expression [:ref ::FieldOrExpressionDef], pred ::Filter)
 
 (defclause ^{:requires-features #{:basic-aggregations}} count-where
-  pred Filter)
+  pred ::Filter)
 
 (defclause ^{:requires-features #{:basic-aggregations}} share
-  pred Filter)
+  pred ::Filter)
 
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev
   field-or-expression [:ref ::FieldOrExpressionDef])
@@ -1119,8 +1116,8 @@
 ;;
 ;; Field ID is implicit in these clauses
 
-(defclause asc,  field Reference)
-(defclause desc, field Reference)
+(defclause asc,  field ::Reference)
+(defclause desc, field ::Reference)
 
 (mr/def ::OrderBy
   "Schema for an `order-by` clause subclause."
@@ -1290,9 +1287,10 @@
    [:temporal-unit [:ref ::TemplateTag:TemporalUnit]]
    [::mc/default   [:ref ::TemplateTag:RawValue]]])
 
-(mr/def ::TemplateTag
+(def TemplateTag
   "Alias for ::TemplateTag; prefer that going forward."
   [:ref ::TemplateTag])
+
 (letfn [(f [m]
           (every? (fn [[tag-name tag-definition]]
                     (core/= tag-name (:name tag-definition)))
@@ -1415,7 +1413,7 @@
   this is specified. YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!"}
      SourceTable]
 
-    [:source-query {:optional true} SourceQuery]
+    [:source-query {:optional true} ::SourceQuery]
 
     [:condition
      {:description
@@ -1423,14 +1421,14 @@
   JOINs this is usually something like
 
     [:= <source-table-fk-field> [:field <dest-table-pk-field> {:join-alias <join-table-alias>}]]"}
-     Filter]
+     ::Filter]
 
     [:strategy
      {:optional true
       :description "Defaults to `:left-join`; used for all automatically-generated JOINs
 
   Driver implementations: this is guaranteed to be present after pre-processing."}
-     JoinStrategy]
+     ::JoinStrategy]
 
     [:fields
      {:optional true
@@ -1482,7 +1480,7 @@
      {:optional true
       :description "Metadata about the source query being used, if pulled in from a Card via the
   `:source-table \"card__id\"` syntax. added automatically by the `resolve-card-id-source-tables` middleware."}
-     [:maybe [:sequential SourceQueryMetadata]]]]
+     [:maybe [:sequential ::SourceQueryMetadata]]]]
    ;; additional constraints
    [:fn
     {:error/message "Joins must have either a `source-table` or `source-query`, but not both."}
@@ -1550,7 +1548,7 @@
   (mr/def ::MBQLQuery
     [:and
      [:map
-      [:source-query       {:optional true} SourceQuery]
+      [:source-query       {:optional true} ::SourceQuery]
       [:source-table       {:optional true} SourceTable]
       [:aggregation        {:optional true} [:sequential {:min 1} ::Aggregation]]
       [:aggregation-idents {:optional true} [:ref ::IndexedIdents]]
@@ -1558,8 +1556,8 @@
       [:breakout-idents    {:optional true} [:ref ::IndexedIdents]]
       [:expressions        {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
       [:expression-idents  {:optional true} [:ref ::ExpressionIdents]]
-      [:fields             {:optional true} Fields]
-      [:filter             {:optional true} Filter]
+      [:fields             {:optional true} ::Fields]
+      [:filter             {:optional true} ::Filter]
       [:limit              {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
       [:order-by           {:optional true} (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]])]
       [:page               {:optional true} [:ref ::Page]]
@@ -1569,7 +1567,7 @@
        {:optional true
         :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is
   primarily used to let power things like binning when used with Field Literals instead of normal Fields."}
-       [:maybe [:sequential SourceQueryMetadata]]]]
+       [:maybe [:sequential ::SourceQueryMetadata]]]]
      ;;
      ;; CONSTRAINTS
      ;;
@@ -1640,7 +1638,7 @@
   [:ref ::Parameter])
 
 (mr/def ::ParameterList
-  [:maybe [:sequential Parameter]])
+  [:maybe [:sequential ::Parameter]])
 
 (mr/def ::ParameterList
   "Schema for a list of `:parameters` as passed in to a query."
@@ -1797,9 +1795,9 @@
       {:description "Type of query. `:query` = MBQL; `:native` = native."}
       :query :native]]
 
-    [:native     {:optional true} NativeQuery]
-    [:query      {:optional true} MBQLQuery]
-    [:parameters {:optional true} ParameterList]
+    [:native     {:optional true} ::NativeQuery]
+    [:query      {:optional true} ::MBQLQuery]
+    [:parameters {:optional true} ::ParameterList]
     ;;
     ;; OPTIONS
     ;;
@@ -1829,7 +1827,7 @@
 
 (def ^{:arglists '([query])} valid-query?
   "Is this a valid outer query? (Pre-compling a validator is more efficient.)"
-  (mr/validator Query))
+  (mr/validator ::Query))
 
 (defn validate-query
   "Validator for an outer query; throw an Exception explaining why the query is invalid if it is. Returns query if
@@ -1837,7 +1835,7 @@
   [query]
   (if (valid-query? query)
     query
-    (let [error     (mr/explain Query query)
+    (let [error     (mr/explain ::Query query)
           humanized (me/humanize error)]
       (throw (ex-info (i18n/tru "Invalid query: {0}" (pr-str humanized))
                       {:error    humanized

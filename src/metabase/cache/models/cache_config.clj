@@ -1,14 +1,15 @@
 (ns metabase.cache.models.cache-config
   "A model representing cache configuration."
-  (:require [malli.registry :as mr]
-   [java-time.api :as t]
-   [medley.core :as m]
-   [metabase.app-db.core :as app-db]
-   [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
-   [metabase.util :as u]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+  (:require
+    [java-time.api :as t]
+    [medley.core :as m]
+    [metabase.app-db.core :as app-db]
+    [metabase.events.core :as events]
+    [metabase.models.interface :as mi]
+    [metabase.util :as u]
+    [metabase.util.malli.registry :as mr]
+    [methodical.core :as methodical]
+    [toucan2.core :as t2]))
 
 (mr/def ::CachingModel "Caching is configurable for those models" [:enum "root" "database" "dashboard" "question"])
 

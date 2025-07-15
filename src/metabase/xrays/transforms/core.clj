@@ -13,19 +13,16 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.table :as table]
-   [metabase.xrays.domain-entities.core
-    :as de
-    :refer [Bindings DimensionBindings SourceEntity SourceName]]
-   [metabase.xrays.domain-entities.specs
-    :refer [domain-entity-specs DomainEntitySpec]]
+   [metabase.xrays.domain-entities.core :as de]
+   [metabase.xrays.domain-entities.specs :refer [domain-entity-specs]]
    [metabase.xrays.transforms.materialize :as tf.materialize]
-   [metabase.xrays.transforms.specs :refer [Step transform-specs TransformSpec]]
+   [metabase.xrays.transforms.specs :refer [transform-specs]]
    [toucan2.core :as t2]))
 
-(mu/defn- add-bindings :- Bindings
-  [bindings     :- Bindings
-   source       :- SourceName
-   new-bindings :- [:maybe DimensionBindings]]
+(mu/defn- add-bindings :- ::de/Bindings
+  [bindings     :- ::de/Bindings
+   source       :- ::de/SourceName
+   new-bindings :- [:maybe ::de/DimensionBindings]]
   (reduce-kv (fn [bindings name definition]
                (->> definition
                     (de/resolve-dimension-clauses bindings source)
@@ -42,9 +39,9 @@
     [:field (id :guard integer?) _]
     (t2/select-one-fn :name :model/Field :id id)))
 
-(mu/defn- infer-resulting-dimensions :- DimensionBindings
-  [bindings             :- Bindings
-   {:keys [joins name]} :- Step
+(mu/defn- infer-resulting-dimensions :- :de/DimensionBindings
+  [bindings             :- ::de/Bindings
+   {:keys [joins name]} :- :metabase.xrays.transforms.specs/Step
    query                :- ::mbql.s/Query]
   (let [flattened-bindings (merge (apply merge (map (comp :dimensions bindings :source) joins))
                                   (get-in bindings [name :dimensions]))]
@@ -100,7 +97,7 @@
 
 (mu/defn- ->source-table-reference
   "Serialize `entity` into a form suitable as `:source-table` value."
-  [entity :- SourceEntity]
+  [entity :- :de/SourceEntity]
   (if (mi/instance-of? :model/Table entity)
     (u/the-id entity)
     (str "card__" (u/the-id entity))))
@@ -125,9 +122,9 @@
   [_bindings {:keys [limit]} query]
   (m/assoc-some query :limit limit))
 
-(mu/defn- transform-step! :- Bindings
-  [bindings :- Bindings
-   {:keys [name source aggregation expressions] :as step} :- Step]
+(mu/defn- transform-step! :- ::de/Bindings
+  [bindings :- ::de/Bindings
+   {:keys [name source aggregation expressions] :as step} :- :metabase.xrays.transforms.specs/Step]
   (let [source-entity  (get-in bindings [source :entity])
         local-bindings (-> bindings
                            (add-bindings name (get-in bindings [source :dimensions]))
@@ -156,30 +153,30 @@
 
 (mu/defn- find-tables-with-domain-entity :- Tableset
   [tableset           :- Tableset
-   domain-entity-spec :- DomainEntitySpec]
+   domain-entity-spec :- :Domainmetabase.xrays.domain-entities.specs/EntitySpec]
   (filter #(-> % :domain_entity :type (isa? (:type domain-entity-spec))) tableset))
 
-(mu/defn- tableset->bindings :- Bindings
+(mu/defn- tableset->bindings :- ::de/Bindings
   [tableset :- Tableset]
   (into {} (for [{{domain-entity-name :name dimensions :dimensions} :domain_entity :as table} tableset]
              [domain-entity-name
               {:dimensions (m/map-vals de/mbql-reference dimensions)
                :entity     table}])))
 
-(mu/defn- apply-transform-to-tableset! :- Bindings
+(mu/defn- apply-transform-to-tableset! :- ::de/Bindings
   [tableset                  :- Tableset
-   {:keys [steps _provides]} :- TransformSpec]
+   {:keys [steps _provides]} :- ::metabase.xrays.transforms.specs/TransformSpec]
   (driver/with-driver (-> tableset first table/database :engine)
     (reduce transform-step! (tableset->bindings tableset) (vals steps))))
 
-(mu/defn- resulting-entities :- [:sequential SourceEntity]
-  [bindings           :- Bindings
-   {:keys [provides]} :- TransformSpec]
+(mu/defn- resulting-entities :- [:sequential :de/SourceEntity]
+  [bindings           :- ::de/Bindings
+   {:keys [provides]} :- ::metabase.xrays.transforms.specs/TransformSpec]
   (map (comp :entity val) (select-keys bindings provides)))
 
-(mu/defn- validate-results :- Bindings
-  [bindings           :- Bindings
-   {:keys [provides]} :- TransformSpec]
+(mu/defn- validate-results :- ::de/Bindings
+  [bindings           :- ::de/Bindings
+   {:keys [provides]} :- ::metabase.xrays.transforms.specs/TransformSpec]
   (doseq [domain-entity-name provides]
     (assert (de/satisfies-requierments? (get-in bindings [domain-entity-name :entity])
                                         (@domain-entity-specs domain-entity-name))
@@ -189,7 +186,7 @@
 
 (mu/defn- tables-matching-requirements :- [:maybe Tableset]
   [tableset           :- Tableset
-   {:keys [requires]} :- TransformSpec]
+   {:keys [requires]} :- ::metabase.xrays.transforms.specs/TransformSpec]
   (let [matches (map (comp (partial find-tables-with-domain-entity tableset)
                            @domain-entity-specs)
                      requires)]
@@ -215,7 +212,7 @@
   5) Return the output cards."
   [db-id  :- ::lib.schema.id/database
    schema :- [:maybe :string]
-   spec   :- TransformSpec]
+   spec   :- ::metabase.xrays.transforms.specs/TransformSpec]
   (tf.materialize/fresh-collection-for-transform! spec)
   (some-> (tableset db-id schema)
           (tables-matching-requirements spec)

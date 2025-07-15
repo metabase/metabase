@@ -1,9 +1,10 @@
 (ns metabase.permissions.models.data-permissions.sql
   "Helper functions for models using data permissions to construct `visisble-query` methods from."
-  (:require [malli.registry :as mr]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu])
+  (:require
+    [metabase.permissions.models.data-permissions :as data-perms]
+    [metabase.util.honey-sql-2 :as h2x]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr])
   (:import
    (clojure.lang PersistentVector)))
 

@@ -7,14 +7,15 @@
   This constructs `:last-edit-info`, a map with keys `:timestamp`, `:id`, `:first_name`, `:last_name`, and
   `:email`. It is not a full User object (missing some superuser metadata, last login time, and a common name). This
   was done to prevent another db call and hooking up timestamps to users but this can be added if preferred."
-  (:require [malli.registry :as mr]
-   [clj-time.core :as time]
-   [clojure.set :as set]
-   [medley.core :as m]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2]))
+  (:require
+    [clj-time.core :as time]
+    [clojure.set :as set]
+    [medley.core :as m]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [steffan-westcott.clj-otel.api.trace.span :as span]
+    [toucan2.core :as t2]))
 
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 
