@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { BaseInteractiveQuestionProps } from "embedding-sdk/components/public/InteractiveQuestion";
+import type { BaseInteractiveQuestionProps } from "embedding-sdk/components/public/SdkQuestion";
 import * as Urls from "metabase/lib/urls";
 import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 

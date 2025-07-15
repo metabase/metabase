@@ -23,7 +23,7 @@ import {
   Stack,
 } from "metabase/ui";
 
-import { InteractiveQuestion } from "../../public/InteractiveQuestion";
+import { InteractiveQuestion } from "../../public/SdkQuestion";
 import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,

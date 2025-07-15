@@ -22,8 +22,8 @@ import {
   Summarize,
   SummarizeDropdown,
   Title,
+  VisualizationButton,
 } from "embedding-sdk/components/private/SdkQuestion/components";
-import { VisualizationButton } from "embedding-sdk/components/private/SdkQuestion/components/VisualizationButton/VisualizationButton";
 import {
   SdkQuestionProvider,
   type SdkQuestionProviderProps,
@@ -32,7 +32,8 @@ import {
   InteractiveQuestionDefaultView,
   type InteractiveQuestionDefaultViewProps,
 } from "embedding-sdk/components/private/SdkQuestionDefaultView";
-import type { InteractiveQuestionQuestionIdProps } from "embedding-sdk/components/public/InteractiveQuestion/types";
+
+import type { InteractiveQuestionQuestionIdProps } from "./types";
 
 /**
  * @interface

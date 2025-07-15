@@ -5,8 +5,8 @@ import {
   type SdkQuestionProviderProps,
 } from "embedding-sdk/components/private/SdkQuestion/context";
 
-import { InteractiveQuestion } from "../InteractiveQuestion";
-import type { InteractiveQuestionQuestionIdProps } from "../InteractiveQuestion/types";
+import { InteractiveQuestion } from "../SdkQuestion";
+import type { InteractiveQuestionQuestionIdProps } from "../SdkQuestion/types";
 
 /**
  * @interface

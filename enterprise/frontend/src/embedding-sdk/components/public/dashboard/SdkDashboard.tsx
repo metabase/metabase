@@ -33,7 +33,7 @@ import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmb
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 
-import type { DrillThroughQuestionProps } from "../InteractiveQuestion";
+import type { DrillThroughQuestionProps } from "../SdkQuestion";
 
 import {
   SdkDashboardStyledWrapper,
