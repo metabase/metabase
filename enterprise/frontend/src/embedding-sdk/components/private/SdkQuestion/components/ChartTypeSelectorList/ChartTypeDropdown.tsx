@@ -17,7 +17,7 @@ import { ToolbarButton } from "../util/ToolbarButton";
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionChartTypeDropdownProps = MenuProps;
+export type ChartTypeDropdownProps = MenuProps;
 
 /**
  * Dropdown for selecting the visualization type (bar chart, line chart, table, etc.).
@@ -27,9 +27,7 @@ export type InteractiveQuestionChartTypeDropdownProps = MenuProps;
  * @category InteractiveQuestion
  * @param props
  */
-export const ChartTypeDropdown = ({
-  ...menuProps
-}: InteractiveQuestionChartTypeDropdownProps) => {
+export const ChartTypeDropdown = ({ ...menuProps }: ChartTypeDropdownProps) => {
   const { selectedVisualization, updateQuestionVisualization } =
     useQuestionVisualization();
 
