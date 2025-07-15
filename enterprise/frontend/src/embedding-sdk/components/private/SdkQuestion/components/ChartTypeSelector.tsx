@@ -1,4 +1,4 @@
-import { useQuestionVisualization } from "embedding-sdk/components/private/InteractiveQuestion/hooks/use-question-visualization";
+import { useQuestionVisualization } from "embedding-sdk/components/private/SdkQuestion/hooks/use-question-visualization";
 import CS from "metabase/css/core/index.css";
 import { ChartTypeSettings } from "metabase/query_builder/components/chart-type-selector";
 import type { StackProps } from "metabase/ui";

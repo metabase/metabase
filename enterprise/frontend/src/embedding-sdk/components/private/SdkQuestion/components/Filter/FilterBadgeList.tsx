@@ -3,8 +3,8 @@ import { t } from "ttag";
 import {
   type SDKFilterItem,
   useFilterData,
-} from "embedding-sdk/components/private/InteractiveQuestion/components/Filter/hooks/use-filter-data";
-import { BadgeList } from "embedding-sdk/components/private/InteractiveQuestion/components/util/BadgeList";
+} from "embedding-sdk/components/private/SdkQuestion/components/Filter/hooks/use-filter-data";
+import { BadgeList } from "embedding-sdk/components/private/SdkQuestion/components/util/BadgeList";
 
 export const FilterBadgeList = ({
   onAddItem,

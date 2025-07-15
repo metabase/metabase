@@ -28,8 +28,8 @@ import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
 } from "../FlexibleSizeComponent";
-import { shouldShowSaveButton } from "../InteractiveQuestion/components";
-import { useSdkQuestionContext } from "../InteractiveQuestion/context";
+import { shouldShowSaveButton } from "../SdkQuestion/components";
+import { useSdkQuestionContext } from "../SdkQuestion/context";
 
 import { DefaultViewTitle } from "./DefaultViewTitle";
 import InteractiveQuestionS from "./InteractiveQuestionDefaultView.module.css";

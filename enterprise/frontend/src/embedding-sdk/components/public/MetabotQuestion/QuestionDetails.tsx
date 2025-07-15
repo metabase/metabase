@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { useBreakoutData } from "embedding-sdk/components/private/InteractiveQuestion/components/Breakout/use-breakout-data";
-import { useFilterData } from "embedding-sdk/components/private/InteractiveQuestion/components/Filter/hooks/use-filter-data";
-import { useSummarizeData } from "embedding-sdk/components/private/InteractiveQuestion/components/Summarize/use-summarize-data";
-import { useSdkQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { useBreakoutData } from "embedding-sdk/components/private/SdkQuestion/components/Breakout/use-breakout-data";
+import { useFilterData } from "embedding-sdk/components/private/SdkQuestion/components/Filter/hooks/use-filter-data";
+import { useSummarizeData } from "embedding-sdk/components/private/SdkQuestion/components/Summarize/use-summarize-data";
+import { useSdkQuestionContext } from "embedding-sdk/components/private/SdkQuestion/context";
 import { isNotNull } from "metabase/lib/types";
 import { Text } from "metabase/ui";
 import * as Lib from "metabase-lib";

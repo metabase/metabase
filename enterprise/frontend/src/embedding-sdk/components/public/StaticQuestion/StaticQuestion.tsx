@@ -1,9 +1,9 @@
 import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   SdkQuestionProvider,
   type SdkQuestionProviderProps,
-} from "embedding-sdk/components/private/InteractiveQuestion/context";
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+} from "embedding-sdk/components/private/SdkQuestion/context";
 
 import { InteractiveQuestion } from "../InteractiveQuestion";
 import type { InteractiveQuestionQuestionIdProps } from "../InteractiveQuestion/types";

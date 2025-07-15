@@ -2,7 +2,7 @@ import { useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { SummarizePicker } from "embedding-sdk/components/private/InteractiveQuestion/components/Summarize/SummarizePicker";
+import { SummarizePicker } from "embedding-sdk/components/private/SdkQuestion/components/Summarize/SummarizePicker";
 import {
   MultiStepPopover,
   type MultiStepState,

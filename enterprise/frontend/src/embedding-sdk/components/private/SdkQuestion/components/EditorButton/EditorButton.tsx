@@ -1,6 +1,6 @@
 import type { HTMLAttributes, MouseEventHandler } from "react";
 
-import { useSdkQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { useSdkQuestionContext } from "embedding-sdk/components/private/SdkQuestion/context";
 import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import { ActionIcon, type ActionIconProps, Icon } from "metabase/ui";
 

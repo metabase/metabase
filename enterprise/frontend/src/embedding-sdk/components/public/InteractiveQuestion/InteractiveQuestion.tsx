@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
 
 import {
+  InteractiveQuestionDefaultView,
+  type InteractiveQuestionDefaultViewProps,
+} from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import {
   BackButton,
   Breakout,
   BreakoutDropdown,
@@ -21,17 +26,12 @@ import {
   Summarize,
   SummarizeDropdown,
   Title,
-} from "embedding-sdk/components/private/InteractiveQuestion/components";
-import { VisualizationButton } from "embedding-sdk/components/private/InteractiveQuestion/components/VisualizationButton/VisualizationButton";
+} from "embedding-sdk/components/private/SdkQuestion/components";
+import { VisualizationButton } from "embedding-sdk/components/private/SdkQuestion/components/VisualizationButton/VisualizationButton";
 import {
   SdkQuestionProvider,
   type SdkQuestionProviderProps,
-} from "embedding-sdk/components/private/InteractiveQuestion/context";
-import {
-  InteractiveQuestionDefaultView,
-  type InteractiveQuestionDefaultViewProps,
-} from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+} from "embedding-sdk/components/private/SdkQuestion/context";
 import type { InteractiveQuestionQuestionIdProps } from "embedding-sdk/components/public/InteractiveQuestion/types";
 
 /**

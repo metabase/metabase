@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { useSdkQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { useSdkQuestionContext } from "embedding-sdk/components/private/SdkQuestion/context";
 import type { FilterItem } from "metabase/querying/filters/components/FilterPanel/types";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import * as Lib from "metabase-lib";

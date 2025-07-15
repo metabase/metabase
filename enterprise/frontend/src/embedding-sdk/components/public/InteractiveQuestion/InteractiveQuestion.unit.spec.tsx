@@ -41,7 +41,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
-import { useSdkQuestionContext } from "../../private/InteractiveQuestion/context";
+import { useSdkQuestionContext } from "../../private/SdkQuestion/context";
 
 import {
   type BaseInteractiveQuestionProps,

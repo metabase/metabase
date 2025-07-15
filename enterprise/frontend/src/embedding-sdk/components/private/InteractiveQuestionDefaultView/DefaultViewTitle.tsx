@@ -2,8 +2,8 @@ import { c, t } from "ttag";
 
 import { Anchor, Stack, Text } from "metabase/ui";
 
-import { useSdkQuestionContext } from "../InteractiveQuestion/context";
 import { getQuestionTitle } from "../QuestionTitle";
+import { useSdkQuestionContext } from "../SdkQuestion/context";
 
 import type { InteractiveQuestionDefaultViewProps } from "./InteractiveQuestionDefaultView";
 

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useSdkQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { useSdkQuestionContext } from "embedding-sdk/components/private/SdkQuestion/context";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import {

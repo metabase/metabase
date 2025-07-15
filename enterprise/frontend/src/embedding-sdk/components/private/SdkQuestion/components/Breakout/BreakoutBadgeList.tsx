@@ -3,8 +3,8 @@ import { t } from "ttag";
 import {
   type SDKBreakoutItem,
   useBreakoutData,
-} from "embedding-sdk/components/private/InteractiveQuestion/components/Breakout/use-breakout-data";
-import { useSdkQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+} from "embedding-sdk/components/private/SdkQuestion/components/Breakout/use-breakout-data";
+import { useSdkQuestionContext } from "embedding-sdk/components/private/SdkQuestion/context";
 
 import { BadgeList } from "../util/BadgeList";
 

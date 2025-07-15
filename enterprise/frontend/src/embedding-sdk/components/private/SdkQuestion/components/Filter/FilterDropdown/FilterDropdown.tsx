@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import type { SDKFilterItem } from "embedding-sdk/components/private/InteractiveQuestion/components/Filter/hooks/use-filter-data";
+import type { SDKFilterItem } from "embedding-sdk/components/private/SdkQuestion/components/Filter/hooks/use-filter-data";
 import {
   MultiStepPopover,
   type MultiStepState,
