@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import {
   useListDatabaseIdFieldsQuery,
@@ -12,6 +13,10 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DatabaseId, Field } from "metabase-types/api";
 
 import { TitledSection } from "../TitledSection";
+
+type Patch = Partial<
+  Pick<Field, "settings" | "semantic_type" | "fk_target_field_id">
+>;
 
 interface Props {
   databaseId: DatabaseId;
@@ -27,18 +32,11 @@ const MetadataSectionBase = ({ databaseId, field }: Props) => {
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
 
-  const handleUpdateField = async (
-    field: Field,
-    updates: Partial<
-      Pick<Field, "settings" | "semantic_type" | "fk_target_field_id">
-    >,
+  const handleChange = async (
+    patch: Patch,
+    previousPatch: Patch = _.pick(field, Object.keys(patch)),
   ) => {
-    const { id: _id, ...fieldAttributes } = field;
-    const { error } = await updateField({
-      id,
-      ...fieldAttributes,
-      ...updates,
-    });
+    const { error } = await updateField({ id, ...patch });
 
     if (error) {
       sendToast({
@@ -48,6 +46,8 @@ const MetadataSectionBase = ({ databaseId, field }: Props) => {
       });
     } else {
       sendToast({
+        action: () => handleChange(previousPatch, patch),
+        actionLabel: t`Undo`,
         icon: "check",
         message: t`Semantic type of ${field.display_name} updated`,
       });
@@ -61,7 +61,7 @@ const MetadataSectionBase = ({ databaseId, field }: Props) => {
         field={field}
         idFields={idFields}
         label={t`Semantic type`}
-        onUpdateField={handleUpdateField}
+        onChange={handleChange}
       />
     </TitledSection>
   );

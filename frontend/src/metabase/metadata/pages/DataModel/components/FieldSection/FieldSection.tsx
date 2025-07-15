@@ -51,8 +51,8 @@ const FieldSectionBase = ({
       });
     } else {
       sendToast({
-        actionLabel: t`Undo`,
         action: () => handleNameChange(previousName, name),
+        actionLabel: t`Undo`,
         icon: "check",
         message: t`Name of ${field.display_name} updated`,
       });
@@ -77,8 +77,8 @@ const FieldSectionBase = ({
       });
     } else {
       sendToast({
-        actionLabel: t`Undo`,
         action: () => handleDescriptionChange(previousDescription, description),
+        actionLabel: t`Undo`,
         icon: "check",
         message: t`Description of ${field.display_name} updated`,
       });

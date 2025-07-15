@@ -43,8 +43,8 @@ const FormattingSectionBase = ({ field }: Props) => {
       });
     } else {
       sendToast({
-        actionLabel: t`Undo`,
         action: () => handleChange(previousSettings, settings),
+        actionLabel: t`Undo`,
         icon: "check",
         message: t`Formatting of ${field.display_name} updated`,
       });
