@@ -14,7 +14,7 @@ import type {
  */
 export const WAIT_FOR_SESSION_TOKEN_TIMEOUT = 5 * 60 * 1000;
 
-const allowedSettingsKeys = {
+export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
   base: [
     "apiKey",
     "instanceUrl",
@@ -50,10 +50,10 @@ const allowedSettingsKeys = {
 const uniq = <T>(list: T[]): T[] => Array.from(new Set(list));
 
 export const ALLOWED_EMBED_SETTING_KEYS = uniq([
-  ...allowedSettingsKeys.base,
-  ...allowedSettingsKeys.dashboard,
-  ...allowedSettingsKeys.chart,
-  ...allowedSettingsKeys.exploration,
+  ...ALLOWED_EMBED_SETTING_KEYS_MAP.base,
+  ...ALLOWED_EMBED_SETTING_KEYS_MAP.dashboard,
+  ...ALLOWED_EMBED_SETTING_KEYS_MAP.chart,
+  ...ALLOWED_EMBED_SETTING_KEYS_MAP.exploration,
 ]) satisfies SdkIframeEmbedSettingKey[];
 
 export type AllowedEmbedSettingKey =
