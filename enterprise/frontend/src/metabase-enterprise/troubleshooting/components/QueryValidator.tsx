@@ -7,12 +7,12 @@ import {
   getCollectionName,
   getCollectionPathAsString,
 } from "metabase/collections/utils";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { EllipsifiedPath } from "metabase/common/components/EllipsifiedPath";
 import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
-} from "metabase/common/components/CollectionPicker";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { EllipsifiedPath } from "metabase/common/components/EllipsifiedPath";
+} from "metabase/common/components/Pickers/CollectionPicker";
 import { Table } from "metabase/common/components/Table";
 import { useSetting } from "metabase/common/hooks";
 import { usePagination } from "metabase/common/hooks/use-pagination";

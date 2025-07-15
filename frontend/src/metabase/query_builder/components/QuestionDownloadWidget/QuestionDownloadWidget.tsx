@@ -189,9 +189,11 @@ export const QuestionDownloadWidget = ({
             mb="1rem"
           >{t`Your answer has a large number of rows so it could take a while to download.`}</Text>
 
-          <Text size="sm" c="text-medium">
-            {limitedDownloadSizeText}
-          </Text>
+          {format === "xlsx" && (
+            <Text size="sm" c="text-medium">
+              {limitedDownloadSizeText}
+            </Text>
+          )}
         </Box>
       )}
       <Button
