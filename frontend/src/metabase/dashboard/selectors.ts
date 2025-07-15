@@ -7,6 +7,7 @@ import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,
@@ -19,7 +20,6 @@ import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
   getEmbedOptions,
   getIsEmbeddingIframe,
-  getIsEmbeddingSdk,
 } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -474,9 +474,9 @@ export function getEmbeddedParameterVisibility(
 }
 
 export const getIsHeaderVisible = createSelector(
-  [getIsEmbeddingIframe, getIsEmbeddingSdk, getEmbedOptions],
-  (isEmbeddingIframe, isEmbeddingSdk, embedOptions) =>
-    (isEmbeddingSdk && isEmbeddingIframe) ||
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
+    (isEmbeddingSdk() && isEmbeddingIframe) ||
     !isEmbeddingIframe ||
     !!embedOptions.header,
 );
