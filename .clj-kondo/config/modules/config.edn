@@ -1752,6 +1752,12 @@
    :uses #{premium-features
            search}}
 
+  enterprise/semantic-search
+  {:team "Metabot"
+   :api  #{metabase-enterprise.semantic-search.core}
+   :uses #{premium-features
+           util}}
+
   enterprise/serialization
   {:team "Workflows"
    :api #{metabase-enterprise.serialization.api
