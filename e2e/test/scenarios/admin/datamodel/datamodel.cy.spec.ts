@@ -3199,7 +3199,7 @@ function verifyFieldSectionEmptyState() {
     .should("be.visible");
   H.DataModel.get()
     .findByText(
-      "Select a field to edit it. Then change the display name, semantic type or filtering behavior.",
+      "Select a field to edit its name, description, formatting, and more.",
     )
     .should("be.visible");
 }
