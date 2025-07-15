@@ -86,11 +86,10 @@ export const QuestionMoreActionsMenu = ({
   const [ackedModelModal] = useUserAcknowledgement("turn_into_model_modal");
 
   const handleTurnToModel = () => {
-    if (!ackedModelModal) {
-      const modal = checkCanBeModel(question)
-        ? MODAL_TYPES.TURN_INTO_DATASET
-        : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
-      onOpenModal(modal);
+    if (!checkCanBeModel(question)) {
+      onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);
+    } else if (!ackedModelModal) {
+      onOpenModal(MODAL_TYPES.TURN_INTO_DATASET);
     } else {
       dispatch(turnQuestionIntoModel());
     }
