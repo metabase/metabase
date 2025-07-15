@@ -88,3 +88,8 @@ jobs:
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.e2e_all != 'true' }}
+
+  sdk-tests:
+    needs: files-changed
+    uses: ./.github/workflows/embedding-sdk.yml
+    secrets: inherit

@@ -1,4 +1,4 @@
-name: E2E Sample Apps tests
+name: "[NOT REQUIRED] SDK Compatibility tests"
 
 on:
   push:
