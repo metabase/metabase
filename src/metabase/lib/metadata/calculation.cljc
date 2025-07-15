@@ -1,15 +1,17 @@
 (ns metabase.lib.metadata.calculation
   (:require
-   #?(:clj [metabase.config.core :as config])
+   #?(:clj  [metabase.config.core :as config]
+      :cljs [metabase.lib.cache :as lib.cache])
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.lib.cache :as lib.cache]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cache :as lib.metadata.cache]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expresssion]
@@ -115,6 +117,23 @@
     ;; anything else: use `pr-str` representation.
     (pr-str x)))
 
+(def ^:dynamic *propagate-binning-and-bucketing*
+  "Enable propagation of ref's `:temporal-unit` into `:inherited-temporal-unit` of a column or setting of
+  the `:lib/original-binning` option.
+
+  Temporal unit should be conveyed into `:inherited-temporal-unit` only when _column is created from ref_ that contains
+  that has temporal unit set and column's metadata is generated _under `returned-columns` call_.
+
+  Point is, that `:inherited-temporal-unit` should be added only to column metadata that's generated for use on next
+  stages.
+
+  `:lib/original-binning` is used similarly as `:inherited-temporal-unit`. It helps to identify fields that were
+  binned on previous stages. Thanks to that, it is possible to avoid presetting binning for previously binned fields
+  when breakout column popover is opened in query builder.
+
+  The value is used in [[metabase.lib.field.resolution/resolve-field-ref]]."
+  false)
+
 ;;; TODO -- this logic is wack, we should probably be snake casing stuff and display names like
 ;;;
 ;;; "Sum of Products → Price"
@@ -212,6 +231,17 @@
     ;; Otherwise, just get the type of this first arg.
     (type-of query stage-number expr)))
 
+(defn- cache-key
+  "Create a cache key to use with [[lib.metadata.cache]]. This includes a few extra keys for the three dynamic variables
+  that can affect metadata calculation."
+  [unique-key query stage-number x options]
+  (lib.metadata.cache/cache-key
+   unique-key query stage-number x
+   (assoc options
+          ::display-name-style              *display-name-style*
+          ::propagate-binning-and-bucketing (boolean *propagate-binning-and-bucketing*)
+          ::ref-style                       lib.ref/*ref-style*)))
+
 (defmulti metadata-method
   "Impl for [[metadata]]. Implementations that call [[display-name]] should use the `:default` display name style."
   {:arglists '([query stage-number x])}
@@ -223,6 +253,8 @@
   [query stage-number x]
   (try
     {:lib/type     :metadata/column
+     ;; TODO (Cam 7/10/25) -- remove soon. Not removing now so I don't need to update 1000 tests
+     #_{:clj-kondo/ignore [:deprecated-var]}
      :ident        (lib.options/ident x)
      ;; TODO -- effective-type
      :base-type    (type-of query stage-number x)
@@ -237,14 +269,14 @@
                       {:query query, :stage-number stage-number, :x x}
                       e)))))
 
-(def ^:private MetadataMap
+(mr/def ::metadata-map
   [:map [:lib/type [:and
-                    :keyword
+                    qualified-keyword?
                     [:fn
                      {:error/message ":lib/type should be a :metadata/ keyword"}
                      #(= (namespace %) "metadata")]]]])
 
-(mu/defn metadata :- MetadataMap
+(mu/defn metadata :- ::metadata-map
   "Calculate an appropriate `:metadata/*` object for something. What this looks like depends on what we're calculating
   metadata for. If it's a reference or expression of some sort, this should return a single `:metadata/column`
   map (i.e., something satisfying the `::lib.schema.metadata/column` schema."
@@ -255,7 +287,8 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     x]
-   (metadata-method query stage-number x)))
+   (lib.metadata.cache/with-cached-value query (cache-key ::metadata query stage-number x {})
+     (metadata-method query stage-number x))))
 
 (mu/defn describe-query :- ::lib.schema.common/non-blank-string
   "Convenience for calling [[display-name]] on a query to describe the results of its final stage."
@@ -341,20 +374,24 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     x]
-   (lib.cache/side-channel-cache
-     ;; TODO: Caching by stage here is probably unnecessary - it's already a mistake to have an `x` from a different
-     ;; stage than `stage-number`. But it also doesn't hurt much, since a given `x` will only ever have `display-info`
-     ;; called with one `stage-number` anyway.
-    (keyword "display-info" (str "stage-" stage-number)) x
-    (fn [x]
-      (try
-        (display-info-method query stage-number x)
-        (catch #?(:clj Throwable :cljs js/Error) e
-          (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
-                                    (lib.dispatch/dispatch-value x)
-                                    (ex-message e))
-                          {:query query, :stage-number stage-number, :x x}
-                          e))))))))
+   (letfn [(display-info* [x]
+             (try
+               (display-info-method query stage-number x)
+               (catch #?(:clj Throwable :cljs js/Error) e
+                 (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
+                                           (lib.dispatch/dispatch-value x)
+                                           (ex-message e))
+                                 {:query query, :stage-number stage-number, :x x}
+                                 e)))))]
+     #?(:clj
+        (display-info* x)
+        :cljs
+        (lib.cache/side-channel-cache
+         ;; TODO: Caching by stage here is probably unnecessary - it's already a mistake to have an `x` from a different
+         ;; stage than `stage-number`. But it also doesn't hurt much, since a given `x` will only ever have `display-info`
+         ;; called with one `stage-number` anyway.
+         (keyword "display-info" (str "stage-" stage-number)) x
+         display-info*)))))
 
 (mu/defn default-display-info :- ::display-info
   "Default implementation of [[display-info-method]], available in case you want to use this in a different
@@ -467,23 +504,6 @@
   [query _stage-number stage-number options]
   (returned-columns-method query stage-number (lib.util/query-stage query stage-number) options))
 
-(def ^:dynamic *propagate-binning-and-bucketing*
-  "Enable propagation of ref's `:temporal-unit` into `:inherited-temporal-unit` of a column or setting of
-  the `:lib/original-binning` option.
-
-  Temporal unit should be conveyed into `:inherited-temporal-unit` only when _column is created from ref_ that contains
-  that has temporal unit set and column's metadata is generated _under `returned-columns` call_.
-
-  Point is, that `:inherited-temporal-unit` should be added only to column metadata that's generated for use on next
-  stages.
-
-  `:lib/original-binning` is used similarly as `:inherited-temporal-unit`. It helps to identify fields that were
-  binned on previous stages. Thanks to that, it is possible to avoid presetting binning for previously binned fields
-  when breakout column popover is opened in query builder.
-
-  The value is used in [[metabase.lib.field.resolution/resolve-field-ref]]."
-  false)
-
 (mu/defn returned-columns :- [:maybe ::returned-columns]
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
   join, and include the `:lib/source` of where they came from. This should only include columns that will be present
@@ -504,7 +524,8 @@
     x
     options        :- [:maybe ::returned-columns.options]]
    (binding [*propagate-binning-and-bucketing* true]
-     (returned-columns-method query stage-number x options))))
+     (lib.metadata.cache/with-cached-value query (cache-key ::returned-columns query stage-number x options)
+       (returned-columns-method query stage-number x options)))))
 
 (mr/def ::visible-column
   [:merge
@@ -577,19 +598,15 @@
    (visible-columns query -1 x))
 
   ([query stage-number x]
-   (if (and (map? x)
-            (#{:mbql.stage/mbql :mbql.stage/native} (:lib/type x)))
-     (lib.cache/side-channel-cache
-      (keyword (str stage-number "__visible-columns-no-opts")) query
-      (fn [_] (visible-columns query stage-number x nil)))
-     (visible-columns query stage-number x nil)))
+   (visible-columns query stage-number x nil))
 
   ([query          :- ::lib.schema/query
     stage-number   :- :int
     x
     options        :- [:maybe ::visible-columns.options]]
    (let [options (merge (default-visible-columns-options) options)]
-     (visible-columns-method query stage-number x options))))
+     (lib.metadata.cache/with-cached-value query (cache-key ::visible-columns query stage-number x options)
+       (visible-columns-method query stage-number x options)))))
 
 (mu/defn remapped-columns :- [:maybe ::visible-columns]
   "Given a seq of columns, return metadata for any remapped columns, if the `:include-remaps?` option is set."
