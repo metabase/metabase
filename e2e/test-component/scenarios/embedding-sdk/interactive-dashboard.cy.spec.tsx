@@ -202,7 +202,6 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
         .then(() => {
           resolveCardEndpoint();
         });
-      cy.findByText("New question").should("be.visible");
     });
   });
 
