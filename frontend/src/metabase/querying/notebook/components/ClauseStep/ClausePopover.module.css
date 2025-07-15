@@ -13,9 +13,3 @@
    */
   overflow: visible;
 }
-
-.dropdownContent {
-  overflow: auto;
-  max-width: inherit;
-  max-height: inherit;
-}
