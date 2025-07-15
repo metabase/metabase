@@ -40,6 +40,8 @@ class MetabaseEmbed {
   private _isEmbedReady: boolean = false;
   private iframe: HTMLIFrameElement | null = null;
 
+  public customClickHandler: ((number: number) => void) | null = null;
+
   private _eventHandlers: Map<
     SdkIframeEmbedEvent["type"],
     Set<SdkIframeEmbedEventHandler>
@@ -273,6 +275,16 @@ class MetabaseEmbed {
     if (event.data.type === "metabase.embed.requestSessionToken") {
       await this._authenticate();
     }
+
+    if (event.data.type === "metabase.embed.customClick") {
+      console.log(
+        "[internal] metabase.embed.customClick",
+        event.data.data.number,
+      );
+      if (this.customClickHandler) {
+        this.customClickHandler(event.data.data.number);
+      }
+    }
   };
 
   private _sendMessage<Message extends SdkIframeEmbedMessage>(
@@ -367,6 +379,8 @@ const warn = (...messages: unknown[]) =>
 class MetabaseEmbedElement extends HTMLElement {
   private _embed: MetabaseEmbed | null = null;
 
+  private _BUFFER_customClickHandler: ((number: number) => void) | null = null;
+
   // Keep the observed attributes list small & explicit to avoid mistakes.
   // Only attributes that map to settings are included.
   static get observedAttributes() {
@@ -421,6 +435,23 @@ class MetabaseEmbedElement extends HTMLElement {
 
     // Serialize to JSON for consistency with attribute parsing logic
     this.setAttribute("initial-parameters", JSON.stringify(value));
+  }
+
+  get customClickHandler(): ((number: number) => void) | null {
+    return this._embed?.customClickHandler ?? null;
+  }
+
+  set customClickHandler(value: ((number: number) => void) | null) {
+    console.log(
+      `!!!! setting customClickHandler, this._embed is ${this._embed}, value being passed is`,
+      value,
+    );
+    if (this._embed) {
+      this._embed.customClickHandler = value;
+    } else {
+      console.log("embed is null, setting the buffer");
+      this._BUFFER_customClickHandler = value;
+    }
   }
 
   get theme(): Record<string, unknown> | undefined {
@@ -511,6 +542,12 @@ class MetabaseEmbedElement extends HTMLElement {
       this._embed = new MetabaseEmbed(
         settings as unknown as SdkIframeEmbedTagSettings,
       );
+
+      // Add click handler if one was set before the embed was created
+      console.log(" SETTING UP SOMETHING, THERE IS SOMETHING IN THE BUFFER");
+      if (this._BUFFER_customClickHandler) {
+        this._embed.customClickHandler = this._BUFFER_customClickHandler;
+      }
     } catch (error) {
       // Surface constructor errors for easier debugging.
       console.error("[metabase.embed.error]", error);
