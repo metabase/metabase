@@ -144,7 +144,12 @@ export const SeriesSettings = ({
   const hasMultipleSections = sections.length > 1;
 
   return (
-    <Box pt={hasMultipleSections ? 0 : undefined} className={CS.overflowYAuto}>
+    <Flex
+      direction="column"
+      h="100%"
+      pt={hasMultipleSections ? 0 : undefined}
+      className={CS.overflowYAuto}
+    >
       <Flex direction="row" align="center" pt="md" pl="md" pr="md" gap="xs">
         <ActionIcon onClick={onCloseClick}>
           <Icon name="chevronleft" />
@@ -167,13 +172,15 @@ export const SeriesSettings = ({
           </Tabs.List>
         </Tabs>
       )}
-      <Space py="sm"></Space>
-      {[styleWidget, formattingWidget]
-        .filter(isNotNull)
-        .filter((widget) => widget.section === currentSection)
-        ?.map((widget) => (
-          <ChartSettingsWidget key={widget.id} {...widget} hidden={false} />
-        ))}
-    </Box>
+      <Box flex={1} style={{ overflow: "auto" }}>
+        <Space py="sm"></Space>
+        {[styleWidget, formattingWidget]
+          .filter(isNotNull)
+          .filter((widget) => widget.section === currentSection)
+          ?.map((widget) => (
+            <ChartSettingsWidget key={widget.id} {...widget} hidden={false} />
+          ))}
+      </Box>
+    </Flex>
   );
 };
