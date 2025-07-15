@@ -20,7 +20,7 @@ import {
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionSummarizeDropdownProps = Omit<
+export type SummarizeDropdownProps = Omit<
   PopoverProps,
   "children" | "onClose" | "opened"
 >;
@@ -34,7 +34,7 @@ export type InteractiveQuestionSummarizeDropdownProps = Omit<
  */
 export const SummarizeDropdown = ({
   ...popoverProps
-}: InteractiveQuestionSummarizeDropdownProps) => {
+}: SummarizeDropdownProps) => {
   const aggregationItems = useSummarizeData();
 
   const label = match(aggregationItems.length)
