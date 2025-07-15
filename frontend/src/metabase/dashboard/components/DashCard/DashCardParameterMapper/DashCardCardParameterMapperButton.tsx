@@ -4,11 +4,9 @@ import { t } from "ttag";
 
 import Button from "metabase/common/components/Button";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import TippyPopover from "metabase/common/components/Popover/TippyPopover";
-import DeprecatedTooltip from "metabase/common/components/Tooltip";
 import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Flex, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, ParameterTarget } from "metabase-types/api";
@@ -134,23 +132,15 @@ export const DashCardCardParameterMapperButton = ({
     ]);
 
   return (
-    <DeprecatedTooltip tooltip={buttonTooltip}>
-      <TippyPopover
-        visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}
-        onClickOutside={() => setIsDropdownVisible(false)}
-        placement="bottom-start"
-        content={
-          <ParameterTargetList
-            onChange={(target: ParameterTarget) => {
-              handleChangeTarget(target);
-              setIsDropdownVisible(false);
-            }}
-            mappingOptions={mappingOptions}
-            selectedMappingOption={selectedMappingOption}
-          />
-        }
-      >
+    <Popover
+      position="bottom-start"
+      closeOnClickOutside
+      disabled={isDisabled || !hasPermissionsToMap}
+      onChange={setIsDropdownVisible}
+    >
+      <Popover.Target>
         <Flex
+          component="button"
           className={cx(S.TargetButton, {
             [S.disabled]: buttonVariant === "disabled",
             [S.mapped]: buttonVariant === "mapped",
@@ -169,17 +159,6 @@ export const DashCardCardParameterMapperButton = ({
           aria-disabled={isDisabled || !hasPermissionsToMap}
           tabIndex={0}
           role="button"
-          onClick={() => {
-            setIsDropdownVisible(true);
-          }}
-          onKeyDown={(e) => {
-            if (e.nativeEvent.isComposing) {
-              return;
-            }
-            if (e.key === "Enter") {
-              setIsDropdownVisible(true);
-            }
-          }}
         >
           {buttonText && (
             <Box
@@ -193,8 +172,18 @@ export const DashCardCardParameterMapperButton = ({
           )}
           {buttonIcon}
         </Flex>
-      </TippyPopover>
-    </DeprecatedTooltip>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <ParameterTargetList
+          onChange={(target: ParameterTarget) => {
+            handleChangeTarget(target);
+            setIsDropdownVisible(false);
+          }}
+          mappingOptions={mappingOptions}
+          selectedMappingOption={selectedMappingOption}
+        />
+      </Popover.Dropdown>
+    </Popover>
   );
 };
 
