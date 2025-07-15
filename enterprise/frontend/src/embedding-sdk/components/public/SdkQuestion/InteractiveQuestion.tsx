@@ -132,7 +132,7 @@ export const _InteractiveQuestion = ({
  * @category InteractiveQuestion
  * @param props
  */
-const InteractiveQuestion = withPublicComponentWrapper(
+const SdkQuestion = withPublicComponentWrapper(
   _InteractiveQuestion,
 ) as typeof _InteractiveQuestion & {
   BackButton: typeof BackButton;
@@ -162,28 +162,28 @@ const InteractiveQuestion = withPublicComponentWrapper(
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
 };
 
-InteractiveQuestion.BackButton = BackButton;
-InteractiveQuestion.Filter = Filter;
-InteractiveQuestion.FilterDropdown = FilterDropdown;
-InteractiveQuestion.ResetButton = QuestionResetButton;
-InteractiveQuestion.Title = Title;
-InteractiveQuestion.Summarize = Summarize;
-InteractiveQuestion.SummarizeDropdown = SummarizeDropdown;
-InteractiveQuestion.Notebook = Editor;
-InteractiveQuestion.Editor = Editor;
-InteractiveQuestion.NotebookButton = EditorButton;
-InteractiveQuestion.EditorButton = EditorButton;
-InteractiveQuestion.QuestionVisualization = QuestionVisualization;
-InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
-InteractiveQuestion.SaveButton = SaveButton;
-InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
-InteractiveQuestion.QuestionSettings = QuestionSettings;
-InteractiveQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
-InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
-InteractiveQuestion.Breakout = Breakout;
-InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;
-InteractiveQuestion.DownloadWidget = DownloadWidget;
-InteractiveQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
-InteractiveQuestion.VisualizationButton = VisualizationButton;
+SdkQuestion.BackButton = BackButton;
+SdkQuestion.Filter = Filter;
+SdkQuestion.FilterDropdown = FilterDropdown;
+SdkQuestion.ResetButton = QuestionResetButton;
+SdkQuestion.Title = Title;
+SdkQuestion.Summarize = Summarize;
+SdkQuestion.SummarizeDropdown = SummarizeDropdown;
+SdkQuestion.Notebook = Editor;
+SdkQuestion.Editor = Editor;
+SdkQuestion.NotebookButton = EditorButton;
+SdkQuestion.EditorButton = EditorButton;
+SdkQuestion.QuestionVisualization = QuestionVisualization;
+SdkQuestion.SaveQuestionForm = SdkSaveQuestionForm;
+SdkQuestion.SaveButton = SaveButton;
+SdkQuestion.ChartTypeSelector = ChartTypeSelector;
+SdkQuestion.QuestionSettings = QuestionSettings;
+SdkQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
+SdkQuestion.BreakoutDropdown = BreakoutDropdown;
+SdkQuestion.Breakout = Breakout;
+SdkQuestion.ChartTypeDropdown = ChartTypeDropdown;
+SdkQuestion.DownloadWidget = DownloadWidget;
+SdkQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
+SdkQuestion.VisualizationButton = VisualizationButton;
 
-export { InteractiveQuestion };
+export { SdkQuestion };

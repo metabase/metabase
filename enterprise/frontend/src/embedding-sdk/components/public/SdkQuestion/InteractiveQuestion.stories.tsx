@@ -8,17 +8,15 @@ import {
 } from "embedding-sdk/test/storybook-id-args";
 import { Box } from "metabase/ui";
 
-import { InteractiveQuestion } from "./InteractiveQuestion";
+import { SdkQuestion } from "./InteractiveQuestion";
 
 const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 
-type InteractiveQuestionComponentProps = ComponentProps<
-  typeof InteractiveQuestion
->;
+type InteractiveQuestionComponentProps = ComponentProps<typeof SdkQuestion>;
 
 export default {
   title: "EmbeddingSDK/InteractiveQuestion",
-  component: InteractiveQuestion,
+  component: SdkQuestion,
   parameters: {
     layout: "fullscreen",
   },
@@ -69,7 +67,7 @@ export default {
 const Template: StoryFn<InteractiveQuestionComponentProps> = (args) => {
   return (
     <Box bg="var(--mb-color-background)" mih="100vh">
-      <InteractiveQuestion {...args} />
+      <SdkQuestion {...args} />
     </Box>
   );
 };
@@ -90,9 +88,9 @@ export const EditorOnly = {
   render(args: InteractiveQuestionComponentProps) {
     return (
       <Box bg="var(--mb-color-background)" mih="100vh">
-        <InteractiveQuestion {...args}>
-          <InteractiveQuestion.Editor />
-        </InteractiveQuestion>
+        <SdkQuestion {...args}>
+          <SdkQuestion.Editor />
+        </SdkQuestion>
       </Box>
     );
   },
@@ -108,7 +106,7 @@ export const CreateQuestion = {
   render(args: InteractiveQuestionComponentProps) {
     return (
       <Box bg="var(--mb-color-background)" mih="100vh">
-        <InteractiveQuestion {...args} />
+        <SdkQuestion {...args} />
       </Box>
     );
   },

@@ -24,7 +24,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { InteractiveQuestion } from "./InteractiveQuestion";
+import { SdkQuestion } from "./InteractiveQuestion";
 
 const TEST_USER = createMockUser();
 const TEST_DB_ID = 1;
@@ -79,7 +79,7 @@ const setup = ({
   const children = (
     <div>
       {mocks.map((mock) => (
-        <InteractiveQuestion key={mock.card.id} questionId={mock.card.id} />
+        <SdkQuestion key={mock.card.id} questionId={mock.card.id} />
       ))}
     </div>
   );

@@ -10,13 +10,13 @@ import { questionIds } from "embedding-sdk/test/storybook-id-args";
 import { storybookThemes } from "embedding-sdk/test/storybook-themes";
 import { Box } from "metabase/ui";
 
-import { InteractiveQuestion } from "./InteractiveQuestion";
+import { SdkQuestion } from "./InteractiveQuestion";
 
 const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 
 export default {
   title: "EmbeddingSDK/InteractiveQuestion/Themed",
-  component: InteractiveQuestion,
+  component: SdkQuestion,
   parameters: {
     layout: "fullscreen",
   },
@@ -40,7 +40,7 @@ const Wrapper = ({
 
 const DefaultTemplate = (theme: MetabaseTheme) => (
   <Wrapper theme={theme}>
-    <InteractiveQuestion questionId={QUESTION_ID} isSaveEnabled />
+    <SdkQuestion questionId={QUESTION_ID} isSaveEnabled />
   </Wrapper>
 );
 
@@ -52,9 +52,9 @@ export const DarkTheme = {
 export const DarkThemeEditor = {
   render: (theme: MetabaseTheme) => (
     <Wrapper theme={theme}>
-      <InteractiveQuestion questionId={QUESTION_ID} isSaveEnabled>
-        <InteractiveQuestion.Editor />
-      </InteractiveQuestion>
+      <SdkQuestion questionId={QUESTION_ID} isSaveEnabled>
+        <SdkQuestion.Editor />
+      </SdkQuestion>
     </Wrapper>
   ),
   args: darkTheme,

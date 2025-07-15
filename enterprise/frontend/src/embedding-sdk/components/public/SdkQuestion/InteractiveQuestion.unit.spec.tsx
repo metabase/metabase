@@ -45,7 +45,7 @@ import { useSdkQuestionContext } from "../../private/SdkQuestion/context";
 
 import {
   type BaseInteractiveQuestionProps,
-  InteractiveQuestion,
+  SdkQuestion,
 } from "./InteractiveQuestion";
 const TEST_PARAM = createMockParameter({
   type: "number/=",
@@ -139,14 +139,14 @@ const setup = ({
   setupEntityIdEndpoint({ card: { [TEST_ENTITY_ID]: TEST_CARD_ID } });
 
   return renderWithSDKProviders(
-    <InteractiveQuestion
+    <SdkQuestion
       questionId={cardId}
       title={title}
       withChartTypeSelector={withChartTypeSelector}
       initialSqlParameters={initialSqlParameters}
     >
       {withCustomLayout ? <InteractiveQuestionCustomLayout /> : undefined}
-    </InteractiveQuestion>,
+    </SdkQuestion>,
     {
       sdkProviderProps: {
         authConfig: createMockSdkConfig(),

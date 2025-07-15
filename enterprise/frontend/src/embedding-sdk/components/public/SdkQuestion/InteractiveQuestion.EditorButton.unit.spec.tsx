@@ -24,7 +24,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { InteractiveQuestion } from "./InteractiveQuestion";
+import { SdkQuestion } from "./InteractiveQuestion";
 
 const TEST_USER = createMockUser();
 const TEST_DB_ID = 1;
@@ -78,10 +78,10 @@ const setup = ({
   const clickSpy = jest.fn();
 
   renderWithSDKProviders(
-    <InteractiveQuestion questionId={TEST_CARD.id}>
+    <SdkQuestion questionId={TEST_CARD.id}>
       <div>Look! A Button! 👇</div>
-      <InteractiveQuestion.EditorButton onClick={clickSpy} isOpen={isOpen} />
-    </InteractiveQuestion>,
+      <SdkQuestion.EditorButton onClick={clickSpy} isOpen={isOpen} />
+    </SdkQuestion>,
     {
       sdkProviderProps: {
         authConfig: createMockSdkConfig(),
