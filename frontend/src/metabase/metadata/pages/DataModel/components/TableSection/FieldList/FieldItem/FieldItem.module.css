@@ -9,6 +9,10 @@
   }
 }
 
+.active {
+  border-color: var(--mb-color-brand) !important;
+}
+
 .link {
   border-radius: inherit;
 }
