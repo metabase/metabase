@@ -47,7 +47,7 @@
 (defenterprise reindex!
   "Perform a full reindex of the semantic search engine."
   metabase-enterprise.semantic-search.core
-  [_opts]
+  [_searchable-documents _opts]
   (oss-semantic-search-error))
 
 (defenterprise reset-tracking!
@@ -106,7 +106,7 @@
   [_ opts]
   (try
     (log/info "Reindexing semantic search engine")
-    (reindex! opts)
+    (reindex! (search.ingestion/searchable-documents) opts)
     (log/info "Semantic search engine reindexed successfully")
     (catch Exception e
       (log/error e "Failed to reindex semantic search engine")
