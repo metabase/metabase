@@ -19,13 +19,13 @@
 (defn- ref-nested-models
   "Return a map of nested models that have a ref-in-parent."
   [nested-specs]
-  (into {} (filter (comp :ref-in-parent second) nested-specs)))
+  (into {} (filter (comp :ref-in-parent second)) nested-specs))
 
 (defn- non-ref-nested-models
   "Return a map of nested models that don't have a ref-in-parent.
    When row is provided, only return models that are present in the row."
   ([nested-specs]
-   (into {} (filter (comp not :ref-in-parent second) nested-specs)))
+   (into {} (filter (comp not :ref-in-parent second)) nested-specs))
   ([nested-specs row]
    (into {} (for [[k spec] nested-specs
                   :when (and (not (:ref-in-parent spec))
