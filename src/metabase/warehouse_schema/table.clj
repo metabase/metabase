@@ -316,7 +316,7 @@
   ;; if collection isn't already hydrated then do so
   (let [card-type     (:type card)
         dataset-query (:dataset_query card)
-        database     (databases database_id)]
+        database      (databases database_id)]
     (cond-> {:id               (str "card__" (u/the-id card))
              :db_id            (:database_id card)
              :display_name     (:name card)
