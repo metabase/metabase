@@ -25,6 +25,7 @@ export function NumberFilterPicker({
   filter,
   isNew,
   withAddButton,
+  withSubmitButton,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -103,6 +104,7 @@ export function NumberFilterPicker({
           isNew={isNew}
           isValid={isValid}
           withAddButton={withAddButton}
+          withSubmitButton={withSubmitButton}
           onAddButtonClick={handleAddButtonClick}
         />
       </div>

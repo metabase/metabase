@@ -115,6 +115,40 @@ describe("scenarios > admin > datamodel", () => {
         `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
       );
     });
+
+    it(
+      "should not show 404 error if database is not selected",
+      { tags: ["@external"] },
+      () => {
+        H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+        cy.log("database not selected");
+        H.DataModel.visit();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+
+        cy.log("database selected");
+        TablePicker.getDatabase("Writable Postgres12").click();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+
+        cy.log("schema selected");
+        TablePicker.getSchema("Domestic").click();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+
+        cy.log("table selected");
+        TablePicker.getTable("Animals").click();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+      },
+    );
   });
 
   describe("Table picker", () => {
@@ -1510,7 +1544,7 @@ describe("scenarios > admin > datamodel", () => {
 
     describe("Metadata", () => {
       describe("Semantic type", () => {
-        it("should allow to change the type to 'No semantic type'", () => {
+        it("should allow to change the type to 'No semantic type' (metabase#59052)", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1521,8 +1555,8 @@ describe("scenarios > admin > datamodel", () => {
 
           FieldSection.getSemanticTypeInput()
             .should("have.value", "Foreign Key")
-            .click();
-          H.popover().findByText("No semantic type").click();
+            // it should allow to just type to search (metabase#59052)
+            .type("no sema{downarrow}{enter}");
           cy.wait("@updateField");
           H.undoToast().should(
             "contain.text",
@@ -1548,7 +1582,7 @@ describe("scenarios > admin > datamodel", () => {
           );
         });
 
-        it("should allow to change the type to 'Foreign Key' and choose the target field", () => {
+        it("should allow to change the type to 'Foreign Key' and choose the target field (metabase#59052)", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1575,8 +1609,8 @@ describe("scenarios > admin > datamodel", () => {
 
           FieldSection.getSemanticTypeFkTarget()
             .should("have.value", "")
-            .click();
-          H.popover().findByText("Products → ID").click();
+            // it should allow to just type to search (metabase#59052)
+            .type("products{downarrow}{enter}");
           cy.wait("@updateField");
           H.undoToast().should(
             "contain.text",
@@ -1718,7 +1752,7 @@ describe("scenarios > admin > datamodel", () => {
           });
         });
 
-        it("should allow to change the type to 'Currency' and choose the currency", () => {
+        it("should allow to change the type to 'Currency' and choose the currency (metabase#59052)", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1750,8 +1784,8 @@ describe("scenarios > admin > datamodel", () => {
             .scrollIntoView()
             .should("be.visible")
             .and("have.value", "US Dollar")
-            .click();
-          H.popover().findByText("Canadian Dollar").click();
+            // it should allow to just type to search (metabase#59052)
+            .type("canadian{downarrow}{enter}");
           cy.wait("@updateField");
           verifyAndCloseToast("Semantic type of Tax updated");
 
@@ -2031,9 +2065,10 @@ describe("scenarios > admin > datamodel", () => {
           TableSection.clickField("Quantity");
           FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-          PreviewSection.get()
-            .findByPlaceholderText("Enter a number")
-            .should("be.visible");
+          PreviewSection.get().within(() => {
+            cy.findByPlaceholderText("Enter a number").should("be.visible");
+            cy.button(/Add filter/).should("not.exist");
+          });
 
           cy.reload();
           FieldSection.getFilteringInput()
@@ -2061,12 +2096,11 @@ describe("scenarios > admin > datamodel", () => {
           TableSection.clickField("Quantity");
           FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-          PreviewSection.get()
-            .findByPlaceholderText("Min")
-            .should("be.visible");
-          PreviewSection.get()
-            .findByPlaceholderText("Max")
-            .should("be.visible");
+          PreviewSection.get().within(() => {
+            cy.findByPlaceholderText("Min").should("be.visible");
+            cy.findByPlaceholderText("Max").should("be.visible");
+            cy.button(/Add filter/).should("not.exist");
+          });
 
           cy.reload();
           FieldSection.getFilteringInput()
@@ -2097,9 +2131,10 @@ describe("scenarios > admin > datamodel", () => {
           TableSection.clickField("Quantity");
           FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-          PreviewSection.get()
-            .findByPlaceholderText("Search the list")
-            .should("be.visible");
+          PreviewSection.get().within(() => {
+            cy.findByPlaceholderText("Search the list").should("be.visible");
+            cy.button(/Add filter/).should("not.exist");
+          });
 
           cy.reload();
           FieldSection.getFilteringInput()
@@ -2649,7 +2684,6 @@ describe("scenarios > admin > datamodel", () => {
         });
 
         it("should let you change the name of JSON-unfolded columns (metabase#55563)", () => {
-          // Go to field settings
           H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
           TableSection.clickField("Json → A");
@@ -2666,6 +2700,72 @@ describe("scenarios > admin > datamodel", () => {
             column: "A",
             values: ["10", "10"],
           });
+        });
+
+        it("should smartly truncate prefix name", () => {
+          const shortPrefix = "Short prefix";
+          const longPrefix = "Legendarily long column prefix";
+          H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
+          TablePicker.getTable("Many Data Types").click();
+          TableSection.clickField("Json → A");
+
+          cy.log("should not truncante short prefixes");
+          TableSection.getFieldNameInput("Json")
+            .clear()
+            .type(shortPrefix)
+            .blur();
+
+          cy.log("in field section");
+          FieldSection.get()
+            .findByTestId("name-prefix")
+            .should("have.text", `${shortPrefix}:`)
+            .then((element) => {
+              H.assertIsNotEllipsified(element[0]);
+            });
+          FieldSection.get().findByTestId("name-prefix").realHover();
+          H.tooltip().should("not.exist");
+
+          cy.log("in table section");
+          TableSection.getField("Json → D")
+            .findByTestId("name-prefix")
+            .should("have.text", `${shortPrefix}:`)
+            .then((element) => {
+              H.assertIsNotEllipsified(element[0]);
+            });
+          TableSection.getField("Json → D")
+            .findByTestId("name-prefix")
+            .realHover();
+          H.tooltip().should("not.exist");
+
+          cy.log("should truncante long prefixes");
+          TableSection.getFieldNameInput(shortPrefix)
+            .clear()
+            .type(longPrefix)
+            .blur();
+
+          cy.log("in field section");
+          FieldSection.get()
+            .findByTestId("name-prefix")
+            .should("have.text", `${longPrefix}:`)
+            .then((element) => {
+              H.assertIsEllipsified(element[0]);
+            });
+          FieldSection.get()
+            .findByTestId("name-prefix")
+            .realHover({ scrollBehavior: "center" });
+          H.tooltip().should("be.visible").and("have.text", longPrefix);
+
+          // hide tooltip
+          FieldSection.getDescriptionInput().realHover();
+          H.tooltip().should("not.exist");
+
+          cy.log("in table section");
+          TableSection.getField("Json → D")
+            .scrollIntoView({ offset: { left: 0, top: -400 } })
+            .findByTestId("name-prefix")
+            .should("have.text", `${longPrefix}:`)
+            .realHover({ scrollBehavior: "center" });
+          H.tooltip().should("be.visible").and("have.text", longPrefix);
         });
       });
     });
