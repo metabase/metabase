@@ -48,6 +48,10 @@
   }
 }
 
+.description {
+  line-height: var(--mantine-line-height-lg) !important;
+}
+
 .name {
   line-clamp: 1;
   -webkit-line-clamp: 1;
