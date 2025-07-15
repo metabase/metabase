@@ -39,7 +39,11 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
     currentDataset,
     computedSettings,
     datasets,
-    fields,
+    // filtering out fields that are not DatasetColumn because
+    // `groupColumnsBySuitableVizSettings` expects DatasetColumn[]
+    // yet we receive Field[] from the API
+    // (see https://metaboat.slack.com/archives/C064QMXEV9N/p1752511191286999)
+    fields.filter((field) => "source" in field) as DatasetColumn[],
   );
 
   return Object.keys(columnSettingMapping).length > 0;

@@ -6,7 +6,8 @@ import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Flex, Loader } from "metabase/ui";
+import { isNotNull } from "metabase/lib/types";
+import { Box, Flex, Skeleton } from "metabase/ui";
 import {
   getDataSources,
   getDatasets,
@@ -107,7 +108,7 @@ export function DatasetsList({
     [dispatch, setDataSourceCollapsed],
   );
 
-  const { data: allRecents = [], isLoading: isListRecentsLoading } =
+  const { data: allRecents, isFetching: isListRecentsFetching } =
     useListRecentsQuery(
       { include_metadata: true },
       {
@@ -120,33 +121,30 @@ export function DatasetsList({
   }, [visualizationColumns]);
 
   const required_non_temporal_dimension_ids = useMemo(() => {
-    return otherDimensions
-      .map((dim) => dim.id)
-      .filter((id) => id != null) as number[];
+    return otherDimensions.map((dim) => dim.id).filter(isNotNull);
   }, [otherDimensions]);
 
-  const {
-    data: visualizationSearchResult,
-    isLoading: isVisualizationSearchLoading,
-  } = useSearchQuery(
-    {
-      q: search.length > 0 ? search : undefined,
-      limit: 50,
-      models: ["card", "dataset", "metric"],
-      include_dashboard_questions: true,
-      include_metadata: true,
-      has_temporal_dimensions: timeDimensions.length > 0,
-      required_non_temporal_dimension_ids,
-    },
-    {
-      skip: muted,
-      refetchOnMountOrArgChange: true,
-    },
-  );
+  const { data: visualizationSearchResult, isFetching: isSearchFetching } =
+    useSearchQuery(
+      {
+        q: search.length > 0 ? search : undefined,
+        limit: 50,
+        models: ["card", "dataset", "metric"],
+        include_dashboard_questions: true,
+        include_metadata: true,
+        has_temporal_dimensions: timeDimensions.length > 0,
+        required_non_temporal_dimension_ids,
+      },
+      {
+        skip: muted,
+        refetchOnMountOrArgChange: true,
+      },
+    );
 
-  const debouncedIsVisualizationSearchLoading = useDebouncedValue(
-    isVisualizationSearchLoading || isListRecentsLoading,
+  const debouncedIsFetching = useDebouncedValue(
+    isSearchFetching || isListRecentsFetching,
     300, // Adjust debounce duration as needed
+    (_lastValue, newValue) => newValue === true, // We want instant updates when loading ends
   );
 
   const handleSwapDataSources = useCallback(
@@ -167,6 +165,10 @@ export function DatasetsList({
 
   const items = useMemo(() => {
     if (!search && dataSources.length === 0) {
+      if (!allRecents) {
+        return;
+      }
+
       return allRecents
         .filter((maybeCard) =>
           ["card", "dataset", "metric"].includes(maybeCard.model),
@@ -178,7 +180,11 @@ export function DatasetsList({
         }));
     }
 
-    return (visualizationSearchResult?.data || [])
+    if (!visualizationSearchResult?.data) {
+      return;
+    }
+
+    return visualizationSearchResult.data
       .filter(
         (maybeCard) =>
           ["card", "dataset", "metric"].includes(maybeCard.model) &&
@@ -222,15 +228,6 @@ export function DatasetsList({
     dataSources.length,
   ]);
 
-  const additionalProps =
-    debouncedIsVisualizationSearchLoading || items.length === 0
-      ? {
-          align: "center",
-          justify: "center",
-          style: { height: "100%" },
-        }
-      : {};
-
   if (muted) {
     return null;
   }
@@ -240,21 +237,32 @@ export function DatasetsList({
       gap="xs"
       direction="column"
       data-testid="datasets-list"
-      {...additionalProps}
       style={{ overflow: "auto", ...style }}
     >
-      {debouncedIsVisualizationSearchLoading && <Loader />}
-      {items.length === 0 && <p>{t`No compatible results`}</p>}
-      {items.map((item, index) => (
-        <DatasetsListItem
-          key={index}
-          item={item}
-          onSwap={handleSwapDataSources}
-          onToggle={handleAddDataSource}
-          onRemove={handleRemoveDataSource}
-          selected={dataSourceIds.has(item.id)}
-        />
-      ))}
+      {debouncedIsFetching && (
+        <>
+          <Skeleton height={30} radius="sm" />
+          <Skeleton height={30} mt={6} radius="sm" />
+          <Skeleton height={30} mt={6} radius="sm" />
+          <Skeleton height={30} mt={6} radius="sm" />
+          <Skeleton height={30} mt={6} radius="sm" />
+        </>
+      )}
+      {items && items.length === 0 && (
+        <Box m="auto">{t`No compatible results`}</Box>
+      )}
+      {items && !debouncedIsFetching
+        ? items.map((item, index) => (
+            <DatasetsListItem
+              key={index}
+              item={item}
+              onSwap={handleSwapDataSources}
+              onToggle={handleAddDataSource}
+              onRemove={handleRemoveDataSource}
+              selected={dataSourceIds.has(item.id)}
+            />
+          ))
+        : null}
     </Flex>
   );
 }

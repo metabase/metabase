@@ -123,7 +123,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
       <Flex
         direction="column"
         className={S.Content}
-        bg="white"
+        bg="var(--mb-color-bg-white)"
         h="100%"
         display={showDatasets ? "none" : "flex"}
         bd="1px solid var(--mb-color-border)"
