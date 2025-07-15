@@ -19,9 +19,9 @@ export const DiscardTableFieldValuesButton = ({ tableId }: Props) => {
 
     if (error) {
       sendToast({
-        icon: "warning",
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
         message: t`Failed to discard values`,
-        toastColor: "error",
       });
     } else {
       setStarted(true);

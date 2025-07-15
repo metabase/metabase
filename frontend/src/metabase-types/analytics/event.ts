@@ -19,6 +19,16 @@ type ValidateEvent<
     Record<Exclude<keyof T, keyof SimpleEventSchema>, never>,
 > = T;
 
+export type CustomSMTPSetupClickedEvent = ValidateEvent<{
+  event: "custom_smtp_setup_clicked";
+  event_detail: "self-hosted" | "cloud";
+}>;
+
+export type CustomSMTPSetupSuccessEvent = ValidateEvent<{
+  event: "custom_smtp_setup_success";
+  event_detail: "self-hosted" | "cloud";
+}>;
+
 type CSVUploadClickedEvent = ValidateEvent<{
   event: "csv_upload_clicked";
   triggered_from: "add-data-modal" | "collection";
@@ -183,7 +193,46 @@ export type DashboardFilterCreatedEvent = ValidateEvent<{
   event_detail: string | null;
 }>;
 
+export type SdkIframeEmbedSetupExperience =
+  | "dashboard"
+  | "chart"
+  | "exploration";
+
+export type EmbedWizardExperienceSelectedEvent = ValidateEvent<{
+  event: "embed_wizard_experience_selected";
+  event_detail: SdkIframeEmbedSetupExperience;
+}>;
+
+export type EmbedWizardResourceSelectedEvent = ValidateEvent<{
+  event: "embed_wizard_resource_selected";
+  event_detail: SdkIframeEmbedSetupExperience;
+  target_id: number;
+}>;
+
+export type EmbedWizardOptionChangedEvent = ValidateEvent<{
+  event: "embed_wizard_option_changed";
+  event_detail: string;
+}>;
+
+export type EmbedWizardAuthSelectedEvent = ValidateEvent<{
+  event: "embed_wizard_auth_selected";
+  event_detail: "sso" | "user-session";
+}>;
+
+export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
+  event: "embed_wizard_code_copied";
+}>;
+
+export type EmbedWizardEvent =
+  | EmbedWizardExperienceSelectedEvent
+  | EmbedWizardResourceSelectedEvent
+  | EmbedWizardOptionChangedEvent
+  | EmbedWizardAuthSelectedEvent
+  | EmbedWizardCodeCopiedEvent;
+
 export type SimpleEvent =
+  | CustomSMTPSetupClickedEvent
+  | CustomSMTPSetupSuccessEvent
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
   | DatabaseEngineSelectedEvent
@@ -207,4 +256,5 @@ export type SimpleEvent =
   | EventsClickedEvent
   | AddDataModalOpenedEvent
   | AddDataModalTabEvent
-  | DashboardFilterCreatedEvent;
+  | DashboardFilterCreatedEvent
+  | EmbedWizardEvent;

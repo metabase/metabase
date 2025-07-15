@@ -741,7 +741,7 @@ describe("issue 59110", () => {
   });
 });
 
-describe.skip("issue 60719", () => {
+describe("issue 60719", () => {
   const question1Details: NativeQuestionDetails = {
     name: "Q1",
     native: {

@@ -28,7 +28,8 @@ export const LegendLabel = styled(BaseLegendLabel)`
 `;
 
 export const LegendLabelIcon = styled(Icon)`
-  padding-right: 0.25rem;
+  flex-shrink: 0;
+  margin-right: 0.25rem;
 `;
 
 export const LegendDescriptionIcon = styled(
@@ -44,7 +45,7 @@ export const LegendDescriptionIcon = styled(
   }),
 )`
   color: ${({ theme }) => lighten(theme.fn?.themeColor("text-light"), 0.1)};
-  margin: 0 0.375rem;
+  margin: 0 0.25rem;
 
   &:hover {
     color: var(--mb-color-text-medium);

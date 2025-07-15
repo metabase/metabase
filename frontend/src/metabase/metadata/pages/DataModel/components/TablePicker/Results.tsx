@@ -1,7 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { type KeyboardEvent, useEffect, useRef } from "react";
-import _ from "underscore";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
@@ -29,6 +28,7 @@ export function Results({
   selectedIndex?: number;
   onSelectedIndexChange?: (index: number) => void;
 }) {
+  const [activeTableId, setActiveTableId] = useState(path.tableId);
   const ref = useRef<HTMLDivElement>(null);
 
   const virtual = useVirtualizer({
@@ -95,8 +95,7 @@ export function Results({
             parent,
             disabled,
           } = item;
-          const isActive = type === "table" && _.isEqual(path, value);
-
+          const isActive = type === "table" && value?.tableId === activeTableId;
           const parentIndex = items.findIndex((item) => item.key === parent);
 
           const handleItemSelect = (open?: boolean) => {
@@ -105,8 +104,13 @@ export function Results({
             }
 
             toggle?.(key, open);
+
             if (value && (!isExpanded || type === "table")) {
               onItemClick?.(value);
+            }
+
+            if (type === "table") {
+              setActiveTableId(value?.tableId);
             }
           };
 
@@ -170,6 +174,7 @@ export function Results({
           return (
             <Flex
               key={key}
+              aria-selected={isActive}
               align="center"
               justify="space-between"
               gap="sm"
