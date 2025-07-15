@@ -4832,3 +4832,55 @@ describe("issue 59306", () => {
     });
   });
 });
+
+describe("Issue 60987", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        type: "question",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              "source-table": PRODUCTS_ID,
+              fields: "all",
+              strategy: "left-join",
+              alias: "Products",
+              condition: [
+                "=",
+                [
+                  "field",
+                  ORDERS.PRODUCT_ID,
+                  {
+                    "base-type": "type/Integer",
+                  },
+                ],
+                [
+                  "field",
+                  PRODUCTS.ID,
+                  {
+                    "base-type": "type/BigInteger",
+                    "join-alias": "Products",
+                  },
+                ],
+              ],
+            },
+          ],
+        },
+      },
+    }).then((response) => {
+      H.visitDashboard(response.body.dashboard_id);
+    });
+  });
+
+  it("should show the empty state for parameters when searching the in the parameter target picker popover (metabase#60987)", () => {
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.getDashboardCard().findByText("Select…").click();
+    H.popover().findByPlaceholderText("Find...").type("aa");
+    H.popover().findByText("Didn't find any results").should("be.visible");
+  });
+});
