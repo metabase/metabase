@@ -279,10 +279,8 @@
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
    database.
   `metadata-fields` can be nil."
-  [card-id database-or-id metadata metadata-fields]
-  (let [db (cond->> database-or-id
-             (int? database-or-id) (t2/select-one :model/Database :id))
-        underlying (m/index-by :id (or metadata-fields
+  [card-id database metadata metadata-fields]
+  (let [underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
                                          (-> (t2/select :model/Field :id [:in ids])
                                              (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
@@ -300,7 +298,7 @@
                       ;; decisions about what kind of dimension options should be added. PK/FK values will be removed
                       ;; after we've added the dimension options
                       :semantic_type (keyword (:semantic_type col)))
-                     (assoc-field-dimension-options db)))]
+                     (assoc-field-dimension-options database)))]
     fields))
 
 (defn root-collection-schema-name
@@ -316,7 +314,9 @@
   ;; if collection isn't already hydrated then do so
   (let [card-type     (:type card)
         dataset-query (:dataset_query card)
-        database      (databases database_id)]
+        database      (when (int? database_id)
+                        (or (get databases database_id)
+                            (t2/select-one :model/Database :id database_id)))]
     (cond-> {:id               (str "card__" (u/the-id card))
              :db_id            (:database_id card)
              :display_name     (:name card)
@@ -335,8 +335,7 @@
 
       include-fields?
       (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
-                                                           (cond-> database_id
-                                                             databases databases)
+                                                           database
                                                            (:result_metadata card)
                                                            (when card-id->metadata-fields
                                                              (card-id->metadata-fields (u/the-id card))))))))
