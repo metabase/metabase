@@ -24,6 +24,7 @@ import { ExternalPeopleListingApp } from "./components/ExternalPeopleListingApp/
 import { ReactivateExternalUserButton } from "./components/ReactivateExternalUserButton";
 import { TenantDisplayName } from "./components/TenantDisplayName";
 import { FormTenantWidget } from "./components/TenantFormWidget";
+import { TenantGroupHintIcon } from "./components/TenantGroupHintIcon";
 import { EditTenantModal } from "./containers/EditTenantModal";
 import { NewTenantModal } from "./containers/NewTenantModal";
 import { TenantActivationModal } from "./containers/TenantActivationModal";
@@ -100,4 +101,6 @@ if (hasPremiumFeature("tenants")) {
   PLUGIN_TENANTS.isExternalUser = isExternalUser;
   PLUGIN_TENANTS.isTenantCollection = isTenantCollection;
   PLUGIN_TENANTS.ReactivateExternalUserButton = ReactivateExternalUserButton;
+
+  PLUGIN_TENANTS.TenantGroupHintIcon = TenantGroupHintIcon;
 }

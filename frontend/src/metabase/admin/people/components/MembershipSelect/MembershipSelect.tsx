@@ -17,7 +17,7 @@ import { GroupSummary } from "../GroupSummary";
 
 import S from "./MembershipSelect.module.css";
 
-const getGroupSections = (groups: GroupInfo[]) => {
+const getGroupSections = (groups: GroupInfo[], groupsTitle = t`Groups`) => {
   const defaultGroup = groups.find(
     (g) => isDefaultGroup(g) || PLUGIN_TENANTS.isExternalUsersGroup(g),
   );
@@ -33,7 +33,7 @@ const getGroupSections = (groups: GroupInfo[]) => {
   if (pinnedGroups.length > 0) {
     return [
       { groups: pinnedGroups },
-      { groups: regularGroups, header: t`Groups` },
+      { groups: regularGroups, header: groupsTitle },
     ];
   }
 
@@ -52,6 +52,7 @@ interface MembershipSelectProps {
   onRemove: (groupId: number) => void;
   onChange: (groupId: number, membershipData: Partial<Member>) => void;
   isConfirmModalOpen?: boolean;
+  groupsTitle?: string;
 }
 
 export const MembershipSelect = ({
@@ -63,12 +64,13 @@ export const MembershipSelect = ({
   isCurrentUser = false,
   isUserAdmin = false,
   emptyListMessage = t`No groups`,
+  groupsTitle = t`Groups`,
   isConfirmModalOpen,
 }: MembershipSelectProps) => {
   const [popoverOpened, { open: openPopover, toggle: togglePopover }] =
     useDisclosure();
   const selectedGroupIds = Array.from(memberships.keys());
-  const groupSections = getGroupSections(groups);
+  const groupSections = getGroupSections(groups, groupsTitle);
 
   const handleToggleMembership = (groupId: number) => {
     if (memberships.has(groupId)) {

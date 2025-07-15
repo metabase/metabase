@@ -75,7 +75,11 @@ export const UserForm = ({
             required
             mb="md"
           />
-          <FormGroupsWidget name="user_group_memberships" external={external} />
+          <FormGroupsWidget
+            name="user_group_memberships"
+            external={external}
+            title={external ? t`Tenant Groups` : t`Groups`}
+          />
           {external && (
             <PLUGIN_TENANTS.FormTenantWidget
               required
