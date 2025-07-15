@@ -13,7 +13,7 @@ import { useSdkQuestionContext } from "../context";
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionSaveQuestionFormProps = {
+export type SaveQuestionFormProps = {
   /**
    * Callback function executed when save is cancelled
    */
@@ -25,15 +25,13 @@ export type InteractiveQuestionSaveQuestionFormProps = {
  *
  * - For existing questions: Calls {@link InteractiveQuestionProps.onSave}
  * - Both callbacks receive the updated question object
- * - Form can be cancelled via the {@link InteractiveQuestionSaveQuestionFormProps.onCancel}
+ * - Form can be cancelled via the {@link SaveQuestionFormProps.onCancel}
  *
  * @function
  * @category InteractiveQuestion
  * @param props
  */
-export const SdkSaveQuestionForm = ({
-  onCancel,
-}: InteractiveQuestionSaveQuestionFormProps) => {
+export const SdkSaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
   const { question, originalQuestion, onSave, onCreate, targetCollection } =
     useSdkQuestionContext();
 

@@ -14,7 +14,7 @@ export {
   type InteractiveQuestionQuestionVisualizationProps,
   type ResetButtonProps as InteractiveQuestionResetButtonProps,
   type SaveButtonProps as InteractiveQuestionSaveButtonProps,
-  type InteractiveQuestionSaveQuestionFormProps,
+  type SaveQuestionFormProps as InteractiveQuestionSaveQuestionFormProps,
   type SummarizeDropdownProps as InteractiveQuestionSummarizeDropdownProps,
   type InteractiveQuestionTitleProps,
 } from "embedding-sdk/components/private/SdkQuestion/components";
