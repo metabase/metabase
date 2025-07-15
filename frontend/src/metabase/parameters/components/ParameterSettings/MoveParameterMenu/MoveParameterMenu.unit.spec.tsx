@@ -24,8 +24,6 @@ import {
 
 import { MoveParameterMenu } from "./MoveParameterMenu";
 
-console.warn = jest.fn();
-
 const TEST_PARAMETER = createMockParameter();
 
 const TEST_DASHCARD = createMockDashboardCard({
@@ -152,5 +150,29 @@ describe("MoveParameterMenu", () => {
 
     // top of page + question dashcard
     expect(screen.getAllByRole("option")).toHaveLength(2);
+  });
+
+  it("should ignore tabs without dashcards", async () => {
+    await setup({
+      dashcards: [
+        {
+          ...TEST_DASHCARD,
+          dashboard_tab_id: 1,
+        },
+        {
+          ...TEST_HEADING_DASHCARD,
+          dashboard_tab_id: 2,
+        },
+      ],
+      tabs: [
+        createMockDashboardTab({ id: 1, name: "Tab 1" }),
+        createMockDashboardTab({ id: 2, name: "Tab 2" }),
+        createMockDashboardTab({ id: 3, name: "Tab 3" }),
+      ],
+    });
+
+    expect(screen.getByText("Tab 1")).toBeInTheDocument();
+    expect(screen.getByText("Tab 2")).toBeInTheDocument();
+    expect(screen.queryByText("Tab 3")).not.toBeInTheDocument();
   });
 });

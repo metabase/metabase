@@ -27,8 +27,6 @@ const TOP_NAV_VALUE = "top-nav";
 export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
   const [isOpen, { open: onOpen, close: onClose }] = useDisclosure(false);
 
-  const tabs = useSelector(getTabs);
-
   const dashcards = useSelector((state) =>
     getDashcardList(state).filter(
       (dashcard) => isHeadingDashCard(dashcard) || isQuestionDashCard(dashcard),
@@ -48,6 +46,12 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
   );
 
   const dashcardMap = useMemo(() => _.indexBy(dashcards, "id"), [dashcards]);
+
+  const _tabs = useSelector(getTabs);
+  const tabsWithDashcards = useMemo(
+    () => _tabs.filter((tab) => dashcardsByTab[tab.id]?.length > 0),
+    [dashcardsByTab, _tabs],
+  );
 
   const handleChange = (value: string) => {
     if (value === TOP_NAV_VALUE) {
@@ -97,9 +101,9 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
     };
     const groups = [rootGroup];
 
-    if (tabs.length > 0) {
+    if (tabsWithDashcards.length > 0) {
       groups.push(
-        ...tabs.map((tab) => ({
+        ...tabsWithDashcards.map((tab) => ({
           group: tab.name,
           items: dashcardsByTab[tab.id]?.map((dc) => ({
             label: "",
@@ -117,7 +121,7 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
     }
 
     return groups;
-  }, [dashcards, dashcardsByTab, tabs]);
+  }, [dashcards, dashcardsByTab, tabsWithDashcards]);
 
   return (
     <Select
