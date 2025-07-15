@@ -25,16 +25,18 @@
    })
 
 (def token-like-whitelist
-  "A set of token-like strings that are not considered secrets.
+  "A coll of token-like strings that are not considered secrets.
    These are used to avoid false positives in the token scanning process.
 
   Usually we use the ignore-marker but in e.g. markdown code blocks you cannot easily do that without affecting the formatting."
   (->>
    (str u/project-root-directory "/mage/resources/token_scanner/token_whitelist.txt")
    slurp
-   str/split-lines))
+   str/split-lines
+   (remove str/blank?)
+   distinct))
 
-(defn- white-listed? [line]
+(defn- whitelisted? [line]
   (boolean (some #(str/includes? line %) token-like-whitelist)))
 
 (defn- truncate-around-match
@@ -47,31 +49,37 @@
             context-size 50
             start-pos (max 0 (- match-start context-size))
             end-pos (min (count text) (+ match-end context-size))
-            prefix (if (> start-pos 0) "..." "")
-            suffix (if (< end-pos (count text)) "..." "")
+            prefix (when (> start-pos 0) "...")
+            suffix (when (< end-pos (count text)) "...")
             truncated (str prefix (subs text start-pos end-pos) suffix)]
         truncated)
       text)
     text))
+
+(defn- scan-line [line line-num patterns]
+  (keep (fn [[pattern-name pattern]]
+          (when (and (re-find pattern line)
+                     (not (whitelisted? line)))
+            {:pattern-name pattern-name
+             :line-number line-num
+             :line-text (truncate-around-match line pattern)}))
+        patterns))
+
+(defn- scan-lines [reader patterns]
+  (loop [line-num 1
+         matches []]
+    (if-let [line (.readLine reader)]
+      (let [line-matches (scan-line line line-num patterns)]
+        (recur (inc line-num)
+               (into matches line-matches)))
+      matches)))
 
 (defn- scan-file
   "Scan a single file for regex patterns. Returns map with file path and matches."
   [patterns ^String file-path]
   (try
     (with-open [reader (io/reader file-path)]
-      (let [matches (loop [line-num 1
-                           matches []]
-                      (if-let [line (.readLine reader)]
-                        (let [line-matches (keep (fn [[pattern-name pattern]]
-                                                   (when (and (re-find pattern line)
-                                                              (not (white-listed? line)))
-                                                     {:pattern-name pattern-name
-                                                      :line-number line-num
-                                                      :line-text (truncate-around-match line pattern)}))
-                                                 patterns)]
-                          (recur (inc line-num)
-                                 (into matches line-matches)))
-                        matches))]
+      (let [matches (scan-lines reader patterns)]
         {:file file-path
          :matches matches
          :error nil}))
@@ -106,12 +114,11 @@
   []
   (u/debug "finding all files in the project directory...")
   (->> (fs/glob u/project-root-directory "**/*")
-       (filter fs/regular-file?)
        (map str)))
 
 (defn- merge-scanned
   "Merge results from parallel scanning"
-  ([] {:total-files 0 :files-with-matches 0 :total-matches 0})
+  ([] {:scanned [] :total-files 0 :files-with-matches 0 :total-matches 0})
   ([acc] acc)
   ([acc scanned]
    (-> acc
@@ -149,45 +156,51 @@
                               nil
                               {:mage/error    (c/yellow "No files specified. Use -a to scan all files or specify files to scan.")
                                :babashka/exit 1})))]
-    (distinct (map str files))))
+    (->> files
+         (filter fs/regular-file?)
+         (map str)
+         distinct)))
 
 (defn run-scan
   "Main entry point for regex scanning"
   [{:keys [options arguments]}]
-  (let [start-time (System/nanoTime)
+  (let [start-time        (System/nanoTime)
         {:keys [all-files
-                verbose
-                no-lines]} options
-        files              (find-files-from-options all-files arguments)
-        ignored            (git-ignored-files files) ;; Returns a set of git-ignored files
-        _                  (u/debug "Ignored files:" (count ignored))
-        files'             (remove ignored files)
-        _                  (u/debug "Files to scan:" (count files'))
-        _                  (doseq [file files']
-                             (when-not (fs/exists? file)
-                               (throw (ex-info (str "Missing file: " file) {:babashka/exit 1 :file file}))))
-        _                  (println "Scanning" (c/green (count files')) "and ignoring" (c/magenta (- (count files) (count files'))) ".gitignore'd and whitelisted files...")
+                verbose]} options
+        files             (find-files-from-options all-files arguments)
+        ignored           (git-ignored-files files) ;; Returns a set of git-ignored files
+        _                 (u/debug "Ignored files:" (count ignored))
+        files'            (remove ignored files)
+        _                 (u/debug "Files to scan:" (count files'))
+        _                 (doseq [file files']
+                            (when-not (fs/exists? file)
+                              (throw (ex-info (str "Missing file: " file) {:babashka/exit 1 :file file}))))
+        _                 (println "Scanning" (c/green (count files')) "and ignoring" (c/magenta (- (count files) (count files'))) ".gitignore'd and whitelisted files...")
         {:keys [scanned total-files files-with-matches total-matches]
-         :as   full-info}  (scan-files token-patterns files')
-        info               (dissoc full-info :scanned :duration-ms)
-        duration-ms (/ (- (System/nanoTime) start-time) 1e6)]
+         :as   full-info} (scan-files token-patterns files')
+        info              (dissoc full-info :scanned :duration-ms)
+        duration-ms       (/ (- (System/nanoTime) start-time) 1e6)]
 
     ;; Print results
     (doseq [{:keys [file matches error]} scanned]
       (when error
-        (println (c/red "Error scanning " file ": " error)))
+        (throw (ex-info (c/red "Error scanning " file ": " error) {:file file :error error :babashka/exit 1})))
       (when (seq matches)
-        (println (c/blue file))
-        (when-not no-lines
-          (doseq [{:keys [pattern-name line-number line-text]} matches]
-            (println (c/white "  Line# " (c/bold line-number) " [" (c/yellow pattern-name) "]:" (c/green (str/trim line-text))))))))
+        (doseq [{:keys [pattern-name line-number column-number line-text]} matches]
+          (println (c/blue file
+                           ":" line-number
+                           (when column-number (str ":" column-number))
+                           (c/yellow "[" pattern-name "]")
+                           (c/magenta (str/trim line-text)))))))
 
     (println "Scan completed in:   " (format "%.0f" duration-ms) "ms")
     (when verbose
       (println "--------------------")
-      (println (c/yellow "Files scanned:      " total-files))
-      (println (c/yellow "Files with matches: " files-with-matches))
-      (println (c/yellow "Total matches:      " total-matches)))
+      (println "Files scanned:      " (c/yellow total-files))
+      (println "Files with matches: " ((if (zero? files-with-matches) c/green c/yellow)
+                                       files-with-matches))
+      (println "Total matches:      " ((if (zero? total-matches) c/green c/yellow)
+                                       total-matches)))
 
     (if (> total-matches 0)
       (throw (ex-info nil

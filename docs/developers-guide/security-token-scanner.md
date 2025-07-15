@@ -33,10 +33,7 @@ The scanner uses `.gitignore` to filter files and will block commits containing 
 
 ## False positives
 
-If the scanner flags legitimate code:
-
-1. **Should it be gitignored** if it's a file we should gitignore, add it and it will be skipped
-2. **Exclude the literal token type** if you need to put a safe tokeny string in code, add it to: `mage/resources/token_scanner/token_whitelist.txt`
+If the scanner flags a non-token string, you should **exclude the literal token string** by adding it to: `mage/resources/token_scanner/token_whitelist.txt`.
 
 ```
 echo 'my-token-string' >> mage/resources/token_scanner/token_whitelist.txt && git add mage/resources/token_scanner/token_whitelist.txt
