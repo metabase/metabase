@@ -728,7 +728,7 @@ describe("Question", () => {
           name: "Bar",
           slug: "bar",
           target: ["variable", ["template-tag", "bar"]],
-          type: "category",
+          type: "string/=",
           value: null,
         },
       ]);

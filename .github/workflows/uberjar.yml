@@ -10,6 +10,7 @@ on:
       - metabot-v3-main
       - feature-visualizer
       - internal-tools
+      - viz-1048-only-visualizer-compatible
     paths-ignore:
       # config files
       - ".**"
