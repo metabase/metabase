@@ -94,13 +94,18 @@
 (defmethod q.backend/queue-length :queue.backend/appdb
   [_ queue]
   (or
+   (t2/select-one-fn :num [:model/QueuePayload [[:count :*] :num]] :queue_name (name queue))
+   0))
+
+(defn queue-message-count
+  "Returns the number of _messages_ in the queue, not the number of batches."
+  [queue]
+  (or
    (t2/select-one-fn :num [:model/QueuePayload [[:sum :num_messages] :num]] :queue_name (name queue))
    0))
 
-(defmethod q.backend/flush! :queue.backend/appdb
+(defmethod q.backend/publish! :queue.backend/appdb
   [_ queue messages]
-  #p "Flushing"
-  #p messages
   (t2/insert! :model/QueuePayload
               {:queue_name   (name queue)
                :num_messages (count messages)

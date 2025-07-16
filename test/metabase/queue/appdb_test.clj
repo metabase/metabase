@@ -86,18 +86,20 @@
         (is (= [:empty nil] (#'q.appdb/poll!))))
 
       (testing "When there are batches the queue, the handler should be called and the batch deleted from the queue"
-        (q.backend/flush! :queue.backend/appdb queue-name ["test1" "test2" "test3"])
-        (q.backend/flush! :queue.backend/appdb queue-name ["test4" "test5"])
-        (is (= 5 (q.backend/queue-length :queue.backend/appdb queue-name)))
+        (q.backend/publish! :queue.backend/appdb queue-name ["test1" "test2" "test3"])
+        (q.backend/publish! :queue.backend/appdb queue-name ["test4" "test5"])
+        (is (= 2 (q.backend/queue-length :queue.backend/appdb queue-name)))
+        (is (= 5 (q.appdb/queue-message-count queue-name)))
         (let [[result promise] (#'q.appdb/poll!)]
           (is (= result :success))
           (is (= [:success queue-name ["test1-out" "test2-out" "test3-out"]] @promise)))
-        (is (= 2 (q.backend/queue-length :queue.backend/appdb queue-name)))
+        (is (= 1 (q.backend/queue-length :queue.backend/appdb queue-name)))
+        (is (= 2 (q.appdb/queue-message-count queue-name)))
         (clear-test-rows [queue-name]))
 
       (testing "Handler throws an exception"
-        (q.backend/flush! :queue.backend/appdb queue-name ["test1" "err" "test3"])
-        (is (= 3 (q.backend/queue-length :queue.backend/appdb queue-name)))
+        (q.backend/publish! :queue.backend/appdb queue-name ["test1" "err" "test3"])
+        (is (= 1 (q.backend/queue-length :queue.backend/appdb queue-name)))
         (let [[status promise] (#'q.appdb/poll!)
               [response-status response-name response] @promise]
           (is (= :error status))
@@ -105,7 +107,7 @@
           (is (= :error response-status))
           (is (= "Error in handler" (.getMessage ^Throwable response))))
         (testing "The message should not be deleted from the queue"
-          (is (= 3 (q.backend/queue-length :queue.backend/appdb queue-name))))))))
+          (is (= 1 (q.backend/queue-length :queue.backend/appdb queue-name))))))))
 
 ;(deftest poll
 ;  (let [queue-name :queue/test-queue

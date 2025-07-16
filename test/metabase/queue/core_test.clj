@@ -8,31 +8,32 @@
 (set! *warn-on-reflection* true)
 
 (deftest e2e-test
-  (let [heard-batches (atom [])
-        queue-name (keyword (gensym "queue/core-e2e-test-"))]
-    (m.queue/listen! queue-name (fn [payload _args] (swap! heard-batches conj #p payload)))
-    (testing "When adding messages, they are not persisted during the with-queue block"
-      (m.queue/with-queue queue-name [q]
-        (is (= 0 (count q)))
-        (is (= 0 (m.queue/queue-length queue-name)))
-        (is (= [] @heard-batches))
+  (doseq [backend [:queue.backend/appdb :queue.backend/memory]]
+    (testing (str "Testing backend " backend)
+      (binding [m.queue/*backend* backend]
+        (let [heard-batches (atom [])
+              queue-name (keyword (gensym "queue/core-e2e-test-"))]
+          (m.queue/listen! queue-name (fn [payload _args] (swap! heard-batches conj payload)))
+          (testing "When adding messages, they are not persisted during the with-queue block"
+            (m.queue/with-queue queue-name [q]
+              (is (= 0 (count q)))
+              (is (= 0 (m.queue/queue-length queue-name)))
+              (is (= [] @heard-batches))
 
-        (m.queue/put q "test1")
-        (is (= 1 (count q)))
-        (is (= 0 (m.queue/queue-length queue-name)))
-        (is (= [] @heard-batches))
+              (m.queue/put q "test1")
+              (is (= 1 (count q)))
+              (is (= 0 (m.queue/queue-length queue-name)))
+              (is (= [] @heard-batches))
 
-        (m.queue/put q "test2")
-        (is (= 2 (count q)))
-        (is (= 0 (m.queue/queue-length queue-name)))
-        (is (= [] @heard-batches)))
+              (m.queue/put q "test2")
+              (is (= 2 (count q)))
+              (is (= 0 (m.queue/queue-length queue-name)))
+              (is (= [] @heard-batches)))
 
-      (is (= 2 (m.queue/queue-length queue-name)))
-
-      (testing "After the block ends, the messages are heard"
-        (Thread/sleep 500)                                ;; wait for message to get processed
-        (is (= [["test1" "test2"]] @heard-batches)))
-      (m.queue/stop-listening! queue-name))))
+            (testing "After the block ends, the messages are heard"
+              (Thread/sleep 500)                            ;; wait for message to get processed
+              (is (= [["test1" "test2"]] @heard-batches)))
+            (m.queue/stop-listening! queue-name)))))))
 
 ;(deftest e2e-test
 ;  (let [counter (atom 0)

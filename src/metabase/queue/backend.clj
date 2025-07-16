@@ -1,13 +1,14 @@
 (ns metabase.queue.backend)
 
-(defmulti flush!
-  "Flushes the queue to the database. This is a no-op if the queue is empty."
-  {:arglists '([queue-type queue-name buffer])}
-  (fn [queue-type _queue-name _buffer]
+(defmulti publish!
+  "Publishes the messages to the queue. This is a no-op if the message list is empty or nil."
+  {:arglists '([queue-type queue-name messages])}
+  (fn [queue-type _queue-name _messages]
     queue-type))
 
 (defmulti queue-length
-  "The number of unprocessed messages waiting in the queue.
+  "The number of unprocessed message _batches_ waiting in the queue.
+  Since each batch can contain multiple messages, this is not the same as the number of messages in the queue.
   Does not include messages waiting to be persisted or messages currently being handled by a handler"
   {:arglists '([queue-type queue-name])}
   (fn [queue-type _queue-name]

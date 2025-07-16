@@ -36,7 +36,7 @@
   `(let [~queue-binding (->ListQueueBuffer (atom []))]
      (try
        (do ~@body)
-       (q.backend/flush! *backend* ~queue-name @(.buffer ~queue-binding))
+       (q.backend/publish! *backend* ~queue-name @(.buffer ~queue-binding))
        (catch Exception e#
          (log/error e# "Error in queue processing, no messages will be persisted to the queue")))))
 

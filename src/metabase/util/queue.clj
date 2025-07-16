@@ -23,34 +23,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defprotocol BatchedQueue
-  (process-batch! [this handler]))
-
-(deftype BatchedBlockingQueue [^BlockingQueue queue ^long max-first-ms ^long max-batch-messages ^long max-next-ms]
-  BatchedQueue
-  (process-batch! [_ handler]
-    (letfn [(poll [poll-ms]
-              (let [item (.poll queue poll-ms TimeUnit/MILLISECONDS)]
-                (if (instance? DelayQueue queue)
-                  (:value item)
-                  item)))
-
-            (take-batch* [acc]
-              (loop [acc acc]
-                (if (>= (count acc) max-batch-messages)
-                  acc
-                  (if-let [item (poll max-next-ms)]
-                    (recur (conj acc item))
-                    (not-empty acc)))))]
-      (if-let [fst (poll max-first-ms)]
-        (let [batch (take-batch* [fst])]
-          (log/debugf "Processing batch of %d" (count batch))
-          (log/tracef "Processing batch: %s" batch)
-          [(handler batch) (count batch)])
-        (do
-          (log/debugf "No items in queue after %dms" max-first-ms)
-          [nil 0])))))
-
 (defprotocol BoundedTransferQueue
   (maybe-put! [queue msg]
     "Put a message on the queue if there is space for it, otherwise drop it.
@@ -113,9 +85,31 @@
   [^DelayQueue queue delay-ms value]
   (.offer queue (->DelayValue value (.plus (Instant/now) (Duration/ofMillis delay-ms)))))
 
+(defn- take-batch* [^BlockingQueue queue ^long max-messages ^long poll-ms acc]
+  (loop [acc acc]
+    (if (>= (count acc) max-messages)
+      acc
+      (if-let [item (if (pos? poll-ms)
+                      (.poll queue poll-ms TimeUnit/MILLISECONDS)
+                      (.poll queue))]
+        (recur (conj acc (if (instance? DelayQueue queue)
+                           (:value item)
+                           item)))
+        (not-empty acc)))))
+
+(defn- take-batch!
+  "Get a batch of messages off the given queue.
+  Will wait max-first-ms for the first message to be available, then will collect up to max-message, waiting up to max-next-ms for each additional message, whichever comes first.
+  For convenience, if the queue is a DelayQueue, the returned values will be the actual values, not the Delay objects."
+  ([^BlockingQueue queue ^long max-first-ms ^long max-batch-messages ^long max-next-ms]
+   (when-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
+     (take-batch* queue max-batch-messages max-next-ms [(if (instance? DelayQueue queue) (:value fst) fst)]))))
+
 (mr/def ::listener-options [:map [:success-handler {:optional true} [:=> [:cat :any :double :string] :any]
                                   :err-handler {:optional true} [:=> [:cat [:fn (ms/InstanceOfClass Throwable) :string]] :any]
-                                  :pool-size {:optional true} number?]])
+                                  :pool-size {:optional true} number?
+                                  :max-batch-messages {:optional true} number?
+                                  :max-next-ms {:optional true} number?]])
 
 (defonce
   ^:private
@@ -127,38 +121,32 @@
   [listener-name]
   (contains? @listeners listener-name))
 
-(defn- interrupted-exception?
-  "If Throwable `e` is an InterruptedException or one of its causes is."
-  [e]
-  (or (instance? InterruptedException e)
-      (some-> (ex-cause e) interrupted-exception?)))
-
 (mu/defn- listener-thread [listener-name :- :string
-                           queue :- [:fn #(satisfies? BatchedQueue %)]
+                           queue :- (ms/InstanceOfClass BlockingQueue)
                            handler :- [:=> [:cat [:sequential :any]] :any]
-                           {:keys [success-handler err-handler]} :- ::listener-options]
+                           {:keys [success-handler err-handler max-batch-messages max-next-ms]} :- ::listener-options]
   (log/debugf "Thread for listener %s started" listener-name)
-  (let [run (volatile! true)]
-    (while @run
-      (try
-        (log/debugf "Listener %s waiting for next batch..." listener-name)
-        (let [timer (u/start-timer)
-              [output batch-size] (process-batch! queue handler)
-              duration (u/since-ms timer)]
-          (when (< 0 batch-size)
-            (do
-              (log/debugf "Listener %s processed batch of %d in %.0fms" listener-name batch-size duration)
-              (let [success-timer (u/start-timer)]
-                (success-handler output duration listener-name)
-                (log/debugf "Listener %s success handler ran in %.0fms" listener-name (u/since-ms success-timer))))))
-        (catch Exception e
-          (if (interrupted-exception? e)
-            (do (log/debugf "Listener thread %s stopped" listener-name)
-                (vreset! run false))
-            (do
-              (err-handler e listener-name)
-              (log/errorf e "Error in %s while processing batch" listener-name))))))
-    (log/infof "Listener %s stopped" listener-name)))
+  (while true
+    (try
+      (log/debugf "Listener %s waiting for next batch..." listener-name)
+      (let [batch (take-batch! queue Long/MAX_VALUE max-batch-messages max-next-ms)]
+        (if (seq batch)
+          (do
+            (log/debugf "Listener %s processing batch of %d" listener-name (count batch))
+            (log/tracef "Listener %s processing batch: %s" listener-name batch)
+            (let [timer (u/start-timer)
+                  output (handler batch)
+                  duration (u/since-ms timer)]
+              (log/debugf "Listener %s processed batch in %.0fms" listener-name duration)
+              (success-handler output duration listener-name)))
+          (log/debugf "Listener %s found no items to process" listener-name)))
+      (catch InterruptedException e
+        (log/debugf "Listener thread %s stopped" listener-name)
+        (throw e))
+      (catch Exception e
+        (err-handler e listener-name)
+        (log/errorf e "Error in %s while processing batch" listener-name))))
+  (log/infof "Listener %s stopped" listener-name))
 
 (mu/defn listen!
   "Starts an async listener on the given queue. This should generally be called from `init-listener!` in a task namespace.
@@ -171,16 +159,22 @@
   Options:
   - success-handler: A function called when handler does not throw an exception. Accepts [result-of-handler, duration-in-ms, listener-name]
   - err-handler: A function called when the handler throws an exception. Accepts [exception, duration-in-ms, listener-name]
-  - pool-size: Number of threads in the listener. Default: 1"
+  - pool-size: Number of threads in the listener. Default: 1
+  - max-batch-messages: Max number of items to batch up before calling handler. Default 50
+  - max-next-ms: Max number of ms to wait for each additional message before calling the handler. Default 100"
   [listener-name :- :string
-   queue :- [:fn #(satisfies? BatchedQueue %)]
+   queue :- (ms/InstanceOfClass BlockingQueue)
    handler :- [:=> [:cat [:sequential :any]] :any]
    {:keys [success-handler
            err-handler
-           pool-size]
+           pool-size
+           max-batch-messages
+           max-next-ms]
     :or   {success-handler (constantly nil)
            err-handler (constantly nil)
-           pool-size       1}} :- ::listener-options]
+           pool-size       1
+           max-batch-messages 50
+           max-next-ms     100}} :- ::listener-options]
   (if (listener-exists? listener-name)
     (log/errorf "Listener %s already exists" listener-name)
 
@@ -189,7 +183,9 @@
       (dotimes [_ pool-size]
         (cp/future executor (listener-thread listener-name queue handler
                                              {:success-handler    success-handler
-                                              :err-handler        err-handler})))
+                                              :err-handler        err-handler
+                                              :max-batch-messages max-batch-messages
+                                              :max-next-ms        max-next-ms})))
 
       (swap! listeners assoc listener-name executor))))
 
