@@ -718,7 +718,8 @@
 (defn collect-source-tables
   "Return sequence of source tables from `query`."
   [query]
-  (let [from-joins (mapcat collect-source-tables (:joins query))]
+  (let [query      (or (:query query) query)
+        from-joins (mapcat collect-source-tables (:joins query))]
     (if-let [source-query (:source-query query)]
       (concat (collect-source-tables source-query) from-joins)
       (cond->> from-joins

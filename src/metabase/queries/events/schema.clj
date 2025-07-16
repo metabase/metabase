@@ -10,8 +10,10 @@
    [:object   [:fn #(t2/instance-of? :model/Card %)]]])
 
 (mr/def :event/card-create ::card)
-(mr/def :event/card-update ::card)
 (mr/def :event/card-delete ::card)
+(mr/def :event/card-update
+  [:merge ::card
+   [:map {:closed true} [:changes [:set :keyword]]]])
 
 (mr/def :event/card-read
   [:map {:closed true}

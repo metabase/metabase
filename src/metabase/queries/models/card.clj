@@ -32,6 +32,7 @@
    [metabase.public-sharing.core :as public-sharing]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
+   [metabase.queries.models.card.dependencies :as card.deps]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
@@ -822,7 +823,8 @@
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
+    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
+    #_(card.deps/update-dependencies-for-card! card)))
 
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
@@ -1211,13 +1213,17 @@
                    "`card-before-update`:" (pr-str card-before-update)
                    "`card-updates`:" (pr-str card-updates)))))
   ;; Fetch the updated Card from the DB
-  (let [card (t2/select-one :model/Card :id (:id card-before-update))]
+  (let [card    (t2/select-one :model/Card :id (:id card-before-update))
+        updated (set (keys card-updates))]
     ;;; TODO -- this should be triggered indirectly by `:event/card-update`
     (pulse/delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
     ;; skip publishing the event if it's just a change in its collection position
-    (when-not (= #{:collection_position}
-                 (set (keys card-updates)))
-      (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*}))
+    (when-not (= #{:collection_position} updated)
+      (events/publish-event! :event/card-update {:object  card
+                                                 :user-id api/*current-user-id*
+                                                 :changes updated}))
+    #_(when (updated :dataset_query)
+        (card.deps/update-dependencies-for-card! card))
     card))
 
 (defn sole-dashboard-id

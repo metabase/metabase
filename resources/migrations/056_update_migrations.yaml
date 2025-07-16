@@ -232,6 +232,99 @@ databaseChangeLog:
             path: instance_analytics_views/users/v2/h2-users.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+        id: v56.2025-07-14T17:50:18
+        author: bshepherdson
+        comment: Create report_card_table_deps table for manually indexing the tables a card depends on.
+        changes:
+            - createTable:
+                tableName: report_card_table_deps
+                remarks: Manual index of which metabase_tables a report_card depends on (directly).
+                columns:
+                  - column:
+                      remarks: The related Card
+                      name: card_id
+                      type: int
+                      constraints:
+                        nullable: false
+                        referencedTableName: report_card
+                        referencedColumnNames: id
+                        foreignKeyName: fk_report_card_table_deps_card_id
+                        deleteCascade: true
+                  - column:
+                      remarks: The related Table
+                      name: table_id
+                      type: int
+                      constraints:
+                        nullable: false
+                        referencedTableName: metabase_table
+                        referencedColumnNames: id
+                        foreignKeyName: fk_report_card_table_deps_table_id
+                        deleteCascade: true
+
+  - changeSet:
+        id: v56.2025-07-14T19:37:29
+        author: bshepherdson
+        comment: Add a unique constraint for report_card_table_deps so there's only one row per card/table pair.
+        preConditions:
+          - onFail: MARK_RAN
+          - not:
+              - indexExists:
+                  tableName: report_card_table_deps
+                  indexName: idx_unique_report_card_table_deps_both_ids
+        changes:
+            - addUniqueConstraint:
+                tableName: report_card_table_deps
+                constraintName: idx_unique_report_card_table_deps_both_ids
+                columnNames: card_id, table_id
+
+  - changeSet:
+        id: v56.2025-07-14T20:03:09
+        author: bshepherdson
+        comment: Create report_card_card_deps table for manually indexing the cards a card depends on.
+        changes:
+            - createTable:
+                tableName: report_card_card_deps
+                remarks: Manual index of which report_cards a given report_card depends on (directly).
+                columns:
+                  - column:
+                      remarks: The downstream Card that references another Card
+                      name: downstream_card_id
+                      type: int
+                      constraints:
+                        nullable: false
+                        referencedTableName: report_card
+                        referencedColumnNames: id
+                        foreignKeyName: fk_report_card_card_deps_downstream_card_id
+                        deleteCascade: true
+                  - column:
+                      remarks: The upstream Card that is being depended on.
+                      name: upstream_card_id
+                      type: int
+                      constraints:
+                        nullable: false
+                        referencedTableName: report_card
+                        referencedColumnNames: id
+                        foreignKeyName: fk_report_card_card_deps_upstream_card_id
+                        deleteCascade: true
+
+  - changeSet:
+        id: v56.2025-07-14T20:10:31
+        author: bshepherdson
+        comment: Add a unique constraint for report_card_card_deps so there's only one row per pair of cards.
+        preConditions:
+          - onFail: MARK_RAN
+          - not:
+              - indexExists:
+                  tableName: report_card_card_deps
+                  indexName: idx_unique_report_card_card_deps_both_ids
+        changes:
+            - addUniqueConstraint:
+                tableName: report_card_card_deps
+                constraintName: idx_unique_report_card_card_deps_both_ids
+                columnNames: downstream_card_id, upstream_card_id
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
