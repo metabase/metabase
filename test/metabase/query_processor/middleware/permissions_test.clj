@@ -1578,3 +1578,170 @@
                                        (qp/userland-query
                                         (mt/mbql-query nil
                                           {:source-table (format "card__%d" card-3-id)})))))))))))))))))))))
+
+(deftest e2e-expression-referencing-restricted-fields-test
+  (testing "Queries with custom expressions that reference fields from restricted tables"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          ;; Block access to categories table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :blocked)
+
+          (mt/with-test-user :rasta
+            (testing "Should be able to use expressions with foreign key fields even if the referenced table is blocked"
+              (let [result (qp/process-query
+                            (mt/mbql-query venues
+                              {:expressions {"category_calc" [:+ $category_id 1]}
+                               :fields [$id $name [:expression "category_calc"]]
+                               :order-by [[:asc $id]]
+                               :limit 2}))]
+                (is (= [[1 "Red Medicine" 5]
+                        [2 "Stout Burgers & Beers" 12]]
+                       (mt/rows result)))))
+
+            (testing "Should be able to use expressions with only accessible fields"
+              (let [result (qp/process-query
+                            (mt/mbql-query venues
+                              {:expressions {"price_doubled" [:* $price 2]
+                                             "price_category" [:case [[[:<= $price 1] "cheap"]
+                                                                      [[:and [:> $price 1] [:<= $price 3]] "medium"]]
+                                                               {:default "expensive"}]}
+                               :fields [$id $name [:expression "price_doubled"] [:expression "price_category"]]
+                               :order-by [[:asc $id]]
+                               :limit 2}))]
+                (is (= [[1 "Red Medicine" 6 "medium"]
+                        [2 "Stout Burgers & Beers" 4 "medium"]]
+                       (mt/rows result)))))))))))
+
+(deftest e2e-calculated-fields-across-joined-tables-permissions-test
+  (testing "Calculated fields that aggregate data from multiple tables with different permission levels"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues and checkins
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
+          ;; Block access to users table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
+
+          (mt/with-test-user :rasta
+            (testing "Should be able to calculate across permitted tables"
+              (let [result (qp/process-query
+                            (mt/mbql-query checkins
+                              {:aggregation [[:count]]
+                               :breakout [$venue_id]
+                               :expressions {"checkin_rate" [:/ [:count] 30]} ; checkins per day over 30 days
+                               :order-by [[:desc [:expression "checkin_rate"]]]
+                               :limit 2}))]
+                (is (seq (mt/rows result)))))
+
+            (testing "Should NOT be able to create aggregations with joins to restricted tables"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query
+                    (mt/mbql-query checkins
+                      {:joins [{:source-table (mt/id :users)
+                                :alias "users"
+                                :condition [:= $user_id [:field (mt/id :users :id) {:join-alias "users"}]]}]
+                       :aggregation [[:count-where [:not-null [:field (mt/id :users :id) {:join-alias "users"}]]]]
+                       :breakout [$venue_id]
+                       :limit 2})))))))))))
+
+(deftest e2e-expression-in-join-conditions-permissions-test
+  (testing "Expression references in joins and filters with permission restrictions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues and categories
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+
+          (mt/with-test-user :rasta
+            (testing "Should be able to use expressions in join conditions between permitted tables"
+              (let [result (qp/process-query
+                            (mt/mbql-query venues
+                              {:joins [{:source-table (mt/id :categories)
+                                        :alias "cat"
+                                        :condition [:=
+                                                    [:expression "adjusted_category"]
+                                                    [:field (mt/id :categories :id) {:join-alias "cat"}]]}]
+                               :expressions {"adjusted_category" [:case
+                                                                  [[[:<= $price 2] [:- $category_id 1]]]
+                                                                  {:default $category_id}]}
+                               :fields [$id $name [:expression "adjusted_category"]]
+                               :order-by [[:asc $id]]
+                               :limit 3}))]
+                (is (= 3 (count (mt/rows result))))))
+
+            (testing "Should be able to use expressions in filters"
+              (let [result (qp/process-query
+                            (mt/mbql-query venues
+                              {:expressions {"price_range" [:case
+                                                            [[[:<= $price 1] "low"]
+                                                             [[:and [:> $price 1] [:<= $price 3]] "medium"]]
+                                                            {:default "high"}]}
+                               :filter [:= [:expression "price_range"] "medium"]
+                               :fields [$id $name $price [:expression "price_range"]]
+                               :order-by [[:asc $id]]}))]
+                (is (every? #(= "medium" (last %)) (mt/rows result)))))))))))
+
+(deftest e2e-expression-with-card-source-permissions-test
+  (testing "Expressions on card sources with different permission levels"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+
+          (mt/with-temp [:model/Collection {accessible-coll :id} {}
+                         :model/Collection {restricted-coll :id} {}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) accessible-coll)
+
+            ;; Create a card with expressions
+            (let [card-query (mt/mbql-query venues
+                               {:expressions {"price_tier" [:case
+                                                            [[[:<= $price 1] 1]
+                                                             [[:and [:> $price 1] [:<= $price 3]] 2]]
+                                                            {:default 3}]}
+                                :fields [$id $name $price [:expression "price_tier"]]
+                                :order-by [[:asc $id]]
+                                :limit 5})]
+              (mt/with-temp [:model/Card {accessible-card-id :id} {:collection_id accessible-coll
+                                                                   :dataset_query card-query}
+                             :model/Card {restricted-card-id :id} {:collection_id restricted-coll
+                                                                   :dataset_query card-query}]
+
+                (mt/with-test-user :rasta
+                  (testing "Should be able to add expressions to accessible card source"
+                    (let [result (qp/process-query
+                                  (mt/mbql-query nil
+                                    {:source-table (format "card__%d" accessible-card-id)
+                                     :expressions {"price_adjusted" [:+ [:field "PRICE" {:base-type :type/Integer}] 0.5]
+                                                   "tier_name" [:case
+                                                                [[[:= [:field "price_tier" {:base-type :type/Integer}] 1] "budget"]
+                                                                 [[:= [:field "price_tier" {:base-type :type/Integer}] 2] "standard"]]
+                                                                {:default "premium"}]}
+                                     :fields [[:field "ID" {:base-type :type/BigInteger}]
+                                              [:field "NAME" {:base-type :type/Text}]
+                                              [:expression "price_adjusted"]
+                                              [:expression "tier_name"]]
+                                     :limit 2}))]
+                      (is (= 2 (count (mt/rows result))))))
+
+                  (testing "Should NOT be able to query restricted card even with expressions"
+                    (is (thrown-with-msg?
+                         ExceptionInfo
+                         #"You do not have permissions to view Card"
+                         (qp/process-query
+                          (mt/mbql-query nil
+                            {:source-table (format "card__%d" restricted-card-id)
+                             :expressions {"simple" [:+ 1 1]}
+                             :limit 1}))))))))))))))
