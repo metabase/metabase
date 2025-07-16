@@ -5,6 +5,7 @@ export type ColumnItem = {
   displayName: string;
   isSelected: boolean;
   isDisabled: boolean;
+  isHidden?: boolean;
 };
 
 export type ColumnGroupItem = {

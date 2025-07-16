@@ -16,6 +16,7 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.interface :as mi]
@@ -977,58 +978,10 @@
                   :can_restore
                   :can_delete)))
 
-(api.macros/defendpoint :get "/:id"
-  "Fetch a specific Collection with standard details added"
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (collection-detail (api/read-check :model/Collection id)))
-
 (api.macros/defendpoint :get "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
   []
   (collection-detail (api/read-check (collection/trash-collection))))
-
-(api.macros/defendpoint :get "/:id/items"
-  "Fetch a specific Collection's items with the following options:
-
-  *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models
-  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.
-  *  `pinned_state` - when `is_pinned`, return pinned objects only.
-                   when `is_not_pinned`, return non pinned objects only.
-                   when `all`, return everything. By default returns everything.
-  *  `include_can_run_adhoc_query` - when this is true hydrates the `can_run_adhoc_query` flag on card models
-
-  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
-  changed, that should too."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   {:keys [models archived pinned_state sort_column sort_direction official_collections_first
-           include_can_run_adhoc_query
-           show_dashboard_questions]} :- [:map
-                                          [:models                      {:optional true} [:maybe Models]]
-                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
-                                          [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                          [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                          [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                          [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]]]
-  (let [model-kwds (set (map keyword (u/one-or-many models)))
-        collection (api/read-check :model/Collection id)]
-    (u/prog1 (collection-children collection
-                                  {:show-dashboard-questions?   show_dashboard_questions
-                                   :models                      model-kwds
-                                   :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
-                                   :pinned-state                (keyword pinned_state)
-                                   :include-can-run-adhoc-query include_can_run_adhoc_query
-                                   :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
-                                                                 :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
-                                                                 ;; default to sorting official collections first, except for the trash.
-                                                                 :official-collections-first? (if (and (nil? official_collections_first)
-                                                                                                       (not (collection/is-trash? collection)))
-                                                                                                true
-                                                                                                (boolean official_collections_first))}})
-      (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
 
 (mr/def ::DashboardQuestionCandidate
   [:map
@@ -1318,35 +1271,6 @@
     :parent_id (move-collection! collection-before-update collection-updates)
     :no-op))
 
-(api.macros/defendpoint :put "/:id"
-  "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   {authority-level :authority_level, :as collection-updates} :- [:map
-                                                                  [:name            {:optional true} [:maybe ms/NonBlankString]]
-                                                                  [:description     {:optional true} [:maybe ms/NonBlankString]]
-                                                                  [:archived        {:default false} [:maybe ms/BooleanValue]]
-                                                                  [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
-                                                                  [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
-  ;; do we have perms to edit this Collection?
-  (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
-    ;; if authority_level is changing, make sure we're allowed to do that
-    (when (and (contains? collection-updates :authority_level)
-               (not= (keyword authority-level) (:authority_level collection-before-update)))
-      (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
-      (api/check-403 api/*is-superuser?*))
-    ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
-    ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
-      (when (seq updates)
-        (t2/update! :model/Collection id updates)))
-    ;; if we're trying to move or archive the Collection, go ahead and do that
-    (move-or-archive-collection-if-needed! collection-before-update collection-updates)
-    (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
-  ;; finally, return the updated object
-  (collection-detail (t2/select-one :model/Collection :id id)))
-
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
 (api.macros/defendpoint :get "/graph"
@@ -1422,3 +1346,84 @@
                  (decode-graph {:revision revision :groups groups})
                  skip-graph
                  force))
+
+;;; ------------------------------------------ Fetching a single Collection -------------------------------------------
+
+(api.macros/defendpoint :get "/:id"
+  "Fetch a specific Collection with standard details added"
+  [{:keys [id]} :- [:map
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (let [resolved-id (eid-translation/->id-or-404 :collection id)]
+    (collection-detail (api/read-check :model/Collection resolved-id))))
+
+(api.macros/defendpoint :put "/:id"
+  "Modify an existing Collection, including archiving or unarchiving it, or moving it."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {authority-level :authority_level, :as collection-updates} :- [:map
+                                                                  [:name            {:optional true} [:maybe ms/NonBlankString]]
+                                                                  [:description     {:optional true} [:maybe ms/NonBlankString]]
+                                                                  [:archived        {:default false} [:maybe ms/BooleanValue]]
+                                                                  [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
+                                                                  [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
+  ;; do we have perms to edit this Collection?
+  (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
+    ;; if authority_level is changing, make sure we're allowed to do that
+    (when (and (contains? collection-updates :authority_level)
+               (not= (keyword authority-level) (:authority_level collection-before-update)))
+      (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
+      (api/check-403 api/*is-superuser?*))
+    ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
+    ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
+    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
+      (when (seq updates)
+        (t2/update! :model/Collection id updates)))
+    ;; if we're trying to move or archive the Collection, go ahead and do that
+    (move-or-archive-collection-if-needed! collection-before-update collection-updates)
+    (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
+  ;; finally, return the updated object
+  (collection-detail (t2/select-one :model/Collection :id id)))
+
+(api.macros/defendpoint :get "/:id/items"
+  "Fetch a specific Collection's items with the following options:
+
+  *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models
+  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.
+  *  `pinned_state` - when `is_pinned`, return pinned objects only.
+                   when `is_not_pinned`, return non pinned objects only.
+                   when `all`, return everything. By default returns everything.
+  *  `include_can_run_adhoc_query` - when this is true hydrates the `can_run_adhoc_query` flag on card models
+
+  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
+  changed, that should too."
+  [{:keys [id]} :- [:map
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+   {:keys [models archived pinned_state sort_column sort_direction official_collections_first
+           include_can_run_adhoc_query
+           show_dashboard_questions]} :- [:map
+                                          [:models                      {:optional true} [:maybe Models]]
+                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
+                                          [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                          [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                          [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                          [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]]]
+  (let [resolved-id (eid-translation/->id-or-404 :collection id)
+        model-kwds (set (map keyword (u/one-or-many models)))
+        collection (api/read-check :model/Collection resolved-id)]
+    (u/prog1 (collection-children collection
+                                  {:show-dashboard-questions?   show_dashboard_questions
+                                   :models                      model-kwds
+                                   :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
+                                   :pinned-state                (keyword pinned_state)
+                                   :include-can-run-adhoc-query include_can_run_adhoc_query
+                                   :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
+                                                                 :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
+                                                                 ;; default to sorting official collections first, except for the trash.
+                                                                 :official-collections-first? (if (and (nil? official_collections_first)
+                                                                                                       (not (collection/is-trash? collection)))
+                                                                                                true
+                                                                                                (boolean official_collections_first))}})
+      (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))

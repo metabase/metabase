@@ -212,7 +212,6 @@ interface SetupOpts {
   card?: Card;
   collections?: Collection[];
   error?: string;
-  dashboard?: Dashboard;
   mostRecentlyViewedDashboard?: Dashboard;
   waitForContent?: boolean;
   searchResults?: SearchResult[];
@@ -392,11 +391,11 @@ describe("AddToDashSelectDashModal", () => {
 
     it("should pre-select dashboard in the root collection", async () => {
       await setup({
-        dashboard: DASHBOARD_AT_ROOT,
         mostRecentlyViewedDashboard: DASHBOARD_AT_ROOT,
       });
 
       await assertPath([ROOT_COLLECTION]);
+
       expect(await findPickerItem(DASHBOARD_AT_ROOT.name)).toHaveAttribute(
         "data-active",
         "true",
@@ -604,7 +603,6 @@ describe("AddToDashSelectDashModal", () => {
     it("should show the create dashboard dialog", async () => {
       // Second part of test requires a value to be "selected"
       const { onChangeLocation } = await setup({
-        dashboard: DASHBOARD_AT_ROOT,
         mostRecentlyViewedDashboard: DASHBOARD_AT_ROOT,
       });
 
