@@ -4,7 +4,9 @@
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cache :as lib.metadata.cache]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.test-metadata :as meta]
@@ -82,6 +84,15 @@
                  :long-display-name "join → Unknown Field"}
                 (lib/display-info query [:field {:join-alias "join"} field-id])))))))
 
+(defn- visible-columns-with-desired-aliases
+  "[[lib/visible-columns]] no longer includes `:lib/desired-column-alias` (which never really made sense because desired
+  column alias is a function of the columns that are RETURNED) but since so many tests were written to look at it this
+  function is around to make those tests continue to work without extensive rewrites."
+  [query]
+  (into []
+        (lib.field.util/add-source-and-desired-aliases-xform query)
+        (lib/visible-columns query)))
+
 (deftest ^:parallel visible-columns-test
   (testing "Include all visible columns, not just projected ones (#31233)"
     (is (= ["ID"
@@ -100,10 +111,14 @@
                                      (meta/field-metadata :venues :category-id)
                                      (lib/with-join-alias (meta/field-metadata :categories :id) "Categories"))])
                                   (lib/with-join-fields [(lib/with-join-alias (meta/field-metadata :categories :name) "Categories")])))
-                    lib/visible-columns)))))
+                    visible-columns-with-desired-aliases))))))
+
+(deftest ^:parallel visible-columns-test-2
   (testing "nil has no visible columns (#31366)"
     (is (empty? (-> (lib.tu/venues-query)
-                    (lib/visible-columns nil)))))
+                    (lib/visible-columns nil))))))
+
+(deftest ^:parallel visible-columns-test-3
   (testing "Include multiple implicitly joinable columns pointing to the same table and field (##33451)"
     (is (= ["id"
             "created_by"
@@ -113,13 +128,47 @@
             "ic_accounts__via__updated_by__id"
             "ic_accounts__via__updated_by__name"]
            (->> (lib/query meta/metadata-provider (meta/table-metadata :ic/reports))
-                lib/visible-columns
-                (map :lib/desired-column-alias)))))
+                visible-columns-with-desired-aliases
+                (map :lib/desired-column-alias))))))
+
+(deftest ^:parallel visible-columns-test-4
   (testing "multiple aggregations"
-    (lib.metadata.calculation/visible-columns
-     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-         (lib/aggregate (lib/count))
-         (lib/aggregate (lib/sum (meta/field-metadata :orders :quantity)))))))
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/sum (meta/field-metadata :orders :quantity))))]
+      (is (= [["Orders"   "ID"]
+              ["Orders"   "User ID"]
+              ["Orders"   "Product ID"]
+              ["Orders"   "Subtotal"]
+              ["Orders"   "Tax"]
+              ["Orders"   "Total"]
+              ["Orders"   "Discount"]
+              ["Orders"   "Created At"]
+              ["Orders"   "Quantity"]
+              ["People"   "User → ID"]
+              ["People"   "User → Address"]
+              ["People"   "User → Email"]
+              ["People"   "User → Password"]
+              ["People"   "User → Name"]
+              ["People"   "User → City"]
+              ["People"   "User → Longitude"]
+              ["People"   "User → State"]
+              ["People"   "User → Source"]
+              ["People"   "User → Birth Date"]
+              ["People"   "User → Zip"]
+              ["People"   "User → Latitude"]
+              ["People"   "User → Created At"]
+              ["Products" "Product → ID"]
+              ["Products" "Product → Ean"]
+              ["Products" "Product → Title"]
+              ["Products" "Product → Category"]
+              ["Products" "Product → Vendor"]
+              ["Products" "Product → Price"]
+              ["Products" "Product → Rating"]
+              ["Products" "Product → Created At"]]
+             (map #(-> (lib/display-info query -1 %)
+                       ((juxt (comp :long-display-name :table) :long-display-name)))
+                  (lib.metadata.calculation/visible-columns query)))))))
 
 (deftest ^:parallel source-cards-test
   (testing "with :source-card"
@@ -679,9 +728,8 @@
   `expected-cols` should be a list of tuples of [:lib/desired-column-alias :lib/source] for the expected columns."
   [query expected-cols]
   (is (= expected-cols
-         (->> query
-              lib/visible-columns
-              (map (juxt :lib/desired-column-alias :lib/source))))))
+         (map (juxt :lib/desired-column-alias :lib/source)
+              (visible-columns-with-desired-aliases query)))))
 
 (deftest ^:parallel visible-columns-orders+people-card-test
   (testing "single-card orders+people join (#34743)"
@@ -897,3 +945,25 @@
       ["GH_USERS__via__AUTHOR_ID__ID" :source/implicitly-joinable]
       ["GH_USERS__via__AUTHOR_ID__BIRTHDAY" :source/implicitly-joinable]
       ["GH_USERS__via__AUTHOR_ID__EMAIL" :source/implicitly-joinable]])))
+
+(deftest ^:parallel caching-test
+  (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                       (lib/join (meta/table-metadata :categories)))
+        call-count (atom {:hits 0, :misses 0})]
+    (doseq [f [#'lib/returned-columns
+               #'lib/visible-columns]]
+      (testing f
+        (binding [lib.metadata.cache/*cache-hit-hook*  (fn [_v]
+                                                         (swap! call-count update :hits inc))
+                  lib.metadata.cache/*cache-miss-hook* (fn [_v]
+                                                         (swap! call-count update :misses inc))]
+          (is (seq (f query)))
+          (let [num-misses (:misses @call-count)]
+            (is (pos-int? num-misses)
+                "The first call should result in some cache misses")
+            (is (pos-int? (:hits @call-count))
+                "The first call should result in some cache hits for recursive metadata calculation")
+            (is (seq (f query)))
+            (is (= num-misses
+                   (:misses @call-count))
+                "Another call should result in ZERO additional cache misses -- we should be returning the cached value")))))))

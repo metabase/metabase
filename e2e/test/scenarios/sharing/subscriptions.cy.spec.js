@@ -70,7 +70,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByRole("link", { name: /configure Slack/i }).should(
         "have.attr",
         "href",
-        "/admin/settings/notifications/slack",
+        "/admin/settings/notifications",
       );
     });
   });

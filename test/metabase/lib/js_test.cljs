@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.js :as lib.js]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -465,7 +466,10 @@
 
     (testing "fingerprint is included in display-info"
       (let [query      (lib/query meta/metadata-provider (meta/table-metadata :orders))
-            by-dca     (m/index-by :lib/desired-column-alias (lib/visible-columns query))
+            by-dca     (m/index-by :lib/desired-column-alias
+                                   (into []
+                                         (lib.field.util/add-source-and-desired-aliases-xform query)
+                                         (lib/visible-columns query)))
             discount   (by-dca "DISCOUNT")
             vendor     (by-dca "PRODUCTS__via__PRODUCT_ID__VENDOR")
             created-at (by-dca "CREATED_AT")]

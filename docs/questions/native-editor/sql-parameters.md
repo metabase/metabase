@@ -1,6 +1,6 @@
 ---
 title: SQL parameters
-summary: Create SQL templates by adding filters and parameters to your SQL questions in the native code editor. 
+summary: Create SQL templates by adding filters and parameters to your SQL questions in the native code editor.
 redirect_from:
   - /docs/latest/users-guide/13-sql-parameters
 ---
@@ -11,7 +11,7 @@ redirect_from:
 
 You can create SQL templates by adding parameters (a.k.a. variables) to your SQL queries in the [Native/SQL editor](./writing-sql.md).
 
-These variables create filter widgets that people can use to change the variables' values in the query. 
+These variables create filter widgets that people can use to change the variables' values in the query.
 
 You can also add parameters to your question's URL to set the filters' values, so that when the question loads, those values are inserted into the variables.
 
@@ -22,14 +22,14 @@ When you define a variable, the **variables and parameters** side panel will app
 Variable types include:
 
 - **[Field filter variables](#field-filter-variables)**: create "smart" filter widgets with date pickers or dropdown menus. To use a field filter, you'll need to connect to a database field included in your query.
-- **[Basic variables](./basic-sql-parameters.md)**: text, number, and date variables. You'll almost always want to use field filters instead of these basic variables, as field filters create "smart" filter widgets, but Metabase provides these basic variables for situations where you can't use field filters. 
-- **[Time grouping parameters](./time-grouping-parameters.md)**: allows people to change how the results are grouped by a date column: by month, week, day, etc. 
+- **[Basic variables](./basic-sql-parameters.md)**: text, number, and date variables. You'll almost always want to use field filters instead of these basic variables, as field filters create "smart" filter widgets, but Metabase provides these basic variables for situations where you can't use field filters.
+- **[Time grouping parameters](./time-grouping-parameters.md)**: allows people to change how the results are grouped by a date column: by month, week, day, etc.
 
 You can include multiple variables in a single query, and Metabase will add multiple filter widgets to the question. When you have multiple filter widgets, you can click on a filter widget and drag it around to rearrange the order.
 
 ## When to use a field filter variable vs a basic variable
 
-In general, prefer using field filter variables. They offer "smart" filter widgets with dropdown menus and dynamic date pickers. 
+In general, prefer using field filter variables. They offer "smart" filter widgets with dropdown menus and dynamic date pickers.
 
 If your query lacks a database field for the filter to connect to, however, then you'll instead need to use a [basic variable](./basic-sql-parameters.md). See other [field filter limitations](#field-filter-limitations).
 
@@ -43,7 +43,7 @@ To add a field filter:
 
 ### Field filter syntax
 
-Let's say you want to create a field filter variable that filters the `People` table by the `state` field. 
+Let's say you want to create a field filter variable that filters the `People` table by the `state` field.
 
 Here's the field filter syntax:
 
@@ -58,7 +58,7 @@ WHERE
 {% endraw %}
 ```
 
-Note the lack of the column and operator (it's not `{% raw %}WHERE state = {{state}}{% endraw %}`, it's just `{% raw %}WHERE {{state}}{% endraw %}`). The reason you need to structure field filter variables in this way is to handle cases where Metabase generates the code for you. For example, for handling cases where someone selects _multiple_ values in the filter widget, or a _range_ of dates, Metabase will have to interpolate the SQL code to handle those inputs into the variable. 
+Note the lack of the column and operator (it's not `{% raw %}WHERE state = {{state}}{% endraw %}`, it's just `{% raw %}WHERE {{state}}{% endraw %}`). The reason you need to structure field filter variables in this way is to handle cases where Metabase generates the code for you. For example, for handling cases where someone selects _multiple_ values in the filter widget, or a _range_ of dates, Metabase will have to interpolate the SQL code to handle those inputs into the variable.
 
 In a MongoDB native query, you'll need to put the field filter in a `$match` clause.
 
@@ -78,7 +78,7 @@ You can only map a field filter to a database field. See [field filter limitatio
 
 ### Configure your filter widget
 
-1. Set the **Filter widget type**. Options will differ depending on the field's data type. 
+1. Set the **Filter widget type**. Options will differ depending on the field's data type.
 2. Set the **Filter widget** label.
 3. Set **How should users filter on this variable?**:
    - [Dropdown list](../../dashboards/filters.md#dropdown-list). A dropdown list shows all available values for the field in a selectable list.
@@ -158,7 +158,7 @@ Make sure your SQL dialect matches the database you've selected. Common issues i
 | Database | Dialect quirk                                       | Example                    |
 | -------- | --------------------------------------------------- | -------------------------- |
 | BigQuery | Schemas and tables must be quoted with backticks.   | `` FROM `dataset.table` `` |
-| Oracle   | Schemas and tables must be quoted in double quotes. | `FROM "schema.table"`        |
+| Oracle   | Schemas and tables must be quoted in double quotes. | `FROM "schema.table"`      |
 
 For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
 
@@ -189,10 +189,9 @@ To set multiple variables, separate parameters with an ampersand (`&`):
 https://metabase.example.com/question/42-eg-question?category=Gizmo&maxprice=50
 ```
 
-
 ## Setting a default value in the filter widget
 
-In the variables sidebar, you can set a default value for your variable. This value will be inserted into the corresponding filter widget by default (even if the filter widget is empty). 
+In the variables sidebar, you can set a default value for your variable. This value will be inserted into the corresponding filter widget by default (even if the filter widget is empty).
 
 To override the default value, insert a new value into the filter widget.
 

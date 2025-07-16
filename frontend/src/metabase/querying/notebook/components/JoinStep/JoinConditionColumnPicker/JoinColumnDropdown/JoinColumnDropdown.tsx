@@ -100,7 +100,7 @@ export function JoinColumnDropdown({
 
   return (
     <QueryColumnPicker
-      className={S.JoinColumnPicker}
+      className={S.joinColumnPicker}
       query={query}
       stageIndex={stageIndex}
       columnGroups={columnGroups}

@@ -1040,7 +1040,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.dashboardParameterSidebar().button("Remove").click();
 
       H.getDashboardCard(0).within(() => {
-        cy.findByText("Heading Text").should("exist");
+        cy.findByDisplayValue("Heading Text").should("exist");
         cy.findByText("Count").should("not.exist");
 
         H.filterWidget({ isEditing: true }).contains("Category").click();
@@ -1813,7 +1813,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.button("Add filter").click();
       });
       H.getDashboardCard(0).within(() => {
-        cy.findAllByText("Gadget").should("have.length", 2); // x-axis label + filter
+        cy.findAllByText("Gadget").filter(":visible").should("have.length", 2); // x-axis label + filter
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gizmo").should("not.exist");
         cy.findByText("Widget").should("not.exist");
@@ -1892,7 +1892,9 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       // Update card filter (Gadget) and verify no results
-      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget().contains("Category").click();
+      });
       H.popover().within(() => {
         cy.findByLabelText("Gadget").click();
         cy.button("Add filter").click();
@@ -1909,7 +1911,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.button("Update filter").click();
       });
       H.getDashboardCard(0).within(() => {
-        cy.findByText("Gizmo").should("exist");
+        cy.findAllByText("Gizmo").filter(":visible").should("exist");
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gadget").should("not.exist");
         cy.findByText("Widget").should("not.exist");
@@ -1925,7 +1927,7 @@ describe("scenarios > dashboard > parameters", () => {
         .findByText("3 selections")
         .should("exist");
       H.getDashboardCard(0).within(() => {
-        cy.findAllByText("Gizmo").should("have.length", 2); // x-axis label + filter
+        cy.findAllByText("Gizmo").filter(":visible").should("have.length", 2); // x-axis label + filter
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gadget").should("not.exist");
         cy.findByText("Widget").should("not.exist");
@@ -1963,7 +1965,9 @@ describe("scenarios > dashboard > parameters", () => {
         H.editDashboard();
       });
 
-      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
 
       H.setDashboardParameterName("Count");
       H.setDashboardParameterType("Number");
@@ -1984,7 +1988,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.getDashboardCard(0).within(() => {
         cy.findByText("Count").should("exist");
-        cy.findAllByText("4,000").should("have.length", 2); // y-axis label + filter
+        cy.findAllByText("4,000").filter(":visible").should("have.length", 2); // y-axis label + filter
         cy.findByText("Category").should("not.exist");
 
         cy.findByText("Doohickey").should("be.visible");
@@ -2012,6 +2016,7 @@ describe("scenarios > dashboard > parameters", () => {
           cards: [
             {
               id: dashcard.id,
+              size_x: 18,
               inline_parameters: [categoryParameter.id, countParameter.id],
               parameter_mappings: [
                 {
@@ -2031,7 +2036,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       H.getDashboardCard(0).within(() => {
-        cy.findByText("Category").should("exist");
+        H.filterWidget().contains("Category").should("exist");
 
         // Verify we're hiding filters that are not linked to any cards
         cy.findByText("Count").should("not.exist");
@@ -2039,12 +2044,18 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.editDashboard();
 
-      H.getDashboardCard(0).findAllByText("Count").first().click();
+      H.getDashboardCard(0)
+        .findAllByText("Count")
+        .filter(":visible")
+        .first()
+        .click();
       H.dashboardParameterSidebar().button("Remove").click();
 
       H.getDashboardCard(0).within(() => {
-        cy.findAllByText("Count").should("have.length", 1); // y-axis label
-        cy.findByText("Category").click();
+        H.filterWidget({ isEditing: true })
+          .contains("Count")
+          .should("not.exist");
+        H.filterWidget({ isEditing: true }).contains("Category").click();
       });
 
       H.dashboardParameterSidebar().button("Remove").click();
@@ -2135,6 +2146,8 @@ describe("scenarios > dashboard > parameters", () => {
             {
               id: dashcard.id,
               inline_parameters: [categoryParameter.id, countParameter.id],
+              size_x: 24,
+              size_y: 4,
               parameter_mappings: [
                 {
                   parameter_id: categoryParameter.id,
@@ -2159,7 +2172,9 @@ describe("scenarios > dashboard > parameters", () => {
       H.getDashboardCard(1).findByText("Average of Total").should("exist");
 
       // Verify filter isn't auto-wired and there's no auto-wiring toast
-      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
       H.getDashboardCard(1)
         .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
@@ -2221,7 +2236,10 @@ describe("scenarios > dashboard > parameters", () => {
       H.findDashCardAction(H.getDashboardCard(0), "Duplicate").click();
 
       H.getDashboardCard(1).within(() => {
-        cy.findByText("Category 1").should("exist").click();
+        H.filterWidget({ isEditing: true })
+          .contains("Category 1")
+          .should("exist")
+          .click();
       });
 
       // Verify the Count filter is connected to a new card
@@ -2230,16 +2248,28 @@ describe("scenarios > dashboard > parameters", () => {
         .findByTestId("parameter-mapper-container")
         .findByText(/Count/)
         .should("exist");
+      H.dashboardParameterSidebar().button("Done").click();
 
       // Verify first card's filter isn't connected to a new card
-      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category")
+          .should("exist")
+          .click();
+      });
       H.getDashboardCard(1)
         .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
         .should("not.exist");
+      H.dashboardParameterSidebar().button("Done").click();
 
       // Verify new card's filter is connected to the new card
-      H.getDashboardCard(1).findByText("Category 1").click();
+      H.getDashboardCard(1).within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category 1")
+          .should("exist")
+          .click();
+      });
       H.getDashboardCard(1)
         .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
@@ -2263,13 +2293,17 @@ describe("scenarios > dashboard > parameters", () => {
         cy.button("Add filter").click();
       });
 
-      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget().contains("Category").click();
+      });
       H.popover().within(() => {
         cy.findByLabelText("Widget").click();
         cy.button("Add filter").click();
       });
 
-      H.getDashboardCard(1).findByText("Category 1").click();
+      H.getDashboardCard(1).within(() => {
+        H.filterWidget().contains("Category 1").click();
+      });
       H.popover().within(() => {
         cy.findByLabelText("Doohickey").click();
         cy.button("Add filter").click();
@@ -2281,12 +2315,12 @@ describe("scenarios > dashboard > parameters", () => {
         .findByText(/No results/)
         .should("exist");
       H.getDashboardCard(1).within(() => {
-        // filter value + x-axis label
-        cy.findAllByText("Doohickey").should("have.length", 2);
-
-        cy.findByText("Gizmo").should("not.exist");
-        cy.findByText("Gadget").should("not.exist");
-        cy.findByText("Widget").should("not.exist");
+        H.echartsContainer().within(() => {
+          cy.findByText("Doohickey").should("exist");
+          cy.findByText("Gizmo").should("not.exist");
+          cy.findByText("Gadget").should("not.exist");
+          cy.findByText("Widget").should("not.exist");
+        });
       });
 
       cy.location().should(({ search }) => {
@@ -2339,7 +2373,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Gadget").should("be.visible");
         cy.findByText("Widget").should("be.visible");
 
-        cy.findByText("Category").click();
+        H.filterWidget().contains("Category").click();
       });
       H.popover().within(() => {
         cy.findByText("Gadget").click();
@@ -2347,10 +2381,12 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       H.getDashboardCard(0).within(() => {
-        cy.findByText("Gadget").should("be.visible");
-        cy.findByText("Doohickey").should("not.exist");
-        cy.findByText("Gizmo").should("not.exist");
-        cy.findByText("Widget").should("not.exist");
+        H.echartsContainer().within(() => {
+          cy.findByText("Gadget").should("be.visible");
+          cy.findByText("Doohickey").should("not.exist");
+          cy.findByText("Gizmo").should("not.exist");
+          cy.findByText("Widget").should("not.exist");
+        });
       });
 
       cy.location().should(({ search }) => {

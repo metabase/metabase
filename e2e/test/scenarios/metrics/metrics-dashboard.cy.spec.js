@@ -122,7 +122,9 @@ describe("scenarios > metrics > dashboard", () => {
     });
     H.editDashboard();
 
-    H.findDashCardAction(H.getDashboardCard(0), "Edit visualization").click();
+    H.showDashcardVisualizerModal(0, {
+      isVisualizerCard: false,
+    });
     H.modal().within(() => {
       H.switchToAddMoreData();
       H.addDataset(PRODUCTS_TIMESERIES_METRIC.name);

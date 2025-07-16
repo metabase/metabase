@@ -270,11 +270,21 @@ export function chartLegendItem(name: string) {
   return chartLegend().findByText(name);
 }
 
-export function showDashcardVisualizerModal(index = 0) {
+type ShowDashcardVisualizerModalOptions = {
+  isVisualizerCard?: boolean;
+};
+
+export function showDashcardVisualizerModal(
+  index = 0,
+  options: ShowDashcardVisualizerModalOptions = {},
+) {
+  const { isVisualizerCard = true } = options;
   showDashboardCardActions(index);
 
   getDashboardCard(index)
-    .findByLabelText("Edit visualization")
+    .findByLabelText(
+      isVisualizerCard ? "Edit visualization" : "Visualize another way",
+    )
     .click({ force: true });
 
   modal().within(() => {
@@ -283,8 +293,11 @@ export function showDashcardVisualizerModal(index = 0) {
   });
 }
 
-export function showDashcardVisualizerModalSettings(index = 0) {
-  showDashcardVisualizerModal(index);
+export function showDashcardVisualizerModalSettings(
+  index = 0,
+  options: ShowDashcardVisualizerModalOptions = {},
+) {
+  showDashcardVisualizerModal(index, options);
 
   return modal().within(() => {
     toggleVisualizerSettingsSidebar();

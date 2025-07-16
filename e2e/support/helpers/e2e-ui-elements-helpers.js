@@ -415,17 +415,18 @@ export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
       clientY: 0,
     });
 
-  // HACK: TanStack table resize handler does not resize column if we fire only one mousemove event
   cy.get("body")
-    .trigger("mousemove", {
-      clientX: moveX / 2,
-      clientY: 0,
-    })
     .trigger("mousemove", {
       clientX: moveX,
       clientY: 0,
+    })
+    // UI requires time to update, causes flakiness without the delay
+    .wait(100)
+    .trigger("mouseup", {
+      button: 0,
+      clientX: moveX,
+      clientY: 0,
     });
-  cy.get("body").trigger("mouseup", { force: true });
 }
 
 export function openObjectDetail(rowIndex) {
@@ -474,13 +475,19 @@ export function tableAllFieldsHiddenImage() {
   return cy.findByTestId("Table-all-fields-hidden-image");
 }
 
-export function tableHeaderColumn(headerString) {
-  // Apply horizontal scroll offset when targeting columns to prevent the sticky 'Object detail' column
-  // from obscuring the target column in the viewport
-  const objectDetailOffset = 50;
-  tableInteractiveHeader()
-    .findByText(headerString)
-    .scrollIntoView({ offset: { left: -objectDetailOffset } });
+export function tableHeaderColumn(
+  headerString,
+  { scrollIntoView = true } = {},
+) {
+  if (scrollIntoView) {
+    // Apply horizontal scroll offset when targeting columns to prevent the sticky 'Object detail' column
+    // from obscuring the target column in the viewport
+    const objectDetailOffset = 50;
+    tableInteractiveHeader()
+      .findByText(headerString)
+      .scrollIntoView({ offset: { left: -objectDetailOffset } });
+  }
+
   return tableInteractiveHeader().findByText(headerString);
 }
 
@@ -496,6 +503,11 @@ export function segmentEditorPopover() {
   return popover({ testId: "segment-popover" });
 }
 
+/**
+ * @param {Object} params
+ * @param {string[]} params.columns
+ * @param {string[][]} [params.firstRows=[]]
+ */
 export function assertTableData({ columns, firstRows = [] }) {
   tableInteractive()
     .findAllByTestId("header-cell")
@@ -591,4 +603,8 @@ export function repeatAssertion(assertFn, timeout = 4000, interval = 400) {
 
 export function mapPinIcon() {
   return cy.get(".leaflet-marker-icon");
+}
+
+export function waitForLoaderToBeRemoved() {
+  cy.findByTestId("loading-indicator").should("not.exist");
 }

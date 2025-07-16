@@ -84,9 +84,9 @@
 
 (shared.ns/import-fns
  [lib.aggregation
+  aggregable-columns
   aggregate
   aggregation-clause
-  aggregation-column
   aggregation-ref
   aggregation-operator-columns
   aggregations
@@ -195,6 +195,7 @@
   lower
   offset
   text
+  today
   split-part
   integer
   float]
@@ -305,7 +306,6 @@
   composed-metadata-provider]
  [lib.metadata.ident
   add-model-ident
-  assert-idents-present!
   explicitly-joined-ident
   implicit-join-clause-ident
   implicitly-joined-ident
@@ -313,11 +313,7 @@
   native-ident
   placeholder-card-entity-id-for-adhoc-query
   remove-model-ident
-  replace-placeholder-idents
-  valid-basic-ident?
-  valid-model-ident?
-  valid-native-ident?
-  valid-native-model-ident?]
+  replace-placeholder-idents]
  [lib.native
   engine
   extract-template-tags

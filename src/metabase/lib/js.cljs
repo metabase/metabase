@@ -80,7 +80,6 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -370,7 +369,6 @@
   "Inner implementation of [[display-info]], which caches this function's results. See there for documentation."
   [a-query stage-number x]
   (-> a-query
-      (lib.stage/ensure-previous-stages-have-metadata stage-number nil)
       (lib.core/display-info stage-number x)
       display-info->js))
 
@@ -855,15 +853,6 @@
   [a-query stage-number]
   (to-array (lib.core/aggregations a-query stage-number)))
 
-(defn ^:export aggregation-column
-  "Given an `aggregation-clause` from [[aggregations]], returns the column corresponding to that aggregation.
-
-  Returns `nil` (JS `null`) if the aggregation is one like `:count` that doesn't have a column.
-
-  > **Code health:** Healthy"
-  [a-query stage-number aggregation-clause]
-  (lib.core/aggregation-column a-query stage-number aggregation-clause))
-
 (defn ^:export aggregation-clause
   "Returns a standalone aggregation clause for an `aggregation-operator` and a `column`.
 
@@ -1051,7 +1040,7 @@
          (let [{:keys [operator options args]} node]
            #js {:operator (name operator)
                 :options (fix-namespaced-values
-                          (clj->js (select-keys options [:case-sensitive :include-current :base-type]) :keyword-fn u/qualified-name))
+                          (clj->js (select-keys options [:case-sensitive :include-current :base-type :mode]) :keyword-fn u/qualified-name))
                 :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))})
          node))
      parts)))
@@ -1252,6 +1241,13 @@
            :lhsExpression lhs-expression
            :rhsExpression rhs-expression})))
 
+(defn ^:export join-condition-lhs-or-rhs-literal?
+  "Whether this LHS or RHS expression is a literal and not a custom expression.
+
+  > **Code health:** Single use. This is used in the notebook editor."
+  [lhs-or-rhs-expression]
+  (lib.fe-util/join-condition-lhs-or-rhs-literal? lhs-or-rhs-expression))
+
 (defn ^:export join-condition-lhs-or-rhs-column?
   "Whether this LHS or RHS expression is a column and not a custom expression.
 
@@ -1268,12 +1264,18 @@
   (and (map? arg) (= :metadata/column (:lib/type arg))))
 
 (defn ^:export metric-metadata?
-  "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/metric`.
+  "Returns true if arg is named entity that can be used as an aggregation expression on its own, i.e., without
+  wrapping it into an aggregating function.
+  Currently, this can be an MLv2 metric (`:lib/type :metadata/metric`) or an aggregation column
+  (`:lib/type :metadata/column` and `:lib/source :source/aggregations`).
 
   > **Code health:** Single use. This is used in the expression editor to parse and
   format expression clauses."
   [arg]
-  (and (map? arg) (= :metadata/metric (:lib/type arg))))
+  (and (map? arg)
+       (or (= (:lib/type arg) :metadata/metric)
+           (and (= (:lib/type arg) :metadata/column)
+                (= (:lib/source arg) :source/aggregations)))))
 
 (defn ^:export segment-metadata?
   "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/segment`.
@@ -1386,6 +1388,9 @@
                    ;; Unique names are required by the FE for compatibility.
                    ;; This applies only for JS; Clojure usage should prefer `:lib/desired-column-alias` to `:name`, and
                    ;; that's already unique by construction.
+                   ;;
+                   ;; TODO (Cam 7/8/25) -- shouldn't this use `:lib/deduplicate-name` or something?? Shouldn't we do
+                   ;; this generally everywhere? (Also, we're already doing this in the `returned-columns-method`
                    (update :name unique-name-fn)))
          to-array)))
 
@@ -1685,8 +1690,8 @@
 (defn ^:export expressionable-columns
   "Returns a JS array of those columns that can be used in an expression in the given stage of `a-query`.
 
-  Expressions can only see other expressions on the same stage which appear earlier in the list, so you must pass
-  `expression-position` (a 0-based index) when editing an existing expression.
+  `expression-position` (a 0-based index) containing the position of the expression in the list. It could be
+  significant when editing an existing expression, but it's not currently used.
 
   When creating a new expression, `expression-position` should be `nil` (JS `null` or `undefined`).
 
@@ -1702,6 +1707,27 @@
    (keyword "expressionable-columns" (str "stage-" stage-number "-" expression-position)) a-query
    (fn [_]
      (to-array (lib.core/expressionable-columns a-query stage-number expression-position)))))
+
+(defn ^:export aggregable-columns
+  "Returns a JS array of those columns that can be used in an aggregation expression in the given stage of `a-query`.
+
+  `expression-position` (a 0-based index) containing the position of the expression in the list. It could be
+  significant when editing an existing expression, but it's not currently used.
+
+  When creating a new expression, `expression-position` should be `nil` (JS `null` or `undefined`).
+
+  Cached on the query and stage.
+
+  > **Code health:** Healthy"
+  [a-query stage-number expression-position]
+  (lib.cache/side-channel-cache
+    ;; Caching is based on both the stage and expression position, since they can return different sets.
+    ;; TODO: Since these caches are mainly here to avoid expensively recomputing things in rapid succession, it would
+    ;; probably suffice to cache only the last position, and evict if it's different. But the lib.cache system doesn't
+    ;; support that currently.
+   (keyword "aggregable-columns" (str "stage-" stage-number "-" expression-position)) a-query
+   (fn [_]
+     (to-array (lib.core/aggregable-columns a-query stage-number expression-position)))))
 
 (defn ^:export column-extractions
   "Column extractions are a set of transformations possible on a given `column`, based on its type.
@@ -2597,10 +2623,3 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
-
-(defn ^:export random-ident
-  "Returns a randomly generated `ident` string, suitable for a Card's `entity_id` or a query.
-
-  > **Code health:** Healthy, Single use. Only called when creating a new card/query."
-  []
-  (lib.core/random-ident))
