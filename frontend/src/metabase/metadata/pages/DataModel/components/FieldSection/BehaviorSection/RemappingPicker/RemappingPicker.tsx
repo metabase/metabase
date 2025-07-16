@@ -140,36 +140,25 @@ export const RemappingPicker = ({
   };
 
   const showToastWithUndo = ({ error }: { error: unknown }) => {
-    if (error) {
-      showToast({ error });
-    } else {
-      sendToast({
-        action: () => {
-          showToast({
-            error,
-            undoAction: async () => {
-              if (dimension) {
-                const { error } = await createFieldDimension({
-                  id,
-                  type: dimension.type,
-                  name: dimension.name,
-                  human_readable_field_id: dimension.human_readable_field_id,
-                });
-
-                showToast({ error });
-              } else {
-                const { error } = await deleteFieldDimension(id);
-
-                showToast({ error });
-              }
-            },
+    showToast({
+      error,
+      undoAction: async () => {
+        if (dimension) {
+          const { error } = await createFieldDimension({
+            id,
+            type: dimension.type,
+            name: dimension.name,
+            human_readable_field_id: dimension.human_readable_field_id,
           });
-        },
-        actionLabel: t`Undo`,
-        icon: "check",
-        message: t`Display values of ${field.display_name} updated`,
-      });
-    }
+
+          showToast({ error });
+        } else {
+          const { error } = await deleteFieldDimension(id);
+
+          showToast({ error });
+        }
+      },
+    });
   };
 
   const handleDisplayValueChange = async (value: RemappingValue) => {
