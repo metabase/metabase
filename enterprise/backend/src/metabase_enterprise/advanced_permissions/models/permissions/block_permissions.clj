@@ -1,12 +1,10 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions
   (:require
    [metabase.api.common :as api]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.query.permissions :as query-perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]))
 
 (defn- throw-block-permissions-exception
@@ -23,7 +21,7 @@
   [[metabase.models.collection]] for more details."
   :feature :advanced-permissions
   [{database-id :database :as query}]
-  (let [{:keys [table-ids card-ids]} (query-perms/query->source-ids query)
+  (let [{:keys [table-ids]} (query-perms/query->source-ids query)
         table-permissions            (map (partial data-perms/table-permission-for-user api/*current-user-id*
                                                    :perms/view-data database-id)
                                           table-ids)]
@@ -32,10 +30,5 @@
      (not= :blocked (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
      (= #{:unrestricted} (set table-permissions))
      (throw-block-permissions-exception))
-
-    ;; Recursively check block permissions for any Cards referenced by the query
-    (doseq [card-id card-ids]
-      (let [{query :dataset-query} (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)]
-        (check-block-permissions query)))
 
     true))
