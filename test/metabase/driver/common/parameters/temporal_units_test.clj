@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (defn- ->local-date-time [t]
