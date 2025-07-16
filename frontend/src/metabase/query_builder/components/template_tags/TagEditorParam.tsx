@@ -279,11 +279,17 @@ class TagEditorParamInner extends Component<
       embeddedParameterVisibility,
       setTemplateTagConfig,
     } = this.props;
+
+    const isDimension = tag.type === "dimension";
+    const isTemporalUnit = tag.type === "temporal-unit";
+    const hasSelectedDimensionField =
+      isDimension && Array.isArray(tag.dimension);
+
     let widgetOptions: WidgetOption[] = [];
     let field: Field | null = null;
     let table: Table | null | undefined = null;
     let fieldMetadataLoaded = false;
-    if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
+    if ((isDimension || isTemporalUnit) && Array.isArray(tag.dimension)) {
       field = metadata.field(tag.dimension[1]);
       if (field) {
         widgetOptions = getParameterOptionsForField(field);
@@ -291,11 +297,6 @@ class TagEditorParamInner extends Component<
         fieldMetadataLoaded = true;
       }
     }
-
-    const isDimension = tag.type === "dimension";
-    const isTemporalUnit = tag.type === "temporal-unit";
-    const hasSelectedDimensionField =
-      isDimension && Array.isArray(tag.dimension);
     const hasWidgetOptions = widgetOptions.length > 0;
 
     return (
