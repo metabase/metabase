@@ -29,7 +29,9 @@
   sync-database!
   sync-table!]
  [metabase.sync.sync-metadata
-  sync-db-metadata!]
+  sync-db-metadata!
+  sync-table-metadata!
+  sync-new-table-metadata!]
  [metabase.sync.sync-metadata.fields
   sync-fields-for-table!]
  [metabase.sync.sync-metadata.tables

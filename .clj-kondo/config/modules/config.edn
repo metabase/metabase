@@ -1248,6 +1248,21 @@
            models
            util}}
 
+  transform
+  {:team "Semantic Layer"
+   :api #{}
+   :uses #{api
+           driver
+           driver-api
+           lib
+           lib-be
+           models
+           queries
+           query-permissions
+           query-processor
+           sync
+           util}}
+
   types
   {:team "Semantic Layer"
    :api  #{metabase.types.core
