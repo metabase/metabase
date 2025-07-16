@@ -1,11 +1,13 @@
 (ns metabase-enterprise.semantic-search.query-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.semantic-search.db :as semantic.db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.semantic-search.db :as semantic.db]))
 
-(defn once-fixture [f]
-  (when-not @semantic.db/data-source
-    (semantic.db/init-db!))
-  (f))
+(defn- once-fixture [f]
+  (when semantic.db/db-url
+    (when-not @semantic.db/data-source
+      (semantic.db/init-db!))
+    (f)))
 
 (use-fixtures :once #'once-fixture)
 
