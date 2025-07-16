@@ -35,7 +35,7 @@
 (defn- query->template-tag-field-ids [query]
   (when-let [template-tags (some-> query :native :template-tags vals seq)]
     (for [{tag-type :type, [dim-tag id _opts] :dimension} template-tags
-          :when (and (= tag-type :dimension)
+          :when (and (#{:dimension :temporal-unit} tag-type)
                      (= dim-tag :field)
                      (integer? id))]
       id)))
