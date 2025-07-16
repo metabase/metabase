@@ -49,12 +49,18 @@ function SearchApp({ location }) {
 
   const query = {
     q: searchText,
-    ..._.omit(searchFilters, SearchFilterKeys.Type),
+    ..._.omit(searchFilters, [
+      SearchFilterKeys.Type,
+      SearchFilterKeys.SemanticSearch,
+    ]),
     models: models && (Array.isArray(models) ? models : [models]),
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
     context: SearchContextTypes.SEARCH_APP,
     include_dashboard_questions: true,
+    ...(searchFilters[SearchFilterKeys.SemanticSearch]
+      ? { search_engine: "semantic" }
+      : {}),
   };
 
   const onChangeLocation = useCallback(
