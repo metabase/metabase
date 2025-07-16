@@ -6,8 +6,8 @@ import { t } from "ttag";
 import { useUpdateFieldMutation } from "metabase/api";
 import EditableText from "metabase/common/components/EditableText";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Card, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -25,54 +25,9 @@ interface Props {
 export const FieldItem = ({ active, field, href, parent }: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
   const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
-
-  const changeName = async (
-    name: string,
-    previousName = field.display_name,
-  ) => {
-    const { error } = await updateField({ id, display_name: name });
-
-    if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update name of ${field.display_name}`,
-      });
-    } else {
-      sendToast({
-        action: () => changeName(previousName, name),
-        icon: "check",
-        message: t`Name of ${field.display_name} updated`,
-      });
-    }
-  };
-
-  const changeDescription = async (
-    description: string,
-    previousDescription = field.description ?? "",
-  ) => {
-    const { error } = await updateField({
-      id,
-      // API does not accept empty strings
-      description: description.length === 0 ? null : description,
-    });
-
-    if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update description of ${field.display_name}`,
-      });
-    } else {
-      sendToast({
-        action: () => changeDescription(previousDescription, description),
-        icon: "check",
-        message: t`Description of ${field.display_name} updated`,
-      });
-    }
-  };
 
   const handleNameChange = async (name: string) => {
     const newName = name.trim();
@@ -81,7 +36,19 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
       return;
     }
 
-    await changeName(newName);
+    const { error } = await updateField({ id, display_name: name });
+
+    if (error) {
+      sendErrorToast(t`Failed to update name of ${field.display_name}`);
+    } else {
+      sendSuccessToast(t`Name of ${field.display_name} updated`, async () => {
+        const { error } = await updateField({
+          id,
+          display_name: field.display_name,
+        });
+        sendUndoToast(error);
+      });
+    }
   };
 
   const handleDescriptionChange = async (description: string) => {
@@ -91,7 +58,26 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
       return;
     }
 
-    await changeDescription(description);
+    const { error } = await updateField({
+      id,
+      // API does not accept empty strings
+      description: description.length === 0 ? null : description,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update description of ${field.display_name}`);
+    } else {
+      sendSuccessToast(
+        t`Description of ${field.display_name} updated`,
+        async () => {
+          const { error } = await updateField({
+            id,
+            description: field.description ?? "",
+          });
+          sendUndoToast(error);
+        },
+      );
+    }
   };
 
   const handleInputClick = (event: MouseEvent) => {
