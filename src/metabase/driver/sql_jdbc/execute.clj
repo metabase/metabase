@@ -887,7 +887,7 @@
 
     :else
     ;; we locally reset `*connection-recursion-depth*` so that the new connection
-    ;; gets all the options set as we'd expect, else we may be optaining a badly
+    ;; gets all the options set as we'd expect, else we may be obtaining a badly
     ;; configured connection (see: https://github.com/metabase/metabase/pull/59999)
     (binding [*connection-recursion-depth* -1]
       (try
