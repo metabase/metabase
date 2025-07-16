@@ -29,5 +29,5 @@
   :export? false
   :type :json
   :default {}
-  :cache false
+  :cache? false
   :encryption :when-encryption-key-set)
