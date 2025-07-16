@@ -181,7 +181,11 @@ export const moveParameter =
       );
     }
 
-    if (typeof destination === "object" && destination.type === "dashcard") {
+    const isMovedToTopNav = destination === "top-nav";
+    const isMovedToDashcard =
+      typeof destination === "object" && destination.type === "dashcard";
+
+    if (isMovedToDashcard) {
       const dashcard = dashcardMap[destination.id];
       if (!dashcard) {
         throw new Error(`Dashcard with id ${destination.id} not found`);
@@ -217,7 +221,10 @@ export const moveParameter =
 
       dispatch(
         addUndo({
-          // Workaround to make the text show up fully without being truncated
+          undo: true,
+          action: undoMove,
+
+          // Workaround to make the text show up without being truncated
           message: (
             <Text
               className={cx(CS.flex, CS.flexFull, CS.flexNoShrink)}
@@ -225,14 +232,16 @@ export const moveParameter =
               w="8rem"
             >{t`Filter moved`}</Text>
           ),
-          undo: true,
-          action: undoMove,
-          extraAction: {
-            label: t`Show filter`,
-            action: () => {
-              dispatch(setEditingParameter(parameterId));
-            },
-          },
+
+          // Top nav filters are always visible, so we don't need a "Show" button
+          extraAction: isMovedToTopNav
+            ? null
+            : {
+                label: t`Show filter`,
+                action: () => {
+                  dispatch(setEditingParameter(parameterId));
+                },
+              },
         }),
       );
     }
