@@ -38,6 +38,18 @@
 
 (def card-name-regex (re-pattern notification.tu/default-card-name))
 
+(defn- default-slack-blocks
+  [card-id include-image?]
+  (cond->
+   [{:type "header" :text {:type "plain_text" :text "🔔 Card notification test card" :emoji true}}
+    {:type "section"
+     :text
+     {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Card notification test card>" card-id) :verbatim true}}]
+    include-image?
+    (conj {:type "image"
+           :slack_file {:id (mt/malli=? :string)}
+           :alt_text "Card notification test card"})))
+
 (deftest basic-table-notification-test
   (testing "card notification of a simple table"
     (notification.tu/with-notification-testing-setup!
@@ -72,17 +84,10 @@
 
                 :channel/slack
                 (fn [[message]]
-                  (is (=? {:attachments [{:blocks [{:text {:emoji true
-                                                           :text "🔔 Card notification test card"
-                                                           :type "plain_text"}
-                                                    :type "header"}]}
-                                         {:attachment-name "image.png"
-                                          :fallback "Card notification test card",
-                                          :rendered-info {:attachments false
-                                                          :content true
-                                                          :render/text true}
-                                          :title "Card notification test card"}]
-                           :channel-id "#general"}
+                  (is (=? {:blocks
+                           (conj (default-slack-blocks card-id false)
+                                 {:type "section" :text {:type "plain_text" :text "Hello world!!!"}})
+                           :channel "#general"}
                           (notification.tu/slack-message->boolean message))))
 
                 :channel/http
@@ -126,15 +131,8 @@
                   #"Manage your subscriptions"))))
         :channel/slack
         (fn [[message]]
-          (is (=? {:attachments [{:blocks [{:text {:emoji true
-                                                   :text "🔔 Card notification test card"
-                                                   :type "plain_text"}
-                                            :type "header"}]}
-                                 {:attachment-name "image.png"
-                                  :fallback "Card notification test card"
-                                  :rendered-info {:attachments false :content true}
-                                  :title "Card notification test card"}]
-                   :channel-id "#general"}
+          (is (=? {:channel "#general"
+                   :blocks (default-slack-blocks (-> notification :payload :card_id) true)}
                   (notification.tu/slack-message->boolean message))))}))))
 
 (deftest card-with-rows-saved-to-disk-test
@@ -171,15 +169,8 @@
                             #"Manage your subscriptions"))))
                   :channel/slack
                   (fn [[message]]
-                    (is (=? {:attachments [{:blocks [{:text {:emoji true
-                                                             :text "🔔 Card notification test card"
-                                                             :type "plain_text"}
-                                                      :type "header"}]}
-                                           {:attachment-name "image.png"
-                                            :fallback "Card notification test card"
-                                            :rendered-info {:attachments false :content true}
-                                            :title "Card notification test card"}]
-                             :channel-id "#general"}
+                    (is (=? {:blocks  (default-slack-blocks (-> notification :payload :card_id) true)
+                             :channel "#general"}
                             (notification.tu/slack-message->boolean message))))
                   :channel/http
                   (fn [[req]]
