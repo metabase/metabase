@@ -140,7 +140,7 @@
                            (as-> $ (assert (pos-int? $))))
             view-name (transform-view-name transform-id)]
         (assert-unique-name! database schema view-name)
-        (driver/create-view! driver database-id (str/join "." (remove nil? [schema view-name])) native)
+        (driver/create-view! driver database-id (namespaced-view-name schema view-name) native)
         ;; TODO: Is it reasonable to do the following in transaction?
         ;; NB: Following could take a long time or fail, the same way as analysis
         ;; TODO: All of that should go off thread.
