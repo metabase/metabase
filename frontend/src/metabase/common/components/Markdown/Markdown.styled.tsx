@@ -10,6 +10,7 @@ import { color } from "metabase/lib/colors";
 import type { MarkdownProps } from "./Markdown";
 
 export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
+  color: ${(props) => (props.c ? color(props.c) : "inherit")};
   ${(props) =>
     props.lineClamp &&
     css`

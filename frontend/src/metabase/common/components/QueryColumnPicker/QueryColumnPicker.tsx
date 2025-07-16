@@ -337,7 +337,6 @@ export function QueryColumnPicker({
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
-        withBorders
         hasInitialFocus={hasInitialFocus}
         width={width}
         globalSearch={!disableSearch}

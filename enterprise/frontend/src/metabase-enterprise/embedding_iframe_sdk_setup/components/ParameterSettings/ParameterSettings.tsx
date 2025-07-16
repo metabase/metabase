@@ -1,6 +1,6 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { Stack, Text, TextInput } from "metabase/ui";
 import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
@@ -78,11 +78,17 @@ export const ParameterSettings = () => {
         {availableParameters.map((param) => {
           const defaultValue = parameterValues?.[param.slug] ?? undefined;
 
+          const placeholderValue = getParameterPlaceholder(param);
+
+          const placeholderText = c(
+            `the placeholder text containing examples of how a parameter string looks like. {0} contains the placeholder (e.g. "2025-11-05")`,
+          ).t`e.g. ${placeholderValue}`;
+
           return (
             <TextInput
               key={param.id}
               label={param.name}
-              placeholder={getParameterPlaceholder(param)}
+              placeholder={placeholderValue ? placeholderText : undefined}
               defaultValue={defaultValue}
               onChange={(e) =>
                 updateInitialParameterValue(param.slug, e.target.value)

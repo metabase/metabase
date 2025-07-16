@@ -23,10 +23,6 @@
     background-color: var(--mb-color-bg-night);
   }
 
-  &.isUsuallySlow {
-    border-color: var(--slow-card-border-color);
-  }
-
   &.hasHiddenBackground {
     border: 0 !important;
     background: transparent !important;

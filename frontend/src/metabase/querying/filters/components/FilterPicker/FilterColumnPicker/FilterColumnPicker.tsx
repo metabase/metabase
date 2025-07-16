@@ -155,7 +155,6 @@ export function FilterColumnPicker({
         searchProp={SEARCH_PROP}
         globalSearch
         fuzzySearch
-        withBorders
       />
     </DelayGroup>
   );
