@@ -150,6 +150,8 @@
                                         :db_id database-id
                                         :schema schema
                                         :name view-name)]
+          ;; TODO (lbrdnk 2025-07-16): Make analysis async.
+          (sync/analyze-table! view-table)
           (t2/update! :model/TransformView :id transform-id
                       {:view_name view-name
                        :view_schema (:schema view-table)
@@ -179,11 +181,14 @@
     (driver/drop-view! driver database-id namespaced-view-name*)
     (driver/create-view! driver database-id namespaced-view-name* compiled)
     (t2/with-transaction [_conn]
-      (t2/update! :model/TransformView :id transform-id
-                  {:dataset_query dataset-query
-                   :creator_id (:id creator)})
-      ;; TODO (lbrdnk 2025-07-15): Add async analysis.
-      (sync/sync-table-metadata! (t2/select-one :model/Table :transform_id transform-id)))))
+      (let [table (t2/select-one :model/Table :transform_id transform-id)]
+        (t2/update! :model/TransformView :id transform-id
+                    {:dataset_query dataset-query
+                     :creator_id (:id creator)})
+        (sync/sync-table-metadata! table)
+        ;; TODO (lbrdnk 2025-07-16): Make analysis async.
+        (sync/analyze-table! table))
+      (t2/select :model/TransformView :id transform-id))))
 
 (defn delete-transform!
   "Delete transform and view."
