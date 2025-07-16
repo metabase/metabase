@@ -54,26 +54,28 @@
 
 (def attr-types
   "The abstract types of each attribute."
-  {:archived             :boolean
-   :collection-id        :pk
-   :created-at           :timestamp
-   :creator-id           :pk
-   :dashboard-id         :int
-   :dashboardcard-count  :int
-   :database-id          :pk
-   :id                   :text
-   :last-edited-at       :timestamp
-   :last-editor-id       :pk
-   :last-viewed-at       :timestamp
-   :name                 :text
-   :native-query         nil
-   :official-collection  :boolean
-   :pinned               :boolean
-   :updated-at           :timestamp
-   :verified             :boolean
-   :view-count           :int
-   :non-temporal-dim-ids :text
-   :has-temporal-dim     :boolean})
+  {:archived                :boolean
+   :collection-id           :pk
+   :created-at              :timestamp
+   :creator-id              :pk
+   :dashboard-id            :int
+   :dashboardcard-count     :int
+   :database-id             :pk
+   :id                      :text
+   :last-edited-at          :timestamp
+   :last-editor-id          :pk
+   :last-viewed-at          :timestamp
+   :name                    :text
+   :native-query            nil
+   :official-collection     :boolean
+   :pinned                  :boolean
+   :updated-at              :timestamp
+   :verified                :boolean
+   :view-count              :int
+   :non-temporal-dim-ids    :text
+   :has-temporal-dim        :boolean
+   :display-type            :text
+   :has-temporal-dimensions :boolean})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -303,13 +305,13 @@
   identity)
 
 (defn spec
-  "Register a metabase model as a search-model.
+  "Register a Metabase model as a search-model.
   Once we're trying up the fulltext search project, we can inline a detailed explanation.
   For now, see its schema, and the existing definitions that use it."
-  [search-model]
-  ;; make sure the model namespace is loaded.
-  (t2/resolve-model (search-model->toucan-model search-model))
-  (spec* search-model))
+  ([search-model]
+   ;; make sure the model namespace is loaded.
+   (t2/resolve-model (search-model->toucan-model search-model))
+   (spec* search-model)))
 
 (defn specifications
   "A mapping from each search-model to its specification."

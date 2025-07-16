@@ -1,16 +1,21 @@
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 
 import { getIcon, render, screen, within } from "__support__/ui";
+import type { Series } from "metabase-types/api";
 import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 
 import { Scalar } from "./Scalar";
 
-const series = (value = 1.23) => [
-  {
-    card: createMockCard({ display: "scalar" }),
-    data: { rows: [[value]], cols: [createMockColumn({ name: "count" })] },
-  },
-];
+const series = (value: number | null = 1.23) =>
+  [
+    {
+      card: createMockCard({ display: "scalar" }),
+      data: { rows: [[value]], cols: [createMockColumn({ name: "count" })] },
+    },
+  ] as Series;
+
+const mockedProps = {} as ComponentProps<typeof Scalar>;
 
 const settings = {
   "scalar.field": "count",
@@ -22,6 +27,7 @@ describe("Scalar", () => {
   it("should render title on dashboards", () => {
     render(
       <Scalar
+        {...mockedProps}
         series={series()}
         rawSeries={series()}
         settings={settings}
@@ -36,6 +42,7 @@ describe("Scalar", () => {
   it("shouldn't render compact if normal formatting is <=6 characters", () => {
     render(
       <Scalar
+        {...mockedProps}
         series={series(12345)}
         rawSeries={series(12345)}
         settings={settings}
@@ -51,6 +58,7 @@ describe("Scalar", () => {
 
     render(
       <Scalar
+        {...mockedProps}
         series={series()}
         rawSeries={series()}
         settings={{ ...settings, "card.description": DESCRIPTION }}
@@ -70,6 +78,7 @@ describe("Scalar", () => {
 
     render(
       <Scalar
+        {...mockedProps}
         series={series()}
         rawSeries={series()}
         settings={{ ...settings, "card.description": DESCRIPTION }}
@@ -89,6 +98,7 @@ describe("Scalar", () => {
   it("should render compact if normal formatting is >6 characters", () => {
     render(
       <Scalar
+        {...mockedProps}
         series={series(12345.6)}
         rawSeries={series(12345.6)}
         settings={settings}
@@ -102,6 +112,7 @@ describe("Scalar", () => {
   it("should render null", () => {
     render(
       <Scalar
+        {...mockedProps}
         isDashboard // displays title
         showTitle
         series={series(null)}

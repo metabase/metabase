@@ -142,19 +142,21 @@
 (def filters
   "Specifications for the optional search filters."
   (build-filters
-   {:archived             {:type :single-value, :context-key :archived?}
+   {:archived                {:type :single-value, :context-key :archived?}
     ;; TODO dry this alias up with the index hydration code
-    :created-at           {:type :date-range, :field "model_created_at"}
-    :creator-id           {:type :list, :context-key :created-by}
+    :created-at              {:type :date-range, :field "model_created_at"}
+    :creator-id              {:type :list, :context-key :created-by}
     ;; This actually has nothing to do with tables, as we also filter cards, it would be good to rename the context key.
-    :database-id          {:type :single-value, :context-key :table-db-id}
-    :id                   {:type :list, :context-key :ids, :field "model_id"}
-    :last-edited-at       {:type :date-range}
-    :last-editor-id       {:type :list, :context-key :last-edited-by}
-    :native-query         {:type :native-query, :context-key :search-native-query}
-    :verified             {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
-    :non-temporal-dim-ids {:type :single-value :engine :appdb}
-    :has-temporal-dim     {:type :single-value :engine :appdb}}))
+    :database-id             {:type :single-value, :context-key :table-db-id}
+    :id                      {:type :list, :context-key :ids, :field "model_id"}
+    :last-edited-at          {:type :date-range}
+    :last-editor-id          {:type :list, :context-key :last-edited-by}
+    :native-query            {:type :native-query, :context-key :search-native-query}
+    :verified                {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
+    :non-temporal-dim-ids    {:type :single-value :engine :appdb}
+    :has-temporal-dim        {:type :single-value :engine :appdb}
+    :display-type            {:type :list, :field "display_type"}
+    :has-temporal-dimensions {:type :single-value, :context-key :has-temporal-dimensions?}}))
 
 (def ^:private filter-defaults-by-context
   {:default         {:archived               false
@@ -240,7 +242,9 @@
    ;;
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:display-type                        {:optional true} [:set {:min 1} ms/NonBlankString]]
    [:filter-items-in-personal-collection {:optional true} [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
+   [:has-temporal-dimensions?            {:optional true} [:maybe :boolean]]
    [:last-edited-at                      {:optional true} ms/NonBlankString]
    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:limit-int                           {:optional true} ms/Int]

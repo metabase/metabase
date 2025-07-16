@@ -286,7 +286,9 @@
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
    [:non-temporal-dim-ids                {:optional true} [:maybe ms/NonBlankString]]
-   [:has-temporal-dim                    {:optional true} [:maybe :boolean]]])
+   [:has-temporal-dim                    {:optional true} [:maybe :boolean]]
+   [:has-temporal-dimensions?            {:optional true} [:maybe boolean?]]
+   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -297,6 +299,8 @@
            created-by
            current-user-id
            current-user-perms
+           display-type
+           has-temporal-dimensions?
            filter-items-in-personal-collection
            ids
            is-impersonated-user?
@@ -354,7 +358,9 @@
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
                  (seq ids)                                   (assoc :ids ids)
                  (some? non-temporal-dim-ids)                (assoc :non-temporal-dim-ids non-temporal-dim-ids)
-                 (some? has-temporal-dim)                    (assoc :has-temporal-dim has-temporal-dim))]
+                 (some? has-temporal-dim)                    (assoc :has-temporal-dim has-temporal-dim)
+                 (seq display-type)                          (assoc :display-type display-type)
+                 (some? has-temporal-dimensions?)            (assoc :has-temporal-dimensions? has-temporal-dimensions?))]
     (when (and (seq ids)
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))
@@ -385,6 +391,7 @@
         (update :bookmark bit->boolean)
         (update :archived bit->boolean)
         (update :archived_directly bit->boolean)
+        (update :has_temporal_dimensions bit->boolean)
         ;; Collections require some transformation before being scored and returned by search.
         (cond-> (t2/instance-of? :model/Collection instance) map-collection))))
 

@@ -24,6 +24,28 @@
 (defn- with-all-models-and-sandboxed-user [search-ctx]
   (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? true)))
 
+(defn- test-value-for-filter
+  "Returns an appropriate test value for each filter type."
+  [filter-key]
+  (case filter-key
+    ;; Boolean filters
+    (:archived? :has-temporal-dimensions? :search-native-query :verified) true
+    ;; Collection filters (sets/sequences)
+    (:created-by :last-edited-by :ids) #{1}
+    :display-type #{"table"}
+    ;; Date range filters (strings)
+    (:created-at :last-edited-at) "2023-01-01"
+    ;; Single value filters
+    :table-db-id 1
+    true))
+
+(defn- create-test-filter-context
+  "Creates a test filter context with appropriate values for each filter."
+  [active-filters]
+  (into {} (map (fn [filter-key]
+                  [filter-key (test-value-for-filter filter-key)])
+                active-filters)))
+
 (deftest search-context->applicable-models-test
   (testing "All models are relevant if we're not looking in the trash"
     (is (= search.config/all-models
@@ -39,7 +61,7 @@
 
   (doseq [active-filters (active-filter-combinations)]
     (testing (str "Consistent models included when filtering on " (vec active-filters))
-      (let [search-ctx (with-all-models-and-regular-user (zipmap active-filters (repeat true)))]
+      (let [search-ctx (with-all-models-and-regular-user (create-test-filter-context active-filters))]
         (is (= (search.in-place.filter/search-context->applicable-models search-ctx)
                (search.filter/search-context->applicable-models search-ctx)))))))
 
@@ -56,6 +78,8 @@
    :ids                          [1 2 3 4]
    :non-temporal-dim-ids         "[1]"
    :has-temporal-dim             true
+   :display-type                 ["line"]
+   :has-temporal-dimensions?     true
    :models                       (disj search.config/all-models "dataset")})
 
 (deftest with-filters-test
@@ -98,6 +122,8 @@
                       [:< [:cast :search_index.last_edited_at :date] #t"2024-10-03"]
                       [:in :search_index.last_editor_id [321]]
                       [:= :search_index.non_temporal_dim_ids "[1]"]
-                      [:= :search_index.has_temporal_dim true]}}
+                      [:= :search_index.has_temporal_dim true]
+                      [:in :search_index.display_type ["line"]]
+                      [:= :search_index.has_temporal_dimensions true]}}
            (-> (search.filter/with-filters kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
                (update :where set))))))
