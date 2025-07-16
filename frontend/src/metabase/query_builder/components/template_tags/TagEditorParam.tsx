@@ -283,7 +283,7 @@ class TagEditorParamInner extends Component<
     const isDimension = tag.type === "dimension";
     const isTemporalUnit = tag.type === "temporal-unit";
     const hasSelectedDimensionField =
-      isDimension && Array.isArray(tag.dimension);
+      (isDimension || isTemporalUnit) && Array.isArray(tag.dimension);
 
     let widgetOptions: WidgetOption[] = [];
     let field: Field | null = null;
