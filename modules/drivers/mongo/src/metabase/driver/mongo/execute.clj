@@ -75,30 +75,62 @@
                              (cons "_id")))]
     (into projected-vec (remove (conj projected-set "_id")) first-row-col-names)))
 
+(defn- field-mappings->column-info
+  "Given field mappings and projections, returns a map with :row (columns to extract from result rows)
+  and :unescaped (column names to return in metadata).
+
+  Field mappings is a map of {mongo-alias position} indicating where each field should appear in results.
+  Projections is a vector of the expected output column names in order.
+
+  Special handling for _id fields when they appear in projections but need to be extracted from results."
+  [field-mappings projections suppress-id]
+  (let [;; Create a mapping from position to expected column name
+        position->col (into {} (for [[mongo-alias position] field-mappings]
+                                 [position mongo-alias]))
+        ;; Get ordered column names based on positions
+        ordered-cols  (vec (for [i (range (count projections))]
+                             (get position->col i)))
+        ;; Include _id in the list if it's not suppressed and we need to extract subfields
+        all-cols      (if (and (not suppress-id)
+                               (some #(str/starts-with? % "_id.") projections))
+                        (conj ordered-cols "_id")
+                        ordered-cols)]
+    {:row       all-cols
+     :unescaped (vec projections)}))
+
 (mu/defn- result-col-names :- [:map
                                [:row [:maybe [:sequential :string]]]
                                [:unescaped [:maybe [:sequential :string]]]]
   "Return column names we can expect in each `:row` of the results, and the `:unescaped` versions we should return in
   thr query result metadata."
-  [{:keys [mbql? projections]} :- :map
+  [{:keys [mbql? projections field-mappings suppress-id]} :- :map
    query
    first-row-col-names]
   ;; some of the columns may or may not come back in every row, because of course with mongo some key can be missing.
   ;; That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for those columns.
   (if-not (and mbql? projections)
     (let [project-stage (->> query (filter #(contains? % "$project")) last)
-          projected (keep (fn [[k v]] (when-not (contains? suppressing-values v) k))
-                          (get project-stage "$project"))
-          col-names (merge-col-names projected first-row-col-names)]
+          projected     (keep (fn [[k v]] (when-not (contains? suppressing-values v) k))
+                              (get project-stage "$project"))
+          col-names     (merge-col-names projected first-row-col-names)]
       {:row col-names, :unescaped col-names})
-    (do
-      ;; ...but, on the other hand, if columns come back that we weren't expecting, our code is broken.
-      ;; Check to make sure that didn't happen.
-      (check-columns projections first-row-col-names)
-      {:row       (vec projections)
-       :unescaped (let [unescape-map (result-columns-unescape-map projections)]
-                    (vec (for [k projections]
-                           (get unescape-map k k))))})))
+    ;; MBQL query with projections
+    (if field-mappings
+      ;; We have field mappings - need to handle column name remapping
+      (let [{:keys [row] :as result} (field-mappings->column-info field-mappings projections suppress-id)]
+        ;; Check that columns we expect match what's actually coming back
+        ;; Note: we check against the row columns (what we'll extract), not projections
+        (check-columns row first-row-col-names)
+        result)
+      ;; No field mappings - use original logic
+      (do
+        ;; ...but, on the other hand, if columns come back that we weren't expecting, our code is broken.
+        ;; Check to make sure that didn't happen.
+        (check-columns projections first-row-col-names)
+        {:row       (vec projections)
+         :unescaped (let [unescape-map (result-columns-unescape-map projections)]
+                      (vec (for [k projections]
+                             (get unescape-map k k))))}))))
 
 (defn- result-metadata [unescaped-col-names]
   {:cols (mapv (fn [col-name]
@@ -178,9 +210,9 @@
       (driver-api/reducible-rows row-thunk (driver-api/canceled-chan)))))
 
 (defn- reduce-results [native-query query ^MongoCursor cursor respond]
-  (let [first-row (when (.hasNext cursor)
-                    (.next cursor))
-        {row-col-names :row
+  (let [first-row                        (when (.hasNext cursor)
+                                           (.next cursor))
+        {row-col-names       :row
          unescaped-col-names :unescaped} (result-col-names native-query query (row-keys first-row))]
     (log/tracef "Renaming columns in results %s -> %s" (pr-str row-col-names) (pr-str unescaped-col-names))
     (respond (result-metadata unescaped-col-names)
@@ -192,10 +224,10 @@
   "Process and run a native MongoDB query. This function expects initialized [[mongo.connection/*mongo-client*]]."
   [{{query :query collection-name :collection :as native-query} :native} respond]
   {:pre [(string? collection-name) (fn? respond)]}
-  (let [query  (cond-> query
-                 (string? query) mongo.qp/parse-query-string)
-        database (driver-api/database (driver-api/metadata-provider))
-        db-name (mongo.db/db-name database)
+  (let [query           (cond-> query
+                          (string? query) mongo.qp/parse-query-string)
+        database        (driver-api/database (driver-api/metadata-provider))
+        db-name         (mongo.db/db-name database)
         client-database (mongo.util/database mongo.connection/*mongo-client* db-name)]
     (with-open [session ^ClientSession (mongo.util/start-session! mongo.connection/*mongo-client*)]
       (a/go
@@ -211,6 +243,6 @@
                                                (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                                {:driver :mongo
                                                                 :native native-query
-                                                                :type   driver-api/qp.error-type.invalid-query}
+                                                                :type driver-api/qp.error-type.invalid-query}
                                                                e))))]
           (reduce-results native-query query cursor respond))))))

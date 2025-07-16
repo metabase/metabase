@@ -73,12 +73,12 @@
                                                               :dbname "bad-db-name?connectTimeoutMS=50"}
                                                    :expected false}
                                                   {:details  {:use-conn-uri true
-                                                              :conn-uri "mongodb://metabase:metasample123@localhost:27017/test-data?authSource=admin"}
+                                                              :conn-uri     "mongodb://metabase:metasample123@localhost:27017/test-data?authSource=admin"}
                                                    :expected (not (tdm/ssl-required?))}
                                                   {:details  {:use-conn-uri true
-                                                              :conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
+                                                              :conn-uri     "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
                                                    :expected false}]
-              :let [ssl-details (tdm/conn-details details)]]
+              :let                               [ssl-details (tdm/conn-details details)]]
         (testing (str "connect with " details)
           (is (= expected
                  (driver.u/can-connect-with-details? :mongo ssl-details))
@@ -88,13 +88,13 @@
   (mt/test-driver :mongo
     (doseq [{:keys [dbms_version expected]}
             [{:dbms_version {:semantic-version [5 0 0 0]}
-              :expected true}
-             {:dbms_version  {}
-              :expected false}
-             {:dbms_version  {:semantic-version []}
-              :expected false}
-             {:dbms_version  {:semantic-version [2 2134234]}
-              :expected false}]]
+              :expected     true}
+             {:dbms_version {}
+              :expected     false}
+             {:dbms_version {:semantic-version []}
+              :expected     false}
+             {:dbms_version {:semantic-version [2 2134234]}
+              :expected     false}]]
       (testing (str "supports with " dbms_version)
         (mt/with-temp [:model/Database db {:name "dummy", :engine "mongo", :dbms_version dbms_version}]
           (is (= expected
@@ -115,12 +115,12 @@
          {:status    :completed
           :row_count 1
           :data      {:rows             [[1]]
-                      :cols             [{:name         "count"
-                                          :display_name "count"
-                                          :base_type    :type/Integer
+                      :cols             [{:name           "count"
+                                          :display_name   "count"
+                                          :base_type      :type/Integer
                                           :effective_type :type/Integer
-                                          :source       :native
-                                          :field_ref    [:field "count" {:base-type :type/Integer}]}]
+                                          :source         :native
+                                          :field_ref      [:field "count" {:base-type :type/Integer}]}]
                       :native_form      {:collection "venues"
                                          :query      native-query}
                       :results_timezone "UTC"}}
@@ -134,8 +134,8 @@
   (mt/test-driver :mongo
     (testing "Mbql query with nested native source query _returns correct results_ (#30112)"
       (mt/with-temp [:model/Card {:keys [id]} {:dataset_query {:type     :native
-                                                               :native   {:collection    "venues"
-                                                                          :query         native-query}
+                                                               :native   {:collection "venues"
+                                                                          :query      native-query}
                                                                :database (mt/id)}}]
         (let [query (mt/mbql-query nil
                       {:source-table (str "card__" id)
@@ -160,25 +160,25 @@
                            "    \"price\": \"$price\"}\n"
                            "}]")]
         (mt/with-temp [:model/Card {:keys [id]} {:dataset_query {:type     :native
-                                                                 :native   {:collection    "venues"
-                                                                            :query         query-str}
+                                                                 :native   {:collection "venues"
+                                                                            :query      query-str}
                                                                  :database (mt/id)}}]
           (let [query (mt/mbql-query venues
                         {:source-table (str "card__" id)
-                         :aggregation [:count]
-                         :breakout [*category_id/Integer]
-                         :order-by [[:desc [:aggregation 0]]]
-                         :limit 5})]
+                         :aggregation  [:count]
+                         :breakout     [*category_id/Integer]
+                         :order-by     [[:desc [:aggregation 0]]]
+                         :limit        5})]
             (is (partial=
                  {:status :completed
                   :data   {:native_form
                            {:collection "venues"
-                            :query (conj (mongo.qp/parse-query-string query-str)
-                                         {"$group" {"_id" {"category_id" "$category_id"}, "count" {"$sum" 1}}}
-                                         {"$sort" {"_id" 1}}
-                                         {"$project" {"_id" false, "category_id" "$_id.category_id", "count" true}}
-                                         {"$sort" {"count" -1, "category_id" 1}}
-                                         {"$limit" 5})}
+                            :query      (conj (mongo.qp/parse-query-string query-str)
+                                              {"$group" {"_id" {"category_id" "$category_id"}, "count" {"$sum" 1}}}
+                                              {"$sort" {"_id" 1}}
+                                              {"$project" {"_id" false, "category_id" "$_id.category_id", "count" true}}
+                                              {"$sort" {"count" -1, "category_id" 1}}
+                                              {"$limit" 5})}
                            :rows [[7 10] [50 10] [40 9] [2 8] [5 7]]}}
                  (qp/process-query query)))))))))
 
@@ -196,8 +196,80 @@
              {:schema nil, :name "reviews"}}
            (:tables (driver/describe-database :mongo (mt/db)))))))
 
+(deftest ^:parallel describe-table-query-test
+  (is (= [{"$sort" {"_id" 1}}
+          {"$limit" 500}
+          {"$unionWith" {"coll" "collection-name", "pipeline" [{"$sort" {"_id" -1}} {"$limit" 500}]}}
+          {"$project"
+           {"path" "$ROOT",
+            "kvs"
+            {"$map"
+             {"input" {"$objectToArray" "$$ROOT"},
+              "as"    "item",
+              "in"
+              {"k"    "$$item.k",
+               "object"
+               {"$cond" {"if" {"$eq" [{"$type" "$$item.v"} "object"]}, "then" "$$item.v", "else" nil}},
+               "type" {"$type" "$$item.v"}}}}}}
+          {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
+          {"$project"
+           {"path"   "$kvs.k",
+            "result" {"$literal" false},
+            "type"   "$kvs.type",
+            "index"  1,
+            "object" "$kvs.object"}}
+          {"$facet"
+           {"results" [{"$match" {"result" true}}],
+            "newResults"
+            [{"$match" {"result" false}}
+             {"$group"
+              {"_id"   {"type" "$type", "path" "$path"},
+               "count" {"$sum" {"$cond" {"if" {"$eq" ["$type" "null"]}, "then" 0, "else" 1}}},
+               "index" {"$min" "$index"}}}
+             {"$sort" {"count" -1}}
+             {"$group" {"_id" "$_id.path", "type" {"$first" "$_id.type"}, "index" {"$min" "$index"}}}
+             {"$project" {"path" "$_id", "type" 1, "result" {"$literal" true}, "object" nil, "index" 1}}],
+            "nextItems"
+            [{"$match" {"result" false, "object" {"$ne" nil}}}
+             {"$project"
+              {"path" 1,
+               "kvs"
+               {"$map"
+                {"input" {"$objectToArray" "$object"},
+                 "as"    "item",
+                 "in"
+                 {"k"    "$$item.k",
+                  "object"
+                  {"$cond" {"if" {"$eq" [{"$type" "$$item.v"} "object"]}, "then" "$$item.v", "else" nil}},
+                  "type" {"$type" "$$item.v"}}}}}}
+             {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
+             {"$project"
+              {"path"   {"$concat" ["$path" "." "$kvs.k"]},
+               "type"   "$kvs.type",
+               "result" {"$literal" false},
+               "index"  1,
+               "object" "$kvs.object"}}]}}
+          {"$project" {"acc" {"$concatArrays" ["$results" "$newResults" "$nextItems"]}}}
+          {"$unwind" "$acc"}
+          {"$replaceRoot" {"newRoot" "$acc"}}
+          {"$facet"
+           {"results" [{"$match" {"result" true}}],
+            "newResults"
+            [{"$match" {"result" false}}
+             {"$group"
+              {"_id"   {"type" "$type", "path" "$path"},
+               "count" {"$sum" {"$cond" {"if" {"$eq" ["$type" "null"]}, "then" 0, "else" 1}}},
+               "index" {"$min" "$index"}}}
+             {"$sort" {"count" -1}}
+             {"$group" {"_id" "$_id.path", "type" {"$first" "$_id.type"}, "index" {"$min" "$index"}}}
+             {"$project" {"path" "$_id", "type" 1, "result" {"$literal" true}, "object" nil, "index" 1}}]}}
+          {"$project" {"acc" {"$concatArrays" ["$results" "$newResults"]}}}
+          {"$unwind" "$acc"}
+          {"$replaceRoot" {"newRoot" "$acc"}}
+          {"$project" {"_id" 0, "index" "$index", "path" "$path", "type" "$type"}}]
+         (#'mongo/describe-table-query :collection-name "collection-name" :sample-size 1000 :max-depth 1))))
 (tx/defdataset nested-bindata-coll
-  (let [not-uuid (Binary. (byte 0) (byte-array 1))
+  (let [not-uuid  (Binary. (byte 0) (byte-array 1))
         some-uuid #uuid "11111111-1111-1111-1111-111111111111"
         some-date #inst "2025-01-01T12:00:00.00Z"]
     [["nested-bindata"
@@ -249,7 +321,7 @@
     (mt/dataset uuid-dogs
       (testing "binData uuid fields are identified as type/MongoBinData"
         (is (= {:schema nil,
-                :name "dogs",
+                :name   "dogs",
                 :fields
                 #{{:name "_id", :database-type "long", :base-type :type/Integer, :pk? true, :database-position 0}
                   {:name "name", :database-type "string", :base-type :type/Text, :database-position 2}
@@ -266,11 +338,11 @@
                           {:name "date", :database-type "date", :base-type :type/Instant, :database-position 1}
                           {:name "mixed_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 7}
                           {:name "mixed_not_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 6}
-                          {:name "nested_mixed_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 8,
-                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9}}
+                          {:name            "nested_mixed_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 8,
+                           :nested-fields   #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9}}
                            :visibility-type :details-only}
-                          {:name "nested_mixed_not_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 4,
-                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5}}
+                          {:name            "nested_mixed_not_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 4,
+                           :nested-fields   #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5}}
                            :visibility-type :details-only}}}
                (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
 
@@ -460,9 +532,9 @@
     (mt/dataset all-null-columns
       ;; do a full sync on the DB to get the correct semantic type info
       (sync/sync-database! (mt/db))
-      (is (= [{:name "_id",            :database_type "long",   :base_type :type/Integer, :semantic_type :type/PK}
-              {:name "favorite_snack", :database_type "null",   :base_type :type/*,       :semantic_type nil}
-              {:name "name",           :database_type "string", :base_type :type/Text,    :semantic_type :type/Name}]
+      (is (= [{:name "_id", :database_type "long", :base_type :type/Integer, :semantic_type :type/PK}
+              {:name "favorite_snack", :database_type "null", :base_type :type/*, :semantic_type nil}
+              {:name "name", :database_type "string", :base_type :type/Text, :semantic_type :type/Name}]
              (map
               (partial into {})
               (t2/select [:model/Field :name :database_type :base_type :semantic_type]
@@ -486,10 +558,10 @@
              ["Silvereye" "cherries" nil]]]]
           ;; do a full sync on the DB to get the correct semantic type info
           (sync/sync-database! (mt/db))
-          (is (= #{{:name "_id",            :database_type "long",   :base_type :type/Integer, :semantic_type :type/PK}
-                   {:name "favorite_snack", :database_type "string", :base_type :type/Text,    :semantic_type :type/Category}
-                   {:name "name",           :database_type "string", :base_type :type/Text,    :semantic_type :type/Name}
-                   {:name "max_wingspan",   :database_type "long",   :base_type :type/Integer, :semantic_type nil}}
+          (is (= #{{:name "_id", :database_type "long", :base_type :type/Integer, :semantic_type :type/PK}
+                   {:name "favorite_snack", :database_type "string", :base_type :type/Text, :semantic_type :type/Category}
+                   {:name "name", :database_type "string", :base_type :type/Text, :semantic_type :type/Name}
+                   {:name "max_wingspan", :database_type "long", :base_type :type/Integer, :semantic_type nil}}
                  (into #{}
                        (map (partial into {}))
                        (t2/select [:model/Field :name :database_type :base_type :semantic_type]
@@ -499,9 +571,9 @@
 (deftest table-rows-sample-test
   (mt/test-driver :mongo
     (testing "Should return the latest `nested-field-sample-limit` rows"
-      (let [table (t2/select-one :model/Table :id (mt/id :venues))
+      (let [table  (t2/select-one :model/Table :id (mt/id :venues))
             fields (map #(t2/select-one :model/Field :id (mt/id :venues %)) [:name :category_id])
-            rff (constantly conj)]
+            rff    (constantly conj)]
         (with-redefs [table-rows-sample/nested-field-sample-limit 5]
           (is (= [["Mohawk Bend" 46]
                   ["Golden Road Brewing" 10]
@@ -533,25 +605,25 @@
       ;; Even though Mongo does not support foreign keys, there are few :type/FK semantic types. Why? Because those are
       ;; added to test data manually (see the [[metabase.test.data.impl.get-or-create/create-database!]]) to enable
       ;; implicit joins testing.
-      (is (= [[{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}]
-              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:semantic_type nil,             :base_type :type/Instant,  :name "date"}
-               {:semantic_type :type/FK,        :base_type :type/Integer,  :name "user_id"}
-               {:semantic_type :type/FK,        :base_type :type/Integer,  :name "venue_id"}]
-              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:semantic_type nil,             :base_type :type/Instant,  :name "last_login"}
-               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
-               {:semantic_type :type/Category,  :base_type :type/Text,     :name "password"}]
-              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:semantic_type :type/FK,        :base_type :type/Integer,  :name "category_id"}
-               {:semantic_type :type/Latitude,  :base_type :type/Float,    :name "latitude"}
-               {:semantic_type :type/Longitude, :base_type :type/Float,    :name "longitude"}
-               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
-               {:semantic_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
+      (is (= [[{:semantic_type :type/PK, :base_type :type/Integer, :name "_id"}
+               {:semantic_type :type/Name, :base_type :type/Text, :name "name"}]
+              [{:semantic_type :type/PK, :base_type :type/Integer, :name "_id"}
+               {:semantic_type nil, :base_type :type/Instant, :name "date"}
+               {:semantic_type :type/FK, :base_type :type/Integer, :name "user_id"}
+               {:semantic_type :type/FK, :base_type :type/Integer, :name "venue_id"}]
+              [{:semantic_type :type/PK, :base_type :type/Integer, :name "_id"}
+               {:semantic_type nil, :base_type :type/Instant, :name "last_login"}
+               {:semantic_type :type/Name, :base_type :type/Text, :name "name"}
+               {:semantic_type :type/Category, :base_type :type/Text, :name "password"}]
+              [{:semantic_type :type/PK, :base_type :type/Integer, :name "_id"}
+               {:semantic_type :type/FK, :base_type :type/Integer, :name "category_id"}
+               {:semantic_type :type/Latitude, :base_type :type/Float, :name "latitude"}
+               {:semantic_type :type/Longitude, :base_type :type/Float, :name "longitude"}
+               {:semantic_type :type/Name, :base_type :type/Text, :name "name"}
+               {:semantic_type :type/Category, :base_type :type/Integer, :name "price"}]]
              (vec (for [table-name table-names]
                     (vec (for [field (t2/select [:model/Field :name :base_type :semantic_type]
-                                                :active   true
+                                                :active true
                                                 :table_id (mt/id table-name)
                                                 {:order-by [:name]})]
                            (into {} field))))))))))
@@ -598,13 +670,13 @@
                 [1 (ObjectId. "012345678901234567890123")]
                 [2 (ObjectId. "abcdefabcdefabcdefabcdef")]]
                (mt/rows (mt/run-mbql-query birds
-                          {:fields [$id $bird_id]
+                          {:fields   [$id $bird_id]
                            :order-by [[:asc $bird_id]]}))))
         (is (= [[2 (ObjectId. "abcdefabcdefabcdefabcdef")]
                 [1 (ObjectId. "012345678901234567890123")]
                 [3 nil]]
                (mt/rows (mt/run-mbql-query birds
-                          {:fields [$id $bird_id]
+                          {:fields   [$id $bird_id]
                            :order-by [[:desc $bird_id]]})))))
       (testing "BSON UUIDs"
         (testing "Check that we support Mongo BSON UUID and can filter by it"
@@ -636,13 +708,13 @@
                 [1 #uuid "11111111-1111-1111-1111-111111111111"]
                 [2 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
                (mt/rows (mt/run-mbql-query birds
-                          {:fields [$id $bird_uuid]
+                          {:fields   [$id $bird_uuid]
                            :order-by [[:asc $bird_uuid]]}))))
         (is (= [[2 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
                 [1 #uuid "11111111-1111-1111-1111-111111111111"]
                 [3 nil]]
                (mt/rows (mt/run-mbql-query birds
-                          {:fields [$id $bird_uuid]
+                          {:fields   [$id $bird_uuid]
                            :order-by [[:desc $bird_uuid]]}))))))))
 
 (deftest ^:parallel bson-fn-call-forms-test
@@ -684,9 +756,9 @@
         ;; Field will be included
         (testing (str "if the column does not come back in the results for a given document we should fill in the "
                       "missing values with nils")
-          (is (= {:rows [[1 "African"  nil]
+          (is (= {:rows [[1 "African" nil]
                          [2 "American" nil]
-                         [3 "Artisan"  nil]]}
+                         [3 "Artisan" nil]]}
                  (->
                   (mt/run-mbql-query categories
                     {:order-by [[:asc $id]]
@@ -756,17 +828,17 @@
       (testing "Test that fields with missing or null values get synced correctly"
         (let [results (map #(into {} %)
                            (t2/select [:model/Field :id :name :database_type :base_type :semantic_type :parent_id]
-                                      :active   true
+                                      :active true
                                       :table_id (mt/id :coll)
                                       {:order-by [:database_position]}))]
-          (is (=? [{:name "_id",   :database_type "long",   :base_type :type/Integer,    :semantic_type :type/PK}
-                   {:name "a",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
-                   {:name "b",     :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
-                   {:name "b_c",   :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
-                   {:name "b_d",   :database_type "int",    :base_type :type/Integer,    :semantic_type nil}
-                   {:name "b_e",   :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
-                   {:name "b_e_f", :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
-                   {:name "c",     :database_type "null",   :base_type :type/*,          :semantic_type nil}]
+          (is (=? [{:name "_id", :database_type "long", :base_type :type/Integer, :semantic_type :type/PK}
+                   {:name "a", :database_type "string", :base_type :type/Text, :semantic_type :type/Category}
+                   {:name "b", :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
+                   {:name "b_c", :database_type "string", :base_type :type/Text, :semantic_type :type/Category}
+                   {:name "b_d", :database_type "int", :base_type :type/Integer, :semantic_type nil}
+                   {:name "b_e", :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
+                   {:name "b_e_f", :database_type "string", :base_type :type/Text, :semantic_type :type/Category}
+                   {:name "c", :database_type "null", :base_type :type/*, :semantic_type nil}]
                   results))
           (testing "parent_ids are correct"
             (let [parent (fn [field-name]
@@ -796,8 +868,8 @@
                (mt/rows
                 (mt/run-mbql-query coll
                   {:filter      [:and
-                                 [:= $coll.json_field.key_1 "value_jf_a" "value_jf_b"]
-                                 [:= $list_field "value_lf_a"]]
+                            [:= $coll.json_field.key_1 "value_jf_a" "value_jf_b"]
+                            [:= $list_field "value_lf_a"]]
                    :aggregation [[:count]]
                    :breakout    [$coll.metas.group_field]}))))))))
 
@@ -821,16 +893,16 @@
 (deftest strange-versionArray-test
   (mt/test-driver :mongo
     (testing "Negative values in versionArray are ignored (#29678)"
-      (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
+      (with-redefs [mongo.util/run-command (constantly {"version"      "4.0.28-23"
                                                         "versionArray" [4 0 29 -100]})]
-        (is (= {:version "4.0.28-23"
+        (is (= {:version          "4.0.28-23"
                 :semantic-version [4 0 29]}
                (driver/dbms-version :mongo (mt/db))))))
 
     (testing "Any values after rubbish in versionArray are ignored"
-      (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
+      (with-redefs [mongo.util/run-command (constantly {"version"      "4.0.28-23"
                                                         "versionArray" [4 0 "NaN" 29]})]
-        (is (= {:version "4.0.28-23"
+        (is (= {:version          "4.0.28-23"
                 :semantic-version [4 0]}
                (driver/dbms-version :mongo (mt/db))))))))
 
@@ -843,10 +915,10 @@
                                          :dataset_query {:database (mt/id)
                                                          :type     :query
                                                          :query    {:source-table (mt/id :coll)
-                                                                    :fields [(mt/id :coll :id)
-                                                                             (mt/id :coll :a)
-                                                                             (mt/id :coll :b)
-                                                                             (mt/id :coll :c)]}}}]
+                                                                    :fields       [(mt/id :coll :id)
+                                                                                   (mt/id :coll :a)
+                                                                                   (mt/id :coll :b)
+                                                                                   (mt/id :coll :c)]}}}]
           (let [results (downloads-test/card-download card {:export-format :csv :format-rows true})]
             (is (= [["ID" "A" "B" "C"]
                     ["1"
@@ -866,31 +938,31 @@
     (mt/test-driver :mongo
       (mt/dataset uuid-dogs
         (is (= []
-               (->> {:filter [:is-empty
-                              [:field (mt/id :dogs :person_id) {:base-type "type/MongoBinData"}]]
+               (->> {:filter       [:is-empty
+                                    [:field (mt/id :dogs :person_id) {:base-type "type/MongoBinData"}]]
                      :source-table (mt/id :dogs)}
                     (mt/run-mbql-query dogs)
                     mt/rows)))
         (is (= [[1 #uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
                 [2 #uuid "3a0c0508-6b00-40ff-97f6-549666b2d16b" "Zach" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
                 [3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
-               (->> {:filter [:not-empty
-                              [:field (mt/id :dogs :person_id) {:base-type "type/MongoBinData"}]]
+               (->> {:filter       [:not-empty
+                                    [:field (mt/id :dogs :person_id) {:base-type "type/MongoBinData"}]]
                      :source-table (mt/id :dogs)}
                     (mt/run-mbql-query dogs)
                     mt/rows)))
         (is (= [[1 #uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
                 [2 #uuid "3a0c0508-6b00-40ff-97f6-549666b2d16b" "Zach" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]]
-               (->> {:filter [:!=
-                              [:field (mt/id :dogs :person_id) {:base-type "type/MongoBinData"}]
-                              "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]
+               (->> {:filter       [:!=
+                                    [:field (mt/id :dogs :person_id) {:base-type "type/MongoBinData"}]
+                                    "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]
                      :source-table (mt/id :dogs)}
                     (mt/run-mbql-query dogs)
                     mt/rows)))
         (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
-               (->> {:filter [:=
-                              [:field (mt/id :dogs :person_id) {:base-type "type/MongoBinData"}]
-                              "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]
+               (->> {:filter       [:=
+                                    [:field (mt/id :dogs :person_id) {:base-type "type/MongoBinData"}]
+                                    "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]
                      :source-table (mt/id :dogs)}
                     (mt/run-mbql-query dogs)
                     mt/rows)))))))
@@ -966,23 +1038,23 @@
                           "    \"$limit\": 1048575"
                           "  }"
                           "]"])
-               (->> {:filter [:and
-                              [:=
-                               [:field (mt/id :nested-bindata :_id) {:base-type :type/MongoBSONID}]
-                               "abcdefabcdefabcdefabcdef"]
-                              [:=
-                               [:field (mt/id :nested-bindata :mixed_uuid) {:base-type :type/MongoBinData}]
-                               "11111111-1111-1111-1111-111111111111"]
-                              [:=
-                               [:field (mt/id :nested-bindata :date) {:base-type :type/Instant}]
-                               "2025-01-01T12:00:00.00Z"]
-                              [:starts-with
-                               [:field (mt/id :nested-bindata :text) {:base-type :type/Text}]
-                               "a"
-                               {:case-sensitive false}]
-                              [:not-empty [:field (mt/id :nested-bindata :mixed_not_uuid) {:base-type :type/*}]]
-                              [:>= [:field (mt/id :nested-bindata :int) {:base-type :type/Integer}] 1]
-                              [:< [:field (mt/id :nested-bindata :float) {:base-type :type/Float}] 5.5]]
+               (->> {:filter       [:and
+                                    [:=
+                                     [:field (mt/id :nested-bindata :_id) {:base-type :type/MongoBSONID}]
+                                     "abcdefabcdefabcdefabcdef"]
+                                    [:=
+                                     [:field (mt/id :nested-bindata :mixed_uuid) {:base-type :type/MongoBinData}]
+                                     "11111111-1111-1111-1111-111111111111"]
+                                    [:=
+                                     [:field (mt/id :nested-bindata :date) {:base-type :type/Instant}]
+                                     "2025-01-01T12:00:00.00Z"]
+                                    [:starts-with
+                                     [:field (mt/id :nested-bindata :text) {:base-type :type/Text}]
+                                     "a"
+                                     {:case-sensitive false}]
+                                    [:not-empty [:field (mt/id :nested-bindata :mixed_not_uuid) {:base-type :type/*}]]
+                                    [:>= [:field (mt/id :nested-bindata :int) {:base-type :type/Integer}] 1]
+                                    [:< [:field (mt/id :nested-bindata :float) {:base-type :type/Float}] 5.5]]
                      :source-table (mt/id :nested-bindata)}
                     (mt/mbql-query nested-bindata)
                     (qp.compile/compile-with-inline-parameters)
