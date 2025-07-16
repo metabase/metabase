@@ -26,7 +26,7 @@ export type UpsellBigCardProps = React.PropsWithChildren<{
         onClick?: never;
       }
     | {
-        buttonLink?: never;
+        buttonLink?: string;
         onClick: () => void;
       }
   );
