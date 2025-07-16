@@ -137,6 +137,7 @@ export const DashCardCardParameterMapperButton = ({
       closeOnClickOutside
       trapFocus
       disabled={isDisabled || !hasPermissionsToMap}
+      opened={isDropdownVisible}
       onChange={setIsDropdownVisible}
     >
       <Popover.Target>
@@ -144,6 +145,7 @@ export const DashCardCardParameterMapperButton = ({
           <Flex
             component="button"
             role="button"
+            onClick={() => setIsDropdownVisible(!isDropdownVisible)}
             disabled={buttonVariant === "disabled"}
             className={cx(S.TargetButton, {
               [S.disabled]: buttonVariant === "disabled",
