@@ -135,6 +135,7 @@ export const DashCardCardParameterMapperButton = ({
     <Popover
       position="bottom-start"
       closeOnClickOutside
+      trapFocus
       disabled={isDisabled || !hasPermissionsToMap}
       onChange={setIsDropdownVisible}
     >
