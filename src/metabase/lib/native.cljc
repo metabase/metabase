@@ -284,7 +284,7 @@
    (set/subset? (required-native-extras query)
                 (set (keys (native-extras query))))
    (not (str/blank? (raw-native-query query)))
-   (every? #(if (= :dimension (:type %))
+   (every? #(if (#{:dimension :temporal-unit} (:type %))
               (:dimension %)
               true)
            (vals (template-tags query)))))
