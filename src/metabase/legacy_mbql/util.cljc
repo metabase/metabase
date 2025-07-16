@@ -130,7 +130,7 @@
   needed.
 
   Stage numbers work as in [[add-filter-clause]]."
-  [inner-query  :- mbql.s/MBQLQuery
+  [inner-query  :- ::mbql.s/MBQLQuery
    stage-number :- [:maybe number?]
    new-clause   :- [:maybe ::mbql.s/Filter]]
   (if (not new-clause)
@@ -552,10 +552,10 @@
   [join]
   (query->source-table-id {:type :query, :query join}))
 
-(mu/defn add-order-by-clause :- mbql.s/MBQLQuery
+(mu/defn add-order-by-clause :- ::mbql.s/MBQLQuery
   "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
   already being used in another order-by clause, this function does nothing."
-  [inner-query     :- mbql.s/MBQLQuery
+  [inner-query     :- ::mbql.s/MBQLQuery
    [dir orderable] :- ::mbql.s/OrderBy]
   (let [existing-orderables (into #{}
                                   (map (fn [[_dir orderable]]
@@ -850,7 +850,7 @@
 (mu/defn update-field-options :- ::mbql.s/Reference
   "Like [[clojure.core/update]], but for the options in a `:field`, `:expression`, or `:aggregation` clause."
   {:arglists '([field-or-ag-ref-or-expression-ref f & args])}
-  [[clause-type id-or-name opts] :- mbql.s/Reference f & args]
+  [[clause-type id-or-name opts] :- ::mbql.s/Reference f & args]
   (let [opts (not-empty (remove-empty (apply f opts args)))]
     ;; `:field` clauses should have a `nil` options map if there are no options. `:aggregation` and `:expression`
     ;; should get the arg removed if it's `nil` or empty. (For now. In the future we may change this if we make the

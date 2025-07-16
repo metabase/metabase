@@ -1,10 +1,10 @@
 (ns metabase.content-verification.models.moderation-review
   (:require
-   [metabase.util.malli.registry :as mr]
    [metabase.app-db.core :as app-db]
    [metabase.content-verification.impl :as moderation]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

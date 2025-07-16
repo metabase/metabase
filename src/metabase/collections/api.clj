@@ -733,7 +733,7 @@
           update-personal-collection))))
 
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
-(mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
+(mu/defn- coalesce-edit-info :- ::revisions/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
   [row]

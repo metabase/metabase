@@ -1,12 +1,12 @@
 (ns metabase.search.config
   (:require
-   [metabase.util.malli.registry :as mr]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (def ^:dynamic *db-max-results*

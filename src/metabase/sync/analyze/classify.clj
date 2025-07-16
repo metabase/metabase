@@ -76,9 +76,9 @@
                     (:fingerprint (lib.metadata/field (qp.store/metadata-provider) (u/the-id field))))
                   (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field)))))
 
-  ([field       :- i/FieldInstance
+  ([field       :- ::i/FieldInstance
     {:keys [exists-name]}
-    fingerprint :- [:maybe analyze/Fingerprint]]
+    fingerprint :- [:maybe  ::analyze/Fingerprint]]
    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
      (let [classified (analyze/run-classifiers field fingerprint)
            would-be-name? (= (:semantic_type classified) :type/Name)
@@ -94,7 +94,7 @@
 ;;; |                                        CLASSIFYING ALL FIELDS IN A TABLE                                         |
 ;;; +------------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- fields-to-classify :- [:maybe [:sequential i/FieldInstance]]
+(mu/defn- fields-to-classify :- [:maybe [:sequential ::i/FieldInstance]]
   "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- ::i/TableInstance]

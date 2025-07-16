@@ -152,7 +152,7 @@
 (mu/defn infer-and-assoc-semantic-type-by-name :- [:maybe FieldOrColumn]
   "Returns `field-or-column` with a computed semantic type based on the name and base type of the `field-or-column`"
   [field-or-column :- FieldOrColumn
-   _fingerprint    :- [:maybe fingerprint.schema/Fingerprint]]
+   _fingerprint    :- [:maybe ::fingerprint.schema/Fingerprint]]
   (when-let [inferred-semantic-type (infer-semantic-type-by-name field-or-column)]
     (log/debugf "Based on the name of %s, we're giving it a semantic type of %s."
                 (sync-util/name-for-logging field-or-column)
@@ -181,9 +181,9 @@
    [(prefix-or-postfix "companies")    :entity/CompanyTable]
    [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
 
-(mu/defn infer-entity-type-by-name :- analyze.schema/Table
+(mu/defn infer-entity-type-by-name :- ::analyze.schema/Table
   "Classifer that infers the semantic type of a `table` based on its name."
-  [table :- analyze.schema/Table]
+  [table :- ::analyze.schema/Table]
   (let [table-name (-> table :name u/lower-case-en)]
     (assoc table :entity_type (or (some (fn [[pattern type]]
                                           (when (re-find pattern table-name)

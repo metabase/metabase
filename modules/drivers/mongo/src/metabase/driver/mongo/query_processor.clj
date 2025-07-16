@@ -7,7 +7,6 @@
    [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
-   [metabase.util.malli.registry :as mr]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -28,7 +27,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))

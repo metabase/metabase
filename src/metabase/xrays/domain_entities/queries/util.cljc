@@ -2,8 +2,8 @@
   "Utility functions used by the Queries in metabase-lib."
   (:require
    #?@(:cljs ([metabase.xrays.domain-entities.converters :as converters]))
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (mr/def ::Expression
   "Schema for an Expression that's part of a query filter."

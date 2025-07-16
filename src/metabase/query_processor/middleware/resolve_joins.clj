@@ -65,7 +65,7 @@
 
 (def ^:private default-join-alias "__join")
 
-(mu/defn- merge-defaults :- mbql.s/Join
+(mu/defn- merge-defaults :- ::mbql.s/Join
   [join]
   (merge {:alias default-join-alias, :strategy :left-join} join))
 
@@ -89,9 +89,9 @@
               [:field field-id {:join-alias alias}]))
           [:field field-name {:base-type base-type, :join-alias alias}]))))
 
-(mu/defn- handle-all-fields :- mbql.s/Join
+(mu/defn- handle-all-fields :- ::mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
-  [{:keys [source-table source-query alias fields source-metadata], :as join} :- mbql.s/Join]
+  [{:keys [source-table source-query alias fields source-metadata], :as join} :- ::mbql.s/Join]
   (merge
    join
    (when (= fields :all)

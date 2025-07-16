@@ -211,12 +211,12 @@
                  (not= field-unit :default))
         field-unit)))
 
-(mu/defmethod temporal-value-lower-bound :absolute-datetime :- mbql.s/::absolute-datetime
+(mu/defmethod temporal-value-lower-bound :absolute-datetime :- ::mbql.s/absolute-datetime
   [[_ t unit] temporal-unit]
   (let [target-unit (target-unit-for-new-bound unit temporal-unit)]
     [:absolute-datetime (temporal-literal-lower-bound target-unit t) :default]))
 
-(mu/defmethod temporal-value-upper-bound :absolute-datetime :- mbql.s/::absolute-datetime
+(mu/defmethod temporal-value-upper-bound :absolute-datetime :- ::mbql.s/absolute-datetime
   [[_ t unit] temporal-unit]
   (let [target-unit (target-unit-for-new-bound unit temporal-unit)]
     [:absolute-datetime (temporal-literal-upper-bound target-unit t) :default]))

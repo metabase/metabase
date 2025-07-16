@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case])
   (:require
    [inflections.core :as inflections]
-   [metabase.util.malli.registry :as mr]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.common :as lib.common]
@@ -27,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
 

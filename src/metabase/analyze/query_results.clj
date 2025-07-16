@@ -43,7 +43,7 @@
    [:description        {:optional true} [:maybe :string]]
    [:semantic_type      {:optional true} [:maybe ::ms/FieldSemanticOrRelationTypeKeywordOrString]]
    [:unit               {:optional true} [:maybe DateTimeUnitKeywordOrString]]
-   [:fingerprint        {:optional true} [:maybe fingerprint.schema/Fingerprint]]
+   [:fingerprint        {:optional true} [:maybe ::fingerprint.schema/Fingerprint]]
    [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
    ;; only optional because it's not present right away, but it should be present at the end.
    [:field_ref          {:optional true} [:ref ::MaybeUnnormalizedReference]]
@@ -54,10 +54,6 @@
   (mu/with-api-error-message
    [:maybe [:sequential ::ResultColumnMetadata]]
    (i18n/deferred-tru "value must be an array of valid results column metadata maps.")))
-
-(mr/def ::ResultsMetadata
-  "Schema for valid values of the `result_metadata` column."
-  [:ref ::ResultsMetadata])
 
 (mu/defn- maybe-infer-semantic-type :- ::ResultColumnMetadata
   "Infer the semantic type and add it to the result metadata. If the inferred semantic type is nil, don't override the
@@ -73,7 +69,7 @@
        (nil :type/Number) (classifiers.name/infer-semantic-type-by-name col)
        original-value))))
 
-(mu/defn- col->::ResultColumnMetadata :- ::ResultColumnMetadata
+(mu/defn- col->ResultColumnMetadata :- ::ResultColumnMetadata
   "Make sure a `column` as it comes back from a driver's initial results metadata matches the schema for valid results
   column metadata, adding placeholder values and removing nil keys."
   [column]
@@ -90,7 +86,7 @@
   [{:keys [cols]}]
   (let [cols (for [col cols]
                (try
-                 (maybe-infer-semantic-type (col->::ResultColumnMetadata col))
+                 (maybe-infer-semantic-type (col->ResultColumnMetadata col))
                  (catch Throwable e
                    (log/errorf e "Error generating insights for column: %s" col)
                    col)))]

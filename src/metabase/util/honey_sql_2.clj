@@ -7,9 +7,9 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.protocols :as sql.protocols]
-   [metabase.util.malli.registry :as mr]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [potemkin.types :as p.types])
   (:import

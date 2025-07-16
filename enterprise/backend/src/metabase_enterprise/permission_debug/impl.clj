@@ -12,7 +12,6 @@
   "
   (:require
    [clojure.set :as set]
-   [metabase.util.malli.registry :as mr]
    [metabase.api.common :as api]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -21,6 +20,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

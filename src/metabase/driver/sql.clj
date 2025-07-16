@@ -111,4 +111,5 @@
 ;;; |                                              Convenience Imports                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(p/import-vars [sql.params.substitution ->prepared-substitution ::PreparedStatementSubstitution])
+(p/import-vars
+ [sql.params.substitution ->prepared-substitution])

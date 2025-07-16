@@ -453,13 +453,13 @@
 
 (mu/defn revoke-collection-permissions!
   "Revoke all access for `group-or-id` to a Collection."
-  [group-or-id :- ::permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
+  [group-or-id :- ::permissions.path/MapOrID collection-or-id :- ::permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (delete-related-permissions! group-or-id (permissions.path/collection-readwrite-path collection-or-id)))
 
 (mu/defn grant-collection-readwrite-permissions!
   "Grant full access to a Collection, which means a user can view all Cards in the Collection and add/remove Cards."
-  [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
+  [group-or-id :- ::permissions.path/MapOrID collection-or-id :- ::permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (when (perms-group/is-tenant-group? group-or-id)
     (throw (ex-info (tru "Tenant Groups cannot have write access to any collections.") {})))
@@ -467,7 +467,7 @@
 
 (mu/defn grant-collection-read-permissions!
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
-  [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
+  [group-or-id :- ::permissions.path/MapOrID collection-or-id :- ::permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (when (and (perms-group/is-tenant-group? group-or-id)
              (audit/is-collection-id-audit? (u/the-id collection-or-id)))

@@ -1,7 +1,6 @@
 (ns metabase.queries.api.card
   "/api/card endpoints."
   (:require
-   [metabase.util.malli.registry :as mr]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
@@ -37,6 +36,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]

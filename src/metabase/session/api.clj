@@ -49,7 +49,7 @@
 (mu/defn- ldap-login :- [:maybe [:map [:key ::ms/UUIDString]]]
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
-  [username password device-info :- request/DeviceInfo]
+  [username password device-info :- ::request/DeviceInfo]
   (when (sso/ldap-enabled)
     (try
       (when-let [user-info (sso/find-ldap-user username)]
@@ -73,7 +73,7 @@
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username    :- ::ms/NonBlankString
    password    :- [:maybe ::ms/NonBlankString]
-   device-info :- request/DeviceInfo]
+   device-info :- ::request/DeviceInfo]
   (if-let [user (t2/select-one [:model/User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
     (when (u.password/verify-password password (:password_salt user) (:password user))
       (if (:is_active user)
@@ -99,7 +99,7 @@
   throwing an Exception if login could not be completed."
   [username    :- ::ms/NonBlankString
    password    :- ::ms/NonBlankString
-   device-info :- request/DeviceInfo]
+   device-info :- ::request/DeviceInfo]
   ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
   (or (ldap-login username password device-info)  ; First try LDAP if it's enabled
       (email-login username password device-info) ; Then try local authentication

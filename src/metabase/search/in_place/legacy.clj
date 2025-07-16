@@ -7,9 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.queries.schema :as queries.schema]
-   [metabase.search.config
-    :as search.config
-    :refer [SearchContext SearchableModel]]
+   [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
@@ -114,7 +112,7 @@
   "Returns a seq of lists of canonical columns for the search query with the given `model` Will return column names
   prefixed with the `model` name so that it can be used in criteria. Projects a `nil` for columns the `model` doesn't
   have and doesn't modify aliases."
-  [model :- SearchableModel, col-alias->honeysql-clause :- [:map-of :keyword HoneySQLColumn]]
+  [model :- ::search.config/SearchableModel, col-alias->honeysql-clause :- [:map-of :keyword HoneySQLColumn]]
   (for [[search-col col-type] all-search-columns
         :let [maybe-aliased-col (get col-alias->honeysql-clause search-col)]]
     (cond
@@ -177,7 +175,7 @@
   so we can return its `:name`."
   [honeysql-query :- :map
    model          :- [:maybe :string]
-   search-ctx     :- SearchContext]
+   search-ctx     :- ::search.config/SearchContext]
   (let [collection-id-col      (case model
                                  "collection"    :collection.id
                                  "search-index"  :search_index.collection_id
@@ -426,14 +424,14 @@
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
   missing from `entity-columns` but found in `all-search-columns`."
-  [model :- SearchableModel]
+  [model :- ::search.config/SearchableModel]
   (let [entity-columns                (columns-for-model model)
         column-alias->honeysql-clause (m/index-by ->column-alias entity-columns)
         cols-or-nils                  (canonical-columns model column-alias->honeysql-clause)]
     cols-or-nils))
 
 (mu/defn- from-clause-for-model :- [:tuple [:tuple :keyword :keyword]]
-  [model :- SearchableModel]
+  [model :- ::search.config/SearchableModel]
   (let [{:keys [db-model alias]} (get search.config/model-to-db-model model)]
     [[(t2/table-name db-model) alias]]))
 
@@ -445,14 +443,14 @@
                                    [:left-join {:optional true} :any]]
   "Create a HoneySQL query map with `:select`, `:from`, and `:where` clauses for `model`, suitable for the `UNION ALL`
   used in search."
-  [model :- SearchableModel context :- SearchContext]
+  [model :- ::search.config/SearchableModel context :- ::search.config/SearchContext]
   (-> {:select (select-clause-for-model model)
        :from   (from-clause-for-model model)}
       (search.in-place.filter/build-filters model context)))
 
 (mu/defn- shared-card-impl
   [model :- ::queries.schema/card-type
-   search-ctx :- SearchContext]
+   search-ctx :- ::search.config/SearchContext]
   (-> (base-query-for-model "card" search-ctx)
       (sql.helpers/where [:= :card.type (name model)])
       (sql.helpers/left-join [:card_bookmark :bookmark]
@@ -571,7 +569,7 @@
 (mu/defn full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to a trivial case
   of one model without errors. Therefore, we degenerate it down for it"
-  [search-ctx :- SearchContext]
+  [search-ctx :- ::search.config/SearchContext]
   (let [models       (:models search-ctx)
         order-clause [((fnil order-clause "") (:search-string search-ctx))]]
     (cond

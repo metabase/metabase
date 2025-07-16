@@ -1795,9 +1795,9 @@
       {:description "Type of query. `:query` = MBQL; `:native` = native."}
       :query :native]]
 
-    [:native     {:optional true} ::NativeQuery]
-    [:query      {:optional true} ::MBQLQuery]
-    [:parameters {:optional true} ::ParameterList]
+    [:native     {:optional true} [:ref ::NativeQuery]]
+    [:query      {:optional true} [:ref ::MBQLQuery]]
+    [:parameters {:optional true} [:ref ::ParameterList]]
     ;;
     ;; OPTIONS
     ;;

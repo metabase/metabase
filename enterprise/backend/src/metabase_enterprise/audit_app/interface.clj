@@ -1,8 +1,8 @@
 (ns metabase-enterprise.audit-app.interface
   (:require
-   [metabase.util.malli.registry :as mr]
    [metabase.classloader.core :as classloader]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::ResultsMetadata

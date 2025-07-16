@@ -4,7 +4,6 @@
 
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
-   [metabase.util.malli.registry :as mr]
    [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
@@ -14,6 +13,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))

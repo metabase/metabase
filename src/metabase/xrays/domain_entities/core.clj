@@ -1,12 +1,12 @@
 (ns metabase.xrays.domain-entities.core
   (:require
    [clojure.string :as str]
-   [metabase.util.malli.registry :as mr]
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.domain-entities.specs :as domain-entity-specs]
    [toucan2.core :as t2]))

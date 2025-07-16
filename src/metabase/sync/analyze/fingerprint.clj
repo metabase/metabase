@@ -33,7 +33,7 @@
 
 (mu/defn- save-fingerprint!
   [field       :- ::i/FieldInstance
-   fingerprint :- [:maybe analyze/Fingerprint]]
+   fingerprint :- [:maybe  ::analyze/Fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
   (t2/update! :model/Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
 
@@ -183,7 +183,7 @@
 ;;; |                                      FINGERPRINTING ALL FIELDS IN A TABLE                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- fields-to-fingerprint :- [:maybe [:sequential i/FieldInstance]]
+(mu/defn- fields-to-fingerprint :- [:maybe [:sequential ::i/FieldInstance]]
   "Return a sequences of Fields belonging to `table` for which we should generate (and save) fingerprints.
    This should include NEW fields that are active and visible."
   [table :- ::i/TableInstance]
@@ -260,6 +260,6 @@
 
 (mu/defn refingerprint-field
   "Refingerprint a field"
-  [field :- i/FieldInstance]
+  [field :- ::i/FieldInstance]
   (let [table (field/table field)]
     (fingerprint-fields! table [field])))

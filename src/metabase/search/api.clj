@@ -152,7 +152,7 @@
        [:context                             {:optional true} [:maybe :keyword]]
        [:archived                            {:default false} [:maybe :boolean]]
        [:table_db_id                         {:optional true} [:maybe ::ms/PositiveInt]]
-       [:models                              {:optional true} [:maybe (ms/QueryVectorOf search/SearchableModel)]]
+       [:models                              {:optional true} [:maybe (ms/QueryVectorOf ::search.config/SearchableModel)]]
        [:filter_items_in_personal_collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
        [:created_at                          {:optional true} [:maybe ::ms/NonBlankString]]
        [:created_by                          {:optional true} [:maybe (ms/QueryVectorOf ::ms/PositiveInt)]]

@@ -1,8 +1,8 @@
 (ns metabase.xrays.domain-entities.converters-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.util.malli.registry :as mr]
    [metabase.test.util.js :as test.js]
+   [metabase.util.malli.registry :as mr]
    [metabase.xrays.domain-entities.converters :as converters]))
 
 (deftest incoming-basics-test

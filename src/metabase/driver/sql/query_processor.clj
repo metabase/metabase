@@ -1767,7 +1767,7 @@
    [:sequential :any]])
 
 (mu/defmethod join->honeysql :sql :- HoneySQLJoin
-  [driver {:keys [condition], :as join} :- driver-api/Join]
+  [driver {:keys [condition], :as join} :- ::driver-api/Join]
   (let [join-alias ((some-fn driver-api/qp.add.alias :alias) join)]
     (assert (string? join-alias))
     [[(join-source driver join)
@@ -2011,8 +2011,8 @@
 ;;; around [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]], which is
 ;;; written for pMBQL, so we can use it with a legacy inner query. Once we rework the SQL QP to use pMBQL we can remove
 ;;; this.
-(mu/defn- nest-breakouts-in-queries-with-window-fn-aggregations :- driver-api/MBQLQuery
-  [inner-query :- driver-api/MBQLQuery]
+(mu/defn- nest-breakouts-in-queries-with-window-fn-aggregations :- ::driver-api/MBQLQuery
+  [inner-query :- ::driver-api/MBQLQuery]
   (let [metadata-provider (driver-api/metadata-provider)
         database-id       (u/the-id (driver-api/database (driver-api/metadata-provider)))]
     (-> (driver-api/query-from-legacy-inner-query metadata-provider database-id inner-query)

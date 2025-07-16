@@ -22,7 +22,7 @@
 (mu/defn- percent-key-above-threshold?
   "Is the value of `percent-key` inside `text-fingerprint` above the `percent-valid-threshold`?"
   [threshold        :- :double
-   text-fingerprint :- fingerprint.schema/TextFingerprint
+   text-fingerprint :-  ::fingerprint.schema/TextFingerprint
    percent-key      :- :keyword]
   (when-let [percent (get text-fingerprint percent-key)]
     (>= percent threshold)))
@@ -38,7 +38,7 @@
 (mu/defn- infer-semantic-type-for-text-fingerprint :- [:maybe ::ms/FieldType]
   "Check various percentages inside the `text-fingerprint` and return the corresponding semantic type to mark the Field
   as if the percent passes the threshold."
-  [text-fingerprint :- fingerprint.schema/TextFingerprint]
+  [text-fingerprint :-  ::fingerprint.schema/TextFingerprint]
   (some (fn [[percent-key [semantic-type threshold]]]
           (when (percent-key-above-threshold? threshold text-fingerprint percent-key)
             semantic-type))
@@ -55,11 +55,11 @@
         (and original
              (nil? (:semantic_type original))))))
 
-(mu/defn infer-semantic-type :- [:maybe analyze.schema/Field]
+(mu/defn infer-semantic-type :- [:maybe ::analyze.schema/Field]
   "Do classification for `:type/Text` Fields with a valid `TextFingerprint`.
    Currently this only checks the various recorded percentages, but this is subject to change in the future."
-  [field       :- analyze.schema/Field
-   fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
+  [field       :- ::analyze.schema/Field
+   fingerprint :- [:maybe ::fingerprint.schema/Fingerprint]]
   (when (and (isa? (:base_type field) :type/Text)
              (can-edit-semantic-type? field))
     (when-let [text-fingerprint (get-in fingerprint [:type :type/Text])]

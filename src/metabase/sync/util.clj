@@ -47,7 +47,8 @@
 
 (def ^:private Topic
   [:and
-   events/Topic
+   ;; TODO: dont reach into impl?
+   :metabase.events.impl/Topic
    [:fn
     {:error/message "Sync event deriving from :metabase.sync.util/event"}
     #(isa? % ::event)]])

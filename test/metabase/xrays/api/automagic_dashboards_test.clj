@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.util.malli.registry :as mr]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -11,6 +10,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [metabase.xrays.api.automagic-dashboards :as api.magic]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.test-util.automagic-dashboards :refer [with-dashboard-cleanup!]]

@@ -47,7 +47,7 @@
   "Record a login event in the LoginHistory table."
   [session-id :- [:not uuid?]
    user-id :- ::ms/PositiveInt
-   device-info :- request/DeviceInfo]
+   device-info :- ::request/DeviceInfo]
   (let [login-history (merge {:user_id    user-id
                               :session_id session-id}
                              (dissoc device-info :embedded))]

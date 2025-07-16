@@ -13,7 +13,7 @@
   [:map
    [:version ::ms/NonBlankString]])
 
-(mu/defn sync-dbms-version! :- [:maybe DBMSVersion]
+(mu/defn sync-dbms-version! :- [:maybe ::DBMSVersion]
   "Get the DBMS version as provided by the driver and save it in the Database."
   [database :- ::i/DatabaseInstance]
   (let [driver  (driver.u/database->driver database)

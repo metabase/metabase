@@ -39,7 +39,6 @@
      :xform    ...}"
   (:require
    [clojure.data :as data]
-   [metabase.util.malli.registry :as mr]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -48,7 +47,8 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- check-results-and-metadata-keys-match
   "Primarily for dev and debugging purposes. We can probably take this out when shipping the finished product."

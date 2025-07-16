@@ -14,7 +14,6 @@
   do-google-auth
   google-auth-create-new-user!]
  [metabase.sso.ldap.default-implementation
-  LDAPSettings
   ldap-groups->mb-group-ids
   ldap-search-result->user-info]
  [metabase.sso.settings
@@ -33,8 +32,8 @@
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.sso.ldap/fetch-or-create-user! fetch-or-create-ldap-user!)
 
-#_{:clj-kondo/ignore [:missing-docstring]}
-(p/import-def ::metabase.sso.ldap.default-implementation/UserInfo LDAPUserInfo)
+;; #_{:clj-kondo/ignore [:missing-docstring]}
+;; (macroexpand '(p/import-def ::metabase.sso.ldap.default-implementation/UserInfo LDAPUserInfo))
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.sso.ldap.default-implementation/all-mapped-group-ids all-mapped-ldap-group-ids)

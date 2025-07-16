@@ -47,7 +47,7 @@
    {:keys [content description name collection_id]} :- [:map
                                                         [:content       :string]
                                                         [:description   {:optional true} [:maybe :string]]
-                                                        [:name          native-query-snippet/NativeQuerySnippetName]
+                                                        [:name          ::native-query-snippet/NativeQuerySnippetName]
                                                         [:collection_id {:optional true} [:maybe ::ms/PositiveInt]]]]
   (check-snippet-name-is-unique name)
   (let [snippet {:content       content

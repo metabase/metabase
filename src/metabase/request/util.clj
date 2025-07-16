@@ -104,7 +104,7 @@
    [:embedded           ::ms/BooleanValue]
    [:ip_address         ::ms/NonBlankString]])
 
-(mu/defn device-info :- DeviceInfo
+(mu/defn device-info :- ::DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
   [{{:strs [user-agent]} :headers, {:strs [token]} :query-params, :keys [browser-id], :as request}]
   (let [id          (or browser-id

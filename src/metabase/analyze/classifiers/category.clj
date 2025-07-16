@@ -29,8 +29,8 @@
   1000)
 
 (mu/defn- field-should-be-category? :- [:maybe :boolean]
-  [fingerprint :- [:maybe fingerprint.schema/Fingerprint]
-   field       :- analyze.schema/Field]
+  [fingerprint :- [:maybe ::fingerprint.schema/Fingerprint]
+   field       :- ::analyze.schema/Field]
   (let [distinct-count (get-in fingerprint [:global :distinct-count])
         nil%           (get-in fingerprint [:global :nil%])]
     ;; Only mark a Field as a Category if it doesn't already have a semantic type.
@@ -43,10 +43,10 @@
                   category-cardinality-threshold)
       true)))
 
-(mu/defn infer-is-category :- [:maybe analyze.schema/Field]
+(mu/defn infer-is-category :- [:maybe ::analyze.schema/Field]
   "Classifier that attempts to determine whether `field` ought to be marked as a Category based on its distinct count."
-  [field       :- analyze.schema/Field
-   fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
+  [field       :- ::analyze.schema/Field
+   fingerprint :- [:maybe ::fingerprint.schema/Fingerprint]]
   (when (and (sync-util/can-be-category? (:base_type field) (:semantic_type field))
              (field-should-be-category? fingerprint field))
     (assoc field :semantic_type :type/Category)))
