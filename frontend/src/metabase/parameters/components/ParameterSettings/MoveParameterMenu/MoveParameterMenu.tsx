@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -25,7 +25,8 @@ type MoveParameterMenuProps = {
 const TOP_NAV_VALUE = "top-nav";
 
 export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
-  const [isOpen, { open: onOpen, close: onClose }] = useDisclosure(false);
+  const [isOpen, { open: onOpen, close: _onClose }] = useDisclosure(false);
+  const ref = useRef<HTMLInputElement>(null);
 
   const dashcards = useSelector((state) =>
     getDashcardList(state).filter(
@@ -53,6 +54,11 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
     [dashcardsByTab, _tabs],
   );
 
+  const handleClose = () => {
+    _onClose();
+    ref.current?.blur();
+  };
+
   const handleChange = (value: string) => {
     if (value === TOP_NAV_VALUE) {
       dispatch(moveParameter({ parameterId, destination: value }));
@@ -70,15 +76,9 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
   };
 
   const renderOption = useCallback(
-    ({ option, checked }: { option: { value: string }; checked?: boolean }) => {
+    ({ option }: { option: { value: string } }) => {
       if (option.value === TOP_NAV_VALUE) {
-        return (
-          <SelectItem
-            title={t`Top of page`}
-            icon="dashboard"
-            checked={checked}
-          />
-        );
+        return <SelectItem title={t`Top of page`} icon="dashboard" />;
       }
       const dashcard = dashcardMap[option.value];
       if (!dashcard) {
@@ -88,18 +88,24 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
         <SelectItem
           title={getDashcardTitle(dashcard)}
           icon={getDashcardIcon(dashcard)}
-          subtitle={isHeadingDashCard(dashcard) ? t`Heading` : t`Card`}
-          checked={checked}
+          subtitle={isHeadingDashCard(dashcard) ? t`Heading` : undefined}
         />
       );
     },
     [dashcardMap],
   );
 
+  const value = useMemo(() => {
+    if (!isOpen) {
+      return;
+    }
+    return parameterDashcard ? String(parameterDashcard?.id) : TOP_NAV_VALUE;
+  }, [isOpen, parameterDashcard]);
+
   const options = useMemo(() => {
     const rootGroup = {
       group: "",
-      items: [{ label: "", value: TOP_NAV_VALUE }],
+      items: [{ label: t`Top of page`, value: TOP_NAV_VALUE }],
     };
     const groups = [rootGroup];
 
@@ -108,7 +114,7 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
         ...tabsWithDashcards.map((tab) => ({
           group: tab.name,
           items: dashcardsByTab[tab.id]?.map((dc) => ({
-            label: "",
+            label: getDashcardTitle(dc),
             value: String(dc.id),
           })),
         })),
@@ -116,7 +122,7 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
     } else {
       rootGroup.items.push(
         ...dashcards.map((dc) => ({
-          label: "",
+          label: getDashcardTitle(dc),
           value: String(dc.id),
         })),
       );
@@ -129,15 +135,20 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
     <Select
       classNames={{
         input: !isOpen ? S.CollapsedMoveParameterMenuInput : undefined,
+        option: S.MoveParameterMenuOption,
+
+        // Hides the chevron-down icon on the right to make it look like a button
         section: !isOpen ? CS.hidden : undefined,
       }}
       placeholder={t`Move filter`}
       data={options}
       renderOption={renderOption}
-      value={parameterDashcard ? String(parameterDashcard?.id) : TOP_NAV_VALUE}
+      value={value}
       onChange={handleChange}
+      searchable
       onDropdownOpen={onOpen}
-      onDropdownClose={onClose}
+      onDropdownClose={handleClose}
+      ref={ref}
     />
   );
 }
@@ -146,31 +157,29 @@ function SelectItem({
   icon,
   title,
   subtitle,
-  checked = false,
 }: {
   icon: IconName;
   title: string;
   subtitle?: string;
-  checked?: boolean;
 }) {
   return (
     <Group p="sm" w="100%">
-      <Icon name={icon} />
-      <Flex direction="column" flex={1} gap="xs" miw={0}>
+      <Flex direction="column" flex={1} justify="center" gap="xs" miw={0}>
         <Text
+          className={S.MoveParameterMenuOptionText}
           fw="400"
           lh="sm"
-          c={checked ? "text-white" : "text-dark"}
           truncate="end"
         >
           {title}
         </Text>
         {!!subtitle && (
-          <Text size="sm" c={checked ? "text-white" : "text-dark"}>
+          <Text className={S.MoveParameterMenuOptionText} size="sm">
             {subtitle}
           </Text>
         )}
       </Flex>
+      <Icon name={icon} />
     </Group>
   );
 }

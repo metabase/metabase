@@ -1,6 +1,7 @@
 .CollapsedMoveParameterMenuInput {
   text-align: center;
   border-radius: var(--mantine-radius-sm);
+  cursor: pointer;
 
   &::placeholder {
     color: var(--mb-color-text-dark);
@@ -13,5 +14,15 @@
     &::placeholder {
       color: var(--mb-color-brand);
     }
+  }
+}
+
+.MoveParameterMenuOptionText {
+  color: var(--mb-color-text-dark);
+}
+
+.MoveParameterMenuOption[aria-selected="true"] {
+  .MoveParameterMenuOptionText {
+    color: var(--mb-color-text-white);
   }
 }
