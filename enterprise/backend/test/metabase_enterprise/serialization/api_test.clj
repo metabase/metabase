@@ -162,7 +162,7 @@
         (is (= known-files
                (set (.list (io/file api.serialization/parent-dir)))))))))
 
-(defn- search-result-count [search-string]
+(defn- search-result-count [model search-string]
   (:total
    (search/search
     (search/search-context
@@ -170,7 +170,7 @@
       :is-superuser?         true
       :is-impersonated-user? false
       :is-sandboxed-user?    false
-      :models                nil
+      :models                #{model}
       :current-user-perms    #{"/"}
       :search-string         search-string}))))
 
@@ -183,13 +183,16 @@
           (mt/with-premium-features #{:serialization}
             (testing "POST /api/ee/serialization/export"
               (mt/with-temp [:model/Collection coll  {}
-                             :model/Dashboard  _dash {:collection_id (:id coll)}
-                             :model/Card       card  {:collection_id (:id coll), :name "frobinate"}]
+                             :model/Dashboard  dash  {:collection_id (:id coll), :name "thraddash"}
+                             :model/Card       card  {:collection_id (:id coll), :name "frobinate", :type :model}]
 
                 (testing "We clear the card from the search index"
-                  (is (= 1 (search-result-count "frobinate")))
+                  (is (= 1 (search-result-count "dashboard" "thraddash")))
+                  (is (= 1 (search-result-count "dataset" "frobinate")))
+                  (search/delete! :model/Dashboard [(str (:id dash))])
                   (search/delete! :model/Card [(str (:id card))])
-                  (is (= 0 (search-result-count "frobinate"))))
+                  (is (= 0 (search-result-count "dashboard" "thraddash")))
+                  (is (= 0 (search-result-count "dataset" "frobinate"))))
 
                 (let [res (-> (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                                     :collection (:id coll) :data_model false :settings false)
@@ -228,7 +231,8 @@
                             (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))
 
                   (testing "POST /api/ee/serialization/import"
-                    (t2/update! :model/Card {:id (:id card)} {:name (str "qwe_" (:name card))})
+                    (t2/update! :model/Dashboard {:id (:id dash)} {:name "urquan"})
+                    (t2/delete! :model/Card (:id card))
 
                     (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
                                                     {:request-options {:headers {"content-type" "multipart/form-data"}}}
@@ -237,8 +241,8 @@
                         (is (= #{"Collection" "Dashboard" "Card" "Database"}
                                (log-types (line-seq (io/reader (io/input-stream res)))))))
                       (testing "And they hit the db"
-                        (is (= (:name card)
-                               (t2/select-one-fn :name :model/Card :id (:id card)))))
+                        (is (= (:name dash) (t2/select-one-fn :name :model/Dashboard :entity_id (:entity_id dash))))
+                        (is (= (:name card) (t2/select-one-fn :name :model/Card :entity_id (:entity_id card)))))
                       (testing "Snowplow import event was sent"
                         (is (=? {"event"         "serialization"
                                  "direction"     "import"
@@ -252,7 +256,9 @@
                                 (-> (snowplow-test/pop-event-data-and-user-id!) last :data)))))
 
                     (testing "The loaded entities are added to the search index"
-                      (is (= 1 (search-result-count "frobinate")))))
+                      (is (= 1 (search-result-count "dashboard" "thraddash")))
+                      (is (= 0 (search-result-count "dashboard" "urquan")))
+                      (is (= 1 (search-result-count "dataset" "frobinate")))))
 
                   (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                                       (fn [^File file]
