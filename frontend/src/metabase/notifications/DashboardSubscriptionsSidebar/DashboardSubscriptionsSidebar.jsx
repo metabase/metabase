@@ -34,7 +34,7 @@ import {
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
 
-import { getSupportedCardsForSubscriptions } from "./get-supported-cards-for-subscriptions.tsx";
+import { getSupportedCardsForSubscriptions } from "./get-supported-cards-for-subscriptions";
 
 export const CHANNEL_ICONS = {
   email: "mail",

@@ -51,11 +51,16 @@ export const ParameterSidebar = (): JSX.Element | null => {
     getEditingParameterInlineDashcard,
   );
 
-  const parameter = editingParameter
-    ? parameters.find((p) => p.id === editingParameter.id)
-    : null;
-  const otherParameters = parameters.filter(
-    (p) => p.id !== editingParameter?.id,
+  const parameter = useMemo(
+    () =>
+      editingParameter
+        ? parameters.find((p) => p.id === editingParameter.id)
+        : null,
+    [editingParameter, parameters],
+  );
+  const otherParameters = useMemo(
+    () => parameters.filter((p) => p.id !== editingParameter?.id),
+    [editingParameter?.id, parameters],
   );
 
   const parameterId = parameter?.id;

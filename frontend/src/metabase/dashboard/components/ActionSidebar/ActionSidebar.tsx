@@ -24,7 +24,10 @@ export function ActionSidebar() {
     onUpdateDashCardVisualizationSettings,
   } = useDashboardContext();
 
-  const [opened, { open, close }] = useDisclosure();
+  const [
+    actionModalOpened,
+    { open: openActionModal, close: closeActionModal },
+  ] = useDisclosure();
 
   const dashcardId = sidebar.props.dashcardId;
 
@@ -58,7 +61,6 @@ export function ActionSidebar() {
           enableReinitialize
           onSubmit={() => {
             onClose();
-            return;
           }}
         >
           <Form display="contents">
@@ -98,7 +100,7 @@ export function ActionSidebar() {
             <Button
               variant="filled"
               fullWidth
-              onClick={open}
+              onClick={openActionModal}
             >{t`Pick an action`}</Button>
           ) : (
             <Flex justify="space-between" py="xs">
@@ -106,20 +108,24 @@ export function ActionSidebar() {
               <Button
                 h="auto"
                 variant="transparent"
-                onClick={open}
+                onClick={openActionModal}
                 flex="0 0 auto"
               >{t`Change action`}</Button>
             </Flex>
           )}
         </Box>
 
-        <Modal.Root opened={opened} onClose={close} size="auto">
+        <Modal.Root
+          opened={actionModalOpened}
+          onClose={closeActionModal}
+          size="auto"
+        >
           <Modal.Overlay />
           <Modal.Content>
             <ConnectedActionDashcardSettings
               dashboard={dashboard}
               dashcard={dashcard as ActionDashboardCard}
-              onClose={close}
+              onClose={closeActionModal}
             />
           </Modal.Content>
         </Modal.Root>
