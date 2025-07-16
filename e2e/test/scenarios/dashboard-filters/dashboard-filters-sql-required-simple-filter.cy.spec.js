@@ -94,7 +94,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     // Finally, when we remove dashboard filter's default value, the url should reflect that by removing the placeholder
     H.editDashboard();
 
-    openFilterOptions("Text");
+    H.filterWidget({ isEditing: true, name: "Text" }).click();
 
     H.sidebar().within(() => {
       removeDefaultFilterValue("Bar");
@@ -106,10 +106,6 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     cy.location("search").should("eq", "?text=");
   });
 });
-
-function openFilterOptions(filterDisplayName) {
-  cy.findByText(filterDisplayName).parent().find(".Icon-gear").click();
-}
 
 function removeDefaultFilterValue(value) {
   cy.findByDisplayValue(value).parent().find(".Icon-close").click();

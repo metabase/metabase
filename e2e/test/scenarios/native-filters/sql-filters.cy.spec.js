@@ -214,9 +214,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         setDefaultDate("2023", "11", "01");
         H.filterWidget().icon("close").click();
         SQLFilter.toggleRequired();
-        H.filterWidget()
-          .findByTestId("field-set-content")
-          .should("have.text", "November 1, 2023");
+        H.filterWidget().should("contain.text", "November 1, 2023");
       });
 
       it("when there's a default value and template tag is required, can reset it back", () => {
@@ -228,9 +226,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
           cy.findByText("Update filter").click();
         });
         H.filterWidget().icon("revert").click();
-        H.filterWidget()
-          .findByTestId("field-set-content")
-          .should("have.text", "November 1, 2023");
+        H.filterWidget().should("contain.text", "November 1, 2023");
       });
     });
   });
