@@ -10,7 +10,9 @@
   "Atom to hold the JDBC data source for the semantic search database."
   (atom nil))
 
-(def ^:private db-url (env :mb-pgvector-db-url))
+(def db-url
+  "The database URL used to connect to pgvector"
+  (env :mb-pgvector-db-url))
 
 (defn- build-db-config
   "Build database configuration from environment variables"
