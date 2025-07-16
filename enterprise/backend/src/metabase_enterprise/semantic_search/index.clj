@@ -7,6 +7,7 @@
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.models.interface :as mi]
    [metabase.search.core :as search]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [nano-id.core :as nano-id]
    [next.jdbc :as jdbc]
@@ -17,13 +18,72 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *index-table-name*
-  "The name of the index table used for semantic search."
-  :search_index)
+;; State management for active/pending table tracking
+(defonce ^:dynamic ^:private *indexes* (atom {:active nil, :pending nil}))
+
+(def ^:dynamic *table-name-prefix*
+  "Prefix for generated table names. Can be overridden in tests."
+  "semantic_search")
+
+(defn reset-tracking!
+  "Reset tracking for the semantic search engine."
+  []
+  (reset! *indexes* {:active nil, :pending nil}))
 
 (def ^:dynamic *vector-dimensions*
   "The number of dimensions in the vector embeddings for the current model."
   1024)
+
+(defn active-table
+  "The table against which we should currently make semantic search queries."
+  []
+  (:active @*indexes*))
+
+(defn- pending-table
+  "A partially populated table that will take over from [[active-table]] when it is done."
+  []
+  (:pending @*indexes*))
+
+(defn gen-table-name
+  "Generate a unique table name to use as a semantic search index table."
+  []
+  ;; Use slightly longer nano-ids to compensate for lower-casing, just in case
+  (keyword (-> (str *table-name-prefix* "__" (nano-id/nano-id 29))
+               (str/replace #"-" "_")
+               (u/lower-case-en))))
+
+(defn- table-name [kw]
+  (when kw (name kw)))
+
+(defn- exists? [table]
+  (when table
+    (try
+      (let [result (jdbc/execute! @db/data-source
+                                  ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = ?)"
+                                   (table-name table)])]
+        (-> result first vals first))
+      (catch Exception _ false))))
+
+(defn- drop-table! [table]
+  (boolean
+   (when (and table (exists? table))
+     (try
+       (jdbc/execute! @db/data-source
+                      (sql/format (sql.helpers/drop-table (keyword (table-name table)))))
+       true
+       (catch Exception _ false)))))
+
+(defn activate-table!
+  "Make the pending index active if it exists. Returns true if it did so."
+  []
+  (boolean
+   (when-let [pending (:pending @*indexes*)]
+     (let [old-active (:active @*indexes*)]
+       (reset! *indexes* {:pending nil, :active pending})
+       ;; Clean up old active table
+       (when old-active
+         (drop-table! old-active))
+       true))))
 
 (defn- index-table-schema
   "Schema for the index table."
@@ -47,6 +107,41 @@
      [:metadata :jsonb]
      [[:constraint unique-constraint-name]
       [:unique [:composite :model :model_id]]]]))
+
+(defn- drop-index-table-sql
+  [table-name]
+  (sql/format (sql.helpers/drop-table :if-exists table-name)))
+
+(defn drop-index-table!
+  "Drop the index table if it exists."
+  ([table-name]   (when table-name (jdbc/execute! @db/data-source (drop-index-table-sql table-name))))
+  ([tx table-name] (when table-name (jdbc/execute! tx (drop-index-table-sql table-name)))))
+
+(defn create-index-table!
+  "Ensure that the index table exists and is ready to be populated. If
+  force-reset? is true, drops and recreates the table if it exists."
+  [{:keys [force-reset? table-name] :or {force-reset? false table-name (gen-table-name)}}]
+  (try
+    (jdbc/with-transaction [tx @db/data-source]
+      (jdbc/execute! tx (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
+      (when force-reset? (drop-index-table! tx table-name))
+      (jdbc/execute!
+       tx
+       (-> (sql.helpers/create-table table-name)
+           (sql.helpers/with-columns (index-table-schema))
+           sql/format)))
+    table-name
+    (catch Exception e
+      (throw (ex-info "Failed to create index table" {:cause e :table-name table-name})))))
+
+(defn maybe-create-pending!
+  "Create a semantic search index table if one doesn't exist. Record and return the name of the table, regardless."
+  []
+  (or (pending-table)
+      (let [table-name (gen-table-name)]
+        (create-index-table! {:table-name table-name})
+        (swap! *indexes* assoc :pending table-name)
+        table-name)))
 
 (defn- format-embedding
   "Formats the embedding vector for SQL insertion."
@@ -76,19 +171,20 @@
   "Inserts a set of documents into the index table. Throws when trying to insert
   existing model + model_id pairs. (Use upsert-index! to update existing documents)"
   [documents]
-  (jdbc/with-transaction [tx @db/data-source]
-    (doseq [doc documents]
-      (jdbc/execute!
-       tx
-       (sql/format
-        (-> (sql.helpers/insert-into *index-table-name*)
-            (sql.helpers/values [(doc->db-record doc)])))))))
+  (when (and table-name (seq documents))
+   (jdbc/with-transaction [tx @db/data-source]
+     (doseq [doc documents]
+       (jdbc/execute!
+        tx
+        (sql/format
+         (-> (sql.helpers/insert-into *index-table-name*)
+             (sql.helpers/values [(doc->db-record doc)]))))))))
 
 (defn- upsert-honeysql
-  [doc]
+  [doc table-name]
   (let [db-record (doc->db-record doc)]
     (->
-     (sql.helpers/insert-into *index-table-name*)
+     (sql.helpers/insert-into table-name)
      (sql.helpers/values [db-record])
      (sql.helpers/on-conflict :model :model_id)
      (sql.helpers/do-update-set
@@ -97,38 +193,22 @@
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
   model + model_id already exists, it will be replaced."
-  [documents]
-  (jdbc/with-transaction [tx @db/data-source]
-    (doseq [doc documents]
-      (jdbc/execute!
-       tx
-       (sql/format
-        (upsert-honeysql doc))))))
-
-(defn- drop-index-table-sql
-  []
-  (sql/format (sql.helpers/drop-table :if-exists *index-table-name*)))
-
-(defn drop-index-table!
-  "Drop the index table if it exists."
-  ([]   (jdbc/execute! @db/data-source (drop-index-table-sql)))
-  ([tx] (jdbc/execute! tx (drop-index-table-sql))))
-
-(defn create-index-table!
-  "Ensure that the index table exists and is ready to be populated. If
-  force-reset? is true, drops and recreates the table if it exists."
-  [{:keys [force-reset?] :or {force-reset? false}}]
-  (try
-    (jdbc/with-transaction [tx @db/data-source]
-      (jdbc/execute! tx (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
-      (when force-reset? (drop-index-table! tx))
-      (jdbc/execute!
-       tx
-       (-> (sql.helpers/create-table *index-table-name*)
-           (sql.helpers/with-columns (index-table-schema))
-           sql/format)))
-    (catch Exception e
-      (throw (ex-info "Failed to create index table" {:cause e})))))
+  ([documents]
+   (let [active-table (active-table)
+         pending-table (pending-table)]
+     ;; Update both active and pending tables if they exist
+     (when active-table
+       (upsert-index! documents active-table))
+     (when pending-table
+       (upsert-index! documents pending-table))))
+  ([documents table-name]
+   (when (and table-name (seq documents))
+     (jdbc/with-transaction [tx @db/data-source]
+       (doseq [doc documents]
+         (jdbc/execute!
+          tx
+          (sql/format
+           (upsert-honeysql doc table-name))))))))
 
 (defn- search-filters
   "Generate WHERE conditions based on search context filters."
@@ -165,7 +245,7 @@
                              [:verified :verified]
                              [[:raw (str "embedding <=> " (format-embedding embedding))] :distance]
                              [:metadata :metadata]]
-                    :from   [*index-table-name*]
+                    :from   [(or (active-table) :search_index)]
                     :order-by [[:distance :asc]]
                     :limit  100}]
     (if filters
@@ -209,14 +289,39 @@
 (defn delete-from-index!
   "Deletes documents from the index table based on model and model_ids."
   [model model-ids]
-  (jdbc/with-transaction [tx @db/data-source]
-    (jdbc/execute!
-     tx
-     (sql/format
-      (-> (sql.helpers/delete-from *index-table-name*)
-          (sql.helpers/where [:and
-                              [:= :model model]
-                              [:in :model_id model-ids]]))))))
+  (let [active-table (active-table)
+        pending-table (pending-table)]
+    ;; Delete from both active and pending tables if they exist
+    (jdbc/with-transaction [tx @db/data-source]
+      (doseq [table [active-table pending-table]]
+        (when table
+          (jdbc/execute!
+           tx
+           (sql/format
+            (-> (sql.helpers/delete-from table)
+                (sql.helpers/where [:and
+                                    [:= :model model]
+                                    [:in :model_id model-ids]])))))))))
+
+(defn reset-index!
+  "Ensure we have a blank slate; in case the table schema or stored data format has changed."
+  []
+  ;; Drop any existing pending table
+  (when-let [table-name (pending-table)]
+    (drop-table! table-name)
+    (swap! *indexes* assoc :pending nil))
+  ;; Create new pending table and activate it
+  (maybe-create-pending!)
+  (activate-table!))
+
+(defn ensure-ready!
+  "Ensure the index is ready to be populated. Return false if it was already ready."
+  [& {:keys [force-reset?]}]
+  ;; Be extra careful against races on initializing
+  (locking *indexes*
+    (when (or force-reset? (not (exists? (active-table))))
+      (reset-index!)
+      true)))
 
 (comment
   (create-index-table! {:force-reset? true})
@@ -230,4 +335,9 @@
   #_:clj-kondo/ignore
   (require '[metabase.test :as mt])
   (mt/with-test-user :crowberto
-    (doall (query-index {:search-string "Copper knife"}))))
+    (doall (query-index {:search-string "Copper knife"})))
+
+  ;; Test table swapping
+  (reset-index!)
+  (active-table)
+  (pending-table))

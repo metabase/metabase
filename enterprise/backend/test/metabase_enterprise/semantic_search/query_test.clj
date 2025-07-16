@@ -4,7 +4,6 @@
    [metabase-enterprise.semantic-search.db :as semantic.db]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
-   [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util.log :as log]
@@ -66,15 +65,24 @@
   (is (= {:test 1} (semantic.db/test-connection!))))
 
 (defmacro ^:private with-temp-index-table! [& body]
-  `(let [test-table-name# (keyword (str "test_search_index_" (nano-id/nano-id)))]
-     (binding [semantic.index/*index-table-name* test-table-name#
-               semantic.index/*vector-dimensions* 4]
+  `(let [test-table-name# (keyword (str "test_search_index_" (nano-id/nano-id)))
+         ;; Save the current active table
+         original-active# (semantic.index/active-table)]
+     (binding [semantic.index/*vector-dimensions* 4
+               semantic.index/*table-name-prefix* "test_search_index"]
+       ;; Reset tracking and set up a temporary active table
+       (semantic.index/reset-tracking!)
+       (swap! @#'semantic.index/*indexes* assoc :active test-table-name#)
        (try
-         (semantic.index/create-index-table! {:force-reset? true})
+         (semantic.index/create-index-table! {:table-name test-table-name# :force-reset? true})
          ~@body
          (finally
            (try
-             (semantic.index/drop-index-table!)
+             (semantic.index/drop-index-table! test-table-name#)
+             ;; Restore the original state
+             (semantic.index/reset-tracking!)
+             (when original-active#
+               (swap! @#'semantic.index/*indexes* assoc :active original-active#))
              (catch Exception e#
                (log/error "Warning: failed to clean up test table" test-table-name# ":" (.getMessage e#)))))))))
 
@@ -103,7 +111,9 @@
                         :model/Dashboard        {}           {:name "Tiger Conservation" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
                         :model/Database         {db-id# :id} {:name "Animal Database"}
                         :model/Table            {}           {:name "Species Table", :db_id db-id#}]
-           (search.core/reindex! :search.engine/semantic {:force-reset true})
+           ;; Ensure index is ready and populate it
+           (semantic.index/ensure-ready! :force-reset? true)
+           (semantic.index/populate-index! (vec (search.ingestion/searchable-documents)))
            ~@body)))))
 
 (deftest basic-query-test
@@ -226,7 +236,9 @@
             (let [results (semantic.index/query-index {:search-string "marine mammal"
                                                        :models ["dashboard"]
                                                        :verified true
-                                                       :archived? false})]
+                                                       :archived? false})
+                  filtered-results (filter-for-mock-embeddings results)]
+              (is (pos? (count filtered-results)))
               (is (every? #(and (= "dashboard" (:model %))
                                 (:verified %)
                                 (not (:archived %))) results)))))))))

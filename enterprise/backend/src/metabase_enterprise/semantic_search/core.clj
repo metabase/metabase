@@ -39,25 +39,29 @@
   (semantic.index/delete-from-index! model ids)
   {model (count ids)})
 
-;; TODO: add reindexing logic when index is detected as stale
 (defenterprise init!
   "Initialize the semantic search table and populate it with initial data."
   :feature :none
   [searchable-documents _opts]
   (semantic.db/init-db!)
-  (semantic.index/create-index-table! {:force-reset? true})
-  (semantic.index/populate-index! (into [] searchable-documents)))
+  (semantic.index/ensure-ready!)
+  (when (seq searchable-documents)
+    (semantic.index/populate-index! (into [] searchable-documents))))
 
 (defenterprise reindex!
-  "Reindex the semantic search index."
+  "Reindex the semantic search index using table swapping for zero-downtime."
   :feature :none
   [searchable-documents _opts]
-  ;; TODO:implement reindexing without dropping the table
-  (semantic.index/create-index-table! {:force-reset? true})
-  (semantic.index/populate-index! (into [] searchable-documents)))
+  ;; Create a new pending table
+  (let [pending-table (semantic.index/maybe-create-pending!)]
+    (when (seq searchable-documents)
+      ;; Populate the pending table
+      (semantic.index/populate-index! (into [] searchable-documents) pending-table))
+    ;; Activate the pending table (swaps to active)
+    (semantic.index/activate-table!)))
 
 (defenterprise reset-tracking!
   "Enterprise implementation of semantic search tracking reset."
   :feature :none
   []
-  nil)
+  (semantic.index/reset-tracking!))
