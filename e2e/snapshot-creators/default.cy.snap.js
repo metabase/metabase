@@ -115,6 +115,7 @@ describe("snapshots", () => {
       "license-token-missing-banner-dismissal-timestamp",
       new Date().toISOString(),
     );
+    updateSetting("store-url", "https://test-store.metabase.com");
   }
 
   function addUsersAndGroups() {
