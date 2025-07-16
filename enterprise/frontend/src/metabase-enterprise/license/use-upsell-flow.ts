@@ -78,13 +78,13 @@ export function useUpsellFlow({
   }, [updateToken, storeOrigin]);
 
   useEffect(() => {
+    sendToast({
+      icon: "warning",
+      message: error,
+      timeout: NOTIFICATION_TIMEOUT,
+    });
     if (error && storeWindowRef.current) {
       sendMessageTokenActivation(false, storeWindowRef.current, storeOrigin);
-      sendToast({
-        icon: "warning",
-        message: error,
-        timeout: NOTIFICATION_TIMEOUT,
-      });
     }
   }, [tokenStatus, error, sendToast, storeOrigin]);
 
