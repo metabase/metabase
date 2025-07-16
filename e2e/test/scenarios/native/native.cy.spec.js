@@ -7,7 +7,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Count of orders",
@@ -184,9 +184,13 @@ describe("scenarios > question > native", () => {
     });
 
     describe("time grouping", () => {
-      function setTypeAndField() {
+      function setVariableType() {
         H.rightSidebar().findByTestId("variable-type-select").click();
         H.popover().findByText("Time grouping").click();
+      }
+
+      function setVariableTypeAndField() {
+        setVariableType();
         H.popover().within(() => {
           cy.findByText("Orders").click();
           cy.findByText("Created At").click();
@@ -198,7 +202,7 @@ describe("scenarios > question > native", () => {
         H.NativeEditor.type(
           "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
         );
-        setTypeAndField();
+        setVariableTypeAndField();
         H.rightSidebar()
           .findByLabelText("Filter widget label")
           .type(" updated")
@@ -211,7 +215,7 @@ describe("scenarios > question > native", () => {
         H.NativeEditor.type(
           "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
         );
-        setTypeAndField();
+        setVariableTypeAndField();
         H.rightSidebar()
           .findByLabelText("Always require a value")
           .parent()
@@ -319,21 +323,15 @@ describe("scenarios > question > native", () => {
         const questionWithDefaultValue = {
           name: "Saved question with time grouping",
           native: {
-            query: `
-          SELECT
-            count(*),
-            {{mb.time_grouping("unit", "created_at")}} as unit
-          FROM
-            ORDERS
-          GROUP BY
-            unit
-          `,
+            query:
+              "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
             "template-tags": {
               unit: {
                 type: "temporal-unit",
                 name: "unit",
                 id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
                 "display-name": "Unit",
+                dimension: ["field", ORDERS.CREATED_AT, null],
                 required: true,
                 default: "year",
               },
@@ -372,11 +370,9 @@ describe("scenarios > question > native", () => {
           native: {
             query: `
               SELECT
-                ID [[,{{mb.time_grouping("unit", "CREATED_AT")}} as unit]]
+                ID [[,{{unit}} as unit]]
               FROM
                 PEOPLE
-              WHERE
-                1 = 1 [[AND ID = {{x}}]]
               ORDER BY
                 ID
               LIMIT
@@ -388,6 +384,7 @@ describe("scenarios > question > native", () => {
                 name: "unit",
                 id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
                 "display-name": "Unit",
+                dimension: ["field", PEOPLE.CREATED_AT, null],
                 default: "year",
               },
             },
@@ -424,6 +421,7 @@ describe("scenarios > question > native", () => {
                 type: "temporal-unit",
                 name: "unit",
                 id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+                dimension: ["field", PEOPLE.CREATED_AT, null],
                 "display-name": "Unit",
               },
             },
@@ -434,270 +432,20 @@ describe("scenarios > question > native", () => {
           visitQuestion: true,
         });
 
-        // it should change in the future: when time grouping is marked as optional via [[]]
-        // a column is not included into the resulted dataset
-        // it is included currently
         cy.findByTestId("query-visualization-root")
-          .should("contain", "October 7, 2023, 1:34 AM")
-          .should("contain", "UNIT");
+          .should("not.contain", "October 7, 2023, 1:34 AM")
+          .should("not.contain", "UNIT");
       });
 
-      describe("validation", () => {
-        it("should show validation error when query is invalid", () => {
-          const question = {
-            name: "Saved question with invalid query",
-            native: {
-              query: `
-                SELECT
-                  count(*),
-                  {{mb.time_grouping("unit", "created_at")}} as unit,
-                  {{unit}}
-                FROM
-                  ORDERS
-                GROUP BY
-                  unit
-              `,
-              "template-tags": {
-                unit: {
-                  type: "temporal-unit",
-                  name: "unit",
-                  id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
-                  "display-name": "Unit",
-                  required: true,
-                },
-              },
-            },
-          };
-
-          H.createNativeQuestion(question).then(({ body: { id } }) => {
-            H.visitQuestion(id);
-          });
-
-          cy.findByTestId("visibility-toggler").click();
-
-          cy.findByTestId("query-validation-error")
-            .should(
-              "contain",
-              "Parameter unit is used as both a time grouping and a variable. This is not allowed.",
-            )
-            .should("be.visible");
-        });
-
-        it("should not show validation error when query is valid", () => {
-          const question = {
-            name: "Saved question with invalid query",
-            native: {
-              query: `
-                SELECT
-                  count(*),
-                  {{mb.time_grouping("unit", "created_at")}} as unit
-                FROM
-                  ORDERS
-                GROUP BY
-                  unit
-              `,
-              "template-tags": {
-                unit: {
-                  type: "temporal-unit",
-                  name: "unit",
-                  id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
-                  "display-name": "Unit",
-                  required: true,
-                },
-              },
-            },
-          };
-
-          H.createNativeQuestion(question).then(({ body: { id } }) => {
-            H.visitQuestion(id);
-          });
-          cy.findByTestId("visibility-toggler").click();
-
-          cy.findByTestId("query-validation-error").should("not.exist");
-        });
-
-        it("should show validation error when valid query becomes invalid", () => {
-          H.startNewNativeQuestion();
-
-          const query = `
-                SELECT
-                  count(*),
-                  {{mb.time_grouping("unit", "created_at")}} as unit,
-                  {{uni}}
-              `
-            .trim()
-            .split("\n")
-            .map((line) => line.trim())
-            .join(" ")
-            .trim();
-
-          cy.log("type a valid time grouping syntax");
-          H.NativeEditor.type(query);
-
-          cy.findByTestId("query-validation-error").should("not.exist");
-
-          cy.log("type an invalid time grouping syntax");
-          H.NativeEditor.type("{backspace}{backspace}t}}");
-
-          cy.findByTestId("query-validation-error")
-            .should("contain", "This is not allowed")
-            .should("be.visible");
-
-          cy.log("correct query to verify error is gone");
-          H.NativeEditor.type("{backspace}{backspace}1}}");
-
-          cy.findByTestId("query-validation-error").should("not.exist");
-        });
-
-        it("should show syntax errors", () => {
-          const questionWithUnknownFunction = {
-            name: "Saved question with invalid query",
-            native: {
-              query: `
-                SELECT
-                  count(*),
-                  {{mb.time_grouping_broken("unit", "created_at")}} as unit
-                FROM
-                  ORDERS
-                GROUP BY
-                  unit
-              `,
-              "template-tags": {
-                unit: {
-                  type: "temporal-unit",
-                  name: "unit",
-                  id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
-                  "display-name": "Unit",
-                  required: true,
-                },
-              },
-            },
-          };
-
-          const questionWithBrokenSyntax = {
-            name: "Saved question with invalid query",
-            native: {
-              query: `
-                SELECT
-                  count(*),
-                  {{m.time_grouping("unit", "created_at")}} as unit
-                FROM
-                  ORDERS
-                GROUP BY
-                  unit
-              `,
-              "template-tags": {
-                unit: {
-                  type: "temporal-unit",
-                  name: "unit",
-                  id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
-                  "display-name": "Unit",
-                  required: true,
-                },
-              },
-            },
-          };
-
-          const questionWithWrongParam = {
-            name: "Saved question with invalid query",
-            native: {
-              query: `
-                SELECT
-                  count(*),
-                  {{mb.time_grouping("unit")}} as unit
-                FROM
-                  ORDERS
-                GROUP BY
-                  unit
-              `,
-              "template-tags": {
-                unit: {
-                  type: "temporal-unit",
-                  name: "unit",
-                  id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
-                  "display-name": "Unit",
-                  required: true,
-                },
-              },
-            },
-          };
-
-          const questionWithEmptyParam = {
-            name: "Saved question with invalid query",
-            native: {
-              query: `
-                SELECT
-                  count(*),
-                  {{mb.time_grouping("unit", "")}} as unit
-                FROM
-                  ORDERS
-                GROUP BY
-                  unit
-              `,
-              "template-tags": {
-                unit: {
-                  type: "temporal-unit",
-                  name: "unit",
-                  id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
-                  "display-name": "Unit",
-                  required: true,
-                },
-              },
-            },
-          };
-
-          H.createNativeQuestion(questionWithUnknownFunction).then(
-            ({ body: { id } }) => {
-              H.visitQuestion(id);
-            },
-          );
-
-          cy.findByTestId("visibility-toggler").click();
-
-          cy.findByTestId("query-validation-error").should(
-            "contain",
-            "Unknown function: mb.time_grouping_broken",
-          );
-
-          H.createNativeQuestion(questionWithBrokenSyntax).then(
-            ({ body: { id } }) => {
-              H.visitQuestion(id);
-            },
-          );
-
-          cy.findByTestId("visibility-toggler").click();
-
-          cy.findByTestId("query-validation-error").should(
-            "contain",
-            'Syntax error in: m.time_grouping("unit", "created_at")',
-          );
-
-          H.createNativeQuestion(questionWithWrongParam).then(
-            ({ body: { id } }) => {
-              H.visitQuestion(id);
-            },
-          );
-
-          cy.findByTestId("visibility-toggler").click();
-
-          cy.findByTestId("query-validation-error").should(
-            "contain",
-            "mb.time_grouping got too few parameters",
-          );
-
-          H.createNativeQuestion(questionWithEmptyParam).then(
-            ({ body: { id } }) => {
-              H.visitQuestion(id);
-            },
-          );
-
-          cy.findByTestId("visibility-toggler").click();
-
-          cy.findByTestId("query-validation-error").should(
-            "contain",
-            "mb.time_grouping got invalid parameters",
-          );
-        });
+      it("should show validation error when query is invalid", () => {
+        H.startNewNativeQuestion();
+        H.NativeEditor.type(
+          "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
+        );
+        setVariableType();
+        H.queryBuilderHeader()
+          .button("Save")
+          .should("have.attr", "data-disabled");
       });
     });
   });
