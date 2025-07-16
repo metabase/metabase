@@ -324,6 +324,42 @@ databaseChangeLog:
                 constraintName: idx_unique_report_card_card_deps_both_ids
                 columnNames: downstream_card_id, upstream_card_id
 
+  - changeSet:
+      id: v56.2025-07-14T20:11:00
+      author: metamben
+      comment: Add index on report_card_table_deps.table_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_card_table_deps
+                indexName: idx_report_card_table_deps_table_id
+      changes:
+        - createIndex:
+            tableName: report_card_table_deps
+            indexName: idx_report_card_table_deps_table_id
+            columns:
+              - column:
+                  name: table_id
+
+  - changeSet:
+      id: v56.2025-07-14T20:11:08
+      author: metamben
+      comment: Add index on report_card_card_deps.upstream_card_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_card_card_deps.upstream_card_id
+                indexName: idx_report_card_card_deps_upstream_card_id
+      changes:
+        - createIndex:
+            tableName: report_card_card_deps
+            indexName: idx_report_card_card_deps_upstream_card_id
+            columns:
+              - column:
+                  name: upstream_card_id
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
