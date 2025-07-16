@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 
@@ -27,5 +28,16 @@ export const useMetadataToasts = () => {
     [sendToast],
   );
 
-  return { sendSuccessToast, sendErrorToast };
+  const sendUndoToast = useCallback(
+    (error: unknown) => {
+      if (error) {
+        sendErrorToast(t`Failed to undo`);
+      } else {
+        sendSuccessToast(t`Change undone`);
+      }
+    },
+    [sendErrorToast, sendSuccessToast],
+  );
+
+  return { sendErrorToast, sendSuccessToast, sendUndoToast };
 };

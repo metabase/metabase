@@ -35,7 +35,8 @@ const FieldSectionBase = ({
 }: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateField({ id, display_name: name });
@@ -49,11 +50,7 @@ const FieldSectionBase = ({
           display_name: field.display_name,
         });
 
-        if (error) {
-          sendErrorToast(t`Failed to undo`);
-        } else {
-          sendSuccessToast(t`Change undone`);
-        }
+        sendUndoToast(error);
       });
     }
   };
@@ -76,11 +73,7 @@ const FieldSectionBase = ({
             description: field.description ?? "",
           });
 
-          if (error) {
-            sendErrorToast(t`Failed to undo`);
-          } else {
-            sendSuccessToast(t`Change undone`);
-          }
+          sendUndoToast(error);
         },
       );
     }
