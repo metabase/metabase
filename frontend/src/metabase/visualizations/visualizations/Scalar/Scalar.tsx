@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
@@ -7,10 +6,11 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import ScalarValue, {
+import {
   ScalarTitle,
+  ScalarValue,
   ScalarWrapper,
-} from "metabase/visualizations/components/ScalarValue";
+} from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -19,7 +19,13 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type {
+  ComputedVisualizationSettings,
+  VisualizationPassThroughProps,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import type { DatasetColumn, DatasetData } from "metabase-types/api/dataset";
 
 import { LabelIcon, ScalarContainer } from "./Scalar.styled";
 import { TITLE_ICON_SIZE } from "./constants";
@@ -27,7 +33,9 @@ import { scalarToBarTransform } from "./scalars-bar-transform";
 import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";
 
 // convert legacy `scalar.*` visualization settings to format options
-function legacyScalarSettingsToFormatOptions(settings) {
+function legacyScalarSettingsToFormatOptions(
+  settings: ComputedVisualizationSettings,
+) {
   return _.chain(settings)
     .pairs()
     .filter(([key, value]) => key.startsWith("scalar.") && value !== undefined)
@@ -38,7 +46,9 @@ function legacyScalarSettingsToFormatOptions(settings) {
 
 // Scalar visualization shows a single number
 // Multiseries Scalar is transformed to a Funnel
-export class Scalar extends Component {
+export class Scalar extends Component<
+  VisualizationProps & VisualizationPassThroughProps
+> {
   static getUiName = () => t`Number`;
   static identifier = "scalar";
   static iconName = "number";
@@ -49,15 +59,11 @@ export class Scalar extends Component {
   static minSize = getMinSize("scalar");
   static defaultSize = getDefaultSize("scalar");
 
-  static isSensible({ cols, rows }) {
+  static isSensible({ cols, rows }: DatasetData) {
     return rows.length === 1 && cols.length === 1;
   }
 
-  static checkRenderable([
-    {
-      data: { cols, rows },
-    },
-  ]) {
+  static checkRenderable() {
     // scalar can always be rendered, nothing needed here
   }
 
@@ -123,7 +129,12 @@ export class Scalar extends Component {
     click_behavior: {},
   };
 
-  _getColumnIndex(cols, settings) {
+  _scalar: HTMLElement | null = null;
+
+  _getColumnIndex(
+    cols: DatasetColumn[],
+    settings: ComputedVisualizationSettings,
+  ) {
     const columnIndex = _.findIndex(
       cols,
       (col) => col.name === settings["scalar.field"],
@@ -170,7 +181,7 @@ export class Scalar extends Component {
 
     const formatOptions = {
       ...legacyScalarSettingsToFormatOptions(settings),
-      ...settings.column(column),
+      ...settings.column?.(column),
       jsx: true,
     };
 
@@ -191,7 +202,10 @@ export class Scalar extends Component {
     const showSmallTitle =
       !!settings["card.title"] &&
       isDashboard &&
-      (gridSize?.width < 2 || gridSize?.height < 2);
+      Boolean(
+        (gridSize?.width != null && gridSize.width < 2) ||
+          (gridSize?.height != null && gridSize.height < 2),
+      );
 
     const titleLinesCount = getTitleLinesCount(height);
 
@@ -238,7 +252,7 @@ export class Scalar extends Component {
               gridSize={gridSize}
               height={getValueHeight(height, { isDashboard, showSmallTitle })}
               totalNumGridCols={totalNumGridCols}
-              value={displayValue}
+              value={displayValue as string}
               width={getValueWidth(width)}
             />
           </span>

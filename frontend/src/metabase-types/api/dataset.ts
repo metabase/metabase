@@ -191,6 +191,7 @@ export type TemplateTagType =
   | "text"
   | "number"
   | "date"
+  | "boolean"
   | "temporal-unit"
   | "dimension"
   | "snippet";

@@ -545,6 +545,8 @@
     :embedding-sdk
     :embedding-iframe-sdk
     :enhancements
+    :etl-connections
+    :etl-connections-pg
     :llm-autodescription
     :query-reference-validation
     :cloud-custom-smtp

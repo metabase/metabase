@@ -48,7 +48,8 @@
         {source-table-ids :tables
          source-card-ids  :cards} (split-tables-and-legacy-card-refs source-ids)
         source-tables             (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids)
-                                          (schema.table/batch-fetch-card-query-metadatas source-card-ids))
+                                          (schema.table/batch-fetch-card-query-metadatas source-card-ids
+                                                                                         {:include-database? false}))
         fk-target-field-ids       (into #{} (comp (mapcat :fields)
                                                   (keep :fk_target_field_id))
                                         source-tables)
