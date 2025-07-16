@@ -110,12 +110,19 @@ export const RemappingPicker = ({
   );
   const fkRemappingField = hasFkMappingValue ? fkRemappingFieldData : undefined;
   const isFieldsAccessRestricted = is403Error(fieldValuesError);
+  const dimension = field.dimensions?.[0];
 
   const [updateFieldValues] = useUpdateFieldValuesMutation();
   const [createFieldDimension] = useCreateFieldDimensionMutation();
   const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
 
-  const showToast = (error: unknown) => {
+  const showToast = ({
+    error,
+    undoAction,
+  }: {
+    error: unknown;
+    undoAction?: () => void;
+  }) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
@@ -124,6 +131,8 @@ export const RemappingPicker = ({
       });
     } else {
       sendToast({
+        action: undoAction,
+        actionLabel: t`Undo`,
         icon: "check",
         message: t`Display values of ${field.display_name} updated`,
       });
@@ -137,7 +146,21 @@ export const RemappingPicker = ({
     if (value === "original") {
       const { error } = await deleteFieldDimension(id);
 
-      showToast(error);
+      showToast({
+        error,
+        undoAction: dimension
+          ? async () => {
+              const { error } = await createFieldDimension({
+                id,
+                type: dimension.type,
+                name: dimension.name,
+                human_readable_field_id: dimension.human_readable_field_id,
+              });
+
+              showToast({ error });
+            }
+          : undefined,
+      });
 
       if (!error) {
         setHasChanged(false);
@@ -154,7 +177,25 @@ export const RemappingPicker = ({
           human_readable_field_id: entityNameFieldId,
         });
 
-        showToast(error);
+        showToast({
+          error,
+          undoAction: async () => {
+            if (dimension) {
+              const { error } = await createFieldDimension({
+                id,
+                type: dimension.type,
+                name: dimension.name,
+                human_readable_field_id: dimension.human_readable_field_id,
+              });
+
+              showToast({ error });
+            } else {
+              const { error } = await deleteFieldDimension(id);
+
+              showToast({ error });
+            }
+          },
+        });
       } else {
         // Enter a special state where we are choosing an initial value for FK target
         setHasChanged(true);
@@ -170,7 +211,25 @@ export const RemappingPicker = ({
         human_readable_field_id: null,
       });
 
-      showToast(error);
+      showToast({
+        error,
+        undoAction: async () => {
+          if (dimension) {
+            const { error } = await createFieldDimension({
+              id,
+              type: dimension.type,
+              name: dimension.name,
+              human_readable_field_id: dimension.human_readable_field_id,
+            });
+
+            showToast({ error });
+          } else {
+            const { error } = await deleteFieldDimension(id);
+
+            showToast({ error });
+          }
+        },
+      });
 
       if (!error) {
         setHasChanged(true);
@@ -191,7 +250,25 @@ export const RemappingPicker = ({
       human_readable_field_id: fkFieldId,
     });
 
-    showToast(error);
+    showToast({
+      error,
+      undoAction: async () => {
+        if (dimension) {
+          const { error } = await createFieldDimension({
+            id,
+            type: dimension.type,
+            name: dimension.name,
+            human_readable_field_id: dimension.human_readable_field_id,
+          });
+
+          showToast({ error });
+        } else {
+          const { error } = await deleteFieldDimension(id);
+
+          showToast({ error });
+        }
+      },
+    });
   };
 
   const handleCustomMappingChange = async (
@@ -204,7 +281,17 @@ export const RemappingPicker = ({
     });
 
     if (!options?.isAutomatic) {
-      showToast(error);
+      showToast({
+        error,
+        undoAction: async () => {
+          const { error } = await updateFieldValues({
+            id,
+            values: Array.from(mapping),
+          });
+
+          showToast({ error });
+        },
+      });
     }
   };
 
