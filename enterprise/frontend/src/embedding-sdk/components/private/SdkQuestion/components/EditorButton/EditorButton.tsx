@@ -27,7 +27,7 @@ export type EditorButtonProps = {
 
 /**
  * Toggle button for showing/hiding the Editor interface.
- * In custom layouts, the `EditorButton` _must_ have an {@link EditorButtonProps.onClick}` handler or the button won't do anything when clicked.
+ * In custom layouts, the `EditorButton` _must_ have an {@link InteractiveQuestionEditorButtonProps.onClick}` handler or the button won't do anything when clicked.
  *
  * @function
  * @category InteractiveQuestion
