@@ -4,8 +4,6 @@ title: Upgrading Metabase and the Embedded analytics SDK
 
 # Upgrading Metabase and the Embedded analytics SDK
 
-You'll want to upgrade your [SDK version](./version.md) in parallel with your Metabase version.
-
 Here's a basic overview of the steps you'll want to take when upgrading your SDK.
 
 ## 1. Read the release post and changelog for both Metabase and the Embedded analytics SDK
@@ -18,13 +16,13 @@ Check for any relevant changes, especially breaking changes that require you to 
 
 ## 2. Test the upgrade
 
-You'll want to upgrade Metabase and the SDK in parallel in your staging environment, as having Metabase and the SDK versions out of sync can cause errors.
+When upgrading to a new major version, you'll want to upgrade both your Metabase and your SDK version in parallel in your staging environment, as having Metabase and the SDK major versions out of sync can cause errors.
 
-### Spin up the new version of Metabase
+### Spin up the new version of Metabase for testing
+
+You can do this locally or in your staging environment. If your testing setup involves a lot of test user accounts, getting a [development instance](../../installation-and-operation/development-instance.md) could be more cost-effective.
 
 See [upgrading Metabase](../../installation-and-operation/upgrading-metabase.md).
-
-If your testing setup involves a lot of test user accounts, getting a [development instance](../../installation-and-operation/development-instance.md) could be more cost-effective.
 
 ### Upgrade the SDK with npm or yarn
 
@@ -50,13 +48,13 @@ yarn add @metabase/embedding-sdk-react@{next-major-version-number}-stable
 
 ### If there are breaking changes, make the necessary changes to your application code
 
-Breaking changes are rare, but if you do need to make changes, we'll mention it in the release notes and have docs that walk you through the changes.
+Breaking changes are rare, but if you do need to make changes, we'll mention it in the release notes for the new major version and have docs that walk you through the changes.
 
-Make sure to update or add tests for any application code changes that you make.
+Update or add tests for any application code changes that you make.
 
 ### Deploy to your staging environment
 
-In your staging environment, check that the Metabase embeds in your app are still working as expected, and perform any other testing you normally do with your application.
+In your staging environment, check that the Metabase embeds in your app are still working as expected, and perform any other testing you normally do with your application with respect to your embedded analtyics.
 
 ## 3. Deploy to production
 

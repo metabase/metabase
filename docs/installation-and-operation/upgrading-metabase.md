@@ -6,7 +6,11 @@ redirect_from:
 
 # Upgrading Metabase
 
-This page covers how to upgrade to a new [Metabase release](https://github.com/metabase/metabase/releases).
+This page covers how to upgrade to a new Metabase release.
+
+- [Announcement posts for major releases](https://www.)
+- [Changelogs](https://www.metabase.com/changelog).
+- [Release notes on GitHub](https://github.com/metabase/metabase/releases).
 
 ## Upgrading Metabase Cloud
 
