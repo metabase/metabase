@@ -59,7 +59,7 @@
     @init-delay
     (f)))
 
-(use-fixtures :once #'once-fixture)
+(use-fixtures :once once-fixture)
 
 (deftest database-initialised-test
   (is (some? @semantic.db/data-source))
