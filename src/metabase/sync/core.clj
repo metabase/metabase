@@ -20,7 +20,8 @@
 
 (p/import-vars
  [metabase.sync.analyze
-  analyze-db!]
+  analyze-db!
+  analyze-table!]
  [metabase.sync.field-values
   update-field-values!
   update-field-values-for-table!]
