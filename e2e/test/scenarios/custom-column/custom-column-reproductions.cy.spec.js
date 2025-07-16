@@ -2301,3 +2301,46 @@ describe("Issue 38498", { tags: "@external" }, () => {
     H.popover().findByText("Types are incompatible.").should("be.visible");
   });
 });
+
+describe("Issue 61010", () => {
+  const AGGREGATION_NAME = "New count";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "aggregation-options",
+              ["+", ["count"], 1],
+              {
+                name: AGGREGATION_NAME,
+                "display-name": AGGREGATION_NAME,
+              },
+            ],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openNotebook();
+    H.getNotebookStep("summarize").findByText(AGGREGATION_NAME).click();
+  });
+
+  it("should not be possible to reference an aggregation in itself (metabase#61010)", () => {
+    H.CustomExpressionEditor.clear().type("[New cou");
+    H.CustomExpressionEditor.completions()
+      .findByText("New count")
+      .should("not.exist");
+
+    H.CustomExpressionEditor.clear().type("[New count]");
+    H.popover()
+      .findByText("Unknown Aggregation or Metric: New count")
+      .should("be.visible");
+  });
+});
