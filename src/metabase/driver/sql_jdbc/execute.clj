@@ -836,7 +836,13 @@
   connection-with-timezone
   set-timezone-sql])
 
-(declare ^:private ^:dynamic *resilient-connection-ctx*)
+(def ^:private ^:dynamic
+  ^{:doc "Dynamic context for resilient connection management. Contains a map with:
+          - :db - the database instance, used to create new connections
+          - :conn - the current resilient connection (if any)
+          Used to enable connection recovery and reuse within [[driver/do-with-resilient-connection]]"}
+  *resilient-connection-ctx*
+  nil)
 
 (defmethod driver/do-with-resilient-connection :sql-jdbc
   [driver db f]
@@ -848,7 +854,7 @@
           (try (.close conn)
                (catch Throwable _)))))))
 
-(defn- is-open [^Connection conn]
+(defn- is-conn-open [^Connection conn]
   (not (.isClosed conn)))
 
 (defn try-ensure-open-conn!
@@ -870,13 +876,13 @@
 
   ^Connection [driver ^Connection connection & {:keys [force-local?] :as opts}]
   (cond
-    (and (not force-local?) (is-open connection))
+    (and (not force-local?) (is-conn-open connection))
     connection
 
     (not (thread-bound? #'*resilient-connection-ctx*))
     connection
 
-    (some-> *resilient-connection-ctx* :conn is-open)
+    (some-> *resilient-connection-ctx* :conn is-conn-open)
     (:conn *resilient-connection-ctx*)
 
     :else
