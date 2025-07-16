@@ -25,8 +25,7 @@
     (testing "We know about every model"
       (let [known-models (set (concat serdes.models/exported-models
                                       serdes.models/inlined-models
-                                      serdes.models/excluded-models
-                                      serdes.models/to-implement-models))]
+                                      serdes.models/excluded-models))]
         (is (= (set known-models)
                (set (map name (v2.entity-ids/toucan-models)))))))))
 

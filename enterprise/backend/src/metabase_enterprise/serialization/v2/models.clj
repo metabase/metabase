@@ -16,15 +16,9 @@
    "Card"
    "Collection"
    "Dashboard"
+   "DataApp"
    "NativeQuerySnippet"
    "Timeline"])
-
-(def to-implement-models
-  "The list of exported models but are pending for implementation."
-  [;; see https://linear.app/metabase/issue/WRK-579
-   "DataApp"
-   "DataAppDefinition"
-   "DataAppRelease"])
 
 (def exported-models
   "The list of all models exported by serialization by default. Used for production code and by tests."
@@ -38,7 +32,9 @@
   "An additional list of models which are inlined into parent entities for serialization.
   These are not extracted and serialized separately, but they may need some processing done.
   For example, the models should also have their entity_id fields populated (if they have one)."
-  ["DashboardCard"
+  ["DataAppDefinition"
+   "DataAppRelease"
+   "DashboardCard"
    "DashboardTab"
    "Dimension"
    "ParameterCard"
