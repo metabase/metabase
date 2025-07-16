@@ -41,6 +41,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
 
   const handleVisibilityChange = async (
     visibilityType: FieldVisibilityType,
+    previousVisibilityType = field.visibility_type,
   ) => {
     const { error } = await updateField({
       id,
@@ -55,13 +56,19 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       });
     } else {
       sendToast({
+        action: () =>
+          handleVisibilityChange(previousVisibilityType, visibilityType),
+        actionLabel: t`Undo`,
         icon: "check",
         message: t`Visibility of ${field.display_name} updated`,
       });
     }
   };
 
-  const handleFilteringChange = async (hasFieldValues: FieldValuesType) => {
+  const handleFilteringChange = async (
+    hasFieldValues: FieldValuesType,
+    previousHasFieldValues = field.has_field_values,
+  ) => {
     const { error } = await updateField({
       id,
       has_field_values: hasFieldValues,
@@ -75,6 +82,9 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       });
     } else {
       sendToast({
+        action: () =>
+          handleFilteringChange(previousHasFieldValues, hasFieldValues),
+        actionLabel: t`Undo`,
         icon: "check",
         message: t`Filtering of ${field.display_name} updated`,
       });
@@ -83,6 +93,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
 
   const handleUnfoldJsonChange = async (
     jsonUnfolding: boolean,
+    previousJsonUnfolding = field.json_unfolding ?? false,
   ): Promise<void> => {
     const { error } = await updateField({
       id,
@@ -99,6 +110,9 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       });
     } else {
       sendToast({
+        action: () =>
+          handleUnfoldJsonChange(previousJsonUnfolding, jsonUnfolding),
+        actionLabel: t`Undo`,
         icon: "check",
         message: jsonUnfolding
           ? t`JSON unfolding enabled for ${field.display_name}`
