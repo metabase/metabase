@@ -787,6 +787,13 @@ export function verifyPopoverMappingOptions(sections: MappingSection[]) {
   H.popover().within(() => {
     getPopoverItems().then(($items) => {
       let index = 0;
+      let offsetForSearch = 0;
+
+      if (index === 0 && $items[index].querySelector("input")) {
+        // Skip search box if it is the first item
+        ++index;
+        offsetForSearch = 1;
+      }
 
       for (const [sectionName, columnNames] of sections) {
         if (sectionName) {
@@ -806,7 +813,7 @@ export function verifyPopoverMappingOptions(sections: MappingSection[]) {
         }
       }
 
-      expect($items.length).to.eq(expectedItemsCount);
+      expect($items.length).to.eq(expectedItemsCount + offsetForSearch);
     });
   });
 }
