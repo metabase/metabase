@@ -585,12 +585,6 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmulti field-reference
-  "Generate a sql fragment that references a particular field"
-  {:arglists `([driver field-id])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Helper Functions for Creating New Definitions                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
