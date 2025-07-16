@@ -1,7 +1,6 @@
 (ns metabase-enterprise.semantic-search.core
   "Enterprise implementations of semantic search core functions using defenterprise."
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.semantic-search.db :as semantic.db]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase.premium-features.core :refer [defenterprise]]))
@@ -44,7 +43,7 @@
 (defenterprise init!
   "Initialize the semantic search table and populate it with initial data."
   :feature :none
-  [searchable-documents opts]
+  [searchable-documents _opts]
   (semantic.db/init-db!)
   (semantic.index/create-index-table! {:force-reset? true})
   (semantic.index/populate-index! (into [] searchable-documents)))
