@@ -2,7 +2,7 @@ import type { MouseEvent } from "react";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Loader, Tooltip } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
@@ -13,7 +13,8 @@ interface Props {
 
 export function TableVisibilityToggle({ className, table }: Props) {
   const [updateTable, { isLoading }] = useUpdateTableMutation();
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
   const isHidden = table.visibility_type != null;
 
   const hide = async () => {
@@ -23,15 +24,14 @@ export function TableVisibilityToggle({ className, table }: Props) {
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to hide ${table.display_name}`,
-      });
+      sendErrorToast(t`Failed to hide ${table.display_name}`);
     } else {
-      sendToast({
-        action: unhide,
-        message: t`Hid ${table.display_name}`,
+      sendSuccessToast(t`Hid ${table.display_name}`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          visibility_type: null,
+        });
+        sendUndoToast(error);
       });
     }
   };
@@ -43,15 +43,14 @@ export function TableVisibilityToggle({ className, table }: Props) {
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to unhide ${table.display_name}`,
-      });
+      sendErrorToast(t`Failed to unhide ${table.display_name}`);
     } else {
-      sendToast({
-        action: hide,
-        message: t`Unhid ${table.display_name}`,
+      sendSuccessToast(t`Unhid ${table.display_name}`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          visibility_type: "hidden",
+        });
+        sendUndoToast(error);
       });
     }
   };
