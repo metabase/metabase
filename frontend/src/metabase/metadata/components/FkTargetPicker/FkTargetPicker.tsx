@@ -144,7 +144,11 @@ export const FkTargetPicker = ({
         );
       }}
       searchable
-      value={stringifyValue(value)}
+      value={
+        stringifyValue(value) === ""
+          ? (null as unknown as undefined) // passing null is the only way to deselect current value
+          : stringifyValue(value)
+      }
       onChange={handleChange}
       onFocus={handleFocus}
       {...props}

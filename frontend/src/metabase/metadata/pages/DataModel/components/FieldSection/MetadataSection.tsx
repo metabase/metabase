@@ -1,6 +1,5 @@
 import { memo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   useListDatabaseIdFieldsQuery,
@@ -44,8 +43,12 @@ const MetadataSectionBase = ({ databaseId, field }: Props) => {
       sendSuccessToast(
         t`Semantic type of ${field.display_name} updated`,
         async () => {
-          const reversePatch = _.pick(field, Object.keys(patch));
-          const { error } = await updateField({ ...reversePatch, id });
+          const { error } = await updateField({
+            id,
+            fk_target_field_id: field.fk_target_field_id,
+            semantic_type: field.semantic_type,
+            settings: field.settings,
+          });
           sendUndoToast(error);
         },
       );
