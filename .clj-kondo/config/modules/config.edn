@@ -1786,9 +1786,9 @@
   enterprise/semantic-search
   {:team "Metabot"
    :api  #{metabase-enterprise.semantic-search.core}
-   :uses #{premium-features
+   :uses #{models
+           premium-features
            search
-           models
            util}}
 
   enterprise/serialization
