@@ -28,11 +28,10 @@ export const visitNewEmbedPage = ({ locale }: { locale?: string } = {}) => {
   cy.visit("/embed-iframe?" + params);
   cy.wait("@dashboard");
 
-  cy.get("#iframe-embed-container").should(
-    "have.attr",
-    "data-iframe-loaded",
-    "true",
-  );
+  cy.get("#iframe-embed-container", {
+    // we are loading lots of JS, so on a slow connection it will take a long while.
+    timeout: 20000,
+  }).should("have.attr", "data-iframe-loaded", "true");
 };
 
 export const assertRecentItemName = (
