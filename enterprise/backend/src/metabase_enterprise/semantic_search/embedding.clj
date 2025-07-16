@@ -1,9 +1,9 @@
 (ns metabase-enterprise.semantic-search.embedding
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
-   [clojure.tools.logging :as log]
-   [environ.core :refer [env]]))
+   [environ.core :refer [env]]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]))
 
 (defn pull-model
   "Pull the current embedding model from Ollama if it is not already available."
@@ -27,7 +27,7 @@
                     :body    (json/encode {:model (env :ollama-model "mxbai-embed-large")
                                            :prompt text})})
         :body
-        (json/parse-string true)
+        (json/decode true)
         :embedding)
     (catch Exception e
       (log/error e "Failed to generate embedding for text of length:" (count text))
