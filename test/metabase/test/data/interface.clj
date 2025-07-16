@@ -1066,3 +1066,23 @@
   (defmethod driver/database-supports? [driver :test/column-impersonation]
     [_driver _feature _database]
     false))
+
+(defn tracking-access-note
+  "Generic tracking access note"
+  []
+  (if (:ci env/env)
+    (format "CI: %s %s %s"
+            (str t/*testing-vars*)
+            (get env/env :github-actor)
+            (get env/env :github-head-ref))
+    (format "DEV: %s %s"
+            (str t/*testing-vars*)
+            (:user env/env))))
+
+(def ^:dynamic *use-routing-details*
+  "Used to decide if routing details should be used for a db."
+  false)
+
+(def ^:dynamic *use-routing-dataset*
+  "Used to override the dataset name for routing tests."
+  false)

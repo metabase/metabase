@@ -20,6 +20,7 @@ export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "details-fields": [],
   source: createMockEngineSource(),
   "superseded-by": null,
+  "extra-info": null,
   ...opts,
 });
 

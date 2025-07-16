@@ -32,6 +32,11 @@ export interface Engine {
   "details-fields"?: EngineField[];
   source: EngineSource;
   "superseded-by": string | null;
+  "extra-info": {
+    "db-routing-info": {
+      text: string;
+    };
+  } | null;
 }
 
 export interface EngineField {

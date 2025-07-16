@@ -65,20 +65,24 @@
     #"^[\w_]+$"]])
 
 (mu/defn test-dataset-id :- ::dataset-id
-  "All databases created during test runs by this JVM instance get a suffix based on the timestamp from when this
-  namespace was loaded. This dataset will not be deleted after this test run finishes, since there is no reasonable
-  hook to do so (from this test extension namespace), so instead we will rely on each run cleaning up outdated,
-  transient datasets via the [[transient-dataset-outdated?]] mechanism."
-  ^String [database-name :- :string]
-  (let [s (normalize-name database-name)]
-    (str "v4_" s "__transient_" (dataset-timestamp))))
+  "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
+  time."
+  [{:keys [database-name] :as db-def}]
+  (cond
+    tx/*use-routing-dataset*
+    "metabase_routing_dataset"
+
+    (str/starts-with? database-name "sha_")
+    database-name
+
+    :else
+    (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
-  (reduce
-   (fn [acc env-var]
-     (assoc acc env-var (tx/db-test-env-var :bigquery-cloud-sdk env-var)))
-   {}
-   [:project-id :service-account-json]))
+  {:project-id (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
+   :service-account-json (if tx/*use-routing-details*
+                           (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json-routing)
+                           (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json))})
 
 (defn- bigquery
   "Get an instance of a `Bigquery` client."
