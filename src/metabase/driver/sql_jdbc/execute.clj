@@ -395,7 +395,7 @@
           ;; todo (dan 7/11/25): fixing straightforward postgres oom on downloads in #60733, but seems like write? is
           ;; not set here. Note this is explicitly silent when `write?`. Lots of tests fail with autocommit false
           ;; there.
-          (and (-> options :download?) (= driver :postgres))
+          (and (-> options :download?) (isa? driver/hierarchy driver :postgres))
           (try
             (log/trace (pr-str '(.setAutoCommit conn false)))
             (.setAutoCommit conn false)
