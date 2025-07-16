@@ -205,4 +205,5 @@
   (populate-index! [{:model "card"
                      :id "1"
                      :searchable_text "This is a test card"}])
-  (delete-from-index! "dashboard" ["13"]))
+  (delete-from-index! "dashboard" ["13"])
+  (query-index {:search-string "Copper knife"}))

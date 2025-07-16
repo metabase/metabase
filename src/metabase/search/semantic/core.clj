@@ -112,6 +112,10 @@
       (log/error e "Failed to reindex semantic search engine")
       (throw e))))
 
+(comment
+  (def docs (vec (search.ingestion/searchable-documents)))
+  (reindex! docs {}))
+
 (defmethod search.engine/reset-tracking! :search.engine/semantic [_]
   (try
     (reset-tracking!)
