@@ -5,9 +5,12 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.db :as db]
    [metabase-enterprise.semantic-search.embedding :as embedding]
+   [metabase.models.interface :as mi]
+   [metabase.search.core :as search]
    [metabase.util.json :as json]
    [nano-id.core :as nano-id]
-   [next.jdbc :as jdbc])
+   [next.jdbc :as jdbc]
+   [toucan2.core :as t2])
   (:import
    [java.time LocalDate]
    [org.postgresql.util PGobject]))
@@ -181,12 +184,16 @@
   [search-context]
   (let [search-string (:search-string search-context)]
     (when-not (str/blank? search-string)
-      (let [embedding (embedding/get-embedding search-string)
-            query     (semantic-search-query embedding search-context)]
-        (->> (jdbc/execute! @db/data-source (sql/format query))
+      (let [embedding   (embedding/get-embedding search-string)
+            query       (semantic-search-query embedding search-context)
+            t2-model    (fn [doc] (:model (search/spec (:model doc))))
+            t2-instance (fn [doc] (t2/instance (t2-model doc) doc))]
+        (->> (jdbc/plan @db/data-source (sql/format query))
              (map unqualify-keys)
              (map decode-metadata)
-             (map legacy-input-with-score))))))
+             (map legacy-input-with-score)
+             ;; important this is done eagerly to avoid surprises with dynamic vars
+             (filterv (comp mi/can-read? t2-instance)))))))
 
 (defn delete-from-index!
   "Deletes documents from the index table based on model and model_ids."
@@ -206,4 +213,9 @@
                      :id "1"
                      :searchable_text "This is a test card"}])
   (delete-from-index! "dashboard" ["13"])
-  (query-index {:search-string "Copper knife"}))
+  ;; no user
+  (query-index {:search-string "Copper knife"})
+  (require '[metabase.test :as mt])
+  (mt/with-test-user :crowberto
+    (doall (query-index {:search-string "Copper knife"}))))
+
