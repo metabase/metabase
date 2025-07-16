@@ -254,6 +254,7 @@
             (is (=? {:id pos-int?
                      :database_id (mt/id)
                      :creator_id (mt/user->id :rasta)
+                     :dataset_query_type "query"
                      :status "view_synced"}
                     resp)))
           (let [transform-id (:id resp)
@@ -330,12 +331,12 @@
       users-departments-with-score
       (with-no-transform-views!
         (let [display-name "t r a n s"
-              transform (mt/user-http-request :rasta :post 200 "transform"
-                                              {:display_name display-name
-                                               :dataset_query
-                                               (let [mp (mt/metadata-provider)]
-                                                 (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
-                                                     (lib.convert/->legacy-MBQL)))})
+              {id :id :as transform} (mt/user-http-request :rasta :post 200 "transform"
+                                                           {:display_name display-name
+                                                            :dataset_query
+                                                            (let [mp (mt/metadata-provider)]
+                                                              (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                                                                  (lib.convert/->legacy-MBQL)))})
               table (t2/select-one :model/Table :display_name display-name)
               table-id (:id table)]
           (testing "Base: view creation and sync is successful"
@@ -349,11 +350,14 @@
                    (mt/rows (-> (lib/query mp (lib.metadata/table mp table-id))
                                 (qp/process-query))))))
           (testing "PUT / can modify the query"
-            (mt/user-http-request :rasta :put 200 (str "transform/" (:id transform))
-                                  {:dataset_query
-                                   (let [mp (mt/metadata-provider)]
-                                     (-> (lib/query mp (lib.metadata/table mp (mt/id :departments)))
-                                         (lib.convert/->legacy-MBQL)))})
+            (is (=? {:id id
+                     :view_name (models.transform/transform-view-name id)
+                     :dataset_query_type "query"}
+                    (mt/user-http-request :rasta :put 200 (str "transform/" (:id transform))
+                                          {:dataset_query
+                                           (let [mp (mt/metadata-provider)]
+                                             (-> (lib/query mp (lib.metadata/table mp (mt/id :departments)))
+                                                 (lib.convert/->legacy-MBQL)))})))
             (is (= 1 (t2/count :model/Table :display_name display-name)))
             (is (= #{"idx" "name" "id"}
                    (t2/select-fn-set (comp u/lower-case-en :name) :model/Field
