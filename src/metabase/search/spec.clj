@@ -74,8 +74,7 @@
    :view-count              :int
    :non-temporal-dim-ids    :text
    :has-temporal-dim        :boolean
-   :display-type            :text
-   :has-temporal-dimensions :boolean})
+   :display-type            :text})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."

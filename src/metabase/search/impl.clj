@@ -371,7 +371,6 @@
         (update :bookmark bit->boolean)
         (update :archived bit->boolean)
         (update :archived_directly bit->boolean)
-        (update :has_temporal_dimensions bit->boolean)
         ;; Collections require some transformation before being scored and returned by search.
         (cond-> (t2/instance-of? :model/Collection instance) map-collection))))
 
