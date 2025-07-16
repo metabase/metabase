@@ -13,9 +13,6 @@ Security token scanner detects potentially leaked API keys and secrets in the Me
 
 # Verbose output
 ./bin/mage -token-scan -v deps.edn
-
-# Just file paths (no line details)
-./bin/mage -token-scan -n deps.edn bb.edn
 ```
 
 ## Token Types Detected
