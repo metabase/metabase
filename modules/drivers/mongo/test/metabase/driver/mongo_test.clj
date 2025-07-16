@@ -1721,3 +1721,49 @@
                     (is (= ["_id.Country" "count"] col-names))))))
             (finally
               (.drop coll))))))))
+
+(deftest projection-syntax-efficiency-test
+  (testing "MongoDB projection syntax efficiency - flat vs nested for _id fields (#34577)"
+    (mt/test-driver :mongo
+      (mongo.connection/with-mongo-database [^com.mongodb.client.MongoDatabase db (mt/db)]
+        (let [coll-name (str "test_projection_efficiency_" (System/currentTimeMillis))
+              ^com.mongodb.client.MongoCollection coll (.getCollection db coll-name)]
+          (try
+            ;; Insert document with nested _id structure
+            (let [inner-id (org.bson.Document.
+                            {"nestedWidget" "modal"
+                             "nestedUserId" 456})
+                  id-doc (org.bson.Document.
+                          {"widgetType" "button"
+                           "userId" 123
+                           "extraField" "extraValue"
+                           "_id" inner-id})
+                  docs [(org.bson.Document.
+                         {"_id" id-doc
+                          "impressions" 1000})]]
+              (.insertMany coll docs))
+
+            ;; Test flat projection syntax with nested field
+            (is (= [[{:_id {:nestedWidget "modal"}} "modal" 1000]]
+                   (mt/rows (qp/process-query
+                             {:database (mt/id)
+                              :type :native
+                              :native {:collection coll-name
+                                       :query [{"$project" {"_id._id.nestedWidget" "$_id._id.nestedWidget"
+                                                            "impressions" true}}
+                                               {"$limit" 1}]}})))
+                "Flat projection results in redundancy")
+
+            ;; Test nested projection syntax with nested field
+            (is (= [[{:_id {:nestedWidget "modal"}} 1000]]
+                   (mt/rows (qp/process-query
+                             {:database (mt/id)
+                              :type :native
+                              :native {:collection coll-name
+                                       :query [{"$project" {"_id" {"_id" {"nestedWidget" "$_id._id.nestedWidget"}}
+                                                            "impressions" true}}
+                                               {"$limit" 1}]}})))
+                "Nested projection does not.")
+
+            (finally
+              (.drop coll))))))))
