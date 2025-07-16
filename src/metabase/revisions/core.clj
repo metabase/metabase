@@ -12,4 +12,4 @@
   fetch-last-edited-info
   with-last-edit-info])
 
-(mr/def ::MaybeAnnotated ::metabase.revisions.models.revision.last-edit/MaybeAnnotated)
+(mr/def ::MaybeAnnotated [:ref :metabase.revisions.models.revision.last-edit/MaybeAnnotated])

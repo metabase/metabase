@@ -83,6 +83,6 @@
             [:archived      {:optional true} [:maybe :boolean]]
             [:content       {:optional true} [:maybe :string]]
             [:description   {:optional true} [:maybe :string]]
-            [:name          {:optional true} [:maybe native-query-snippet/NativeQuerySnippetName]]
+            [:name          {:optional true} [:maybe ::native-query-snippet/NativeQuerySnippetName]]
             [:collection_id {:optional true} [:maybe ::ms/PositiveInt]]]]
   (check-perms-and-update-snippet! id body))

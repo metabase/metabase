@@ -3,9 +3,10 @@
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(def ModeratedItemTypes
+(mr/def ::ModeratedItemTypes
   "Schema enum of the acceptable values for the `moderated_item_type` column"
   [:enum "card" :card "dashboard" :dashboard])
 

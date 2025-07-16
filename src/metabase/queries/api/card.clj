@@ -559,7 +559,7 @@
     (check-allowed-to-remove-from-existing-dashboards card-before-update))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
-(mr/def ^:private ::CardUpdateSchema
+(mr/def ::CardUpdateSchema
   [:map
    [:name                   {:optional true} [:maybe ::ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
