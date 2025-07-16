@@ -56,8 +56,8 @@
 (mu/defn ellide? :- :boolean
   "If a table has the least permissive value for a perm type, leave it out,
    Unless it's :data perms, in which case, leave it out only if it's no-self-service"
-  [type :- data-perms/PermissionType
-   value :- data-perms/PermissionValue]
+  [type :- ::data-perms/PermissionType
+   value :- ::data-perms/PermissionValue]
   (= (data-perms/least-permissive-value type) value))
 
 (defn- rename-or-ellide-kv
@@ -69,7 +69,7 @@
 (mu/defn- api-table-perms
   "Helper to transform 'leaf' values with table-level schemas in the data permissions graph into an API-style data permissions value.
    Coalesces permissions at the schema level if all table-level permissions within a schema are identical."
-  [type :- data-perms/PermissionType
+  [type :- ::data-perms/PermissionType
    schema->table-id->api-val]
   (let [transform-val         (fn [perm-val] ((->api-vals type) perm-val))
         coalesce-or-transform (fn [table-id->perm]
@@ -151,7 +151,7 @@
          (into {}))
     m))
 
-(mu/defn api-graph :- api.permission-graph/DataPermissionsGraph
+(mu/defn api-graph :- ::api.permission-graph/DataPermissionsGraph
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
   renames permission types and values from the names stored in the database to the ones expected by the frontend.
   - Converts DB key names to API key names
@@ -167,7 +167,7 @@
         [:group-ids {:optional true} [:maybe [:sequential pos-int?]]]
         [:db-id {:optional true} [:maybe pos-int?]]
         [:audit? {:optional true} [:maybe :boolean]]
-        [:perm-type {:optional true} [:maybe data-perms/PermissionType]]]]
+        [:perm-type {:optional true} [:maybe ::data-perms/PermissionTypes]]]]
    (let [graph (data-perms/data-permissions-graph opts)]
      {:revision (perms-revision/latest-id)
       :groups (-> graph
@@ -387,7 +387,7 @@
 (mu/defn update-data-perms-graph!
   "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally ensures
   impersonations and sandboxes are consistent if necessary."
-  ([graph-updates :- api.permission-graph/DataPermissionsGraph]
+  ([graph-updates :- ::api.permission-graph/DataPermissionsGraph]
    (when (seq graph-updates)
      (let [group-updates (:groups graph-updates)]
        (check-audit-db-permissions group-updates)

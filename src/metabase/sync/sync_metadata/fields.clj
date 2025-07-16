@@ -57,12 +57,12 @@
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- sync-and-update! :- ms/IntGreaterThanOrEqualToZero
+(mu/defn- sync-and-update! :- ::ms/IntGreaterThanOrEqualToZero
   "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced."
-  [database    :- i/DatabaseInstance
-   table       :- i/TableInstance
-   db-metadata :- [:set i/TableMetadataField]]
+  [database    :- ::i/DatabaseInstance
+   table       :- ::i/TableInstance
+   db-metadata :- [:set ::i/TableMetadataField]]
   (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
      ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
      ;; Re-fetch our metadata because there might be some things that have changed after calling
@@ -78,10 +78,10 @@
      (not= (:name item) target-name)]))
 
 (mu/defn sync-fields! :- [:map
-                          [:updated-fields ms/IntGreaterThanOrEqualToZero]
-                          [:total-fields   ms/IntGreaterThanOrEqualToZero]]
+                          [:updated-fields ::ms/IntGreaterThanOrEqualToZero]
+                          [:total-fields   ::ms/IntGreaterThanOrEqualToZero]]
   "Sync the Fields in the Metabase application database for all the Tables in a `database`."
-  [database :- i/DatabaseInstance]
+  [database :- ::i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
     (let [driver          (driver.u/database->driver database)
           schemas?        (driver.u/supports? driver :schemas database)
@@ -122,11 +122,11 @@
 
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."
-  ([table :- i/TableInstance]
+  ([table :- ::i/TableInstance]
    (sync-fields-for-table! (table/database table) table))
 
-  ([database :- i/DatabaseInstance
-    table    :- i/TableInstance]
+  ([database :- ::i/DatabaseInstance
+    table    :- ::i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
      (let [db-metadata (fetch-metadata/table-fields-metadata database table)
            ;; TODO: decouple nested field columns sync from field sync. This will allow

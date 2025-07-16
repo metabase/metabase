@@ -14,8 +14,8 @@
   [_route-params
    _query-params
    {:keys [prompt database_id]} :- [:map
-                                    [:prompt ms/NonBlankString]
-                                    [:database_id ms/PositiveInt]]]
+                                    [:prompt ::ms/NonBlankString]
+                                    [:database_id ::ms/PositiveInt]]]
   (-> (metabot-v3/generate-sql {:dialect (driver.u/database->driver database_id)
                                 :instructions prompt
                                 :tables (metabot-v3/database-tables database_id)})

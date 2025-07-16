@@ -2,17 +2,18 @@
   (:require
    [metabase.classloader.core :as classloader]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(def ResultsMetadata
+(mr/def ::ResultsMetadata
   "Schema for the expected format for `:metadata` returned by an internal query function."
   [:sequential
    {:min 1}
    [:tuple
-    ms/KeywordOrString
+    ::ms/KeywordOrString
     [:map
-     [:base_type    ms/FieldType]
-     [:display_name ms/NonBlankString]]]])
+     [:base_type    ::ms/FieldType]
+     [:display_name ::ms/NonBlankString]]]])
 
 (defmulti internal-query
   "Define a new internal query type. Conventionally `query-type` should be a namespaced keyword with the namespace in

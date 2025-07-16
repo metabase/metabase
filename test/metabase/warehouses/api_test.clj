@@ -336,10 +336,10 @@
                           [:cache_field_values_schedule #"0 \d{1,2} \d{1,2} \* \* \? \*"]
                           [:created_at                  (ms/InstanceOfClass java.time.temporal.Temporal)]
                           [:engine                      [:= ::test-driver]]
-                          [:id                          ms/PositiveInt]
+                          [:id                          ::ms/PositiveInt]
                           [:details                     [:fn #(= % {:db "my_db"})]]
                           [:updated_at                  (ms/InstanceOfClass java.time.temporal.Temporal)]
-                          [:name                        ms/NonBlankString]
+                          [:name                        ::ms/NonBlankString]
                           [:features                    [:= (driver.u/features ::test-driver (mt/db))]]
                           [:creator_id                  [:= (mt/user->id :crowberto)]]]]
                         db))

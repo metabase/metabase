@@ -19,10 +19,10 @@
                (get-in [:type :type/Text :average-length])
                (> average-length-no-preview-threshold))))
 
-(mu/defn infer-no-preview-display :- [:maybe analyze.schema/Field]
+(mu/defn infer-no-preview-display :- [:maybe ::analyze.schema/Field]
   "Classifier that determines whether `field` should be marked 'No Preview Display'. If `field` is textual and its
   average length is too great, mark it so it isn't displayed in the UI."
-  [field       :- analyze.schema/Field
-   fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
+  [field       :- ::analyze.schema/Field
+   fingerprint :- [:maybe ::fingerprint.schema/Fingerprint]]
   (when (long-plain-text-field? field fingerprint)
     (assoc field :preview_display false)))

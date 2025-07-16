@@ -43,9 +43,9 @@
   ([card param-key]
    (card-param-values card param-key nil))
 
-  ([card      :- ms/Map
-    param-key :- ms/NonBlankString
-    query     :- [:maybe ms/NonBlankString]]
+  ([card      :- ::ms/Map
+    param-key :- ::ms/NonBlankString
+    query     :- [:maybe ::ms/NonBlankString]]
    (let [param (get-param-or-throw card param-key)]
      (custom-values/parameter->values param query (fn [] (mapping->field-values card param query))))))
 

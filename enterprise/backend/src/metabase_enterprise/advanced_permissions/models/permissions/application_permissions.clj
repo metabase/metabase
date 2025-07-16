@@ -19,7 +19,7 @@
 (def ^:private ApplicationPermissionsGraph
   [:map {:closed true}
    [:revision :int]
-   [:groups [:map-of ms/PositiveInt GroupPermissionsGraph]]])
+   [:groups [:map-of ::ms/PositiveInt GroupPermissionsGraph]]])
 
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 

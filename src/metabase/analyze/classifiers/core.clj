@@ -42,12 +42,12 @@
    #'classifiers.no-preview-display/infer-no-preview-display
    #'classifiers.text-fingerprint/infer-semantic-type])
 
-(mu/defn run-classifiers :- analyze.schema/Field
+(mu/defn run-classifiers :- ::analyze.schema/Field
   "Run all the available `classifiers` against `field` and `fingerprint`, and return the resulting `field` with
   changes decided upon by the classifiers. The original field can be accessed in the metadata at
   `:sync.classify/original`."
-  [field       :- analyze.schema/Field
-   fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
+  [field       :- ::analyze.schema/Field
+   fingerprint :- [:maybe ::fingerprint.schema/Fingerprint]]
   (reduce (fn [field classifier]
             (or (sync-util/with-error-handling (format "Error running classifier on %s"
                                                        (sync-util/name-for-logging field))

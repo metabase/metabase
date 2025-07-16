@@ -140,7 +140,7 @@
      (when-let [result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
        (check-columns-match-table table-id result-metadata))))
 
-  ([table-id :- ms/PositiveInt result-metadata-columns]
+  ([table-id :- ::ms/PositiveInt result-metadata-columns]
    ;; prevent circular refs
    (classloader/require 'metabase.query-processor)
    (let [table-cols (table-field-names->cols table-id)]

@@ -53,7 +53,7 @@
 
 (mu/defn- update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `table`."
-  [table :- i/TableInstance]
+  [table :- ::i/TableInstance]
   (t2/update! :model/Field
               (merge (sync.fingerprint/incomplete-analysis-kvs)
                      {:table_id (:id table)})
@@ -61,7 +61,7 @@
 
 (mu/defn- update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `database`."
-  [database :- i/DatabaseInstance]
+  [database :- ::i/DatabaseInstance]
   (t2/update! :model/Field
               (merge (sync.fingerprint/incomplete-analysis-kvs)
                      {:table_id [:in {:select [:id]
@@ -71,7 +71,7 @@
 
 (mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."
-  [table :- i/TableInstance]
+  [table :- ::i/TableInstance]
   (sync.fingerprint/fingerprint-table! table)
   (classify/classify-fields! table)
   (classify/classify-table! table)
@@ -110,7 +110,7 @@
   "Perform in-depth analysis on the data for all Tables in a given `database`. This is dependent on what each database
   driver supports, but includes things like cardinality testing and table row counting. This also updates the
   `:last_analyzed` value for each affected Field."
-  [database :- i/DatabaseInstance]
+  [database :- ::i/DatabaseInstance]
   (sync-util/sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
     (sync-util/with-emoji-progress-bar [emoji-progress-bar (inc (* 3 (sync-util/sync-tables-count database)))]
       (u/prog1 (sync-util/run-sync-operation "analyze" database (make-analyze-steps (maybe-log-progress emoji-progress-bar)))
@@ -119,7 +119,7 @@
 (mu/defn refingerprint-db!
   "Refingerprint a subset of tables in a given `database`. This will re-fingerprint tables up to a threshold amount of
   [[fingerprint/max-refingerprint-field-count]]."
-  [database :- i/DatabaseInstance]
+  [database :- ::i/DatabaseInstance]
   (sync-util/sync-operation :refingerprint database (format "Refingerprinting tables for %s" (sync-util/name-for-logging database))
     (let [log-fn (fn [step table]
                    (log/info (u/format-color 'blue "%s Analyzed %s" step (sync-util/name-for-logging table))))]

@@ -21,35 +21,35 @@
 
 (def ^:private DefaultUser
   [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:email        ms/NonBlankString]
-   [:first_name   ms/NonBlankString]
-   [:last_name    ms/NonBlankString]
-   [:common_name  ms/NonBlankString]
+   [:id           ::ms/PositiveInt]
+   [:email        ::ms/NonBlankString]
+   [:first_name   ::ms/NonBlankString]
+   [:last_name    ::ms/NonBlankString]
+   [:common_name  ::ms/NonBlankString]
    [:last_login   :any]
    [:date_joined  :any]
    [:is_qbnewb    :boolean]
    [:is_superuser :boolean]
-   [:tenant_id    [:maybe ms/PositiveInt]]])
+   [:tenant_id    [:maybe ::ms/PositiveInt]]])
 
 (def ^:private ExpectedGetQueryActionAPIResponse
   "Expected schema for a query action as it should appear in the response for an API request to one of the GET endpoints."
   [:map
-   [:id                     ms/PositiveInt]
+   [:id                     ::ms/PositiveInt]
    [:type                   [:= "query"]]
-   [:model_id               ms/PositiveInt]
-   [:database_id            ms/PositiveInt]
+   [:model_id               ::ms/PositiveInt]
+   [:database_id            ::ms/PositiveInt]
    [:dataset_query          [:map
-                             [:database ms/PositiveInt]
+                             [:database ::ms/PositiveInt]
                              [:type     [:= "native"]]
                              [:native   [:map
                                          [:query :string]]]]]
    [:parameters             :any]
    [:parameter_mappings     :any]
    [:visualization_settings :map]
-   [:public_uuid            [:maybe ms/UUIDString]]
-   [:made_public_by_id      [:maybe ms/PositiveInt]]
-   [:creator_id             ms/PositiveInt]
+   [:public_uuid            [:maybe ::ms/UUIDString]]
+   [:made_public_by_id      [:maybe ::ms/PositiveInt]]
+   [:creator_id             ::ms/PositiveInt]
    [:creator                DefaultUser]])
 
 (defn all-actions-default

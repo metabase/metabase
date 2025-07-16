@@ -91,8 +91,8 @@
 
 (mu/defn- mark-fk!
   "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
-  [database :- i/DatabaseInstance
-   metadata :- i/FKMetadataEntry]
+  [database :- ::i/DatabaseInstance
+   metadata :- ::i/FKMetadataEntry]
   (u/prog1 (t2/query-one (mark-fk-sql (:id database) metadata))
     (when (= <> 1)
       (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
@@ -105,11 +105,11 @@
 
 (mu/defn sync-fks-for-table!
   "Sync the foreign keys for a specific `table`."
-  ([table :- i/TableInstance]
+  ([table :- ::i/TableInstance]
    (sync-fks-for-table! (table/database table) table))
 
-  ([database :- i/DatabaseInstance
-    table    :- i/TableInstance]
+  ([database :- ::i/DatabaseInstance
+    table    :- ::i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging table))
      (let [schema-names (when (driver.u/supports? (driver.u/database->driver database) :schemas database)
                           [(:schema table)])
@@ -124,7 +124,7 @@
   If the driver supports the `:describe-fks` feature, [[metabase.driver/describe-fks]] is used to fetch the FK metadata.
 
   This function also sets all the tables that should be synced to have `initial-sync-status=complete` once the sync is done."
-  [database :- i/DatabaseInstance]
+  [database :- ::i/DatabaseInstance]
   (u/prog1 (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
              (let [driver       (driver.u/database->driver database)
                    schema-names (when (driver.u/supports? driver :schemas database)

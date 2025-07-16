@@ -67,7 +67,7 @@
                  [:status     [:= :failed]]
                  [:class      [:= org.h2.jdbc.JdbcSQLSyntaxErrorException]]
                  [:error      #"^Column \"ZID\" not found"]
-                 [:stacktrace [:sequential ms/NonBlankString]]
+                 [:stacktrace [:sequential ::ms/NonBlankString]]
                  [:json_query [:map
                                [:native [:map [:query [:= "SELECT ZID FROM CHECKINS LIMIT 2"]]]]
                                [:type [:= :native]]]]]

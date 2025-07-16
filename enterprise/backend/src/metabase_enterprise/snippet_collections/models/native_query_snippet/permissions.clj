@@ -10,7 +10,7 @@
    [toucan2.core :as t2]))
 
 (mu/defn- has-parent-collection-perms?
-  [snippet       :- [:map [:collection_id [:maybe ms/PositiveInt]]]
+  [snippet       :- [:map [:collection_id [:maybe ::ms/PositiveInt]]]
    read-or-write :- [:enum :read :write]]
   (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" snippet read-or-write)))
 

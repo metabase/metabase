@@ -131,6 +131,11 @@
 
 (lib.hierarchy/derive :metric ::ref)
 
+(defn ref-def
+  "extracted function for fn schema for `::ref`"
+  [[tag :as _clause]]
+  (lib.hierarchy/isa? tag ::ref))
+
 (mr/def ::ref
   [:and
    ::mbql-clause/clause
@@ -138,5 +143,4 @@
     {:error/fn (fn [_ _]
                  (str "Valid reference, must be one of these clauses: "
                       (str/join ", " (sort (descendants @lib.hierarchy/hierarchy ::ref)))))}
-    (fn [[tag :as _clause]]
-      (lib.hierarchy/isa? tag ::ref))]])
+    ref-def]])

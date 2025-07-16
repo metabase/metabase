@@ -81,7 +81,7 @@
    _query-params
    {:keys [query error_message]} :- [:map
                                      [:query [:map
-                                              [:database ms/PositiveInt]]]
+                                              [:database ::ms/PositiveInt]]]
                                      [:error_message :string]]]
   (qp.perms/check-current-user-has-adhoc-native-query-perms query)
   (let [driver (-> query :database driver.u/database->driver)]

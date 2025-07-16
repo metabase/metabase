@@ -34,7 +34,7 @@
 
 (mr/def ::segment-definition
   [:map
-   [:filter      {:optional true} [:maybe mbql.s/Filter]]
+   [:filter      {:optional true} [:maybe ::mbql.s/Filter]]
    [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
 
 (defn- validate-segment-definition

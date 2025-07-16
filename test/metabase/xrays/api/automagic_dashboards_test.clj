@@ -10,6 +10,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [metabase.xrays.api.automagic-dashboards :as api.magic]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.test-util.automagic-dashboards :refer [with-dashboard-cleanup!]]
@@ -347,7 +348,7 @@
   `(do-with-indexed-model! ~query-info
                            (fn [~bindings] ~@body)))
 
-(def Tab-Id-Schema
+(mr/def ::Tab-Id-Schema
   "Schema for tab-ids. Must be integers for the front-end, but negative so we know they do not (yet) exist in the db."
   [:fn neg-int?])
 
@@ -400,9 +401,9 @@
                                                    :linked-field-id %reviews.product_id}
                                                   {:linked-table-id $$orders
                                                    :linked-field-id %orders.product_id}])})]
-          (is (=? [{:id   (mt/malli=? Tab-Id-Schema)
+          (is (=? [{:id   (mt/malli=? ::Tab-Id-Schema)
                     :name "A look at Reviews" :position 0}
-                   {:id   (mt/malli=? Tab-Id-Schema)
+                   {:id   (mt/malli=? ::Tab-Id-Schema)
                     :name "A look at Orders" :position 1}]
                   (:tabs dash)))
           (testing "The first card for each tab is a linked model card to the source model"
@@ -470,9 +471,9 @@
                                                         :linked-field-id %reviews.product_id}
                                                        {:linked-table-id $$orders
                                                         :linked-field-id %orders.product_id}])})]
-              (is (=? [{:id   (mt/malli=? Tab-Id-Schema)
+              (is (=? [{:id   (mt/malli=? ::Tab-Id-Schema)
                         :name "A look at Reviews" :position 0}
-                       {:id   (mt/malli=? Tab-Id-Schema)
+                       {:id   (mt/malli=? ::Tab-Id-Schema)
                         :name "A look at Orders" :position 1}]
                       (:tabs dash)))
               (testing "All query cards have the correct filters"

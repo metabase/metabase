@@ -19,5 +19,5 @@
                     []]]
         (is (not (me/humanize
                   (mr/explain
-                   fingerprint.schema/Fingerprint
+                   ::fingerprint.schema/Fingerprint
                    (assoc-in base (conj path :extra-key) (rand-nth [3 :extra-value 4.0 {:stuff :stuff}]))))))))))

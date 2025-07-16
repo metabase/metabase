@@ -16,8 +16,8 @@
   "Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` and `table_id` are provided."
   [_route-params
    {:keys [group_id table_id]} :- [:map
-                                   [:group_id {:optional true} [:maybe ms/PositiveInt]]
-                                   [:table_id {:optional true} [:maybe ms/PositiveInt]]]]
+                                   [:group_id {:optional true} [:maybe ::ms/PositiveInt]]
+                                   [:table_id {:optional true} [:maybe ::ms/PositiveInt]]]]
   (if (and group_id table_id)
     (t2/select-one :model/GroupTableAccessPolicy :group_id group_id :table_id table_id)
     (t2/select :model/GroupTableAccessPolicy {:order-by [[:id :asc]]})))
@@ -25,7 +25,7 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch GTAP by `id`"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/check-404 (t2/select-one :model/GroupTableAccessPolicy :id id)))
 
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
@@ -33,7 +33,7 @@
 (def ^:private AttributeRemappings
   :any
   ;; TODO -- fix me
-  #_(mu/with-api-error-message [:maybe [:map-of ms/NonBlankString ms/NonBlankString]]
+  #_(mu/with-api-error-message [:maybe [:map-of ::ms/NonBlankString ::ms/NonBlankString]]
       "value must be a valid attribute remappings map (attribute name -> remapped name)"))
 
 (api.macros/defendpoint :post "/"
@@ -41,9 +41,9 @@
   [_route-params
    _query-params
    body :- [:map
-            [:table_id             ms/PositiveInt]
-            [:card_id              {:optional true} [:maybe ms/PositiveInt]]
-            [:group_id             ms/PositiveInt]
+            [:table_id             ::ms/PositiveInt]
+            [:card_id              {:optional true} [:maybe ::ms/PositiveInt]]
+            [:group_id             ::ms/PositiveInt]
             [:attribute_remappings {:optional true} AttributeRemappings]]]
   (first (t2/insert-returning-instances!
           :model/GroupTableAccessPolicy
@@ -54,10 +54,10 @@
   parameter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
   one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    body :- [:map
-            [:card_id              {:optional true} [:maybe ms/PositiveInt]]
+            [:card_id              {:optional true} [:maybe ::ms/PositiveInt]]
             [:attribute_remappings {:optional true} AttributeRemappings]]]
   (api/check-404 (t2/select-one :model/GroupTableAccessPolicy :id id))
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
@@ -74,8 +74,8 @@
   [_route-params
    _query-params
    {:keys [table_id card_id]} :- [:map
-                                  [:table_id ms/PositiveInt]
-                                  [:card_id  {:optional true} [:maybe ms/PositiveInt]]]]
+                                  [:table_id ::ms/PositiveInt]
+                                  [:card_id  {:optional true} [:maybe ::ms/PositiveInt]]]]
   (when card_id
     (let [db (t2/select-one :model/Database
                             :id {:select [:t.db_id]
@@ -91,7 +91,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Delete a GTAP entry."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/check-404 (t2/select-one :model/GroupTableAccessPolicy :id id))
   (t2/delete! :model/GroupTableAccessPolicy :id id)
   api/generic-204-no-content)

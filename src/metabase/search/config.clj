@@ -6,6 +6,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (def ^:dynamic *db-max-results*
@@ -200,15 +201,15 @@
   "Given a column and a model name, Return a keyword representing the column with the model alias prepended.
 
   (column-with-model-alias \"card\" :id) => :card.id)"
-  [model-string :- ms/KeywordOrString
-   column       :- ms/KeywordOrString]
+  [model-string :- ::ms/KeywordOrString
+   column       :- ::ms/KeywordOrString]
   (keyword (str (name (model->alias model-string)) "." (name column))))
 
-(def SearchableModel
+(mr/def ::SearchableModel
   "Schema for searchable models"
   (into [:enum] all-models))
 
-(def SearchContext
+(mr/def ::SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query."
   [:map {:closed true}
    ;; display related
@@ -223,28 +224,28 @@
    [:context               {:optional true} [:maybe :keyword]]
    [:is-impersonated-user? {:optional true} [:maybe :boolean]]
    [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
-   [:current-user-perms [:set perms/PathSchema]]
+   [:current-user-perms [:set ::perms/PathSchema]]
 
    [:model-ancestors?   :boolean]
-   [:models             [:set SearchableModel]]
+   [:models             [:set ::SearchableModel]]
    ;; TODO this is optional only for tests, clean those up!
    [:search-engine      {:optional true} keyword?]
-   [:search-string      {:optional true} [:maybe ms/NonBlankString]]
+   [:search-string      {:optional true} [:maybe ::ms/NonBlankString]]
    ;;
    ;; optional
    ;;
-   [:created-at                          {:optional true} ms/NonBlankString]
-   [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:created-at                          {:optional true} ::ms/NonBlankString]
+   [:created-by                          {:optional true} [:set {:min 1} ::ms/PositiveInt]]
    [:filter-items-in-personal-collection {:optional true} [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
-   [:last-edited-at                      {:optional true} ms/NonBlankString]
-   [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
-   [:limit-int                           {:optional true} ms/Int]
-   [:offset-int                          {:optional true} ms/Int]
+   [:last-edited-at                      {:optional true} ::ms/NonBlankString]
+   [:last-edited-by                      {:optional true} [:set {:min 1} ::ms/PositiveInt]]
+   [:limit-int                           {:optional true} ::ms/Int]
+   [:offset-int                          {:optional true} ::ms/Int]
    [:search-native-query                 {:optional true} true?]
-   [:table-db-id                         {:optional true} ms/PositiveInt]
+   [:table-db-id                         {:optional true} ::ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
-   [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:ids                                 {:optional true} [:set {:min 1} ::ms/PositiveInt]]
    [:include-dashboard-questions?        {:optional true} :boolean]
    [:include-metadata?                   {:optional true} :boolean]])
 

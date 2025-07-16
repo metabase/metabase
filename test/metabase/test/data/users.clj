@@ -151,14 +151,14 @@
 ;;;
 ;;; consistently fails for me when using [[metabase.test.http-client/authenticate]] instead of the code below. See #48489 for
 ;;; more info
-(mu/defn ^:private authenticate! :- ms/UUIDString
+(mu/defn ^:private authenticate! :- ::ms/UUIDString
   "Create a new `:model/Session` for one of the test users."
   [username :- TestUserName]
   (let [session-key (session/generate-session-key)]
     (t2/insert! :model/Session {:id (session/generate-session-id) :key_hashed (session/hash-session-key session-key), :user_id (user->id username)})
     session-key))
 
-(mu/defn username->token :- ms/UUIDString
+(mu/defn username->token :- ::ms/UUIDString
   "Return cached session token for a test User, logging in first if needed."
   [username :- TestUserName]
   (or (@tokens username)

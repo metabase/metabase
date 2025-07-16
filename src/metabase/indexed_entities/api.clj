@@ -35,7 +35,7 @@
   [_route-params
    _query-params
    {:keys [model_id pk_ref value_ref] :as _model-index} :- [:map
-                                                            [:model_id  ms/PositiveInt]
+                                                            [:model_id  ::ms/PositiveInt]
                                                             [:pk_ref    any?]
                                                             [:value_ref any?]]]
   (let [model    (api/write-check :model/Card model_id)
@@ -62,7 +62,7 @@
   "Retrieve list of ModelIndex."
   [_route-params
    {:keys [model_id]} :- [:map
-                          [:model_id ms/PositiveInt]]]
+                          [:model_id ::ms/PositiveInt]]]
   (let [model (api/read-check :model/Card model_id)]
     (when-not (= (:type model) :model)
       (throw (ex-info (tru "Question {0} is not a model" model_id)
@@ -73,7 +73,7 @@
 (api.macros/defendpoint :get "/:id"
   "Retrieve ModelIndex."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (let [model-index (api/check-404 (t2/select-one :model/ModelIndex :id id))
         model       (api/read-check :model/Card (:model_id model-index))]
     (when-not (= (:type model) :model)
@@ -85,7 +85,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Delete ModelIndex."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/let-404 [model-index (t2/select-one :model/ModelIndex :id id)]
     (api/write-check :model/Card (:model_id model-index))
     (t2/delete! :model/ModelIndex id)))

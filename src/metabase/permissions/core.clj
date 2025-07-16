@@ -55,8 +55,6 @@
   with-additional-table-permission
   with-relevant-permissions-for-user]
  [metabase.permissions.models.data-permissions.sql
-  UserInfo
-  PermissionMapping
   visible-table-filter-select
   select-tables-and-groups-granting-perm]
  [metabase.permissions.models.permissions
@@ -92,7 +90,6 @@
  [metabase.permissions.user
   user-permissions-set]
  [metabase.permissions.util
-  PathSchema
   check-revision-numbers
   impersonated-user?
   impersonation-enforced-for-db?

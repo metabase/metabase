@@ -47,7 +47,8 @@
 
 (def ^:private Topic
   [:and
-   events/Topic
+   ;; TODO: dont reach into impl?
+   :metabase.events.impl/Topic
    [:fn
     {:error/message "Sync event deriving from :metabase.sync.util/event"}
     #(isa? % ::event)]])
@@ -235,7 +236,7 @@
   "Internal implementation of [[sync-operation]]; use that instead of calling this directly."
   [operation :- :keyword                ; something like `:sync-metadata` or `:refingerprint`
    database  :- (ms/InstanceOf :model/Database)
-   message   :- ms/NonBlankString
+   message   :- ::ms/NonBlankString
    f         :- fn?]
   (when (database/should-sync? database)
     ((with-duplicate-ops-prevented
@@ -477,7 +478,7 @@
    ;; step metadata
    StepRunMetadata])
 
-(def StepNameWithMetadata
+(mr/def ::StepNameWithMetadata
   "Pair with the step name and metadata about the completed step run"
   [:ref ::StepNameWithMetadata])
 
@@ -486,7 +487,7 @@
   [:merge
    TimedSyncMetadata
    [:map
-    [:steps [:maybe [:sequential StepNameWithMetadata]]]]])
+    [:steps [:maybe [:sequential ::StepNameWithMetadata]]]]])
 
 (def ^:private LogSummaryFunction
   "A log summary function takes a `StepRunMetadata` and returns a string with a step-specific log message"
@@ -496,7 +497,7 @@
   "Defines a step. `:sync-fn` runs the step, returns a map that contains step specific metadata. `log-summary-fn`
   takes that metadata and turns it into a string for logging"
   [:map
-   [:sync-fn        [:=> [:cat StepRunMetadata] i/DatabaseInstance]]
+   [:sync-fn        [:=> [:cat StepRunMetadata] ::i/DatabaseInstance]]
    [:step-name      :string]
    [:log-summary-fn [:maybe LogSummaryFunction]]])
 
@@ -510,9 +511,9 @@
     :log-summary-fn (when log-summary-fn
                       (comp str log-summary-fn))}))
 
-(mu/defn- run-step-with-metadata :- StepNameWithMetadata
+(mu/defn- run-step-with-metadata :- ::StepNameWithMetadata
   "Runs `step` on `database` returning metadata from the run"
-  [database :- i/DatabaseInstance
+  [database :- ::i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition]
   (let [start-time (t/zoned-date-time)
         results    (do-with-start-and-finish-debug-logging
@@ -539,7 +540,7 @@
   "The logging logic from `log-sync-summary`. Separated for testing purposes as the `log/debug` macro won't invoke
   this function unless the logging level is at debug (or higher)."
   [operation :- :string
-   database :- i/DatabaseInstance
+   database :- ::i/DatabaseInstance
    {:keys [start-time end-time steps]} :- SyncOperationMetadata]
   (str
    (apply format
@@ -569,7 +570,7 @@
 (mu/defn- log-sync-summary
   "Log a sync/analyze summary message with info from each step"
   [operation :- :string
-   database :- i/DatabaseInstance
+   database :- ::i/DatabaseInstance
    sync-metadata :- SyncOperationMetadata]
   ;; Note this needs to either stay nested in the `debug` macro call or be guarded by an log/enabled?
   ;; call. Constructing the log below requires some work, no need to incur that cost debug logging isn't enabled
@@ -584,7 +585,7 @@
 (mu/defn run-sync-operation
   "Run `sync-steps` and log a summary message"
   [operation :- :string
-   database :- i/DatabaseInstance
+   database :- ::i/DatabaseInstance
    sync-steps :- [:maybe [:sequential StepDefinition]]]
   (task-history/with-task-history {:task  operation
                                    :db_id (u/the-id database)}

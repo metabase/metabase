@@ -177,18 +177,18 @@
                                              {:description "collections' db ids/entity-ids to serialize"}
                                              (ms/QueryVectorOf
                                               [:or
-                                               ms/PositiveInt
+                                               ::ms/PositiveInt
                                                [:re {:error/message "if you are passing entity_id, it should be exactly 21 chars long"}
                                                 #"^.{21}$"]
                                                [:re {:error/message "value must be string with `eid:<...>` prefix"}
                                                 #"^eid:.{21}$"]])]]
-       [:all_collections   {:default true}  (mu/with ms/BooleanValue {:description "Serialize all collections (`true` unless you specify `collection`)"})]
-       [:settings          {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase settings"})]
-       [:data_model        {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase data model"})]
-       [:field_values      {:default false} (mu/with ms/BooleanValue {:description "Serialize cached field values"})]
-       [:database_secrets  {:default false} (mu/with ms/BooleanValue {:description "Serialize details how to connect to each db"})]
-       [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
-       [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]]]
+       [:all_collections   {:default true}  (mu/with ::ms/BooleanValue {:description "Serialize all collections (`true` unless you specify `collection`)"})]
+       [:settings          {:default true}  (mu/with ::ms/BooleanValue {:description "Serialize Metabase settings"})]
+       [:data_model        {:default true}  (mu/with ::ms/BooleanValue {:description "Serialize Metabase data model"})]
+       [:field_values      {:default false} (mu/with ::ms/BooleanValue {:description "Serialize cached field values"})]
+       [:database_secrets  {:default false} (mu/with ::ms/BooleanValue {:description "Serialize details how to connect to each db"})]
+       [:continue_on_error {:default false} (mu/with ::ms/BooleanValue {:description "Do not break execution on errors"})]
+       [:full_stacktrace   {:default false} (mu/with ::ms/BooleanValue {:description "Show full stacktraces in the logs"})]]]
   (api/check-superuser)
   (let [start              (System/nanoTime)
         opts               {:targets                  (mapv #(vector "Collection" %)
@@ -245,13 +245,13 @@
     full-stacktrace?   :full_stacktrace
     :as                _query-params}
    :- [:map
-       [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
-       [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]]
+       [:continue_on_error {:default false} (mu/with ::ms/BooleanValue {:description "Do not break execution on errors"})]
+       [:full_stacktrace   {:default false} (mu/with ::ms/BooleanValue {:description "Show full stacktraces in the logs"})]]
    _body
    {{:strs [file]} :multipart-params, :as _request} :- [:map
                                                         [:multipart-params
                                                          [:map
-                                                          ["file" (mu/with ms/File {:description ".tgz with serialization data"})]]]]]
+                                                          ["file" (mu/with ::ms/File {:description ".tgz with serialization data"})]]]]]
   (api/check-superuser)
   (try
     (let [start              (System/nanoTime)

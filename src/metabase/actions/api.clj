@@ -58,7 +58,7 @@
   `?model-id=<model-id>` to limit to actions on a particular model."
   [_route-params
    {:keys [model-id]} :- [:map
-                          [:model-id {:optional true} [:maybe ms/PositiveInt]]]]
+                          [:model-id {:optional true} [:maybe ::ms/PositiveInt]]]]
   (letfn [(actions-for [models]
             (if (seq models)
               (t2/hydrate (action/select-actions models
@@ -87,7 +87,7 @@
 (api.macros/defendpoint :get "/:action-id"
   "Fetch an Action."
   [{:keys [action-id]} :- [:map
-                           [:action-id ms/PositiveInt]]]
+                           [:action-id ::ms/PositiveInt]]]
   (-> (action/select-action :id action-id :archived false)
       (t2/hydrate :creator)
       api/read-check))
@@ -95,7 +95,7 @@
 (api.macros/defendpoint :delete "/:action-id"
   "Delete an Action."
   [{:keys [action-id]} :- [:map
-                           [:action-id ms/PositiveInt]]]
+                           [:action-id ::ms/PositiveInt]]]
   (let [action (api/write-check :model/Action action-id)]
     (analytics/track-event! :snowplow/action
                             {:event     :action-deleted
@@ -112,14 +112,14 @@
     action-type :type
     :as action} :- [:map
                     [:name                   :string]
-                    [:model_id               ms/PositiveInt]
+                    [:model_id               ::ms/PositiveInt]
                     [:type                   {:optional true} [:maybe SupportedActionType]]
                     [:description            {:optional true} [:maybe :string]]
                     [:parameters             {:optional true} [:maybe [:sequential map?]]]
                     [:parameter_mappings     {:optional true} [:maybe map?]]
                     [:visualization_settings {:optional true} [:maybe map?]]
                     [:kind                   {:optional true} [:maybe ImplicitActionKind]]
-                    [:database_id            {:optional true} [:maybe ms/PositiveInt]]
+                    [:database_id            {:optional true} [:maybe ::ms/PositiveInt]]
                     [:dataset_query          {:optional true} [:maybe map?]]
                     [:template               {:optional true} [:maybe HTTPActionTemplate]]
                     [:response_handle        {:optional true} [:maybe JSONQuery]]
@@ -152,16 +152,16 @@
 (api.macros/defendpoint :put "/:id"
   "Update an Action."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    action :- [:map
               [:archived               {:optional true} [:maybe :boolean]]
-              [:database_id            {:optional true} [:maybe ms/PositiveInt]]
+              [:database_id            {:optional true} [:maybe ::ms/PositiveInt]]
               [:dataset_query          {:optional true} [:maybe :map]]
               [:description            {:optional true} [:maybe :string]]
               [:error_handle           {:optional true} [:maybe JSONQuery]]
               [:kind                   {:optional true} [:maybe ImplicitActionKind]]
-              [:model_id               {:optional true} [:maybe ms/PositiveInt]]
+              [:model_id               {:optional true} [:maybe ::ms/PositiveInt]]
               [:name                   {:optional true} [:maybe :string]]
               [:parameter_mappings     {:optional true} [:maybe :map]]
               [:parameters             {:optional true} [:maybe [:sequential :map]]]
@@ -185,7 +185,7 @@
   Action has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (let [action (api/read-check :model/Action id :archived false)]
@@ -199,7 +199,7 @@
 (api.macros/defendpoint :delete "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   ;; check the /application/setting permission, not superuser because removing a public link is possible from /admin/settings
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
@@ -211,9 +211,9 @@
 (api.macros/defendpoint :get "/:action-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [{:keys [action-id]} :- [:map
-                           [:action-id ms/PositiveInt]]
+                           [:action-id ::ms/PositiveInt]]
    {:keys [parameters]} :- [:map
-                            [:parameters ms/JSONString]]]
+                            [:parameters ::ms/JSONString]]]
   (actions/check-actions-enabled! action-id)
   (-> (action/select-action :id action-id :archived false)
       api/read-check
@@ -224,7 +224,7 @@
 
    `parameters` should be the mapped dashboard parameters with values."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map
                                                [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]

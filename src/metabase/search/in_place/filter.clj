@@ -16,9 +16,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.premium-features.core :as premium-features]
-   [metabase.search.config
-    :as search.config
-    :refer [SearchableModel SearchContext]]
+   [metabase.search.config :as search.config]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
    [metabase.util.date-2 :as u.date]
@@ -66,8 +64,8 @@
      [:= (search.config/column-with-model-alias model :visibility_type) nil]]))
 
 (mu/defn- search-string-clause-for-model
-  [model                :- SearchableModel
-   search-context       :- SearchContext
+  [model                :- ::search.config/SearchableModel
+   search-context       :- ::search.config/SearchContext
    search-native-query  :- [:maybe true?]]
   (when-let [query (:search-string search-context)]
     (into
@@ -288,8 +286,8 @@
 (mu/defn build-filters :- :map
   "Build the search filters for a model."
   [honeysql-query :- :map
-   model          :- SearchableModel
-   search-context :- SearchContext]
+   model          :- ::search.config/SearchableModel
+   search-context :- ::search.config/SearchContext]
   (let [{:keys [models
                 archived?
                 created-at

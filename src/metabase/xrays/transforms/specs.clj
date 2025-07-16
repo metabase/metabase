@@ -9,7 +9,7 @@
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml]
-   [metabase.xrays.domain-entities.specs :refer [MBQL]]))
+   [metabase.xrays.domain-entities.specs :as domain-entity-specs]))
 
 (def ^:private DecodableString
   [:string
@@ -26,10 +26,10 @@
   [:sequential
    {:decode/transform-spec (fn [breakouts]
                              (for [breakout (u/one-or-many breakouts)]
-                               (if-not (mr/validate MBQL breakout)
+                               (if-not (mr/validate ::domain-entity-specs/MBQL breakout)
                                  [:dimension breakout]
                                  breakout)))}
-   MBQL])
+   ::domain-entity-specs/MBQL])
 
 (defn- extract-dimensions
   [mbql]
@@ -45,7 +45,7 @@
     (comp (partial u/topological-sort extract-dimensions)
           stringify-keys)}
    Dimension
-   MBQL])
+   ::domain-entity-specs/MBQL])
 
 (def ^:private Aggregation Dimension->MBQL)
 
@@ -53,25 +53,25 @@
 
 (def ^:private Description DecodableString)
 
-(def ^:private Filter MBQL)
+(def ^:private Filter ::domain-entity-specs/MBQL)
 
 (def ^:private Limit pos-int?)
 
 (def ^:private JoinStrategy
   [:schema
    {:decode/transform-spec keyword}
-   mbql.s/JoinStrategy])
+   ::mbql.s/JoinStrategy])
 
 (def ^:private Joins
   [:sequential
    [:map
     [:source    Source]
-    [:condition MBQL]
+    [:condition ::domain-entity-specs/MBQL]
     [:strategy {:optional true} JoinStrategy]]])
 
 (def ^:private TransformName DecodableString)
 
-(def Step
+(mr/def ::Step
   "Transform step"
   [:map
    [:source    Source]
@@ -93,7 +93,7 @@
                                  (u/topological-sort (fn [{:keys [source joins]}]
                                                        (conj (map :source joins) source)))))}
    Source
-   Step])
+   ::Step])
 
 (def ^:private DomainEntity DecodableString)
 
@@ -107,7 +107,7 @@
    {:decode/transform-spec u/one-or-many}
    DomainEntity])
 
-(def TransformSpec
+(mr/def ::TransformSpec
   "Transform spec"
   [:map
    [:name     TransformName]
@@ -124,7 +124,7 @@
                                                       :transform (:name spec))))))
 
 (defn- coerce-to-transform-spec [spec]
-  (mc/coerce TransformSpec
+  (mc/coerce ::TransformSpec
              spec
              (mtx/transformer
               mtx/string-transformer

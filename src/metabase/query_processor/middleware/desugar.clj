@@ -47,7 +47,7 @@
     (expression :guard mbql.preds/FieldOrExpressionDef?)
     (mbql.u/desugar-expression expression)))
 
-(mu/defn desugar :- mbql.s/Query
+(mu/defn desugar :- ::mbql.s/Query
   "Middleware that uses MBQL lib functions to replace high-level 'syntactic sugar' clauses like `time-interval` and
   `inside` with lower-level clauses like `between`. This is done to minimize the number of MBQL clauses individual
   drivers need to support. Clauses replaced by this middleware are marked `^:sugar` in the MBQL schema."

@@ -1,13 +1,14 @@
 (ns metabase.bookmarks.models.bookmark
   (:require
-   [clojure.string :as str]
-   [metabase.app-db.core :as mdb]
-   [metabase.queries.schema :as queries.schema]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+    [clojure.string :as str]
+    [metabase.app-db.core :as mdb]
+    [metabase.queries.schema :as queries.schema]
+    [metabase.util.honey-sql-2 :as h2x]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [methodical.core :as methodical]
+    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/CardBookmark       [_model] :card_bookmark)
 (methodical/defmethod t2/table-name :model/DashboardBookmark  [_model] :dashboard_bookmark)
@@ -23,21 +24,21 @@
   [k]
   (-> (str/split (name k) #"\.") peek keyword))
 
-(def BookmarkResult
+(mr/def ::BookmarkResult
   "Shape of a bookmark returned for user. Id is a string because it is a concatenation of the model and the model's
   id. This is required for the frontend entity loading system and does not refer to any particular bookmark id,
   although the compound key can be inferred from it."
   [:map {:closed true}
    [:id                               :string]
    [:type                             [:enum "card" "collection" "dashboard"]]
-   [:item_id                          ms/PositiveInt]
-   [:name                             ms/NonBlankString]
+   [:item_id                          ::ms/PositiveInt]
+   [:name                             ::ms/NonBlankString]
    [:authority_level {:optional true} [:maybe :string]]
    [:card_type       {:optional true} [:maybe ::queries.schema/card-type]]
    [:description     {:optional true} [:maybe :string]]
    [:display         {:optional true} [:maybe :string]]])
 
-(mu/defn- normalize-bookmark-result :- BookmarkResult
+(mu/defn- normalize-bookmark-result :- ::BookmarkResult
   "Normalizes bookmark results. Bookmarks are left joined against the card, collection, and dashboard tables, but only
   points to one of them. Normalizes it so it has just the desired fields."
   [result]
@@ -83,7 +84,7 @@
                   :from   [:collection_bookmark]
                   :where  [:= :user_id user-id]}]}))
 
-(mu/defn bookmarks-for-user :- [:sequential BookmarkResult]
+(mu/defn bookmarks-for-user :- [:sequential ::BookmarkResult]
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and
   item_id, name, and description from the underlying bookmarked item."
   [user-id]

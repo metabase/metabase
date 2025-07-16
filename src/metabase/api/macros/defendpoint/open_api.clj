@@ -27,7 +27,7 @@
                                             %))
         (m/update-existing :properties #(update-vals % (fn [v] (dissoc v :optional)))))))
 
-(def ^:private file-schema (mjs/transform ms/File {::mjs/definitions-path "#/components/schemas/"}))
+(def ^:private file-schema (mjs/transform ::ms/File {::mjs/definitions-path "#/components/schemas/"}))
 
 (mu/defn- fix-json-schema :- :metabase.api.open-api/parameter.schema
   "Clean-up JSON schema to make it more understandable for OpenAPI tools.

@@ -105,16 +105,16 @@
                                 [:and
                                  [:map-of :keyword :any]
                                  [:map
-                                  [:key         ms/NonBlankString]
-                                  [:description ms/NonBlankString]
+                                  [:key         ::ms/NonBlankString]
+                                  [:description ::ms/NonBlankString]
                                   [:triggers    [:sequential
                                                  [:and
                                                   [:map-of :keyword :any]
                                                   [:map
-                                                   [:key ms/NonBlankString]
-                                                   [:description ms/NonBlankString]
-                                                   [:misfire-instruction ms/NonBlankString]
-                                                   [:state ms/NonBlankString]]]]]]]]]]
+                                                   [:key ::ms/NonBlankString]
+                                                   [:description ::ms/NonBlankString]
+                                                   [:misfire-instruction ::ms/NonBlankString]
+                                                   [:state ::ms/NonBlankString]]]]]]]]]]
                   (task/scheduler-info))))))
 
 (deftest start-scheduler-no-op-with-env-var-test

@@ -31,7 +31,6 @@
    [clojure.set :as set]
    [colorize.core :as colorize]
    [java-time.api :as t]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
@@ -130,9 +129,9 @@
 
 (mu/defn update-users-recent-views!
   "Updates the RecentViews table for a given user with a new view, and prunes old views."
-  [user-id :- [:maybe ms/PositiveInt]
+  [user-id :- [:maybe ::ms/PositiveInt]
    model :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection]
-   model-id :- ms/PositiveInt
+   model-id :- ::ms/PositiveInt
    context :- [:enum :view :selection]]
   (when user-id
     (t2/with-transaction [_conn]
@@ -159,54 +158,53 @@
     :left-join [[:report_dashboard :d]
                 [:= :recent_views.model_id :d.id]]}))
 
-(def Item
+(mr/def ::Item
   "The shape of a recent view item, returned from `GET /recent_views`."
-  (mc/schema
-   [:and {:registry {::official [:maybe [:enum :official "official"]]
-                     ::verified [:maybe [:enum :verified "verified"]]
-                     ::pc [:map
-                           [:id [:or [:int {:min 1}] [:= "root"]]]
-                           [:name :string]
-                           [:authority_level ::official]]}}
-    [:map
-     [:id [:int {:min 1}]]
-     [:name :string]
-     [:description [:maybe :string]]
-     [:model [:enum :dataset :card :metric :dashboard :collection :table]]
-     [:can_write :boolean]
-     [:timestamp :string]]
-    ;; database_id was commented out below because this schema was not actually being used correctly
-    ;; by [[metabase.activity-feed.api/get-popular-items-model-and-id]] and when I fixed it in #47418
-    ;; [[metabase.activity-feed.api-test/popular-items-test]] started failing because things don't actually come back with
-    ;; database IDs... commented out for now until someone gets a change to look at this. -- Cam
-    [:multi {:dispatch :model}
-     [:card [:map
-             [:display :string]
-             #_[:database_id :int]
-             [:parent_collection ::pc]
-             [:moderated_status ::verified]]]
-     [:dataset [:map
-                #_[:database_id :int]
-                [:parent_collection ::pc]
-                [:moderated_status ::verified]]]
-     [:metric [:map
-               [:display :string]
+  [:and {:registry {::official [:maybe [:enum :official "official"]]
+                    ::verified [:maybe [:enum :verified "verified"]]
+                    ::pc [:map
+                          [:id [:or [:int {:min 1}] [:= "root"]]]
+                          [:name :string]
+                          [:authority_level ::official]]}}
+   [:map
+    [:id [:int {:min 1}]]
+    [:name :string]
+    [:description [:maybe :string]]
+    [:model [:enum :dataset :card :metric :dashboard :collection :table]]
+    [:can_write :boolean]
+    [:timestamp :string]]
+   ;; database_id was commented out below because this schema was not actually being used correctly
+   ;; by [[metabase.activity-feed.api/get-popular-items-model-and-id]] and when I fixed it in #47418
+   ;; [[metabase.activity-feed.api-test/popular-items-test]] started failing because things don't actually come back with
+   ;; database IDs... commented out for now until someone gets a change to look at this. -- Cam
+   [:multi {:dispatch :model}
+    [:card [:map
+            [:display :string]
+            #_[:database_id :int]
+            [:parent_collection ::pc]
+            [:moderated_status ::verified]]]
+    [:dataset [:map
+               #_[:database_id :int]
                [:parent_collection ::pc]
                [:moderated_status ::verified]]]
-     [:dashboard
-      [:map
-       [:parent_collection ::pc]
-       [:moderated_status ::verified]]]
-     [:table [:map
-              [:display_name :string]
-              [:table_schema [:maybe :string]]
-              [:database [:map
-                          #_[:id [:int {:min 1}]]
-                          [:name :string]]]]]
-     [:collection [:map
-                   [:parent_collection ::pc]
-                   [:effective_location :string]
-                   [:authority_level ::official]]]]]))
+    [:metric [:map
+              [:display :string]
+              [:parent_collection ::pc]
+              [:moderated_status ::verified]]]
+    [:dashboard
+     [:map
+      [:parent_collection ::pc]
+      [:moderated_status ::verified]]]
+    [:table [:map
+             [:display_name :string]
+             [:table_schema [:maybe :string]]
+             [:database [:map
+                         #_[:id [:int {:min 1}]]
+                         [:name :string]]]]]
+    [:collection [:map
+                  [:parent_collection ::pc]
+                  [:effective_location :string]
+                  [:authority_level ::official]]]]])
 
 (defmulti fill-recent-view-info
   "Fills in additional information for a recent view, such as the display name of the object, returns [[Item]].
@@ -525,7 +523,7 @@
      :collection (m/index-by :id (collection-recents collection-ids))
      :table      (m/index-by :id (table-recents table-ids))}))
 
-(def ^:private ItemValidator (mr/validator Item))
+(def ^:private ItemValidator (mr/validator ::Item))
 
 (defn error-avoider
   "The underlying data model here can become inconsistent, and it's better to return the recents data that we know is
@@ -536,7 +534,7 @@
     (when-not config/is-prod?
       (log/errorf (colorize/red "Invalid recent view item: %s reason: %s")
                   (pr-str item)
-                  (me/humanize (mr/explain Item item))))))
+                  (me/humanize (mr/explain ::Item item))))))
 
 (mu/defn get-recents
   "Gets all recent views for a given user, and context. Returns a list of at most 20 [[Item]]s per [[models-of-interest]], per context.

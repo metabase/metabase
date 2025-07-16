@@ -207,7 +207,7 @@
          admin-permissions-rx]
    "$"))
 
-(def Path "A permission path."
+(mr/def ::Path "A permission path."
   [:or {:title "Path"} [:re path-regex-v1] [:re path-regex-v2]])
 
 (def ^:private Kind
@@ -216,7 +216,7 @@
 (mu/defn classify-path :- Kind
   "Classifies a permission [[metabase.permissions.models.permissions/Path]] into
   a [[metabase.permissions.models.permissions/Kind]], or throws."
-  [path :- Path]
+  [path :- ::Path]
   (let [result (keep (fn [[permission-rx kind]]
                        (when (re-matches (u.regex/rx permission-rx) path) kind))
                      rx->kind)]
@@ -225,13 +225,13 @@
                       {:path path :result result})))
     (first result)))
 
-(def DataPath "A permissions path that's guaranteed to be a v1 data-permissions path"
+(mr/def ::DataPath "A permissions path that's guaranteed to be a v1 data-permissions path"
   [:re (u.regex/rx "^/" v1-data-permissions-rx "$")])
 
 (mu/defn classify-data-path :- DataKind
   "Classifies data path permissions [[metabase.permissions.models.permissions/DataPath]] into
   a [[metabase.permissions.models.permissions/DataKind]]"
-  [data-path :- DataPath]
+  [data-path :- ::DataPath]
   (let [result (keep (fn [[data-rx kind]]
                        (when (re-matches (u.regex/rx [:and "^/" data-rx]) data-path) kind))
                      data-rx->data-kind)]
@@ -239,19 +239,19 @@
       (throw (ex-info "Unclassified data path!!" {:data-path data-path :result result})))
     (first result)))
 
-(let [path-validator (mr/validator Path)]
+(let [path-validator (mr/validator ::Path)]
   (defn valid-path?
     "Is `path` a valid, known permissions path?"
     ^Boolean [^String path]
     (path-validator path)))
 
-(def PathSchema
+(mr/def ::PathSchema
   "Schema for a permissions path with a valid format."
   [:re
    {:error/message "Valid permissions path"}
    (re-pattern (str "^/(" path-char-rx "*/)*$"))])
 
-(let [path-format-validator (mr/validator PathSchema)]
+(let [path-format-validator (mr/validator ::PathSchema)]
   (defn valid-path-format?
     "Is `path` a string with a valid permissions path format? This is a less strict version of [[valid-path?]] which
   just checks that the path components contain alphanumeric characters or dashes, separated by slashes

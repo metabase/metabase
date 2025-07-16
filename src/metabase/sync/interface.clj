@@ -18,18 +18,10 @@
    [:description             {:optional true} [:maybe :string]]
    [:visibility_type         {:optional true} [:maybe :string]]])
 
-(def DatabaseMetadataTable
-  "Schema for the expected output of `describe-database` for a Table."
-  [:ref ::DatabaseMetadataTable])
-
 (mr/def ::DatabaseMetadata
   [:map
-   [:tables [:set DatabaseMetadataTable]]
+   [:tables [:set ::DatabaseMetadataTable]]
    [:version {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
-
-(def DatabaseMetadata
-  "Schema for the expected output of `describe-database`."
-  [:ref ::DatabaseMetadata])
 
 (mr/def ::TableMetadataField
   [:map
@@ -40,7 +32,7 @@
    [:position                   {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
    [:semantic-type              {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:effective-type             {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:coercion-strategy          {:optional true} [:maybe ms/CoercionStrategy]]
+   [:coercion-strategy          {:optional true} [:maybe ::ms/CoercionStrategy]]
    [:field-comment              {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:pk?                        {:optional true} :boolean] ; optional for databases that don't support PKs
    [:nested-fields              {:optional true} [:set [:ref ::TableMetadataField]]]
@@ -53,10 +45,6 @@
    [:database-required          {:optional true} :boolean]
    [:visibility-type            {:optional true} [:maybe :keyword]]])
 
-(def TableMetadataField
-  "Schema for a given Field as provided in [[metabase.driver/describe-table]]."
-  [:ref ::TableMetadataField])
-
 (mr/def ::TableIndexMetadata
   [:set
    [:and
@@ -65,33 +53,20 @@
     [:multi {:dispatch :type}
      [:normal-column-index [:map [:value ::lib.schema.common/non-blank-string]]]
      [:nested-column-index [:map [:value [:sequential ::lib.schema.common/non-blank-string]]]]]]])
-
-(def TableIndexMetadata
-  "Schema for a given Table as provided in [[metabase.driver/describe-table-indexes]]."
-  [:ref ::TableIndexMetadata])
-
 (mr/def ::FieldIndexMetadata
   [:map
    [:table-schema [:maybe ::lib.schema.common/non-blank-string]]
    [:table-name   ::lib.schema.common/non-blank-string]
    [:field-name   ::lib.schema.common/non-blank-string]])
 
-(def FieldIndexMetadata
-  "Schema for a given result provided by [[metabase.driver/describe-indexes]]."
-  [:ref ::FieldIndexMetadata])
-
 (mr/def ::FieldMetadataEntry
   (-> (mr/schema ::TableMetadataField)
       (mut/assoc :table-schema [:maybe ::lib.schema.common/non-blank-string])
       (mut/assoc :table-name   ::lib.schema.common/non-blank-string)))
 
-(def FieldMetadataEntry
-  "Schema for an item in the expected output of [[metabase.driver/describe-fields]]."
-  [:ref ::FieldMetadataEntry])
-
 ;;; not actually used; leaving here for now because it serves as documentation
 (comment
-  (def NestedFCMetadata
+  (mr/def ::NestedFCMetadata
     "Schema for the expected output of [[metabase.driver.sql-jdbc.sync/describe-nested-field-columns]]."
     [:maybe [:set TableMetadataField]]))
 
@@ -103,7 +78,7 @@
                        [:schema [:maybe ::lib.schema.common/non-blank-string]]]]
    [:dest-column-name ::lib.schema.common/non-blank-string]])
 
-(def TableFKMetadataEntry
+(mr/def ::TableFKMetadataEntry
   "Schema for an individual entry in `FKMetadata`."
   [:ref ::TableFKMetadataEntry])
 
@@ -116,7 +91,7 @@
    [:pk-table-schema  [:maybe ::lib.schema.common/non-blank-string]]
    [:pk-column-name   ::lib.schema.common/non-blank-string]])
 
-(def FKMetadataEntry
+(mr/def ::FKMetadataEntry
   "Schema for an entry in the expected output of [[metabase.driver/describe-fks]]."
   [:ref ::FKMetadataEntry])
 
@@ -132,7 +107,7 @@
    (ms/InstanceOf :model/Database)
    ::no-kebab-case-keys])
 
-(def DatabaseInstance
+(mr/def ::DatabaseInstance
   "Schema for a valid instance of a Metabase Database."
   [:ref ::DatabaseInstance])
 
@@ -141,19 +116,11 @@
    (ms/InstanceOf :model/Table)
    ::no-kebab-case-keys])
 
-(def TableInstance
-  "Schema for a valid instance of a Metabase Table."
-  [:ref ::TableInstance])
-
 (mr/def ::FieldInstance
   [:and
    [:and
     (ms/InstanceOf :model/Field)
     ::no-kebab-case-keys]])
-
-(def FieldInstance
-  "Schema for a valid instance of a Metabase Field."
-  [:ref ::FieldInstance])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             FINGERPRINT VERSIONING                                             |

@@ -13,13 +13,13 @@
 (api.macros/defendpoint :get "/:id"
   "docstring"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   {:id (str id)})
 
 (api.macros/defendpoint :post "/:id"
   "docstring"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {:keys [value]} :- [:map
                        [:value ::lib.schema.common/non-blank-string]]]
   {:id    (str id)
@@ -29,22 +29,22 @@
   "docstring"
   [_route-params
    {:keys [collection settings]} :- [:map
-                                     [:collection [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
-                                     [:settings   [:maybe ms/BooleanValue]]
-                                     [:data-model ms/MaybeBooleanValue]]]
+                                     [:collection [:maybe (ms/QueryVectorOf ::ms/PositiveInt)]]
+                                     [:settings   [:maybe ::ms/BooleanValue]]
+                                     [:data-model ::ms/MaybeBooleanValue]]]
   {:collections collection :settings settings})
 
 (api.macros/defendpoint :get "/rename"
   "this one renames query parameter trying to trick us (actually doesn't really trick us much anymore with defendpoint 2)"
   [_route-params
    {c :count} :- [:map
-                  [:count {:optional true} ms/PositiveInt]]]
+                  [:count {:optional true} ::ms/PositiveInt]]]
   {:count c})
 
 (api.macros/defendpoint :put "/complex/:id"
   "More complex body schema"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {:keys [data]} :- [:map
                       [:data [:map
@@ -62,13 +62,13 @@
   "docstring"
   {:multipart true}
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    _body
    {{:strs [file]} :multipart-params, :as _request} :- [:map
                                                         [:multipart-params
                                                          [:map
-                                                          [:file (mu/with ms/File {:description "File to upload"})]]]]]
+                                                          [:file (mu/with ::ms/File {:description "File to upload"})]]]]]
   {:id id :data file})
 
 (deftest ^:parallel defendpoint->openapi-test

@@ -30,7 +30,7 @@
   "Delete all Alert and DashboardSubscription subscriptions for a User (i.e., so they will no longer receive them).
   Archive all Alerts and DashboardSubscriptions created by the User. Only allowed for admins or for the current user."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api.user/check-self-or-superuser id)
   ;; delete all `PulseChannelRecipient` rows for this User, which means they will no longer receive any
   ;; Alerts/DashboardSubscriptions

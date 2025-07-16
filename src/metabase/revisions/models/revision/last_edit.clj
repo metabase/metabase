@@ -8,13 +8,14 @@
   `:email`. It is not a full User object (missing some superuser metadata, last login time, and a common name). This
   was done to prevent another db call and hooking up timestamps to users but this can be added if preferred."
   (:require
-   [clj-time.core :as time]
-   [clojure.set :as set]
-   [medley.core :as m]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2]))
+    [clj-time.core :as time]
+    [clojure.set :as set]
+    [medley.core :as m]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [steffan-westcott.clj-otel.api.trace.span :as span]
+    [toucan2.core :as t2]))
 
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 
@@ -23,18 +24,18 @@
   "Schema of the `:last-edit-info` map. A subset of a user with a timestamp indicating when the last edit was."
   [:map
    [:timestamp  [:maybe :any]]
-   [:id         [:maybe ms/PositiveInt]]
+   [:id         [:maybe ::ms/PositiveInt]]
    [:first_name [:maybe :string]]
    [:last_name  [:maybe :string]]
    [:email      [:maybe :string]]])
 
-(def MaybeAnnotated
+(mr/def ::MaybeAnnotated
   "Spec for an item annotated with last-edit-info. Items are cards or dashboards. Optional because we may not always
   have revision history for all cards/dashboards."
   [:map
    [:last-edit-info {:optional true} LastEditInfo]])
 
-(mu/defn with-last-edit-info :- [:maybe [:sequential MaybeAnnotated]]
+(mu/defn with-last-edit-info :- [:maybe [:sequential ::MaybeAnnotated]]
   "Add the last edited information to a card. Will add a key `:last-edit-info`. Model should be one of `:dashboard` or
   `:card`. Gets the last edited information from the revisions table. If you need this information from a put route,
   use `@api/*current-user*` and a current timestamp since revisions are events and asynchronous."

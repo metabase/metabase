@@ -176,7 +176,7 @@
                       (ldap/fetch-or-create-user! user-info))))
             (testing "Call fetch-or-create-user! again to trigger update"
               (is (malli= [:and [:map-of :keyword :any]
-                           [:map [:id ms/PositiveInt]]]
+                           [:map [:id ::ms/PositiveInt]]]
                           (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
             (is (= {:first_name       "John"
                     :last_name        "Smith"
@@ -203,7 +203,7 @@
                             (ldap/fetch-or-create-user! user-info))))
               (testing "Call fetch-or-create-user! again to trigger update"
                 (is (malli= [:and [:map-of :keyword :any]
-                             [:map [:id ms/PositiveInt]]]
+                             [:map [:id ::ms/PositiveInt]]]
                             (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
               (is (= {:first_name       "John"
                       :last_name        "Smith"

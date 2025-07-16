@@ -44,7 +44,7 @@
   "Get user information for the supplied username."
   :feature :sso-ldap
   [ldap-connection :- (ms/InstanceOfClass LDAPConnectionPool)
-   username        :- ms/NonBlankString
+   username        :- ::ms/NonBlankString
    settings        :- sso/LDAPSettings]
   (when-let [result (sso/ldap-search ldap-connection username settings)]
     (when-let [user-info (sso/ldap-search-result->user-info

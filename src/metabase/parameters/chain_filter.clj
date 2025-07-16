@@ -62,50 +62,51 @@
   WHERE lower(name) LIKE '%cam'
   AND field_2 = \"abc\""
   (:require
-   [clojure.core.memoize :as memoize]
-   [clojure.set :as set]
-   [clojure.string :as str]
-   [honey.sql :as sql]
-   [metabase.app-db.core :as mdb]
-   [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.ident :as lib.ident]
-   [metabase.lib.util.match :as lib.util.match]
-   [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
-   [metabase.parameters.field-values :as params.field-values]
-   [metabase.parameters.params :as params]
-   [metabase.parameters.schema :as parameters.schema]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.setup :as qp.setup]
-   [metabase.types.core :as types]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
-   [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouses.models.database :as database]
-   [toucan2.core :as t2]))
+    [clojure.core.memoize :as memoize]
+    [clojure.set :as set]
+    [clojure.string :as str]
+    [honey.sql :as sql]
+    [metabase.app-db.core :as mdb]
+    [metabase.driver.common.parameters.dates :as params.dates]
+    [metabase.legacy-mbql.util :as mbql.u]
+    [metabase.lib.ident :as lib.ident]
+    [metabase.lib.util.match :as lib.util.match]
+    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
+    [metabase.parameters.field-values :as params.field-values]
+    [metabase.parameters.params :as params]
+    [metabase.parameters.schema :as parameters.schema]
+    [metabase.query-processor :as qp]
+    [metabase.query-processor.compile :as qp.compile]
+    [metabase.query-processor.middleware.permissions :as qp.perms]
+    [metabase.query-processor.preprocess :as qp.preprocess]
+    [metabase.query-processor.setup :as qp.setup]
+    [metabase.types.core :as types]
+    [metabase.util :as u]
+    [metabase.util.i18n :refer [tru]]
+    [metabase.util.log :as log]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
+    [metabase.warehouse-schema.models.field :as field]
+    [metabase.warehouse-schema.models.field-values :as field-values]
+    [metabase.warehouses.models.database :as database]
+    [toucan2.core :as t2]))
 
 ;; so the hydration method for name_field is loaded
 (comment params/keep-me)
 
-(def Constraint
+(mr/def ::Constraint
   "Schema for a constraint on a field."
   [:map
-   [:field-id ms/PositiveInt]
+   [:field-id ::ms/PositiveInt]
    [:op :keyword]
    [:value :any]
    [:options {:optional true} [:maybe map?]]])
 
-(def Constraints
+(mr/def ::Constraints
   "Schema for a list of Constraints."
-  [:sequential Constraint])
+  [:sequential ::Constraint])
 
 (def ^:dynamic *enable-reverse-joins*
   "Whether to chain filter via joins where we must follow relationships in reverse, e.g. child -> parent (e.g.
@@ -130,7 +131,7 @@
 (mu/defn- filter-clause
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
   [source-table-id
-   {:keys [field-id op value options]} :- Constraint]
+   {:keys [field-id op value options]} :- ::Constraint]
   (let [{:keys [base_type] :as field-metadata} (memoized-field-types-by-id field-id)
         field-clause (let [this-field-table-id (field/field-id->table-id field-id)]
                        [:field field-id (merge (when base_type
@@ -383,16 +384,16 @@
 (def ^:private Options
   ;; if original-field-id is specified, we'll include this in the results. For Field->Field remapping.
   [:map {:closed true}
-   [:original-field-id {:optional true} [:maybe ms/PositiveInt]]
+   [:original-field-id {:optional true} [:maybe ::ms/PositiveInt]]
     ;; return at most the lesser of `limit` (if specified) and `max-results`.
-   [:limit {:optional true} [:maybe ms/PositiveInt]]])
+   [:limit {:optional true} [:maybe ::ms/PositiveInt]]])
 
 (def ^:private max-results 1000)
 
 (mu/defn- chain-filter-mbql-query
   "Generate the MBQL query powering `chain-filter`."
-  [field-id                          :- ms/PositiveInt
-   constraints                       :- [:maybe Constraints]
+  [field-id                          :- ::ms/PositiveInt
+   constraints                       :- [:maybe ::Constraints]
    {:keys [original-field-id limit]} :- [:maybe Options]]
   {:database (field/field-id->database-id field-id)
    :type     :query
@@ -443,10 +444,10 @@
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
 
-(mu/defn- unremapped-chain-filter :- ms/FieldValuesResult
+(mu/defn- unremapped-chain-filter :- ::ms/FieldValuesResult
   "Chain filtering without all the fancy remapping stuff on top of it."
-  [field-id    :- ms/PositiveInt
-   constraints :- [:maybe Constraints]
+  [field-id    :- ::ms/PositiveInt
+   constraints :- [:maybe ::Constraints]
    options     :- [:maybe Options]]
   (let [mbql-query (chain-filter-mbql-query field-id constraints options)]
     (log/debugf "Chain filter MBQL query:\n%s" (u/pprint-to-str 'magenta mbql-query))
@@ -477,7 +478,7 @@
 (mu/defn- add-human-readable-values
   "Convert result `values` (a sequence of 1-tuples) to a sequence of `[v human-readable]` pairs by finding the
   matching remapped values from `v->human-readable`."
-  [values            :- [:sequential ms/NonRemappedFieldValue]
+  [values            :- [:sequential ::ms/NonRemappedFieldValue]
    v->human-readable :- ::parameters.schema/human-readable-remapping-map]
   (map vector
        (map first values)
@@ -538,18 +539,18 @@
    :limit  1})
 
 ;; TODO -- add some caching here?
-(mu/defn remapped-field-id :- [:maybe ms/PositiveInt]
+(mu/defn remapped-field-id :- [:maybe ::ms/PositiveInt]
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
-  [field-id :- [:maybe ms/PositiveInt]]
+  [field-id :- [:maybe ::ms/PositiveInt]]
   (:id (t2/query-one (remapped-field-id-query field-id))))
 
 (mu/defn remapping :- [:maybe [:map
-                               [:id ms/PositiveInt]
+                               [:id ::ms/PositiveInt]
                                [:mapping-type [:enum :fk->field :fk->pk->name :pk->name]]]]
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
-  [field-id :- [:maybe ms/PositiveInt]]
+  [field-id :- [:maybe ::ms/PositiveInt]]
   (when-let [raw-mapping (t2/query-one (remapped-field-id-query field-id))]
     (-> raw-mapping
         (dissoc :mapping_type)
@@ -583,7 +584,7 @@
                             (< limit (count values)))
                           has_more_values)}))
 
-(mu/defn chain-filter :- ms/FieldValuesResult
+(mu/defn chain-filter :- ::ms/FieldValuesResult
   "Fetch a sequence of possible values of Field with `field-id` by restricting the possible values to rows that match
   values of other Fields in the `constraints` map. Powers the `GET /api/dashboard/:id/param/:key/values` chain filter
   API endpoint.
@@ -606,8 +607,8 @@
 
   For remapped columns (when remapping is detected or when an explicit remapping field-id is provided), this returns
   results as a sequence of `[value remapped-value]` pairs."
-  [field-id    :- ms/PositiveInt
-   constraints :- [:maybe Constraints]
+  [field-id    :- ::ms/PositiveInt
+   constraints :- [:maybe ::Constraints]
    & options]
   (assert (even? (count options)))
   (let [{:as options}         options
@@ -670,9 +671,9 @@
                          :base-type   base-type}))))))
 
 (mu/defn- unremapped-chain-filter-search
-  [field-id    :- ms/PositiveInt
-   constraints :- [:maybe Constraints]
-   query       :- ms/NonBlankString
+  [field-id    :- ::ms/PositiveInt
+   constraints :- [:maybe ::Constraints]
+   query       :- ::ms/NonBlankString
    options     :- [:maybe Options]]
   (check-valid-search-field field-id)
   (let [constraints (conj constraints {:field-id field-id
@@ -692,10 +693,10 @@
   "Chain filter search, but for Fields that have human-readable values defined (e.g. you've went in and specified that
   enum value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
   database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."
-  [field-id          :- ms/PositiveInt
+  [field-id          :- ::ms/PositiveInt
    v->human-readable :- ::parameters.schema/human-readable-remapping-map
-   constraints       :- [:maybe Constraints]
-   query             :- ms/NonBlankString
+   constraints       :- [:maybe ::Constraints]
+   query             :- ::ms/NonBlankString
    options           :- [:maybe Options]]
   (or (when-let [unremapped-values (not-empty (matching-unremapped-values query v->human-readable))]
         (let [constraints (conj constraints {:field-id field-id
@@ -736,12 +737,12 @@
                limit (take limit))
      :has_more_values has_more_values}))
 
-(mu/defn chain-filter-search :- ms/FieldValuesResult
+(mu/defn chain-filter-search :- ::ms/FieldValuesResult
   "Convenience version of `chain-filter` that adds a constraint to only return values of Field with `field-id`
   containing String `query`. Powers the `search/:query` version of the chain filter endpoint."
-  [field-id          :- ms/PositiveInt
-   constraints       :- [:maybe Constraints]
-   query             :- [:maybe ms/NonBlankString]
+  [field-id          :- ::ms/PositiveInt
+   constraints       :- [:maybe ::Constraints]
+   query             :- [:maybe ::ms/NonBlankString]
    & options]
   (assert (even? (count options)))
   (let [{:as options}         options
@@ -779,8 +780,8 @@
 
     ;; maybe we can't filter against Field 2 because there's no FK-> relationship
     (filterable-field-ids 1 #{2 3 4}) ; -> #{3 4}"
-  [field-id         :- ms/PositiveInt
-   filter-field-ids :- [:maybe [:set ms/PositiveInt]]]
+  [field-id         :- ::ms/PositiveInt
+   filter-field-ids :- [:maybe [:set ::ms/PositiveInt]]]
   (when (seq filter-field-ids)
     (let [mbql-query (chain-filter-mbql-query field-id
                                               (for [id filter-field-ids]

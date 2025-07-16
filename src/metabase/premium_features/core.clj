@@ -27,8 +27,7 @@
   has-feature?
   log-enabled?
   max-users-allowed
-  plan-alias
-  TokenStatus]
+  plan-alias]
 
  (metabase.premium-features.settings
   active-users-count

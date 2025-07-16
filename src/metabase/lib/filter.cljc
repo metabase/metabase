@@ -26,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
 
@@ -422,7 +423,7 @@
     stage-number :- [:maybe :int]]
    (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
 
-(def ColumnWithOperators
+(mr/def ::ColumnWithOperators
   "Malli schema for ColumnMetadata extended with the list of applicable operators."
   [:merge
    [:ref ::lib.schema.metadata/column]
@@ -431,10 +432,10 @@
 
 (mu/defn filterable-column-operators :- [:maybe [:sequential ::lib.schema.filter/operator]]
   "Returns the operators for which `filterable-column` is applicable."
-  [filterable-column :- ColumnWithOperators]
+  [filterable-column :- ::ColumnWithOperators]
   (:operators filterable-column))
 
-(mu/defn add-column-operators :- ColumnWithOperators
+(mu/defn add-column-operators :- ::ColumnWithOperators
   "Extend the column metadata with the available operators if any."
   [column :- ::lib.schema.metadata/column]
   (let [operators (lib.filter.operator/filter-operators column)]
@@ -448,7 +449,7 @@
     (when (lib.util/ref-clause? leading-arg)
       leading-arg)))
 
-(mu/defn filterable-columns :- [:maybe [:sequential ColumnWithOperators]]
+(mu/defn filterable-columns :- [:maybe [:sequential ::ColumnWithOperators]]
   "Get column metadata for all the columns that can be filtered in
   the stage number `stage-number` of the query `query`
   If `stage-number` is omitted, the last stage is used.
@@ -547,7 +548,7 @@
          (first matching-filters))))))
 
 ;; TODO: Refactor this away - handle legacy refs in `lib.js` and call `lib.equality` from there.
-(mu/defn find-filterable-column-for-legacy-ref :- [:maybe ColumnWithOperators]
+(mu/defn find-filterable-column-for-legacy-ref :- [:maybe ::ColumnWithOperators]
   "Given a legacy `:field` reference, return the filterable [[ColumnWithOperators]] that best fits it."
   ([query legacy-ref]
    (find-filterable-column-for-legacy-ref query -1 legacy-ref))
@@ -564,7 +565,7 @@
    [:lib/type [:= :mbql/filter-parts]]
    [:operator ::lib.schema.filter/operator]
    [:options ::lib.schema.common/options]
-   [:column [:maybe ColumnWithOperators]]
+   [:column [:maybe ::ColumnWithOperators]]
    [:args [:sequential :any]]])
 
 (mu/defn filter-parts :- FilterParts

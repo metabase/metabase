@@ -18,15 +18,15 @@
    _query-params
    {:keys [timestamp time_matters icon timeline_id source question_id] :as body}
    :- [:map
-       [:name         ms/NonBlankString]
+       [:name         ::ms/NonBlankString]
        [:description  {:optional true} [:maybe :string]]
-       [:timestamp    ms/TemporalString]
+       [:timestamp    ::ms/TemporalString]
        [:time_matters {:optional true} [:maybe :boolean]]
        [:timezone     :string]
-       [:icon         {:optional true} [:maybe timeline-event/Icon]]
-       [:timeline_id  ms/PositiveInt]
-       [:source       {:optional true} [:maybe timeline-event/Source]]
-       [:question_id  {:optional true} [:maybe ms/PositiveInt]]
+       [:icon         {:optional true} [:maybe ::timeline-event/Icon]]
+       [:timeline_id  ::ms/PositiveInt]
+       [:source       {:optional true} [:maybe ::timeline-event/Source]]
+       [:question_id  {:optional true} [:maybe ::ms/PositiveInt]]
        [:archived     {:optional true} [:maybe :boolean]]]]
   ;; deliberately not using api/check-404 so we can have a useful error message.
   (let [timeline (t2/select-one :model/Timeline :id timeline_id)]
@@ -54,23 +54,23 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch the [[TimelineEvent]] with `id`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/read-check :model/TimelineEvent id))
 
 (api.macros/defendpoint :put "/:id"
   "Update a [[TimelineEvent]]."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {:keys [timestamp]
     :as   timeline-event-updates} :- [:map
-                                      [:name         {:optional true} [:maybe ms/NonBlankString]]
+                                      [:name         {:optional true} [:maybe ::ms/NonBlankString]]
                                       [:description  {:optional true} [:maybe :string]]
-                                      [:timestamp    {:optional true} [:maybe ms/TemporalString]]
+                                      [:timestamp    {:optional true} [:maybe ::ms/TemporalString]]
                                       [:time_matters {:optional true} [:maybe :boolean]]
                                       [:timezone     {:optional true} [:maybe :string]]
-                                      [:icon         {:optional true} [:maybe timeline-event/Icon]]
-                                      [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
+                                      [:icon         {:optional true} [:maybe ::timeline-event/Icon]]
+                                      [:timeline_id  {:optional true} [:maybe ::ms/PositiveInt]]
                                       [:archived     {:optional true} [:maybe :boolean]]]]
   (let [existing (api/write-check :model/TimelineEvent id)
         timeline-event-updates (cond-> timeline-event-updates
@@ -86,7 +86,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Delete a [[TimelineEvent]]."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/write-check :model/TimelineEvent id)
   (t2/delete! :model/TimelineEvent :id id)
   api/generic-204-no-content)

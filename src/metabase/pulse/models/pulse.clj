@@ -52,7 +52,7 @@
   (when-not (mr/validate [:maybe
                           [:sequential
                            [:and
-                            [:map [:id ms/NonBlankString]]
+                            [:map [:id ::ms/NonBlankString]]
                             [:map-of :keyword :any]]]]
                          parameters)
     (throw (ex-info (tru ":parameters must be a sequence of maps with String :id keys")
@@ -168,51 +168,51 @@
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
-(def AlertConditions
+(mr/def ::AlertConditions
   "Schema for valid values of `:alert_condition` for Alerts."
   [:enum "rows" "goal"])
 
-(def CardBase
+(mr/def ::CardBase
   "Schema for the map we use to internally represent the base elements of a Card used for Notifications. id is not
   required since the card may be a placeholder."
   (mu/with-api-error-message
    [:map
-    [:include_csv                        ms/BooleanValue]
-    [:include_xls                        ms/BooleanValue]
-    [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
-    [:pivot_results     {:optional true} [:maybe ms/BooleanValue]]
-    [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]
+    [:include_csv                        ::ms/BooleanValue]
+    [:include_xls                        ::ms/BooleanValue]
+    [:format_rows       {:optional true} [:maybe ::ms/BooleanValue]]
+    [:pivot_results     {:optional true} [:maybe ::ms/BooleanValue]]
+    [:dashboard_card_id {:optional true} [:maybe ::ms/PositiveInt]]]
    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "include_csv" "include_xls" "dashboard_card_id")))
 
-(def CardRef
+(mr/def ::CardRef
   "Schema for the map we use to internally represent the fact that a Card is in a Notification and the details about its
   presence there."
   (mu/with-api-error-message
-   [:merge CardBase
+   [:merge ::CardBase
     [:map
-     [:id ms/PositiveInt]]]
+     [:id ::ms/PositiveInt]]]
    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
 
-(def HybridPulseCard
+(mr/def ::HybridPulseCard
   "This schema represents the cards that are included in a pulse. This is the data from the `PulseCard` and some
   additional information used by the UI to display it from `Card`. This is a superset of `CardRef` and is coercible to
   a `CardRef`"
   (mu/with-api-error-message
-   [:merge CardRef
+   [:merge ::CardRef
     [:map
      [:name               [:maybe string?]]
      [:description        [:maybe string?]]
-     [:display            [:maybe ms/KeywordOrString]]
-     [:collection_id      [:maybe ms/PositiveInt]]
-     [:dashboard_id       [:maybe ms/PositiveInt]]
-     [:parameter_mappings [:maybe [:sequential ms/Map]]]]]
+     [:display            [:maybe ::ms/KeywordOrString]]
+     [:collection_id      [:maybe ::ms/PositiveInt]]
+     [:dashboard_id       [:maybe ::ms/PositiveInt]]
+     [:parameter_mappings [:maybe [:sequential ::ms/Map]]]]]
    (deferred-tru "value must be a map with the following keys `({0})`"
                  (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
                                  "dashboard_id" "parameter_mappings"]))))
 
-(def CoercibleToCardRef
+(mr/def ::CoercibleToCardRef
   "Schema for functions accepting either a `HybridPulseCard`, `CardRef`, or `CardBase`."
-  [:or HybridPulseCard CardRef CardBase])
+  [:or ::HybridPulseCard ::CardRef ::CardBase])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -229,7 +229,7 @@
   but in cases we need to send email after a card is archived, we need to be able to hydrate archived card as well."
   false)
 
-(mu/defn- cards* :- [:sequential HybridPulseCard]
+(mu/defn- cards* :- [:sequential ::HybridPulseCard]
   [pulse-ids]
   (t2/select
    :model/Card
@@ -418,7 +418,7 @@
                              [:in :pc.card_id card-ids]
                              [:= :p.archived archived?]]}))))
 
-(mu/defn card->ref :- CardRef
+(mu/defn card->ref :- ::CardRef
   "Create a card reference from a card or id"
   [card :- :map]
   {:id                (u/the-id card)
@@ -437,7 +437,7 @@
   *  If a Card ID in `card-refs` has no corresponding existing `PulseCard` object, one will be created.
   *  If an existing `PulseCard` has no corresponding ID in CARD-IDs, it will be deleted.
   *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
-  [notification-or-id card-refs :- [:maybe [:sequential CardRef]]]
+  [notification-or-id card-refs :- [:maybe [:sequential ::CardRef]]]
   ;; first off, just delete any cards associated with this pulse (we add them again below)
   (t2/delete! :model/PulseCard :pulse_id (u/the-id notification-or-id))
   ;; now just insert all of the cards that were given to us
@@ -497,7 +497,7 @@
 (mu/defn- create-notification-and-add-cards-and-channels!
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
   add the Notification to `channels`. Returns the `id` of the newly created Notification."
-  [notification card-refs :- [:maybe [:sequential CardRef]] channels]
+  [notification card-refs :- [:maybe [:sequential ::CardRef]] channels]
   (t2/with-transaction [_conn]
     (let [notification (first (t2/insert-returning-instances! :model/Pulse notification))]
       (update-notification-cards! notification card-refs)
@@ -512,12 +512,12 @@
   [cards    :- [:sequential [:map-of :keyword :any]]
    channels :- [:sequential [:map-of :keyword :any]]
    kvs      :- [:map
-                [:name                                 ms/NonBlankString]
-                [:creator_id                           ms/PositiveInt]
+                [:name                                 ::ms/NonBlankString]
+                [:creator_id                           ::ms/PositiveInt]
                 [:skip_if_empty       {:optional true} [:maybe :boolean]]
-                [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
-                [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
+                [:collection_id       {:optional true} [:maybe ::ms/PositiveInt]]
+                [:collection_position {:optional true} [:maybe ::ms/PositiveInt]]
+                [:dashboard_id        {:optional true} [:maybe ::ms/PositiveInt]]
                 [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
     ;; return the full Pulse (and record our create event).
@@ -534,14 +534,14 @@
     ;; return the full Pulse (and record our create event)
     (retrieve-alert id)))
 
-(mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
+(mu/defn- notification-or-id->existing-card-refs :- [:sequential ::CardRef]
   [notification-or-id]
   (t2/select [:model/PulseCard [:card_id :id] :include_csv :include_xls :dashboard_card_id]
              :pulse_id (u/the-id notification-or-id)
              {:order-by [[:position :asc]]}))
 
 (mu/defn- card-refs-have-changed? :- :boolean
-  [notification-or-id new-card-refs :- [:sequential CardRef]]
+  [notification-or-id new-card-refs :- [:sequential ::CardRef]]
   (not= (notification-or-id->existing-card-refs notification-or-id)
         new-card-refs))
 
@@ -552,15 +552,15 @@
 (mu/defn update-notification!
   "Update the supplied keys in a `notification`."
   [notification :- [:map
-                    [:id                    ms/PositiveInt]
-                    [:name                {:optional true} ms/NonBlankString]
-                    [:alert_condition     {:optional true} AlertConditions]
+                    [:id                    ::ms/PositiveInt]
+                    [:name                {:optional true} ::ms/NonBlankString]
+                    [:alert_condition     {:optional true} ::AlertConditions]
                     [:alert_above_goal    {:optional true} boolean?]
                     [:alert_first_only    {:optional true} boolean?]
                     [:skip_if_empty       {:optional true} boolean?]
-                    [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
-                    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                    [:cards               {:optional true} [:sequential CoercibleToCardRef]]
+                    [:collection_id       {:optional true} [:maybe ::ms/PositiveInt]]
+                    [:collection_position {:optional true} [:maybe ::ms/PositiveInt]]
+                    [:cards               {:optional true} [:sequential ::CoercibleToCardRef]]
                     [:channels            {:optional true} [:sequential :map]]
                     [:archived            {:optional true} boolean?]
                     [:parameters          {:optional true} [:maybe [:sequential :map]]]]]

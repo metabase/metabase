@@ -1,14 +1,15 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
-   [metabase.collections.models.collection :as collection]
-   [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
-   [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+    [metabase.collections.models.collection :as collection]
+    [metabase.models.interface :as mi]
+    [metabase.models.serialization :as serdes]
+    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
+    [metabase.util :as u]
+    [metabase.util.i18n :refer [deferred-tru tru]]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [methodical.core :as methodical]
+    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -57,7 +58,7 @@
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
-(def NativeQuerySnippetName
+(mr/def ::NativeQuerySnippetName
   "Schema checking that snippet names do not include \"}\" or start with spaces."
   (mu/with-api-error-message
    [:fn (fn [x]

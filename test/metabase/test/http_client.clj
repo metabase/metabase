@@ -155,10 +155,10 @@
 
 (def ^:private Credentials
   [:map {:closed true}
-   [:username ms/NonBlankString]
-   [:password ms/NonBlankString]])
+   [:username ::ms/NonBlankString]
+   [:password ::ms/NonBlankString]])
 
-(mu/defn authenticate :- ms/UUIDString
+(mu/defn authenticate :- ::ms/UUIDString
   "Authenticate a test user with `username` and `password`, returning their Metabase Session token; or throw an
   Exception if that fails."
   [credentials :- Credentials]
@@ -226,10 +226,10 @@
 
 (def ^:private ClientParamsMap
   [:map {:closed true}
-   [:credentials      {:optional true} [:maybe [:or ms/UUIDString map?]]]
+   [:credentials      {:optional true} [:maybe [:or ::ms/UUIDString map?]]]
    [:method                            (into [:enum] (keys method->request-fn))]
-   [:expected-status  {:optional true} [:maybe ms/PositiveInt]]
-   [:url                               ms/NonBlankString]
+   [:expected-status  {:optional true} [:maybe ::ms/PositiveInt]]
+   [:url                               ::ms/NonBlankString]
    [:http-body        {:optional true} [:maybe [:or map? vector?]]]
    [:query-parameters {:optional true} [:maybe map?]]
    [:request-options  {:optional true} [:maybe map?]]])

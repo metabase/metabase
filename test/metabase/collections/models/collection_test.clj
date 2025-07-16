@@ -1277,7 +1277,7 @@
 
   (testing "Does hydrating `:personal_collection_id` force creation of Personal Collections?"
     (mt/with-temp [:model/User temp-user]
-      (is (malli= [:map [:personal_collection_id ms/PositiveInt]]
+      (is (malli= [:map [:personal_collection_id ::ms/PositiveInt]]
                   (t2/hydrate temp-user :personal_collection_id))))))
 
 (deftest hydrate-is-personal-test

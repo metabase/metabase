@@ -36,7 +36,7 @@
                           i)))
         (map not= coll-1 coll-2)))
 
-(mu/defn- replace-cumulative-ags :- mbql.s/Query
+(mu/defn- replace-cumulative-ags :- ::mbql.s/Query
   "Replace `cum-count` and `cum-sum` aggregations in `query` with `count` and `sum` aggregations, respectively."
   [query]
   (lib.util.match/replace-in query [:query :aggregation]

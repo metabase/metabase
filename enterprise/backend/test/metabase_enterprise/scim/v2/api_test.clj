@@ -96,7 +96,7 @@
                      :model/PermissionsGroupMembership _     {:user_id (:id user) :group_id (:id group)}]
         (let [entity-id (t2/select-one-fn :entity_id :model/User :id (:id user))
               response  (scim-client :get 200 (format "ee/scim/v2/Users/%s" entity-id))]
-          (is (malli= scim-api/SCIMUser response))
+          (is (malli= ::scim-api/SCIMUser response))
           (is (=?
                {:schemas  ["urn:ietf:params:scim:schemas:core:2.0:User"]
                 :id       (t2/select-one-fn :entity_id :model/User :id (:id user))
@@ -117,7 +117,7 @@
   (with-scim-setup!
     (testing "Fetch users with default pagination"
       (let [response (scim-client :get 200 "ee/scim/v2/Users")]
-        (is (malli= scim-api/SCIMUserList response))))
+        (is (malli= ::scim-api/SCIMUserList response))))
 
     (testing "Fetch users with custom pagination"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?startIndex=%d&count=%d" 1 2))]
@@ -130,21 +130,21 @@
     (testing "Fetch user by email"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
                                                    (codec/url-encode "userName eq \"rasta@metabase.com\"")))]
-        (is (malli= scim-api/SCIMUserList response))
+        (is (malli= ::scim-api/SCIMUserList response))
         (is (= 1 (get response :totalResults)))
         (is (= 1 (count (get response :Resources))))))
 
     (testing "Fetch deactivated user by email"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
                                                    (codec/url-encode "userName eq \"trashbird@metabase.com\"")))]
-        (is (malli= scim-api/SCIMUserList response))
+        (is (malli= ::scim-api/SCIMUserList response))
         (is (= 1 (get response :totalResults)))
         (is (= 1 (count (get response :Resources))))))
 
     (testing "Fetch non-existant user by email"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
                                                    (codec/url-encode "userName eq \"newuser@metabase.com\"")))]
-        (is (malli= scim-api/SCIMUserList response))
+        (is (malli= ::scim-api/SCIMUserList response))
         (is (= 0 (get response :totalResults)))
         (is (= 0 (count (get response :Resources))))))
 
@@ -165,7 +165,7 @@
                           :emails [{:value (:email user)}]
                           :active true}
                 response (scim-client :post 201 "ee/scim/v2/Users" new-user)]
-            (is (malli= scim-api/SCIMUser response))
+            (is (malli= ::scim-api/SCIMUser response))
             (is (=? (assoc (select-keys user [:email :first_name :last_name :is_active])
                            :sso_source :scim)
                     (t2/select-one [:model/User :email :first_name :last_name :is_active :sso_source]
@@ -199,7 +199,7 @@
                              :emails [{:value "testuser@metabase.com"}]
                              :active true}
                 response    (scim-client :put 200 (format "ee/scim/v2/Users/%s" entity-id) update-user)]
-            (is (malli= scim-api/SCIMUser response))
+            (is (malli= ::scim-api/SCIMUser response))
             (is (= "UpdatedTest" (get-in response [:name :givenName])))
             (is (= "UpdatedUser" (get-in response [:name :familyName]))))
 
@@ -239,7 +239,7 @@
                                           :path "active"
                                           :value false}]}
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
-            (is (malli= scim-api/SCIMUser response))
+            (is (malli= ::scim-api/SCIMUser response))
             (is (= false (:active response)))))
 
         (testing "Reactivate an existing user"
@@ -249,7 +249,7 @@
                                           ;; Works with Boolean value as string
                                           :value "True"}]}
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
-            (is (malli= scim-api/SCIMUser response))
+            (is (malli= ::scim-api/SCIMUser response))
             (is (true? (:active response)))))
 
         (testing "Update family name of an existing user"
@@ -258,7 +258,7 @@
                                           :path "name.familyName"
                                           :value "UpdatedUser"}]}
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
-            (is (malli= scim-api/SCIMUser response))
+            (is (malli= ::scim-api/SCIMUser response))
             (is (= "UpdatedUser" (get-in response [:name :familyName])))))
 
         (testing "Update multiple attributes of an existing user"
@@ -274,7 +274,7 @@
                                           :path "name.active"
                                           :value "False"}]}
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
-            (is (malli= scim-api/SCIMUser response))
+            (is (malli= ::scim-api/SCIMUser response))
             (is (= "UpdatedFirstName" (get-in response [:name :givenName])))
             (is (= "UpdatedLastName" (get-in response [:name :familyName])))
             (is (true? (response :active)))))
@@ -302,7 +302,7 @@
     (mt/with-temp [:model/PermissionsGroup _group1 {:name "Group 1"}]
       (testing "Fetch groups with default pagination"
         (let [response (scim-client :get 200 "ee/scim/v2/Groups")]
-          (is (malli= scim-api/SCIMGroupList response))))
+          (is (malli= ::scim-api/SCIMGroupList response))))
 
       (testing "Fetch groups with custom pagination"
         (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?startIndex=%d&count=%d" 1 2))]
@@ -315,14 +315,14 @@
       (testing "Fetch group by name"
         (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
                                                      (codec/url-encode "displayName eq \"Group 1\"")))]
-          (is (malli= scim-api/SCIMGroupList response))
+          (is (malli= ::scim-api/SCIMGroupList response))
           (is (= 1 (get response :totalResults)))
           (is (= 1 (count (get response :Resources))))))
 
       (testing "Fetch non-existant group by name"
         (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
                                                      (codec/url-encode "displayName eq \"Fake Group\"")))]
-          (is (malli= scim-api/SCIMUserList response))
+          (is (malli= ::scim-api/SCIMUserList response))
           (is (= 0 (get response :totalResults)))
           (is (= 0 (count (get response :Resources))))))
 
@@ -337,7 +337,7 @@
                      :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta) :group_id (:id group)}]
         (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
               response  (scim-client :get 200 (format "ee/scim/v2/Groups/%s" entity-id))]
-          (is (malli= scim-api/SCIMGroup response))
+          (is (malli= ::scim-api/SCIMGroup response))
           (is (=?
                {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
                 :id          entity-id
@@ -365,7 +365,7 @@
                         :members [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))}]}]
         (try
           (let [response (scim-client :post 201 (format "ee/scim/v2/Groups") new-group)]
-            (is (malli= scim-api/SCIMGroup response))
+            (is (malli= ::scim-api/SCIMGroup response))
             (let [mb-group (t2/select-one :model/PermissionsGroup :entity_id (:id response))]
               (is (= group-name (:name mb-group)))
               (t2/exists? :model/PermissionsGroupMembership :user_id (mt/user->id :rasta) :group_id (:id mb-group))))

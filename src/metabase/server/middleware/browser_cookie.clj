@@ -29,7 +29,7 @@
            {:same-site :none, :secure true}
            {:same-site :lax})))
 
-(mu/defn- add-browser-id-cookie [request response browser-id :- ms/NonBlankString]
+(mu/defn- add-browser-id-cookie [request response browser-id :- ::ms/NonBlankString]
   (response/set-cookie response browser-id-cookie-name browser-id (cookie-options request)))
 
 (defn ensure-browser-id-cookie

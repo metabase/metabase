@@ -9,7 +9,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.malli :as mu])
   (:import
-   (metabase.driver.common.parameters Optional FunctionParam Param)))
+   (metabase.driver.common.parameters FunctionParam Optional Param)))
 
 (set! *warn-on-reflection* true)
 

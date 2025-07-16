@@ -44,7 +44,6 @@
   session-timeout
   session-timeout!]
  [metabase.request.util
-  DeviceInfo
   api-call?
   cacheable?
   describe-user-agent

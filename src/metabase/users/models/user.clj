@@ -1,27 +1,28 @@
 (ns metabase.users.models.user
   (:require
-   [clojure.data :as data]
-   [clojure.string :as str]
-   [metabase.api.common :as api]
-   [metabase.config.core :as config]
-   [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
-   [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.settings.core :as setting]
-   [metabase.setup.core :as setup]
-   [metabase.system.core :as system]
-   [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.password :as u.password]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.tools.default-fields :as t2.default-fields]))
+    [clojure.data :as data]
+    [clojure.string :as str]
+    [metabase.api.common :as api]
+    [metabase.config.core :as config]
+    [metabase.events.core :as events]
+    [metabase.models.interface :as mi]
+    [metabase.models.serialization :as serdes]
+    [metabase.permissions.core :as perms]
+    [metabase.premium-features.core :as premium-features]
+    [metabase.settings.core :as setting]
+    [metabase.setup.core :as setup]
+    [metabase.system.core :as system]
+    [metabase.util :as u]
+    [metabase.util.honey-sql-2 :as h2x]
+    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
+    [metabase.util.log :as log]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [metabase.util.password :as u.password]
+    [methodical.core :as methodical]
+    [toucan2.core :as t2]
+    [toucan2.tools.default-fields :as t2.default-fields]))
 
 (set! *warn-on-reflection* true)
 
@@ -276,33 +277,33 @@
 
 (declare form-password-reset-url set-password-reset-token!)
 
-(def LoginAttributes
+(mr/def ::LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
   (mu/with-api-error-message
-   [:map-of ms/KeywordOrString :any]
+   [:map-of ::ms/KeywordOrString :any]
    (deferred-tru "login attribute keys must be a keyword or string")))
 
-(def NewUser
+(mr/def ::NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
   [:map
-   [:first_name       {:optional true} [:maybe ms/NonBlankString]]
-   [:last_name        {:optional true} [:maybe ms/NonBlankString]]
-   [:email                             ms/Email]
-   [:password         {:optional true} [:maybe ms/NonBlankString]]
-   [:login_attributes {:optional true} [:maybe LoginAttributes]]
-   [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
-   [:locale           {:optional true} [:maybe ms/KeywordOrString]]
-   [:type             {:optional true} [:maybe ms/KeywordOrString]]])
+   [:first_name       {:optional true} [:maybe ::ms/NonBlankString]]
+   [:last_name        {:optional true} [:maybe ::ms/NonBlankString]]
+   [:email                             ::ms/Email]
+   [:password         {:optional true} [:maybe ::ms/NonBlankString]]
+   [:login_attributes {:optional true} [:maybe ::LoginAttributes]]
+   [:sso_source       {:optional true} [:maybe ::ms/NonBlankString]]
+   [:locale           {:optional true} [:maybe ::ms/KeywordOrString]]
+   [:type             {:optional true} [:maybe ::ms/KeywordOrString]]])
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
   [:map
-   [:email      ms/Email]
-   [:first_name [:maybe ms/NonBlankString]]])
+   [:email      ::ms/Email]
+   [:first_name [:maybe ::ms/NonBlankString]]])
 
 (mu/defn insert-new-user!
   "Creates a new user, defaulting the password when not provided"
-  [new-user :- NewUser]
+  [new-user :- ::NewUser]
   (t2/insert-returning-instance! :model/User (update new-user :password #(or % (str (random-uuid))))))
 
 (defn serdes-synthesize-user!
@@ -315,7 +316,7 @@
   "Convenience function for inviting a new `User` and sending them a welcome email.
   This function will create the user, which will trigger the built-in system event
   notification to send an invite via email."
-  [new-user :- NewUser invitor :- Invitor setup? :- :boolean]
+  [new-user :- ::NewUser invitor :- Invitor setup? :- :boolean]
   ;; create the new user
   (u/prog1 (insert-new-user! new-user)
     ;; TODO make sure the email being sent synchronously.
@@ -331,7 +332,7 @@
 (mu/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
-  [new-user :- NewUser]
+  [new-user :- ::NewUser]
   (u/prog1 (insert-new-user! (assoc new-user :sso_source "google"))
     ;; send an email to everyone including the site admin if that's set
     (when (setting/get :send-new-sso-user-admin-email?)
@@ -341,7 +342,7 @@
 (mu/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
   will receive an email right away."
-  [new-user :- NewUser]
+  [new-user :- ::NewUser]
   (insert-new-user!
    (-> new-user
        ;; We should not store LDAP passwords

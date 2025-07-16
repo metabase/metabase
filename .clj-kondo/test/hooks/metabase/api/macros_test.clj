@@ -24,7 +24,7 @@
          [_route-params
           _query-params
           {:keys [icon], collection-id :collection_id, :as body} :- [:map
-                                                                     [:name    ms/NonBlankString]
+                                                                     [:name    ::ms/NonBlankString]
                                                                      [:default {:optional true} [:maybe :boolean]]]]
          (body icon)
          (body collection-id))
@@ -35,7 +35,7 @@
          (do
            [:map [:collection_id :int]]
            [:map
-            [:name    ms/NonBlankString]
+            [:name    ::ms/NonBlankString]
             [:default {:optional true} [:maybe :boolean]]])
          (clojure.core/let [_route-params {}
                             _query-params {}

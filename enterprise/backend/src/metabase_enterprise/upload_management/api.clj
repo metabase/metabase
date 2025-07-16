@@ -31,9 +31,9 @@
 (api.macros/defendpoint :delete "/tables/:id"
   "Delete the uploaded table from the database, optionally archiving cards for which it is the primary source."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {:keys [archive-cards]} :- [:map
-                               [:archive-cards {:optional true} [:maybe {:default false} ms/BooleanValue]]]]
+                               [:archive-cards {:optional true} [:maybe {:default false} ::ms/BooleanValue]]]]
   (try
     ;; To be idempotent, we do not check whether the table has already been deactivated.
     (let [table  (api/check-404 (t2/select-one :model/Table id))

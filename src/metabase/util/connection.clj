@@ -4,7 +4,11 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData)))
+   (java.sql
+    Connection
+    DatabaseMetaData
+    ResultSet
+    ResultSetMetaData)))
 
 (set! *warn-on-reflection* true)
 

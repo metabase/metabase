@@ -577,7 +577,7 @@
                                      :database_partitioned true {:order-by [[:name :desc]]}))))
                 (testing "and query this table should return the column pseudocolumn as well"
                   (is (malli=
-                       [:tuple :boolean ms/TemporalString ms/TemporalString]
+                       [:tuple :boolean ::ms/TemporalString ::ms/TemporalString]
                        (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time_not_required {:limit 1})))))))
               (finally
                 (doall (map drop-table-if-exists! table-names))

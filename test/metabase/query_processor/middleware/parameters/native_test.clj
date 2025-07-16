@@ -27,7 +27,7 @@
           (mt/with-driver :h2
             (mt/with-metadata-provider (mt/id)
               (is (malli= [:map
-                           [:native ms/NonBlankString]
+                           [:native ::ms/NonBlankString]
                            [:params [:= ["G%"]]]]
                           (qp.native/expand-inner query))))))))))
 

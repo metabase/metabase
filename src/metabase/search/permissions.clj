@@ -3,7 +3,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.search.config :refer [SearchContext]]
+   [metabase.search.config :as search.config]
    [metabase.util.malli :as mu]))
 
 (defn- assert-current-user! [missing-param]
@@ -31,7 +31,7 @@
 
 (mu/defn permitted-collections-clause
   "Build the WHERE clause corresponding to which collections the given user has access to."
-  [{:keys [archived current-user-id is-superuser?]} :- SearchContext collection-id-col :- :keyword]
+  [{:keys [archived current-user-id is-superuser?]} :- ::search.config/SearchContext collection-id-col :- :keyword]
   [:and
    (collection/visible-collection-filter-clause
     collection-id-col
@@ -44,7 +44,7 @@
 
 (mu/defn permitted-tables-clause
   "Build the WHERE clause corresponding to which tables the given user has access to."
-  [{:keys [current-user-id is-superuser?]} :- SearchContext table-id-col :- :keyword]
+  [{:keys [current-user-id is-superuser?]} :- ::search.config/SearchContext table-id-col :- :keyword]
   (mi/visible-filter-clause
    :model/Table
    table-id-col

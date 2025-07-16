@@ -165,7 +165,7 @@
 
 (mu/defn valid-token?
   "Check whether a Slack token is valid by checking if the `conversations.list` Slack api accepts it."
-  [token :- ms/NonBlankString]
+  [token :- ::ms/NonBlankString]
   (try
     (binding [*send-token-error-emails?* false]
       (boolean (take 1 (:channels (GET "conversations.list" :limit 1, :token token)))))
@@ -303,7 +303,7 @@
   "Calls Slack API `files.getUploadURLExternal` and `files.completeUploadExternal` endpoints to upload a file and returns
    the URL of the uploaded file."
   [file       :- NonEmptyByteArray
-   filename   :- ms/NonBlankString]
+   filename   :- ::ms/NonBlankString]
   {:pre [(slack-configured?)]}
   ;; TODO: we could make uploading files a lot faster by uploading the files in parallel.
   ;; Steps 1 and 2 can be done for all files in parallel, and step 3 can be done once at the end.

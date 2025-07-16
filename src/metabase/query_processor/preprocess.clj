@@ -52,7 +52,7 @@
 ;;; individual middleware function is wrapped in either [[ensure-legacy]] or [[ensure-pmbql]], and will then see the
 ;;; flavor of MBQL it is written for.
 
-(mu/defn- ->legacy :- mbql.s/Query
+(mu/defn- ->legacy :- ::mbql.s/Query
   [query :- [:map
              [:database ::lib.schema.id/database]]]
   (lib/->legacy-MBQL query))

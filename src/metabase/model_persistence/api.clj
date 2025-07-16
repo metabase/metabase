@@ -87,7 +87,7 @@
 (api.macros/defendpoint :get "/:persisted-info-id"
   "Fetch a particular [[PersistedInfo]] by id."
   [{:keys [persisted-info-id]} :- [:map
-                                   [:persisted-info-id ms/PositiveInt]]]
+                                   [:persisted-info-id ::ms/PositiveInt]]]
   (api/let-404 [persisted-info (first (fetch-persisted-info {:persisted-info-id persisted-info-id} nil nil))]
     (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
     persisted-info))
@@ -95,7 +95,7 @@
 (api.macros/defendpoint :get "/card/:card-id"
   "Fetch a particular [[PersistedInfo]] by card-id."
   [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
+                         [:card-id ::ms/PositiveInt]]]
   (api/let-404 [persisted-info (first (fetch-persisted-info {:card-id card-id} nil nil))]
     (api/read-check (t2/select-one :model/Database :id (:database_id persisted-info)))
     persisted-info))
@@ -104,7 +104,7 @@
   "Schema representing valid cron schedule for refreshing persisted models."
   (mu/with-api-error-message
    [:and
-    ms/NonBlankString
+    ::ms/NonBlankString
     [:fn {:error/message (deferred-tru "String representing a cron schedule")} #(= 7 (count (str/split % #" ")))]]
    (deferred-tru "Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>")))
 
@@ -171,7 +171,7 @@
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
   query in place of the model's query."
   [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
+                         [:card-id ::ms/PositiveInt]]]
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [{:keys [database_id] :as card} (t2/select-one :model/Card :id card-id)]
     (let [database (t2/select-one :model/Database :id database_id)]
@@ -193,7 +193,7 @@
 (api.macros/defendpoint :post "/card/:card-id/refresh"
   "Refresh the persisted model caching `card-id`."
   [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
+                         [:card-id ::ms/PositiveInt]]]
   (api/let-404 [card           (t2/select-one :model/Card :id card-id)
                 persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
     (when (not (queries/model? card))
@@ -208,7 +208,7 @@
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
   query rather than the saved version of the query."
   [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
+                         [:card-id ::ms/PositiveInt]]]
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [_card (t2/select-one :model/Card :id card-id)]
     (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
@@ -223,7 +223,7 @@
 (api.macros/defendpoint :post "/database/:id/persist"
   "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/check (model-persistence.settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
@@ -248,7 +248,7 @@
 (api.macros/defendpoint :post "/database/:id/unpersist"
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/let-404 [database (t2/select-one :model/Database :id id)]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)

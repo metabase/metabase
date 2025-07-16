@@ -1,18 +1,19 @@
 (ns metabase.request.util
   "Utility functions for HTTP (Ring) requests, and for getting device/location info from `User-Agent`/IP Address, etc."
   (:require
-   [clj-http.client :as http]
-   [clojure.string :as str]
-   [java-time.api :as t]
-   [metabase.config.core :as config]
-   [metabase.request.settings :as request.settings]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [user-agent :as user-agent])
+    [clj-http.client :as http]
+    [clojure.string :as str]
+    [java-time.api :as t]
+    [metabase.config.core :as config]
+    [metabase.request.settings :as request.settings]
+    [metabase.util :as u]
+    [metabase.util.i18n :refer [trs tru]]
+    [metabase.util.json :as json]
+    [metabase.util.log :as log]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [user-agent :as user-agent])
   (:import
    (java.time ZoneId)))
 
@@ -95,15 +96,15 @@
             ;; strip out non-ip-address characters like square brackets which we get sometimes
             (str/replace #"[^0-9a-fA-F.:]" ""))))
 
-(def DeviceInfo
+(mr/def ::DeviceInfo
   "Schema for the device info returned by `device-info`."
   [:map {:closed true}
-   [:device_id          ms/NonBlankString]
-   [:device_description ms/NonBlankString]
-   [:embedded           ms/BooleanValue]
-   [:ip_address         ms/NonBlankString]])
+   [:device_id          ::ms/NonBlankString]
+   [:device_description ::ms/NonBlankString]
+   [:embedded           ::ms/BooleanValue]
+   [:ip_address         ::ms/NonBlankString]])
 
-(mu/defn device-info :- DeviceInfo
+(mu/defn device-info :- ::DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
   [{{:strs [user-agent]} :headers, {:strs [token]} :query-params, :keys [browser-id], :as request}]
   (let [id          (or browser-id
@@ -150,9 +151,9 @@
 (def ^:private IPAddress->Info
   [:map-of
    [:and {:error/message "valid IP address string"}
-    ms/NonBlankString [:fn u/ip-address?]]
+    ::ms/NonBlankString [:fn u/ip-address?]]
    [:map {:closed true}
-    [:description ms/NonBlankString]
+    [:description ::ms/NonBlankString]
     [:timezone    [:maybe (ms/InstanceOfClass ZoneId)]]]])
 
 ;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible

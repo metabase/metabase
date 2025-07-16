@@ -1,9 +1,10 @@
 (ns metabase.permissions.models.data-permissions.sql
   "Helper functions for models using data permissions to construct `visisble-query` methods from."
   (:require
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu])
+    [metabase.permissions.models.data-permissions :as data-perms]
+    [metabase.util.honey-sql-2 :as h2x]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr])
   (:import
    (clojure.lang PersistentVector)))
 
@@ -24,20 +25,20 @@
   (fn [perm-type _] perm-type))
 
 (mu/defn- perm-type-to-int-case
-  [perm-type     :- data-perms/PermissionType
+  [perm-type     :- ::data-perms/PermissionType
    column        :- :keyword]
   (into [:case]
         (apply concat
                (map-indexed (fn [idx perm-value] [[:= column (h2x/literal perm-value)] [:inline idx]])
-                            (-> data-perms/Permissions perm-type :values)))))
+                            (-> ::data-perms/Permissions perm-type :values)))))
 
 (mu/defmethod perm-type-to-least-int-case :default
-  [perm-type     :- data-perms/PermissionType
+  [perm-type     :- ::data-perms/PermissionType
    column        :- :keyword]
   [:min (perm-type-to-int-case perm-type column)])
 
 (mu/defmethod perm-type-to-least-int-case :perms/view-data
-  [_ :- data-perms/PermissionType
+  [_ :- ::data-perms/PermissionType
    column :- :keyword]
   ;; blocked has a higher 'prioirty' than legacy-no-self-service when determining what permission level the user has
   (let [minimum-perm-value [:min
@@ -52,13 +53,13 @@
      [:= minimum-perm-value [:inline 2]] [:inline 1]]))
 
 (mu/defn- perm-type-to-int-inline :- [:tuple [:= :inline] nat-int?]
-  [perm-type :- data-perms/PermissionType
-   level :- data-perms/PermissionValue]
-  (let [^PersistentVector values (-> data-perms/Permissions perm-type :values)]
+  [perm-type :- ::data-perms/PermissionType
+   level :- ::data-perms/PermissionValue]
+  (let [^PersistentVector values (-> ::data-perms/Permissions perm-type :values)]
     [:inline (.indexOf values level)]))
 
 (mu/defn- perm-type-to-most-int-case
-  [perm-type     :- data-perms/PermissionType
+  [perm-type     :- ::data-perms/PermissionType
    column        :- :keyword]
   [:max (perm-type-to-int-case perm-type column)])
 
@@ -106,26 +107,26 @@
             :group-by [:mt.id]
             :having   [(perm-condition perm-type required-level (or most-or-least :least))]}])
 
-(def UserInfo
+(mr/def ::UserInfo
   "The user-id to use in the visiblity query and their superuser status."
   [:map
    [:user-id       pos-int?]
    [:is-superuser? :boolean]])
 
-(def PermissionMapping
+(mr/def ::PermissionMapping
   "Map of permission-type to either a permission value or tuple of (permission-value, :most/:least) indicating if we want to get the
   most or least restrictive permission a user has in any of the groups they are a member of. If that value is left out we will assume we
   want the least restrict permission value."
   [:map-of
-   data-perms/PermissionType
-   [:or data-perms/PermissionValue [:tuple data-perms/PermissionValue [:enum :most :least]]]])
+   ::data-perms/PermissionType
+   [:or ::data-perms/PermissionValue [:tuple ::data-perms/PermissionValue [:enum :most :least]]]])
 
 (mu/defn visible-table-filter-select
   "Selects a column from tables that are visible to the provided user given a mapping of permission types to the required value or the required
   value and a directive if we should test against the most or least permissive permission the user has."
   [select-column                   :- [:enum :id :db_id]
-   {:keys [user-id is-superuser?]} :- UserInfo
-   permission-mapping              :- PermissionMapping]
+   {:keys [user-id is-superuser?]} :- ::UserInfo
+   permission-mapping              :- ::PermissionMapping]
   {:select [(case select-column
               :id :mt.id
               :db_id :mt.db_id)]
@@ -141,8 +142,8 @@
 (mu/defn select-tables-and-groups-granting-perm
   "Selects table.id and the group.id of all permissions groups that give the provided user the provided permission level or a
   permission level either more or less restrictive than the supplied level."
-  [{:keys [user-id is-superuser?]} :- UserInfo
-   permission-mapping              :- PermissionMapping]
+  [{:keys [user-id is-superuser?]} :- ::UserInfo
+   permission-mapping              :- ::PermissionMapping]
   {:select [:mt.id :dp.group_id :dp.perm_type :dp.perm_value]
    :from   [[:metabase_table :mt]]
    :join   [[:data_permissions :dp] [:or

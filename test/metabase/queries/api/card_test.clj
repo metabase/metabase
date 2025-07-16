@@ -1171,7 +1171,7 @@
                            [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
                            [:query          [:= {} (mt/obj->json->obj query)]]
                            [:required-perms :map]
-                           [:actual-perms   [:sequential perms.u/PathSchema]]
+                           [:actual-perms   [:sequential ::perms.u/PathSchema]]
                            [:trace          [:sequential :any]]]
                           (create-card! :rasta 403))))))))))
 
@@ -1844,7 +1844,7 @@
                                [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
                                [:query          [:= {} (mt/obj->json->obj (mt/mbql-query users))]]
                                [:required-perms :map]
-                               [:actual-perms   [:sequential perms.u/PathSchema]]
+                               [:actual-perms   [:sequential ::perms.u/PathSchema]]
                                [:trace          [:sequential :any]]]
                               (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
                 (testing "make sure query hasn't changed in the DB"

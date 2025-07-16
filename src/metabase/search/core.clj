@@ -27,9 +27,6 @@
   search.impl/keep-me)
 
 (p/import-vars
- [search.config
-  SearchableModel]
-
  [search.engine
   model-set]
 

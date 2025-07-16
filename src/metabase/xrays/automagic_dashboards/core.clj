@@ -505,7 +505,7 @@
 
 (mu/defn- indepth
   [{:keys [dashboard-templates-prefix url] :as root}
-   {:keys [dashboard-template-name]} :- [:maybe dashboard-templates/DashboardTemplate]]
+   {:keys [dashboard-template-name]} :- [:maybe ::dashboard-templates/DashboardTemplate]]
   (let [base-context (make-base-context root)]
     (->> (dashboard-templates/get-dashboard-templates (concat dashboard-templates-prefix [dashboard-template-name]))
          (keep (fn [{indepth-template-name :dashboard-template-name
@@ -651,7 +651,7 @@
    root type individually via `related-selectors`. That recipe is then filled round-robin style."
   [root
    available-dimensions
-   dashboard-template :- [:maybe dashboard-templates/DashboardTemplate]]
+   dashboard-template :- [:maybe ::dashboard-templates/DashboardTemplate]]
   (->> (merge (indepth root dashboard-template)
               (drilldown-fields root available-dimensions)
               (related-entities root)

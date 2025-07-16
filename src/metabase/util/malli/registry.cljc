@@ -136,11 +136,11 @@
       `(register! ~type ~schema))
      ([type docstring schema]
       (assert (string? docstring))
-      `(metabase.util.malli.registry/def ~type
-         ~(macros/case
-           :clj `(-with-doc ~schema ~docstring)
-           ;; Ignore docstring for CLJS.
-           :cljs schema)))))
+      `(do (metabase.util.malli.registry/def ~type
+             ~(macros/case
+                :clj `(-with-doc ~schema ~docstring)
+                ;; Ignore docstring for CLJS.
+                :cljs schema))))))
 
 (defn- deref-all-preserving-properties
   "Like [[mc/deref-all]] but preserves properties attached to a `:ref` by wrapping the result in `:schema`."

@@ -7,7 +7,6 @@
 
 (p/import-vars
  [metabase.events.impl
-  Topic
   event-schema
   object->metadata
   publish-event!])

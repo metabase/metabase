@@ -27,15 +27,15 @@
   (doseq [url (collect-urls dashboard)]
     (testing (format "\nURL = %s" (pr-str url))
       (is (malli= [:map
-                   [:name        ms/NonBlankString]
-                   [:description ms/NonBlankString]]
+                   [:name        ::ms/NonBlankString]
+                   [:description ::ms/NonBlankString]]
                   (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/%s" (subs url 16))))))))
 
 (defn- test-card-is-valid [{query :dataset_query, :as card}]
   (testing "Card should be valid"
     (testing (format "\nCard =\n%s\n" (u/pprint-to-str card))
       (testing "Card query should be valid"
-        (is (malli= mbql.s/Query
+        (is (malli= ::mbql.s/Query
                     (mbql.normalize/normalize query)))))))
 
 (defn test-dashboard-is-valid

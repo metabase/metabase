@@ -30,7 +30,7 @@
 
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]]
+  [{:keys [database-id]} :- [:map [:database-id ::ms/PositiveInt]]]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
   (let [database (t2/select-one :model/Database :id database-id)]
     (api/check-404 database)
@@ -53,7 +53,7 @@
 
 (api.macros/defendpoint :delete "/connection/:database-id"
   "Delete PG replication connection for the specified database."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]]
+  [{:keys [database-id]} :- [:map [:database-id ::ms/PositiveInt]]]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
   (let [conns (pruned-database-replication-connections)]
     (when-let [connection-id (database-id->connection-id conns database-id)]

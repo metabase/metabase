@@ -120,7 +120,7 @@
                          :appearance_chart_colors              false
                          :appearance_show_mb_links             false}
                         stats))
-          (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
+          (is (malli= [:map-of :string ::ms/IntGreaterThanOrEqualToZero]
                       (-> stats :stats :database :dbms_versions))))))))
 
 (deftest anonymous-usage-stats-test-ee-with-values-changed
@@ -170,7 +170,7 @@
                            :appearance_chart_colors              false
                            :appearance_show_mb_links             true}
                           stats))
-            (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
+            (is (malli= [:map-of :string ::ms/IntGreaterThanOrEqualToZero]
                         (-> stats :stats :database :dbms_versions)))))))))
 
 (deftest ^:parallel conversion-test

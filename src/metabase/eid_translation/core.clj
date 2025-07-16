@@ -9,7 +9,6 @@
 
 (p/import-vars
  [metabase.eid-translation.impl
-  Status
   default-counter
   statuses]
  [metabase.eid-translation.util

@@ -65,7 +65,7 @@
 (mu/defn- fields->field-id->remapping-dimension :- [:maybe [:map-of ::lib.schema.id/field ExternalRemappingDimension]]
   "Given a sequence of field clauses (from the `:fields` clause), return a map of `:field-id` clause (other clauses
   are ineligable) to a remapping dimension information for any Fields that have an `external` type dimension remapping."
-  [fields :- [:maybe [:sequential mbql.s/Field]]]
+  [fields :- [:maybe [:sequential ::mbql.s/Field]]] ;; TODO continue the malli error log traceing and make it work and take a measurement
   (when-let [field-ids (not-empty (set (lib.util.match/match fields [:field (id :guard integer?) _] id)))]
     (let [field-metadatas (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column field-ids)]
       (when-let [remap-field-ids (not-empty (into #{}
@@ -100,7 +100,7 @@
   and the Dimension that suggested the remapping, which is used later in this middleware for post-processing. Order is
   important here, because the results are added to the `:fields` column in order. (TODO - why is it important, if they
   get hidden when displayed anyway?)"
-  [fields :- [:maybe [:sequential mbql.s/Field]]]
+  [fields :- [:maybe [:sequential ::mbql.s/Field]]]
   (when-let [field-id->remapping-dimension (fields->field-id->remapping-dimension fields)]
     ;; Reconstruct how we uniquify names in [[metabase.query-processor.middleware.annotate]]
     (let [name-generator (lib.util/unique-name-generator)
@@ -124,11 +124,11 @@
                                           :field-name                (-> dimension :field-id unique-name)
                                           :human-readable-field-name (-> dimension :human-readable-field-id unique-name))}))))))
 
-(mu/defn- add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- [:maybe [:sequential mbql.s/Field]]
+(mu/defn- add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- [:maybe [:sequential ::mbql.s/Field]]
   "Rewrite existing `:fields` in a query. Add `::original-field-dimension-id` to any Field clauses that are
   remapped-from."
   [infos  :- [:maybe [:sequential RemapColumnInfo]]
-   fields :- [:maybe [:sequential mbql.s/Field]]]
+   fields :- [:maybe [:sequential ::mbql.s/Field]]]
   (let [field->remapped-col (into {} (map (juxt :original-field-clause :new-field-clause)) infos)]
     (mapv
      (fn [field]
@@ -137,11 +137,11 @@
            new-field-dimension-id (mbql.u/update-field-options assoc ::original-field-dimension-id new-field-dimension-id))))
      fields)))
 
-(mu/defn- add-fk-remaps-rewrite-existing-fields-add-new-field-dimension-id :- [:maybe [:sequential mbql.s/Field]]
+(mu/defn- add-fk-remaps-rewrite-existing-fields-add-new-field-dimension-id :- [:maybe [:sequential ::mbql.s/Field]]
   "Rewrite existing `:fields` in a query. Add `::new-field-dimension-id` to any existing remap-to Fields that *would*
   have been added if they did not already exist."
   [infos  :- [:maybe [:sequential RemapColumnInfo]]
-   fields :- [:maybe [:sequential mbql.s/Field]]]
+   fields :- [:maybe [:sequential ::mbql.s/Field]]]
   (let [normalized-clause->new-options (into {}
                                              (map (juxt (fn [{clause :new-field-clause}]
                                                           (mbql.u/remove-namespaced-options clause))
@@ -154,11 +154,11 @@
                 options (mbql.u/update-field-options merge options))))
           fields)))
 
-(mu/defn- add-fk-remaps-rewrite-existing-fields :- [:maybe [:sequential mbql.s/Field]]
+(mu/defn- add-fk-remaps-rewrite-existing-fields :- [:maybe [:sequential ::mbql.s/Field]]
   "Rewrite existing `:fields` in a query. Add `::original-field-dimension-id` and ::new-field-dimension-id` where
   appropriate."
   [infos  :- [:maybe [:sequential RemapColumnInfo]]
-   fields :- [:maybe [:sequential mbql.s/Field]]]
+   fields :- [:maybe [:sequential ::mbql.s/Field]]]
   (->> fields
        (add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id infos)
        (add-fk-remaps-rewrite-existing-fields-add-new-field-dimension-id infos)))
@@ -190,7 +190,7 @@
 (def ^:private QueryAndRemaps
   [:map
    [:remaps [:maybe (helpers/distinct [:sequential ExternalRemappingDimension])]]
-   [:query  mbql.s/Query]])
+   [:query  ::mbql.s/Query]])
 
 (defn- add-fk-remaps-one-level
   [{:keys [fields order-by breakout breakout-idents], {source-query-remaps ::remaps} :source-query, :as query}]

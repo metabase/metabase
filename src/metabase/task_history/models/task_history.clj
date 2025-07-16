@@ -1,15 +1,16 @@
 (ns metabase.task-history.models.task-history
   (:require
-   [java-time.api :as t]
-   [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.util :as u]
-   [metabase.util.json :as json]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+    [java-time.api :as t]
+    [metabase.models.interface :as mi]
+    [metabase.permissions.core :as perms]
+    [metabase.premium-features.core :as premium-features]
+    [metabase.util :as u]
+    [metabase.util.json :as json]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.malli.schema :as ms]
+    [methodical.core :as methodical]
+    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -71,7 +72,7 @@
               task   (conj [:= :task task])
               status (conj [:= :status (name status)]))}))
 
-(def FilterParams
+(mr/def ::FilterParams
   "Schema for filter for task history."
   [:map
    [:status {:optional true} (into [:enum] task-history-status)]
@@ -85,7 +86,7 @@
 (def ^:private avaialble-sort-columns
   #{:duration :ended_at :started_at})
 
-(def SortParams
+(mr/def ::SortParams
   "Sorting map schema."
   [:map
    [:sort_column    {:default :started_at} (into [:enum] avaialble-sort-columns)]
@@ -93,9 +94,9 @@
 
 (mu/defn all
   "Return all TaskHistory entries, filtered if `filter` is provided, applying `limit` and `offset` if not nil."
-  [limit  :- [:maybe ms/PositiveInt]
-   offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
-   params :- [:maybe [:merge FilterParams SortParams]]]
+  [limit  :- [:maybe ::ms/PositiveInt]
+   offset :- [:maybe ::ms/IntGreaterThanOrEqualToZero]
+   params :- [:maybe [:merge ::FilterParams ::SortParams]]]
   (t2/select :model/TaskHistory (merge (params->where params)
                                        (params->order-by params)
                                        (when limit
@@ -105,7 +106,7 @@
 
 (mu/defn total
   "Return count of all, or filtered if `filter` is provided, task history entries."
-  [params :- FilterParams]
+  [params :- ::FilterParams]
   (t2/count :model/TaskHistory ((fnil identity {}) (params->where params))))
 
 (defn unique-tasks
@@ -126,7 +127,7 @@
 (def ^:private TaskHistoryInfo
   "Schema for `info` passed to the `with-task-history` macro."
   [:map {:closed true}
-   [:task                             ms/NonBlankString] ; task name, i.e. `send-pulses`. Conventionally lisp-cased
+   [:task                             ::ms/NonBlankString] ; task name, i.e. `send-pulses`. Conventionally lisp-cased
    [:db_id           {:optional true} [:maybe :int]]     ; DB involved, for sync operations or other tasks where this is applicable.
    [:on-success-info {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
    [:on-fail-info    {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]

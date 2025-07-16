@@ -11,19 +11,19 @@
 
 (def ^{:arglists '([field-clause])} Field?
   "Is this a valid Field clause?"
-  (mr/validator mbql.s/Field))
+  (mr/validator ::mbql.s/Field))
 
 (def ^{:arglists '([filter-clause])} Filter?
   "Is this a valid `:filter` clause?"
-  (mr/validator mbql.s/Filter))
+  (mr/validator ::mbql.s/Filter))
 
 (def ^{:arglists '([emptyable-clause])} Emptyable?
   "Is this a valid Emptyable clause?"
-  (mr/validator mbql.s/Emptyable))
+  (mr/validator ::mbql.s/Emptyable))
 
 (def ^{:arglists '([filter-clause])} DatetimeExpression?
   "Is this a valid DatetimeExpression clause?"
-  (mr/validator mbql.s/DatetimeExpression))
+  (mr/validator ::mbql.s/DatetimeExpression))
 
 (def ^{:arglists '([field-clause])} FieldOrExpressionDef?
   "Is this a something that is valid as a top-level expression definition?"

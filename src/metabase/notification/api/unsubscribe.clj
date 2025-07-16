@@ -43,7 +43,7 @@
   [_route-params
    _query-params
    {:keys [email hash notification-handler-id]} :- [:map
-                                                    [:notification-handler-id ms/PositiveInt]
+                                                    [:notification-handler-id ::ms/PositiveInt]
                                                     [:email                   :string]
                                                     [:hash                    :string]]
    request]
@@ -65,7 +65,7 @@
   [_route-params
    _query-params
    {:keys [email hash notification-handler-id]} :- [:map
-                                                    [:notification-handler-id ms/PositiveInt]
+                                                    [:notification-handler-id ::ms/PositiveInt]
                                                     [:email                   :string]
                                                     [:hash                    :string]]
    request]

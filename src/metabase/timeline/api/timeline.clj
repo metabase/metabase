@@ -27,11 +27,11 @@
   [_route-params
    _query-params
    {:keys [icon], collection-id :collection_id, :as body} :- [:map
-                                                              [:name          ms/NonBlankString]
+                                                              [:name          ::ms/NonBlankString]
                                                               [:default       {:optional true} [:maybe :boolean]]
                                                               [:description   {:optional true} [:maybe :string]]
-                                                              [:icon          {:optional true} [:maybe timeline-event/Icon]]
-                                                              [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                                              [:icon          {:optional true} [:maybe ::timeline-event/Icon]]
+                                                              [:collection_id {:optional true} [:maybe ::ms/PositiveInt]]
                                                               [:archived      {:optional true} [:maybe :boolean]]]]
   (collection/check-write-perms-for-collection collection-id)
   (let [tl (merge
@@ -46,7 +46,7 @@
   [_route-params
    {:keys [include], archived? :archived} :- [:map
                                               [:include  {:optional true} ::include]
-                                              [:archived {:default false} ms/BooleanValue]]]
+                                              [:archived {:default false} ::ms/BooleanValue]]]
   (let [timelines (->> (t2/select :model/Timeline
                                   {:where    [:and
                                               [:= :archived archived?]
@@ -61,12 +61,12 @@
   "Fetch the `Timeline` with `id`. Include `include=events` to unarchived events included on the timeline. Add
   `archived=true` to return all events on the timeline, both archived and unarchived."
   [{:keys [id]}                         :- [:map
-                                            [:id ms/PositiveInt]]
+                                            [:id ::ms/PositiveInt]]
    {:keys [include archived start end]} :- [:map
                                             [:include  {:optional true}  ::include]
-                                            [:archived {:default :false} ms/BooleanValue]
-                                            [:start    {:optional true}  ms/TemporalString]
-                                            [:end      {:optional true}  ms/TemporalString]]]
+                                            [:archived {:default :false} ::ms/BooleanValue]
+                                            [:start    {:optional true}  ::ms/TemporalString]
+                                            [:end      {:optional true}  ::ms/TemporalString]]]
   (let [archived? archived
         timeline  (api/read-check (t2/select-one :model/Timeline :id id))]
     (cond-> (t2/hydrate timeline :creator [:collection :can_write])
@@ -84,14 +84,14 @@
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {:keys [archived] :as timeline-updates} :- [:map
-                                               [:name          {:optional true} [:maybe ms/NonBlankString]]
+                                               [:name          {:optional true} [:maybe ::ms/NonBlankString]]
                                                [:default       {:optional true} [:maybe :boolean]]
                                                [:description   {:optional true} [:maybe :string]]
-                                               [:icon          {:optional true} [:maybe timeline-event/Icon]]
-                                               [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                               [:icon          {:optional true} [:maybe ::timeline-event/Icon]]
+                                               [:collection_id {:optional true} [:maybe ::ms/PositiveInt]]
                                                [:archived      {:optional true} [:maybe :boolean]]]]
   (let [existing (api/write-check :model/Timeline id)
         current-archived (:archived (t2/select-one :model/Timeline :id id))]
@@ -107,7 +107,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (api/write-check :model/Timeline id)
   (t2/delete! :model/Timeline :id id)
   api/generic-204-no-content)
@@ -125,7 +125,7 @@
 (api.macros/defendpoint :get "/collection/:id"
   "Fetch a specific Collection's timelines."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {:keys [include archived]} :- [:map
                                   [:include  {:optional true} [:maybe [:= "events"]]]
                                   [:archived {:default false} [:maybe :boolean]]]]

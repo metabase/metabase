@@ -9,7 +9,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- db-graph-keypath [group]
@@ -45,7 +44,7 @@
               (testing "GTAP should exist in application DB"
                 (is (malli= [:tuple
                              [:map
-                              [:id                   ms/PositiveInt]
+                              [:id                   ::ms/PositiveInt]
                               [:group_id             [:= (u/the-id &group)]]
                               [:table_id             [:= (mt/id :venues)]]
                               [:card_id              nil?]
@@ -77,7 +76,7 @@
                 (testing "GTAP for same group, other database should not be affected"
                   (is (malli= [:tuple
                                [:map
-                                [:id                   ms/PositiveInt]
+                                [:id                   ::ms/PositiveInt]
                                 [:group_id             [:= (u/the-id &group)]]
                                 [:table_id             [:= (u/the-id db-2-table)]]
                                 [:card_id              nil?]
@@ -88,7 +87,7 @@
                 (testing "GTAP for same table, other group should not be affected"
                   (is (malli= [:tuple
                                [:map
-                                [:id                   ms/PositiveInt]
+                                [:id                   ::ms/PositiveInt]
                                 [:group_id             [:= (u/the-id other-group)]]
                                 [:table_id             [:= (mt/id :venues)]]
                                 [:card_id              nil?]

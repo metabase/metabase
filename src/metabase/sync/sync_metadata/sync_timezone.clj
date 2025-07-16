@@ -36,7 +36,7 @@
 (mu/defn sync-timezone! :- [:map [:timezone-id [:maybe ::lib.schema.expression.temporal/timezone-id]]]
   "Query `database` for its current time to determine its timezone. The results of this function are used by the sync
   process to update the timezone if it's different."
-  [database :- i/DatabaseInstance]
+  [database :- ::i/DatabaseInstance]
   (let [driver  (driver.u/database->driver database)
         zone-id (driver/db-default-timezone driver database)]
     (validate-zone-id driver zone-id)

@@ -61,7 +61,7 @@
 
 (mu/defn sync-db-metadata!
   "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."
-  [database :- i/DatabaseInstance]
+  [database :- ::i/DatabaseInstance]
   (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
     (let [db-metadata (fetch-metadata/db-metadata database)]
       (u/prog1 (sync-util/run-sync-operation "sync" database (make-sync-steps db-metadata))
@@ -71,7 +71,7 @@
 
 (mu/defn sync-table-metadata!
   "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date."
-  [table :- i/TableInstance]
+  [table :- ::i/TableInstance]
   (let [database (table/database table)]
     (sync-fields/sync-fields-for-table! database table)
     (sync-fks/sync-fks-for-table! database table)

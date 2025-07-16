@@ -6,6 +6,7 @@
    [metabase.util.i18n.impl :as i18n.impl]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [net.cgrand.macrovich :as macros]
    [potemkin :as p]
    [potemkin.types :as p.types])
@@ -104,7 +105,7 @@
 (json/add-encoder UserLocalizedString localized-to-json)
 (json/add-encoder SiteLocalizedString localized-to-json)
 
-(def LocalizedString
+(mr/def ::LocalizedString
   "Schema for user and system localized string instances"
   (letfn [(instance-of [^Class klass]
             [:fn

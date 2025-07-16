@@ -54,7 +54,7 @@
 
 (mu/defn google-auth-create-new-user!
   "Create a new Google Auth user."
-  [{:keys [email] :as new-user} :- user/NewUser]
+  [{:keys [email] :as new-user} :- ::user/NewUser]
   (check-autocreate-user-allowed-for-email email)
   ;; this will just give the user a random password; they can go reset it if they ever change their mind and want to
   ;; log in without Google Auth; this lets us keep the NOT NULL constraints on password / salt without having to make

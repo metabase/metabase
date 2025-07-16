@@ -35,7 +35,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ResourceId [:or ms/PositiveInt ms/NanoIdString])
+(def ^:private ResourceId [:or ::ms/PositiveInt ::ms/NanoIdString])
 (def ^:private Token [:map
                       [:resource [:map
                                   [:question  {:optional true} ResourceId]
@@ -179,8 +179,8 @@
   `embedding-secret-key`"
   [{:keys [token dashcard-id card-id]} :- [:map
                                            [:token       string?]
-                                           [:dashcard-id ms/PositiveInt]
-                                           [:card-id     ms/PositiveInt]]
+                                           [:dashcard-id ::ms/PositiveInt]
+                                           [:card-id     ::ms/PositiveInt]]
    query-params :- :map]
   (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api
                                                          (api.embed.common/parse-query-params query-params))
@@ -197,8 +197,8 @@
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
   [{:keys [token dashcard-id card-id export-format]} :- [:map
-                                                         [:dashcard-id   ms/PositiveInt]
-                                                         [:card-id       ms/PositiveInt]
+                                                         [:dashcard-id   ::ms/PositiveInt]
+                                                         [:card-id       ::ms/PositiveInt]
                                                          [:export-format ::qp.schema/export-format]]
    {format-rows? :format_rows
     pivot?       :pivot_results
@@ -308,8 +308,8 @@
   `embedding-secret-key`"
   [{:keys [token dashcard-id card-id]} :- [:map
                                            [:token       string?]
-                                           [:dashcard-id ms/PositiveInt]
-                                           [:card-id     ms/PositiveInt]]
+                                           [:dashcard-id ::ms/PositiveInt]
+                                           [:card-id     ::ms/PositiveInt]]
    query-params :- :map]
   (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id
                                                          :api (api.embed.common/parse-query-params query-params)
@@ -325,7 +325,7 @@
         [:token string?]]]
    {:keys [parameters]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:parameters {:optional true} ::ms/JSONString]]]
   (let [unsigned   (unsign-and-translate-ids token)
         card-id    (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question])
         parameters (json/decode+kw parameters)
@@ -341,11 +341,11 @@
        :api.tiles/route-params
        [:map
         [:token       string?]
-        [:dashcard-id ms/PositiveInt]
-        [:card-id     ms/PositiveInt]]]
+        [:dashcard-id ::ms/PositiveInt]
+        [:card-id     ::ms/PositiveInt]]]
    {:keys [parameters]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:parameters {:optional true} ::ms/JSONString]]]
   (let [unsigned     (unsign-and-translate-ids token)
         dashboard-id (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :dashboard])
         parameters   (json/decode+kw parameters)

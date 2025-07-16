@@ -1,4 +1,6 @@
-(ns metabase.eid-translation.impl)
+(ns metabase.eid-translation.impl
+  (:require
+   [metabase.util.malli.registry :as mr]))
 
 (def statuses
   "Possible statuses from an entity-id -> id translation:
@@ -7,7 +9,7 @@
    If the format of the entity-id is invalid, the status is `:invalid-format`."
   [:ok :not-found :invalid-format])
 
-(def Status
+(mr/def ::Status
   "Malli enum for possible statuses for entity_id -> id translations."
   (into [:enum] statuses))
 

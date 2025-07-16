@@ -56,6 +56,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
    [metabase.upload.core :as upload]
+   [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
@@ -106,8 +107,6 @@
  limit/absolute-max-results
  limit/determine-query-max-rows
  logger/level-enabled?
- mbql.s/Join
- mbql.s/MBQLQuery
  mbql.u/aggregation-at-index
  mbql.u/assoc-field-options
  mbql.u/desugar-filter-clause
@@ -293,3 +292,5 @@
 (def qp.util.transformations.nest-breakouts.externally-remapped-field
   ":metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field"
   ::qp.util.transformations.nest-breakouts/externally-remapped-field)
+
+(mr/def ::MBQLQuery [:ref ::mbql.s/MBQLQuery])

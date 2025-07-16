@@ -412,9 +412,9 @@
 (mu/defn reconcile-position-for-collection!
   "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
   for fixing card/dashboard/pulse changes that impact other instances in the collection"
-  [collection-id :- [:maybe ms/PositiveInt]
-   old-position  :- [:maybe ms/PositiveInt]
-   new-position  :- [:maybe ms/PositiveInt]]
+  [collection-id :- [:maybe ::ms/PositiveInt]
+   old-position  :- [:maybe ::ms/PositiveInt]
+   new-position  :- [:maybe ::ms/PositiveInt]]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
                      (doseq [model '[Card Dashboard Pulse]]
                        (t2/update! model {:collection_id       collection-id
@@ -438,15 +438,15 @@
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
   [:map
-   [:collection_id       [:maybe ms/PositiveInt]]
-   [:collection_position [:maybe ms/PositiveInt]]])
+   [:collection_id       [:maybe ::ms/PositiveInt]]
+   [:collection_position [:maybe ::ms/PositiveInt]]])
 
 (def ^:private ModelWithOptionalPosition
   "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
   present, they didn't change. If they are present, they might have changed and we need to compare."
   [:map
-   [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
+   [:collection_id       {:optional true} [:maybe ::ms/PositiveInt]]
+   [:collection_position {:optional true} [:maybe ::ms/PositiveInt]]])
 
 (mu/defn maybe-reconcile-collection-position!
   "Generic function for working on cards/dashboards/pulses. Checks the before and after changes to see if there is any
@@ -542,7 +542,7 @@
   of maps. `:id` is the only required key for these maps, and order *does not matter* - `present-items` is responsible
   for reordering items the way they were."
   [f items :- [:sequential [:map
-                            [:id ms/PositiveInt]
+                            [:id ::ms/PositiveInt]
                             [:model :keyword]]]]
   (let [id+model->order (into {} (map-indexed (fn [i row] [[(:id row) (:model row)] i]) items))]
     (->> items

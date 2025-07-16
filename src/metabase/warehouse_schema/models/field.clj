@@ -222,13 +222,13 @@
   [{:keys [id]}]
   (t2/select [:model/FieldValues :field_id :values], :field_id id :type :full))
 
-(mu/defn nested-field-names->field-id :- [:maybe ms/PositiveInt]
+(mu/defn nested-field-names->field-id :- [:maybe ::ms/PositiveInt]
   "Recusively find the field id for a nested field name, return nil if not found.
   Nested field here refer to a field that has another field as its parent_id, like nested field in Mongo DB.
 
   This is to differentiate from the json nested field in, which the path is defined in metabase_field.nfc_path."
-  [table-id    :- ms/PositiveInt
-   field-names :- [:sequential ms/NonBlankString]]
+  [table-id    :- ::ms/PositiveInt
+   field-names :- [:sequential ::ms/NonBlankString]]
   (loop [field-names field-names
          field-id    nil]
     (if (seq field-names)

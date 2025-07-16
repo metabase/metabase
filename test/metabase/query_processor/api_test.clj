@@ -156,7 +156,7 @@
           (is (malli=
                [:map
                 [:hash         (ms/InstanceOfClass (Class/forName "[B"))]
-                [:id           ms/PositiveInt]
+                [:id           ::ms/PositiveInt]
                 [:result_rows  [:= 0]]
                 [:row_count    [:= 0]]
                 [:context      [:= :ad-hoc]]

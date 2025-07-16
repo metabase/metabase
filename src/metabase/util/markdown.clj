@@ -7,10 +7,37 @@
    [metabase.system.core :as system]
    [metabase.util :as u])
   (:import
-   (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak
-                             Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
-                             HtmlInnerBlockComment Image ImageRef IndentedCodeBlock Link LinkRef MailLink OrderedList
-                             OrderedListItem Paragraph Reference SoftLineBreak StrongEmphasis Text ThematicBreak)
+   (com.vladsch.flexmark.ast
+    AutoLink
+    BlockQuote
+    BulletList
+    BulletListItem
+    Code
+    Emphasis
+    FencedCodeBlock
+    HardLineBreak
+    Heading
+    HtmlBlock
+    HtmlCommentBlock
+    HtmlEntity
+    HtmlInline
+    HtmlInlineBase
+    HtmlInlineComment
+    HtmlInnerBlockComment
+    Image
+    ImageRef
+    IndentedCodeBlock
+    Link
+    LinkRef
+    MailLink
+    OrderedList
+    OrderedListItem
+    Paragraph
+    Reference
+    SoftLineBreak
+    StrongEmphasis
+    Text
+    ThematicBreak)
    (com.vladsch.flexmark.ext.autolink AutolinkExtension)
    (com.vladsch.flexmark.html HtmlRenderer LinkResolver LinkResolverFactory)
    (com.vladsch.flexmark.html.renderer LinkResolverBasicContext LinkStatus)

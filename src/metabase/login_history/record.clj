@@ -35,7 +35,7 @@
                    {:description ":model/User"}
                    [:id pos-int?]
                    [:last_login {:optional true} :any]]
-   device-info :- request/DeviceInfo]
+   device-info :- ::request/DeviceInfo]
   (let [history-entry (login-history/record-login-history! session-id (u/the-id user) device-info)]
     (when-not (:embedded device-info)
       (maybe-send-login-from-new-device-email history-entry))

@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.macros :as api.macros]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (deftest ^:parallel parse-args-test
   (are [args expected] (= expected
@@ -23,7 +24,7 @@
             [_route-params
              _query-params
              {:keys [card_ids], :as body} :- [:map
-                                              [:card_ids [:sequential ms/PositiveInt]]]
+                                              [:card_ids [:sequential ::ms/PositiveInt]]]
              request :- [:map
                          [:form-params :map]]]
             (neat))
@@ -33,7 +34,7 @@
       :params {:route   {:binding _route-params}
                :query   {:binding _query-params}
                :body    {:binding {:keys [card_ids], :as body}
-                         :schema [:map [:card_ids [:sequential ms/PositiveInt]]]}
+                         :schema [:map [:card_ids [:sequential ::ms/PositiveInt]]]}
                :request {:binding request
                          :schema [:map [:form-params :map]]}}
       :body [(neat)]}

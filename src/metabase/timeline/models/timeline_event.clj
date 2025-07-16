@@ -1,10 +1,11 @@
 (ns metabase.timeline.models.timeline-event
   (:require
-   [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
-   [metabase.util.honey-sql-2 :as h2x]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+    [metabase.models.interface :as mi]
+    [metabase.models.serialization :as serdes]
+    [metabase.util.honey-sql-2 :as h2x]
+    [metabase.util.malli.registry :as mr]
+    [methodical.core :as methodical]
+    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/TimelineEvent  [_model] :timeline_event)
 
@@ -20,11 +21,11 @@
   "The default icon for Timeline and TimelineEvents."
   "star")
 
-(def Icon
+(mr/def ::Icon
   "Schema for Timeline and TimelineEvents `icon`"
   [:enum default-icon "cake" "mail" "warning" "bell" "cloud"])
 
-(def Source
+(mr/def ::Source
   "Timeline Event Source Schema. For Snowplow Events, where the Event is created from is important.
   Events are added from one of three sources: `collections`, `questions` (cards in backend code), or directly with an API call. An API call is indicated by having no source key in the `timeline-event` request."
   [:enum "collections" "question"])

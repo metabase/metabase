@@ -4,11 +4,12 @@
   The strategy here is to use s/conform to tag every value that needs to be converted with the conversion strategy,
   then postwalk to actually perform the conversion."
   (:require
-   [clojure.spec.alpha :as s]
-   [clojure.spec.gen.alpha :as gen]
-   [clojure.walk :as walk]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]))
+    [clojure.spec.alpha :as s]
+    [clojure.spec.gen.alpha :as gen]
+    [clojure.walk :as walk]
+    [metabase.util :as u]
+    [metabase.util.i18n :refer [trs]]
+    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,12 +38,12 @@
     kw-int
     (parse-long (name kw-int))))
 
-(def DecodableKwInt
+(mr/def ::DecodableKwInt
   "Integer malli schema that knows how to decode itself from the :123 sort of shape used in perm-graphs"
   [:int {:decode/perm-graph kw-int->int-decoder}])
 
-(def ^:private Id DecodableKwInt)
-(def ^:private GroupId DecodableKwInt)
+(def ^:private Id ::DecodableKwInt)
+(def ^:private GroupId ::DecodableKwInt)
 
 ;; ids come in as keywordized numbers
 (s/def ::id (s/with-gen (s/or :kw->int (s/and keyword? #(re-find #"^\d+$" (name %))))
@@ -96,7 +97,7 @@
    [:native {:optional true} Native]
    [:schemas {:optional true} Schemas]])
 
-(def StrictDataPerms
+(mr/def ::StrictDataPerms
   "Data perms that care about how view-data and make-queries are related to one another.
   If you have write access for native queries, you must have data access to all schemas."
   [:and
@@ -105,10 +106,10 @@
     (fn [{:keys [native schemas]}]
       (not (and (= native :write) schemas (not (#{:all :impersonated} schemas)))))]])
 
-(def StrictDbGraph
+(mr/def ::StrictDbGraph
   "like db-graph, but with added validations:
    - Ensures 'view-data' is not 'blocked' if 'create-queries' is 'query-builder-and-native'."
-  [:schema {:registry {"StrictDataPerms" StrictDataPerms}}
+  [:schema {:registry {"StrictDataPerms" ::StrictDataPerms}}
    [:map-of
     Id
     [:and
@@ -124,17 +125,17 @@
         (let [{:keys [create-queries view-data]} db-entry]
           (not (and (= create-queries :query-builder-and-native) (= view-data :blocked)))))]]]])
 
-(def DataPermissionsGraph
+(mr/def ::DataPermissionsGraph
   "Used to transform, and verify data permissions graph"
   [:map
-   [:groups [:map-of GroupId [:maybe StrictDbGraph]]]])
+   [:groups [:map-of GroupId [:maybe ::StrictDbGraph]]]])
 
-(def StrictApiPermissionsGraph
+(mr/def ::StrictApiPermissionsGraph
   "Top level strict data graph schema expected over the API. Includes revision ID for avoiding concurrent updates."
   [:map
    [:revision {:optional true} [:maybe int?]]
    [:force {:optional true} [:maybe boolean?]]
-   [:groups [:map-of GroupId [:maybe StrictDbGraph]]]])
+   [:groups [:map-of GroupId [:maybe ::StrictDbGraph]]]])
 
 ;;; --------------------------------------------- Execution Permissions ----------------------------------------------
 
@@ -145,6 +146,7 @@
         :db-exeute      (s/map-of ::id ::execute
                                   :conform-keys true)))
 
+;; TODO: below here seems ununsed by lsp:
 (s/def :metabase.permissions.api.permission-graph.execution/groups
   (s/map-of ::id
             ::execute-graph

@@ -28,7 +28,7 @@
   "Schema for a string that matches the instance setup token."
   (mu/with-api-error-message
    [:and
-    ms/NonBlankString
+    ::ms/NonBlankString
     [:fn
      {:error/message "setup token"}
      (every-pred string? #'setup/token-match?)]]
@@ -103,17 +103,17 @@
    :- [:map
        [:token SetupToken]
        [:user [:map
-               [:email      ms/Email]
-               [:password   ms/ValidPassword]
-               [:first_name {:optional true} [:maybe ms/NonBlankString]]
-               [:last_name  {:optional true} [:maybe ms/NonBlankString]]]]
+               [:email      ::ms/Email]
+               [:password   ::ms/ValidPassword]
+               [:first_name {:optional true} [:maybe ::ms/NonBlankString]]
+               [:last_name  {:optional true} [:maybe ::ms/NonBlankString]]]]
        [:invite {:optional true} [:map
-                                  [:first_name {:optional true} [:maybe ms/NonBlankString]]
-                                  [:last_name  {:optional true} [:maybe ms/NonBlankString]]
-                                  [:email      {:optional true} [:maybe ms/Email]]]]
+                                  [:first_name {:optional true} [:maybe ::ms/NonBlankString]]
+                                  [:last_name  {:optional true} [:maybe ::ms/NonBlankString]]
+                                  [:email      {:optional true} [:maybe ::ms/Email]]]]
        [:prefs [:map
-                [:site_name   ms/NonBlankString]
-                [:site_locale {:optional true} [:maybe ms/ValidLocale]]]]]
+                [:site_name   ::ms/NonBlankString]
+                [:site_locale {:optional true} [:maybe ::ms/ValidLocale]]]]]
    request]
   (letfn [(create! []
             (try

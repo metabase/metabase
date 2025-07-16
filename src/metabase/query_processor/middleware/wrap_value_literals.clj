@@ -314,7 +314,7 @@
     (binding [*inner-query* inner-query]
       (wrap-value-literals-in-mbql inner-query))))
 
-(mu/defn wrap-value-literals :- mbql.s/Query
+(mu/defn wrap-value-literals :- ::mbql.s/Query
   "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for
   datetime strings, etc.) clauses which include info about the Field they are being compared to. This is done mostly
   to make it easier for drivers to write implementations that rely on multimethod dispatch (by clause name) -- they

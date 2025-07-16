@@ -34,14 +34,14 @@
 (api.macros/defendpoint :get "/graph/db/:db-id"
   "Fetch a graph of all Permissions for db-id `db-id`."
   [{:keys [db-id]} :- [:map
-                       [:db-id ms/PositiveInt]]]
+                       [:db-id ::ms/PositiveInt]]]
   (api/check-superuser)
   (data-perms.graph/api-graph {:db-id db-id}))
 
 (api.macros/defendpoint :get "/graph/group/:group-id"
   "Fetch a graph of all Permissions for group-id `group-id`."
   [{:keys [group-id]} :- [:map
-                          [:group-id ms/PositiveInt]]]
+                          [:group-id ::ms/PositiveInt]]]
   (api/check-superuser)
   (data-perms.graph/api-graph {:group-id group-id}))
 
@@ -75,17 +75,17 @@
   If the skip-graph query param is truthy, then the graph will not be returned."
   [_route-params
    {:keys [skip-graph force]} :- [:map
-                                  [:skip-graph {:default false} [:maybe ms/BooleanValue]]
-                                  [:force      {:default false} [:maybe ms/BooleanValue]]]
+                                  [:skip-graph {:default false} [:maybe ::ms/BooleanValue]]
+                                  [:force      {:default false} [:maybe ::ms/BooleanValue]]]
    body :- :map]
   (api/check-superuser)
-  (let [new-graph (mc/decode api.permission-graph/StrictApiPermissionsGraph
+  (let [new-graph (mc/decode ::api.permission-graph/StrictApiPermissionsGraph
                              body
                              (mtx/transformer
                               mtx/string-transformer
                               (mtx/transformer {:name :perm-graph})))]
-    (when-not (mr/validate api.permission-graph/DataPermissionsGraph new-graph)
-      (let [explained (mu/explain api.permission-graph/DataPermissionsGraph new-graph)]
+    (when-not (mr/validate ::api.permission-graph/DataPermissionsGraph new-graph)
+      (let [explained (mu/explain ::api.permission-graph/DataPermissionsGraph new-graph)]
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
                         {:status-code 400}))))
     (t2/with-transaction [_conn]
@@ -170,7 +170,7 @@
 (api.macros/defendpoint :get "/group/:id"
   "Fetch the details for a certain permissions group."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (validation/check-group-manager id)
   (api/check-404
    (-> (t2/select-one :model/PermissionsGroup :id id)
@@ -181,7 +181,7 @@
   [_route-params
    _query-params
    {:keys [name]} :- [:map
-                      [:name ms/NonBlankString]]]
+                      [:name ::ms/NonBlankString]]]
   (api/check-superuser)
   (first (t2/insert-returning-instances! :model/PermissionsGroup
                                          :name name)))
@@ -189,10 +189,10 @@
 (api.macros/defendpoint :put "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
   [{:keys [group-id]} :- [:map
-                          [:group-id ms/PositiveInt]]
+                          [:group-id ::ms/PositiveInt]]
    _query-params
    {:keys [name]} :- [:map
-                      [:name ms/NonBlankString]]]
+                      [:name ::ms/NonBlankString]]]
   (validation/check-manager-of-group group-id)
   (api/check-404 (t2/exists? :model/PermissionsGroup :id group-id))
   (t2/update! :model/PermissionsGroup group-id
@@ -203,7 +203,7 @@
 (api.macros/defendpoint :delete "/group/:group-id"
   "Delete a specific `PermissionsGroup`."
   [{:keys [group-id]} :- [:map
-                          [:group-id ms/PositiveInt]]]
+                          [:group-id ::ms/PositiveInt]]]
   (validation/check-manager-of-group group-id)
   (t2/delete! :model/PermissionsGroup :id group-id)
   api/generic-204-no-content)
@@ -235,8 +235,8 @@
   [_route-params
    _query-params
    {:keys [group_id user_id is_group_manager]} :- [:map
-                                                   [:group_id         ms/PositiveInt]
-                                                   [:user_id          ms/PositiveInt]
+                                                   [:group_id         ::ms/PositiveInt]
+                                                   [:user_id          ::ms/PositiveInt]
                                                    [:is_group_manager {:default false} [:maybe :boolean]]]]
   (let [is_group_manager (boolean is_group_manager)]
     (validation/check-manager-of-group group_id)
@@ -255,7 +255,7 @@
 (api.macros/defendpoint :put "/membership/:id"
   "Update a Permission Group membership. Returns the updated record."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    {:keys [is_group_manager]} :- [:map
                                   [:is_group_manager :boolean]]]
@@ -276,7 +276,7 @@
 (api.macros/defendpoint :put "/membership/:group-id/clear"
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
   [{:keys [group-id]} :- [:map
-                          [:group-id ms/PositiveInt]]]
+                          [:group-id ::ms/PositiveInt]]]
   (validation/check-manager-of-group group-id)
   (api/check-404 (t2/exists? :model/PermissionsGroup :id group-id))
   (api/check-400 (not= group-id (u/the-id (perms-group/admin))))
@@ -286,7 +286,7 @@
 (api.macros/defendpoint :delete "/membership/:id"
   "Remove a User from a PermissionsGroup (delete their membership)."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (let [membership (t2/select-one :model/PermissionsGroupMembership :id id)]
     (api/check-404 membership)
     (validation/check-manager-of-group (:group_id membership))

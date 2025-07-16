@@ -16,13 +16,13 @@
   [:or
    [:map
     [:error true?]
-    [:message ms/NonBlankString]]
+    [:message ::ms/NonBlankString]]
    [:multi {:dispatch :status}
     ["not-connected" [:map]]
 
     ["syncing"
      [:map
-      [:url ms/NonBlankString]
+      [:url ::ms/NonBlankString]
       ;; time in seconds from epoch:
       [:created_at pos-int?]
       ;; time in seconds from epoch:
@@ -32,7 +32,7 @@
 
     ["active"
      [:map
-      [:url ms/NonBlankString]
+      [:url ::ms/NonBlankString]
       ;; time in seconds from epoch:
       [:created_at pos-int?]
       ;; time in seconds from epoch:
@@ -43,10 +43,10 @@
       [:db_id pos-int?]]]
     ["error"
      [:map
-      [:url ms/NonBlankString]
+      [:url ::ms/NonBlankString]
       ;; time in seconds from epoch:
       [:created_at pos-int?]
-      [:error_message ms/NonBlankString]
+      [:error_message ::ms/NonBlankString]
       [:created_by_id pos-int?]
       [:db_id pos-int?]]]]])
 
@@ -54,11 +54,11 @@
   [:or
    [:map {}]
    [:map
-    [:url ms/NonBlankString]
+    [:url ::ms/NonBlankString]
     ;; time in seconds from epoch:
     [:created-at pos-int?]
     [:created-by-id pos-int?]
-    [:gdrive/conn-id ms/UUIDString]
+    [:gdrive/conn-id ::ms/UUIDString]
     [:db-id pos-int?]]])
 
 (defsetting show-google-sheets-integration

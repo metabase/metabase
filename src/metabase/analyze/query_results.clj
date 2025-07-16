@@ -23,48 +23,39 @@
 (def ^:private DateTimeUnitKeywordOrString
   "Schema for a valid datetime unit string like \"default\" or \"minute-of-hour\"."
   [:and
-   ms/KeywordOrString
+   ::ms/KeywordOrString
    [:fn
     {:error/message "Valid field datetime unit keyword or string"}
     #(mbql.preds/DateTimeUnit? (keyword %))]])
 
-(mr/def ::MaybeUnnormalizedReference
-  [:fn
-   {:error/message "Field or aggregation reference as it comes in to the API"}
-   (fn [x]
-     (mr/validate mbql.s/Reference (mbql.normalize/normalize-tokens x)))])
+(letfn [(maybe-unnormalized-ref [x]
+          (mr/validate ::mbql.s/Reference (mbql.normalize/normalize-tokens x)))]
+  (mr/def ::MaybeUnnormalizedReference
+    [:fn
+     {:error/message "Field or aggregation reference as it comes in to the API"}
+     maybe-unnormalized-ref]))
 
 (mr/def ::ResultColumnMetadata
   [:map
    [:name         :string]
    [:display_name :string]
-   [:base_type    ms/FieldTypeKeywordOrString]
+   [:base_type    ::ms/FieldType ::ms/KeywordOrString]
    [:description        {:optional true} [:maybe :string]]
-   [:semantic_type      {:optional true} [:maybe ms/FieldSemanticOrRelationTypeKeywordOrString]]
+   [:semantic_type      {:optional true} [:maybe ::ms/FieldSemanticOrRelationTypeKeywordOrString]]
    [:unit               {:optional true} [:maybe DateTimeUnitKeywordOrString]]
-   [:fingerprint        {:optional true} [:maybe fingerprint.schema/Fingerprint]]
+   [:fingerprint        {:optional true} [:maybe ::fingerprint.schema/Fingerprint]]
    [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
    ;; only optional because it's not present right away, but it should be present at the end.
    [:field_ref          {:optional true} [:ref ::MaybeUnnormalizedReference]]
    ;; the timezone in which the column was converted to using `:convert-timezone` expression
    [:converted_timezone {:optional true} ::lib.schema.expression.temporal/timezone-id]])
 
-(def ^:private ResultColumnMetadata
-  "Result metadata for a single column"
-  ;; this schema is used for both the API and the QP, so it should handle either normalized or unnormalized values. In
-  ;; the QP, everything will be normalized.
-  [:ref ::ResultColumnMetadata])
-
 (mr/def ::ResultsMetadata
   (mu/with-api-error-message
-   [:maybe [:sequential ResultColumnMetadata]]
+   [:maybe [:sequential ::ResultColumnMetadata]]
    (i18n/deferred-tru "value must be an array of valid results column metadata maps.")))
 
-(def ResultsMetadata
-  "Schema for valid values of the `result_metadata` column."
-  [:ref ::ResultsMetadata])
-
-(mu/defn- maybe-infer-semantic-type :- ResultColumnMetadata
+(mu/defn- maybe-infer-semantic-type :- ::ResultColumnMetadata
   "Infer the semantic type and add it to the result metadata. If the inferred semantic type is nil, don't override the
   semantic type with a nil semantic type"
   [col]
@@ -78,7 +69,7 @@
        (nil :type/Number) (classifiers.name/infer-semantic-type-by-name col)
        original-value))))
 
-(mu/defn- col->ResultColumnMetadata :- ResultColumnMetadata
+(mu/defn- col->ResultColumnMetadata :- ::ResultColumnMetadata
   "Make sure a `column` as it comes back from a driver's initial results metadata matches the schema for valid results
   column metadata, adding placeholder values and removing nil keys."
   [column]

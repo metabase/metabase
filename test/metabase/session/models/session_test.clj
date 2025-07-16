@@ -80,7 +80,7 @@
                   (is (malli= [:map-of [:= email]
                                [:sequential
                                 [:map {:closed true}
-                                 [:from ms/Email]
+                                 [:from ::ms/Email]
                                  [:to [:= [email]]]
                                  [:subject [:= (format "We've Noticed a New Metabase Login, %s" first-name)]]
                                  [:body [:sequential [:map

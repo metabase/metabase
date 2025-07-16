@@ -6,7 +6,8 @@
    [metabase.analyze.classifiers.name]
    [metabase.analyze.fingerprint.fingerprinters]
    [metabase.analyze.fingerprint.schema]
-   [metabase.analyze.query-results]
+   [metabase.analyze.query-results :as qr]
+   [metabase.util.malli.registry :as mr]
    [potemkin :as p]))
 
 (comment
@@ -30,8 +31,7 @@
   col-wise
   constant-fingerprinter
   fingerprint-fields]
- [metabase.analyze.fingerprint.schema
-  Fingerprint]
  [metabase.analyze.query-results
-  ResultsMetadata
   insights-rf])
+
+(mr/def ::ResultsMetadata [:ref ::qr/ResultsMetadata])

@@ -32,7 +32,7 @@
      [:start-time (ms/InstanceOfClass Temporal)]
      [:end-time   (ms/InstanceOfClass Temporal)]
      [:name       :string]
-     [:steps      [:maybe [:sequential sync-util/StepNameWithMetadata]]]]]])
+     [:steps      [:maybe [:sequential ::sync-util/StepNameWithMetadata]]]]]])
 
 (def ^:private phase->fn
   {:metadata     sync-metadata/sync-db-metadata!
@@ -65,7 +65,7 @@
   ([database]
    (sync-database! database nil))
 
-  ([database                         :- i/DatabaseInstance
+  ([database                         :- ::i/DatabaseInstance
     {:keys [scan], :or {scan :full}} :- [:maybe [:map
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
@@ -76,7 +76,7 @@
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
   tables, caller should check if can connect."
-  [table :- i/TableInstance]
+  [table :- ::i/TableInstance]
   (doto table
     sync-metadata/sync-table-metadata!
     analyze/analyze-table!
@@ -86,7 +86,7 @@
 (mu/defn refingerprint-field!
   "Refingerprint a field, usually after its type changes. Checks if can connect to database, returning
   `:sync/no-connection` if not."
-  [field :- i/FieldInstance]
+  [field :- ::i/FieldInstance]
   (let [table    (field/table field)
         database (table/database table)]
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the

@@ -21,7 +21,7 @@
 
 (def ^:private HTTPDetails
   [:map {:closed true}
-   [:url                           ms/Url]
+   [:url                           ::ms/Url]
    [:auth-method                   [:enum "none" "header" "query-param" "request-body"]]
    [:auth-info    {:optional true} [:map-of string-or-keyword :any]]
    ;; used by the frontend to display the auth info properly

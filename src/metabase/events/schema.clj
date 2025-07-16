@@ -79,7 +79,7 @@
 (mr/def :event/user-invited
   [:map {:closed true}
    [:object [:map
-             [:email ms/Email]
+             [:email ::ms/Email]
              [:is_from_setup {:optional true} :boolean]
              [:first_name    {:optional true} [:maybe :string]]
              [:invite_method {:optional true} :string]
@@ -87,7 +87,7 @@
    [:details {:optional true}
     [:map {:closed true}
      [:invitor [:map {:closed true}
-                [:email                       ms/Email]
+                [:email                       ::ms/Email]
                 [:first_name {:optional true} [:maybe :string]]]]]]])
 
 ;; segment events

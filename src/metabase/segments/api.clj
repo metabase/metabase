@@ -18,9 +18,9 @@
   [_route-params
    _query-params
    {:keys [name description table_id definition], :as body} :- [:map
-                                                                [:name        ms/NonBlankString]
-                                                                [:table_id    ms/PositiveInt]
-                                                                [:definition  ms/Map]
+                                                                [:name        ::ms/NonBlankString]
+                                                                [:table_id    ::ms/PositiveInt]
+                                                                [:definition  ::ms/Map]
                                                                 [:description {:optional true} [:maybe :string]]]]
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (api/create-check :model/Segment body)
@@ -34,14 +34,14 @@
     (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
     (t2/hydrate segment :creator)))
 
-(mu/defn- hydrated-segment [id :- ms/PositiveInt]
+(mu/defn- hydrated-segment [id :- ::ms/PositiveInt]
   (-> (api/read-check (t2/select-one :model/Segment :id id))
       (t2/hydrate :creator)))
 
 (api.macros/defendpoint :get "/:id"
   "Fetch `Segment` with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (hydrated-segment id))
 
 (api.macros/defendpoint :get "/"
@@ -75,12 +75,12 @@
 (api.macros/defendpoint :put "/:id"
   "Update a `Segment` with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    _query-params
    body :- [:map
-            [:name                    {:optional true} [:maybe ms/NonBlankString]]
+            [:name                    {:optional true} [:maybe ::ms/NonBlankString]]
             [:definition              {:optional true} [:maybe :map]]
-            [:revision_message        ms/NonBlankString]
+            [:revision_message        ::ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:caveats                 {:optional true} [:maybe :string]]
             [:description             {:optional true} [:maybe :string]]
@@ -91,9 +91,9 @@
 (api.macros/defendpoint :delete "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::ms/PositiveInt]]
    {:keys [revision_message]} :- [:map
-                                  [:revision_message ms/NonBlankString]]]
+                                  [:revision_message ::ms/NonBlankString]]]
   (log/warn "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id.")
   (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
@@ -101,5 +101,5 @@
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::ms/PositiveInt]]]
   (-> (t2/select-one :model/Segment :id id) api/read-check xrays/related))

@@ -27,7 +27,7 @@
    [:map
     [:payload_type                   (into [:enum] models.notification/notification-types)]
     ;; allow unsaved notification to be sent
-    [:id                      {:optional true} [:maybe ms/PositiveInt]]
+    [:id                      {:optional true} [:maybe ::ms/PositiveInt]]
     [:active                  {:optional true} :boolean]
     [:created_at              {:optional true} :any]
     [:updated_at              {:optional true} :any]
@@ -46,22 +46,22 @@
     [:notification/card
      [:map
       [:payload    {:optional true} ::models.notification/NotificationCard]
-      [:creator_id                  ms/PositiveInt]]]
+      [:creator_id                  ::ms/PositiveInt]]]
     [:notification/dashboard
      [:map
-      [:creator_id ms/PositiveInt]
+      [:creator_id ::ms/PositiveInt]
       ;; replacement of pulse
       [:dashboard_subscription #_{:optional true}
        [:map
-        [:dashboard_id ms/PositiveInt]
+        [:dashboard_id ::ms/PositiveInt]
         [:parameters {:optional true} [:maybe [:sequential :map]]]
         [:dashboard_subscription_dashcards {:optional true}
          [:sequential [:map
-                       [:card_id                        [:maybe ms/PositiveInt]]
-                       [:include_csv   {:optional true} [:maybe ms/BooleanValue]]
-                       [:include_xls   {:optional true} [:maybe ms/BooleanValue]]
-                       [:format_rows   {:optional true} [:maybe ms/BooleanValue]]
-                       [:pivot_results {:optional true} [:maybe ms/BooleanValue]]]]]]]]]
+                       [:card_id                        [:maybe ::ms/PositiveInt]]
+                       [:include_csv   {:optional true} [:maybe ::ms/BooleanValue]]
+                       [:include_xls   {:optional true} [:maybe ::ms/BooleanValue]]
+                       [:format_rows   {:optional true} [:maybe ::ms/BooleanValue]]
+                       [:pivot_results {:optional true} [:maybe ::ms/BooleanValue]]]]]]]]]
     ;; for testing only
     [:notification/testing :map]]])
 

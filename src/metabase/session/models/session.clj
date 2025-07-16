@@ -11,6 +11,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as string]
    [methodical.core :as methodical]
@@ -47,10 +48,10 @@
 
 (def ^:private CreateSessionUserInfo
   [:map
-   [:id ms/PositiveInt]
+   [:id ::ms/PositiveInt]
    [:last_login :any]])
 
-(def SessionSchema
+(mr/def ::SessionSchema
   "Schema for a Session."
   [:and
    [:map-of :keyword :any]
@@ -79,8 +80,8 @@
   []
   (string/random-string 12))
 
-(mu/defmethod create-session! :sso :- SessionSchema
-  [_ user :- CreateSessionUserInfo device-info :- request/DeviceInfo]
+(mu/defmethod create-session! :sso :- ::SessionSchema
+  [_ user :- CreateSessionUserInfo device-info :- ::request/DeviceInfo]
   (let [session-key (generate-session-key)
         session-key-hashed (hash-session-key session-key)
         session-id (generate-session-id)
@@ -96,10 +97,10 @@
     (login-history/record-login-history! session-id user device-info)
     (assoc session :key session-key)))
 
-(mu/defmethod create-session! :password :- SessionSchema
+(mu/defmethod create-session! :password :- ::SessionSchema
   [session-type
    user :- CreateSessionUserInfo
-   device-info :- request/DeviceInfo]
+   device-info :- ::request/DeviceInfo]
   ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
   (when-not (session.settings/enable-password-login)
     (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))

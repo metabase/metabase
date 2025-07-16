@@ -5,8 +5,7 @@
    [metabase.geojson.settings :as geojson.settings]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
-   [metabase.util.json :as json]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.json :as json]))
 
 (def ^String test-geojson-url
   "URL of a GeoJSON file used for test purposes."
@@ -109,7 +108,7 @@
                              [:value nil?]
                              [:is_env_setting [:= true]]
                              [:env_name       [:= "MB_CUSTOM_GEOJSON"]]
-                             [:description    ms/NonBlankString]
+                             [:description    ::ms/NonBlankString]
                              [:default         [:= "Using value of env var $MB_CUSTOM_GEOJSON"]]]
                             (some
                              (fn [{setting-name :key, :as setting}]

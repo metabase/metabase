@@ -47,7 +47,8 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- check-results-and-metadata-keys-match
   "Primarily for dev and debugging purposes. We can probably take this out when shipping the finished product."
@@ -71,14 +72,14 @@
 
 (mu/defn- format-results [{:keys [results metadata]} :- [:map
                                                          [:results  [:sequential :map]]
-                                                         [:metadata audit.i/ResultsMetadata]]]
+                                                         [:metadata ::audit.i/ResultsMetadata]]]
   (check-results-and-metadata-keys-match results metadata)
   {:cols (metadata->cols metadata)
    :rows (for [row results]
            (for [[k] metadata]
              (get row (keyword k))))})
 
-(def InternalQuery
+(mr/def ::InternalQuery
   "Schema for a valid `internal` type query."
   [:map
    [:type [:enum :internal "internal"]]
@@ -120,7 +121,7 @@
      reduce-legacy-results) rff results))
 
 (mu/defn- process-internal-query
-  [{qualified-fn-str :fn, args :args, :as query} :- InternalQuery
+  [{qualified-fn-str :fn, args :args, :as query} :- ::InternalQuery
    rff                                           :- ::qp.schema/rff]
   ;; Make sure current user is a superuser or has monitoring permissions
   (perms/check-has-application-permission :monitoring)
