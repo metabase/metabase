@@ -2694,7 +2694,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.dashboardParameterSidebar()
         .findByPlaceholderText("Move filter")
         .click();
-      H.popover().findByText("Card").click();
+      H.popover().findByText("test question").click();
       H.dashboardParameterSidebar().button("Done").click();
 
       // Undo
