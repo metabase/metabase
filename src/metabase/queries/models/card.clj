@@ -1359,8 +1359,11 @@
                   :created-at          true
                   :updated-at          true
                   :display-type        :this.display
-                  ;; Niche columns for visualizer compatibility filtering
-                  :has-temporal-dimensions [:like :this.result_metadata "%\"temporal_unit\":%"]}
+                  ;; Visualizer compatibility filtering
+                  :has-temporal-dimensions [:case
+                                            [:and [:is-not :this.result_metadata nil]
+                                             [:like :this.result_metadata "%\"temporal_unit\":%"]] true
+                                            :else false]}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
