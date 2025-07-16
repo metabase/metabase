@@ -172,6 +172,7 @@
         namespaced-view-name* (namespaced-view-name schema-name view-name)
         query (dataset-query->query dataset-query)
         database-id (:database query)
+        query-type (query-type query)
         compiled (:query (qp.compile/compile-with-inline-parameters query))
         database (t2/select-one :model/Database :id database-id)
         driver (driver.u/database->driver database)]
@@ -184,11 +185,14 @@
       (let [table (t2/select-one :model/Table :transform_id transform-id)]
         (t2/update! :model/TransformView :id transform-id
                     {:dataset_query dataset-query
+                     :dataset_query_type query-type
+                     ;; TODO (lbrdnk 2025-07-16): Handle schema upgrades later, now hardcoded.
+                     :dataset_query_schema dataset-query-current-schema
                      :creator_id (:id creator)})
         (sync/sync-table-metadata! table)
         ;; TODO (lbrdnk 2025-07-16): Make analysis async.
         (sync/analyze-table! table))
-      (t2/select :model/TransformView :id transform-id))))
+      (t2/select-one :model/TransformView :id transform-id))))
 
 (defn delete-transform!
   "Delete transform and view."
