@@ -7,7 +7,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Count of orders",
@@ -184,72 +184,39 @@ describe("scenarios > question > native", () => {
     });
 
     describe("time grouping", () => {
-      it("should create entires in variables sidebar", () => {
+      function setTypeAndField() {
+        H.rightSidebar().findByTestId("variable-type-select").click();
+        H.popover().findByText("Time grouping").click();
+        H.popover().within(() => {
+          cy.findByText("Orders").click();
+          cy.findByText("Created At").click();
+        });
+      }
+
+      it("should create entries in variables sidebar", () => {
         H.startNewNativeQuestion();
         H.NativeEditor.type(
-          `
-          SELECT
-            count(*),
-            {{mb.time_grouping("unit", "created_at")}} as unit,
-            {{mb.time_grouping("unit2", "created_at")}} as unit2
-          FROM
-            ORDERS
-          GROUP BY
-            unit, unit2
-          `
-            .split("\n")
-            .map((line) => line.trim())
-            .join(" "),
+          "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
         );
-
-        cy.findByTestId("tag-editor-sidebar").within(() => {
-          cy.findAllByText("Parameter name").then((elements) => {
-            expect(elements).to.have.length(2);
-            cy.wrap(elements[0]).next().should("have.text", "unit");
-            cy.wrap(elements[1]).next().should("have.text", "unit2");
-          });
-
-          cy.findAllByLabelText("Filter widget label")
-            .first()
-            .type(" updated")
-            .blur();
-        });
-
-        cy.findAllByTestId("field-set")
-          .first()
-          .should("have.text", "Unit updated");
+        setTypeAndField();
+        H.rightSidebar()
+          .findByLabelText("Filter widget label")
+          .type(" updated")
+          .blur();
+        H.filterWidget().should("have.text", "Unit updated");
       });
 
       it("should handle required prop for time grouping", () => {
         H.startNewNativeQuestion();
         H.NativeEditor.type(
-          `
-          SELECT
-            count(*),
-            {{mb.time_grouping("unit", "created_at")}} as unit
-          FROM
-            ORDERS
-          GROUP BY
-            unit
-          `
-            .split("\n")
-            .map((line) => line.trim())
-            .join(" "),
+          "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
         );
-
-        H.runNativeQuery();
-        cy.findByTestId("query-visualization-root").should(
-          "contain",
-          "April 30, 2022, 6:56 PM",
-        );
-
+        setTypeAndField();
         H.rightSidebar()
           .findByLabelText("Always require a value")
           .parent()
           .click();
-
         H.runNativeQuery();
-
         cy.findByTestId("query-visualization-root").should(
           "contain",
           "You'll need to pick a value for 'Unit' before this query can run.",
@@ -258,11 +225,8 @@ describe("scenarios > question > native", () => {
         H.rightSidebar().within(() => {
           cy.findByText("Enter a default value…").click();
         });
-
         H.popover().findByText("Year").click();
-
         H.runNativeQuery();
-
         cy.findByTestId("query-visualization-root").should(
           "contain",
           "January 1, 2022",
@@ -273,21 +237,15 @@ describe("scenarios > question > native", () => {
         const questionWithDefaultValue = {
           name: "Saved question with time grouping",
           native: {
-            query: `
-          SELECT
-            count(*),
-            {{mb.time_grouping("unit", "created_at")}} as unit
-          FROM
-            ORDERS
-          GROUP BY
-            unit
-          `,
+            query:
+              "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
             "template-tags": {
               unit: {
                 type: "temporal-unit",
                 name: "unit",
                 id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
                 "display-name": "Unit",
+                dimension: ["field", ORDERS.CREATED_AT, null],
                 required: true,
                 default: "year",
               },
@@ -297,21 +255,15 @@ describe("scenarios > question > native", () => {
         const questionWithoutDefaultValue = {
           name: "Saved question with time grouping",
           native: {
-            query: `
-          SELECT
-            count(*),
-            {{mb.time_grouping("unit", "created_at")}} as unit
-          FROM
-            ORDERS
-          GROUP BY
-            unit
-          `,
+            query:
+              "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
             "template-tags": {
               unit: {
                 type: "temporal-unit",
                 name: "unit",
                 id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
                 "display-name": "Unit",
+                dimension: ["field", ORDERS.CREATED_AT, null],
                 required: true,
               },
             },
