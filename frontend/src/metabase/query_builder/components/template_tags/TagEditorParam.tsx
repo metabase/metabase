@@ -323,7 +323,7 @@ class TagEditorParamInner extends Component<
           />
         )}
 
-        {hasSelectedDimensionField && (
+        {isDimension && hasSelectedDimensionField && (
           <FilterWidgetTypeSelect
             tag={tag}
             value={this.getFilterWidgetTypeValue(tag)}
