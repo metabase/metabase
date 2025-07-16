@@ -2,8 +2,8 @@ import { type ChangeEvent, memo, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
 import { CoercionStrategyPicker } from "metabase/metadata/components";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   canCoerceFieldType,
   getFieldRawName,
@@ -31,34 +31,33 @@ const DataSectionBase = ({ field }: Props) => {
   const [autoFocusCoercionPicker, setAutoFocusCoercionPicker] = useState(false);
   const [isCoercionPickerOpen, setIsCoercionPickerOpen] = useState(false);
   const [updateField] = useUpdateFieldMutation();
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
 
   useEffect(() => {
     setIsCasting(field.coercion_strategy != null);
     setAutoFocusCoercionPicker(false);
   }, [field.coercion_strategy]);
 
-  const disableCasting = async (
-    previousCoercionStrategy = field.coercion_strategy,
-  ) => {
+  const disableCasting = async () => {
     const { error } = await updateField({
       id,
       coercion_strategy: null,
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to disable casting for ${field.display_name}`,
-      });
+      sendErrorToast(t`Failed to disable casting for ${field.display_name}`);
     } else {
-      sendToast({
-        action: () =>
-          handleCoercionStrategyChange(previousCoercionStrategy, null),
-        icon: "check",
-        message: t`Casting disabled for ${field.display_name}`,
-      });
+      sendSuccessToast(
+        t`Casting disabled for ${field.display_name}`,
+        async () => {
+          const { error } = await updateField({
+            id,
+            coercion_strategy: field.coercion_strategy,
+          });
+          sendUndoToast(error);
+        },
+      );
     }
   };
 
@@ -75,7 +74,6 @@ const DataSectionBase = ({ field }: Props) => {
 
   const handleCoercionStrategyChange = async (
     coercionStrategy: string | null,
-    previousCoercionStrategy = field.coercion_strategy,
   ) => {
     const { error } = await updateField({
       id,
@@ -83,27 +81,24 @@ const DataSectionBase = ({ field }: Props) => {
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message:
-          previousCoercionStrategy == null
-            ? t`Failed to enable casting for ${field.display_name}`
-            : t`Failed to update casting for ${field.display_name}`,
-      });
+      sendErrorToast(
+        field.coercion_strategy == null
+          ? t`Failed to enable casting for ${field.display_name}`
+          : t`Failed to update casting for ${field.display_name}`,
+      );
     } else {
-      sendToast({
-        action: () =>
-          handleCoercionStrategyChange(
-            previousCoercionStrategy,
-            coercionStrategy,
-          ),
-        icon: "check",
-        message:
-          previousCoercionStrategy == null
-            ? t`Casting enabled for ${field.display_name}`
-            : t`Casting updated for ${field.display_name}`,
-      });
+      sendSuccessToast(
+        field.coercion_strategy == null
+          ? t`Casting enabled for ${field.display_name}`
+          : t`Casting updated for ${field.display_name}`,
+        async () => {
+          const { error } = await updateField({
+            id,
+            coercion_strategy: field.coercion_strategy,
+          });
+          sendUndoToast(error);
+        },
+      );
     }
   };
 
