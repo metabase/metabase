@@ -1,23 +1,20 @@
 .parameter {
   align-items: center;
   display: flex;
-  font-weight: 600;
-  min-height: 30px;
-  min-width: 150px;
-  color: var(--mb-color-text-secondary);
-
-  &.subtle {
-    font-weight: 400;
-    border: 1px solid var(--mb-color-border);
-    padding-left: 12px;
-    padding-right: 12px;
-    border-radius: 4px;
-  }
+  font-weight: 700;
+  height: 32px;
+  min-width: 120px;
+  background-color: var(--mb-color-bg-white);
+  color: var(--mb-color-text-primary);
+  border: 1px solid var(--mb-color-border);
+  padding-left: 12px;
+  padding-right: 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease-in-out;
 
   &.selected {
     font-weight: bold;
     color: var(--mb-color-brand);
-    border-color: var(--mb-color-brand);
   }
 
   .Prefix {
@@ -26,10 +23,26 @@
   }
 
   &:hover {
-    .Prefix {
-      color: inherit;
+    border-color: var(--mb-color-brand);
+    color: var(--mb-base-color-brand-60);
+
+    .Prefix,
+    .parameterIcon,
+    .widgetStatus {
+      color: var(--mb-base-color-brand-60);
     }
   }
+}
+
+.Prefix {
+  white-space: nowrap;
+}
+
+.parameterIcon {
+  color: var(--mb-color-text-secondary);
+  flex-shrink: 0;
+  margin-right: 0.5rem;
+  margin-top: 1px;
 }
 
 .parameter input {
@@ -38,7 +51,6 @@
 }
 
 .parameter.noPopover input {
-  width: 100%;
   font-size: 1em;
   font-weight: 600;
   border: none;

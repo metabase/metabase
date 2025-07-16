@@ -243,8 +243,8 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     SQLFilter.setWidgetValue("Gizmo");
     SQLFilter.runQuery();
 
-    cy.get("fieldset")
-      .findByText("Testingparamvisbility77")
+    H.filterWidget()
+      .findByPlaceholderText("Testingparamvisbility77")
       .should("be.visible");
 
     // close sidebar
@@ -260,8 +260,8 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1 active filter").click();
 
-    cy.get("fieldset")
-      .findByText("Testingparamvisbility77")
+    H.filterWidget()
+      .findByPlaceholderText("Testingparamvisbility77")
       .should("be.visible");
   });
 
