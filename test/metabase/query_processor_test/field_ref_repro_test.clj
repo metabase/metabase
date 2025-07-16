@@ -418,7 +418,7 @@
                                                                    (lib/visible-columns $)))))]
           ;; should return {:rows [[1746]], :columns ("count")}
           (mt/with-native-query-testing-context query
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Duplicate column name"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Breakouts must be distinct"
                                   (-> query qp/process-query mt/rows+column-names)))))))))
 
 (deftest model-with-implicit-join-and-external-remapping-test

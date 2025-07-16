@@ -1065,10 +1065,8 @@
                                                                    :source-field            (mt/id :checkins :venue_id)
                                                                    :source-field-join-alias "CH"}]
                                    1]
-                    :order-by     [[:asc [:field (mt/id :venues :price) {:base-type               :type/Text
-                                                                         :source-field            (mt/id :checkins :venue_id)
-                                                                         :source-field-join-alias "CH"}]]]
+                    :order-by     [[:asc [:field (mt/id :orders :id) {}]]]
                     :limit        2}))]
-      (is (= [[667 85 177 128.82 8.05 136.87 nil "2020-02-12T23:59:13.486Z" 2 667 "2014-05-05T00:00:00Z" 13 86]
-              [657 83 31 105.65 0.0 105.65   nil "2019-11-11T05:52:50.656Z" 3 657 "2014-10-25T00:00:00Z" 6 41]]
+      (is (= [[3 1 105 52.72 2.9 49.2 6.42 "2019-12-06T22:22:48.544Z" 2 3 "2014-09-15T00:00:00Z" 8 56]
+              [6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 6 "2015-07-04T00:00:00Z" 3 35]]
              (mt/rows (qp/process-query query)))))))

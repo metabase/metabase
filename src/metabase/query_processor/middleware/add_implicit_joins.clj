@@ -152,13 +152,13 @@
    (when-let [previous-path (previous-path path)]
      (visible-joins query previous-path))))
 
-(mu/defn- distinct-fields :- [:sequential ::lib.schema.ref/ref]
+(mu/defn- distinct-fields :- ::lib.schema/fields
   [fields :- [:maybe [:sequential ::lib.schema.ref/ref]]]
   (m/distinct-by
    (fn [field]
      (lib/update-options field (fn [opts]
                                  (-> (m/filter-keys simple-keyword? opts)
-                                     (dissoc :base-type :effective-type)
+                                     (dissoc :base-type :effective-type :ident)
                                      not-empty))))
    fields))
 
@@ -363,6 +363,20 @@
                          :type   qp.error-type/unsupported-feature}))))
     (resolve-implicit-joins-in-stage query path)))
 
+(defn- remove-stale-stage-metadatas
+  "Remove and `:lib/stage-metadata` that is stale after adding implicit joins.
+
+  TODO (Cam 7/15/25) -- this isn't 100% correct since we should probably also remove metadata for all subsequent
+  stages if anything changes, right?"
+  [query query']
+  (lib.walk/walk-stages
+   query'
+   (fn [_query path stage]
+     (if (= (get-in query' path)
+            (get-in query path))
+       stage
+       (dissoc stage :lib/stage-metadata)))))
+
 (mu/defn add-implicit-joins :- ::lib.schema/query
   "Fetch and store any Tables other than the source Table referred to by `:field` clauses with `:source-field` in an
   MBQL query, and add a `:join-tables` key inside the MBQL inner query containing information about the `JOIN`s (or
@@ -370,4 +384,5 @@
 
   This middleware also adds `:join-alias` info to all `:field` forms with `:source-field`s."
   [query :- ::lib.schema/query]
-  (lib.walk/walk-stages query add-implicit-joins-to-stage))
+  (let [query' (lib.walk/walk-stages query add-implicit-joins-to-stage)]
+    (remove-stale-stage-metadatas query query')))

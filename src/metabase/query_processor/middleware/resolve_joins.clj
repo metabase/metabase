@@ -5,9 +5,12 @@
   (:require
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
+   [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -70,24 +73,30 @@
   (merge {:alias default-join-alias, :strategy :left-join} join))
 
 (defn- source-metadata->fields [{:keys [alias], :as join} source-metadata]
-  (when-not (seq source-metadata)
-    (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
-                    {:join join})))
-  (let [duplicate-ids (into #{}
-                            (keep (fn [[item freq]]
-                                    (when (> freq 1)
-                                      item)))
-                            (frequencies (map :id source-metadata)))]
-    (for [{field-name :name
-           base-type :base_type
-           field-id :id
-           field-ref :field_ref} source-metadata]
-      ;; If `field-ref` is an id-based reference, only use it if the source query uses it.
-      (or (when (and field-id (not (contains? duplicate-ids field-id)))
-            (lib.util.match/match-one field-ref
-              [:field (id :guard pos-int?) _opts]
-              [:field field-id {:join-alias alias}]))
-          [:field field-name {:base-type base-type, :join-alias alias}]))))
+  (let [source-metadata (or (some->> source-metadata
+                                     (map (fn [col]
+                                            (lib/normalize ::lib.schema.metadata/column col))))
+                            (when-let [source-table-id (:source-table join)]
+                              (lib.metadata/fields (qp.store/metadata-provider) source-table-id))
+                            (when-let [source-query (:source-query join)]
+                              (lib/returned-columns (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query source-query))))]
+    (when-not (seq source-metadata)
+      (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
+                      {:join join})))
+    (let [duplicate-ids (into #{}
+                              (keep (fn [[item freq]]
+                                      (when (> freq 1)
+                                        item)))
+                              (frequencies (map :id source-metadata)))]
+      (for [{field-name :name
+             field-id   :id
+             :keys      [base-type field-ref]} source-metadata]
+        ;; If `field-ref` is an id-based reference, only use it if the source query uses it.
+        (or (when (and field-id (not (contains? duplicate-ids field-id)))
+              (lib.util.match/match-one field-ref
+                [:field (id :guard pos-int?) _opts]
+                [:field field-id {:join-alias alias}]))
+            [:field field-name {:base-type base-type, :join-alias alias}])))))
 
 (mu/defn- handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."

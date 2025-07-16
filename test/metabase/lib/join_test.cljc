@@ -1563,17 +1563,21 @@
                 (lib/joins base)))
         (is (has-fields? base))
         (is (not (has-fields? aggregated)))
-        (is (not (has-fields? broken-out)))))
-    (testing "a join added with an existing breakout has no :fields clause"
-      (is (not (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                   (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
-                   (lib/join (meta/table-metadata :products))
-                   has-fields?))))
-    (testing "a join added with an existing aggregation has no :fields clause"
-      (is (not (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                   (lib/aggregate (lib/count))
-                   (lib/join (meta/table-metadata :products))
-                   has-fields?))))))
+        (is (not (has-fields? broken-out)))))))
+
+(deftest ^:parallel join-and-summary-ordering-test-2
+  (testing "a join added with an existing breakout gets :fields :none"
+    (is (=? {:stages [{:joins [{:fields :none}]}]}
+            (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                (lib/join (meta/table-metadata :products)))))))
+
+(deftest ^:parallel join-and-summary-ordering-test-3
+  (testing "a join added with an existing aggregation has no :fields clause"
+    (is (=? {:stages [{:joins [{:fields :none}]}]}
+            (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                (lib/aggregate (lib/count))
+                (lib/join (meta/table-metadata :products)))))))
 
 (deftest ^:parallel join-clause-with-outdated-fields-test
   (testing "update a model to return entirely new columns, but if an old join remembers the originals"

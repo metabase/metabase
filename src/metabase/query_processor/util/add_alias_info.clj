@@ -273,7 +273,14 @@
         (when-let [field-names (let [[_ id-or-name] field-clause]
                                  (when (string? id-or-name)
                                    [id-or-name (some-> driver/*driver* (driver/escape-alias id-or-name))]))]
-          (some #(field-name-match % all-exports source-metadata field-exports) field-names))
+          (or
+           (some #(field-name-match % all-exports source-metadata field-exports) field-names)
+           ;; or fall back to matching on source alias
+           (m/find-first (fn [[_field _id-or-name opts, :as _field-ref]]
+                           (some (fn [field-name]
+                                   (= (::source-alias opts) field-name))
+                                 field-names))
+                         all-exports)))
         ;; otherwise we failed to find a match! This is expected for native queries but if the source query was MBQL
         ;; there's probably something wrong.
         (when-not (:native source-query)

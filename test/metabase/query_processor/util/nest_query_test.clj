@@ -293,58 +293,64 @@
 
 (deftest ^:parallel idempotence-test
   (testing "A nested query should return the same set of columns as the original"
-    (mt/with-temp [:model/Card base {:dataset_query
-                                     (mt/mbql-query
-                                       reviews
-                                       {:breakout [$product_id]
-                                        :aggregation [[:count]]
-                                        ;; filter on an implicit join
-                                        :filter [:= $product_id->products.category "Doohickey"]})}]
-      (let [query   (mt/mbql-query orders
-                      {:joins [{:source-table (str "card__" (:id base))
-                                :alias (str "Question " (:id base))
-                                :condition [:=
-                                            $product_id
-                                            [:field
-                                             %reviews.product_id
-                                             {:join-alias (str "Question " (:id base))}]]
-                                :fields :all}]
-                       :expressions {"CC" [:+ 1 1]}
-                       :limit 2})
-            nested  (assoc query :query (nest-expressions query))
-            query*  (qp.store/with-metadata-provider (mt/id)
-                      (lib/query (qp.store/metadata-provider) query))
-            nested* (qp.store/with-metadata-provider (mt/id)
-                      (lib/query (qp.store/metadata-provider) nested))]
-        (is (= (map :lib/desired-column-alias (lib/returned-columns query*))
-               (map :lib/desired-column-alias (lib/returned-columns nested*))))))))
+    (let [mp      (lib.tu/mock-metadata-provider
+                   meta/metadata-provider
+                   {:cards [{:id            1
+                             :dataset-query (lib.tu.macros/mbql-query
+                                              reviews
+                                              {:breakout    [$product-id]
+                                               :aggregation [[:count]]
+                                               ;; filter on an implicit join
+                                               :filter      [:= $product-id->products.category "Doohickey"]})}]})
+          query   (lib.tu.macros/mbql-query orders
+                    {:joins       [{:source-table "card__1"
+                                    :alias        "Question 1"
+                                    :condition    [:=
+                                                   $product-id
+                                                   [:field
+                                                    %reviews.product-id
+                                                    {:join-alias "Question 1"}]]
+                                    :fields       :all}]
+                     :expressions {"CC" [:+ 1 1]}
+                     :limit       2})
+          nested  (qp.store/with-metadata-provider mp
+                    (assoc query :query (nest-expressions query)))
+          query*  (qp.store/with-metadata-provider mp
+                    (lib/query (qp.store/metadata-provider) query))
+          nested* (qp.store/with-metadata-provider mp
+                    (lib/query (qp.store/metadata-provider) nested))]
+      (is (= (map :lib/desired-column-alias (lib/returned-columns query*))
+             (map :lib/desired-column-alias (lib/returned-columns nested*)))))))
 
 (deftest ^:parallel nest-expressions-ignore-source-queries-from-joins-test-e2e-test
   (testing "Ignores source-query from joins (#20809)"
-    (mt/dataset test-data
-      (mt/with-temp [:model/Card base {:dataset_query
-                                       (mt/mbql-query
+    (let [mp (lib.tu/mock-metadata-provider
+              (mt/application-database-metadata-provider (mt/id))
+              {:cards [{:id            1
+                        :dataset-query (mt/mbql-query
                                          reviews
-                                         {:breakout [$product_id]
+                                         {:breakout    [$product_id]
                                           :aggregation [[:count]]
                                           ;; filter on an implicit join
-                                          :filter [:= $product_id->products.category "Doohickey"]})}]
-        ;; the result returned is not important, just important that the query is valid and completes
-        (is (vector?
-             (mt/rows
-              (qp/process-query
-               (mt/mbql-query
-                 orders
-                 {:joins [{:source-table (str "card__" (:id base))
-                           :alias (str "Question " (:id base))
-                           :condition [:=
-                                       $product_id
-                                       [:field
-                                        %reviews.product_id
-                                        {:join-alias (str "Question " (:id base))}]]
-                           :fields :all}]
-                  :expressions {"CC" [:+ 1 1]}
-                  :limit 2})))))))))
+                                          :filter      [:= $product_id->products.category "Doohickey"]})}]})]
+      ;; the result returned is not important, just important that the query is valid and completes
+      (is (vector?
+           (mt/rows
+            (qp/process-query
+             (lib/query
+              mp
+              (mt/mbql-query
+                orders
+                {:joins       [{:source-table "card__1"
+                                :alias        "Question 1"
+                                :condition    [:=
+                                               $product_id
+                                               [:field
+                                                %reviews.product_id
+                                                {:join-alias "Question 1"}]]
+                                :fields       :all}]
+                 :expressions {"CC" [:+ 1 1]}
+                 :limit       2})))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:parallel nest-expressions-with-joins-test

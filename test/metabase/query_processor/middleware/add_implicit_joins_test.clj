@@ -992,3 +992,48 @@
                                         [:field (meta/id :orders :created-at) nil]
                                         [:field (meta/id :orders :quantity)   nil]]}
                         (-> query'' :query :source-query)))))))))))
+
+(deftest ^:parallel join-against-implicit-join-test
+  (testing "Should be able to explicitly join against an implicit join (#20519)"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query orders
+                   {:source-query {:source-table $$orders
+                                   :breakout     [$product-id->products.category]
+                                   :aggregation  [[:count]]}
+                    :joins        [{:source-table $$products
+                                    :alias        "Products"
+                                    :condition    [:= *products.category &Products.products.category]
+                                    :fields       [&Products.products.id
+                                                   &Products.products.title]}]
+                    :expressions  {"CC" [:+ 1 1]}
+                    :order-by     [[:asc &Products.products.id]]
+                    :limit        2}))]
+      (is (=? {:stages [{:joins       [{:qp/is-implicit-join true
+                                        :stages              [{:source-table (meta/id :products)}]
+                                        :fields              :none
+                                        :alias               "PRODUCTS__via__PRODUCT_ID"
+                                        :strategy            :left-join
+                                        :conditions          [[:=
+                                                               {}
+                                                               [:field {} (meta/id :orders :product-id)]
+                                                               [:field {:join-alias "PRODUCTS__via__PRODUCT_ID"} (meta/id :products :id)]]]
+                                        :fk-field-id         (meta/id :orders :product-id)}]
+                         :breakout    [[:field {:source-field (meta/id :orders :product-id), :join-alias "PRODUCTS__via__PRODUCT_ID"}
+                                        (meta/id :products :category)]]
+                         :aggregation [[:count {}]]}
+                        {:joins       [{:alias      "Products"
+                                        :fields     [[:field {:join-alias "Products"} (meta/id :products :id)]
+                                                     [:field {:join-alias "Products"} (meta/id :products :title)]]
+                                        :conditions [[:=
+                                                      {}
+                                                      ;; this ref is wrong, it should be
+                                                      ;; `PRODUCTS__via__PRODUCT_ID__CATEGORY` but it came in wrong and
+                                                      ;; this middleware doesn't fix wrong refs.
+                                                      [:field {} "CATEGORY"]
+                                                      [:field {:join-alias "Products"} (meta/id :products :category)]]]
+                                        :lib/type   :mbql/join
+                                        :stages     [{:source-table (meta/id :products)}]}]
+                         :expressions [[:+ {:lib/expression-name "CC"} 1 1]]
+                         :order-by    [[:asc {} [:field {:join-alias "Products"} (meta/id :products :id)]]]}]}
+              (qp.add-implicit-joins/add-implicit-joins query))))))
