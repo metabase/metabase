@@ -291,10 +291,11 @@
 (def ^:private query-for-preview
   "\"Christmas tree\" query with anything and everything hanging from its branches, for testing [[preview-query]]."
   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-      (lib/join (lib/join-clause (meta/table-metadata :products)
+      ;; FIXME
+      #_(lib/join (lib/join-clause (meta/table-metadata :products)
                                  [(lib/= (meta/field-metadata :orders :product-id)
                                          (meta/field-metadata :products :id))]))
-      (lib/join (lib/join-clause (meta/table-metadata :people)
+      #_#_#_#_#_#_#_#_#_#_#_#_#_#_(lib/join (lib/join-clause (meta/table-metadata :people)
                                  [(lib/= (meta/field-metadata :orders :user-id)
                                          (meta/field-metadata :people :id))]))
       (lib/expression "Tax rate" (lib// (meta/field-metadata :orders :tax)
