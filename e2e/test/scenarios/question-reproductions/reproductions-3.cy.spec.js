@@ -784,7 +784,7 @@ describe("issue 40064", () => {
       blur: true,
     });
     H.popover().within(() => {
-      cy.findByText("Unknown column: Tax3").should("be.visible");
+      cy.findByText("Cycle detected: Tax3 → Tax3").should("be.visible");
       cy.button("Update").should("be.disabled");
     });
   });

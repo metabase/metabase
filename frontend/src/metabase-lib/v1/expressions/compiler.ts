@@ -23,10 +23,12 @@ export function compileExpression({
   query,
   stageIndex,
   availableColumns,
+  expressionIndex,
   resolver = defaultResolver({
     query,
     stageIndex,
     expressionMode,
+    expressionIndex,
     availableColumns,
   }),
   hooks = {
@@ -37,6 +39,7 @@ export function compileExpression({
 }: {
   source: string;
   expressionMode: Lib.ExpressionMode;
+  expressionIndex?: number;
   query: Lib.Query;
   stageIndex: number;
   availableColumns: Lib.ColumnMetadata[];

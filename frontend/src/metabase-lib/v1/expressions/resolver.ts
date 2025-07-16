@@ -17,6 +17,7 @@ export type Resolver = (
 type Options = {
   query: Lib.Query;
   stageIndex: number;
+  expressionIndex?: number;
   expressionMode: Lib.ExpressionMode;
   availableColumns: Lib.ColumnMetadata[];
 };
@@ -24,11 +25,17 @@ type Options = {
 export function resolver(options: Options): Resolver {
   const { query, stageIndex, expressionMode, availableColumns } = options;
 
+  const expressionName = getExpressionName(options);
+
   const metrics = _.memoize(() => Lib.availableMetrics(query, stageIndex));
   const segments = _.memoize(() => Lib.availableSegments(query, stageIndex));
   const cache = infoCache(options);
 
   return function (type, name, node) {
+    if (name === expressionName) {
+      throw new CompileError(t`Cycle detected: ${name} → ${name}`, node);
+    }
+
     const findByName = nameMatcher(name, cache);
 
     if (type === "aggregation") {
@@ -160,4 +167,27 @@ function infoCache(options: Options) {
     cache.set(dimension, res);
     return res;
   };
+}
+
+function getExpressionName({
+  query,
+  stageIndex,
+  expressionIndex,
+  expressionMode,
+}: {
+  query: Lib.Query;
+  stageIndex: number;
+  expressionIndex?: number;
+  expressionMode: Lib.ExpressionMode;
+}) {
+  if (expressionIndex === undefined || expressionMode === "filter") {
+    return null;
+  }
+
+  const clause =
+    expressionMode === "aggregation"
+      ? Lib.aggregations(query, stageIndex)[expressionIndex]
+      : Lib.expressions(query, stageIndex)[expressionIndex];
+
+  return Lib.displayInfo(query, stageIndex, clause).displayName ?? null;
 }

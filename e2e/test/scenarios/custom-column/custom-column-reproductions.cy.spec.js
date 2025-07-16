@@ -2343,7 +2343,7 @@ describe("Issue 61010", () => {
       .should("not.exist");
 
     H.CustomExpressionEditor.clear().type("[Foo]");
-    H.popover().findByText("Unknown column: Foo").should("be.visible");
+    H.popover().findByText("Cycle detected: Foo → Foo").should("be.visible");
   });
 
   it("should not be possible to reference an aggregation in itself(metabase#61010)", () => {
@@ -2355,7 +2355,7 @@ describe("Issue 61010", () => {
 
     H.CustomExpressionEditor.clear().type("[New count]");
     H.popover()
-      .findByText("Unknown Aggregation or Metric: New count")
+      .findByText("Cycle detected: New count → New count")
       .should("be.visible");
   });
 });
