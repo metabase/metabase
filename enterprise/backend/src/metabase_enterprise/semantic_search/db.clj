@@ -10,10 +10,12 @@
   "Atom to hold the JDBC data source for the semantic search database."
   (atom nil))
 
+(def ^:private db-url (env :mb-pgvector-db-url))
+
 (defn- build-db-config
   "Build database configuration from environment variables"
   []
-  (if-let [db-url (env :mb-pgvector-db-url)]
+  (if db-url
     {:jdbcUrl db-url}
     (throw (ex-info "MB_PGVECTOR_DB_URL environment variable is required for semantic search" {}))))
 
@@ -39,5 +41,7 @@
     (throw (ex-info "Database connection pool is not initialized. Call init-db! first." {}))))
 
 (comment
+  ;; docker-compose.yml
+  (.doReset #'db-url "jdbc:postgres://localhost:55432/mb_semantic_search?user=postgres&password=postgres")
   (init-db!)
   (test-connection!))
