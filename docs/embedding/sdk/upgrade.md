@@ -46,6 +46,8 @@ If you're using yarn:
 yarn add @metabase/embedding-sdk-react@{next-major-version-number}-stable
 ```
 
+See more on [SDK versions](./version.md).
+
 ### If there are breaking changes, make the necessary changes to your application code
 
 Breaking changes are rare, but if you do need to make changes, we'll mention it in the release notes for the new major version and have docs that walk you through the changes.
