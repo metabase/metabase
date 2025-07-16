@@ -7,7 +7,10 @@ import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
-import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
+import {
+  type OnCreateOptions,
+  useCreateQuestion,
+} from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { setEntityTypes } from "metabase/redux/embedding-data-picker";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
@@ -47,6 +50,8 @@ export const InteractiveQuestionProvider = ({
   initialSqlParameters,
   withDownloads,
   variant,
+  targetDashboardId,
+  backToDashboard,
 }: InteractiveQuestionProviderProps) => {
   const handleCreateQuestion = useCreateQuestion();
   const handleSaveQuestion = useSaveQuestion();
@@ -63,15 +68,21 @@ export const InteractiveQuestionProvider = ({
     }
   };
 
-  const handleCreate = async (question: Question): Promise<Question> => {
+  const handleCreate = async (
+    question: Question,
+    options?: OnCreateOptions,
+  ): Promise<Question> => {
     if (isSaveEnabled) {
-      const saveContext = { isNewQuestion: true };
+      const saveContext = {
+        isNewQuestion: true,
+        dashboardTabId: options?.dashboardTabId,
+      };
       const sdkQuestion = transformSdkQuestion(question);
 
       await onBeforeSave?.(sdkQuestion, saveContext);
 
-      const createdQuestion = await handleCreateQuestion(question);
-      onSave?.(sdkQuestion, saveContext);
+      const createdQuestion = await handleCreateQuestion(question, options);
+      onSave?.(transformSdkQuestion(createdQuestion), saveContext);
 
       // Set the latest saved question object to update the question title.
       replaceQuestion(createdQuestion);
@@ -100,6 +111,7 @@ export const InteractiveQuestionProvider = ({
     options,
     deserializedCard,
     initialSqlParameters,
+    targetDashboardId,
   });
 
   const globalPlugins = useSdkSelector(getPlugins);
@@ -143,6 +155,7 @@ export const InteractiveQuestionProvider = ({
     withDownloads,
     variant,
     onRun,
+    backToDashboard,
   };
 
   useEffect(() => {
