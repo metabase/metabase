@@ -132,6 +132,39 @@ export const RemappingPicker = ({
     } else {
       sendToast({
         action: undoAction,
+        actionLabel: undoAction ? t`Undo` : undefined,
+        icon: "check",
+        message: t`Display values of ${field.display_name} updated`,
+      });
+    }
+  };
+
+  const showToastWithUndo = ({ error }: { error: unknown }) => {
+    if (error) {
+      showToast({ error });
+    } else {
+      sendToast({
+        action: () => {
+          showToast({
+            error,
+            undoAction: async () => {
+              if (dimension) {
+                const { error } = await createFieldDimension({
+                  id,
+                  type: dimension.type,
+                  name: dimension.name,
+                  human_readable_field_id: dimension.human_readable_field_id,
+                });
+
+                showToast({ error });
+              } else {
+                const { error } = await deleteFieldDimension(id);
+
+                showToast({ error });
+              }
+            },
+          });
+        },
         actionLabel: t`Undo`,
         icon: "check",
         message: t`Display values of ${field.display_name} updated`,
@@ -146,21 +179,7 @@ export const RemappingPicker = ({
     if (value === "original") {
       const { error } = await deleteFieldDimension(id);
 
-      showToast({
-        error,
-        undoAction: dimension
-          ? async () => {
-              const { error } = await createFieldDimension({
-                id,
-                type: dimension.type,
-                name: dimension.name,
-                human_readable_field_id: dimension.human_readable_field_id,
-              });
-
-              showToast({ error });
-            }
-          : undefined,
-      });
+      showToastWithUndo({ error });
 
       if (!error) {
         setHasChanged(false);
@@ -177,25 +196,7 @@ export const RemappingPicker = ({
           human_readable_field_id: entityNameFieldId,
         });
 
-        showToast({
-          error,
-          undoAction: async () => {
-            if (dimension) {
-              const { error } = await createFieldDimension({
-                id,
-                type: dimension.type,
-                name: dimension.name,
-                human_readable_field_id: dimension.human_readable_field_id,
-              });
-
-              showToast({ error });
-            } else {
-              const { error } = await deleteFieldDimension(id);
-
-              showToast({ error });
-            }
-          },
-        });
+        showToastWithUndo({ error });
       } else {
         // Enter a special state where we are choosing an initial value for FK target
         setHasChanged(true);
@@ -211,25 +212,7 @@ export const RemappingPicker = ({
         human_readable_field_id: null,
       });
 
-      showToast({
-        error,
-        undoAction: async () => {
-          if (dimension) {
-            const { error } = await createFieldDimension({
-              id,
-              type: dimension.type,
-              name: dimension.name,
-              human_readable_field_id: dimension.human_readable_field_id,
-            });
-
-            showToast({ error });
-          } else {
-            const { error } = await deleteFieldDimension(id);
-
-            showToast({ error });
-          }
-        },
-      });
+      showToastWithUndo({ error });
 
       if (!error) {
         setHasChanged(true);
@@ -250,25 +233,7 @@ export const RemappingPicker = ({
       human_readable_field_id: fkFieldId,
     });
 
-    showToast({
-      error,
-      undoAction: async () => {
-        if (dimension) {
-          const { error } = await createFieldDimension({
-            id,
-            type: dimension.type,
-            name: dimension.name,
-            human_readable_field_id: dimension.human_readable_field_id,
-          });
-
-          showToast({ error });
-        } else {
-          const { error } = await deleteFieldDimension(id);
-
-          showToast({ error });
-        }
-      },
-    });
+    showToastWithUndo({ error });
   };
 
   const handleCustomMappingChange = async (
