@@ -37,51 +37,67 @@ const FieldSectionBase = ({
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
 
-  const handleNameChange = async (
-    name: string,
-    previousName = field.display_name,
-  ) => {
+  const handleNameChange = async (name: string) => {
     const { error } = await updateField({ id, display_name: name });
 
-    if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update name of ${field.display_name}`,
+    sendUndoToast(error, async () => {
+      const { error } = await updateField({
+        id,
+        display_name: field.display_name,
       });
-    } else {
-      sendToast({
-        action: () => handleNameChange(previousName, name),
-        actionLabel: t`Undo`,
-        icon: "check",
-        message: t`Name of ${field.display_name} updated`,
-      });
+
+      sendUndoToast(error);
+    });
+
+    function sendUndoToast(error: unknown, action?: () => void) {
+      if (error) {
+        sendToast({
+          icon: "warning_triangle_filled",
+          iconColor: "var(--mb-color-warning)",
+          message: t`Failed to update name of ${field.display_name}`,
+        });
+      } else {
+        sendToast({
+          action,
+          actionLabel: action ? t`Undo` : undefined,
+          icon: "check",
+          message: t`Name of ${field.display_name} updated`,
+        });
+      }
     }
   };
 
-  const handleDescriptionChange = async (
-    description: string,
-    previousDescription = field.description ?? "",
-  ) => {
+  const handleDescriptionChange = async (description: string) => {
     const { error } = await updateField({
       id,
       // API does not accept empty strings
       description: description.length === 0 ? null : description,
     });
 
-    if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update description of ${field.display_name}`,
+    sendUndoToast(error, async () => {
+      const { error } = await updateField({
+        id,
+        description: field.description ?? "",
       });
-    } else {
-      sendToast({
-        action: () => handleDescriptionChange(previousDescription, description),
-        actionLabel: t`Undo`,
-        icon: "check",
-        message: t`Description of ${field.display_name} updated`,
-      });
+
+      sendUndoToast(error);
+    });
+
+    function sendUndoToast(error: unknown, action?: () => void) {
+      if (error) {
+        sendToast({
+          icon: "warning_triangle_filled",
+          iconColor: "var(--mb-color-warning)",
+          message: t`Failed to update description of ${field.display_name}`,
+        });
+      } else {
+        sendToast({
+          action,
+          actionLabel: action ? t`Undo` : undefined,
+          icon: "check",
+          message: t`Description of ${field.display_name} updated`,
+        });
+      }
     }
   };
 

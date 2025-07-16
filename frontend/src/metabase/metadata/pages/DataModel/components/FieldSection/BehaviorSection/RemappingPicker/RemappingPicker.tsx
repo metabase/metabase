@@ -116,7 +116,7 @@ export const RemappingPicker = ({
   const [createFieldDimension] = useCreateFieldDimensionMutation();
   const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
 
-  const showToast = ({
+  const sendUndoToast = ({
     error,
     action,
   }: {
@@ -139,8 +139,8 @@ export const RemappingPicker = ({
     }
   };
 
-  const showToastWithUndo = ({ error }: { error: unknown }) => {
-    showToast({
+  const sendDefaultUndoToast = ({ error }: { error: unknown }) => {
+    sendUndoToast({
       error,
       action: async () => {
         if (dimension) {
@@ -151,11 +151,11 @@ export const RemappingPicker = ({
             human_readable_field_id: dimension.human_readable_field_id,
           });
 
-          showToast({ error });
+          sendUndoToast({ error });
         } else {
           const { error } = await deleteFieldDimension(id);
 
-          showToast({ error });
+          sendUndoToast({ error });
         }
       },
     });
@@ -168,7 +168,7 @@ export const RemappingPicker = ({
     if (value === "original") {
       const { error } = await deleteFieldDimension(id);
 
-      showToastWithUndo({ error });
+      sendDefaultUndoToast({ error });
 
       if (!error) {
         setHasChanged(false);
@@ -185,7 +185,7 @@ export const RemappingPicker = ({
           human_readable_field_id: entityNameFieldId,
         });
 
-        showToastWithUndo({ error });
+        sendDefaultUndoToast({ error });
       } else {
         // Enter a special state where we are choosing an initial value for FK target
         setHasChanged(true);
@@ -201,7 +201,7 @@ export const RemappingPicker = ({
         human_readable_field_id: null,
       });
 
-      showToastWithUndo({ error });
+      sendDefaultUndoToast({ error });
 
       if (!error) {
         setHasChanged(true);
@@ -222,7 +222,7 @@ export const RemappingPicker = ({
       human_readable_field_id: fkFieldId,
     });
 
-    showToastWithUndo({ error });
+    sendDefaultUndoToast({ error });
   };
 
   const handleCustomMappingChange = async (
@@ -235,7 +235,7 @@ export const RemappingPicker = ({
     });
 
     if (!options?.isAutomatic) {
-      showToast({
+      sendUndoToast({
         error,
         action: async () => {
           const { error } = await updateFieldValues({
@@ -243,7 +243,7 @@ export const RemappingPicker = ({
             values: Array.from(mapping),
           });
 
-          showToast({ error });
+          sendUndoToast({ error });
         },
       });
     }
