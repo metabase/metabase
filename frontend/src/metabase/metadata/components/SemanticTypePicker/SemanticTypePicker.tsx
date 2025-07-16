@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { type FocusEvent, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -21,6 +21,7 @@ export const SemanticTypePicker = ({
   field,
   value,
   onChange,
+  onFocus,
   ...props
 }: Props) => {
   const data = useMemo(() => getData({ field, value }), [field, value]);
@@ -28,6 +29,11 @@ export const SemanticTypePicker = ({
   const handleChange = (value: string) => {
     const parsedValue = parseValue(value);
     onChange(parsedValue);
+  };
+
+  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
+    event.target.select();
+    onFocus?.(event);
   };
 
   return (
@@ -48,6 +54,7 @@ export const SemanticTypePicker = ({
       searchable
       value={stringifyValue(value)}
       onChange={handleChange}
+      onFocus={handleFocus}
       {...props}
     />
   );
