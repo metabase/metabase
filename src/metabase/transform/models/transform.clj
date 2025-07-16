@@ -117,6 +117,16 @@
                      :display-name display-name
                      :same-display-name-table-ids table-ids}))))
 
+(defn- validate-for-view* [q] nil)
+
+(defn- validate-for-view [dataset-query]
+  (let [query (dataset-query->query dataset-query)
+        query-type (query-type query)]
+    (when (not= query-type :native)
+      (let [preprocessed (driver-api/preprocess query)]
+        [(validate-for-view* query)
+         (validate-for-view* preprocessed)]))))
+
 (defn insert-returning-instance!
   "Create new transform."
   [schema display-name dataset-query creator]
