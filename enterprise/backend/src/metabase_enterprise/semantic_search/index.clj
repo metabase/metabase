@@ -218,4 +218,3 @@
   (require '[metabase.test :as mt])
   (mt/with-test-user :crowberto
     (doall (query-index {:search-string "Copper knife"}))))
-
