@@ -28,7 +28,7 @@ export const DataConnectionStep = () => {
   const ContinueWithoutDataButton = useCallback(
     ({ onCancel }: { onCancel?: () => void }) => {
       return (
-        <Button variant="subtle" c="text-medium" onClick={onCancel}>
+        <Button variant="subtle" c="text-secondary" onClick={onCancel}>
           {t`I'll add my data later`}
         </Button>
       );
