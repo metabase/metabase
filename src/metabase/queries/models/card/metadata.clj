@@ -1,7 +1,6 @@
 (ns metabase.queries.models.card.metadata
   "Code related to Card metadata (re)calculation and saving updated metadata asynchronously."
   (:require
-   [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
