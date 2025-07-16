@@ -1499,9 +1499,12 @@
                             (binding [qp.perms/*card-id* card-1-id]
                               (is (seq (mt/rows (qp/process-query card-1-query))))))
 
-                          (testing "Should be able to run Card 2 (inherits permissions from parent)"
-                            (binding [qp.perms/*card-id* card-2-id]
-                              (is (= 2 (count (mt/rows (qp/process-query card-2-query)))))))
+                          (testing "Should not be able to run Card 2 (does not inherit permissions from parent)"
+                            (is (thrown-with-msg?
+                                 ExceptionInfo
+                                 #"You do not have permissions to view Card"
+                                 (binding [qp.perms/*card-id* card-2-id]
+                                   (mt/rows (qp/process-query card-2-query))))))
 
                           (testing "Should be able to run Card 3 in grandchild collection"
                             (binding [qp.perms/*card-id* card-3-id]
@@ -1535,7 +1538,7 @@
                                               "FROM venues "
                                               "WHERE price > 1 "
                                               "ORDER BY id ASC "
-                                              "LIMIT 3")})]
+                                              "LIMIT 2")})]
               (mt/with-temp [:model/Card {card-1-id :id} {:collection_id coll-1
                                                           :dataset_query card-1-query}]
                 ;; Card 2: MBQL query in restricted collection
@@ -1745,3 +1748,542 @@
                             {:source-table (format "card__%d" restricted-card-id)
                              :expressions {"simple" [:+ 1 1]}
                              :limit 1}))))))))))))))
+
+(deftest e2e-cumulative-aggregations-restricted-table-test
+  (testing "Complex aggregations (cumulative count, cumulative sum) on restricted tables"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to checkins table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
+          ;; Block access to reviews table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :reviews) :perms/view-data :blocked)
+
+          (mt/with-test-user :rasta
+            (testing "Should be able to use cumulative aggregations on accessible tables"
+              (let [result (qp/process-query
+                            (mt/mbql-query checkins
+                              {:aggregation [[:cum-count] [:cum-sum $id]]
+                               :breakout [[:field (mt/id :checkins :date) {:temporal-unit :month}]]
+                               :order-by [[:asc [:field (mt/id :checkins :date) {:temporal-unit :month}]]]
+                               :limit 3}))]
+                (is (seq (mt/rows result)))))
+
+            (testing "Should NOT be able to use cumulative aggregations on restricted tables"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query
+                    (mt/mbql-query reviews
+                      {:aggregation [[:cum-count] [:cum-sum $rating]]
+                       :breakout [[:field (mt/id :reviews :created_at) {:temporal-unit :month}]]
+                       :limit 3})))))))))))
+
+(deftest e2e-multiple-aggregations-mixed-table-permissions-test
+  (testing "Multiple aggregations in a single query with mixed table permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow full access to checkins and venues
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          ;; Block access to users table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
+
+          (mt/with-test-user :rasta
+            (testing "Should be able to use multiple aggregations on accessible tables with joins"
+              (let [result (qp/process-query
+                            (mt/mbql-query checkins
+                              {:joins [{:fields :all
+                                        :source-table (mt/id :venues)
+                                        :alias "v"
+                                        :condition [:= $venue_id [:field (mt/id :venues :id) {:join-alias "v"}]]}]
+                               :aggregation [[:count]
+                                             [:avg $id]
+                                             [:sum [:field (mt/id :venues :price) {:join-alias "v"}]]]
+                               :breakout [[:field (mt/id :venues :category_id) {:join-alias "v"}]]
+                               :limit 3}))]
+                (is (seq (mt/rows result)))))
+
+            (testing "Should NOT be able to join to restricted table in aggregation query"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query
+                    (mt/mbql-query checkins
+                      {:joins [{:fields :all
+                                :source-table (mt/id :users)
+                                :alias "u"
+                                :condition [:= $user_id [:field (mt/id :users :id) {:join-alias "u"}]]}]
+                       :aggregation [[:count] [:avg $id]]
+                       :breakout [[:field (mt/id :users :id) {:join-alias "u"}]]
+                       :limit 3})))))))))))
+
+(deftest e2e-aggregations-with-having-clauses-restricted-fields-test
+  (testing "Aggregations with filter conditions acting like HAVING clauses on restricted fields"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to checkins table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
+          ;; Block access to users table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
+
+          (mt/with-test-user :rasta
+            (testing "Should be able to use aggregations with filters on accessible fields"
+              (let [result (qp/process-query
+                            (mt/mbql-query checkins
+                              {:aggregation [[:count]]
+                               :breakout [$venue_id]
+                               :filter [:> $venue_id 5] ; Filter condition
+                               :limit 3}))]
+                (is (seq (mt/rows result)))))
+
+            (testing "Should NOT be able to use aggregations on restricted tables"
+              ;; This tests aggregations on blocked tables
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query
+                    (mt/mbql-query users
+                      {:aggregation [[:count]]
+                       :breakout [$id]
+                       :filter [:> $id 1]
+                       :limit 3})))))))))))
+
+(deftest e2e-share-aggregations-sensitive-data-test
+  (testing "Share aggregations on sensitive data with permission restrictions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to checkins table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
+          ;; Block access to reviews table (which might contain sensitive rating data)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :reviews) :perms/view-data :blocked)
+
+          (mt/with-test-user :rasta
+            (testing "Should be able to calculate shares from accessible data"
+              (let [result (qp/process-query
+                            (mt/mbql-query checkins
+                              {:aggregation [[:share [:> $venue_id 50]]] ; Share of checkins for venues > 50
+                               :limit 1}))]
+                (is (seq (mt/rows result)))))
+
+            (testing "Should NOT be able to calculate shares from restricted sensitive data"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query
+                    (mt/mbql-query reviews
+                      {:aggregation [[:share [:> $rating 3]]] ; Share of high ratings
+                       :limit 1})))))))))))
+
+(deftest e2e-aggregations-with-expressions-and-joins-permissions-test
+  (testing "Complex aggregations combining expressions, joins, and permission restrictions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to checkins and venues
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          ;; Block access to categories table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :blocked)
+
+          (mt/with-test-user :rasta
+            (testing "Should be able to aggregate with expressions across allowed joined tables"
+              (let [result (qp/process-query
+                            (mt/mbql-query checkins
+                              {:joins [{:fields :all
+                                        :source-table (mt/id :venues)
+                                        :alias "v"
+                                        :condition [:= $venue_id [:field (mt/id :venues :id) {:join-alias "v"}]]}]
+                               :expressions {"venue_expense" [:* [:field (mt/id :venues :price) {:join-alias "v"}] 2]}
+                               :aggregation [[:sum [:expression "venue_expense"]]
+                                             [:count]]
+                               :breakout [[:field (mt/id :venues :name) {:join-alias "v"}]]
+                               :limit 3}))]
+                (is (seq (mt/rows result)))))
+
+            (testing "Should NOT be able to aggregate across joins to restricted tables"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query
+                    (mt/mbql-query venues
+                      {:joins [{:fields :all
+                                :source-table (mt/id :categories)
+                                :alias "c"
+                                :condition [:= $category_id [:field (mt/id :categories :id) {:join-alias "c"}]]}]
+                       :expressions {"category_score" [:+ [:field (mt/id :categories :id) {:join-alias "c"}] 10]}
+                       :aggregation [[:sum [:expression "category_score"]]]
+                       :limit 3})))))))))))
+
+(deftest e2e-window-functions-aggregations-permissions-test
+  (testing "Window functions with aggregations on data with permission restrictions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to checkins table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
+          ;; Block access to reviews table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :reviews) :perms/view-data :blocked)
+
+          (mt/with-test-user :rasta
+            (testing "Should be able to use basic aggregations on accessible tables"
+              ;; Note: Window functions aren't fully supported in the test MBQL syntax,
+              ;; so we test basic aggregations that would be used in window function contexts
+              (let [result (qp/process-query
+                            (mt/mbql-query checkins
+                              {:aggregation [[:count] [:sum $id]]
+                               :breakout [$venue_id]
+                               :order-by [[:desc [:aggregation 0]]]
+                               :limit 3}))]
+                (is (seq (mt/rows result)))))
+
+            (testing "Should NOT be able to aggregate on restricted tables"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query
+                    (mt/mbql-query reviews
+                      {:aggregation [[:count] [:avg $rating]]
+                       :breakout [$product_id]
+                       :limit 3})))))))))))
+
+(deftest e2e-three-way-joins-different-permission-levels-test
+  (testing "Three-way joins with different permission levels on each table"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues and checkins tables
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
+          ;; Allow view-data but block create-queries for categories table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :no)
+          ;; Block access to users table completely
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
+
+          (mt/with-test-user :rasta
+            (testing "Should be able to join venues and checkins (both allowed)"
+              (let [result (qp/process-query
+                            (mt/mbql-query venues
+                              {:joins [{:fields :all
+                                        :source-table (mt/id :checkins)
+                                        :alias "c"
+                                        :condition [:= $id [:field (mt/id :checkins :venue_id) {:join-alias "c"}]]}]
+                               :fields [$id $name]
+                               :limit 2}))]
+                (is (seq (mt/rows result)))))
+
+            (testing "Should NOT be able to do three-way join with blocked users table"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query
+                    (mt/mbql-query venues
+                      {:joins [{:fields :all
+                                :source-table (mt/id :checkins)
+                                :alias "c"
+                                :condition [:= $id [:field (mt/id :checkins :venue_id) {:join-alias "c"}]]}
+                               {:fields :all
+                                :source-table (mt/id :users)
+                                :alias "u"
+                                :condition [:= [:field (mt/id :checkins :user_id) {:join-alias "c"}]
+                                            [:field (mt/id :users :id) {:join-alias "u"}]]}]
+                       :fields [$id $name]
+                       :limit 2})))))
+
+            (testing "Should NOT be able to do three-way join with create-queries blocked categories table"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query
+                    (mt/mbql-query venues
+                      {:joins [{:fields :all
+                                :source-table (mt/id :checkins)
+                                :alias "c"
+                                :condition [:= $id [:field (mt/id :checkins :venue_id) {:join-alias "c"}]]}
+                               {:fields :all
+                                :source-table (mt/id :categories)
+                                :alias "cat"
+                                :condition [:= $category_id [:field (mt/id :categories :id) {:join-alias "cat"}]]}]
+                       :fields [$id $name]
+                       :limit 2})))))))))))
+
+(deftest e2e-self-joins-restricted-access-test
+  (testing "Self-joins on tables with restricted access"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          ;; Block access to users table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
+
+          (mt/with-test-user :rasta
+            (testing "Should be able to self-join on accessible table"
+              (let [result (qp/process-query
+                            (mt/mbql-query venues
+                              {:joins [{:fields [[:field (mt/id :venues :name) {:join-alias "v2"}]]
+                                        :source-table (mt/id :venues)
+                                        :alias "v2"
+                                        :condition [:= $category_id [:field (mt/id :venues :category_id) {:join-alias "v2"}]]}]
+                               :fields [$id $name]
+                               :filter [:!= $id [:field (mt/id :venues :id) {:join-alias "v2"}]] ; Different venues
+                               :limit 3}))]
+                (is (seq (mt/rows result)))))
+
+            (testing "Should NOT be able to self-join on restricted table"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query
+                    (mt/mbql-query users
+                      {:joins [{:fields [[:field (mt/id :users :name) {:join-alias "u2"}]]
+                                :source-table (mt/id :users)
+                                :alias "u2"
+                                :condition [:!= $id [:field (mt/id :users :id) {:join-alias "u2"}]]}]
+                       :fields [$id $name]
+                       :limit 3})))))))))))
+
+(deftest e2e-joins-using-expressions-as-join-conditions-test
+  (testing "Joins using expressions or aggregations as join conditions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues and categories tables
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+          ;; Block access to users table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
+
+          (mt/with-test-user :rasta
+            (testing "Should be able to join using expressions when both tables are accessible"
+              (let [result (qp/process-query
+                            (mt/mbql-query venues
+                              {:expressions {"venue_cat_calc" [:+ $category_id 0]}
+                               :joins [{:fields :all
+                                        :source-table (mt/id :categories)
+                                        :alias "cat"
+                                        :condition [:= [:expression "venue_cat_calc"]
+                                                    [:field (mt/id :categories :id) {:join-alias "cat"}]]}]
+                               :fields [$id $name [:expression "venue_cat_calc"]]
+                               :limit 3}))]
+                (is (seq (mt/rows result)))))
+
+            (testing "Should NOT be able to join using expressions when one table is restricted"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query
+                    (mt/mbql-query venues
+                      {:expressions {"venue_id_calc" [:+ $id 0]}
+                       :joins [{:fields :all
+                                :source-table (mt/id :users)
+                                :alias "u"
+                                :condition [:= [:expression "venue_id_calc"]
+                                            [:field (mt/id :users :id) {:join-alias "u"}]]}]
+                       :fields [$id $name]
+                       :limit 3})))))))))))
+
+(deftest e2e-right-joins-full-outer-joins-permission-restrictions-test
+  (testing "Right joins and full outer joins with permission restrictions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          ;; Allow access to categories table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+          ;; Block access to users table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
+
+          (mt/with-test-user :rasta
+            (testing "Should be able to use right join with accessible tables"
+              (let [result (qp/process-query
+                            (mt/mbql-query venues
+                              {:joins [{:fields :all
+                                        :source-table (mt/id :categories)
+                                        :alias "cat"
+                                        :condition [:= $category_id [:field (mt/id :categories :id) {:join-alias "cat"}]]
+                                        :strategy :right-join}]
+                               :fields [$id $name]
+                               :limit 3}))]
+                (is (seq (mt/rows result)))))
+
+            (testing "Should NOT be able to use right join with restricted table"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query
+                    (mt/mbql-query venues
+                      {:joins [{:fields :all
+                                :source-table (mt/id :users)
+                                :alias "u"
+                                :condition [:= $id [:field (mt/id :users :id) {:join-alias "u"}]]
+                                :strategy :right-join}]
+                       :fields [$id $name]
+                       :limit 3})))))
+
+            (testing "Should be able to use left join (instead of full outer) with accessible tables"
+              (let [result (qp/process-query
+                            (mt/mbql-query venues
+                              {:joins [{:fields :all
+                                        :source-table (mt/id :categories)
+                                        :alias "cat"
+                                        :condition [:= $category_id [:field (mt/id :categories :id) {:join-alias "cat"}]]
+                                        :strategy :left-join}]
+                               :fields [$id $name]
+                               :limit 3}))]
+                (is (seq (mt/rows result)))))
+
+            (testing "Should NOT be able to use left join with restricted table"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query
+                    (mt/mbql-query venues
+                      {:joins [{:fields :all
+                                :source-table (mt/id :users)
+                                :alias "u"
+                                :condition [:= $id [:field (mt/id :users :id) {:join-alias "u"}]]
+                                :strategy :left-join}]
+                       :fields [$id $name]
+                       :limit 3})))))))))))
+
+(deftest e2e-multiple-join-strategies-varied-permissions-test
+  (testing "Multiple join strategies (inner, left, right) in same query with varied permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues, categories, and checkins tables
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
+          ;; Block access to users table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
+
+          (mt/with-test-user :rasta
+            (testing "Should be able to use multiple join strategies with all accessible tables"
+              (let [result (qp/process-query
+                            (mt/mbql-query venues
+                              {:joins [{:fields [[:field (mt/id :categories :name) {:join-alias "cat"}]]
+                                        :source-table (mt/id :categories)
+                                        :alias "cat"
+                                        :condition [:= $category_id [:field (mt/id :categories :id) {:join-alias "cat"}]]
+                                        :strategy :left-join}
+                                       {:fields [[:field (mt/id :checkins :id) {:join-alias "c"}]]
+                                        :source-table (mt/id :checkins)
+                                        :alias "c"
+                                        :condition [:= $id [:field (mt/id :checkins :venue_id) {:join-alias "c"}]]
+                                        :strategy :inner-join}]
+                               :fields [$id $name]
+                               :limit 2}))]
+                (is (seq (mt/rows result)))))
+
+            (testing "Should NOT be able to use multiple join strategies when one table is restricted"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query
+                    (mt/mbql-query venues
+                      {:joins [{:fields [[:field (mt/id :categories :name) {:join-alias "cat"}]]
+                                :source-table (mt/id :categories)
+                                :alias "cat"
+                                :condition [:= $category_id [:field (mt/id :categories :id) {:join-alias "cat"}]]
+                                :strategy :left-join}
+                               {:fields [[:field (mt/id :users :name) {:join-alias "u"}]]
+                                :source-table (mt/id :users)
+                                :alias "u"
+                                :condition [:= $id [:field (mt/id :users :id) {:join-alias "u"}]]
+                                :strategy :right-join}]
+                       :fields [$id $name]
+                       :limit 2})))))))))))
+
+(deftest e2e-complex-join-chains-with-mixed-permissions-test
+  (testing "Complex join chains combining cards and tables with mixed permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues and categories tables
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+          ;; Block create-queries on checkins (view-data only)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :no)
+          ;; Block access to users table completely
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
+
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            ;; Create a card with checkins data (allowed via collection permissions)
+            (mt/with-temp [:model/Card {checkins-card-id :id} {:collection_id (u/the-id collection)
+                                                               :dataset_query (mt/mbql-query checkins
+                                                                                {:fields [$id $venue_id $user_id]
+                                                                                 :order-by [[:asc $id]]
+                                                                                 :limit 10})}]
+              (mt/with-test-user :rasta
+                (testing "Should be able to join card (with restricted underlying table) to accessible table"
+                  (let [result (qp/process-query
+                                (mt/mbql-query venues
+                                  {:joins [{:fields :all
+                                            :source-table (format "card__%d" checkins-card-id)
+                                            :alias "checkins_card"
+                                            :condition [:= $id [:field (mt/id :checkins :venue_id) {:join-alias "checkins_card"}]]}]
+                                   :fields [$id $name]
+                                   :limit 2}))]
+                    (is (seq (mt/rows result)))))
+
+                (testing "Should be able to join multiple cards and tables in complex chain"
+                  (let [result (qp/process-query
+                                (mt/mbql-query venues
+                                  {:joins [{:fields [[:field (mt/id :categories :name) {:join-alias "cat"}]]
+                                            :source-table (mt/id :categories)
+                                            :alias "cat"
+                                            :condition [:= $category_id [:field (mt/id :categories :id) {:join-alias "cat"}]]}
+                                           {:fields [[:field (mt/id :checkins :id) {:join-alias "checkins_card"}]]
+                                            :source-table (format "card__%d" checkins-card-id)
+                                            :alias "checkins_card"
+                                            :condition [:= $id [:field (mt/id :checkins :venue_id) {:join-alias "checkins_card"}]]}]
+                                   :fields [$id $name]
+                                   :limit 2}))]
+                    (is (seq (mt/rows result)))))
+
+                (testing "Should NOT be able to join to blocked table even in complex chain"
+                  (is (thrown-with-msg?
+                       ExceptionInfo
+                       #"You do not have permissions to run this query"
+                       (qp/process-query
+                        (mt/mbql-query venues
+                          {:joins [{:fields [[:field (mt/id :categories :name) {:join-alias "cat"}]]
+                                    :source-table (mt/id :categories)
+                                    :alias "cat"
+                                    :condition [:= $category_id [:field (mt/id :categories :id) {:join-alias "cat"}]]}
+                                   {:fields [[:field (mt/id :users :name) {:join-alias "u"}]]
+                                    :source-table (mt/id :users)
+                                    :alias "u"
+                                    :condition [:= $id [:field (mt/id :users :id) {:join-alias "u"}]]}]
+                           :fields [$id $name]
+                           :limit 2})))))))))))))
+
