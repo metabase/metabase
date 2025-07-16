@@ -2619,3 +2619,83 @@
           (testing "after downgrade"
             (migrate! :down 52)
             (is (zero? (t2/count :notification :payload_type "notification/card")))))))))
+
+;;;
+;;; 56 tests
+;;;
+
+(deftest migrate-collection-path-permissions-test
+  (testing "v56.2025-07-16T00:00:02: migrate collection path permissions to new format"
+    (impl/test-migrations ["v56.2025-07-16T00:00:02"] [migrate!]
+      (let [collection-id  (:id (new-instance-with-default :collection
+                                                           {:name       "Test Collection"
+                                                            :slug       "test_collection"
+                                                            :namespace  nil}))
+            ns-collection-id (:id (new-instance-with-default :collection
+                                                             {:name       "Namespace Collection"
+                                                              :slug       "ns_collection"
+                                                              :namespace  "snippets"}))
+            group-id       (:id (new-instance-with-default :permissions_group
+                                                           {:name "Test Group"}))
+            ;; Insert old-style collection path permissions
+            root-path-perm-id     (t2/insert-returning-pk! :permissions
+                                                           {:object   "/collection/"
+                                                            :group_id group-id})
+            collection-path-perm-id (t2/insert-returning-pk! :permissions
+                                                             {:object   (str "/collection/" collection-id "/")
+                                                              :group_id group-id})
+            read-path-perm-id     (t2/insert-returning-pk! :permissions
+                                                           {:object   (str "/collection/" collection-id "/read/")
+                                                            :group_id group-id})
+            ns-path-perm-id       (t2/insert-returning-pk! :permissions
+                                                           {:object   (str "/collection/namespace/snippets/" ns-collection-id "/")
+                                                            :group_id group-id})
+            ns-read-path-perm-id  (t2/insert-returning-pk! :permissions
+                                                           {:object   (str "/collection/namespace/snippets/" ns-collection-id "/read/")
+                                                            :group_id group-id})]
+
+        (testing "before migration, permissions have no perm_type or perm_value"
+          (let [perms (t2/select :permissions :id [:in [root-path-perm-id collection-path-perm-id
+                                                        read-path-perm-id ns-path-perm-id ns-read-path-perm-id]])]
+            (is (every? #(nil? (:perm_type %)) perms))
+            (is (every? #(nil? (:perm_value %)) perms))
+            (is (every? #(nil? (:collection_id %)) perms))))
+
+        (migrate!)
+
+        (testing "after migration, collection path permissions have perm_type and perm_value"
+          (let [root-perm     (t2/select-one :permissions :id root-path-perm-id)
+                coll-perm     (t2/select-one :permissions :id collection-path-perm-id)
+                read-perm     (t2/select-one :permissions :id read-path-perm-id)
+                ns-perm       (t2/select-one :permissions :id ns-path-perm-id)
+                ns-read-perm  (t2/select-one :permissions :id ns-read-path-perm-id)]
+
+            (testing "root collection permission"
+              (is (= "perms/collection-access" (:perm_type root-perm)))
+              (is (= "read-and-write" (:perm_value root-perm)))
+              (is (nil? (:collection_id root-perm)))
+              (is (nil? (:collection_namespace root-perm))))
+
+            (testing "regular collection write permission"
+              (is (= "perms/collection-access" (:perm_type coll-perm)))
+              (is (= "read-and-write" (:perm_value coll-perm)))
+              (is (= collection-id (:collection_id coll-perm)))
+              (is (nil? (:collection_namespace coll-perm))))
+
+            (testing "regular collection read permission"
+              (is (= "perms/collection-access" (:perm_type read-perm)))
+              (is (= "read" (:perm_value read-perm)))
+              (is (= collection-id (:collection_id read-perm)))
+              (is (nil? (:collection_namespace read-perm))))
+
+            (testing "namespaced collection write permission"
+              (is (= "perms/collection-access" (:perm_type ns-perm)))
+              (is (= "read-and-write" (:perm_value ns-perm)))
+              (is (= ns-collection-id (:collection_id ns-perm)))
+              (is (= "snippets" (:collection_namespace ns-perm))))
+
+            (testing "namespaced collection read permission"
+              (is (= "perms/collection-access" (:perm_type ns-read-perm)))
+              (is (= "read" (:perm_value ns-read-perm)))
+              (is (= ns-collection-id (:collection_id ns-read-perm)))
+              (is (= "snippets" (:collection_namespace ns-read-perm))))))))))

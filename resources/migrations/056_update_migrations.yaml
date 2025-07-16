@@ -232,6 +232,54 @@ databaseChangeLog:
             path: instance_analytics_views/users/v2/h2-users.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v56.2025-07-16T00:00:01
+      author: edpaget
+      comment: adds a collection namespace column to the permission table
+      preConditions: # change is safe to run regardless
+      changes:
+        - addColumn:
+            tableName: permissions
+            columns:
+              - column:
+                  name: collection_namespace
+                  remarks: allow collection roots in different namespaces to be distinguished
+                  type: text
+
+  - changeSet:
+      id: v56.2025-07-16T00:00:02
+      author: edpaget
+      comment: set perms/download-results to no when a table has perms/view-data blocked
+      preConditions: # change is safe to run regardless
+      changes:
+         - sql:
+            sql: >-
+              UPDATE permissions
+              SET
+                  perm_type = 'perms/collection-access'
+                  , perm_value = CASE
+                      WHEN object LIKE '%/read' OR object LIKE '%/read/' THEN 'read'
+                      ELSE 'read-and-write'
+                  END
+                  , collection_id = CASE
+                      WHEN object LIKE '%/root' OR object LIKE '%/root%' THEN NULL
+                      WHEN object LIKE '%/collection/namespace%' THEN CAST(
+                          SUBSTRING(
+                              object FROM '/collection/namespace/[a-z]+/([0-9]+)/'
+                          ) AS INTEGER
+                      )
+                      ELSE CAST(
+                          SUBSTRING(
+                              object FROM '/collection/([0-9]+)/'
+                          ) AS INTEGER
+                      )
+                  END
+                  , collection_namespace = SUBSTRING(
+                      object FROM '/collection/namespace/([a-z]+)/'
+                  )
+              WHERE object LIKE '/collection/%';
+      rollback: # not needed non-destructive
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
