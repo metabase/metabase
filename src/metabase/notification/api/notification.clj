@@ -141,6 +141,7 @@
   (let [notification (models.notification/hydrate-notification
                       (models.notification/create-notification!
                        (-> body
+                           (update :payload_type keyword)
                            (assoc :creator_id api/*current-user-id*)
                            (dissoc :handlers :subscriptions))
                        (:subscriptions body)

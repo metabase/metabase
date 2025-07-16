@@ -114,9 +114,9 @@
   [[join-condition-operators]], the LHS expression with columns from [[join-condition-lhs-columns]], the RHS expression
   with columns from [[join-condition-rhs-columns]]). This currently doesn't handle more complex filter clauses that
   were created without the 'normal' MLv2 functions used by the frontend; we can add this in the future if we need it."
-  [join      :- ::lib.join.util/PartialJoin
-   old-alias :- [:maybe ::lib.schema.common/non-blank-string]
-   new-alias :- [:maybe ::lib.schema.common/non-blank-string]]
+  [join      :- lib.join.util/PartialJoin
+   old-alias :- [:maybe ::lib.schema.join/alias]
+   new-alias :- [:maybe ::lib.schema.join/alias]]
   (cond
     (empty? (:conditions join))
     join

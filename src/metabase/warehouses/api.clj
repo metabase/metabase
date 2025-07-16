@@ -973,9 +973,13 @@
           (t2/update! :model/Database id {:cache_ttl cache_ttl}))
 
         (let [db (t2/select-one :model/Database :id id)]
+          ;; the details in db and existing-database have been normalized so they are the same here
+          ;; we need to pass through details-changed? which is calculated before detail normalization
+          ;; to ensure the pool is invalidated and [[driver-api/secret-value-as-file!]] memoization is cleared
           (events/publish-event! :event/database-update {:object db
                                                          :user-id api/*current-user-id*
-                                                         :previous-object existing-database})
+                                                         :previous-object existing-database
+                                                         :details-changed? details-changed?})
           (-> db
               ;; return the DB with the expanded schedules back in place
               add-expanded-schedules

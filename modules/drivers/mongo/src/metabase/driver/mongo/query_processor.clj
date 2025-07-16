@@ -247,6 +247,9 @@ function(bin) {
   [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
   (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))]
     (cond
+      (isa? coercion :Coercion/UNIXNanoSeconds->DateTime)
+      {:$dateFromParts {:millisecond {$divide [field-name 1000000]}, :year 1970, :timezone "UTC"}}
+
       (isa? coercion :Coercion/UNIXMicroSeconds->DateTime)
       {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970, :timezone "UTC"}}
 
@@ -725,7 +728,10 @@ function(bin) {
                 rvalue]}
       :day)))
 
-(defmethod ->rvalue :datetime [[_ expr mode]]
+(defmethod ->rvalue :today [[_]]
+  (->rvalue [:date [:now]]))
+
+(defmethod ->rvalue :datetime [[_ expr {:keys [mode]}]]
   (let [rvalue (->rvalue expr)]
     (case (or mode :iso)
       :iso
@@ -737,7 +743,7 @@ function(bin) {
                           :format     "%Y%m%d%H%M%S"
                           :onError    rvalue}}
 
-      :simplebytes
+      :simple-bytes
       {"$dateFromString" {:dateString {"$function"
                                        {:body base64-decoder
                                         :args [rvalue]
@@ -745,12 +751,24 @@ function(bin) {
                           :format     "%Y%m%d%H%M%S"
                           :onError    rvalue}}
 
-      :isobytes
+      :iso-bytes
       {"$dateFromString" {:dateString {"$function"
                                        {:body base64-decoder
                                         :args [rvalue]
                                         :lang "js"}}
                           :onError    rvalue}}
+
+      :unix-nanoseconds
+      {:$dateFromParts {:millisecond {$divide [rvalue 1000000]}, :year 1970, :timezone "UTC"}}
+
+      :unix-microseconds
+      {:$dateFromParts {:millisecond {$divide [rvalue 1000]}, :year 1970, :timezone "UTC"}}
+
+      :unix-milliseconds
+      {:$dateFromParts {:millisecond rvalue, :year 1970, :timezone "UTC"}}
+
+      :unix-seconds
+      {:$dateFromParts {:second rvalue, :year 1970, :timezone "UTC"}}
 
       ;; else
       (throw (ex-info (tru "Driver {0} does not support {1}" :mongo mode)

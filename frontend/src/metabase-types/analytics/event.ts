@@ -159,16 +159,27 @@ export type VisualizerModalEvent = ValidateEvent<
     }
 >;
 
+export type EmbeddingSetupStepKey =
+  | "welcome"
+  | "user-creation"
+  | "data-connection"
+  | "table-selection"
+  | "processing"
+  | "add-to-your-app"
+  | "done";
 export type EmbeddingSetupStepSeenEvent = ValidateEvent<{
   event: "embedding_setup_step_seen";
+  event_detail: EmbeddingSetupStepKey;
+}>;
+
+export type EmbeddingSetupClickEvent = ValidateEvent<{
+  event: "embedding_setup_click";
   event_detail:
-    | "welcome"
-    | "user-creation"
-    | "data-connection"
-    | "table-selection"
-    | "processing"
-    | "add-to-your-app"
-    | "done";
+    | "setup-up-manually"
+    | "add-data-later-or-skip"
+    | "snippet-copied"
+    | "ill-do-this-later";
+  triggered_from: EmbeddingSetupStepKey;
 }>;
 
 export type EventsClickedEvent = ValidateEvent<{
@@ -193,6 +204,43 @@ export type DashboardFilterCreatedEvent = ValidateEvent<{
   event_detail: string | null;
 }>;
 
+export type SdkIframeEmbedSetupExperience =
+  | "dashboard"
+  | "chart"
+  | "exploration";
+
+export type EmbedWizardExperienceSelectedEvent = ValidateEvent<{
+  event: "embed_wizard_experience_selected";
+  event_detail: SdkIframeEmbedSetupExperience;
+}>;
+
+export type EmbedWizardResourceSelectedEvent = ValidateEvent<{
+  event: "embed_wizard_resource_selected";
+  event_detail: SdkIframeEmbedSetupExperience;
+  target_id: number;
+}>;
+
+export type EmbedWizardOptionChangedEvent = ValidateEvent<{
+  event: "embed_wizard_option_changed";
+  event_detail: string;
+}>;
+
+export type EmbedWizardAuthSelectedEvent = ValidateEvent<{
+  event: "embed_wizard_auth_selected";
+  event_detail: "sso" | "user-session";
+}>;
+
+export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
+  event: "embed_wizard_code_copied";
+}>;
+
+export type EmbedWizardEvent =
+  | EmbedWizardExperienceSelectedEvent
+  | EmbedWizardResourceSelectedEvent
+  | EmbedWizardOptionChangedEvent
+  | EmbedWizardAuthSelectedEvent
+  | EmbedWizardCodeCopiedEvent;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -216,7 +264,9 @@ export type SimpleEvent =
   | VisualizeAnotherWayClickedEvent
   | VisualizerModalEvent
   | EmbeddingSetupStepSeenEvent
+  | EmbeddingSetupClickEvent
   | EventsClickedEvent
   | AddDataModalOpenedEvent
   | AddDataModalTabEvent
-  | DashboardFilterCreatedEvent;
+  | DashboardFilterCreatedEvent
+  | EmbedWizardEvent;

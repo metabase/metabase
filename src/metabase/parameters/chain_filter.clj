@@ -594,22 +594,34 @@
     ;; -> {:values          [1 2 3] (there are no BBQ places with price = 4)
            :has_more_values false}
 
-  `options` are key-value options. Currently only one option is supported, `:limit`:
+  `options` are key-value options. Currently two options are supported, `:limit` and `:remapping-field`:
 
+  - :limit
     ;; fetch first 10 values of venues.price
     (chain-filter %venues.price {} :limit 10)
 
-  For remapped columns, this returns results as a sequence of `[value remapped-value]` pairs."
+  - :remapping-field
+  ;; Explicitly specify a Field ID to use for Field->Field remapping instead of auto-detecting.
+  ;; This bypasses automatic remapping detection and directly uses the specified field for remapping.
+  (chain-filter %venues.category_id {} :remapping-field %categories.name)
+
+  For remapped columns (when remapping is detected or when an explicit remapping field-id is provided), this returns
+  results as a sequence of `[value remapped-value]` pairs."
   [field-id    :- ::ms/PositiveInt
    constraints :- [:maybe ::Constraints]
    & options]
   (assert (even? (count options)))
   (let [{:as options}         options
         relax-fk-requirement? (:relax-fk-requirement? options)
-        options               (dissoc options :relax-fk-requirement?)
+        remapping-field       (:remapping-field options)
+        options               (dissoc options :relax-fk-requirement? :remapping-field)
         v->human-readable     (schema.metadata-queries/human-readable-remapping-map field-id)
         remapping             (delay (remapping field-id))]
     (cond
+      ;; If explicit remapping field provided, use it for Field->Field remapping
+      (some? remapping-field)
+      (unremapped-chain-filter remapping-field constraints (assoc options :original-field-id field-id))
+
      ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
      ;; value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
      ;; database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`).

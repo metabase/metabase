@@ -547,6 +547,11 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   SdkIframeEmbedRoute: (): ReactNode => null,
 };
 
+export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
+  shouldShowEmbedInNewItemMenu: () => false,
+  SdkIframeEmbedSetup: (): ReactNode => null,
+};
+
 export const PLUGIN_CONTENT_VERIFICATION = {
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
@@ -756,6 +761,12 @@ export const PLUGIN_DB_ROUTING = {
   getPrimaryDBEngineFieldState: (
     _database: Pick<Database, "router_user_attribute">,
   ): "default" | "hidden" | "disabled" => "default",
+};
+
+export const PLUGIN_DATABASE_REPLICATION = {
+  DatabaseReplicationSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+  }>,
 };
 
 export const PLUGIN_API = {

@@ -93,101 +93,13 @@
 
   These placeholders deliberately contain characters which are not in the NanoID alphabet."
   []
-  (str "$$ADHOC[" (u/generate-nano-id) "]"))
-
-(def ^:private illegal-substrings
-  #{"$$ADHOC"      ; The tag used in placeholder idents, which should not survive to eg. `:result_metadata` on a Card.
-    "native[]"     ; A native column but generated without the containing Card's `entity_id`. This isn't unique!
-    "model[]"})    ; A model created without an `entity_id` properly defined.
+  (str "$$ADHOC[" (u/generate-nano-id) "]"))    ; A model created without an `entity_id` properly defined.
 
 (def ^:private placeholder-regex
   #"\$\$ADHOC\[[A-Za-z0-9_-]{21}\]")
-
-(defn contains-placeholder-ident?
-  "Returns true if the given string contains a placeholder."
-  [s]
-  (and (string? s)
-       (boolean (re-matches placeholder-regex s))))
-
-(defn placeholder?
-  "Returns true if the given string is **exactly** a placeholder."
-  [s]
-  (and (contains-placeholder-ident? s)
-       (= (count s) 30)))
 
 (defn replace-placeholder-idents
   "Given an `:ident` and the true `:entity_id` for a card, overwrite the placeholders."
   [ident card-entity-id]
   (when ident
     (str/replace ident placeholder-regex card-entity-id)))
-
-;; Validation of idents for various things.
-(defn- ->ident [column-or-ident]
-  (cond-> column-or-ident
-    (map? column-or-ident) :ident))
-
-(defn valid-basic-ident?
-  "Validates a generic ident.
-
-  An ident is a nonempty string which does not contain any of the [[illegal-substrings]]: placeholders or malformed
-  `native[]` slugs.
-
-  Accepts an optional second argument (a `card-entity-id`) for uniformity with the other validators, but it's unused."
-  ([column-or-ident _card-entity-id]
-   (valid-basic-ident? column-or-ident))
-  ([column-or-ident]
-   (let [ident (->ident column-or-ident)]
-     (boolean (and (string? ident)
-                   (seq ident)
-                   (not-any? #(str/includes? ident %) illegal-substrings))))))
-
-(defn- valid-prefixed-ident?
-  "Validates an ident, which must be a [[valid-basic-ident?]] and begin with the specified prefix."
-  [column-or-ident prefix]
-  (let [ident (->ident column-or-ident)]
-    (and (valid-basic-ident? ident)
-         (str/starts-with? ident prefix))))
-
-(defn valid-model-ident?
-  "Returns whether a given ident (or `:ident` from the column) is correct for the given model."
-  [column-or-ident card-entity-id]
-  (let [ident  (->ident column-or-ident)
-        prefix (model-ident "" card-entity-id)]
-    (and (valid-prefixed-ident? ident prefix)
-         ;; The inner ident can't be empty, or it's also invalid.
-         (> (count ident) (count prefix)))))
-
-(defn valid-native-ident?
-  "Returns whether a given ident (or `:ident` from a column map) is correct, for the given native card `:entity_id`."
-  [column-or-ident card-entity-id]
-  (valid-prefixed-ident? column-or-ident (native-ident "" card-entity-id)))
-
-(defn valid-native-model-ident?
-  "A special case that checks if a native model's ident is correctly formed:
-  `model[CardEntityId]__native[CardEntityId]__columnName`."
-  [column-or-ident card-entity-id]
-  (let [prefix (-> ""
-                   (native-ident card-entity-id)
-                   (model-ident card-entity-id))]
-    (valid-prefixed-ident? column-or-ident prefix)))
-
-(def ^:dynamic *enforce-idents-present*
-  "The [[assert-idents-present!]] check is sometimes too zealous; this dynamic var can be overridden whe we know the
-  query is in a broken state, such as during the cleanup of dangling references in `remove-clause`.
-
-  Defaults to false in production, true in dev and test."
-  ;; TODO: Enable this in tests once the QP is adding `:ident`s to `result_metadata`.
-  false
-  #_#?(:clj      (not config/is-prod?)
-       :cljs-dev true
-       :default  false))
-
-(defn assert-idents-present!
-  "Given a list of columns and map of data for [[ex-info]], throw if any columns in the output lack `:ident`s.
-
-  Return nil if there's no trouble."
-  [columns ex-map]
-  (when *enforce-idents-present*
-    (when-let [missing (seq (remove :ident columns))]
-      (throw (ex-info "Some columns are missing :idents"
-                      (assoc ex-map :missing-ident missing))))))

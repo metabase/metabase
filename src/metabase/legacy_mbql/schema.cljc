@@ -443,7 +443,7 @@
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime :today})
 
 (def ^:private NumericExpression
   "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
@@ -720,23 +720,18 @@
 (defclause ^{:requires-features #{:expressions :expressions/date}} date
   string [:or StringExpressionArg DateTimeExpressionArg])
 
+(defclause ^{:requires-features #{:expressions :expressions/today}} today)
+
 (def ^:private LiteralDatetimeModeString
-  [:enum {:error/message "datetime mode string"}
-   :iso
-   :simple
-   :isobytes
-   :simplebytes
-   :unixmilliseconds
-   :unixseconds
-   :unixmicroseconds
-   :unixnanoseconds])
+  (into [:enum {:error/message "datetime mode string"}]
+        lib.schema.expression.temporal/datetime-modes))
 
 (defclause ^{:requires-features #{:expressions :expressions/datetime}} datetime
-  value  :any ;;StringExpressionArg ;; normally a string, number, or bytes
-  mode   (optional LiteralDatetimeModeString))
+  value  :any ;; normally a string, number, or bytes
+  options (optional [:map [:mode {:optional true} LiteralDatetimeModeString]]))
 
 (mr/def ::DatetimeExpression
-  (one-of + datetime-add datetime-subtract convert-timezone now date datetime))
+  (one-of + datetime-add datetime-subtract convert-timezone now date datetime today))
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 

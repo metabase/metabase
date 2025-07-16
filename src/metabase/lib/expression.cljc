@@ -351,7 +351,7 @@
 (lib.common/defop get-day-of-week [t] [t mode])
 (lib.common/defop datetime-add [t i unit])
 (lib.common/defop date [s])
-(lib.common/defop datetime [value] [value mode])
+(lib.common/defop today [])
 (lib.common/defop datetime-subtract [t i unit])
 (lib.common/defop concat [s1 s2 & more])
 (lib.common/defop substring [s start end])
@@ -375,6 +375,15 @@
 (lib.common/defop text [x])
 (lib.common/defop integer [x])
 (lib.common/defop float [x])
+
+(mu/defn datetime :- :mbql.clause/datetime
+  "Create a standalone clause of type `datetime`."
+  ([value]
+   (lib.common/defop-create :datetime [value]))
+  ([value mode]
+   (into [:datetime {:lib/uuid (str (random-uuid))
+                     :mode mode}]
+         (map lib.common/->op-arg) [value])))
 
 (mu/defn value :- ::lib.schema.expression/expression
   "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."

@@ -195,7 +195,7 @@
   "Return metadata for the 'virtual' table for a Card."
   [{:keys [id]} :- [:map
                     [:id ::ms/PositiveInt]]]
-  (first (schema.table/batch-fetch-card-query-metadatas [id])))
+  (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
 
 (api.macros/defendpoint :get "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint

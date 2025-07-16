@@ -23,24 +23,31 @@ describe("issue 9357", () => {
     cy.signInAsAdmin();
   });
 
-  it("should reorder template tags by drag and drop (metabase#9357)", () => {
-    H.startNewNativeQuestion();
-    SQLFilter.enterParameterizedQuery(
-      "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
-    );
+  it(
+    "should reorder template tags by drag and drop (metabase#9357)",
+    { viewportWidth: 800, viewportHeight: 600 },
+    () => {
+      H.startNewNativeQuestion();
+      SQLFilter.enterParameterizedQuery(
+        "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
+      );
 
-    // Drag the firstparameter to last position
-    H.moveDnDKitElement(cy.get("fieldset").findAllByRole("listitem").first(), {
-      horizontal: 430,
-    });
+      // Drag the firstparameter to last position
+      H.moveDnDKitElement(
+        cy.get("fieldset").findAllByRole("listitem").first(),
+        {
+          vertical: 50,
+        },
+      );
 
-    // Ensure they're in the right order
-    cy.findAllByText("Variable name").parent().as("variableField");
+      // Ensure they're in the right order
+      cy.findAllByText("Variable name").parent().as("variableField");
 
-    cy.get("@variableField").first().findByText("nextparameter");
+      cy.get("@variableField").first().findByText("nextparameter");
 
-    cy.get("@variableField").eq(1).findByText("firstparameter");
-  });
+      cy.get("@variableField").eq(1).findByText("firstparameter");
+    },
+  );
 });
 
 describe("issue 11480", () => {

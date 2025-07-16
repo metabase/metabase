@@ -1800,6 +1800,45 @@ describe("scenarios > question > custom column > splitPart", () => {
   });
 });
 
+describe("exercise today() function", () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("should show today's date", () => {
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("Products").click();
+    });
+
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.popover().findByText("Select all").click();
+    cy.realPress("Escape");
+
+    H.visualize();
+    H.assertQueryBuilderRowCount(200);
+    H.openNotebook();
+
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({ formula: "today()", name: "TODAY" });
+    H.popover().button("Done").click();
+
+    const today = new Date();
+    const dateString = today.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    H.visualize();
+    cy.findAllByTestId("header-cell").eq(1).should("have.text", "TODAY");
+    cy.findAllByTestId("cell-data").eq(3).should("have.text", dateString);
+  });
+});
+
 describe("scenarios > question > custom column > aggregation", () => {
   beforeEach(() => {
     H.restore();

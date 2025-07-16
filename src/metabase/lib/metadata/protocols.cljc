@@ -155,7 +155,11 @@
   (cached-metadatas [cached-metadata-provider metadata-type metadata-ids]
     "Like [[metadatas]], but only return metadata that is already present in the cache.")
   (store-metadata! [cached-metadata-provider object]
-    "Store metadata of a specific type, e.g. `:metadata/table`."))
+    "Store metadata of a specific type, e.g. `:metadata/table`.")
+  (cached-value [cached-metadata-provider k not-found]
+    "Fetch a general cached value stored by [[cache-value!]] with the key `k`.")
+  (cache-value! [cached-metadata-provider k v]
+    "Store a general cached value `v` under the key `k`."))
 
 (defn cached-metadata-provider?
   "Whether `x` is a valid [[CachedMetadataProvider]]."

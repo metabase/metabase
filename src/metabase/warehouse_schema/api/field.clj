@@ -12,6 +12,7 @@
    [metabase.sync.core :as sync]
    [metabase.types.core :as types]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
@@ -120,12 +121,22 @@
   (let [field             (t2/hydrate (api/write-check :model/Field id) :dimensions)
         new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
-        (or (when-let [coercion-strategy (keyword coercion-strategy)]
-              (let [effective (types/effective-type-for-coercion coercion-strategy)]
-                ;; throw an error in an else branch?
-                (when (types/is-coercible? coercion-strategy (:base_type field) effective)
-                  [effective coercion-strategy])))
-            [(:base_type field) nil])
+        (cond (not (contains? body :coercion_strategy))
+              [((some-fn :effective_type :base_type) field) (:coercion_strategy field)]
+
+              (nil? coercion-strategy)
+              [(:base_type field) nil]
+
+              :else
+              (when-let [coercion-strategy (keyword coercion-strategy)]
+                (let [effective (types/effective-type-for-coercion coercion-strategy)]
+                  (if (types/is-coercible? coercion-strategy (:base_type field) effective)
+                    [effective coercion-strategy]
+                    (throw (ex-info (i18n/tru "Incompatible coercion strategy.")
+                                    {:status-code 400
+                                     :base-type (:base_type field)
+                                     :coercion-strategy coercion-strategy
+                                     :effective-type effective}))))))
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
 

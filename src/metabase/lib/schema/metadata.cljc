@@ -204,9 +204,8 @@
 (mr/def ::column.validate-native-column
   "Certain keys cannot possibly be set when a column comes from directly from native query results, for example
   `:lib/breakout?` or join aliases"
-  (let [disallowed-keys [:lib/breakout?
-                         :metabase.lib.join/join-alias
-                         :lib/expression-name]]
+  (let [disallowed-keys [:metabase.lib.join/join-alias ; only things that come from a JOIN should have a join alias.
+                         :lib/expression-name]]        ; if it comes from a native query then it can't come from an expression.
     [:fn
      {:error/message "Invalid column metadata for a column with :lib/source :source/native"
       :error/fn      (fn [{m :value} _]
