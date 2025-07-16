@@ -19,10 +19,14 @@ import {
 
 export const permissionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    listPermissionsGroups: builder.query<GroupListQuery[], void>({
-      query: () => ({
+    listPermissionsGroups: builder.query<
+      GroupListQuery[],
+      { tenancy?: "external" | "internal" } | undefined
+    >({
+      query: (params) => ({
         method: "GET",
         url: "/api/permissions/group",
+        params,
       }),
       providesTags: (groups = []) => providePermissionsGroupListTags(groups),
     }),

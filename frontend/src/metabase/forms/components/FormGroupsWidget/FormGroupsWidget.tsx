@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import { type HTMLAttributes, useMemo } from "react";
+import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -7,6 +7,7 @@ import { MembershipSelect } from "metabase/admin/people/components/MembershipSel
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import FormField from "metabase/common/components/FormField";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { GroupId, Member } from "metabase-types/api";
 
 interface FormGroupsWidgetProps extends HTMLAttributes<HTMLDivElement> {
@@ -24,21 +25,19 @@ export const FormGroupsWidget = ({
   const [{ value: formValue }, , { setValue }] =
     useField<{ id: GroupId; is_group_manager?: boolean }[]>(name);
 
-  const { data, isLoading } = useListPermissionsGroupsQuery();
-
-  const groups = useMemo(() => {
-    if (external && data) {
-      return data?.filter((group) => group.is_tenant_group);
-    }
-    return data;
-  }, [data, external]);
+  const { data: groups, isLoading } = useListPermissionsGroupsQuery({
+    tenancy: external ? "external" : "internal",
+  });
 
   if (isLoading || !groups) {
     return null;
   }
 
   const adminGroup = _.find(groups, isAdminGroup);
-  const defaultGroup = _.find(groups, isDefaultGroup);
+  const defaultGroup = _.find(
+    groups,
+    external ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
+  );
 
   const value = formValue ?? [
     { id: defaultGroup?.id, is_group_manager: false },

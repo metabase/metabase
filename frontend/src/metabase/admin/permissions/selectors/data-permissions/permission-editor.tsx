@@ -400,6 +400,8 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
         const isAdmin = isAdminGroup(group);
         const isExternal =
           !!externalUsersGroup && PLUGIN_TENANTS.isExternalUsersGroup(group);
+
+        const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
         let groupPermissions;
 
         if (tableId != null) {
@@ -450,6 +452,9 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
         return {
           id: group.id,
           name: group.name,
+          icon: isTenantGroup ? (
+            <PLUGIN_TENANTS.TenantGroupHintIcon />
+          ) : undefined,
           hint: isAdmin
             ? t`The Administrators group is special, and always has Unrestricted access.`
             : null,

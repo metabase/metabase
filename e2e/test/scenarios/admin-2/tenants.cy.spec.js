@@ -91,6 +91,7 @@ describe("Tenants - management", () => {
     cy.visit("/admin/tenants");
 
     cy.location("pathname").should("eq", "/admin/people");
+    cy.visit("/admin/tenants");
 
     cy.findByRole("navigation", { name: "people-nav" })
       .findByRole("link", { name: /Groups/ })
@@ -258,11 +259,24 @@ describe("Tenants - management", () => {
     });
 
     cy.findByRole("navigation", { name: "people-nav" })
-      .findByRole("link", { name: /Groups/ })
+      .findAllByRole("link", { name: /Groups/ })
+      .should("have.length", 2)
+      .first()
       .click();
 
     cy.findByTestId("admin-content-table").within(() => {
-      cy.findByRole("link", { name: /All Internal Users/ }).should("exist");
+      cy.findByRole("link", { name: /All Internal Users/ }).should(
+        "be.visible",
+      );
+      cy.findByRole("link", { name: /All External Users/ }).should("not.exist");
+    });
+
+    cy.findByRole("navigation", { name: "people-nav" })
+      .findAllByRole("link", { name: /Tenant Groups/ })
+      .click();
+
+    cy.findByTestId("admin-content-table").within(() => {
+      cy.findByRole("link", { name: /All Internal Users/ }).should("not.exist");
       cy.findByRole("row", {
         name: `group-${ALL_EXTERNAL_USERS_GROUP_ID}-row`,
       }).within(() => {
@@ -273,7 +287,7 @@ describe("Tenants - management", () => {
         cy.findByRole("button", {
           name: "group-action-button",
         }).should("not.exist");
-        cy.findByRole("link", { name: /External Users/ }).click();
+        cy.findByRole("link", { name: /All External Users/ }).click();
       });
     });
 
@@ -283,9 +297,16 @@ describe("Tenants - management", () => {
   });
 
   it("should allow you to manage external user permissions once multi tenancy is enabled", () => {
-    const EXTERNAL_USER_GROUP_NAME = "External Users";
+    const EXTERNAL_USER_GROUP_NAME = "All External Users";
+    const TENANT_GROUP_NAME = "Favorite tenant users";
+
+    cy.request("POST", "/api/permissions/group", {
+      name: TENANT_GROUP_NAME,
+      is_tenant_group: true,
+    });
+
     cy.visit("/admin/permissions");
-    cy.findByRole("menuitem", { name: "Administrators" }).should("exist");
+    cy.findByRole("menuitem", { name: "Administrators" }).should("be.visible");
     cy.findByRole("menuitem", { name: EXTERNAL_USER_GROUP_NAME }).should(
       "not.exist",
     );
@@ -295,7 +316,8 @@ describe("Tenants - management", () => {
     });
 
     cy.reload();
-    cy.findByRole("menuitem", { name: "Administrators" }).should("exist");
+    cy.findByRole("menuitem", { name: "Administrators" }).should("be.visible");
+    cy.findByRole("menuitem", { name: TENANT_GROUP_NAME }).should("be.visible");
     cy.findByRole("menuitem", { name: EXTERNAL_USER_GROUP_NAME }).click();
 
     assertPermissionTableColumnsExist([
@@ -335,6 +357,11 @@ describe("Tenants - management", () => {
       .eq(4)
       .parent()
       .should("have.attr", "aria-disabled", "true");
+
+    hasGlobeIcon(EXTERNAL_USER_GROUP_NAME);
+    hasGlobeIcon(TENANT_GROUP_NAME);
+    lacksGlobeIcon("Administrators");
+    lacksGlobeIcon("All Internal Users");
   });
 
   it("should not show send email modal when creating tenant users when SMTP is configured", () => {
@@ -667,6 +694,86 @@ describe("tenant users", () => {
       .findByRole("link", { name: /trash/i })
       .should("not.exist");
   });
+
+  it("should create a tenant group and add users to it", () => {
+    const GROUP_NAME = "Favorites";
+    cy.intercept("POST", "/api/permissions/group").as("createGroup");
+    cy.intercept("POST", "/api/user").as("createUser");
+    cy.intercept("PUT", "/api/user/*").as("updateUser");
+    cy.visit("/admin/tenants/groups");
+
+    // FIXME shouldn't be necessary - caused by slow route guard
+    cy.findByTestId("admin-layout-sidebar")
+      .findByText(/Tenant Groups/)
+      .click();
+
+    cy.findByTestId("admin-layout-content")
+      .findByRole("heading", { name: /Tenant Groups/ })
+      .should("be.visible");
+
+    cy.button("Create a group").click();
+    cy.findByPlaceholderText(/something like/i).type(GROUP_NAME);
+    cy.findByRole("button", { name: "Add" }).click();
+    cy.wait("@createGroup");
+    cy.findByTestId("admin-content-table").findByText(GROUP_NAME);
+
+    cy.findByTestId("admin-layout-sidebar")
+      .findByText(/External Users/)
+      .click();
+
+    cy.log("put existing user in a group");
+    cy.findByTestId("admin-people-list-table")
+      .findAllByLabelText("ellipsis icon")
+      .first()
+      .click();
+    H.popover().findByText("Edit user").click();
+
+    H.modal().within(() => {
+      cy.findByText("Tenant Groups");
+      cy.findByText("All External Users").click();
+    });
+
+    H.popover().findByText(GROUP_NAME).click();
+
+    H.modal().within(() => {
+      cy.findByText("Tenant Groups").click(); // trigger blur
+      cy.findByText("2 other groups").should("be.visible");
+      cy.button("Update").click();
+    });
+
+    cy.wait("@updateUser").then(
+      ({ request: { body: reqBody }, response: { body: resBody } }) => {
+        expect(reqBody.user_group_memberships).to.have.length(2);
+        expect(resBody.user_group_memberships).to.have.length(2);
+      },
+    );
+
+    cy.log("add user in a group");
+    cy.button("Invite someone").click();
+
+    H.modal().within(() => {
+      cy.findByLabelText("First name").type("Misty");
+      cy.findByLabelText("Last name").type("Cerulean");
+      cy.findByLabelText(/Email/).type("misty@example.com");
+      cy.findByLabelText(/Tenant/).click();
+    });
+
+    H.popover().findByText(GIZMO_TENANT.name).click();
+    H.modal().findByText("All External Users").click();
+    H.popover().findByText(GROUP_NAME).click();
+
+    H.modal().within(() => {
+      cy.findByText("Tenant Groups").click(); // trigger blur
+      cy.findByText("2 other groups").should("be.visible");
+      cy.button("Create").click();
+    });
+    cy.wait("@createUser").then(
+      ({ request: { body: reqBody }, response: { body: resBody } }) => {
+        expect(reqBody.user_group_memberships).to.have.length(2);
+        expect(resBody.user_group_memberships).to.have.length(2);
+      },
+    );
+  });
 });
 
 const assertPermissionTableColumnsExist = (assertions) => {
@@ -685,6 +792,23 @@ const assertPermissionTableColumnsExist = (assertions) => {
   );
 };
 
+function hasGlobeIcon(groupName) {
+  cy.findByTestId("permission-table")
+    .findByText(groupName)
+    .parent()
+    .parent()
+    .icon("globe")
+    .should("be.visible");
+}
+
+function lacksGlobeIcon(groupName) {
+  cy.findByTestId("permission-table")
+    .findByText(groupName)
+    .parent()
+    .parent()
+    .icon("globe")
+    .should("not.exist");
+}
 const createUsers = () => {
   cy.request("GET", "/api/ee/tenant").then(({ body }) => {
     USERS.forEach((user) => {
