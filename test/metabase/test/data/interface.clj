@@ -408,7 +408,7 @@
 
 (defmethod create-and-grant-roles! ::test-extensions
   [_driver _details _roles _db-user _default-role]
-  nil)
+  (ex-info (format "Creating roles hasn't been implemented or is not supported for %s" driver) {}))
 
 (defmulti drop-roles!
   "Drops the given roles, and drops the database user if necessary"
@@ -418,7 +418,7 @@
 
 (defmethod drop-roles! ::test-extensions
   [_driver _details _roles _db-user]
-  nil)
+  (ex-info (format "Dropping roles hasn't been implemented or is not supported for %s" driver) {}))
 
 (defn with-temp-roles-fn!
   "Creates the given roles and permissions for the database user, and drops them after execution"
@@ -438,6 +438,44 @@
      ~roles
      ~db-user
      ~default-role
+     (fn [] ~@body)))
+
+(defmulti create-db-user!
+  "Creates a database user."
+  {:added "0.55.0" :arglists '([driver details db-user])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-db-user! ::test-extensions
+  [_driver _details _db-user]
+  (ex-info (format "Creating a user hasn't been implemented or is not supported for %s" driver) {}))
+
+(defmulti drop-db-user-if-exists!
+  "Drops the database user if it exists"
+  {:added "0.55.0" :arglists '([driver details db-user])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-db-user-if-exists! ::test-extensions
+  [driver _details _db-user]
+  (ex-info (format "Dropping a user hasn't been implemented or is not supported for %s" driver) {}))
+
+(defn with-temp-db-user-fn!
+  "Creates the given user with the default public key and drops it after execution."
+  [driver details db-user f]
+  (try
+    (create-db-user! driver details db-user)
+    (f)
+    (finally
+      (drop-db-user-if-exists! driver details db-user))))
+
+(defmacro with-temp-db-user!
+  "Creates the given user drops it after execution."
+  [driver details db-user & body]
+  `(with-temp-db-user-fn!
+     ~driver
+     ~details
+     ~db-user
      (fn [] ~@body)))
 
 (defmulti dbdef->connection-details
