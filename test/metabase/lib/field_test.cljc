@@ -1504,13 +1504,12 @@
 (deftest ^:parallel resolve-field-metadata-test
   (testing "Make sure fallback name for a Field ref makes sense"
     (mu/disable-enforcement
-      (binding [lib.metadata.ident/*enforce-idents-present* false]
-        (is (=? {:lib/type        :metadata/column
-                 :lib/source-uuid string?
-                 :name            "Unknown Field"
-                 :display-name    "Unknown Field"}
-                (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
-                                                   [:field {:lib/uuid (str (random-uuid))} 12345])))))))
+      (is (=? {:lib/type        :metadata/column
+               :lib/source-uuid string?
+               :name            "Unknown Field"
+               :display-name    "Unknown Field"}
+              (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
+                                                 [:field {:lib/uuid (str (random-uuid))} 12345]))))))
 
 (deftest ^:parallel field-values-search-info-test
   (testing "type/PK field remapped to a type/Name field within the same table"
