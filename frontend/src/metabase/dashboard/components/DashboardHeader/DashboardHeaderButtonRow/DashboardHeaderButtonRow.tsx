@@ -8,6 +8,7 @@ import type {
   HeaderButtonProps,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { useDashboardContext } from "metabase/dashboard/context";
 import {
   getDashboardComplete,
   getHasModelActionsEnabled,
@@ -38,6 +39,14 @@ export const DashboardHeaderButtonRow = ({
 
   const dashboard = useSelector(getDashboardComplete);
   const canEdit = Boolean(dashboard?.can_write && !dashboard?.archived);
+
+  const {
+    isFullscreen,
+    onFullscreenChange,
+    hasNightModeToggle,
+    onNightModeChange,
+    downloadsEnabled,
+  } = useDashboardContext();
 
   const hasModelActionsEnabled = useSelector(getHasModelActionsEnabled);
 
@@ -77,7 +86,16 @@ export const DashboardHeaderButtonRow = ({
             ...props,
           };
 
-          if (config.enabled(buttonComponentProps)) {
+          if (
+            config.enabled({
+              isFullscreen,
+              onFullscreenChange,
+              hasNightModeToggle,
+              onNightModeChange,
+              downloadsEnabled,
+              ...buttonComponentProps,
+            })
+          ) {
             const Component = config.component;
             return (
               <Box

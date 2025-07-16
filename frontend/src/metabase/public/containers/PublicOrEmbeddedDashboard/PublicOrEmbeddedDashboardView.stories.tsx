@@ -1,6 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
+import { HttpResponse, http } from "msw";
 import { useEffect, useMemo } from "react";
 
 import { getStore } from "__support__/entities-store";
@@ -26,6 +27,7 @@ import {
   createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDatabase,
   createMockDataset,
   createMockDatasetData,
   createMockParameter,
@@ -53,6 +55,13 @@ export default {
   ],
   parameters: {
     layout: "fullscreen",
+    msw: {
+      handlers: [
+        http.get("*/api/database", () =>
+          HttpResponse.json(createMockDatabase()),
+        ),
+      ],
+    },
   },
 };
 
@@ -152,8 +161,13 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<MockDashboardContextProps> = (args) => (
-  <MockDashboardContext {...args}>
+const Template: StoryFn<MockDashboardContextProps> = (
+  args: MockDashboardContextProps,
+) => (
+  <MockDashboardContext
+    {...args}
+    dashboardId={args.dashboardId ?? args.dashboard?.id}
+  >
     <PublicOrEmbeddedDashboardView />
   </MockDashboardContext>
 );
@@ -176,6 +190,14 @@ const defaultArgs: Partial<MockDashboardContextProps> = {
 export const LightThemeDefault = {
   render: Template,
   args: defaultArgs,
+};
+
+export const LightThemeNoResults = {
+  render: Template,
+  args: {
+    ...defaultArgs,
+    dashboard: createDashboard({ dashcards: [] }),
+  },
 };
 
 export const LightThemeScroll = {

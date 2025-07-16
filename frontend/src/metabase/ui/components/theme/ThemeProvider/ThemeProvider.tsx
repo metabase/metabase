@@ -81,6 +81,7 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
       classNamesPrefix="mb-mantine"
       cssVariablesSelector={isEmbeddingSdk() ? ".mb-wrapper" : undefined}
       withCssVariables={withCssVariables}
+      {...props.mantineProviderProps}
     >
       <_CompatibilityEmotionThemeProvider theme={theme}>
         <DatesProvider>{props.children}</DatesProvider>
