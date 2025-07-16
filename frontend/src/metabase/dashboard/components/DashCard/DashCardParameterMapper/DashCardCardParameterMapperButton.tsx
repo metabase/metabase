@@ -6,7 +6,7 @@ import Button from "metabase/common/components/Button";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { Box, Flex, Icon, Popover } from "metabase/ui";
+import { Box, Flex, Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, ParameterTarget } from "metabase-types/api";
@@ -140,39 +140,41 @@ export const DashCardCardParameterMapperButton = ({
       onChange={setIsDropdownVisible}
     >
       <Popover.Target>
-        <Flex
-          component="button"
-          className={cx(S.TargetButton, {
-            [S.disabled]: buttonVariant === "disabled",
-            [S.mapped]: buttonVariant === "mapped",
-            [S.unauthed]: buttonVariant === "unauthed",
-            [S.invalid]: buttonVariant === "invalid",
-          })}
-          align="center"
-          maw="100%"
-          justify="space-between"
-          mx="xs"
-          px="sm"
-          py={compact ? undefined : "xs"}
-          aria-label={buttonTooltip ?? undefined}
-          aria-haspopup="listbox"
-          aria-expanded={isDropdownVisible}
-          aria-disabled={isDisabled || !hasPermissionsToMap}
-          tabIndex={0}
-          role="button"
-        >
-          {buttonText && (
-            <Box
-              className={S.TargetButtonText}
-              mr="sm"
-              ta="center"
-              component="span"
-            >
-              <Ellipsified>{buttonText}</Ellipsified>
-            </Box>
-          )}
-          {buttonIcon}
-        </Flex>
+        <Tooltip label={buttonTooltip} disabled={!buttonTooltip} inline>
+          <Flex
+            component="button"
+            role="button"
+            disabled={buttonVariant === "disabled"}
+            className={cx(S.TargetButton, {
+              [S.disabled]: buttonVariant === "disabled",
+              [S.mapped]: buttonVariant === "mapped",
+              [S.unauthed]: buttonVariant === "unauthed",
+              [S.invalid]: buttonVariant === "invalid",
+            })}
+            align="center"
+            maw="100%"
+            justify="space-between"
+            mx="xs"
+            px="sm"
+            py={compact ? undefined : "xs"}
+            aria-label={buttonTooltip ?? undefined}
+            aria-haspopup="listbox"
+            aria-expanded={isDropdownVisible}
+            aria-disabled={isDisabled || !hasPermissionsToMap}
+          >
+            {buttonText && (
+              <Box
+                className={S.TargetButtonText}
+                mr="sm"
+                ta="center"
+                component="span"
+              >
+                <Ellipsified>{buttonText}</Ellipsified>
+              </Box>
+            )}
+            {buttonIcon}
+          </Flex>
+        </Tooltip>
       </Popover.Target>
       <Popover.Dropdown style={{ boxSizing: "content-box" }}>
         <ParameterTargetList
