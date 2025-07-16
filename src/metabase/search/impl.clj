@@ -285,7 +285,8 @@
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
-   [:non-temporal-dim-ids                {:optional true} [:maybe ms/NonBlankString]]])
+   [:non-temporal-dim-ids                {:optional true} [:maybe ms/NonBlankString]]
+   [:has-temporal-dim                    {:optional true} [:maybe :boolean]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -314,7 +315,8 @@
            search-string
            table-db-id
            verified
-           non-temporal-dim-ids]} :- ::search-context.input]
+           non-temporal-dim-ids
+           has-temporal-dim]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -351,7 +353,8 @@
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
                  (seq ids)                                   (assoc :ids ids)
-                 (some? non-temporal-dim-ids)                (assoc :non-temporal-dim-ids non-temporal-dim-ids))]
+                 (some? non-temporal-dim-ids)                (assoc :non-temporal-dim-ids non-temporal-dim-ids)
+                 (some? has-temporal-dim)                    (assoc :has-temporal-dim has-temporal-dim))]
     (when (and (seq ids)
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))

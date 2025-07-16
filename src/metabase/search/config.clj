@@ -142,18 +142,19 @@
 (def filters
   "Specifications for the optional search filters."
   (build-filters
-   {:archived       {:type :single-value, :context-key :archived?}
+   {:archived             {:type :single-value, :context-key :archived?}
     ;; TODO dry this alias up with the index hydration code
-    :created-at     {:type :date-range, :field "model_created_at"}
-    :creator-id     {:type :list, :context-key :created-by}
+    :created-at           {:type :date-range, :field "model_created_at"}
+    :creator-id           {:type :list, :context-key :created-by}
     ;; This actually has nothing to do with tables, as we also filter cards, it would be good to rename the context key.
-    :database-id    {:type :single-value, :context-key :table-db-id}
-    :id             {:type :list, :context-key :ids, :field "model_id"}
-    :last-edited-at {:type :date-range}
-    :last-editor-id {:type :list, :context-key :last-edited-by}
-    :native-query   {:type :native-query, :context-key :search-native-query}
-    :verified       {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
-    :non-temporal-dim-ids {:type :single-value :engine :appdb}}))
+    :database-id          {:type :single-value, :context-key :table-db-id}
+    :id                   {:type :list, :context-key :ids, :field "model_id"}
+    :last-edited-at       {:type :date-range}
+    :last-editor-id       {:type :list, :context-key :last-edited-by}
+    :native-query         {:type :native-query, :context-key :search-native-query}
+    :verified             {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
+    :non-temporal-dim-ids {:type :single-value :engine :appdb}
+    :has-temporal-dim     {:type :single-value :engine :appdb}}))
 
 (def ^:private filter-defaults-by-context
   {:default         {:archived               false
@@ -251,7 +252,8 @@
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:include-dashboard-questions?        {:optional true} :boolean]
    [:include-metadata?                   {:optional true} :boolean]
-   [:non-temporal-dim-ids                {:optional true} ms/NonBlankString]])
+   [:non-temporal-dim-ids                {:optional true} ms/NonBlankString]
+   [:has-temporal-dim                    {:optional true} :boolean]])
 
 (defmulti column->string
   "Turn a complex column into a string"

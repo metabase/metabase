@@ -232,12 +232,17 @@
       ;; to be consistent we use revision.timestamp to do the filtering
       (sql.helpers/where (date-range-filter-clause :revision.timestamp last-edited-at)))))
 
-;; This filter is really only supported by the :appdb engine as it requires a search index.
+;; These filters are really only supported by the :appdb engine as they require a search index.
 ;; By building this no-op filter definition for the in-place engine we can atleast appropriately
-;; reduce the supported models to search.
+;; reduce the intended supported models that are searched.
 (doseq [model ["card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:non-temporal-dim-ids model]
     [_filter _model query _non-temporal-dim-ids]
+    query))
+
+(doseq [model ["card" "dataset" "metric"]]
+  (defmethod build-optional-filter-query [:has-temporal-dim model]
+    [_filter _model query _has-temporal-dim]
     query))
 
 ;; TODO: once we record revision for actions, we should update this to use the same approach with dashboard/card
@@ -284,7 +289,8 @@
                 models
                 search-native-query
                 verified
-                non-temporal-dim-ids]} search-context
+                non-temporal-dim-ids
+                has-temporal-dim]} search-context
         feature->supported-models (feature->supported-models)]
     (cond-> models
       (some? created-at)           (set/intersection (:created-at feature->supported-models))
@@ -293,7 +299,8 @@
       (some? last-edited-by)       (set/intersection (:last-edited-by feature->supported-models))
       (true? search-native-query)  (set/intersection (:search-native-query feature->supported-models))
       (true? verified)             (set/intersection (:verified feature->supported-models))
-      (some? non-temporal-dim-ids) (set/intersection (:non-temporal-dim-ids feature->supported-models)))))
+      (some? non-temporal-dim-ids) (set/intersection (:non-temporal-dim-ids feature->supported-models))
+      (some? has-temporal-dim)     (set/intersection (:has-temporal-dim feature->supported-models)))))
 
 (mu/defn build-filters :- :map
   "Build the search filters for a model."
@@ -310,7 +317,8 @@
                 search-native-query
                 verified
                 ids
-                non-temporal-dim-ids]} search-context]
+                non-temporal-dim-ids
+                has-temporal-dim]} search-context]
     (cond-> honeysql-query
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
@@ -340,6 +348,9 @@
 
       (some? non-temporal-dim-ids)
       (#(build-optional-filter-query :non-temporal-dim-ids model % non-temporal-dim-ids))
+
+      (some? has-temporal-dim)
+      (#(build-optional-filter-query :has-temporal-dim model % has-temporal-dim))
 
       (= "table" model)
       (sql.helpers/where

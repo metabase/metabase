@@ -147,7 +147,8 @@
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
     include-metadata                    :include_metadata
-    non-temporal-dim-ids                :non_temporal_dim_ids}
+    non-temporal-dim-ids                :non_temporal_dim_ids
+    has-temporal-dim                    :has_temporal_dim}
    :- [:map
        [:q                                   {:optional true} [:maybe ms/NonBlankString]]
        [:context                             {:optional true} [:maybe :keyword]]
@@ -167,7 +168,8 @@
        [:calculate_available_models          {:optional true} [:maybe true?]]
        [:include_dashboard_questions         {:default false} [:maybe :boolean]]
        [:include_metadata                    {:default false} [:maybe :boolean]]
-       [:non_temporal_dim_ids                {:optional true} [:maybe ms/NonBlankString]]]]
+       [:non_temporal_dim_ids                {:optional true} [:maybe ms/NonBlankString]]
+       [:has_temporal_dim                    {:optional true} [:maybe :boolean]]]]
   (api/check-valid-page-params (request/limit) (request/offset))
   (try
     (let [ctx (search/search-context
@@ -196,7 +198,8 @@
                 :calculate-available-models?         calculate-available-models
                 :include-dashboard-questions?        include-dashboard-questions
                 :include-metadata?                   include-metadata
-                :non-temporal-dim-ids                non-temporal-dim-ids})]
+                :non-temporal-dim-ids                non-temporal-dim-ids
+                :has-temporal-dim                    has-temporal-dim})]
       (u/prog1 (search/search ctx)
         (analytics/inc! :metabase-search/response-ok)))
     (catch Exception e

@@ -1341,47 +1341,60 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
+(defn- dataset-query->dimensions
+  "Extract dimensions (non-aggregation columns) from a dataset query.
+  Returns a sequence of dimension column objects, or empty sequence if query is invalid."
+  [dataset-query-str]
+  (when dataset-query-str
+    (lib.metadata.jvm/with-metadata-provider-cache
+      (let [dataset-query     (json/decode+kw dataset-query-str)
+            metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
+            lib-query         (lib/query metadata-provider dataset-query)
+            columns           (lib/returned-columns lib-query)]
+        ;; Dimensions are columns that are not aggregations
+        (remove (comp #{:source/aggregations} :lib/source) columns)))))
+
 (defn extract-non-temporal-dimension-ids
   "Populate list of nontemporal dimension field IDs"
   [{:keys [dataset_query]}]
-  (if (nil? dataset_query)
-    (json/encode [])
-    (lib.metadata.jvm/with-metadata-provider-cache
-      (let [dataset-query     (json/decode+kw dataset_query)
-            metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
-            lib-query         (lib/query metadata-provider dataset-query)
-            columns           (lib/returned-columns lib-query)
-          ;; Dimensions are columns that are not aggregations
-            dimensions        (remove (comp #{:source/aggregations} :lib/source) columns)
-            dim-ids           (->> dimensions
-                                   (remove lib.types/temporal?)
-                                   (filter :id)
-                                   (map :id)
-                                   (sort))]
-        (json/encode (or dim-ids []))))))
+  (let [dimensions (dataset-query->dimensions dataset_query)
+        dim-ids    (->> dimensions
+                        (remove lib.types/temporal?)
+                        (filter :id)
+                        (map :id)
+                        (sort))]
+    (json/encode (or dim-ids []))))
+
+(defn has-temporal-dimension?
+  "Return true if the query has any temporal dimensions (non-aggregation columns of temporal type)"
+  [{:keys [dataset_query]}]
+  (let [dimensions (dataset-query->dimensions dataset_query)]
+    (boolean (some lib.types/temporal? dimensions))))
 
 (def ^:private base-search-spec
   {:model        :model/Card
-   :attrs        {:archived            true
-                  :collection-id       true
-                  :creator-id          true
-                  :dashboard-id        true
-                  :dashboardcard-count {:select [:%count.*]
-                                        :from   [:report_dashboardcard]
-                                        :where  [:= :report_dashboardcard.card_id :this.id]}
-                  :database-id         true
-                  :last-viewed-at      :last_used_at
-                  :native-query        (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
-                  :official-collection [:= "official" :collection.authority_level]
-                  :last-edited-at      :r.timestamp
-                  :last-editor-id      :r.user_id
-                  :pinned              [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
-                  :verified            [:= "verified" :mr.status]
-                  :view-count          true
-                  :created-at          true
-                  :updated-at          true
+   :attrs        {:archived             true
+                  :collection-id        true
+                  :creator-id           true
+                  :dashboard-id         true
+                  :dashboardcard-count  {:select [:%count.*]
+                                         :from   [:report_dashboardcard]
+                                         :where  [:= :report_dashboardcard.card_id :this.id]}
+                  :database-id          true
+                  :last-viewed-at       :last_used_at
+                  :native-query         (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
+                  :official-collection  [:= "official" :collection.authority_level]
+                  :last-edited-at       :r.timestamp
+                  :last-editor-id       :r.user_id
+                  :pinned               [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+                  :verified             [:= "verified" :mr.status]
+                  :view-count           true
+                  :created-at           true
+                  :updated-at           true
                   :non-temporal-dim-ids {:fn extract-non-temporal-dimension-ids
-                                         :req-fields [:dataset_query :database_id]}}
+                                         :req-fields [:dataset_query]}
+                  :has-temporal-dim     {:fn has-temporal-dimension?
+                                         :req-fields [:dataset_query]}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level

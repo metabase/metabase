@@ -54,15 +54,15 @@ export function DatasetsList({
   );
 
   const visualizationColumns = useSelector(getVisualizationColumns);
-  const { otherDimensions } = useMemo(() => {
+  const { otherDimensions, timeDimensions } = useMemo(() => {
     return partitionTimeDimensions(visualizationColumns || []);
   }, [visualizationColumns]);
 
   const nonTemporalDimIds = useMemo(() => {
     return otherDimensions
       .map((dim) => dim.id)
-      .filter((id) => id != null)
-      .sort((a, b) => a - b) as number[];
+      .filter((id) => id != null && id != undefined)
+      .sort() as number[];
   }, [otherDimensions]);
 
   const handleAddDataSource = useCallback(
@@ -117,6 +117,7 @@ export function DatasetsList({
       include_dashboard_questions: true,
       include_metadata: true,
       non_temporal_dim_ids: JSON.stringify(nonTemporalDimIds),
+      has_temporal_dim: timeDimensions.length > 0,
       //search_engine: "in-place",
     },
     {

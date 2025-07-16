@@ -54,25 +54,26 @@
 
 (def attr-types
   "The abstract types of each attribute."
-  {:archived            :boolean
-   :collection-id       :pk
-   :created-at          :timestamp
-   :creator-id          :pk
-   :dashboard-id        :int
-   :dashboardcard-count :int
-   :database-id         :pk
-   :id                  :text
-   :last-edited-at      :timestamp
-   :last-editor-id      :pk
-   :last-viewed-at      :timestamp
-   :name                :text
-   :native-query        nil
-   :official-collection :boolean
-   :pinned              :boolean
-   :updated-at          :timestamp
-   :verified            :boolean
-   :view-count          :int
-   :non-temporal-dim-ids :text})
+  {:archived             :boolean
+   :collection-id        :pk
+   :created-at           :timestamp
+   :creator-id           :pk
+   :dashboard-id         :int
+   :dashboardcard-count  :int
+   :database-id          :pk
+   :id                   :text
+   :last-edited-at       :timestamp
+   :last-editor-id       :pk
+   :last-viewed-at       :timestamp
+   :name                 :text
+   :native-query         nil
+   :official-collection  :boolean
+   :pinned               :boolean
+   :updated-at           :timestamp
+   :verified             :boolean
+   :view-count           :int
+   :non-temporal-dim-ids :text
+   :has-temporal-dim     :boolean})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -94,7 +95,8 @@
          :verified                                          ;;  in addition to being a filter, this is also a ranker
          :view-count
          :updated-at
-         :non-temporal-dim-ids])
+         :non-temporal-dim-ids
+         :has-temporal-dim])
        distinct
        vec))
 
