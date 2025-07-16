@@ -381,7 +381,7 @@
                              :value  [1 2]}]}))))))
 
 (deftest ^:parallel native-with-boolean-params-test
-  (testing "Make sure we can convert a parameterized query to a native query"
+  (testing "Make sure we can convert a parameterized query with boolean params to a native query"
     (doseq [value [false true]]
       (let [query {:type       :native
                    :native     {:query         "SELECT CASE WHEN {{x}} = {{x}} THEN 1 ELSE 0 END"
