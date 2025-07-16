@@ -21,8 +21,17 @@
        qp/process-query
        (mt/formatted-rows [->local-date-time])))
 
+(defmethod driver/database-supports? [::driver/driver ::temporal-units-test]
+  [_driver _feature _database]
+  true)
+
+;;; sparksql expects you to use aliases when possible, and temporal unit params don't use aliases
+(defmethod driver/database-supports? [:sparksql ::temporal-units-test]
+  [_driver _feature _database]
+  false)
+
 (deftest can-compile-temporal-units-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units ::temporal-unit-test)
     (testing "temporal unit parameters"
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
             native-query (mt/native-query
@@ -70,7 +79,7 @@
               (str "Unexpected results for grouping " grouping)))))))
 
 (deftest bad-field-reference-throws-errors-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units ::temporal-unit-test)
     (testing "temporal unit parameters"
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
             query (assoc (mt/native-query
@@ -89,7 +98,7 @@
                                 (run-sample-query query))))))))
 
 (deftest bad-parameter-throws-error-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units ::temporal-unit-test)
     (testing "temporal unit parameters"
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
             query (assoc (mt/native-query

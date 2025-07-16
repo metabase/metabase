@@ -383,5 +383,6 @@
   [driver {:keys [value field]}]
   (honeysql->replacement-snippet-info driver
                                       (sql.qp/->honeysql driver [:field (:id field)
-                                                                 (cond-> {:base-type (:base-type field)}
+                                                                 (cond-> {:base-type (:base-type field)
+                                                                          driver-api/qp.add.source-table (:table-id field)}
                                                                    (not= value params/no-value) (assoc :temporal-unit (keyword value)))])))
