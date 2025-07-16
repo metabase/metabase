@@ -1,5 +1,3 @@
-const { H } = cy;
-
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
@@ -7,6 +5,12 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
+import {
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
+
+const { H } = cy;
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -236,18 +240,44 @@ describe(
         H.editDashboard();
         createAndMapParameter();
         H.saveDashboard();
+
         testParameterWidget({
           allRowCountText: "200 rows",
           trueRowCountText: "53 rows",
           falseRowCountText: "54 rows",
         });
 
-        cy.log("drill-thru");
         H.filterWidget().click();
         H.popover().button("Add filter").click();
         H.getDashboardCard().findByText(QUESTION_NAME).click();
         H.assertQueryBuilderRowCount(53);
         H.filterWidget().findByText("true").should("be.visible");
+      });
+
+      it("should allow to use boolean parameters mapped to SQL query parameters in a public dashboard", () => {
+        createNativeQuestionWithVariableAndDashboardWithMapping().then(
+          ({ dashboardId }) => H.visitPublicDashboard(dashboardId),
+        );
+        testParameterWidget({
+          allRowCountText: "200 rows",
+          trueRowCountText: "53 rows",
+          falseRowCountText: "54 rows",
+        });
+      });
+
+      it("should allow to use boolean parameters mapped to SQL query parameters in an embedded dashboard", () => {
+        createNativeQuestionWithVariableAndDashboardWithMapping().then(
+          ({ dashboardId }) =>
+            H.visitEmbeddedPage({
+              resource: { dashboard: dashboardId },
+              params: {},
+            }),
+        );
+        testParameterWidget({
+          allRowCountText: "200 rows",
+          trueRowCountText: "53 rows",
+          falseRowCountText: "54 rows",
+        });
       });
     });
   },
@@ -320,14 +350,11 @@ function createNativeQuestionWithFieldFilterAndDashboard({
   });
 }
 
-function createNativeQuestionWithVariableAndDashboard({
-  questionName = QUESTION_NAME,
-  dashboardName = DASHBOARD_NAME,
-} = {}) {
+function createNativeQuestionWithVariableAndDashboard() {
   cy.log("create a dashboard");
 
   const questionDetails: NativeQuestionDetails = {
-    name: questionName,
+    name: QUESTION_NAME,
     native: {
       query:
         "select id from products [[where category = (case when {{boolean}} then 'Gadget' else 'Widget' end)]]",
@@ -343,14 +370,57 @@ function createNativeQuestionWithVariableAndDashboard({
     },
   };
   const dashboardDetails: DashboardDetails = {
-    name: dashboardName,
+    name: DASHBOARD_NAME,
   };
   return H.createNativeQuestionAndDashboard({
     questionDetails,
     dashboardDetails,
-  }).then(({ body: { dashboard_id }, questionId }) => {
-    return { dashboardId: dashboard_id, questionId };
+  }).then(({ body: { dashboard_id, id }, questionId }) => {
+    return {
+      dashboardId: Number(dashboard_id),
+      dashcardId: id,
+      questionId,
+    };
   });
+}
+
+function createNativeQuestionWithVariableAndDashboardWithMapping() {
+  return createNativeQuestionWithVariableAndDashboard().then(
+    ({ dashboardId, dashcardId, questionId }) => {
+      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        dashcards: [
+          createMockDashboardCard({
+            id: dashcardId,
+            dashboard_id: dashboardId,
+            card_id: questionId,
+            size_x: 6,
+            size_y: 6,
+            parameter_mappings: [
+              {
+                card_id: questionId,
+                parameter_id: "boolean",
+                target: ["variable", ["template-tag", "boolean"]],
+              },
+            ],
+          }),
+        ],
+        parameters: [
+          createMockParameter({
+            id: "boolean",
+            type: "boolean/=",
+            slug: "boolean",
+            name: "Boolean",
+          }),
+        ],
+        enable_embedding: true,
+        embedding_params: {
+          boolean: "enabled",
+        },
+      }).then(() => {
+        return { dashboardId };
+      });
+    },
+  );
 }
 
 function createAndMapParameter({
