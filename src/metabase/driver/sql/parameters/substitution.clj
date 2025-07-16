@@ -29,7 +29,8 @@
     DateTimeRange
     FieldFilter
     ReferencedCardQuery
-    ReferencedQuerySnippet)))
+    ReferencedQuerySnippet
+    TemporalUnit)))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
@@ -378,6 +379,13 @@
   [_ {:keys [content]}]
   {:prepared-statement-args nil
    :replacement-snippet     content})
+
+(defmethod ->replacement-snippet-info [:sql TemporalUnit]
+  [driver {:keys [value field]}]
+  (honeysql->replacement-snippet-info driver
+                                      (sql.qp/->honeysql driver [:field (:id field)
+                                                                 {:base-type (:base-type field)
+                                                                  :temporal-unit (keyword value)}])))
 
 (defmulti time-grouping->replacement-snippet-info
   "Like ->replacement-snipped-info, but specialized for converting time-groupings.  This is separate from the main

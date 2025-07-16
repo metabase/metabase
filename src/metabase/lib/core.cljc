@@ -331,7 +331,6 @@
   template-tag-card-ids
   template-tags-referenced-cards
   template-tags
-  validate-native-query
   with-different-database
   with-native-extras
   with-native-query
