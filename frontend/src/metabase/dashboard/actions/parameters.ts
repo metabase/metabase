@@ -28,6 +28,7 @@ import type {
   ActionDashboardCard,
   CardId,
   DashCardId,
+  DashboardCard,
   Parameter,
   ParameterId,
   ParameterTarget,
@@ -42,6 +43,7 @@ import type { Dispatch, GetState } from "metabase-types/store";
 import {
   trackAutoApplyFiltersDisabled,
   trackFilterCreated,
+  trackFilterMoved,
   trackFilterRequired,
 } from "../analytics";
 import {
@@ -65,6 +67,7 @@ import {
   findDashCardForInlineParameter,
   hasInlineParameters,
   isDashcardInlineParameter,
+  isHeadingDashCard,
   isQuestionDashCard,
   supportsInlineParameters,
 } from "../utils";
@@ -157,6 +160,11 @@ type MoveParameterOpts = {
 export const moveParameter =
   ({ parameterId, destination, canUndo = true }: MoveParameterOpts) =>
   (dispatch: Dispatch, getState: GetState) => {
+    const dashboardId = getDashboardId(getState());
+    if (!dashboardId) {
+      throw new Error(`Dashboard ID not found`);
+    }
+
     const dashcardMap = getDashcards(getState());
     const parameterDashcard = findDashCardForInlineParameter(
       parameterId,
@@ -192,6 +200,17 @@ export const moveParameter =
           },
         }),
       );
+      trackFilterMoved(
+        dashboardId,
+        getFilterPositionType(parameterDashcard),
+        getFilterPositionType(dashcard),
+      );
+    } else {
+      trackFilterMoved(
+        dashboardId,
+        getFilterPositionType(parameterDashcard),
+        "nav",
+      );
     }
 
     if (canUndo) {
@@ -216,6 +235,19 @@ export const moveParameter =
       );
     }
   };
+
+function getFilterPositionType(parentDashcard?: DashboardCard) {
+  if (!parentDashcard) {
+    return "nav";
+  }
+  if (isHeadingDashCard(parentDashcard)) {
+    return "heading";
+  }
+  if (isQuestionDashCard(parentDashcard)) {
+    return "card";
+  }
+  throw new Error("Unexpected dashcard type");
+}
 
 export const setEditingParameter =
   (parameterId: ParameterId | null) => (dispatch: Dispatch) => {
