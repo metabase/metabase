@@ -1,7 +1,7 @@
 import { useDndContext } from "@dnd-kit/core";
 import { useCallback, useLayoutEffect, useState } from "react";
 
-import { Popover } from "metabase/ui";
+import { Box, Popover } from "metabase/ui";
 import { PreventPopoverExitProvider } from "metabase/ui/components/utils/PreventPopoverExit";
 
 import S from "./ClausePopover.module.css";
@@ -50,7 +50,9 @@ export function ClausePopover({
       >
         <Popover.Target>{renderItem(handleOpen)}</Popover.Target>
         <Popover.Dropdown data-testid="clause-popover">
-          {renderPopover(handleClose)}
+          <Box className={S.dropdownContent} data-testid="popover-content">
+            {renderPopover(handleClose)}
+          </Box>
         </Popover.Dropdown>
       </Popover>
     </PreventPopoverExitProvider>
