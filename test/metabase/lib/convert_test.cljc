@@ -1331,27 +1331,62 @@
               (lib.convert/->legacy-MBQL query))))))
 
 (deftest ^:parallel do-not-do-nasty-stuff-to-parameters-test
-  (let [query (lib.tu.macros/mbql-query users
-                {:source-query {:source-table (meta/id :users)
-                                :expressions  {"date-column"   [:field (meta/id :users :last-login) nil]
-                                               "number-column" [:field (meta/id :users :id) nil]}
-                                :parameters   [{:type   :date/range
-                                                :value  "2019-09-29~2023-09-29"
-                                                :target [:dimension [:expression "date-column"]]}
-                                               {:type   :category
-                                                :value  1
-                                                :target [:dimension [:expression "number-column"]]}]}})]
+  (let [query {:database 33001
+               :type     :query
+               :query    {:source-query {:source-table 33030
+                                         :expressions  {"date-column"   [:field 33302 nil]
+                                                        "number-column" [:field 33300 nil]}
+                                         :parameters   [{:type   :date/range
+                                                         :value  "2019-09-29~2023-09-29"
+                                                         :target [:dimension [:expression "date-column"]]}
+                                                        {:type   :category
+                                                         :value  1
+                                                         :target [:dimension [:expression "number-column"]]}]}}}]
     (is (=? {:lib/type :mbql/query
-             :stages   [{:lib/type     :mbql.stage/mbql
-                         :expressions  [[:field
-                                         {:lib/uuid            string?
-                                          :lib/expression-name "date-column"}
-                                         pos-int?]
-                                        [:field
-                                         {:lib/uuid            string?
-                                          :lib/expression-name "number-column"}
-                                         pos-int?]]
-                         :parameters   [{:type :date/range, :value "2019-09-29~2023-09-29", :target [:dimension [:expression "date-column"]]}
-                                        {:type :category, :value 1, :target [:dimension [:expression "number-column"]]}]}
+             :stages   [{:lib/type    :mbql.stage/mbql
+                         :expressions [[:field
+                                        {:lib/uuid            string?
+                                         :lib/expression-name "date-column"}
+                                        pos-int?]
+                                       [:field
+                                        {:lib/uuid            string?
+                                         :lib/expression-name "number-column"}
+                                        pos-int?]]
+                         :parameters  [{:type :date/range, :value "2019-09-29~2023-09-29", :target [:dimension [:expression "date-column"]]}
+                                       {:type :category, :value 1, :target [:dimension [:expression "number-column"]]}]}
                         {:lib/type :mbql.stage/mbql}]}
-            (lib/->pMBQL query)))))
+            (lib/->pMBQL query)))
+    (is (=? query
+            (-> query lib/->pMBQL lib/->legacy-MBQL)))))
+
+(deftest ^:parallel join-parameters-test
+  (let [query {:database 33001
+               :type     :query
+               :query    {:source-query {:source-table 33040}
+                          :aggregation  [[:count]]
+                          :joins        [{:source-table 33010
+                                          :alias        "c"
+                                          :condition    [:=
+                                                         [:field 33402 nil]
+                                                         [:field 33100 {:join-alias "c"}]]
+                                          :parameters   [{:type   :category
+                                                          :target [:field 33101 nil]
+                                                          :value  "BBQ"}]}]}}]
+    (is (=? {:stages                 [{:source-table 33040}
+                                      {:joins [{:alias      "c",
+                                                :parameters (symbol "nil #_\"key is not present.\"")
+                                                :conditions [[:=
+                                                              {}
+                                                              [:field {} 33402]
+                                                              [:field {:join-alias "c"} 33100]]]
+                                                :lib/type   :mbql/join
+                                                :stages     [{:lib/type     :mbql.stage/mbql
+                                                              :source-table 33010
+                                                              :parameters   [{:type   :category
+                                                                              :target [:field 33101 nil]
+                                                                              :value  "BBQ"}]}]}]}]
+             :database               33001
+             :lib.convert/converted? true}
+            (lib/->pMBQL query)))
+    (is (=? query
+            (-> query lib/->pMBQL lib/->legacy-MBQL)))))
