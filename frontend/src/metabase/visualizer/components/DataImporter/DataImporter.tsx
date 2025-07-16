@@ -142,7 +142,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
           <Flex
             direction="column"
             className={S.Content}
-            bg="white"
+            bg="var(--mb-color-bg-white)"
             style={{
               borderRadius: "var(--default-border-radius)",
               height: "100%",

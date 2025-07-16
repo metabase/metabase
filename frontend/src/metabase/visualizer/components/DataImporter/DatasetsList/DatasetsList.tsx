@@ -6,7 +6,6 @@ import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
 import { Box, Flex, Skeleton } from "metabase/ui";
 import {
   getDataSources,
@@ -116,13 +115,9 @@ export function DatasetsList({
       },
     );
 
-  const { timeDimensions, otherDimensions } = useMemo(() => {
+  const { timeDimensions } = useMemo(() => {
     return partitionTimeDimensions(visualizationColumns || []);
   }, [visualizationColumns]);
-
-  const required_non_temporal_dimension_ids = useMemo(() => {
-    return otherDimensions.map((dim) => dim.id).filter(isNotNull);
-  }, [otherDimensions]);
 
   const { data: visualizationSearchResult, isFetching: isSearchFetching } =
     useSearchQuery(
@@ -133,7 +128,6 @@ export function DatasetsList({
         include_dashboard_questions: true,
         include_metadata: true,
         has_temporal_dimensions: timeDimensions.length > 0,
-        required_non_temporal_dimension_ids,
       },
       {
         skip: muted,

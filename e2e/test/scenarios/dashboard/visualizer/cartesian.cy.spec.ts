@@ -438,8 +438,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
   });
 
   describe("category breakout", () => {
-    // TODO these two datasets should be comaptible with each other
-    it.skip("should automatically use new columns whenever possible", () => {
+    it("should automatically use new columns whenever possible", () => {
       const Q1_NAME = ORDERS_COUNT_BY_PRODUCT_CATEGORY.name;
       const Q2_NAME = PRODUCTS_COUNT_BY_CATEGORY.name;
 
