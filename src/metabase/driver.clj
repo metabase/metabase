@@ -711,7 +711,10 @@
     :test/uuids-in-create-table-statements
 
     ;; Does this driver support Metabase's database routing feature?
-    :database-routing})
+    :database-routing
+
+    ;; Does this driver support replication?
+    :database-replication})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
