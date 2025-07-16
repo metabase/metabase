@@ -118,10 +118,10 @@ export const RemappingPicker = ({
 
   const showToast = ({
     error,
-    undoAction,
+    action,
   }: {
     error: unknown;
-    undoAction?: () => void;
+    action?: () => void;
   }) => {
     if (error) {
       sendToast({
@@ -131,8 +131,8 @@ export const RemappingPicker = ({
       });
     } else {
       sendToast({
-        action: undoAction,
-        actionLabel: undoAction ? t`Undo` : undefined,
+        action,
+        actionLabel: action ? t`Undo` : undefined,
         icon: "check",
         message: t`Display values of ${field.display_name} updated`,
       });
@@ -142,7 +142,7 @@ export const RemappingPicker = ({
   const showToastWithUndo = ({ error }: { error: unknown }) => {
     showToast({
       error,
-      undoAction: async () => {
+      action: async () => {
         if (dimension) {
           const { error } = await createFieldDimension({
             id,
@@ -237,7 +237,7 @@ export const RemappingPicker = ({
     if (!options?.isAutomatic) {
       showToast({
         error,
-        undoAction: async () => {
+        action: async () => {
           const { error } = await updateFieldValues({
             id,
             values: Array.from(mapping),
