@@ -52,6 +52,7 @@ import {
   type ClickObject,
   type HoveredObject,
   type QueryClickActionsMode,
+  type RegularClickAction,
   type VisualizationDefinition,
   type VisualizationPassThroughProps,
   type Visualization as VisualizationType,
@@ -135,6 +136,7 @@ type VisualizationOwnProps = {
   };
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
+  forceDefaultActions?: boolean;
   headerIcon?: IconProps;
   width?: number | null;
   height?: number | null;
@@ -438,6 +440,7 @@ class Visualization extends PureComponent<
       visualizerRawSeries = [],
       isRawTable,
       getExtraDataForClick = () => ({}),
+      forceDefaultActions,
     } = this.props;
 
     const clicked = isVisualizerDashboardCard(dashcard)
@@ -448,8 +451,18 @@ class Visualization extends PureComponent<
         )
       : clickedObject;
 
-    const card = this.findCardById(clicked.cardId);
+    if (forceDefaultActions) {
+      return [
+        {
+          name: "forced-default",
+          section: "custom",
+          buttonType: "info",
+          url: () => "",
+        },
+      ] satisfies RegularClickAction[];
+    }
 
+    const card = this.findCardById(clicked.cardId);
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = this.getMode(this.props.mode, question);
 

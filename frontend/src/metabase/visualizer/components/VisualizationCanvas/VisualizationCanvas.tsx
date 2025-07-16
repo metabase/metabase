@@ -72,6 +72,12 @@ export function VisualizationCanvas({
 
   const handleVisualizationClick = useCallback(
     (c: ClickObject | null) => {
+      // Means we clicked on the legend
+      if (c && "dimensions" in c && c.dimensions?.length) {
+        onSeriesClick(String(c.dimensions[0].value));
+        return;
+      }
+
       // Means we have a breakout
       if (c?.data?.length === 3) {
         onSeriesClick(String(c.data[1].value));
@@ -142,6 +148,7 @@ export function VisualizationCanvas({
             // TableInteractive crashes when trying to use metabase-lib
             isDashboard
             handleVisualizationClick={handleVisualizationClick}
+            forceDefaultActions
           />
         </Box>
 
