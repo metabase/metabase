@@ -24,7 +24,7 @@ export function useUpsellFlow({
   const storeWindowRef = useRef<WindowProxy | null>(null);
   const [sendToast] = useToast();
   const storeUrl = useStoreUrl("checkout/upgrade/self-hosted");
-  const storeOrigin = new URL(storeUrl).origin;
+  const storeOrigin = storeUrl ? new URL(storeUrl).origin : undefined;
   const { updateToken, tokenStatus, error } = useLicense(() => {
     sendToast({
       message: t`License activated successfully`,
@@ -98,9 +98,12 @@ function createListener({
   storeOrigin,
 }: {
   updateToken: (token: string) => Promise<void>;
-  storeOrigin: string;
+  storeOrigin: string | undefined;
 }) {
   return (event: MessageEvent<LicenseTokenMessage>) => {
+    if (!storeOrigin) {
+      return;
+    }
     const token = handleMessageFromStore(event, storeOrigin);
     if (token) {
       updateToken(token);
@@ -144,8 +147,11 @@ function handleMessageFromStore(
 function sendMessageTokenActivation(
   success: boolean,
   storeWindow: WindowProxy,
-  storeOrigin: string,
+  storeOrigin: string | undefined,
 ) {
+  if (!storeOrigin) {
+    return;
+  }
   storeWindow.postMessage(
     {
       source: "metabase-instance",
@@ -165,12 +171,15 @@ function getStoreUrlWithParams({
   email,
   siteName,
 }: {
-  storeUrl: string;
+  storeUrl: string | undefined;
   firstName: string;
   lastName: string;
   email: string;
   siteName: string;
 }) {
+  if (!storeUrl) {
+    return undefined;
+  }
   const returnUrl = window.location.href;
   const returnUrlEncoded = encodeURIComponent(returnUrl);
   const siteNameEncoded = encodeURIComponent(siteName);
