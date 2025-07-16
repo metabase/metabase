@@ -43,7 +43,6 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
     } else {
       sendToast({
         action: () => changeName(previousName, name),
-        actionLabel: t`Undo`,
         icon: "check",
         message: t`Name of ${field.display_name} updated`,
       });
@@ -69,7 +68,6 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
     } else {
       sendToast({
         action: () => changeDescription(previousDescription, description),
-        actionLabel: t`Undo`,
         icon: "check",
         message: t`Description of ${field.display_name} updated`,
       });

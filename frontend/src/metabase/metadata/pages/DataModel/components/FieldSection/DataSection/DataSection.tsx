@@ -56,7 +56,6 @@ const DataSectionBase = ({ field }: Props) => {
       sendToast({
         action: () =>
           handleCoercionStrategyChange(previousCoercionStrategy, null),
-        actionLabel: t`Undo`,
         icon: "check",
         message: t`Casting disabled for ${field.display_name}`,
       });
@@ -99,7 +98,6 @@ const DataSectionBase = ({ field }: Props) => {
             previousCoercionStrategy,
             coercionStrategy,
           ),
-        actionLabel: t`Undo`,
         icon: "check",
         message:
           previousCoercionStrategy == null

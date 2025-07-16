@@ -59,7 +59,6 @@ const FieldSectionBase = ({
       } else {
         sendToast({
           action,
-          actionLabel: action ? t`Undo` : undefined,
           icon: "check",
           message: t`Name of ${field.display_name} updated`,
         });
@@ -93,7 +92,6 @@ const FieldSectionBase = ({
       } else {
         sendToast({
           action,
-          actionLabel: action ? t`Undo` : undefined,
           icon: "check",
           message: t`Description of ${field.display_name} updated`,
         });

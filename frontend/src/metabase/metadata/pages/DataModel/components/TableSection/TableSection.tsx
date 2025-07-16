@@ -56,7 +56,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     } else {
       sendToast({
         action: () => handleNameChange(previousName, name),
-        actionLabel: t`Undo`,
         icon: "check",
         message: t`Table name updated`,
       });
@@ -78,7 +77,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     } else {
       sendToast({
         action: () => handleDescriptionChange(previousDescription, description),
-        actionLabel: t`Undo`,
         icon: "check",
         message: t`Table description updated`,
       });
@@ -104,7 +102,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       sendToast({
         action: () =>
           handleFieldOrderTypeChange(previousFieldOrder, fieldOrder),
-        actionLabel: t`Undo`,
         icon: "check",
         message: t`Field order updated`,
       });
@@ -130,7 +127,6 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       sendToast({
         action: () =>
           handleCustomFieldOrderChange(previousFieldOrder, fieldOrder),
-        actionLabel: t`Undo`,
         icon: "check",
         message: t`Field order updated`,
       });

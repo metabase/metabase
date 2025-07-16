@@ -58,7 +58,6 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       sendToast({
         action: () =>
           handleVisibilityChange(previousVisibilityType, visibilityType),
-        actionLabel: t`Undo`,
         icon: "check",
         message: t`Visibility of ${field.display_name} updated`,
       });
@@ -84,7 +83,6 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       sendToast({
         action: () =>
           handleFilteringChange(previousHasFieldValues, hasFieldValues),
-        actionLabel: t`Undo`,
         icon: "check",
         message: t`Filtering of ${field.display_name} updated`,
       });
@@ -112,7 +110,6 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       sendToast({
         action: () =>
           handleUnfoldJsonChange(previousJsonUnfolding, jsonUnfolding),
-        actionLabel: t`Undo`,
         icon: "check",
         message: jsonUnfolding
           ? t`JSON unfolding enabled for ${field.display_name}`

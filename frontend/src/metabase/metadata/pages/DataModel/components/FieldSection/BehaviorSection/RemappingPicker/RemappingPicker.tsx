@@ -132,7 +132,6 @@ export const RemappingPicker = ({
     } else {
       sendToast({
         action,
-        actionLabel: action ? t`Undo` : undefined,
         icon: "check",
         message: t`Display values of ${field.display_name} updated`,
       });

@@ -47,7 +47,6 @@ const MetadataSectionBase = ({ databaseId, field }: Props) => {
     } else {
       sendToast({
         action: () => handleChange(previousPatch, patch),
-        actionLabel: t`Undo`,
         icon: "check",
         message: t`Semantic type of ${field.display_name} updated`,
       });

@@ -31,7 +31,6 @@ export function TableVisibilityToggle({ className, table }: Props) {
     } else {
       sendToast({
         action: unhide,
-        actionLabel: t`Undo`,
         message: t`Hid ${table.display_name}`,
       });
     }
@@ -52,7 +51,6 @@ export function TableVisibilityToggle({ className, table }: Props) {
     } else {
       sendToast({
         action: hide,
-        actionLabel: t`Undo`,
         message: t`Unhid ${table.display_name}`,
       });
     }
