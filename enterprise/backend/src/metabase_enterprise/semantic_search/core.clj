@@ -12,7 +12,7 @@
   :feature :none
   []
   ;; TODO: figure out the right criteria here
-  (some? @semantic.db/data-source))
+  (some? semantic.db/db-url))
 
 (defenterprise results
   "Enterprise implementation of semantic search results."

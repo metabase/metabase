@@ -114,6 +114,7 @@
 
 (comment
   (def docs (vec (search.ingestion/searchable-documents)))
+  (init! docs {})
   (reindex! docs {}))
 
 (defmethod search.engine/reset-tracking! :search.engine/semantic [_]
