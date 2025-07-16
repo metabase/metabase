@@ -20,6 +20,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1240,3 +1241,65 @@
                (fn [^java.sql.Connection conn]
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                              driver/*driver* conn schema table-name))))))))))))
+
+(defn- priv-key->base64 [priv-key-var]
+  (-> (tx/db-test-env-var-or-throw :snowflake priv-key-var)
+      format-env-key
+      u/string-to-bytes
+      mt/bytes->base64-data-uri))
+
+(defn- get-db-priv-key [db]
+  (-> (:details db)
+      (#'driver.snowflake/resolve-private-key)
+      :private_key_file
+      slurp))
+
+(defn- get-priv-key-details [details pk-user priv-key]
+  (merge (dissoc details :password)
+         {:user pk-user
+          :private-key-options "uploaded"
+          :private-key-value (priv-key->base64 priv-key)
+          :use-password false}))
+
+(deftest private-key-file-updated-test
+  (mt/test-driver :snowflake
+    (let [details (assoc (:details (mt/db)) :role "ACCOUNTADMIN")
+          pk-user (mt/random-name)
+          pub-key (tx/db-test-env-var-or-throw :snowflake :pk-public-key)
+          rsa-details (get-priv-key-details details pk-user :pk-private-key)
+          pub-key-2 (tx/db-test-env-var-or-throw :snowflake :pk-public-key-2)
+          rsa-details-2 (get-priv-key-details details pk-user :pk-private-key-2)]
+      (tx/with-temp-db-user! driver/*driver* details pk-user
+        (testing "healthcheck after updating db with new private key file should work correctly"
+          (mt/with-temp [:model/Database rsa-db {:engine :snowflake :details rsa-details}]
+            ;; set the public key for the db user
+            (test.data.snowflake/set-user-public-key details pk-user pub-key)
+            ;; assert we can connect to the db with the original rsa details
+            (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))))
+            ;; update the snowflake rsa user to use the new public key
+            (test.data.snowflake/set-user-public-key details pk-user pub-key-2)
+            ;; assert we can no longer connect with the original rsa details
+            (let [resp (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))]
+              (is (= "error" (:status resp)))
+              (is (str/starts-with? (:message resp) "JWT token is invalid.")))
+            ;; update the database details to use the new rsa details
+            (mt/user-http-request :crowberto :put 200 (str "database/" (:id rsa-db)) {:details rsa-details-2})
+            ;; assert we can connect to the db with the new rsa details
+            (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))))))
+        (testing "publishing a db update event when details have changed notifies the db it was updated and clears the secret file memoization"
+          (mt/with-temp [:model/Database rsa-db {:engine :snowflake :details rsa-details}]
+            (let [original-priv-key (get-db-priv-key rsa-db)
+                  updating-rsa-db (merge rsa-db {:details rsa-details-2})
+                  _ (t2/update! :model/Database (:id rsa-db) updating-rsa-db)
+                  details-changed? (not= (:details rsa-db) (:details updating-rsa-db))
+                  new-rsa-db (t2/select-one :model/Database (:id rsa-db))
+                  priv-key-after-update (get-db-priv-key new-rsa-db)
+                  _ (events/publish-event! :event/database-update {:object new-rsa-db
+                                                                   :user-id 1
+                                                                   :previous-object rsa-db
+                                                                   :details-changed? details-changed?})
+                  priv-key-after-event (get-db-priv-key new-rsa-db)]
+              (is (= rsa-db new-rsa-db))
+              (is (true? details-changed?))
+              (is (= original-priv-key priv-key-after-update))
+              (is (not= priv-key-after-update priv-key-after-event)))))))))

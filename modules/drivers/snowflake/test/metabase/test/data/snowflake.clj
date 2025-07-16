@@ -271,3 +271,54 @@
       (jdbc/execute! spec
                      [(format "DROP ROLE IF EXISTS %s;" role-name)]
                      {:transaction? false}))))
+
+(defn set-user-public-key [details pk-user pub-key]
+  (let [spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+    (jdbc/execute! spec (format "ALTER USER %s SET RSA_PUBLIC_KEY = '%s'"
+                                pk-user
+                                pub-key))))
+
+(defmethod tx/drop-db-user-if-exists! :snowflake
+  [driver details db-user]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (jdbc/execute! spec [(format "DROP USER IF EXISTS \"%s\"" db-user)])))
+
+(defmethod tx/create-db-user! :snowflake
+  [driver details db-user]
+  (tx/drop-db-user-if-exists! driver details db-user)
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (jdbc/execute! spec "USE ROLE ACCOUNTADMIN")
+    (jdbc/execute! spec (format "CREATE USER %s
+                                 DEFAULT_ROLE = 'ACCOUNTADMIN'
+                                 DEFAULT_WAREHOUSE = '%s'
+                                 MUST_CHANGE_PASSWORD = FALSE;"
+                                db-user
+                                (tx/db-test-env-var-or-throw driver :warehouse)))
+    (jdbc/execute! spec (format "GRANT ROLE %s TO USER %s" "ACCOUNTADMIN" db-user))))
+
+(comment
+  (old-dataset-names)
+  (into [] (jdbc/reducible-query (no-db-connection-spec) ["select * from metabase_test_tracking.PUBLIC.datasets"]))
+  ;; Tracked databases ordered by age
+  (->> ["select d.name, d.accessed_at, i.created, timestampdiff('minute', i.created, d.accessed_at) as diff, timestampdiff('minute', i.created, current_timestamp()) as age
+         from metabase_test_tracking.PUBLIC.datasets d
+         inner join metabase_test_tracking.information_schema.databases i on i.database_name = d.name
+         order by 5 asc"]
+       (jdbc/reducible-query (no-db-connection-spec))
+       (into [] (map (juxt :name :diff :age :accessed_at :created))))
+
+  ;; Tracked DBs that are not in snowflake
+  (->> ["select name, accessed_at from metabase_test_tracking.PUBLIC.datasets d
+       where d.name not in (select database_name from metabase_test_tracking.information_schema.databases)
+       order by accessed_at"]
+       (jdbc/reducible-query (no-db-connection-spec))
+       (into [] (map (juxt :name :accessed_at))))
+
+  ;; DBs in snowflake that are not tracked
+  (->> ["select database_name, created from metabase_test_tracking.information_schema.databases  d
+         where d.database_name not in (select name from metabase_test_tracking.PUBLIC.datasets)
+         and d.database_name like 'sha_%'
+         -- and created < dateadd(day, -2, current_timestamp())
+         order by created"]
+       (jdbc/reducible-query (no-db-connection-spec))
+       (into [] (map (juxt :database_name :created)))))
