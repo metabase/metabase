@@ -1494,7 +1494,10 @@
     {:error/message "Joins must have either a `source-table` or `source-query`, but not both."}
     (every-pred
      (some-fn :source-table :source-query)
-     (complement (every-pred :source-table :source-query)))]])
+     (complement (every-pred :source-table :source-query)))]
+   [:fn
+    {:error/message "Join should not have :filter; this must go in :source-query"}
+    (complement :filter)]])
 
 (def Join
   "Alias for ::Join. Prefer that going forward."

@@ -626,7 +626,14 @@
                (update-list->legacy-boolean-expression :conditions :condition))
            (when (seq (:columns metadata))
              {:source-metadata (stage-metadata->legacy-metadata metadata)})
-           (chain-stages-no-rename base))))
+           ;; if the only result of chaining the stages is a single `:source-table` or `:source-query` key, we can
+           ;; splice that directly into the join; if it spits out other stuff like `:filter` then it has to get nested
+           ;; inside `:source-query`
+           (let [m (chain-stages-no-rename base)]
+             (if (and (= (count (keys m)) 1)
+                      (#{:source-table :source-query} (first (keys m))))
+               m
+               {:source-query m})))))
 
 (defn- source-card->legacy-source-table
   "If a pMBQL query stage has `:source-card` convert it to legacy-style `:source-table \"card__<id>\"`."

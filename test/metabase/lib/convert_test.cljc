@@ -1373,7 +1373,7 @@
                                                           :target [:field 33101 nil]
                                                           :value  "BBQ"}]}]}}]
     (is (=? {:stages                 [{:source-table 33040}
-                                      {:joins [{:alias      "c",
+                                      {:joins [{:alias      "c"
                                                 :parameters (symbol "nil #_\"key is not present.\"")
                                                 :conditions [[:=
                                                               {}
@@ -1390,3 +1390,46 @@
             (lib/->pMBQL query)))
     (is (=? query
             (-> query lib/->pMBQL lib/->legacy-MBQL)))))
+
+(deftest ^:parallel convert-join-with-filters-test
+  (testing "A join whose sole stage has :filters should get converted to a join with a :source-query"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :joins        [{:alias    "c"
+                                             :conditions
+                                             [[:=
+                                               {:lib/uuid "4822482b-727b-471b-8d18-973d87861522"}
+                                               [:field
+                                                {:lib/uuid       "c68f5bbf-a45a-4a28-b235-a60dcb2d73be"
+                                                 :base-type      :type/Integer
+                                                 :effective-type :type/Integer}
+                                                33402]
+                                               [:field
+                                                {:join-alias     "c"
+                                                 :lib/uuid       "d0f55447-6941-4c7a-a192-a37d87ea0111"
+                                                 :base-type      :type/BigInteger
+                                                 :effective-type :type/BigInteger}
+                                                33100]]]
+                                             :lib/type :mbql/join
+                                             :stages
+                                             [{:lib/type     :mbql.stage/mbql
+                                               :source-table 33010
+                                               :filters
+                                               [[:=
+                                                 {:lib/uuid "cba9a408-5f66-4ae2-83a9-bdaca23ef878"}
+                                                 [:field {:lib/uuid "7d4cb0c9-f7ec-4712-8fe7-4d06e9a3944a"} 33101]
+                                                 "BBQ"]]}]}]
+                             :source-table 33040}]
+                 :database 33001}]
+      (is (=? {:database 33001
+               :type     :query
+               :query    {:joins        [{:alias        "c"
+                                          :condition    [:=
+                                                         [:field 33402 {:base-type :type/Integer}]
+                                                         [:field 33100 {:join-alias "c", :base-type :type/BigInteger}]]
+                                          :source-query {:source-table 33010
+                                                         :filter       [:= [:field 33101 nil] "BBQ"]}
+                                          :source-table (symbol "nil #_\"key is not present.\"")
+                                          :filter       (symbol "nil #_\"key is not present.\"")}]
+                          :source-table 33040}}
+              (lib/->legacy-MBQL query))))))
