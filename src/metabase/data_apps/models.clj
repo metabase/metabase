@@ -135,9 +135,8 @@
 (defn- export-released-definition
   "Export the released definition for a data app, if it exists."
   [data-app]
-  (let [definition (released-definition (:id data-app))]
-    (when-let [definition (assoc definition :release [(t2/select-one :model/DataAppRelease :app_definition_id (:id definition))])]
-      [(serdes/extract-one "DataAppDefinition" {} definition)])))
+  (when-let [definition (released-definition (:id data-app))]
+    [(serdes/extract-one "DataAppDefinition" {} (assoc definition :release [(t2/select-one :model/DataAppRelease :app_definition_id (:id definition))]))]))
 
 ;; data-apps => definition => release
 
