@@ -28,11 +28,10 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
   const [sendToast] = useToast();
   const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
 
-  const handleNameChange = async (name: string) => {
-    if (field.display_name === name) {
-      return;
-    }
-
+  const changeName = async (
+    name: string,
+    previousName = field.display_name,
+  ) => {
     const { error } = await updateField({ id, display_name: name });
 
     if (error) {
@@ -43,23 +42,22 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
       });
     } else {
       sendToast({
+        action: () => changeName(previousName, name),
+        actionLabel: t`Undo`,
         icon: "check",
         message: t`Name of ${field.display_name} updated`,
       });
     }
   };
 
-  const handleDescriptionChange = async (description: string) => {
-    const newDescription = description.trim();
-
-    if ((field.description ?? "") === newDescription) {
-      return;
-    }
-
+  const changeDescription = async (
+    description: string,
+    previousDescription = field.description ?? "",
+  ) => {
     const { error } = await updateField({
       id,
       // API does not accept empty strings
-      description: newDescription.length === 0 ? null : newDescription,
+      description: description.length === 0 ? null : description,
     });
 
     if (error) {
@@ -70,10 +68,30 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
       });
     } else {
       sendToast({
+        action: () => changeDescription(previousDescription, description),
+        actionLabel: t`Undo`,
         icon: "check",
         message: t`Description of ${field.display_name} updated`,
       });
     }
+  };
+
+  const handleNameChange = async (name: string) => {
+    if (field.display_name === name) {
+      return;
+    }
+
+    await changeName(name);
+  };
+
+  const handleDescriptionChange = async (description: string) => {
+    const newDescription = description.trim();
+
+    if ((field.description ?? "") === newDescription) {
+      return;
+    }
+
+    await changeDescription(description);
   };
 
   const handleInputClick = (event: MouseEvent) => {
