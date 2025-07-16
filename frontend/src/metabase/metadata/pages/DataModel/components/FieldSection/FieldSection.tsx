@@ -2,9 +2,9 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { NameDescriptionInput } from "metabase/metadata/components";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -35,34 +35,26 @@ const FieldSectionBase = ({
 }: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
-  const [sendToast] = useToast();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateField({ id, display_name: name });
 
-    sendUndoToast(error, async () => {
-      const { error } = await updateField({
-        id,
-        display_name: field.display_name,
+    if (error) {
+      sendErrorToast(t`Failed to update name of ${field.display_name}`);
+    } else {
+      sendSuccessToast(t`Name of ${field.display_name} updated`, async () => {
+        const { error } = await updateField({
+          id,
+          display_name: field.display_name,
+        });
+
+        if (error) {
+          sendErrorToast(t`Failed to undo`);
+        } else {
+          sendSuccessToast(t`Change undone`);
+        }
       });
-
-      sendUndoToast(error);
-    });
-
-    function sendUndoToast(error: unknown, action?: () => void) {
-      if (error) {
-        sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "var(--mb-color-warning)",
-          message: t`Failed to update name of ${field.display_name}`,
-        });
-      } else {
-        sendToast({
-          action,
-          icon: "check",
-          message: t`Name of ${field.display_name} updated`,
-        });
-      }
     }
   };
 
@@ -73,29 +65,24 @@ const FieldSectionBase = ({
       description: description.length === 0 ? null : description,
     });
 
-    sendUndoToast(error, async () => {
-      const { error } = await updateField({
-        id,
-        description: field.description ?? "",
-      });
+    if (error) {
+      sendErrorToast(t`Failed to update description of ${field.display_name}`);
+    } else {
+      sendSuccessToast(
+        t`Description of ${field.display_name} updated`,
+        async () => {
+          const { error } = await updateField({
+            id,
+            description: field.description ?? "",
+          });
 
-      sendUndoToast(error);
-    });
-
-    function sendUndoToast(error: unknown, action?: () => void) {
-      if (error) {
-        sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "var(--mb-color-warning)",
-          message: t`Failed to update description of ${field.display_name}`,
-        });
-      } else {
-        sendToast({
-          action,
-          icon: "check",
-          message: t`Description of ${field.display_name} updated`,
-        });
-      }
+          if (error) {
+            sendErrorToast(t`Failed to undo`);
+          } else {
+            sendSuccessToast(t`Change undone`);
+          }
+        },
+      );
     }
   };
 
