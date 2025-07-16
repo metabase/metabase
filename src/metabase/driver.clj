@@ -694,6 +694,9 @@
     ;; Does this driver support "temporal-unit" template tags in native queries?
     :native-temporal-units
 
+    ;; Does this driver support creating tables on their own without adding data?
+    :test/create-table-without-data
+
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.
@@ -711,7 +714,16 @@
     :test/uuids-in-create-table-statements
 
     ;; Does this driver support Metabase's database routing feature?
-    :database-routing})
+    :database-routing
+
+    ;; Does this driver provide :database-default on (describe-fields) or (describe-table)
+    :describe-default-expr
+
+    ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
+    :describe-is-generated
+
+    ;; Does this driver provide :database-is-nullable on (describe-fields) or (describe-table)
+    :describe-is-nullable})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -753,6 +765,7 @@
                               :fingerprint                            true
                               :upload-with-auto-pk                    true
                               :saved-question-sandboxing              true
+                              :test/create-table-without-data                 true
                               :test/dynamic-dataset-loading           true
                               :test/uuids-in-create-table-statements  true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
