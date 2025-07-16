@@ -188,12 +188,25 @@ databaseChangeLog:
               - column:
                   name: view_table_id
                   type: int
+                  remarks: fk to metabase_table.id
+
+  - changeSet:
+      id: v57.2025-07-16T13:31:21
+      author: lbrdnk
+      comment: Create index for transform_view.view_table_id
+      changes:
         - createIndex:
             indexName: idx_transform_view_view_table_id
             tableName: transform_view
             columns:
               - column:
                   name: view_table_id
+
+  - changeSet:
+      id: v57.2025-07-16T13:44:12
+      author: lbrdnk
+      comment: Add fk transform_view.view_table_id to metabase_table.id
+      changes:
         - addForeignKeyConstraint:
             constraintName: fk_transform_view_view_table_id
             baseTableName: transform_view
