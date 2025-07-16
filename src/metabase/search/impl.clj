@@ -241,23 +241,6 @@
 (defmethod search.engine/model-set :default [search-ctx]
   (search.engine/model-set (apply-default-engine search-ctx)))
 
-(comment
-  (defn- remove-engine-incompatible-filters
-    "Remove filter keys from search context that are incompatible with the search engine."
-    [search-ctx]
-    (let [current-engine (:search-engine search-ctx)
-          incompatible-keys (->> search.config/filters
-                                 vals
-                                 (keep (fn [{:keys [context-key engine]}]
-                                         (when (and engine
-                                                    (not= engine :all)
-                                                    (not= (parse-engine (name engine)) current-engine))
-                                           context-key)))
-                                 set)]
-      (if (seq incompatible-keys)
-        (log/warnf "Removing search context keys incompatible with engine %s: %s" (name current-engine) incompatible-keys))
-      (apply dissoc search-ctx incompatible-keys))))
-
 (mr/def ::search-context.input
   [:map {:closed true}
    [:search-string                                        [:maybe ms/NonBlankString]]
