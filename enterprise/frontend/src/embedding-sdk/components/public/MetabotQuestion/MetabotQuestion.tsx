@@ -37,7 +37,6 @@ const MetabotQuestionInner = () => {
         <InteractiveAdHocQuestion
           questionPath={redirectUrl}
           title={false}
-          onNavigateBack={false}
           isSaveEnabled={false}
         >
           <InteractiveQuestionDefaultView

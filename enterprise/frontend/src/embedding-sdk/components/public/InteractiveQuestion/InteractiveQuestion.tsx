@@ -109,7 +109,6 @@ export const _InteractiveQuestion = ({
     initialSqlParameters={initialSqlParameters}
     withDownloads={withDownloads}
     onRun={onRun}
-    onNavigateBack={false}
   >
     {children ?? (
       <InteractiveQuestionDefaultView

@@ -31,7 +31,6 @@ const StaticQuestionInner = ({
     questionId={initialQuestionId}
     variant="static"
     initialSqlParameters={initialSqlParameters}
-    onNavigateBack={false}
   >
     {withChartTypeSelector && <InteractiveQuestion.ChartTypeDropdown />}
     <InteractiveQuestion.QuestionVisualization
