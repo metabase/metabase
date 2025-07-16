@@ -122,7 +122,8 @@
              stage stage))
 
 (defn- expression-ref-errors-for-stage [stage]
-  (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))
+  (let [stage (dissoc stage :parameters) ; don't validate [:dimension [:expression ...]] refs since they might not be moved to the correct place yet.
+        expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))
         pred #(bad-ref-clause? :expression expression-names %)
         form (stage-with-joins-and-namespaced-keys-removed stage)]
     (when (mbql.u/pred-matches-form? form pred)

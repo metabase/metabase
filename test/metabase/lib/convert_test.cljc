@@ -1329,3 +1329,29 @@
                                 :source-query {:native "SELECT * FROM categories WHERE name = ?;"
                                                :params ["BBQ"]}}]}}
               (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel do-not-do-nasty-stuff-to-parameters-test
+  (let [query (lib.tu.macros/mbql-query users
+                {:source-query {:source-table (meta/id :users)
+                                :expressions  {"date-column"   [:field (meta/id :users :last-login) nil]
+                                               "number-column" [:field (meta/id :users :id) nil]}
+                                :parameters   [{:type   :date/range
+                                                :value  "2019-09-29~2023-09-29"
+                                                :target [:dimension [:expression "date-column"]]}
+                                               {:type   :category
+                                                :value  1
+                                                :target [:dimension [:expression "number-column"]]}]}})]
+    (is (=? {:lib/type :mbql/query
+             :stages   [{:lib/type     :mbql.stage/mbql
+                         :expressions  [[:field
+                                         {:lib/uuid            string?
+                                          :lib/expression-name "date-column"}
+                                         pos-int?]
+                                        [:field
+                                         {:lib/uuid            string?
+                                          :lib/expression-name "number-column"}
+                                         pos-int?]]
+                         :parameters   [{:type :date/range, :value "2019-09-29~2023-09-29", :target [:dimension [:expression "date-column"]]}
+                                        {:type :category, :value 1, :target [:dimension [:expression "number-column"]]}]}
+                        {:lib/type :mbql.stage/mbql}]}
+            (lib/->pMBQL query)))))
