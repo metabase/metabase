@@ -152,7 +152,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     );
 
     H.showDashcardVisualizerModal(1, {
-      buttonText: "Visualize another way",
+      isVisualizerCard: false,
     });
 
     H.modal().within(() => {
@@ -307,7 +307,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     // Rename the third card and check
     // PRODUCTS_COUNT_BY_CREATED_AT.name -> "Another chart"
     H.showDashcardVisualizerModal(3, {
-      buttonText: "Visualize another way",
+      isVisualizerCard: false,
     });
     H.modal().within(() => {
       cy.findByDisplayValue(PRODUCTS_COUNT_BY_CREATED_AT.name)

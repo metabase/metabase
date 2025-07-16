@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import { automagicDashboardsApi } from "metabase/api/automagic-dashboards";
 import {
-  automagicDashboardsApi,
   dashboardApi,
   useGetDashboardQuery,
   useListDashboardsQuery,
-} from "metabase/api";
+} from "metabase/api/dashboard";
 import {
   canonicalCollectionId,
   isRootTrashCollection,

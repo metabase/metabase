@@ -17,7 +17,8 @@ import {
 const { SAMPLE_DATABASE } = require("e2e/support/cypress_sample_database");
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
-const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 function capitalize(string) {
   return string.charAt(0).toUpperCase() + string.slice(1);
@@ -1851,5 +1852,100 @@ describe("issue 56716", () => {
     H.getDashboardCard().findAllByText("4.6").first().click();
     H.filterWidget().should("not.contain.text", "4.6");
     H.getDashboardCard().findByText("200 rows").should("be.visible");
+  });
+});
+
+describe("Issue 46337", () => {
+  const MODEL_NAME = "Model 46337";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.createQuestion({
+      type: "model",
+      name: MODEL_NAME,
+      query: {
+        "source-table": ORDERS_ID,
+        fields: [
+          [
+            "field",
+            ORDERS.ID,
+            {
+              "base-type": "type/BigInteger",
+            },
+          ],
+          [
+            "field",
+            ORDERS.TAX,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          [
+            "field",
+            ORDERS.TOTAL,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          [
+            "field",
+            ORDERS.DISCOUNT,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          [
+            "field",
+            ORDERS.QUANTITY,
+            {
+              "base-type": "type/Integer",
+            },
+          ],
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+            },
+          ],
+          [
+            "field",
+            ORDERS.PRODUCT_ID,
+            {
+              "base-type": "type/Integer",
+            },
+          ],
+        ],
+        joins: [
+          {
+            fields: "all",
+            alias: "Products",
+            "source-table": PEOPLE_ID,
+            strategy: "left-join",
+            condition: [
+              "=",
+              ["field", ORDERS.USER_ID, {}],
+              ["field", PEOPLE.ID, { "join-alias": "Products" }],
+            ],
+          },
+        ],
+      },
+    }).then(({ body: model }) => {
+      cy.visit(`/auto/dashboard/model/${model.id}`);
+    });
+  });
+
+  // TODO: unskip when metabase#46337 is fixed
+  // See: https://github.com/metabase/metabase/issues/46337
+  it.skip("should (metabase#46337)", () => {
+    cy.log("ensure the dashcards render data not errors");
+
+    cy.findByTestId("dashboard-grid").within(() => {
+      cy.findByText("There was a problem displaying this chart.").should(
+        "not.exist",
+      );
+      cy.findByText(`Total ${MODEL_NAME}`).should("be.visible");
+    });
   });
 });
