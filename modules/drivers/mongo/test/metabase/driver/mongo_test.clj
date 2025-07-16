@@ -1201,3 +1201,523 @@
     (with-describe-table-for-sample
       []
       (is (=? #{} @nested-fields)))))
+
+(deftest nested-id-breakout-test
+  (testing "MongoDB path collision fix for _id.* fields (#34577)"
+    ;; This test verifies that queries with _id.* fields don't cause MongoDB path collision errors
+    ;; The error would manifest as: "Path collision at _id.widgetType remaining portion widgetType"
+    (mt/test-driver :mongo
+      ;; We need actual MongoDB documents with nested _id structure
+      (mongo.connection/with-mongo-database [^com.mongodb.client.MongoDatabase db (mt/db)]
+        (let [coll-name                                (str "test_nested_id_" (System/currentTimeMillis))
+              ^com.mongodb.client.MongoCollection coll (.getCollection db coll-name)]
+          (try
+            ;; Insert documents with nested _id structure
+            (let [docs [(org.bson.Document.
+                         {"_id"         (org.bson.Document. {"widgetType" "button" "userId" 123})
+                          "impressions" 1000
+                          "time"        (java.util.Date.)})
+                        (org.bson.Document.
+                         {"_id"         (org.bson.Document. {"widgetType" "banner" "userId" 456})
+                          "impressions" 2000
+                          "time"        (java.util.Date.)})
+                        (org.bson.Document.
+                         {"_id"         (org.bson.Document. {"widgetType" "button" "userId" 789})
+                          "impressions" 1500
+                          "time"        (java.util.Date.)})]]
+              (.insertMany coll docs))
+
+            ;; Create temp table/field records to reference this collection
+            (mt/with-temp [:model/Table table {:db_id (mt/id) :name coll-name}
+                           :model/Field id-field {:table_id  (:id table)
+                                                  :name      "_id"
+                                                  :base_type :type/Dictionary}
+                           :model/Field widget-field {:table_id  (:id table)
+                                                      :name      "widgetType"
+                                                      :base_type :type/Text
+                                                      :parent_id (:id id-field)}
+                           :model/Field impressions-field {:table_id  (:id table)
+                                                           :name      "impressions"
+                                                           :base_type :type/Integer}]
+
+              ;; This query exercises the code path that was generating double-nested _id structures
+              ;; Without the fix, this would generate:
+              ;; $project: { "_id": false, "_id.widgetType": "$_id._id.widgetType", "sum": true }
+              ;; Which causes: "Path collision at _id.widgetType remaining portion widgetType"
+              (testing "Query with _id.widgetType breakout should not throw path collision error"
+                (let [query  {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (:id table)
+                                         :breakout     [[:field (:id widget-field) nil]]
+                                         :aggregation  [[:sum [:field (:id impressions-field) nil]]]}}
+                      ;; Execute the query - this would throw without the fix
+                      result (qp/process-query query)]
+                  ;; Verify we got results instead of an error
+                  (is (= :completed (:status result)))
+                  (is (= 2 (count (get-in result [:data :rows]))))
+                  ;; Check the actual aggregated values
+                  (is (= #{["banner" 2000] ["button" 2500]}
+                         (set (get-in result [:data :rows])))))))
+
+            (finally
+              ;; Clean up
+              (.drop coll))))))))
+
+(deftest nested-id-field-collision-test
+  (testing "Field name collision between _id.name and top-level name field (#34577 edge case)"
+    (mt/test-driver :mongo
+      (mongo.connection/with-mongo-database [^com.mongodb.client.MongoDatabase db (mt/db)]
+        (let [coll-name                                (str "test_field_collision_" (System/currentTimeMillis))
+              ^com.mongodb.client.MongoCollection coll (.getCollection db coll-name)]
+          (try
+            ;; Insert documents with both _id.name and top-level name
+            (let [docs [(org.bson.Document.
+                         {"_id"   (org.bson.Document. {"name" "internal-name-1" "seq" 1})
+                          "name"  "external-name-1"
+                          "count" 100})
+                        (org.bson.Document.
+                         {"_id"   (org.bson.Document. {"name" "internal-name-2" "seq" 1})
+                          "name"  "external-name-2"
+                          "count" 200})
+                        (org.bson.Document.
+                         {"_id"   (org.bson.Document. {"name" "internal-name-1" "seq" 2})
+                          "name"  "external-name-3"
+                          "count" 150})]]
+              (.insertMany coll docs))
+
+            (mt/with-temp [:model/Table table {:db_id (mt/id) :name coll-name}
+                           :model/Field id-field {:table_id  (:id table)
+                                                  :name      "_id"
+                                                  :base_type :type/Dictionary}
+                           :model/Field id-name-field {:table_id  (:id table)
+                                                       :name      "name"
+                                                       :base_type :type/Text
+                                                       :parent_id (:id id-field)}
+                           :model/Field name-field {:table_id  (:id table)
+                                                    :name      "name"
+                                                    :base_type :type/Text}
+                           :model/Field count-field {:table_id  (:id table)
+                                                     :name      "count"
+                                                     :base_type :type/Integer}]
+
+              (testing "Query grouping by _id.name with top-level name field present"
+                (let [query  {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (:id table)
+                                         :breakout     [[:field (:id id-name-field) nil]]
+                                         :aggregation  [[:sum [:field (:id count-field) nil]]]}}
+                      result (qp/process-query query)]
+                  (is (= :completed (:status result)))
+                  (is (= #{["internal-name-1" 250] ["internal-name-2" 200]}
+                         (set (get-in result [:data :rows]))))))
+
+              (testing "Query selecting both _id.name and top-level name - column naming"
+                (let [query     {:database (mt/id)
+                                 :type     :query
+                                 :query    {:source-table (:id table)
+                                            :fields       [[:field (:id id-name-field) nil]
+                                                           [:field (:id name-field) nil]
+                                                           [:field (:id count-field) nil]]
+                                            :limit        2}}
+                      ;; Compile the query to native MongoDB format
+                      result    (qp/process-query query)
+                      col-names (mapv :name (get-in result [:data :cols]))]
+                  (is (= :completed (:status result)))
+
+                  ;; Column naming behavior
+                  (testing "Column names preserve full path for nested _id fields"
+                    ;; Note: The field-alias function in query_processor.clj strips the "_id." prefix
+                    ;; for MongoDB aggregation pipeline generation, but this aliasing is NOT applied
+                    ;; to the final result column names. This prevents naming collisions in results.
+                    (is (= ["_id.name" "name" "count"] col-names)
+                        "Nested _id fields keep full path in column names"))
+
+                  ;; Verify the data is correct
+                  (testing "Data values are correct"
+                    (let [rows (get-in result [:data :rows])]
+                      (is (= 2 (count rows)))
+                      ;; First column should be _id.name values
+                      (is (every? #(contains? #{"internal-name-1" "internal-name-2"} (first %)) rows)
+                          "First column should contain _id.name values")
+                      ;; Second column should be top-level name values
+                      (is (every? #(contains? #{"external-name-1" "external-name-2" "external-name-3"} (second %)) rows)
+                          "Second column should contain top-level name values")))))
+
+              (testing "Breakout query column naming"
+                (let [query     {:database (mt/id)
+                                 :type     :query
+                                 :query    {:source-table (:id table)
+                                            :breakout     [[:field (:id id-name-field) nil]]
+                                            :aggregation  [[:sum [:field (:id count-field) nil]]]}}
+                      result    (qp/process-query query)
+                      col-names (mapv :name (get-in result [:data :cols]))]
+                  (testing "Breakout column preserves full field path"
+                    ;; Same as above - the full path is preserved in column names
+                    (is (= ["_id.name" "sum"] col-names)
+                        "_id.name keeps full path in breakout column name")))))
+            (finally
+              (.drop coll))))))))
+
+(deftest field-alias-api-test
+  (testing "MongoDB field paths are preserved in API responses (#34577)"
+    (mt/test-driver :mongo
+      (mongo.connection/with-mongo-database [^com.mongodb.client.MongoDatabase db (mt/db)]
+        (let [coll-name                                (str "test_alias_api_" (System/currentTimeMillis))
+              ^com.mongodb.client.MongoCollection coll (.getCollection db coll-name)]
+          (try
+            ;; Create documents with nested and top-level fields with same names
+            (let [docs [(org.bson.Document.
+                         {"_id"   (org.bson.Document. {"name" "id-name-1" "type" "A"})
+                          "name"  "top-name-1"
+                          "type"  "X"
+                          "value" 100})
+                        (org.bson.Document.
+                         {"_id"   (org.bson.Document. {"name" "id-name-2" "type" "B"})
+                          "name"  "top-name-2"
+                          "type"  "Y"
+                          "value" 200})]]
+              (.insertMany coll docs))
+
+            (mt/with-temp [:model/Table table {:db_id (mt/id) :name coll-name}
+                           :model/Field id-field {:table_id  (:id table)
+                                                  :name      "_id"
+                                                  :base_type :type/Dictionary}
+                           :model/Field id-name-field {:table_id  (:id table)
+                                                       :name      "name"
+                                                       :base_type :type/Text
+                                                       :parent_id (:id id-field)}
+                           :model/Field id-type-field {:table_id  (:id table)
+                                                       :name      "type"
+                                                       :base_type :type/Text
+                                                       :parent_id (:id id-field)}
+                           :model/Field name-field {:table_id  (:id table)
+                                                    :name      "name"
+                                                    :base_type :type/Text}
+                           :model/Field type-field {:table_id  (:id table)
+                                                    :name      "type"
+                                                    :base_type :type/Text}
+                           :model/Field value-field {:table_id  (:id table)
+                                                     :name      "value"
+                                                     :base_type :type/Integer}]
+
+              (testing "Fields with nested paths maintain full paths in API"
+                (let [query     {:database (mt/id)
+                                 :type     :query
+                                 :query    {:source-table (:id table)
+                                            :fields       [[:field (:id id-name-field) nil]
+                                                           [:field (:id id-type-field) nil]
+                                                           [:field (:id name-field) nil]
+                                                           [:field (:id type-field) nil]
+                                                           [:field (:id value-field) nil]]
+                                            :order-by     [[:asc [:field (:id value-field) nil]]]}}
+                      result    (qp/process-query query)
+                      col-names (mapv :name (get-in result [:data :cols]))]
+
+                  (testing "API column names use full field paths"
+                    ;; Column names preserve the full path for nested fields
+                    (is (= ["_id.name" "_id.type" "name" "type" "value"] col-names)
+                        "Nested _id fields keep full paths, preventing collisions"))
+
+                  (testing "Data values are correctly extracted from nested documents"
+                    (let [rows (get-in result [:data :rows])]
+                      (is (= [["id-name-1" "A" "top-name-1" "X" 100]
+                              ["id-name-2" "B" "top-name-2" "Y" 200]]
+                             rows)
+                          "Values correctly map to their respective columns")))))
+
+              (testing "Simple breakout by _id.type only"
+                (let [query     {:database (mt/id)
+                                 :type     :query
+                                 :query    {:source-table (:id table)
+                                            :breakout     [[:field (:id id-type-field) nil]]
+                                            :aggregation  [[:sum [:field (:id value-field) nil]]]}}
+                      result    (qp/process-query query)
+                      col-names (mapv :name (get-in result [:data :cols]))
+                      rows      (get-in result [:data :rows])]
+
+                  (testing "Single _id field breakout works correctly"
+                    (is (= ["_id.type" "sum"] col-names))
+                    (is (= #{["A" 100] ["B" 200]} (set rows))
+                        "Should group by _id.type values (A, B)")))))
+            (finally
+              (.drop coll))))))))
+
+(deftest breakout-field-collision-bug-test
+  (testing "BUG: Breaking out by both _id.type and type returns wrong values (#34577)"
+    (mt/test-driver :mongo
+      (mongo.connection/with-mongo-database [^com.mongodb.client.MongoDatabase db (mt/db)]
+        (let [coll-name                                (str "test_breakout_bug_" (System/currentTimeMillis))
+              ^com.mongodb.client.MongoCollection coll (.getCollection db coll-name)]
+          (try
+            ;; Create documents
+            (let [docs [(org.bson.Document.
+                         {"_id"   (org.bson.Document. {"type" "A"})
+                          "type"  "X"
+                          "value" 100})
+                        (org.bson.Document.
+                         {"_id"   (org.bson.Document. {"type" "B"})
+                          "type"  "Y"
+                          "value" 200})]]
+              (.insertMany coll docs))
+
+            (mt/with-temp [:model/Table table {:db_id (mt/id) :name coll-name}
+                           :model/Field id-field {:table_id  (:id table)
+                                                  :name      "_id"
+                                                  :base_type :type/Dictionary}
+                           :model/Field id-type-field {:table_id  (:id table)
+                                                       :name      "type"
+                                                       :base_type :type/Text
+                                                       :parent_id (:id id-field)}
+                           :model/Field type-field {:table_id  (:id table)
+                                                    :name      "type"
+                                                    :base_type :type/Text}
+                           :model/Field value-field {:table_id  (:id table)
+                                                     :name      "value"
+                                                     :base_type :type/Integer}]
+
+              (testing "Breakout by both _id.type and type"
+                (let [query     {:database (mt/id)
+                                 :type     :query
+                                 :query    {:source-table (:id table)
+                                            :breakout     [[:field (:id id-type-field) nil]
+                                                       [:field (:id type-field) nil]]
+                                            :aggregation  [[:sum [:field (:id value-field) nil]]]}}
+                      result    (qp/process-query query)
+                      col-names (mapv :name (get-in result [:data :cols]))
+                      rows      (get-in result [:data :rows])]
+
+                  (testing "Column names are correct"
+                    (is (= ["_id.type" "type" "sum"] col-names)))
+
+                  (testing "FAILS: Both breakout fields reference the same MongoDB path"
+                    ;; This is the bug - we get ["X" "X" 100] instead of ["A" "X" 100]
+                    (is (= #{["A" "X" 100] ["B" "Y" 200]}
+                           (set rows))
+                        "Currently fails: both columns show top-level type value")))))
+
+            (finally
+              (.drop coll))))))))
+
+(deftest nested-id-deep-nesting-test
+  (testing "Deep nesting in _id fields (_id.level1.level2) (#34577 edge case)"
+    (mt/test-driver :mongo
+      (mongo.connection/with-mongo-database [^com.mongodb.client.MongoDatabase db (mt/db)]
+        (let [coll-name                                (str "test_deep_nesting_" (System/currentTimeMillis))
+              ^com.mongodb.client.MongoCollection coll (.getCollection db coll-name)]
+          (try
+            ;; Insert documents with deeply nested _id structure
+            (let [docs [(org.bson.Document.
+                         {"_id"   (org.bson.Document.
+                                   {"user" (org.bson.Document. {"id" 1 "name" "Alice"})
+                                    "seq"  1})
+                          "total" 100})
+                        (org.bson.Document.
+                         {"_id"   (org.bson.Document.
+                                   {"user" (org.bson.Document. {"id" 2 "name" "Bob"})
+                                    "seq"  1})
+                          "total" 200})
+                        (org.bson.Document.
+                         {"_id"   (org.bson.Document.
+                                   {"user" (org.bson.Document. {"id" 1 "name" "Alice"})
+                                    "seq"  2})
+                          "total" 150})]]
+              (.insertMany coll docs))
+
+            (mt/with-temp [:model/Table table {:db_id (mt/id) :name coll-name}
+                           :model/Field id-field {:table_id  (:id table)
+                                                  :name      "_id"
+                                                  :base_type :type/Dictionary}
+                           :model/Field user-field {:table_id  (:id table)
+                                                    :name      "user"
+                                                    :base_type :type/Dictionary
+                                                    :parent_id (:id id-field)}
+                           :model/Field user-name-field {:table_id  (:id table)
+                                                         :name      "name"
+                                                         :base_type :type/Text
+                                                         :parent_id (:id user-field)}
+                           :model/Field total-field {:table_id  (:id table)
+                                                     :name      "total"
+                                                     :base_type :type/Integer}]
+
+              (testing "Query grouping by _id.user.name (deep nesting)"
+                (let [query  {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (:id table)
+                                         :breakout     [[:field (:id user-name-field) nil]]
+                                         :aggregation  [[:sum [:field (:id total-field) nil]]]}}
+                      result (qp/process-query query)]
+                  (is (= :completed (:status result)))
+                  (is (= #{["Alice" 250] ["Bob" 200]}
+                         (set (get-in result [:data :rows])))))))
+            (finally
+              (.drop coll))))))))
+
+(deftest nested-id-mixed-fields-test
+  (testing "Mixed query with both _id.* and regular nested fields (#34577 edge case)"
+    (mt/test-driver :mongo
+      (mongo.connection/with-mongo-database [^com.mongodb.client.MongoDatabase db (mt/db)]
+        (let [coll-name                                (str "test_mixed_fields_" (System/currentTimeMillis))
+              ^com.mongodb.client.MongoCollection coll (.getCollection db coll-name)]
+          (try
+            ;; Insert documents with both _id.* and regular nested fields
+            (let [docs [(org.bson.Document.
+                         {"_id"      (org.bson.Document. {"type" "A" "seq" 1})
+                          "metadata" (org.bson.Document. {"category" "X"})
+                          "value"    100})
+                        (org.bson.Document.
+                         {"_id"      (org.bson.Document. {"type" "B" "seq" 1})
+                          "metadata" (org.bson.Document. {"category" "Y"})
+                          "value"    200})
+                        (org.bson.Document.
+                         {"_id"      (org.bson.Document. {"type" "A" "seq" 2})
+                          "metadata" (org.bson.Document. {"category" "Y"})
+                          "value"    150})
+                        (org.bson.Document.
+                         {"_id"      (org.bson.Document. {"type" "B" "seq" 2})
+                          "metadata" (org.bson.Document. {"category" "X"})
+                          "value"    300})]]
+              (.insertMany coll docs))
+
+            (mt/with-temp [:model/Table table {:db_id (mt/id) :name coll-name}
+                           :model/Field id-field {:table_id  (:id table)
+                                                  :name      "_id"
+                                                  :base_type :type/Dictionary}
+                           :model/Field id-type-field {:table_id  (:id table)
+                                                       :name      "type"
+                                                       :base_type :type/Text
+                                                       :parent_id (:id id-field)}
+                           :model/Field metadata-field {:table_id  (:id table)
+                                                        :name      "metadata"
+                                                        :base_type :type/Dictionary}
+                           :model/Field category-field {:table_id  (:id table)
+                                                        :name      "category"
+                                                        :base_type :type/Text
+                                                        :parent_id (:id metadata-field)}
+                           :model/Field value-field {:table_id  (:id table)
+                                                     :name      "value"
+                                                     :base_type :type/Integer}]
+
+              (testing "Query grouping by both _id.type and metadata.category"
+                (let [query  {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (:id table)
+                                         :breakout     [[:field (:id id-type-field) nil]
+                                                    [:field (:id category-field) nil]]
+                                         :aggregation  [[:sum [:field (:id value-field) nil]]]}}
+                      result (qp/process-query query)]
+                  (is (= :completed (:status result)))
+                  (is (= #{["A" "X" 100] ["A" "Y" 150] ["B" "X" 300] ["B" "Y" 200]}
+                         (set (get-in result [:data :rows])))))))
+            (finally
+              (.drop coll))))))))
+
+(deftest nested-id-similar-name-test
+  (testing "KNOWN LIMITATION: Top-level fields with '_id.' prefix are not supported (#34577)"
+    ;; I think MongoDB technically allows periods in field names, including "_id."
+    ;; prefixes, but this is strongly discouraged due to conflicts with dot notation.
+    ;; Metabase treats any field starting with "_id." as a nested _id field reference.
+    ;; Users should avoid naming top-level fields with "_id." prefix.
+    (mt/test-driver :mongo
+      (mongo.connection/with-mongo-database [^com.mongodb.client.MongoDatabase db (mt/db)]
+        (let [coll-name                                (str "test_similar_name_" (System/currentTimeMillis))
+              ^com.mongodb.client.MongoCollection coll (.getCollection db coll-name)]
+          (try
+            ;; Insert documents with field names that could be confused
+            ;; Note: We intentionally don't have a nested widget field in _id
+            (let [docs [(org.bson.Document.
+                         {"_id"        (org.bson.Document. {"seq" 1}) ; No widget field here
+                          "_id.widget" "X" ; Top-level field that starts with "_id."
+                          "count"      100})
+                        (org.bson.Document.
+                         {"_id"        (org.bson.Document. {"seq" 2})
+                          "_id.widget" "Y"
+                          "count"      200})
+                        (org.bson.Document.
+                         {"_id"        (org.bson.Document. {"seq" 3})
+                          "_id.widget" "Z"
+                          "count"      150})]]
+              (.insertMany coll docs))
+
+            (mt/with-temp [:model/Table table {:db_id (mt/id) :name coll-name}
+                           :model/Field _id-field {:table_id  (:id table)
+                                                   :name      "_id"
+                                                   :base_type :type/Dictionary}
+                           :model/Field confusing-field {:table_id  (:id table)
+                                                         :name      "_id.widget"
+                                                         :base_type :type/Text}
+                           :model/Field count-field {:table_id  (:id table)
+                                                     :name      "count"
+                                                     :base_type :type/Integer}]
+
+              (testing "LIMITATION: Top-level field named '_id.widget' is treated as nested field reference"
+                ;; This query will not work as expected because Metabase interprets "_id.widget" 
+                ;; as a reference to the nested _id.widget field (which doesn't exist),
+                ;; not the top-level field with literal name "_id.widget"
+                (let [query  {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (:id table)
+                                         :breakout     [[:field (:id confusing-field) nil]]
+                                         :aggregation  [[:sum [:field (:id count-field) nil]]]}}
+                      result (qp/process-query query)]
+                  (is (= :completed (:status result)))
+                  ;; The query returns nil values because it's looking for a nested field
+                  ;; that doesn't exist, instead of the top-level "_id.widget" field
+                  (is (= #{[nil 450]} ; All docs grouped under nil
+                         ;; not #{["X" 100] ["Y" 200] ["Z" 150]}
+                         (set (get-in result [:data :rows])))))))
+            (finally
+              (.drop coll))))))))
+
+(deftest nested-id-count-aggregation-test
+  (testing "Count aggregation with nested _id field breakout (#34577 - matches e2e test)"
+    ;; This test replicates the e2e test scenario: count of rows grouped by a nested _id field
+    (mt/test-driver :mongo
+      (mongo.connection/with-mongo-database [^com.mongodb.client.MongoDatabase db (mt/db)]
+        (let [coll-name                                "nested_id_collection" ; Match e2e test collection name
+              ^com.mongodb.client.MongoCollection coll (.getCollection db coll-name)]
+          (try
+            ;; Insert documents with Country nested in _id
+            (let [docs [(org.bson.Document.
+                         {"_id"  (org.bson.Document. {"Country" "USA" "id" 1})
+                          "data" "some data"})
+                        (org.bson.Document.
+                         {"_id"  (org.bson.Document. {"Country" "USA" "id" 2})
+                          "data" "more data"})
+                        (org.bson.Document.
+                         {"_id"  (org.bson.Document. {"Country" "Canada" "id" 3})
+                          "data" "other data"})]]
+              (.insertMany coll docs))
+
+            (mt/with-temp [:model/Table table {:db_id (mt/id) :name coll-name}
+                           :model/Field id-field {:table_id  (:id table)
+                                                  :name      "_id"
+                                                  :base_type :type/Dictionary}
+                           :model/Field country-field {:table_id  (:id table)
+                                                       :name      "Country"
+                                                       :base_type :type/Text
+                                                       :parent_id (:id id-field)}
+                           :model/Field _data-field {:table_id  (:id table)
+                                                     :name      "data"
+                                                     :base_type :type/Text}]
+
+              (testing "Count of rows grouped by _id.Country"
+                (let [query  {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (:id table)
+                                         :breakout     [[:field (:id country-field) nil]]
+                                         :aggregation  [[:count]]}}
+                      result (qp/process-query query)
+                      rows   (get-in result [:data :rows])]
+
+                  (is (= :completed (:status result)))
+
+                  ;; Our test data has USA appearing twice
+                  (is (= #{["Canada" 1] ["USA" 2]}
+                         (set rows))
+                      "Count aggregation with nested _id field works correctly")
+
+                  ;; Column names should be correct
+                  (let [col-names (mapv :name (get-in result [:data :cols]))]
+                    (is (= ["_id.Country" "count"] col-names))))))
+            (finally
+              (.drop coll))))))))

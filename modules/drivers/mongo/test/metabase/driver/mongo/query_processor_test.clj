@@ -231,11 +231,10 @@
                                   :filter      [:= $tips.source.username "tupac"]}))))
 
           (is (= {:projections ["source.username" "count"]
-                  :query       [{"$group" {"_id"   {"source_username" "$source.username"}
+                  :query       [{"$group" {"_id"   {"source" {"username" "$source.username"}}
                                            "count" {"$sum" 1}}}
                                 {"$sort" {"_id" 1}}
-                          ;; Or should this be {"source" {"username" "$_id.source.username"}} ?
-                                {"$project" {"_id" false, "source.username" "$_id.source_username", "count" true}}]
+                                {"$project" {"_id" false, "source.username" "$_id.source.username", "count" true}}]
                   :collection  "tips"
                   :mbql?       true}
                  (qp.compile/compile

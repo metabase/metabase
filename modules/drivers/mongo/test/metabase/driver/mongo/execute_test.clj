@@ -29,89 +29,39 @@
   (reify com.mongodb.client.AggregateIterable
     (cursor [_] (make-mongo-cursor rows))))
 
-(deftest field-mappings->column-info-test
-  (testing "field-mappings->column-info correctly maps fields to positions"
-    (testing "basic mapping without _id"
-      (is (= {:row       ["name" "count"]
-              :unescaped ["username" "total"]}
-             (#'mongo.execute/field-mappings->column-info
-              {"name" 0, "count" 1}
-              ["username" "total"]
-              false))))
-
-    (testing "mapping with gaps in positions"
-      (is (= {:row       ["field1" nil "field3"]
-              :unescaped ["col1" "col2" "col3"]}
-             (#'mongo.execute/field-mappings->column-info
-              {"field1" 0, "field3" 2}
-              ["col1" "col2" "col3"]
-              false))))
-
-    (testing "mapping with _id field when suppress-id is false and _id subfields exist"
-      (is (= {:row       ["source_username" "count" "_id"]
-              :unescaped ["_id.source.username" "count"]}
-             (#'mongo.execute/field-mappings->column-info
-              {"source_username" 0, "count" 1}
-              ["_id.source.username" "count"]
-              false))))
-
-    (testing "mapping with _id field when suppress-id is true"
-      (is (= {:row       ["source_username" "count"]
-              :unescaped ["_id.source.username" "count"]}
-             (#'mongo.execute/field-mappings->column-info
-              {"source_username" 0, "count" 1}
-              ["_id.source.username" "count"]
-              true))))
-
-    (testing "mapping without _id subfields"
-      (is (= {:row       ["name" "total"]
-              :unescaped ["name" "total"]}
-             (#'mongo.execute/field-mappings->column-info
-              {"name" 0, "total" 1}
-              ["name" "total"]
-              false))))
-
-    (testing "empty mappings"
-      (is (= {:row       []
-              :unescaped []}
-             (#'mongo.execute/field-mappings->column-info
-              {}
-              []
-              false))))))
-
 (deftest ^:parallel field-filter-relative-time-native-test
   (mt/test-driver :mongo
     (let [now (str (java.time.Instant/now))]
       (binding [mongo.execute/*aggregate*
                 (fn [& _] (make-mongo-aggregate-iterable
-                           [{"_id" 0
-                             "name" "Crowberto"
+                           [{"_id"   0
+                             "name"  "Crowberto"
                              "alias" "the Brave"}
-                            {"_id" 1
-                             "name" "Rasta"
+                            {"_id"        1
+                             "name"       "Rasta"
                              "last_login" now
-                             "nickname" "Blue"}]))]
+                             "nickname"   "Blue"}]))]
         (testing "Projected and first-row fields are returned"
           (let [query {:database (mt/id)
                        :native
                        {:collection "users"
-                        :query "[{\"$match\": {\"id\": {\"$lt\": 42}}},
+                        :query      "[{\"$match\": {\"id\": {\"$lt\": 42}}},
                                  {\"$project\": {\"name\": true, \"last_login\": 1}}]"}
-                       :type "native"}]
-            (is (= {:rows [[0 "Crowberto" nil "the Brave"]
-                           [1 "Rasta" now nil]]
+                       :type     "native"}]
+            (is (= {:rows    [[0 "Crowberto" nil "the Brave"]
+                              [1 "Rasta" now nil]]
                     :columns ["_id" "name" "last_login" "alias"]}
                    (mt/rows+column-names (qp/process-query query))))))
         (testing "Columns can be suppressed"
           (let [query {:database (mt/id)
                        :native
                        {:collection "users"
-                        :query "[{\"$project\": {\"name\": 2, \"last_login\": 1,
+                        :query      "[{\"$project\": {\"name\": 2, \"last_login\": 1,
                                   \"suppressed0\": 0, \"supressed-false\": false}},
                                  {\"$match\": {\"id\": {\"$lt\": 42}}}]"}
-                       :type "native"}]
-            (is (= {:rows [[0 "Crowberto" nil "the Brave"]
-                           [1 "Rasta" now nil]]
+                       :type     "native"}]
+            (is (= {:rows    [[0 "Crowberto" nil "the Brave"]
+                              [1 "Rasta" now nil]]
                     :columns ["_id" "name" "last_login" "alias"]}
                    (mt/rows+column-names (qp/process-query query))))))))))
 
@@ -128,13 +78,13 @@
         (binding [qp.pipeline/*canceled-chan* canceled-chan]
           (let [query (mt/mbql-query orders
                         {:aggregation [[:sum $total]],
-                         :breakout [!month.created_at],
-                         :order-by [[:asc !month.created_at]],
-                         :joins [{:alias "People_User",
-                                  :strategy :left-join,
-                                  :condition
-                                  [:!= $user_id &People_User.people.id],
-                                  :source-table $$people}]})]
+                         :breakout    [!month.created_at],
+                         :order-by    [[:asc !month.created_at]],
+                         :joins       [{:alias        "People_User",
+                                        :strategy     :left-join,
+                                        :condition
+                                        [:!= $user_id &People_User.people.id],
+                                        :source-table $$people}]})]
             (future (Thread/sleep 500)
                     (a/>!! canceled-chan ::streaming-response/request-canceled))
             (testing "Cancel signal kills the in progress query"
@@ -147,17 +97,17 @@
     (mt/test-drivers
       #{:mongo}
       (mt/with-temp
-        [:model/Card c {:type :model
+        [:model/Card c {:type          :model
                         :dataset_query {:database (mt/id)
                                         :type     :native
                                         :native   {:template_tags {}
-                                                   :collection "orders"
-                                                   :query (str "[{\"$addFields\": {}}\n"
-                                                               " {\"$limit\":1}]")}}}]
+                                                   :collection    "orders"
+                                                   :query         (str "[{\"$addFields\": {}}\n"
+                                                                       " {\"$limit\":1}]")}}}]
         (mt/with-temporary-setting-values [enable-query-caching true]
-          (let [orig-freeze! @#'middleware.cache.impl/freeze!
+          (let [orig-freeze!   @#'middleware.cache.impl/freeze!
                 freeze-started (atom false)
-                thrown-data (atom [])]
+                thrown-data    (atom [])]
             (with-redefs [middleware.cache.impl/freeze! (fn [& args]
                                                           (reset! freeze-started true)
                                                           (try

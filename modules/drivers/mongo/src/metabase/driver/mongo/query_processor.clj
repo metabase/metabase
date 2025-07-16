@@ -156,10 +156,10 @@
   driver-api/dispatch-by-clause-name-or-class)
 
 (defn- col->name-components [{:keys [parent-id], field-name :name, :as _col}]
-  (let [parent-components (when parent-id
-                            (col->name-components
-                             (driver-api/field (driver-api/metadata-provider) parent-id)))]
-    (concat parent-components [field-name])))
+  (concat
+   (when parent-id
+     (col->name-components (driver-api/field (driver-api/metadata-provider) parent-id)))
+   [field-name]))
 
 (mu/defn field->name
   "Return a single string name for column metadata `col` For nested fields, this creates a combined qualified name."
@@ -187,8 +187,7 @@
 
 (defmethod ->lvalue :metadata/column
   [{::keys [join-field source-alias] :as field}]
-  (let [field-name (field->name field)]
-    (scope-with-join-field field-name join-field source-alias)))
+  (scope-with-join-field (field->name field) join-field source-alias))
 
 (defmethod ->lvalue :expression
   [[_ expression-name opts]]
@@ -241,12 +240,7 @@ function(bin) {
 
 (defmethod ->rvalue :metadata/column
   [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
-  (let [;; Use field->name to get the full MongoDB field path (e.g. "source.username")
-        ;; instead of ->lvalue which uses field-alias that may return a modified name
-        ;; for output projections. We need the actual MongoDB path here to correctly
-        ;; reference the field in database operations like $dateFromParts.
-        full-field-name (field->name field)
-        field-name      (str \$ (scope-with-join-field full-field-name join-field source-alias))]
+  (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))]
     (cond
       (isa? coercion :Coercion/UNIXNanoSeconds->DateTime)
       {:$dateFromParts {:millisecond {$divide [field-name 1000000]}, :year 1970, :timezone "UTC"}}
@@ -447,11 +441,9 @@ function(bin) {
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
-                ;; For field IDs, get the field instance and use it directly
-                (let [field-inst (driver-api/field (driver-api/metadata-provider) id-or-name)]
-                  (->rvalue (assoc field-inst
+                (->rvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
                                  ::source-alias source-alias
-                                   ::join-field join-field))))
+                                 ::join-field join-field)))
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (str \$ (scope-with-join-field (name id-or-name) join-field source-alias))))
@@ -1173,17 +1165,8 @@ function(bin) {
   `[projected-field-name source]`."
   [breakout-fields aggregations]
   (concat
-   (for [field-or-expr breakout-fields
-         :let          [alias (field-alias field-or-expr)
-                        ;; After grouping, all breakout fields are under _id (because MongoDB)
-                        ;; MongoDB doesn't allow dots in field names within documents, so we replace
-                        ;; dots with underscores in the group keys:
-                        ;; "source.username" → {"_id": {"source_username": "$source.username"}}
-                        group-key (if (str/includes? alias ".")
-                                    (str/replace alias #"\." "_")
-                                    alias)
-                        source (format "$_id.%s" group-key)]]
-     [alias source])
+   (for [field-or-expr breakout-fields]
+     [(field-alias field-or-expr) (format "$_id.%s" (field-alias field-or-expr))])
    (for [ag   aggregations
          :let [ag-name (driver-api/aggregation-name (:query *query*) ag)]]
      [ag-name true])))
@@ -1462,9 +1445,8 @@ function(bin) {
   (let [expanded-ags  (map expand-aggregations aggregations)
         group-ags     (mapcat :group expanded-ags)
         post-ags      (order-postprocessing (map :post expanded-ags))
-        window-values (into {} (map :window) expanded-ags)
-        group-stage   {$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
-    (into [group-stage]
+        window-values (into {} (map :window) expanded-ags)]
+    (into [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
           cat
           [(when (seq window-values)
              (window-accumulators window-values id breakouts order-by))
@@ -1474,105 +1456,39 @@ function(bin) {
 (defn- projection-group-map [fields]
   (reduce
    (fn [m field-clause]
-     (let [alias  (field-alias field-clause)
-           ;; MongoDB doesn't allow dots in field names in aggregation stages,
-           ;; so replace them with underscores for ALL nested fields
-           path   (if (str/includes? alias ".")
-                  ;; Replace dots with underscores to avoid MongoDB error
-                  ;; "_id.type" becomes ["_id_type"]
-                  ;; "metadata.category" becomes ["metadata_category"]
-                  [(str/replace alias #"\." "_")]
-                  ;; Non-nested fields stay as-is
-                  [alias])
-           rvalue (->rvalue field-clause)]
-       (assoc-in m path rvalue)))
+     (assoc-in
+      m
+      (driver-api/match-one field-clause
+        [:field (field-id :guard integer?) _]
+        (str/split (field-alias field-clause) #"\.")
+
+        [:field (field-name :guard string?) _]
+        [field-name]
+
+        [:expression expr-name _]
+        [expr-name])
+      (->rvalue field-clause)))
    (ordered-map/ordered-map)
    fields))
 
-;;; -------------------------------------------- _id Path Collisions --------------------------------------------
-;;;
-;;; Starting with MongoDB 4.4, the database enforces stricter rules about field path collisions in $project stages.
-;;; Specifically, you cannot:
-;;;  - project a document and one of its child fields in the same projection
-;;;  - suppress a document and project one of its child fields in the same projection
-;;;
-;;; THE PROBLEM:
-;;; When users query nested fields within MongoDB's special "_id" field (e.g., grouping by _id.widgetType),
-;;; we must not generate projections like:
-;;;   {$project: {"_id": false, "_id.widgetType": "$_id.widgetType"}}
-;;;
-;;; This causes MongoDB to throw: "Path collision at _id.widgetType remaining portion widgetType"
-;;;
-;;; WHY THIS HAPPENS:
-;;; 1. MongoDB documents can have compound _id fields: {_id: {widgetType: "button", userId: 123}}
-;;;    \- in fact, it is encouraged as best practice
-;;; 2. Users want to group/breakout by these nested fields in Metabase
-;;; 3. We typically wish to suppress _id to avoid cluttering results
-;;; 4. But suppressing _id while projecting _id.widgetType creates the collision
-;;;
-;;; THE SOLUTION:
-;;; There are two conceptual parts to this:
-;;;
-;;; 1. Only suppress _id when NO _id subfields are being projected
-;;; 2. When including _id subfields, use nested projection syntax
-;;;    - Instead of: {"_id.widgetType": "$_id.widgetType"} (includes full _id object)
-;;;      Generate: {"_id": {"widgetType": "$_id.widgetType"}} (includes only needed subfield)
-;;;    - This avoids transmitting the entire document, which could be arbitrarily large
-;;;
-;;; CONSTRAINTS AND CONSIDERATIONS:
-;;; 1. Field References: After $group stage, field paths change
-;;;    - In $group: reference as "$_id.widgetType" (document field)
-;;;    - After $group: reference as "$_id.widgetType" (from group key)
-;;;    - NOT "$_id._id.widgetType"
-;;;
-;;; 2. Column Ordering: MongoDB may return fields in different order than requested
-;;;    - We track field mappings to ensure correct column order in results
-;;;    - The execute.clj module handles reordering based on these mappings
-;;;
-;;; 3. Deep Nesting: Supports arbitrary nesting depth
-;;;    - _id.user.name becomes {"_id": {"user": {"name": "$_id.user.name"}}}
-;;;    - Path components are split and nested appropriately
-;;;
-;;; 4. Mixed Projections: Handles both _id and non-_id fields correctly
-;;;    - _id fields get nested structure
-;;;    - Regular fields project normally
-;;;    - Empty _id case suppresses _id entirely
-;;;
-;;; This approach ensures compatibility with MongoDB 4.4+ while minimizing data transmission
-;;; and maintaining the expected Metabase user experience.
+;; Starting with MongoDB 4.4, the database enforces stricter rules about field path collisions in $project stages.
+;; Specifically, you cannot:
+;;  - project a document and one of its child fields in the same projection
+;;  - suppress a document and project one of its child fields in the same projection
+;;
+;; When users query nest fields within MongoDB's special "_id" field (e.g., grouping by _id.widgetType),
+;; we must not generate projections like:
+;;   {$project: {"_id": false, "_id.widgetType": "$_id.widgetType"}}
 
-(defn- build-optimized-projections
-  "Builds an optimized projection map that groups _id subfields into a nested structure.
-  This reduces data transmission by only including the specific _id subfields needed.
-
-  Examples:
-    [[\"_id.widgetType\" \"$_id.widgetType\"] [\"sum\" true]]
-    => {\"_id\" {\"widgetType\" \"$_id.widgetType\"}, \"sum\" true}
-
-    [[\"_id.user.name\" \"$_id.user.name\"] [\"count\" true]]
-    => {\"_id\" {\"user\" {\"name\" \"$_id.user.name\"}}, \"count\" true}"
+(defn- build-projections
   [projected-fields]
-  (let [;; Separate _id fields from others
-        {id-fields true other-fields false}
-        (group-by (fn [[field-name _]]
+  (let [projects-id-subfields? (some
+                                (fn [[field-name _]]
                     (str/starts-with? field-name "_id."))
                   projected-fields)]
-    (if-not (seq id-fields)
-      ;; No _id fields, return as-is but suppress _id
-      (into (ordered-map/ordered-map "_id" false)
-            other-fields)
-      ;; Build nested structure for _id fields
-      (let [;; Extract subfield names and sources
-            id-subfields (reduce (fn [acc [field-name source]]
-                                   (let [;; Remove "_id." prefix
-                                         subfield-path (subs field-name 4)
-                                         ;; Split into path components for deep nesting
-                                         path-parts    (str/split subfield-path #"\.")]
-                                     (assoc-in acc path-parts source)))
-                                 {}
-                                 id-fields)]
-        (into (ordered-map/ordered-map "_id" id-subfields)
-              other-fields)))))
+    (if projects-id-subfields?
+      (into (ordered-map/ordered-map) projected-fields)
+      (into (ordered-map/ordered-map "_id" false) projected-fields))))
 
 (defn- breakouts-and-ags->pipeline-stages
   "Return a sequeunce of aggregation pipeline stages needed to implement MBQL breakouts and aggregations."
@@ -1589,8 +1505,7 @@ function(bin) {
     [;; Sort by _id (group)
      {$sort {"_id" 1}}
      ;; now project back to the fields we expect
-     ;; Check if we're projecting any _id fields
-     {$project (build-optimized-projections projected-fields)}]]))
+     {$project (build-projections projected-fields)}]]))
 
 (defn- handle-breakout+aggregation
   "Add projections, groupings, sortings, and other things needed to the Query pipeline context (`pipeline-ctx`) for
@@ -1700,112 +1615,17 @@ function(bin) {
 
 ;;; ----------------------------------------------------- fields -----------------------------------------------------
 
-(defn- projecting-id-subfield?
-  "Check if a field is a subfield of _id (e.g., _id.widgetType).
-   This matters because MongoDB won't let us suppress _id while also projecting its subfields."
-  [field]
-  (when (and (= :field (first field))
-             (integer? (second field)))
-    (let [field-inst (driver-api/field (driver-api/metadata-provider) (second field))]
-      (and (:parent-id field-inst)
-           (let [parent (driver-api/field (driver-api/metadata-provider) (:parent-id field-inst))]
-             (= "_id" (:name parent)))))))
-
 (defn- handle-fields [{:keys [fields]} pipeline-ctx]
   (if-not (seq fields)
     pipeline-ctx
-    (let [;; Check if we're projecting any _id subfields (like _id.widgetType)
-          ;; This is important because MongoDB won't let us both suppress _id (with "_id": false)
-          ;; AND project its subfields in the same $project stage - that causes path collision errors
-          projecting-id-subfields? (some projecting-id-subfield? fields)
-
+    (let [new-projections (for [field (remove-child-fields fields)]
+                            [(field-alias field) (->rvalue field)])]
+      (-> pipeline-ctx
           ;; We can't ask mongo for both a parent field and its child at the same time, because mongo will throw an
           ;; error. It's also unnecessary, because the parent includes the child. However, we need to list all fields
           ;; we think we want in :projections so that we know to look for them all once we get data back.
-          fields-without-children (remove-child-fields fields)
-
-          ;; Build projections with proper handling of duplicate field names
-          ;; If we have two fields both named "name", the second becomes "name_1"
-          ;; This also tracks field positions for column reordering
-          {:keys [new-projections field-mappings alias-tracker]}
-          (reduce (fn [acc [idx field]]
-                    (let [base-alias  (field-alias field)
-                          prev-count  (get (:alias-tracker acc) base-alias 0)
-                          mongo-alias (if (> prev-count 0)
-                                        (str base-alias "_" prev-count)
-                                        base-alias)]
-                      (-> acc
-                          (update :alias-tracker assoc base-alias (inc prev-count))
-                          (update :field-mappings assoc mongo-alias idx)
-                          (update :new-projections conj [mongo-alias (->rvalue field)]))))
-                  {:alias-tracker   {}
-                   :field-mappings  {}
-                   :new-projections []}
-                  (map-indexed vector fields-without-children))
-
-          ;; These are the field names we want in the results
-          projections (mapv field-alias fields)
-
-          ;; Do we need field remapping? Yes if:
-          ;; 1. We're projecting _id subfields (MongoDB will include the _id object, changing field order)
-          ;; 2. We have duplicate field names that needed suffixes
-          needs-remapping? (or projecting-id-subfields?
-                               (some #(> % 1) (vals alias-tracker)))]
-
-      (cond-> pipeline-ctx
-        ;; Always include the projections we want
-        true
-        (assoc :projections projections)
-
-        ;; Store field mappings if we need to reorder columns later
-        needs-remapping?
-        (assoc :field-mappings field-mappings
-               :suppress-id (not projecting-id-subfields?))
-
-        ;; Add the $project stage
-        ;; If we're NOT projecting any _id subfields, we suppress _id to keep it from being auto-returned
-        ;; If we ARE projecting _id subfields, we use the optimized projection structure
-        true
-        (update :query conj {$project (build-optimized-projections new-projections)})))))
-
-#_(defn- handle-fields [{:keys [fields]} pipeline-ctx]
-  (if-not (seq fields)
-    pipeline-ctx
-    (let [;; Check if we're projecting any _id subfields (like _id.widgetType)
-          ;; This is important because MongoDB won't let us both suppress _id (with "_id": false)
-          ;; AND project its subfields in the same $project stage - that causes path collision errors
-          projecting-id-subfields? (some projecting-id-subfield? fields)
-
-          ;; We can't ask mongo for both a parent field and its child at the same time, because mongo will throw an
-          ;; error. It's also unnecessary, because the parent includes the child. However, we need to list all fields
-          ;; we think we want in :projections so that we know to look for them all once we get data back.
-          fields-without-children (remove-child-fields fields)
-
-          ;; Simple version without duplicate handling - just map fields to their aliases
-          new-projections (mapv (fn [field]
-                                  [(field-alias field) (->rvalue field)])
-                                fields-without-children)
-
-          ;; Original projections for Metabase - these are the field names we want in the results
-          projections (mapv field-alias fields)]
-
-      (cond-> pipeline-ctx
-        ;; Always include the projections we want
-        true
-        (assoc :projections projections)
-
-        ;; Store whether we're suppressing _id (needed by execute layer)
-        projecting-id-subfields?
-        (assoc :suppress-id false)
-
-        (not projecting-id-subfields?)
-        (assoc :suppress-id true)
-
-        ;; Add the $project stage
-        ;; If we're NOT projecting any _id subfields, we suppress _id to keep it from being auto-returned
-        ;; If we ARE projecting _id subfields, we use the optimized projection structure
-        true
-        (update :query conj {$project (build-optimized-projections new-projections)})))))
+          (assoc :projections (map field-alias fields))
+          (update :query conj {$project (build-projections new-projections)})))))
 
 ;;; ----------------------------------------------------- limit ------------------------------------------------------
 
@@ -1845,9 +1665,7 @@ function(bin) {
 
 (mu/defn- generate-aggregation-pipeline :- [:map
                                             [:projections Projections]
-                                            [:query Pipeline]
-                                            [:field-mappings {:optional true} :map]
-                                            [:suppress-id {:optional true} :boolean]]
+                                            [:query Pipeline]]
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
   [inner-query :- driver-api/MBQLQuery]
   (add-aggregation-pipeline inner-query))
@@ -1980,7 +1798,6 @@ function(bin) {
                                 (query->collection-name query))
             compiled          (mbql->native-rec (:query query))]
         (log-aggregation-pipeline (:query compiled))
-        ;; Make sure to preserve field-mappings and suppress-id from compiled query
-        (merge compiled
-               {:collection source-table-name
-                :mbql?      true})))))
+        (assoc compiled
+               :collection source-table-name
+               :mbql?      true)))))
