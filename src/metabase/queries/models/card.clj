@@ -363,7 +363,7 @@
   "Check that a `card`, if it is using another Card as its source, does not have circular references between source
   Cards. (e.g. Card A cannot use itself as a source, or if A uses Card B as a source, Card B cannot use Card A, and so
   forth.)"
-  [{query :dataset_query, id :id}] ; don't use `u/the-id` here so that we can use this with `pre-insert` too
+  [{query :dataset_query, id :id}]      ; don't use `u/the-id` here so that we can use this with `pre-insert` too
   (loop [query query, ids-already-seen #{id}]
     (let [source-card-id (qp.util/query->source-card-id query)]
       (cond
@@ -703,10 +703,10 @@
                                     ensure-clause-idents-list (:aggregation query) "aggregation" stage-number ctx)
        (:expressions query) (update :expression-idents
                                     ensure-clause-idents-expressions (:expressions query) stage-number ctx)
-       (:breakout query) (update :breakout-idents
-                                 ensure-clause-idents-list (:breakout query) "breakout" stage-number ctx)
-       (:joins query) (update :joins
-                              ensure-clause-idents-joins stage-number ctx)))
+       (:breakout query)    (update :breakout-idents
+                                    ensure-clause-idents-list (:breakout query) "breakout" stage-number ctx)
+       (:joins query)       (update :joins
+                                    ensure-clause-idents-joins stage-number ctx)))
    inner-query))
 
 (defn- ensure-clause-idents-outer [{:keys [query type] :as outer-query} ctx]
@@ -1014,7 +1014,7 @@
                                                  :creator_id (:id creator)
                                                  :parameters (or parameters [])
                                                  :parameter_mappings (or parameter_mappings [])
-                                                 :entity_id          (u/generate-nano-id))
+                                                 :entity_id (u/generate-nano-id))
                                                 (cond-> (nil? type)
                                                   (assoc :type :question))
                                                 maybe-normalize-query
@@ -1155,12 +1155,12 @@
   eg. in [[breakouts-->identifier->action]] docstring. Then, dashcards are fetched and updates are generated
   by [[updates-for-dashcards]]. Updates are then executed."
   [card-before card-after]
-  (let [card->breakout     #(-> % :dataset_query mbql.normalize/normalize :query :breakout)
-        breakout-before    (card->breakout card-before)
-        breakout-after     (card->breakout card-after)]
+  (let [card->breakout  #(-> % :dataset_query mbql.normalize/normalize :query :breakout)
+        breakout-before (card->breakout card-before)
+        breakout-after  (card->breakout card-after)]
     (when-some [identifier->action (breakouts-->identifier->action breakout-before breakout-after)]
-      (let [dashcards          (t2/select :model/DashboardCard :card_id (some :id [card-after card-before]))
-            updates            (updates-for-dashcards identifier->action dashcards)]
+      (let [dashcards (t2/select :model/DashboardCard :card_id (some :id [card-after card-before]))
+            updates   (updates-for-dashcards identifier->action dashcards)]
         ;; Beware. This can have negative impact on card update performance as queries are fired in sequence. I'm not
         ;; aware of more reasonable way.
         (when (seq updates)
@@ -1337,7 +1337,8 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(def ^:private base-search-spec
+(defn ^:private base-search-spec
+  []
   {:model        :model/Card
    :attrs        {:archived            true
                   :collection-id       true
@@ -1356,7 +1357,13 @@
                   :verified            [:= "verified" :mr.status]
                   :view-count          true
                   :created-at          true
-                  :updated-at          true}
+                  :updated-at          true
+                  :display-type        :this.display
+                  ;; Visualizer compatibility filtering
+                  :has-temporal-dimensions [:case
+                                            [:and [:is-not :this.result_metadata nil]
+                                             [:like :this.result_metadata "%\"temporal_unit\":%"]] true
+                                            :else false]}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
@@ -1391,10 +1398,10 @@
    #_:end})
 
 (search/define-spec "card"
-  (-> base-search-spec (sql.helpers/where [:= :this.type "question"])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "question"])))
 
 (search/define-spec "dataset"
-  (-> base-search-spec (sql.helpers/where [:= :this.type "model"])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "model"])))
 
 (search/define-spec "metric"
-  (-> base-search-spec (sql.helpers/where [:= :this.type "metric"])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "metric"])))

@@ -127,6 +127,8 @@
   - `search_native_query`: set to true to search the content of native queries
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
+  - `display_type`: search for cards/models with specific display types
+  - `has_temporal_dimensions`: set to true to search for cards with temporal dimensions only
 
   Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:
   - The `created-by` filter supports dashboards, models, actions, and cards.
@@ -139,6 +141,8 @@
     created-at                          :created_at
     created-by                          :created_by
     filter-items-in-personal-collection :filter_items_in_personal_collection
+    display-type                        :display_type
+    has-temporal-dimensions             :has_temporal_dimensions
     include-dashboard-questions         :include_dashboard_questions
     last-edited-at                      :last_edited_at
     last-edited-by                      :last_edited_by
@@ -156,6 +160,8 @@
        [:filter_items_in_personal_collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
        [:created_at                          {:optional true} [:maybe ms/NonBlankString]]
        [:created_by                          {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+       [:display_type                        {:optional true} [:maybe (ms/QueryVectorOf ms/NonBlankString)]]
+       [:has_temporal_dimensions             {:optional true} [:maybe :boolean]]
        [:last_edited_at                      {:optional true} [:maybe ms/NonBlankString]]
        [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:model_ancestors                     {:default false} [:maybe :boolean]]
@@ -194,7 +200,9 @@
                 :ids                                 (set ids)
                 :calculate-available-models?         calculate-available-models
                 :include-dashboard-questions?        include-dashboard-questions
-                :include-metadata?                   include-metadata}))
+                :include-metadata?                   include-metadata
+                :display-type                        (set display-type)
+                :has-temporal-dimensions?            has-temporal-dimensions}))
       (analytics/inc! :metabase-search/response-ok))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]
