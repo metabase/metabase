@@ -45,6 +45,7 @@
   searchable-value-trim-sql]
 
  [search.spec
+  spec
   define-spec])
 
 (defmethod analytics/known-labels :metabase-search/index-updates
