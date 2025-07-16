@@ -1,6 +1,6 @@
 ---
 title: Basic SQL parameters
-summary:
+summary: Text, number, and date variables let you plug basic values into your SQL code.
 ---
 
 # Basic SQL parameters
