@@ -333,7 +333,16 @@
    (prometheus/counter :metabase-gsheets/connection-deleted
                        {:description "How many times the instance has deleted their Google Sheets connection."})
    (prometheus/counter :metabase-gsheets/connection-manually-synced
-                       {:description "How many times the instance has manually sync'ed their Google Sheets connection."})])
+                       {:description "How many times the instance has manually sync'ed their Google Sheets connection."})
+   (prometheus/counter :metabase-sync/table-sync
+                       {:description "Number of sync operations on tables."
+                        :labels [:op]})
+   (prometheus/counter :metabase-sync/field-sync
+                       {:description "Number of sync operations on fields."
+                        :labels [:op]})
+   (prometheus/counter :metabase-sync/fk-sync
+                       {:description "Number of sync operations on foreign keys."
+                        :labels [:op]})])
 
 (defn- quartz-collectors
   []
