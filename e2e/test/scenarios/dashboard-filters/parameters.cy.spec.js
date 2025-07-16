@@ -2508,10 +2508,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.selectDashboardFilter(H.getDashboardCard(0), "Category");
 
       // Move card filter to the header
-      H.dashboardParameterSidebar()
-        .findByPlaceholderText("Move filter")
-        .click();
-      H.popover().findByText("Top of page").click();
+      H.moveDashboardFilter("Top of page");
 
       H.getDashboardCard(0).findByText("Category").should("not.exist");
       H.editingDashboardParametersContainer().within(() => {
@@ -2524,10 +2521,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.editingDashboardParametersContainer().within(() => {
         H.filterWidget({ isEditing: true }).contains("Count").click();
       });
-      H.dashboardParameterSidebar()
-        .findByPlaceholderText("Move filter")
-        .click();
-      H.popover().findByText("test question").click();
+      H.moveDashboardFilter("test question");
 
       H.getDashboardCard(0).within(() => {
         H.filterWidget({ isEditing: true }).contains("Count").should("exist");
@@ -2594,10 +2588,7 @@ describe("scenarios > dashboard > parameters", () => {
         H.filterWidget({ isEditing: true }).contains("Count").click();
       });
 
-      H.dashboardParameterSidebar()
-        .findByPlaceholderText("Move filter")
-        .click();
-      H.popover().findByText("Heading").click();
+      H.moveDashboardFilter("Heading");
       H.dashboardParameterSidebar().button("Done").click();
 
       H.getDashboardCard(0)
@@ -2613,12 +2604,7 @@ describe("scenarios > dashboard > parameters", () => {
         H.filterWidget({ isEditing: true }).contains("Category").click();
       });
 
-      H.dashboardParameterSidebar()
-        .findByPlaceholderText("Move filter")
-        .click();
-      H.popover()
-        .findByText(/Orders, Count/)
-        .click();
+      H.moveDashboardFilter(/Orders, Count/);
       H.dashboardParameterSidebar().button("Done").click();
 
       H.getDashboardCard(0).within(() => {
