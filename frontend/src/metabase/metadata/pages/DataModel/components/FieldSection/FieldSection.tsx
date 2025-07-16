@@ -49,7 +49,6 @@ const FieldSectionBase = ({
           id,
           display_name: field.display_name,
         });
-
         sendUndoToast(error);
       });
     }
@@ -72,7 +71,6 @@ const FieldSectionBase = ({
             id,
             description: field.description ?? "",
           });
-
           sendUndoToast(error);
         },
       );

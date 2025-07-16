@@ -6,8 +6,8 @@ import {
   useListDatabaseIdFieldsQuery,
   useUpdateFieldMutation,
 } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
 import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DatabaseId, Field } from "metabase-types/api";
@@ -30,26 +30,25 @@ const MetadataSectionBase = ({ databaseId, field }: Props) => {
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
   const [updateField] = useUpdateFieldMutation();
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
 
-  const handleChange = async (
-    patch: Patch,
-    previousPatch: Patch = _.pick(field, Object.keys(patch)),
-  ) => {
+  const handleChange = async (patch: Patch) => {
     const { error } = await updateField({ id, ...patch });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update semantic type of ${field.display_name}`,
-      });
+      sendErrorToast(
+        t`Failed to update semantic type of ${field.display_name}`,
+      );
     } else {
-      sendToast({
-        action: () => handleChange(previousPatch, patch),
-        icon: "check",
-        message: t`Semantic type of ${field.display_name} updated`,
-      });
+      sendSuccessToast(
+        t`Semantic type of ${field.display_name} updated`,
+        async () => {
+          const reversePatch = _.pick(field, Object.keys(patch));
+          const { error } = await updateField({ ...reversePatch, id });
+          sendUndoToast(error);
+        },
+      );
     }
   };
 

@@ -40,7 +40,6 @@ const FormattingSectionBase = ({ field }: Props) => {
         t`Formatting of ${field.display_name} updated`,
         async () => {
           const { error } = await updateField({ id, settings: field.settings });
-
           sendUndoToast(error);
         },
       );
