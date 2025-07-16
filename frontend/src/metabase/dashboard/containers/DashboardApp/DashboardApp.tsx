@@ -19,6 +19,7 @@ import {
   DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
+import { addDashboardQuestion } from "metabase/dashboard/components/QuestionPicker/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
@@ -123,7 +124,11 @@ export const DashboardApp = ({
         );
       }
     } catch (error) {
-      if (error instanceof Response && error.status === 404) {
+      // 400: provided entity id format is invalid.
+      if (
+        error instanceof Response &&
+        (error.status === 400 || error.status === 404)
+      ) {
         setErrorPage({ ...error, context: "dashboard" });
       } else {
         console.error(error);
@@ -147,6 +152,7 @@ export const DashboardApp = ({
         navigateToNewCardFromDashboard={(opts) =>
           dispatch(navigateToNewCardFromDashboard(opts))
         }
+        onNewQuestion={() => dispatch(addDashboardQuestion("notebook"))}
         onAddQuestion={(dashboard: IDashboard | null) => {
           dispatch(setEditingDashboard(dashboard));
           dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));

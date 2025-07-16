@@ -55,7 +55,7 @@ function getSnippet({
   // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
   return `<script src="${instanceUrl}/app/embed.js"></script>
 
-<div id="${SNIPPET_EMBED_TARGET}"></div>
+<div id="${SNIPPET_EMBED_TARGET}" style="height: 100vh"></div>
 
 <script>
   const { MetabaseEmbed } = window["metabase.embed"];

@@ -15,7 +15,7 @@
    [metabase.types.core :as types]
    [metabase.util :as u])
   (:import
-   (java.time OffsetDateTime)))
+   (java.time OffsetDateTime LocalDate)))
 
 (set! *warn-on-reflection* true)
 
@@ -1042,3 +1042,21 @@
                 rows (mt/rows result)]
             (is (= (datetime-number-cast-expected driver/*driver*)
                    (-> rows first (get 2))))))))))
+;; today()
+
+(deftest ^:parallel today-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/today)
+    (testing "Calling today() and getting today's date"
+      (let [mp (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/with-fields [(lib.metadata/field mp (mt/id :orders :id))])
+                      (lib/expression "TODAY" (lib/today))
+                      (lib/limit 1))
+            result (-> query qp/process-query)
+            cols (mt/cols result)
+            rows (mt/rows result)]
+        (is (types/field-is-type? (date-type-expected driver/*driver*)
+                                  (last cols)))
+        (doseq [[_id today] rows]
+          (is (= (parse-date today)
+                 (LocalDate/now))))))))

@@ -727,6 +727,9 @@ function(bin) {
                 rvalue]}
       :day)))
 
+(defmethod ->rvalue :today [[_]]
+  (->rvalue [:date [:now]]))
+
 (defmethod ->rvalue :datetime [[_ expr {:keys [mode]}]]
   (let [rvalue (->rvalue expr)]
     (case (or mode :iso)
@@ -766,7 +769,7 @@ function(bin) {
       :unix-seconds
       {:$dateFromParts {:second rvalue, :year 1970, :timezone "UTC"}}
 
-;; else
+      ;; else
       (throw (ex-info (tru "Driver {0} does not support {1}" :mongo mode)
                       {:type driver-api/qp.error-type.unsupported-feature})))))
 

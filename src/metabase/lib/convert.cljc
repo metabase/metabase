@@ -503,7 +503,7 @@
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract :date
              :concat :substring :replace :regex-match-first :split-part
-             :length :trim :ltrim :rtrim :upper :lower :text :integer]]
+             :length :trim :ltrim :rtrim :upper :lower :text :integer :today]]
   (lib.hierarchy/derive tag ::expression))
 
 ;; TODO: aggregation->legacy-MBQL can wrap things in :aggregation-options which only makes sense for aggregations, so why should expression go through that as well?

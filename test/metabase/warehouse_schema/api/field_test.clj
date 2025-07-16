@@ -180,11 +180,13 @@
     (testing "updating coercion strategies"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
         (testing "When not a valid strategy does not change the coercion or effective type"
-          (is (= ["type/Text" nil]
-                 ((juxt :effective_type :coercion_strategy)
-                  (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
+          (is (=? {:message "Incompatible coercion strategy."
+                   :base-type "type/Text"
+                   :coercion-strategy "Coercion/UNIXMicroSeconds->DateTime"
+                   :effective-type "type/Instant"}
+                  (mt/user-http-request :crowberto :put 400 (format "field/%d" field-id)
                                         ;; unix is an integer->Temporal conversion
-                                        {:coercion_strategy :Coercion/UNIXMicroSeconds->DateTime})))))))))
+                                        {:coercion_strategy :Coercion/UNIXMicroSeconds->DateTime}))))))))
 
 (deftest update-field-test-2c
   (testing "PUT /api/field/:id"
@@ -849,3 +851,18 @@
                     (set-json-unfolding-for-db! false)
                     (sync/sync-database! (get-database))
                     (is (empty? (nested-fields)))))))))))))
+
+(deftest coercion-strategy-is-respected-after-follow-up-request-test
+  (testing "Coercion is not erased on follow-up requests (#60483)"
+    (mt/with-temp-copy-of-db
+      (mt/user-http-request :crowberto :put 200 (str "field/" (mt/id :venues :price))
+                            {:coercion_strategy "Coercion/UNIXSeconds->DateTime"})
+      (let [field (t2/select-one :model/Field :id (mt/id :venues :price))]
+        (is (= :Coercion/UNIXSeconds->DateTime (:coercion_strategy field)))
+        (is (isa? (:effective_type field) :type/DateTime)))
+      (mt/user-http-request :crowberto :put 200 (str "field/" (mt/id :venues :price))
+                            {:settings {:time_enabled "minutes"}})
+      (let [field (t2/select-one :model/Field :id (mt/id :venues :price))]
+        (is (= :Coercion/UNIXSeconds->DateTime (:coercion_strategy field)))
+        (is (isa? (:effective_type field) :type/DateTime))
+        (is (= "minutes" (-> field :settings :time_enabled)))))))

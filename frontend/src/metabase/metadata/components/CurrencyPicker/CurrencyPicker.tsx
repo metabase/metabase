@@ -1,3 +1,4 @@
+import type { FocusEvent } from "react";
 import { t } from "ttag";
 
 import { currency } from "cljs/metabase.util.currency";
@@ -26,8 +27,14 @@ export const CurrencyPicker = ({
   comboboxProps,
   value,
   onChange,
+  onFocus,
   ...props
 }: Props) => {
+  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
+    event.target.select();
+    onFocus?.(event);
+  };
+
   return (
     <Select
       comboboxProps={{
@@ -83,6 +90,7 @@ export const CurrencyPicker = ({
       searchable
       value={value}
       onChange={onChange}
+      onFocus={handleFocus}
       {...props}
     />
   );

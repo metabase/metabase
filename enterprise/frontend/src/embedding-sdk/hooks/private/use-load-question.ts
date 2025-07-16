@@ -55,6 +55,7 @@ export function useLoadQuestion({
   // Passed when navigating from `InteractiveDashboard` or `EditableDashboard`
   deserializedCard,
   initialSqlParameters,
+  targetDashboardId,
 }: LoadSdkQuestionParams): LoadQuestionHookResult {
   const dispatch = useSdkDispatch();
 
@@ -94,8 +95,9 @@ export function useLoadQuestion({
         loadQuestionSdk({
           options,
           deserializedCard,
-          questionId: questionId,
+          questionId,
           initialSqlParameters,
+          targetDashboardId,
         }),
       );
 
@@ -127,7 +129,14 @@ export function useLoadQuestion({
       setIsQuestionLoading(false);
       return {};
     }
-  }, [dispatch, options, deserializedCard, questionId, sqlParameterKey]);
+  }, [
+    dispatch,
+    options,
+    deserializedCard,
+    questionId,
+    sqlParameterKey,
+    targetDashboardId,
+  ]);
 
   const [runQuestionState, queryQuestion] = useAsyncFn(async () => {
     if (!question) {

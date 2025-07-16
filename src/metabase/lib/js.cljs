@@ -80,7 +80,6 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -370,7 +369,6 @@
   "Inner implementation of [[display-info]], which caches this function's results. See there for documentation."
   [a-query stage-number x]
   (-> a-query
-      (lib.stage/ensure-previous-stages-have-metadata stage-number nil)
       (lib.core/display-info stage-number x)
       display-info->js))
 
@@ -1242,6 +1240,13 @@
       #js {:operator      (name operator)
            :lhsExpression lhs-expression
            :rhsExpression rhs-expression})))
+
+(defn ^:export join-condition-lhs-or-rhs-literal?
+  "Whether this LHS or RHS expression is a literal and not a custom expression.
+
+  > **Code health:** Single use. This is used in the notebook editor."
+  [lhs-or-rhs-expression]
+  (lib.fe-util/join-condition-lhs-or-rhs-literal? lhs-or-rhs-expression))
 
 (defn ^:export join-condition-lhs-or-rhs-column?
   "Whether this LHS or RHS expression is a column and not a custom expression.
@@ -2618,10 +2623,3 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
-
-(defn ^:export random-ident
-  "Returns a randomly generated `ident` string, suitable for a Card's `entity_id` or a query.
-
-  > **Code health:** Healthy, Single use. Only called when creating a new card/query."
-  []
-  (lib.core/random-ident))

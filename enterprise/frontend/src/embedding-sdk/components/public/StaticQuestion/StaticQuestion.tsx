@@ -4,6 +4,7 @@ import {
   type InteractiveQuestionProviderProps,
 } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { Group, Stack } from "metabase/ui";
 
 import { InteractiveQuestion } from "../InteractiveQuestion";
 import type { InteractiveQuestionQuestionIdProps } from "../InteractiveQuestion/types";
@@ -15,7 +16,10 @@ import type { InteractiveQuestionQuestionIdProps } from "../InteractiveQuestion/
  */
 export type StaticQuestionProps = InteractiveQuestionQuestionIdProps & {
   withChartTypeSelector?: boolean;
-} & Pick<InteractiveQuestionProviderProps, "initialSqlParameters"> &
+} & Pick<
+    InteractiveQuestionProviderProps,
+    "initialSqlParameters" | "withDownloads"
+  > &
   FlexibleSizeProps;
 
 const StaticQuestionInner = ({
@@ -26,19 +30,28 @@ const StaticQuestionInner = ({
   className,
   style,
   initialSqlParameters,
+  withDownloads,
 }: StaticQuestionProps): JSX.Element | null => (
   <InteractiveQuestionProvider
     questionId={initialQuestionId}
     variant="static"
     initialSqlParameters={initialSqlParameters}
+    withDownloads={withDownloads}
   >
-    {withChartTypeSelector && <InteractiveQuestion.ChartTypeDropdown />}
-    <InteractiveQuestion.QuestionVisualization
-      height={height}
-      width={width}
-      className={className}
-      style={style}
-    />
+    <Stack gap="sm" w="100%" h="100%">
+      {(withChartTypeSelector || withDownloads) && (
+        <Group justify="space-between">
+          {withChartTypeSelector && <InteractiveQuestion.ChartTypeDropdown />}
+          {withDownloads && <InteractiveQuestion.DownloadWidgetDropdown />}
+        </Group>
+      )}
+      <InteractiveQuestion.QuestionVisualization
+        height={height}
+        width={width}
+        className={className}
+        style={style}
+      />
+    </Stack>
   </InteractiveQuestionProvider>
 );
 

@@ -259,7 +259,7 @@ function getFoo(a, b, c) {
 }
 ```
 
-- Be conservative with what comments you add to the codebase. Comments shouldn't be used as reminders or as todos--record those by creating a new issue in Github. Ideally, code should be written in such a way that it explains itself clearly. When it does not, you should first try rewriting the code. If for whatever reason you are unable to write something clearly, add a comment to explain the "why".
+- Be conservative with what comments you add to the codebase. Comments shouldn't be used as reminders or as todos--record those by creating a new issue in GitHub. Ideally, code should be written in such a way that it explains itself clearly. When it does not, you should first try rewriting the code. If for whatever reason you are unable to write something clearly, add a comment to explain the "why".
 
 ```javascript
 
