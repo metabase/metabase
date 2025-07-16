@@ -117,7 +117,7 @@ export const RemappingPicker = ({
   const [createFieldDimension] = useCreateFieldDimensionMutation();
   const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
 
-  const sendDefaultToast = ({ error }: { error: unknown }) => {
+  const sendDefaultToast = (error: unknown) => {
     if (error) {
       sendErrorToast(
         t`Failed to update display values of ${field.display_name}`,
@@ -151,7 +151,7 @@ export const RemappingPicker = ({
     if (value === "original") {
       const { error } = await deleteFieldDimension(id);
 
-      sendDefaultToast({ error });
+      sendDefaultToast(error);
 
       if (!error) {
         setHasChanged(false);
@@ -168,7 +168,7 @@ export const RemappingPicker = ({
           human_readable_field_id: entityNameFieldId,
         });
 
-        sendDefaultToast({ error });
+        sendDefaultToast(error);
       } else {
         // Enter a special state where we are choosing an initial value for FK target
         setHasChanged(true);
@@ -184,7 +184,7 @@ export const RemappingPicker = ({
         human_readable_field_id: null,
       });
 
-      sendDefaultToast({ error });
+      sendDefaultToast(error);
 
       if (!error) {
         setHasChanged(true);
@@ -205,7 +205,7 @@ export const RemappingPicker = ({
       human_readable_field_id: fkFieldId,
     });
 
-    sendDefaultToast({ error });
+    sendDefaultToast(error);
   };
 
   const handleCustomMappingChange = async (
