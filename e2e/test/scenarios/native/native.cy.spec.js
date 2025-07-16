@@ -406,7 +406,7 @@ describe("scenarios > question > native", () => {
           native: {
             query: `
               SELECT
-                ID [[,{{mb.time_grouping("unit", "CREATED_AT")}} as unit]]
+                ID [[,{{unit}} as unit]]
               FROM
                 PEOPLE
               WHERE
