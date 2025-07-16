@@ -50,7 +50,7 @@
   (println (u/sh "./bin/bb tasks"))
   (println (tip-o-day)))
 
-(defn- exception->map [^Exception e]
+(defn- summarize-exception [^Exception e]
   (cond-> {:exception-type (-> e class .getName)
            :ex-message (.getMessage e)}
 
@@ -60,7 +60,7 @@
 
     ;; Recursively handle cause
     (.getCause e)
-    (assoc :cause (exception->map (.getCause e)))))
+    (assoc :cause (summarize-exception (.getCause e)))))
 
 (defn -main [& _]
   (cond
@@ -84,22 +84,23 @@
         (binding [*command-line-args* args]
           (try (bt/run task)
                (catch Exception e
-                 ;; What controls output when an exception is thrown?
+                 ;; To signal a problem in your mage task:
+                 ;; - Exceptions get summarized unless you set MAGE_DEBUG in your environment
+                 ;;   so they aren't so noisy
+                 ;; - The ex-message will be printed
+                 ;; - The ex-data will be printed
+                 ;;   - the (optional) `:babashka/exit` ex-data key will be used to determine the exit code
+                 ;;   - the (optional) `:mage/error` ex-data key will suppress printing the entire exception,
+                 ;;     use this when you know what the problem is and want to avoid noise
                  ;;
-                 ;; Throw an ex-info.
-                 ;; We print the exception message and data, and exit with a code dictated by babashka/exit.
-                 ;;
-                 ;; Too noisy? Include a :mage/error key in the ex-data to suppress printing the entire exception.
-                 ;; Good for expected failures, like linting errors.
-                 ;;
-                 ;; Exceptions get summarized unless you set MAGE_DEBUG in your environment.
+                 ;; Avoid using `System/exit` in your tasks, as it will hurt repl-ability of tasks: it will close the repl!
                  (let [message (ex-message e)
                        data (ex-data e)]
                    (when (and e (not (:mage/error data)))
                      (println (c/yellow "\nException:\n")
                               (cond-> e
                                 (not (u/env "MAGE_DEBUG" (constantly nil)))
-                                exception->map)))
+                                summarize-exception)))
                    (when (and message (not (str/blank? message)))
                      (println (c/red (c/reverse-color "ex-message : ")) message))
                    (when data
