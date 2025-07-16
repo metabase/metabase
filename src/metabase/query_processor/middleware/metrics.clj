@@ -151,8 +151,7 @@
                               1
                               #(merge
                                 %
-                                {:name metric-name}
-                                (select-keys % [:name :display-name])
+                                (when metric-name {:name metric-name})
                                 (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
                     (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
     query))
