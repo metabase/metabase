@@ -1,6 +1,5 @@
 (ns metabase.transform.models.transform
   (:require
-   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.util :as driver.u]
@@ -28,7 +27,9 @@
 (defn namespaced-view-name
   "Generate view name"
   [schema-name view-name]
-  (str/join "." (remove nil? [schema-name view-name])))
+  (if schema-name
+    (str schema-name "." view-name)
+    view-name))
 
 ;; TODO (lbrdnk 2025-07-15): Presumably, the schema should be inferred from mbql queries and required
 ;;                           for native queries.
