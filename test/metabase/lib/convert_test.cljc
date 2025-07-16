@@ -1391,34 +1391,46 @@
     (is (=? query
             (-> query lib/->pMBQL lib/->legacy-MBQL)))))
 
+(deftest ^:parallel join-parameters-test-2
+  (testing "If join has top-level :parameters and its source query has :parameters, splice them together"
+    (let [query {:database 33001
+                 :type     :query
+                 :query    {:aggregation  [[:count]]
+                            :joins        [{:source-query {:source-table 33010
+                                                           :parameters   [{:name "id", :type :category, :target [:field 33100 nil], :value 5}]}
+                                            :alias        "c"
+                                            :condition    [:= [:field 33402 nil] [:field 33100 {:join-alias "c"}]]
+                                            :parameters   [{:type "category", :target [:field 33101 nil], :value "BBQ"}]}]
+                            :source-table 33040}}]
+      (is (=? {:stages [{:joins [{:alias      "c"
+                                  :stages     [{:parameters [{:name "id", :type :category, :target [:field 33100 nil], :value 5}
+                                                             {:type :category, :target [:field 33101 nil], :value "BBQ"}]}]
+                                  :parameters (symbol "nil #_\"key is not present.\"")}]}]}
+              (lib/->pMBQL query))))))
+
 (deftest ^:parallel convert-join-with-filters-test
   (testing "A join whose sole stage has :filters should get converted to a join with a :source-query"
     (let [query {:lib/type :mbql/query
                  :stages   [{:lib/type     :mbql.stage/mbql
-                             :joins        [{:alias    "c"
-                                             :conditions
-                                             [[:=
-                                               {:lib/uuid "4822482b-727b-471b-8d18-973d87861522"}
-                                               [:field
-                                                {:lib/uuid       "c68f5bbf-a45a-4a28-b235-a60dcb2d73be"
-                                                 :base-type      :type/Integer
-                                                 :effective-type :type/Integer}
-                                                33402]
-                                               [:field
-                                                {:join-alias     "c"
-                                                 :lib/uuid       "d0f55447-6941-4c7a-a192-a37d87ea0111"
-                                                 :base-type      :type/BigInteger
-                                                 :effective-type :type/BigInteger}
-                                                33100]]]
-                                             :lib/type :mbql/join
-                                             :stages
-                                             [{:lib/type     :mbql.stage/mbql
-                                               :source-table 33010
-                                               :filters
-                                               [[:=
-                                                 {:lib/uuid "cba9a408-5f66-4ae2-83a9-bdaca23ef878"}
-                                                 [:field {:lib/uuid "7d4cb0c9-f7ec-4712-8fe7-4d06e9a3944a"} 33101]
-                                                 "BBQ"]]}]}]
+                             :joins        [{:alias      "c"
+                                             :conditions [[:=
+                                                           {:lib/uuid "4822482b-727b-471b-8d18-973d87861522"}
+                                                           [:field
+                                                            {:lib/uuid  "c68f5bbf-a45a-4a28-b235-a60dcb2d73be"
+                                                             :base-type :type/Integer}
+                                                            33402]
+                                                           [:field
+                                                            {:join-alias "c"
+                                                             :lib/uuid   "d0f55447-6941-4c7a-a192-a37d87ea0111"
+                                                             :base-type  :type/BigInteger}
+                                                            33100]]]
+                                             :lib/type   :mbql/join
+                                             :stages     [{:lib/type     :mbql.stage/mbql
+                                                           :source-table 33010
+                                                           :filters      [[:=
+                                                                           {:lib/uuid "cba9a408-5f66-4ae2-83a9-bdaca23ef878"}
+                                                                           [:field {:lib/uuid "7d4cb0c9-f7ec-4712-8fe7-4d06e9a3944a"} 33101]
+                                                                           "BBQ"]]}]}]
                              :source-table 33040}]
                  :database 33001}]
       (is (=? {:database 33001

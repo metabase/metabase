@@ -82,6 +82,20 @@
                                  :strategy     :left-join
                                  :fk-field-id  (meta/id :venues :category-id)}]}}))))
 
+(deftest ^:parallel pipeline-joins-test-2
+  (testing "Make sure we don't add unnecessary stages to joins when pipelining"
+    (let [query {:database 33001
+                 :type     :query
+                 :query    {:aggregation  [[:count]]
+                            :joins        [{:source-query {:source-table 33010
+                                                           :parameters   [{:name "id", :type :category, :target [:field 33100 nil], :value 5}]}
+                                            :alias        "c"
+                                            :condition    [:= [:field 33402 nil] [:field 33100 {:join-alias "c"}]]
+                                            :parameters   [{:type "category", :target [:field 33101 nil], :value "BBQ"}]}]
+                            :source-table 33040}}]
+      (is (=? {:stages [{:joins [{:stages [{}]}]}]}
+              (lib.util/pipeline query))))))
+
 (deftest ^:parallel pipeline-source-metadata-test
   (testing "`:source-metadata` should get moved to the previous stage as `:lib/stage-metadata`"
     (is (=? {:lib/type :mbql/query

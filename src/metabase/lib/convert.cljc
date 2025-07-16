@@ -277,7 +277,7 @@
                                          (mapv ->pMBQL fields)
                                          (keyword fields))))
       (not (:alias join)) (assoc :alias legacy-default-join-alias)
-      (:parameters join)  (-> (assoc-in [:stages 0 :parameters] (:parameters join))
+      (:parameters join)  (-> (update-in [:stages 0 :parameters] #(into (vec %) (:parameters join)))
                               (dissoc :parameters)))))
 
 (defmethod ->pMBQL :dispatch-type/sequential
