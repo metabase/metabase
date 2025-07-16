@@ -14,8 +14,6 @@ import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
-import { fetchEntityId } from "metabase/lib/entity-id/fetch-entity-id";
-import { useDispatch } from "metabase/lib/redux";
 import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
 import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
 
@@ -78,7 +76,6 @@ export type DashboardContextOwnProps = {
 
 export type DashboardContextOwnResult = {
   shouldRenderAsNightMode: boolean;
-  dashboardIdProp: DashboardContextOwnProps["dashboardId"];
   dashboardId: DashboardId | null;
   dashboardActions?: DashboardActionButtonList;
 };
@@ -116,7 +113,7 @@ type FetchOption = {
 const DashboardContextProviderInner = forwardRef(
   function DashboardContextProviderInner(
     {
-      dashboardId: dashboardIdProp,
+      dashboardId,
       parameterQueryParams = {},
       onLoad,
       onLoadWithoutCards,
@@ -166,12 +163,10 @@ const DashboardContextProviderInner = forwardRef(
     }: PropsWithChildren<ContextProps>,
     ref,
   ) {
-    const dispatch = useDispatch();
     const [error, setError] = useState<unknown | null>(null);
     const previousIsLoading = usePrevious(isLoading);
     const previousIsLoadingWithoutCards = usePrevious(isLoadingWithoutCards);
 
-    const [dashboardId, setDashboardId] = useState<DashboardId | null>(null);
     const previousDashboard = usePrevious(dashboard);
     const previousDashboardId = usePrevious(dashboardId);
     const previousTabId = usePrevious(selectedTabId);
@@ -273,32 +268,6 @@ const DashboardContextProviderInner = forwardRef(
       selectedTabId,
     ]);
 
-    useEffect(() => {
-      if (dashboardIdProp !== dashboardId) {
-        fetchId(dashboardIdProp);
-      }
-
-      async function fetchId(idToFetch: DashboardId) {
-        try {
-          const { id, isError } = await dispatch(
-            fetchEntityId({ type: "dashboard", id: idToFetch }),
-          );
-          if (isError || id === null) {
-            handleError({
-              status: 404,
-              message: "Not found",
-              name: "Not found",
-            });
-          }
-          setDashboardId(id);
-        } catch (e) {
-          handleError(e);
-        }
-
-        return;
-      }
-    }, [dashboardId, dashboardIdProp, dispatch, handleError]);
-
     useImperativeHandle(ref, (): DashboardContextProviderHandle => {
       return {
         refetchDashboard() {
@@ -312,15 +281,11 @@ const DashboardContextProviderInner = forwardRef(
     }, [dashboardId, fetchData]);
 
     useEffect(() => {
-      if (
-        dashboardIdProp &&
-        dashboardId &&
-        dashboardId !== previousDashboardId
-      ) {
+      if (dashboardId && dashboardId !== previousDashboardId) {
         reset();
         fetchData(dashboardId);
       }
-    }, [dashboardId, fetchData, dashboardIdProp, previousDashboardId, reset]);
+    }, [dashboardId, fetchData, previousDashboardId, reset]);
 
     useEffect(() => {
       if (dashboard) {
@@ -399,7 +364,6 @@ const DashboardContextProviderInner = forwardRef(
     return (
       <DashboardContext.Provider
         value={{
-          dashboardIdProp: dashboardIdProp,
           dashboardId,
           dashboard: dashboardWithFilteredCards,
           parameterQueryParams,

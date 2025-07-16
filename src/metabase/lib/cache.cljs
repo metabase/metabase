@@ -1,15 +1,8 @@
 (ns metabase.lib.cache
-  #?@(:clj  ((:import
-              [java.util Collections Map WeakHashMap]
-              [java.util.function Function]))
-      :cljs ((:require [goog.object :as gobject]))))
-
-#?(:clj
-   (def ^:private atom-function
-     (reify
-       Function
-       (apply [_this _arg]
-         (atom {})))))
+  "Side-channel cache for CLJS. Currently used only for storing metadata providers
+  in [[metabase.lib.js.metadata/metadata-provider]]."
+  (:require
+   [goog.object :as gobject]))
 
 (defn- atomic-map-cache-fn
   "Caching wrapper for use in [[side-channel-cache]].
@@ -17,57 +10,28 @@
   **CLJS**
 
   Attaches the cache to the `host` by mutating the JS property `__mbcache`.
-  The value is an `(atom {})` with any CLJS value as the `subkey`.
-
-  **CLJ**
-
-  Attaches the cache to the host's metadata, if present. See [[attach-query-cache]]. Does nothing if that
-  key is not found. The outer cache is a synchronized `WeakHashMap`, whose keys are the `host` maps. This is
-  necessary because Clojure metadata survives `assoc` etc. but we want the caching to be distinct for each instance
-  of the query. Inside that is an `(atom {})` keyed by `subkey`."
-  #?(:cljs ([^js host]
-            (if-let [cache (.-__mbcache host)]
-              cache
-              (set! (.-__mbcache host) (atom {}))))
-     :clj  ([host]
-            (when-let [^Map outer-cache (-> host meta :lib/__cache)]
-              (.computeIfAbsent outer-cache host atom-function))))
+  The value is an `(atom {})` with any CLJS value as the `subkey`."
+  ([^js host]
+   (if-let [cache (.-__mbcache host)]
+     cache
+     (set! (.-__mbcache host) (atom {}))))
   ([cache subkey _x]       (get @cache subkey))
   ([cache subkey _x value] (swap! cache assoc subkey value)))
 
-#?(:cljs
-   (defn- js-weak-map-cache-fn
-     "Caching wrapper for use in [[side-channel-cache*]].
+(defn- js-weak-map-cache-fn
+  "Caching wrapper for use in [[side-channel-cache*]].
 
      Uses a two-layer cache: the outer layer is a vanilla JS object with string `subkey`s as its keys. The values are
      `WeakMap`s, using the input value `x` as the key and holding the cached result.
 
      For example, this works for caching by `:database-id` and then by legacy query object."
-     ([^js host]                 (if-let [cache (.-__mbcache host)]
-                                   cache
-                                   (set! (.-__mbcache host) #js {})))
-     ([^js cache subkey x]       (when-let [inner-cache (gobject/get cache subkey)]
-                                   (.get inner-cache x)))
-     ([^js cache subkey x value] (let [inner-cache (gobject/setWithReturnValueIfNotSet cache subkey #(js/WeakMap.))]
-                                   (.set inner-cache x value)))))
-
-(defn attach-query-cache
-  "Attaches the cache to a newly constructed query.
-
-  This uses metadata on CLJ and does nothing on CLJS."
-  [query]
-  #?(:cljs query
-     :clj  (vary-meta query (fn [mmeta]
-                              (cond-> mmeta
-                                (not (contains? mmeta :lib/__cache))
-                                (assoc :lib/__cache (Collections/synchronizedMap (WeakHashMap.))))))))
-
-(defn discard-query-cache
-  "Removes the cache from the given query. Does nothing if no cache is present."
-  [query]
-  #?(:cljs query
-     :clj  (when query
-             (vary-meta query dissoc :lib/__cache))))
+  ([^js host]                 (if-let [cache (.-__mbcache host)]
+                                cache
+                                (set! (.-__mbcache host) #js {})))
+  ([^js cache subkey x]       (when-let [inner-cache (gobject/get cache subkey)]
+                                (.get inner-cache x)))
+  ([^js cache subkey x value] (let [inner-cache (gobject/setWithReturnValueIfNotSet cache subkey #(js/WeakMap.))]
+                                (.set inner-cache x value))))
 
 (defn- side-channel-cache*
   "(CLJS only; this is a pass-through in CLJ.)
@@ -106,7 +70,7 @@
                     :or {cache-fn atomic-map-cache-fn}}]
   (if (or force?
           (map? host)
-          #?(:cljs (object? host)))
+          (object? host))
     (if-let [cache (cache-fn host)]
       (if-let [cached (cache-fn cache subkey x)]
         cached
@@ -156,10 +120,9 @@
    (side-channel-cache* subkey host x f
                         (merge {:cache-fn atomic-map-cache-fn} opts))))
 
-#?(:cljs
-   (defn side-channel-cache-weak-refs
-     "See [[side-channel-cache]] for the overview.
+(defn side-channel-cache-weak-refs
+  "See [[side-channel-cache]] for the overview.
 
-     This version uses a JS `WeakMap` as the cache and JS objects as the `subkey`s."
-     [subkey host x f opts]
-     (side-channel-cache* subkey host x f (merge {:cache-fn js-weak-map-cache-fn} opts))))
+  This version uses a JS `WeakMap` as the cache and JS objects as the `subkey`s."
+  [subkey host x f opts]
+  (side-channel-cache* subkey host x f (merge {:cache-fn js-weak-map-cache-fn} opts)))

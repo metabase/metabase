@@ -124,7 +124,11 @@ export const DashboardApp = ({
         );
       }
     } catch (error) {
-      if (error instanceof Response && error.status === 404) {
+      // 400: provided entity id format is invalid.
+      if (
+        error instanceof Response &&
+        (error.status === 400 || error.status === 404)
+      ) {
         setErrorPage({ ...error, context: "dashboard" });
       } else {
         console.error(error);
