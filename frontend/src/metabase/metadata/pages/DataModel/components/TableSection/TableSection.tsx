@@ -12,6 +12,7 @@ import {
   NameDescriptionInput,
   SortableFieldList,
 } from "metabase/metadata/components";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Button, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
@@ -37,7 +38,10 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = table.fields && table.fields.length > 0;
 
-  const handleNameChange = async (name: string) => {
+  const handleNameChange = async (
+    name: string,
+    previousName = table.display_name,
+  ) => {
     const { error } = await updateTable({
       id: table.id,
       display_name: name,
@@ -51,13 +55,18 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       });
     } else {
       sendToast({
+        action: () => handleNameChange(previousName, name),
+        actionLabel: t`Undo`,
         icon: "check",
         message: t`Table name updated`,
       });
     }
   };
 
-  const handleDescriptionChange = async (description: string) => {
+  const handleDescriptionChange = async (
+    description: string,
+    previousDescription = table.description ?? "",
+  ) => {
     const { error } = await updateTable({ id: table.id, description });
 
     if (error) {
@@ -68,13 +77,18 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       });
     } else {
       sendToast({
+        action: () => handleDescriptionChange(previousDescription, description),
+        actionLabel: t`Undo`,
         icon: "check",
         message: t`Table description updated`,
       });
     }
   };
 
-  const handleFieldOrderTypeChange = async (fieldOrder: TableFieldOrder) => {
+  const handleFieldOrderTypeChange = async (
+    fieldOrder: TableFieldOrder,
+    previousFieldOrder = table.field_order,
+  ) => {
     const { error } = await updateTableSorting({
       id: table.id,
       field_order: fieldOrder,
@@ -88,13 +102,19 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       });
     } else {
       sendToast({
+        action: () =>
+          handleFieldOrderTypeChange(previousFieldOrder, fieldOrder),
+        actionLabel: t`Undo`,
         icon: "check",
         message: t`Field order updated`,
       });
     }
   };
 
-  const handleCustomFieldOrderChange = async (fieldOrder: FieldId[]) => {
+  const handleCustomFieldOrderChange = async (
+    fieldOrder: FieldId[],
+    previousFieldOrder = table.fields?.map(getRawTableFieldId) ?? [],
+  ) => {
     const { error } = await updateTableFieldsOrder({
       id: table.id,
       field_order: fieldOrder,
@@ -108,6 +128,9 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       });
     } else {
       sendToast({
+        action: () =>
+          handleCustomFieldOrderChange(previousFieldOrder, fieldOrder),
+        actionLabel: t`Undo`,
         icon: "check",
         message: t`Field order updated`,
       });
