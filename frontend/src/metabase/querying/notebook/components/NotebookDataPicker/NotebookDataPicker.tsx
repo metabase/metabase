@@ -7,7 +7,7 @@ import {
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
 import { METAKEY } from "metabase/lib/browser";
-import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
+import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { loadMetadataForTable } from "metabase/questions/actions";
@@ -55,7 +55,7 @@ export function NotebookDataPicker({
   const store = useStore();
   const dispatch = useDispatch();
   const onChangeRef = useLatest(onChange);
-  const isEmbedding = useSelector(getIsEmbedding);
+  const isEmbedding = getIsEmbedding();
 
   const handleChange = async (tableId: TableId) => {
     await dispatch(loadMetadataForTable(tableId));
