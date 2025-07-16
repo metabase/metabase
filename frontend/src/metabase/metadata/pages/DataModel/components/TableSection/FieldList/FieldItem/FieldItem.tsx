@@ -77,11 +77,13 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
   };
 
   const handleNameChange = async (name: string) => {
-    if (field.display_name === name) {
+    const newName = name.trim();
+
+    if (field.display_name === newName) {
       return;
     }
 
-    await changeName(name);
+    await changeName(newName);
   };
 
   const handleDescriptionChange = async (description: string) => {
