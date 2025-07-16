@@ -1339,7 +1339,6 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-<<<<<<< HEAD
 (defn- dataset-query->dimensions
   "Extract dimensions (non-aggregation columns) from a dataset query.
   Returns a sequence of dimension column objects, or empty sequence if query is invalid."
@@ -1370,7 +1369,8 @@
   (let [dimensions (dataset-query->dimensions dataset_query)]
     (boolean (some lib.types/temporal? dimensions))))
 
-(def ^:private base-search-spec
+(defn ^:private base-search-spec
+  []
   {:model        :model/Card
    :attrs        {:archived             true
                   :collection-id        true
@@ -1390,39 +1390,15 @@
                   :view-count           true
                   :created-at           true
                   :updated-at           true
+                  :display-type         :this.display
+                  :has-temporal-dimensions [:case
+                                            [:and [:is-not :this.result_metadata nil]
+                                             [:like :this.result_metadata "%\"temporal_unit\":%"]] true
+                                            :else false]
                   :non-temporal-dim-ids {:fn extract-non-temporal-dimension-ids
                                          :req-fields [:dataset_query]}
                   :has-temporal-dim     {:fn has-temporal-dimension?
                                          :req-fields [:dataset_query]}}
-=======
-(defn ^:private base-search-spec
-  []
-  {:model        :model/Card
-   :attrs        {:archived            true
-                  :collection-id       true
-                  :creator-id          true
-                  :dashboard-id        true
-                  :dashboardcard-count {:select [:%count.*]
-                                        :from   [:report_dashboardcard]
-                                        :where  [:= :report_dashboardcard.card_id :this.id]}
-                  :database-id         true
-                  :last-viewed-at      :last_used_at
-                  :native-query        (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
-                  :official-collection [:= "official" :collection.authority_level]
-                  :last-edited-at      :r.timestamp
-                  :last-editor-id      :r.user_id
-                  :pinned              [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
-                  :verified            [:= "verified" :mr.status]
-                  :view-count          true
-                  :created-at          true
-                  :updated-at          true
-                  :display-type        :this.display
-                  ;; Visualizer compatibility filtering
-                  :has-temporal-dimensions [:case
-                                            [:and [:is-not :this.result_metadata nil]
-                                             [:like :this.result_metadata "%\"temporal_unit\":%"]] true
-                                            :else false]}
->>>>>>> master
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
@@ -1453,7 +1429,7 @@
    ;; NOTE: disabled for now, as this is not a very important ranker and can afford to have stale data,
    ;;       and could cause a large increase in the query count for dashboard updates.
    ;;       (see the test failures when this hook is added back)
-                                        ;:dashcard  [:model/DashboardCard [:= :dashcard.card_id :this.id]]
+   ;:dashcard  [:model/DashboardCard [:= :dashcard.card_id :this.id]]
    #_:end})
 
 (search/define-spec "card"
