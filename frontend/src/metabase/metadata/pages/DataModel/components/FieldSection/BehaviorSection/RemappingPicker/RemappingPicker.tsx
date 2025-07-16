@@ -10,7 +10,7 @@ import {
   useGetTableQueryMetadataQuery,
   useUpdateFieldValuesMutation,
 } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
@@ -57,7 +57,8 @@ export const RemappingPicker = ({
   field,
   ...props
 }: Props) => {
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
   const [hasChanged, setHasChanged] = useState(false);
   const [isCustomMappingOpen, setIsCustomMappingOpen] = useState(false);
   const [isFkTargetTouched, setIsFkTargetTouched] = useState(false);
@@ -116,48 +117,31 @@ export const RemappingPicker = ({
   const [createFieldDimension] = useCreateFieldDimensionMutation();
   const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
 
-  const sendUndoToast = ({
-    error,
-    action,
-  }: {
-    error: unknown;
-    action?: () => void;
-  }) => {
+  const sendDefaultToast = ({ error }: { error: unknown }) => {
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update display values of ${field.display_name}`,
-      });
+      sendErrorToast(
+        t`Failed to update display values of ${field.display_name}`,
+      );
     } else {
-      sendToast({
-        action,
-        icon: "check",
-        message: t`Display values of ${field.display_name} updated`,
-      });
+      sendSuccessToast(
+        t`Display values of ${field.display_name} updated`,
+        async () => {
+          if (dimension) {
+            const { error } = await createFieldDimension({
+              id,
+              type: dimension.type,
+              name: dimension.name,
+              human_readable_field_id: dimension.human_readable_field_id,
+            });
+
+            sendUndoToast(error);
+          } else {
+            const { error } = await deleteFieldDimension(id);
+            sendUndoToast(error);
+          }
+        },
+      );
     }
-  };
-
-  const sendDefaultUndoToast = ({ error }: { error: unknown }) => {
-    sendUndoToast({
-      error,
-      action: async () => {
-        if (dimension) {
-          const { error } = await createFieldDimension({
-            id,
-            type: dimension.type,
-            name: dimension.name,
-            human_readable_field_id: dimension.human_readable_field_id,
-          });
-
-          sendUndoToast({ error });
-        } else {
-          const { error } = await deleteFieldDimension(id);
-
-          sendUndoToast({ error });
-        }
-      },
-    });
   };
 
   const handleDisplayValueChange = async (value: RemappingValue) => {
@@ -167,7 +151,7 @@ export const RemappingPicker = ({
     if (value === "original") {
       const { error } = await deleteFieldDimension(id);
 
-      sendDefaultUndoToast({ error });
+      sendDefaultToast({ error });
 
       if (!error) {
         setHasChanged(false);
@@ -184,7 +168,7 @@ export const RemappingPicker = ({
           human_readable_field_id: entityNameFieldId,
         });
 
-        sendDefaultUndoToast({ error });
+        sendDefaultToast({ error });
       } else {
         // Enter a special state where we are choosing an initial value for FK target
         setHasChanged(true);
@@ -200,7 +184,7 @@ export const RemappingPicker = ({
         human_readable_field_id: null,
       });
 
-      sendDefaultUndoToast({ error });
+      sendDefaultToast({ error });
 
       if (!error) {
         setHasChanged(true);
@@ -221,7 +205,7 @@ export const RemappingPicker = ({
       human_readable_field_id: fkFieldId,
     });
 
-    sendDefaultUndoToast({ error });
+    sendDefaultToast({ error });
   };
 
   const handleCustomMappingChange = async (
@@ -234,17 +218,23 @@ export const RemappingPicker = ({
     });
 
     if (!options?.isAutomatic) {
-      sendUndoToast({
-        error,
-        action: async () => {
-          const { error } = await updateFieldValues({
-            id,
-            values: Array.from(mapping),
-          });
+      if (error) {
+        sendErrorToast(
+          t`Failed to update display values of ${field.display_name}`,
+        );
+      } else {
+        sendSuccessToast(
+          t`Display values of ${field.display_name} updated`,
+          async () => {
+            const { error } = await updateFieldValues({
+              id,
+              values: Array.from(mapping),
+            });
 
-          sendUndoToast({ error });
-        },
-      });
+            sendUndoToast(error);
+          },
+        );
+      }
     }
   };
 
