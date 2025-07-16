@@ -1391,10 +1391,6 @@
                   :created-at           true
                   :updated-at           true
                   :display-type         :this.display
-                  :has-temporal-dimensions [:case
-                                            [:and [:is-not :this.result_metadata nil]
-                                             [:like :this.result_metadata "%\"temporal_unit\":%"]] true
-                                            :else false]
                   :non-temporal-dim-ids {:fn extract-non-temporal-dimension-ids
                                          :req-fields [:dataset_query]}
                   :has-temporal-dim     {:fn has-temporal-dimension?

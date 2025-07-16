@@ -243,7 +243,6 @@
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:display-type                        {:optional true} [:set {:min 1} ms/NonBlankString]]
    [:filter-items-in-personal-collection {:optional true} [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
-   [:has-temporal-dimensions?            {:optional true} [:maybe :boolean]]
    [:last-edited-at                      {:optional true} ms/NonBlankString]
    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:limit-int                           {:optional true} ms/Int]
