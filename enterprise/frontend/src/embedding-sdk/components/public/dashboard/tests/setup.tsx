@@ -1,5 +1,6 @@
 import { indexBy } from "underscore";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
@@ -44,6 +45,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
+import type { EditableDashboardProps } from "../EditableDashboard";
 import type { SdkDashboardProps } from "../SdkDashboard";
 
 export const TEST_DASHBOARD_ID = 1;
@@ -109,6 +111,8 @@ export interface SetupSdkDashboardOptions {
   isLocaleLoading?: boolean;
   isFullscreen?: boolean;
   component: React.ComponentType<SdkDashboardProps>;
+  dashboardName?: string;
+  dataPickerProps?: EditableDashboardProps["dataPickerProps"];
 }
 
 jest.mock("metabase/common/hooks/use-locale", () => ({
@@ -125,6 +129,8 @@ export const setupSdkDashboard = async ({
   isLocaleLoading = false,
   isFullscreen = false,
   component: Component,
+  dashboardName = "Dashboard",
+  dataPickerProps,
 }: SetupSdkDashboardOptions) => {
   const useLocaleMock = useLocale as jest.Mock;
   useLocaleMock.mockReturnValue({ isLocaleLoading });
@@ -140,6 +146,7 @@ export const setupSdkDashboard = async ({
   const dashboardId = props?.dashboardId || TEST_DASHBOARD_ID;
   const dashboard = createMockDashboard({
     id: dashboardId,
+    name: dashboardName,
     dashcards,
     tabs: dashboardTabs,
     parameters: [parameter],
@@ -197,9 +204,16 @@ export const setupSdkDashboard = async ({
     }),
   });
 
+  // Used in simple data picker
+  setupEnterprisePlugins();
+
   renderWithSDKProviders(
     <Box h="500px">
-      <Component dashboardId={dashboardId} {...props} />
+      <Component
+        dashboardId={dashboardId}
+        dataPickerProps={dataPickerProps}
+        {...props}
+      />
     </Box>,
     {
       sdkProviderProps: {

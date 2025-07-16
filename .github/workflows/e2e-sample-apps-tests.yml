@@ -213,7 +213,7 @@ jobs:
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
-      CYPRESS_IS_EMBEDDING_SDK: true
+      CYPRESS_IS_EMBEDDING_SDK: "true"
       COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
       TZ: US/Pacific # to make node match the instance tz
       # Sample Apps testing variables
