@@ -8,6 +8,7 @@
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.settings :as search.settings]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
@@ -87,13 +88,32 @@
 
 ;;; ---------------------------------------- Index Management ----------------------------------------
 
-(defn populate-external-index!
+;; TODO experiment to determine a good batch size. This was copied
+;; from [[metabase.search.appdb.index/insert-batch-size]].
+(def ^:private populate-external-batch-size 150)
+
+(defn- populate-external-index-batch!
+  "Populate the external semantic search index with a single batch of searchable documents."
+  [documents]
+  (semantic-search-request! :post "populate" {:documents documents})
+  (u/prog1 (->> documents (map :model) frequencies)
+    (log/trace "semantic search indexed a batch of" (count documents) "documents with frequencies" <>)))
+
+(defn- populate-external-index!
   "Populate the external semantic search index with all searchable documents."
   []
-  (let [documents (into [] (search.ingestion/searchable-documents))]
-    (semantic-search-request! :post "populate" {:documents documents})
-    (log/info "Successfully populated semantic search index with" (count documents) "documents")
-    {:status :success :document-count (count documents)}))
+  ;; TODO this needs better handling of failures. If one batch request fails, should we continue, or give up and try
+  ;; again with backoff? The semantic search service should also be updated to maintain separate :active / :pending
+  ;; indexes, similar to the appdb backend. It probably makes sense to have a new API call pair that bookends this
+  ;; batch of requests: POST reindex-start / reindex-stop to let the remote know we're starting / stopping a batch.
+  (let [model-frequencies (transduce (comp (partition-all populate-external-batch-size)
+                                           (map populate-external-index-batch!))
+                                     (partial merge-with +)
+                                     (search.ingestion/searchable-documents))
+        document-count (reduce + (vals model-frequencies))]
+    (log/info "Successfully populated semantic search index with" document-count
+              "total documents with frequencies" model-frequencies)
+    {:status :success :document-count document-count}))
 
 (defmethod search.engine/update! :search.engine/semantic
   [_engine document-reducible]
