@@ -61,7 +61,7 @@ export function DatasetsList({
   const nonTemporalDimIds = useMemo(() => {
     return otherDimensions
       .map((dim) => dim.id)
-      .filter((id) => id != null && id != undefined)
+      .filter((id) => id !== null)
       .sort() as number[];
   }, [otherDimensions]);
 
