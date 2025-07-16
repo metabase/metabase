@@ -847,3 +847,23 @@
       (is (thrown? #?(:clj Exception :cljs js/Error)
                    (with-redefs [lib.util/ref-clause? (constantly true)]
                      (lib/selected-aggregation-operators available (first (lib/aggregations query)))))))))
+
+(deftest ^:parallel aggregable-columns-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/aggregate (lib/distinct (meta/field-metadata :venues :price))))]
+    (is (=? [{:name "ID",          :effective-type :type/BigInteger, :lib/source :source/table-defaults}
+             {:name "NAME",        :effective-type :type/Text,       :lib/source :source/table-defaults}
+             {:name "CATEGORY_ID", :effective-type :type/Integer,    :lib/source :source/table-defaults}
+             {:name "LATITUDE",    :effective-type :type/Float,      :lib/source :source/table-defaults}
+             {:name "LONGITUDE",   :effective-type :type/Float,      :lib/source :source/table-defaults}
+             {:name "PRICE",       :effective-type :type/Integer,    :lib/source :source/table-defaults}
+             {:name "ID",          :effective-type :type/BigInteger, :lib/source :source/implicitly-joinable}
+             {:name "NAME",        :effective-type :type/Text,       :lib/source :source/implicitly-joinable}
+             {:name "count",       :effective-type :type/Integer,    :lib/source :source/aggregations}]
+            (lib/aggregable-columns query nil)))))
+
+(deftest ^:parallel aggregation-ref-type-of-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/aggregate (lib/distinct (meta/field-metadata :venues :price))))]
+    (is (=? :type/Integer
+            (lib/type-of query (first (lib/aggregations query)))))))

@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   setupAlertsEndpoints,
+  setupCardByEntityIdEndpoints,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
@@ -357,6 +358,7 @@ describe("InteractiveQuestion", () => {
   });
 
   it("should not flash an error when loading with an entity ID (metabase#57059)", async () => {
+    setupCardByEntityIdEndpoints({ ...TEST_CARD, entity_id: TEST_ENTITY_ID });
     setup({ cardId: TEST_ENTITY_ID });
 
     await waitForLoaderToBeRemoved();
