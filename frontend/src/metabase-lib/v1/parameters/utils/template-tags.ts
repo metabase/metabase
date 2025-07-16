@@ -36,7 +36,7 @@ function getParameterType(tag: TemplateTag) {
 }
 
 function getParameterTarget(tag: TemplateTag): ParameterTarget {
-  return tag.type === "dimension"
+  return tag.type === "dimension" || tag.type === "temporal-unit"
     ? ["dimension", ["template-tag", tag.name]]
     : ["variable", ["template-tag", tag.name]];
 }
