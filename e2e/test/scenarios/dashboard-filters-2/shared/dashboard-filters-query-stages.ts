@@ -765,7 +765,9 @@ export function verifyNoDashcardMappingOptions(dashcardIndex: number) {
     .findByText("No valid fields")
     .should("be.visible");
 
-  H.getDashboardCard(dashcardIndex).findByText("No valid fields").realHover();
+  H.getDashboardCard(dashcardIndex)
+    .findByText("No valid fields")
+    .trigger("mouseenter");
   H.tooltip()
     .findByText(
       "This card doesn't have any fields or parameters that can be mapped to this parameter type.",
