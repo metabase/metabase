@@ -849,3 +849,18 @@
                     (set-json-unfolding-for-db! false)
                     (sync/sync-database! (get-database))
                     (is (empty? (nested-fields)))))))))))))
+
+(deftest coercion-strategy-is-respected-after-follow-up-request-test
+  (testing "Coercion is not erased on follow-up requests (#60483)"
+    (mt/with-temp-copy-of-db
+      (mt/user-http-request :crowberto :put 200 (str "field/" (mt/id :venues :price))
+                            {:coercion_strategy "Coercion/UNIXSeconds->DateTime"})
+      (let [field (t2/select-one :model/Field :id (mt/id :venues :price))]
+        (is (= :Coercion/UNIXSeconds->DateTime (:coercion_strategy field)))
+        (is (isa? (:effective_type field) :type/DateTime)))
+      (mt/user-http-request :crowberto :put 200 (str "field/" (mt/id :venues :price))
+                            {:settings {:time_enabled "minutes"}})
+      (let [field (t2/select-one :model/Field :id (mt/id :venues :price))]
+        (is (= :Coercion/UNIXSeconds->DateTime (:coercion_strategy field)))
+        (is (isa? (:effective_type field) :type/DateTime))
+        (is (= "minutes" (-> field :settings :time_enabled)))))))
