@@ -1910,11 +1910,11 @@ msgstr "nanossegundos UNIX"
 
 #: frontend/src/metabase/admin/datamodel/utils/humanizeCoercionStrategy.ts:9
 msgid "YYYYMMDDHHMMSS string"
-msgstr "Sequência AAAAMMDDHHMMSS"
+msgstr "Sequência YYYYMMDDHHMMSS"
 
 #: frontend/src/metabase/admin/datamodel/utils/humanizeCoercionStrategy.ts:10
 msgid "YYYYMMDDHHMMSS bytes"
-msgstr "Bytes AAAAMMDDHHMMSS"
+msgstr "Bytes YYYYMMDDHHMMSS"
 
 #: frontend/src/metabase/admin/datamodel/utils/humanizeCoercionStrategy.ts:14
 msgid "Datetime"
@@ -20214,13 +20214,13 @@ msgstr "Depois de {0}"
 #: frontend/src/metabase/querying/filters/utils/dates.ts:338
 msgctxt "This is a \"dayjs\" format string (https://day.js.org/docs/en/plugin/advanced-format). It should include \"Q\" for the quarter number, YYYY for the year, and raw text can be escaped by brackets. For example, \"[Quarter] Q YYYY\" will be rendered as \"Quarter 1 2024\"."
 msgid "[Q]Q YYYY"
-msgstr "[T]T AAAA"
+msgstr "[T]Q YYYY"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:358
 #: frontend/src/metabase/ui/components/inputs/QuarterPicker/QuarterPicker.tsx:100
 msgctxt "This is a \"dayjs\" format string (https://day.js.org/docs/en/plugin/advanced-format). It should include \"Q\" for the quarter number, and raw text can be escaped by brackets. For example, \"[Quarter] Q\" will be rendered as \"Quarter 1\"."
 msgid "[Q]Q"
-msgstr "[T]T"
+msgstr "[T]Q"
 
 #: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:69
 #, javascript-format
