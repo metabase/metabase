@@ -11514,6 +11514,11 @@ global-dirs@^3.0.0:
   dependencies:
     ini "2.0.0"
 
+global-jsdom@^26.0.0:
+  version "26.0.0"
+  resolved "https://registry.yarnpkg.com/global-jsdom/-/global-jsdom-26.0.0.tgz#fcddd40f81ff11531e5ce87e1a377af016018e98"
+  integrity sha512-BqXpTNZFjP40N+s4k8Bk9HS8GFVPJB/+TKtwcShM84wLv6C5dH9o1dydI3pL6potanhfDiIAVDbaaGj/uSdRSA==
+
 global-modules@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/global-modules/-/global-modules-2.0.0.tgz#997605ad2345f27f51539bea26574421215c7780"

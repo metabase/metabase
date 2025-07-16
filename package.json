@@ -9,6 +9,7 @@
     "node": ">=22",
     "yarn": "^1.12.3"
   },
+  "type": "module",
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.3",
     "@codemirror/lang-html": "^6.4.9",
@@ -273,6 +274,7 @@
     "fork-ts-checker-webpack-plugin": "^9.0.2",
     "get-nonce": "^1.0.1",
     "glob": "^7.1.1",
+    "global-jsdom": "^26.0.0",
     "html-webpack-plugin": "5.5.0",
     "http-server": "^14.1.1",
     "husky": "^8.0.2",
