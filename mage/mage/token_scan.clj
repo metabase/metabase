@@ -140,7 +140,7 @@
        (update :scanned conj scanned))))
 
 (defn- clamp "Clamp n to the range [lo, hi]." [n lo hi] (max lo (min hi n)))
-(def ^:private pool-size (clamp (* 4 (.availableProcessors (Runtime/getRuntime))) 4 32))
+(def ^:private pool-size (clamp (* 2 (.availableProcessors (Runtime/getRuntime))) 4 32))
 
 (defn- scan-files [patterns files]
   (let [_ (u/debug (c/yellow "Using thread pool size: " pool-size))
