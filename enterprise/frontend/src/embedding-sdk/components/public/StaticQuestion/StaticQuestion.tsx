@@ -38,7 +38,7 @@ const StaticQuestionInner = ({
     initialSqlParameters={initialSqlParameters}
     withDownloads={withDownloads}
   >
-    <Stack gap="sm">
+    <Stack gap="sm" w="100%" h="100%">
       {(withChartTypeSelector || withDownloads) && (
         <Group justify="space-between">
           {withChartTypeSelector && <InteractiveQuestion.ChartTypeDropdown />}
