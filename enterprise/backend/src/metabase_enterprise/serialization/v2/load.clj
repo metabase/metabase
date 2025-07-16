@@ -172,7 +172,7 @@
         (log/infof "Starting deserialization, total %s documents" (count contents))
         (reduce (fn [ctx item]
                   (try
-                    (load-one! ctx #p item)
+                    (load-one! ctx item)
                     (catch Exception e
                       (when-not continue-on-error
                         (throw e))
