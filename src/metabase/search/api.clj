@@ -128,7 +128,8 @@
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
-  - `has_temporal_dimensions`: set to true to search for cards with temporal dimensions only
+  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs
+  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions
 
   Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:
   - The `created-by` filter supports dashboards, models, actions, and cards.
@@ -142,7 +143,6 @@
     created-by                          :created_by
     filter-items-in-personal-collection :filter_items_in_personal_collection
     display-type                        :display_type
-    has-temporal-dimensions             :has_temporal_dimensions
     include-dashboard-questions         :include_dashboard_questions
     last-edited-at                      :last_edited_at
     last-edited-by                      :last_edited_by
@@ -163,7 +163,6 @@
        [:created_at                          {:optional true} [:maybe ms/NonBlankString]]
        [:created_by                          {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:display_type                        {:optional true} [:maybe (ms/QueryVectorOf ms/NonBlankString)]]
-       [:has_temporal_dimensions             {:optional true} [:maybe :boolean]]
        [:last_edited_at                      {:optional true} [:maybe ms/NonBlankString]]
        [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:model_ancestors                     {:default false} [:maybe :boolean]]
@@ -206,8 +205,7 @@
                 :include-metadata?                   include-metadata
                 :non-temporal-dim-ids                non-temporal-dim-ids
                 :has-temporal-dim                    has-temporal-dim
-                :display-type                        (set display-type)
-                :has-temporal-dimensions?            has-temporal-dimensions})]
+                :display-type                        (set display-type)})]
       (u/prog1 (search/search ctx)
         (analytics/inc! :metabase-search/response-ok)))
     (catch Exception e

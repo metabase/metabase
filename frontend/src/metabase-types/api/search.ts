@@ -135,8 +135,6 @@ export type SearchRequest = {
   has_temporal_dim?: boolean | null;
   search_engine?: string | null;
   display_type?: string[] | null;
-  has_temporal_dimensions?: boolean | null;
-  required_non_temporal_dimension_ids?: number[] | null;
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;

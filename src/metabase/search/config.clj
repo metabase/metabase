@@ -155,8 +155,7 @@
     :verified                {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
     :non-temporal-dim-ids    {:type :single-value :engine :appdb}
     :has-temporal-dim        {:type :single-value :engine :appdb}
-    :display-type            {:type :list, :field "display_type"}
-    :has-temporal-dimensions {:type :single-value, :context-key :has-temporal-dimensions?}}))
+    :display-type            {:type :list, :field "display_type"}}))
 
 (def ^:private filter-defaults-by-context
   {:default         {:archived               false
