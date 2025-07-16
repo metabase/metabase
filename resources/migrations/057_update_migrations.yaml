@@ -177,6 +177,31 @@ databaseChangeLog:
             referencedColumnNames: id
             onDelete: SET NULL
 
+  - changeSet:
+      id: v57.2025-07-16T13:29:17
+      author: lbrdnk
+      comment: Add transfom_view.view_table_id fk to metabase_table.id
+      changes:
+        - addColumn:
+            tableName: transform_view
+            columns:
+              - column:
+                  name: view_table_id
+                  type: int
+        - createIndex:
+            indexName: idx_transform_view_view_table_id
+            tableName: transform_view
+            columns:
+              - column:
+                  name: view_table_id
+        - addForeignKeyConstraint:
+            constraintName: fk_transform_view_view_table_id
+            baseTableName: transform_view
+            baseColumnNames: view_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

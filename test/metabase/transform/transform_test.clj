@@ -261,6 +261,8 @@
                 transform (t2/select-one :model/TransformView :id transform-id)
                 table (t2/select-one :model/Table :transform_id transform-id)
                 table-id (:id table)]
+            (testing "Transform view have corrent pointer to metabase_table"
+              (is (= (:view_table_id transform) table-id)))
             (testing "Transform generated view has user set display name"
               (is (= (:view_name transform) (:name table)))
               (is (= display-name (:display_name table))))

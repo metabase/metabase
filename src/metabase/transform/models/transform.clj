@@ -155,6 +155,7 @@
           (t2/update! :model/TransformView :id transform-id
                       {:view_name view-name
                        :view_schema (:schema view-table)
+                       :view_table_id (:id view-table)
                        :status :view_synced})
           (t2/update! :model/Table :id (:id view-table)
                       {:display_name display-name
