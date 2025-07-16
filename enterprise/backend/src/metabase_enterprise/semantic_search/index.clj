@@ -18,6 +18,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:dynamic *index-table-name*
+  "The name of the index table used for semantic search."
   :search_index)
 
 (defn- index-table-schema
@@ -215,6 +216,8 @@
   (delete-from-index! "dashboard" ["13"])
   ;; no user
   (query-index {:search-string "Copper knife"})
+
+  #_:clj-kondo/ignore
   (require '[metabase.test :as mt])
   (mt/with-test-user :crowberto
     (doall (query-index {:search-string "Copper knife"}))))
