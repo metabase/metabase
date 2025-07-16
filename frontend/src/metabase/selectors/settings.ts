@@ -53,8 +53,12 @@ export const getStoreUrl = (path: StorePaths = "") => {
 };
 
 export function getStoreUrlFromState(state: State, path: StorePaths = "") {
-  const storeUrl = new URL(path, getSetting(state, "store-url"));
-  return storeUrl.toString();
+  const storeUrl = getSetting(state, "store-url");
+  if (!storeUrl) {
+    return undefined;
+  }
+  const url = new URL(path, storeUrl);
+  return url.toString();
 }
 
 export const migrateToCloudGuideUrl = () =>
