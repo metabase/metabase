@@ -1,0 +1,26 @@
+name: Test coverage
+
+on:
+  schedule:
+    - cron: '40 1 * * *' # every day at 1:40
+
+jobs:
+  fe-test-coverage:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - name: Run frontend unit tests
+        run: yarn run test-unit --silent --coverage
+      - name: Upload coverage to codecov.io
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/lcov.info
+          flags: front-end
+          token: ${{ secrets.CODECOV_TOKEN }}
