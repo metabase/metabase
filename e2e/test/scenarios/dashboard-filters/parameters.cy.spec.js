@@ -2788,15 +2788,15 @@ H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
       H.moveDashboardFilter("test question");
       H.expectUnstructuredSnowplowEvent({
         event: "dashboard_filter_moved",
-        triggered_from: "nav",
-        event_detail: "card",
+        triggered_from: null,
+        event_detail: "bar",
         target_id: dashboardId,
       });
 
       H.moveDashboardFilter("heading card");
       H.expectUnstructuredSnowplowEvent({
         event: "dashboard_filter_moved",
-        triggered_from: "card",
+        triggered_from: "bar",
         event_detail: "heading",
         target_id: dashboardId,
       });
@@ -2805,7 +2805,7 @@ H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "dashboard_filter_moved",
         triggered_from: "heading",
-        event_detail: "nav",
+        event_detail: null,
         target_id: dashboardId,
       });
     });

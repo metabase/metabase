@@ -170,8 +170,8 @@ export const trackFilterCreated = (
 
 export const trackFilterMoved = (
   dashboardId: DashboardId,
-  origin: "nav" | "card" | "heading",
-  destination: "nav" | "card" | "heading",
+  origin: VisualizationDisplay | null,
+  destination: VisualizationDisplay | null,
 ) => {
   trackSimpleEvent({
     event: "dashboard_filter_moved",

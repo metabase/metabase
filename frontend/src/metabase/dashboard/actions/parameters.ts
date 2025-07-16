@@ -28,7 +28,6 @@ import type {
   ActionDashboardCard,
   CardId,
   DashCardId,
-  DashboardCard,
   Parameter,
   ParameterId,
   ParameterTarget,
@@ -36,6 +35,7 @@ import type {
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
+  VisualizationDisplay,
   WritebackAction,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -67,7 +67,6 @@ import {
   findDashCardForInlineParameter,
   hasInlineParameters,
   isDashcardInlineParameter,
-  isHeadingDashCard,
   isQuestionDashCard,
   supportsInlineParameters,
 } from "../utils";
@@ -171,7 +170,11 @@ export const moveParameter =
       Object.values(dashcardMap),
     );
 
+    let analyticsOrigin: VisualizationDisplay | null = null;
+    let analyticsDestination: VisualizationDisplay | null = null;
+
     if (parameterDashcard) {
+      analyticsOrigin = parameterDashcard.card.display;
       dispatch(
         setDashCardAttributes({
           id: parameterDashcard.id,
@@ -189,6 +192,7 @@ export const moveParameter =
       if (!dashcard) {
         throw new Error(`Dashcard with id ${destination.id} not found`);
       }
+      analyticsDestination = dashcard.card.display;
       const currentInlineParameters = hasInlineParameters(dashcard)
         ? dashcard.inline_parameters
         : [];
@@ -200,18 +204,9 @@ export const moveParameter =
           },
         }),
       );
-      trackFilterMoved(
-        dashboardId,
-        getFilterPositionType(parameterDashcard),
-        getFilterPositionType(dashcard),
-      );
-    } else {
-      trackFilterMoved(
-        dashboardId,
-        getFilterPositionType(parameterDashcard),
-        "nav",
-      );
     }
+
+    trackFilterMoved(dashboardId, analyticsOrigin, analyticsDestination);
 
     if (canUndo) {
       dispatch(
@@ -235,19 +230,6 @@ export const moveParameter =
       );
     }
   };
-
-function getFilterPositionType(parentDashcard?: DashboardCard) {
-  if (!parentDashcard) {
-    return "nav";
-  }
-  if (isHeadingDashCard(parentDashcard)) {
-    return "heading";
-  }
-  if (isQuestionDashCard(parentDashcard)) {
-    return "card";
-  }
-  throw new Error("Unexpected dashcard type");
-}
 
 export const setEditingParameter =
   (parameterId: ParameterId | null) => (dispatch: Dispatch) => {

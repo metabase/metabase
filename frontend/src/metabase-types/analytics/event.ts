@@ -207,8 +207,8 @@ export type DashboardFilterCreatedEvent = ValidateEvent<{
 export type DashboardFilterMovedEvent = ValidateEvent<{
   event: "dashboard_filter_moved";
   target_id: number | null;
-  triggered_from: "nav" | "card" | "heading";
-  event_detail: "nav" | "card" | "heading";
+  triggered_from: VisualizationDisplay | null;
+  event_detail: VisualizationDisplay | null;
 }>;
 
 export type SdkIframeEmbedSetupExperience =
