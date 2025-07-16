@@ -6,6 +6,7 @@ import type { TabButtonMenuItem } from "metabase/common/components/TabButton";
 import { TabButton } from "metabase/common/components/TabButton";
 import { TabRow } from "metabase/common/components/TabRow";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { shouldDisableDragOnIOS } from "metabase/lib/ios-detection";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { Flex } from "metabase/ui";
 import type { SelectedTabId } from "metabase-types/store";
@@ -83,7 +84,11 @@ export function DashboardTabs() {
           />
         ) : (
           tabs.map((tab) => (
-            <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
+            <Sortable
+              key={tab.id}
+              id={tab.id}
+              disabled={!shouldDisableDragOnIOS(isEditing)}
+            >
               <TabButton.Renameable
                 value={tab.id}
                 label={tab.name}

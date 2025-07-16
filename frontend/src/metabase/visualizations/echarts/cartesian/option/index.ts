@@ -2,6 +2,10 @@ import type { EChartsCoreOption } from "echarts/core";
 import type { OptionSourceData } from "echarts/types/src/util/types";
 
 import {
+  getIOSOptimizedAnimationSettings,
+  getIOSOptimizedDebounceDelay,
+} from "metabase/lib/ios-detection";
+import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   OTHER_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
@@ -26,21 +30,25 @@ import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLinesOption } from "./trend-line";
 import type { EChartsSeriesOption } from "./types";
 
-export const getSharedEChartsOptions = (isAnimated: boolean) => ({
-  useUTC: true,
-  animation: isAnimated,
-  animationDuration: 0,
-  animationDurationUpdate: 1, // by setting this to 1ms we visually eliminate shape transitions while preserving opacity transitions
-  toolbox: {
-    show: false,
-  },
-  brush: {
-    toolbox: ["lineX" as const],
-    xAxisIndex: 0,
-    throttleType: "debounce" as const,
-    throttleDelay: 200,
-  },
-});
+export const getSharedEChartsOptions = (isAnimated: boolean) => {
+  const animationSettings = getIOSOptimizedAnimationSettings(isAnimated);
+
+  return {
+    useUTC: true,
+    animation: animationSettings.animated,
+    animationDuration: animationSettings.duration ?? 0,
+    animationDurationUpdate: animationSettings.animationDurationUpdate, // by setting this to 1ms we visually eliminate shape transitions while preserving opacity transitions
+    toolbox: {
+      show: false,
+    },
+    brush: {
+      toolbox: ["lineX" as const],
+      xAxisIndex: 0,
+      throttleType: "debounce" as const,
+      throttleDelay: getIOSOptimizedDebounceDelay(200), // Increase debounce delay on iOS for better performance
+    },
+  };
+};
 
 type Axes = ReturnType<typeof buildAxes>;
 

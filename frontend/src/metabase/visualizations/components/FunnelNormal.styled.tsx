@@ -99,7 +99,10 @@ export const FunnelNormalRoot = styled.div<FunnelNormalRootProps>`
 
   ${isWebkit()
     ? css`
-        will-change: transform;
+        /* Disable will-change on iOS to prevent GPU performance issues */
+        @media not all and (hover: none) and (pointer: coarse) {
+          will-change: transform;
+        }
       `
     : null}
 `;
