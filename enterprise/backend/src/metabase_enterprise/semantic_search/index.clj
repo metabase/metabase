@@ -21,6 +21,10 @@
   "The name of the index table used for semantic search."
   :search_index)
 
+(def ^:dynamic *vector-dimensions*
+  "The number of dimensions in the vector embeddings for the current model."
+  1024)
+
 (defn- index-table-schema
   "Schema for the index table."
   []
@@ -38,7 +42,7 @@
      [:verified :boolean]
      [:official_collection :boolean]
      [:legacy_input :jsonb]
-     [:embedding [:raw "vector(1024)"] :not-null]
+     [:embedding [:raw (format "vector(%d)" *vector-dimensions*)] :not-null]
      [:content :text :not-null]
      [:metadata :jsonb]
      [[:constraint unique-constraint-name]
@@ -69,7 +73,7 @@
      :metadata            [:cast (json/encode doc) :jsonb]}))
 
 (defn populate-index!
-  "Inserts a set of documents into the index table."
+  "Inserts a set of documents into the index table. Throws "
   [documents]
   (jdbc/with-transaction [tx @db/data-source]
     (doseq [doc documents]
