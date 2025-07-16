@@ -661,17 +661,27 @@ export function setup2ndStageBreakoutFilter() {
     getPopoverItem("Product → Category", 1).scrollIntoView().click();
   });
 
+  closeToasts();
+
   H.getDashboardCard(2).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverItem("Product → Category").click();
+    getPopoverItem("Product → Category").scrollIntoView().click();
   });
+
+  closeToasts();
 
   H.getDashboardCard(3).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverItem("Product → Category").click();
+    getPopoverItem("Product → Category").scrollIntoView().click();
   });
 
   H.saveDashboard({ waitMs: 250 });
+}
+
+function closeToasts() {
+  H.undoToast().each((toast) => {
+    cy.wrap(toast).icon("close").click();
+  });
 }
 
 export function apply2ndStageBreakoutFilter() {
