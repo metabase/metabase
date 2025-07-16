@@ -43,7 +43,7 @@ const DataSectionBase = ({ field }: Props) => {
     setAutoFocusCoercionPicker(event.target.checked);
     setIsCoercionPickerOpen(true);
 
-    if (!event.target.checked && field.coercion_strategy !== null) {
+    if (!event.target.checked && field.coercion_strategy != null) {
       const { error } = await updateField({
         id,
         coercion_strategy: null,

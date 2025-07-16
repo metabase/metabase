@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
@@ -5,21 +6,15 @@ import { useToast } from "metabase/common/hooks";
 import { ActionIcon, Icon, Loader, Tooltip } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
-export function TableVisibilityToggle({
-  table,
-  className,
-}: {
-  table?: Table;
+interface Props {
   className?: string;
-}) {
+  table: Table;
+}
+
+export function TableVisibilityToggle({ className, table }: Props) {
   const [updateTable, { isLoading }] = useUpdateTableMutation();
   const [sendToast] = useToast();
-
-  if (!table) {
-    return null;
-  }
-
-  const isHidden = table?.visibility_type !== null;
+  const isHidden = table.visibility_type != null;
 
   const hide = async () => {
     const { error } = await updateTable({
@@ -35,9 +30,9 @@ export function TableVisibilityToggle({
       });
     } else {
       sendToast({
-        message: t`Hid ${table.display_name}`,
-        actionLabel: t`Undo`,
         action: unhide,
+        actionLabel: t`Undo`,
+        message: t`Hid ${table.display_name}`,
       });
     }
   };
@@ -56,10 +51,20 @@ export function TableVisibilityToggle({
       });
     } else {
       sendToast({
-        message: t`Unhid ${table.display_name}`,
-        actionLabel: t`Undo`,
         action: hide,
+        actionLabel: t`Undo`,
+        message: t`Unhid ${table.display_name}`,
       });
+    }
+  };
+
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+
+    if (isHidden) {
+      unhide();
+    } else {
+      hide();
     }
   };
 
@@ -78,15 +83,7 @@ export function TableVisibilityToggle({
         className={className}
         disabled={isLoading}
         variant="transparent"
-        onClick={(event) => {
-          event.stopPropagation();
-
-          if (isHidden) {
-            unhide();
-          } else {
-            hide();
-          }
-        }}
+        onClick={handleClick}
       >
         <Icon name={isHidden ? "eye_crossed_out" : "eye"} />
       </ActionIcon>
