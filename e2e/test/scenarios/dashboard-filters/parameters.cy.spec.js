@@ -2736,9 +2736,11 @@ describe("scenarios > dashboard > parameters", () => {
       H.moveDashboardFilter("Heading text card", { showFilter: true });
 
       // Assert tab changed and the filter is in viewport now
-      cy.location().should((location) => {
-        expect(location.search).to.include("tab=2-tab-2");
-      });
+      cy.findByRole("tab", { name: "Tab 2" }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
       H.getDashboardCard(1).within(() => {
         H.filterWidget({ isEditing: true }).contains("Count").should("exist");
         H.filterWidget({ isEditing: true })

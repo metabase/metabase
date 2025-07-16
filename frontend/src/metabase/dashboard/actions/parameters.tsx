@@ -264,7 +264,7 @@ export const moveParameter =
 export const setEditingParameter =
   (parameterId: ParameterId | null) =>
   (dispatch: Dispatch, getState: GetState) => {
-    if (!parameterId) {
+    if (parameterId === null) {
       dispatch(closeSidebar());
       return;
     }
