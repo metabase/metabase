@@ -40,18 +40,6 @@
     #{"#123"} "SELECT * FROM table WHERE {{ #not-this }} AND {{#123}}"
     #{} "{{ #123foo }}"))
 
-(deftest ^:parallel function-tag-test
-  (are [exp input] (= exp (update-vals (lib.native/extract-template-tags input)
-                                       #(select-keys % [:type :name])))
-    {"unit" {:name "unit"
-             :type :temporal-unit}} "SELECT *, {{mb.time_grouping(\"unit\", \"foo\")}} FROM table WHERE some_field IS NOT NULL"
-    {} "SELECT *, {{mb.unrecognized_name('unit', 'foo')}} FROM table WHERE some_field IS NOT NULL"
-    {} "SELECT *, {{mb.time_grouping('unit', '')}} FROM table WHERE some_field IS NOT NULL"
-    {"unit" {:name "unit"
-             :type :temporal-unit}} "SELECT *, {{mb.time_grouping('unit', 'foo')}}, {{mb.time_grouping('unit', 'bar')}} FROM table WHERE some_field IS NOT NULL"
-    {"unit" {:name "unit"
-             :type :temporal-unit}} "SELECT *, {{mb.time_grouping(\"unit\", \"foo\")}}, {{unit}} FROM table WHERE some_field IS NOT NULL"))
-
 (deftest ^:parallel template-tags-test
   (testing "snippet tags"
     (is (=? {"snippet:foo" {:type         :snippet
@@ -146,13 +134,7 @@
         (is (= {"snippet:another snippet" (assoc (dissoc s2 :snippet-id) :id s1-uuid)}
                (lib.native/extract-template-tags
                 "SELECT * FROM {{snippet:another snippet}}"
-                {"snippet:first snippet" (assoc s1 :id s1-uuid)}))))
-      (is (=? {"var" (mktag {:name "var"
-                             :type :temporal-unit})}
-              (lib.native/extract-template-tags
-               "SELECT {{mb.time_grouping('var', 'created_at')}} from orders"
-               {"var" (mktag {:name "var"
-                              :id (str (random-uuid))})}))))))
+                {"snippet:first snippet" (assoc s1 :id s1-uuid)})))))))
 
 (def ^:private qp-results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query

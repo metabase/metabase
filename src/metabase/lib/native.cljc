@@ -87,20 +87,6 @@
         (dissoc old-name)
         (assoc new-name new-tag))))
 
-(defn- update-tags
-  [tags query-tags]
-  (into {}
-        (map (fn [[tag-name current-tag]]
-               (let [new-tag (query-tags tag-name)]
-                 ;; if a tag swapped to or from temporal unit, use the new tag instead of the old tag
-                 (if (and new-tag current-tag
-                          (not= (:type new-tag) (:type current-tag))
-                          (or (= (:type new-tag) :temporal-unit)
-                              (= (:type current-tag) :temporal-unit)))
-                   [tag-name new-tag]
-                   [tag-name current-tag]))))
-        tags))
-
 (defn- unify-template-tags
   [query-tags query-tag-names existing-tags existing-tag-names]
   (let [new-tags (set/difference query-tag-names existing-tag-names)
@@ -111,8 +97,7 @@
                    ;; With more than one change, just drop the old ones and add the new.
                    (merge (m/remove-keys old-tags existing-tags)
                           (m/filter-keys new-tags query-tags)))]
-    (-> (update-tags tags query-tags)
-        (update-vals finish-tag))))
+    (update-vals tags finish-tag)))
 
 (mu/defn extract-template-tags :- ::lib.schema.template-tag/template-tag-map
   "Extract the template tags from a native query's text.
