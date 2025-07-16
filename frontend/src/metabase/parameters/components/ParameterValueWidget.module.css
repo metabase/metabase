@@ -4,12 +4,12 @@
   font-weight: 700;
   height: 32px;
   min-width: 120px;
-  background-color: var(--mb-color-bg-white);
+  background: var(--mb-color-background);
   color: var(--mb-color-text-primary);
   border: 1px solid var(--mb-color-border);
   padding-left: 12px;
   padding-right: 12px;
-  border-radius: 6px;
+  border-radius: var(--mantine-radius-sm);
   transition: all 0.2s ease-in-out;
 
   &.selected {
