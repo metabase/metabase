@@ -16,7 +16,6 @@
    [metabase.driver.test-util :as driver.tu]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -631,7 +630,5 @@
 
   If the optional `entity_id` is provided, it will be used for the `:ident`s. If missing, a placeholder ident will
   be used instead, as is done for ad-hoc native queries."
-  ([metadata]
-   (metadata->native-form metadata (lib/placeholder-card-entity-id-for-adhoc-query)))
-  ([metadata _card-entity-id]
-   (mapv #(dissoc % :id :ident :source) metadata)))
+  [metadata]
+  (mapv #(dissoc % :id :ident :source) metadata))
