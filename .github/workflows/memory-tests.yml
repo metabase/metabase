@@ -71,6 +71,11 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: driver
+      - name: Prepare Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }} # this overrides, if present
+          node-version-file: ".nvmrc"
       - name: Prepare static-viz
         run: yarn build-static-viz
         shell: bash
