@@ -20,7 +20,6 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.sql SQLException)
    (org.h2.jdbc JdbcSQLSyntaxErrorException)
    (org.postgresql.util PSQLException)))
 
@@ -234,7 +233,7 @@
   (when table-name
     (try
       (specialization/batch-upsert! table-name entries)
-      (catch SQLException e
+      (catch Exception e
         ;; TODO we should handle the MySQL and MariaDB flavors here too
         (if (or (instance? PSQLException (ex-cause e))
                 (instance? JdbcSQLSyntaxErrorException (ex-cause e)))
@@ -288,7 +287,12 @@
                           (when table-name
                             {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
                                                ;; Race conditions with table being deleted, especially in tests.
-                                               (catch SQLException _ 0))})))
+                                               (catch Exception e
+                                                 ;; In practice, this means that the table no longer exists.
+                                                 (if (or (instance? PSQLException (ex-cause e))
+                                                         (instance? JdbcSQLSyntaxErrorException (ex-cause e)))
+                                                   0
+                                                   (throw e))))})))
                   (apply merge-with +)
                   (into {}))
       (when (active-table)
