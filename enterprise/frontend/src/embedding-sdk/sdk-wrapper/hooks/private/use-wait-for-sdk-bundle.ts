@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { SCRIPT_TAG_LOADING_EVENT_NAME } from "embedding-sdk/sdk-wrapper/config";
+import type { ScriptTagLoadingEvent } from "embedding-sdk/sdk-wrapper/types/script-tag";
+
 export function useWaitForSdkBundle() {
   const [isLoading, setLoading] = useState<boolean>(
     window.EMBEDDING_SDK_BUNDLE_LOADING ?? true,
@@ -15,9 +18,7 @@ export function useWaitForSdkBundle() {
 
   const handleSdkLoadingEvent = useCallback(
     (event: Event) => {
-      const customEvent = event as CustomEvent<{
-        status: "loading" | "loaded";
-      }>;
+      const customEvent = event as CustomEvent<ScriptTagLoadingEvent>;
 
       switch (customEvent.detail.status) {
         case "loading":
@@ -33,13 +34,13 @@ export function useWaitForSdkBundle() {
 
   useEffect(() => {
     document.addEventListener(
-      "metabase-embedding-sdk-loading",
+      SCRIPT_TAG_LOADING_EVENT_NAME,
       handleSdkLoadingEvent,
     );
 
     return () => {
       document.removeEventListener(
-        "metabase-embedding-sdk-loading",
+        SCRIPT_TAG_LOADING_EVENT_NAME,
         handleSdkLoadingEvent,
       );
     };

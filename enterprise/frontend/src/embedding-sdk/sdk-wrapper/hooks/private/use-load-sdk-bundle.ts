@@ -1,32 +1,47 @@
 import { useEffect } from "react";
 
+import { SCRIPT_TAG_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk/sdk-wrapper/config";
+import { dispatchScriptTagStatusEvent } from "embedding-sdk/sdk-wrapper/lib/private/dispatch-script-tag-status-event";
 import { getSdkBundleScriptElement } from "embedding-sdk/sdk-wrapper/lib/private/get-sdk-bundle-script-element";
 
-export function useLoadSdkBundle(metabaseInstanceUrl: string) {
-  useEffect(() => {
-    // TODO: use a global variable instead of checking the DOM
-    const existingScript = getSdkBundleScriptElement();
-
-    if (existingScript) {
-      return;
-    }
-
-    const sdkLoadingEvent = new CustomEvent("metabase-embedding-sdk-loading", {
-      bubbles: true,
-      composed: true,
-      detail: {
-        status: "loading",
-      },
-    });
-
-    document.dispatchEvent(sdkLoadingEvent);
-
+const loadSdkBundle = async (metabaseInstanceUrl: string) => {
+  return new Promise<void>((resolve, reject) => {
     const script = document.createElement("script");
 
     script.async = true;
-    script.dataset["embeddingSdkBundle"] = "true";
+    script.dataset[SCRIPT_TAG_DATA_ATTRIBUTE_PASCAL_CASED] = "true";
     script.src = `${process.env.EMBEDDING_SDK_BUNDLE_HOST || metabaseInstanceUrl}/app/embedding-sdk.js`;
 
     document.body.appendChild(script);
+
+    script.onload = () => {
+      resolve();
+    };
+    script.onerror = (e) => {
+      reject(new Error(`Failed to load embedding SDK bundle: ${e}`));
+    };
+  });
+};
+
+export function useLoadSdkBundle(metabaseInstanceUrl: string) {
+  useEffect(() => {
+    const load = async () => {
+      const existingScript = getSdkBundleScriptElement();
+
+      if (existingScript) {
+        return;
+      }
+
+      dispatchScriptTagStatusEvent("loading");
+
+      try {
+        await loadSdkBundle(metabaseInstanceUrl);
+        dispatchScriptTagStatusEvent("loaded");
+      } catch (error) {
+        dispatchScriptTagStatusEvent("error");
+      }
+    };
+
+    load();
   }, [metabaseInstanceUrl]);
 }
