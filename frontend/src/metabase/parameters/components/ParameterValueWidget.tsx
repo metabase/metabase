@@ -15,6 +15,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
+  isBooleanParameter,
   isDateParameter,
   isStringParameter,
   isTemporalUnitParameter,
@@ -337,7 +338,11 @@ export const ParameterValueWidget = ({
 function hasNoPopover(parameter: UiParameter) {
   // This is needed because isTextWidget check isn't complete,
   // and returns true for dates too.
-  if (isDateParameter(parameter) || isTemporalUnitParameter(parameter)) {
+  if (
+    isDateParameter(parameter) ||
+    isTemporalUnitParameter(parameter) ||
+    isBooleanParameter(parameter)
+  ) {
     return false;
   }
   return isTextWidget(parameter);
