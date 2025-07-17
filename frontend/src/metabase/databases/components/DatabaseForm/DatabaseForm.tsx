@@ -39,6 +39,10 @@ export interface DatabaseFormConfig {
   };
 }
 
+type ContinueWithoutDataComponent = (props: {
+  onCancel?: () => void;
+}) => JSX.Element;
+
 interface DatabaseFormProps {
   initialValues?: Partial<DatabaseData>;
   autofocusFieldName?: string;
@@ -47,12 +51,12 @@ interface DatabaseFormProps {
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
   config?: DatabaseFormConfig;
+  /**
+   * Whether to show the sample database indicator in the engine list and change the "I'll add my data later" button to "Continue with sample data"
+   */
   showSampleDatabase?: boolean;
-  ContinueWithoutDataSlot?: ({
-    onCancel,
-  }: {
-    onCancel?: () => void;
-  }) => JSX.Element;
+  /** Slot to replace the button to continue without data/with only sample data */
+  ContinueWithoutDataSlot?: ContinueWithoutDataComponent;
 }
 
 export const DatabaseForm = ({
@@ -136,16 +140,8 @@ interface DatabaseFormBodyProps {
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
   config: DatabaseFormConfig;
-  /**
-   * Whether to show the sample database indicator in the engine list and change the "I'll add my data later" button to "Continue with sample data"
-   */
   showSampleDatabase?: boolean;
-  /** Slot to replace the button to continue without data/with sample data */
-  ContinueWithoutDataSlot?: ({
-    onCancel,
-  }: {
-    onCancel?: () => void;
-  }) => JSX.Element;
+  ContinueWithoutDataSlot?: ContinueWithoutDataComponent;
 }
 
 const DatabaseFormBody = ({
@@ -222,11 +218,7 @@ interface DatabaseFormFooterProps {
   isDirty: boolean;
   onCancel?: () => void;
   showSampleDatabase?: boolean;
-  ContinueWithoutDataSlot?: ({
-    onCancel,
-  }: {
-    onCancel?: () => void;
-  }) => JSX.Element;
+  ContinueWithoutDataSlot?: ContinueWithoutDataComponent;
 }
 
 const DatabaseFormFooter = ({
