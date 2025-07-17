@@ -44,7 +44,7 @@
   "Compile the Clojure source files for a driver."
   [driver edition]
   (u/step "Compile clojure source files"
-    (let [start-time-ms (System/currentTimeMillis)
+    (let [start-time-ns (System/nanoTime)
           source-paths  (driver-source-paths driver edition)
           target-dir    (c/compiled-source-target-dir driver)
           namespaces    (source-path-namespaces source-paths)]
@@ -57,4 +57,4 @@
           (compile a-namespace)))
       (u/announce "Compiled %d namespace(s) in %d ms."
                   (count namespaces)
-                  (- (System/currentTimeMillis) start-time-ms)))))
+                  (/ (- (System/nanoTime) start-time-ns) 1e6)))))

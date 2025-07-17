@@ -23,10 +23,10 @@
   (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
 
 (defn- do-with-duration-ms [thunk f]
-  (let [start-time-ms (System/currentTimeMillis)
+  (let [start-time-ns (System/nanoTime)
         result        (thunk)
-        duration      (- (System/currentTimeMillis) start-time-ms)]
-    (f duration)
+        elapsed-ms    (/ (- (System/nanoTime) start-time-ns) 1e6)]
+    (f elapsed-ms)
     result))
 
 (defmacro ^:private with-duration-ms [[duration-ms-binding] & body]

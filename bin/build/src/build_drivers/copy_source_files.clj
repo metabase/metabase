@@ -25,7 +25,7 @@
   "Copy source files into the build driver JAR."
   [driver edition]
   (u/step (format "Copy %s source files" driver)
-    (let [start-time-ms (System/currentTimeMillis)
+    (let [start-time-ns (System/nanoTime)
           dirs          (:paths (c/driver-edn driver edition))]
       (assert (every? u/absolute? dirs)
               (format "All dirs should be absolute, got: %s" (pr-str dirs)))
@@ -33,4 +33,4 @@
       (copy-files dirs (c/compiled-source-target-dir driver))
       (u/announce "Copied files in %d directories in %d ms."
                   (count dirs)
-                  (- (System/currentTimeMillis) start-time-ms)))))
+                  (/ (- (System/nanoTime) start-time-ns) 1e6)))))
