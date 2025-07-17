@@ -91,8 +91,8 @@ describe("issue 61013", () => {
       H.visitQuestion(body.id),
     );
 
-    cy.findByLabelText("Move, trash, and more…").click()
-    H.popover().findByText("Add to dashboard").click()
+    cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Add to dashboard").click();
 
     H.modal().within(() => {
       cy.findByPlaceholderText("Search…").type(dashboardName);
@@ -128,8 +128,8 @@ describe("issue 61013", () => {
       ({ body }) => cy.visit(`/question/${body.id}`),
     );
 
-    cy.findByLabelText("Move, trash, and more…").click()
-    H.popover().findByText("Add to dashboard").click()
+    cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Add to dashboard").click();
 
     H.modal().within(() => {
       cy.findByPlaceholderText("Search…").type(dashboardName);
