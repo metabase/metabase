@@ -198,8 +198,7 @@
                                     (dissoc :id :table-id)
                                     (assoc :lib/source :source/previous-stage))
                                own-fields)
-              query      (lib/append-stage query)
-              cols       (lib.metadata.calculation/visible-columns query)]
+              query      (lib/append-stage query)]
           (testing "are included by visible-columns"
             (is (=? (->> (concat own-fields
                                  (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) (meta/id :people))]

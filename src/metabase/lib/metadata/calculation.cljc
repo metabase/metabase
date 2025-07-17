@@ -664,7 +664,7 @@
         id->table (m/index-by :id (lib.metadata/bulk-metadata
                                    query :metadata/table (into #{} (map :table-id) target-fields)))]
     (into []
-          (mapcat (fn [{:keys [table-id], ::keys [fk-ident fk-field-id fk-field-name fk-join-alias]}]
+          (mapcat (fn [{:keys [table-id], ::keys [fk-field-id fk-field-name fk-join-alias]}]
                     (let [table-metadata (id->table table-id)
                           ;; Shouldn't we be forwarding the rest of the `options` as well? -- Cam
                           ;;

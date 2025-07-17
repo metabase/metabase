@@ -271,10 +271,10 @@
 ;;;
 ;;; If you want just the stuff in `:fields`, use [[join-fields-to-add-to-parent-stage]] instead.
 (mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join :- [:maybe ::lib.metadata.calculation/returned-columns]
-  [query                                         :- ::lib.schema/query
-   stage-number                                  :- :int
-   {:keys [stages], join-alias :alias, :as join} :- ::lib.schema.join/join
-   options                                       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+  [query                                          :- ::lib.schema/query
+   stage-number                                   :- :int
+   {:keys [stages], join-alias :alias, :as _join} :- ::lib.schema.join/join
+   options                                        :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (let [join-query (assoc query :stages stages)
         cols       (lib.metadata.calculation/returned-columns
                     join-query -1 (lib.util/query-stage join-query -1)
