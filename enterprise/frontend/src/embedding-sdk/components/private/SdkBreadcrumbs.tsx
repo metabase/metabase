@@ -10,18 +10,18 @@ export interface SdkBreadcrumbsProps {
   style?: React.CSSProperties;
 }
 
-const getBreadcrumbIcon = (type: BreadcrumbItem['type']) => {
+const getBreadcrumbIcon = (type: BreadcrumbItem["type"]) => {
   switch (type) {
-    case 'collection':
-      return 'folder';
-    case 'dashboard':
-      return 'dashboard';
-    case 'question':
-      return 'question';
-    case 'drilldown':
-      return 'drill';
+    case "collection":
+      return "folder";
+    case "dashboard":
+      return "dashboard";
+    case "question":
+      return "question";
+    case "drilldown":
+      return "drill";
     default:
-      return 'chevronright';
+      return "chevronright";
   }
 };
 
@@ -33,14 +33,14 @@ export const SdkBreadcrumbs = ({ className, style }: SdkBreadcrumbsProps) => {
   }
 
   return (
-    <div 
-      className={className} 
-      style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '0.5rem',
-        padding: '0.5rem 0',
-        ...style 
+    <div
+      className={className}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.5rem",
+        padding: "0.5rem 0",
+        ...style,
       }}
     >
       {breadcrumbs.map((breadcrumb, index) => (
@@ -48,10 +48,10 @@ export const SdkBreadcrumbs = ({ className, style }: SdkBreadcrumbsProps) => {
           {breadcrumb.isCurrent ? (
             <span
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                color: 'var(--mb-color-text-dark)',
+                display: "flex",
+                alignItems: "center",
+                gap: "0.25rem",
+                color: "var(--mb-color-text-dark)",
                 fontWeight: 600,
               }}
             >
@@ -64,19 +64,19 @@ export const SdkBreadcrumbs = ({ className, style }: SdkBreadcrumbsProps) => {
               leftIcon={getBreadcrumbIcon(breadcrumb.type)}
               onClick={() => navigateToBreadcrumb(breadcrumb.id)}
               style={{
-                color: 'var(--mb-color-text-medium)',
-                textDecoration: 'none',
+                color: "var(--mb-color-text-medium)",
+                textDecoration: "none",
               }}
             >
               {breadcrumb.name}
             </Button>
           )}
-          
+
           {index < breadcrumbs.length - 1 && (
-            <span 
-              style={{ 
-                color: 'var(--mb-color-text-light)', 
-                fontSize: '0.875rem' 
+            <span
+              style={{
+                color: "var(--mb-color-text-light)",
+                fontSize: "0.875rem",
               }}
             >
               /

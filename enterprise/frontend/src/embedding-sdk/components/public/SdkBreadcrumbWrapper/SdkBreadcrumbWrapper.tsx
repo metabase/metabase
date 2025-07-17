@@ -7,12 +7,12 @@ export interface SdkBreadcrumbWrapperProps {
   children: ReactNode;
 }
 
-export const SdkBreadcrumbWrapper = ({ children }: SdkBreadcrumbWrapperProps) => {
+export const SdkBreadcrumbWrapper = ({
+  children,
+}: SdkBreadcrumbWrapperProps) => {
   return (
     <BreadcrumbProvider>
-      <BreadcrumbWrapper>
-        {children}
-      </BreadcrumbWrapper>
+      <BreadcrumbWrapper>{children}</BreadcrumbWrapper>
     </BreadcrumbProvider>
   );
 };
