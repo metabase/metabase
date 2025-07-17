@@ -1,7 +1,8 @@
 (ns metabase-enterprise.semantic-search.settings
   (:require
    [metabase-enterprise.llm.settings :as llm-settings]
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting ee-embedding-provider
@@ -26,7 +27,7 @@
   (llm-settings/ee-openai-api-key))
 
 (defsetting semantic-search-enabled
-  (i18n/deferred-tru "Enable the semantic search engine? Intended as a kill switch for the semantic search feature while dogfooding.")
+  (deferred-tru "Enable the semantic search engine? Intended as a kill switch for the semantic search feature while dogfooding.")
   :visibility :internal
   :export?    false
   :encryption :no
