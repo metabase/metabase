@@ -67,16 +67,16 @@
 
 (defmacro ^:private with-temp-index-table! [& body]
   `(let [test-table-name# (keyword (str "test_search_index_" (nano-id/nano-id)))]
-     (binding [semantic.index/*index-table-name* test-table-name#
-               semantic.index/*vector-dimensions* 4]
-       (try
-         (semantic.index/create-index-table! {:force-reset? true})
-         ~@body
-         (finally
-           (try
-             (semantic.index/drop-index-table!)
-             (catch Exception e#
-               (log/error "Warning: failed to clean up test table" test-table-name# ":" (.getMessage e#)))))))))
+     (binding [semantic.index/*index-table-name* test-table-name#]
+       (with-redefs [semantic.embedding/model-dimensions (constantly 4)]
+         (try
+           (semantic.index/create-index-table! {:force-reset? true})
+           ~@body
+           (finally
+             (try
+               (semantic.index/drop-index-table!)
+               (catch Exception e#
+                 (log/error "Warning: failed to clean up test table" test-table-name# ":" (.getMessage e#))))))))))
 
 (defmacro with-index!
   "Ensure a clean, small index for testing populated with a few collections, cards, and dashboards."
