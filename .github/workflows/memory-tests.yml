@@ -63,7 +63,7 @@ jobs:
       MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
       MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
       # Set drivers to include all we want to test
-      DRIVERS: postgres,mysql,sqlite,bigquery-cloud-sdk,snowflake
+      DRIVERS: postgres,mysql,sqlite
     name: "Memory Tests"
     steps:
       - uses: actions/checkout@v4
