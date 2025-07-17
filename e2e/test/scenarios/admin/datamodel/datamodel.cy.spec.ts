@@ -1878,6 +1878,52 @@ describe("scenarios > admin > datamodel", () => {
               expect(rect.bottom).lessThan(viewportHeight);
             });
         });
+
+        it(
+          "should show an error with links to other fields with 'Entity name' semantic type",
+          { tags: "@external" },
+          () => {
+            H.restore("postgres-writable");
+            H.resetTestTable({ type: "postgres", table: "many_data_types" });
+            cy.signInAsAdmin();
+            H.resyncDatabase({
+              dbId: WRITABLE_DB_ID,
+              tableName: "many_data_types",
+            });
+
+            H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
+            TablePicker.getTable("Many Data Types").click();
+            TableSection.clickField("Json → D");
+            FieldSection.getSemanticTypeInput().click();
+            H.popover().findByText("Entity Name").click();
+
+            TableSection.clickField("Text");
+            FieldSection.getSemanticTypeInput().click();
+            H.popover().findByText("Entity Name").click();
+
+            FieldSection.get().should(
+              "contain.text",
+              "There are other fields with this semantic type: Json: Json → D",
+            );
+            FieldSection.get()
+              .findByRole("link", { name: "Json: Json → D" })
+              .should("be.visible")
+              .click();
+
+            FieldSection.getNameInput().should("have.value", "Json → D");
+
+            FieldSection.get().should(
+              "contain.text",
+              "There are other fields with this semantic type: Text",
+            );
+            FieldSection.get()
+              .findByRole("link", { name: "Text" })
+              .should("be.visible")
+              .click();
+
+            FieldSection.getNameInput().should("have.value", "Text");
+          },
+        );
       });
     });
 
@@ -2618,7 +2664,6 @@ describe("scenarios > admin > datamodel", () => {
         });
 
         it("should let you enable/disable 'Unfold JSON' for JSON columns", () => {
-          // Go to field settings
           H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
 

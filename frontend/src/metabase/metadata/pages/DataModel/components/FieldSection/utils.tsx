@@ -29,14 +29,14 @@ export function getSemanticTypeError(
   }
 
   const fieldsByName = _.indexBy(table.fields ?? [], (field) => field.name);
-  const parentName = field.nfc_path?.[0] ?? "";
-  const parentField = fieldsByName[parentName];
 
   return (
     <>
       {t`There are other fields with this semantic type: `}
 
       {entityNameFields.map((field, index) => {
+        const parentName = field.nfc_path?.[0] ?? "";
+        const parentField = fieldsByName[parentName];
         const href = getUrl({
           databaseId: table.db_id,
           schemaName: table.schema,
