@@ -348,22 +348,30 @@
 
 (mu/defmethod ->replacement-snippet-info [:sql FieldFilter]
   [driver                            :- :keyword
-   {:keys [value], :as field-filter} :- [:map
-                                         [:field driver-api/schema.metadata.column]
-                                         [:value :any]]]
-  (cond
-    ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1
-    ;; = 1`). This is only used for field filters outside of optional clauses
-    (= value params/no-value) {:replacement-snippet "1 = 1"}
-    ;; if we have a vector of multiple values recursively convert them to SQL and combine into an `AND` clause
-    ;; (This is multiple values in the sense that the frontend provided multiple maps with value values for the same
-    ;; FieldFilter, not in the sense that we have a single map with multiple values for `:value`.)
-    (sequential? value)
-    (combine-replacement-snippet-maps (for [v value]
-                                        (->replacement-snippet-info driver (assoc field-filter :value v))))
-    ;; otherwise convert single value to SQL.
-    :else
-    (field-filter->replacement-snippet-info driver field-filter)))
+   {:keys [value alias field], :as field-filter} :- [:map
+                                                     [:field driver-api/schema.metadata.column]
+                                                     [:value :any]]]
+  (let [replacement-snippet-info
+        (cond
+          ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1
+          ;; = 1`). This is only used for field filters outside of optional clauses
+          (= value params/no-value) {:replacement-snippet "1 = 1"}
+          ;; if we have a vector of multiple values recursively convert them to SQL and combine into an `AND` clause
+          ;; (This is multiple values in the sense that the frontend provided multiple maps with value values for the same
+          ;; FieldFilter, not in the sense that we have a single map with multiple values for `:value`.)
+          (sequential? value)
+          (combine-replacement-snippet-maps (for [v value]
+                                              (->replacement-snippet-info driver (assoc field-filter :value v))))
+          ;; otherwise convert single value to SQL.
+          :else
+          (field-filter->replacement-snippet-info driver field-filter))]
+    (if alias
+      (let [[old-name] (->> [:field (:id field) {:base-type (:base-type field)
+                                                 driver-api/qp.add.source-table (:table-id field)}]
+                            (sql.qp/->honeysql driver)
+                            (sql.qp/format-honeysql driver))]
+        (update replacement-snippet-info :replacement-snippet str/replace old-name alias))
+      replacement-snippet-info)))
 
 ;;; ------------------------------------ Referenced Card replacement snippet info ------------------------------------
 

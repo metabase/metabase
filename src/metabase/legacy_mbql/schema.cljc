@@ -1204,6 +1204,7 @@
    [:map
     [:type        [:= :dimension]]
     [:dimension   field]
+    [:alias       {:optional true} :string]
 
     [:widget-type
      [:ref

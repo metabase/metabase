@@ -193,14 +193,15 @@
       params/no-value)))
 
 (mu/defmethod parse-tag :dimension :- [:maybe FieldFilter]
-  [{field-filter :dimension, :as tag} :- mbql.s/TemplateTag
-   params                             :- [:maybe [:sequential mbql.s/Parameter]]]
+  [{field-filter :dimension, alias :alias, :as tag} :- mbql.s/TemplateTag
+   params                                           :- [:maybe [:sequential mbql.s/Parameter]]]
   (params/map->FieldFilter
    {:field (let [field-id (field-filter->field-id field-filter)]
              (or (lib.metadata/field (qp.store/metadata-provider) field-id)
                  (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
                                  {:field-id field-id, :type qp.error-type/invalid-parameter}))))
-    :value (field-filter-value tag params)}))
+    :value (field-filter-value tag params)
+    :alias alias}))
 
 (mu/defmethod parse-tag :card :- ReferencedCardQuery
   [{:keys [card-id], :as tag} :- mbql.s/TemplateTag _params]
