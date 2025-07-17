@@ -31,6 +31,8 @@ export function PieChart(props: VisualizationProps) {
     onRender,
     isDashboard,
     isFullscreen,
+    isInVisualizerCanvas,
+    onVisualizationClick,
   } = props;
   const hoveredIndex = props.hovered?.index;
   const hoveredSliceKeyPath = props.hovered?.pieSliceKeyPath;
@@ -162,6 +164,15 @@ export function PieChart(props: VisualizationProps) {
     _event: MouseEvent,
     sliceIndex: number,
   ) => {
+    if (isInVisualizerCanvas) {
+      onVisualizationClick({
+        data: [
+          { value: slices[sliceIndex].key, col: rawSeries[0].data.cols[0] },
+        ],
+      });
+      return;
+    }
+
     const slice = slices[sliceIndex];
     const willShowSlice = hiddenSlices.has(slice.key);
     const hasMoreVisibleSlices = slices.length - hiddenSlices.size > 1;

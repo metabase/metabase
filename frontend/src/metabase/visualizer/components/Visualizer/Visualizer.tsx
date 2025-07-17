@@ -6,7 +6,7 @@ import {
   PointerSensor,
   useSensor,
 } from "@dnd-kit/core";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useUnmount } from "react-use";
 
@@ -24,7 +24,12 @@ import {
   resetVisualizer,
   setDraggedItem,
 } from "metabase/visualizer/visualizer.slice";
-import type { VisualizerVizDefinition } from "metabase-types/api";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import type {
+  VisualizerColumnReference,
+  VisualizerVizDefinition,
+  Widget,
+} from "metabase-types/api";
 import type { DraggedItem } from "metabase-types/store/visualizer";
 
 import { DataImporter } from "../DataImporter";
@@ -73,7 +78,39 @@ const VisualizerInner = (props: VisualizerProps) => {
     props;
 
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
-  const { isDataSidebarOpen, isVizSettingsSidebarOpen } = useVisualizerUi();
+  const {
+    isDataSidebarOpen,
+    isVizSettingsSidebarOpen,
+    setVizSettingsSidebarOpen,
+  } = useVisualizerUi();
+
+  const [currentWidget, setCurrentWidget] = useState<Widget | null>(null);
+
+  const onShowWidget = useCallback((widget: Widget | null) => {
+    setCurrentWidget(widget);
+  }, []);
+
+  const onColumnClick = useCallback(
+    (column: VisualizerColumnReference) => {
+      setVizSettingsSidebarOpen(true);
+      onShowWidget({
+        id: "column_settings",
+        props: { initialKey: getColumnKey(column) },
+      });
+    },
+    [onShowWidget, setVizSettingsSidebarOpen],
+  );
+
+  const onSeriesClick = useCallback(
+    (seriesKey: string) => {
+      setVizSettingsSidebarOpen(true);
+      onShowWidget({
+        id: seriesKey,
+        props: { seriesKey },
+      });
+    },
+    [onShowWidget, setVizSettingsSidebarOpen],
+  );
 
   const draggedItem = useSelector(getDraggedItem);
   const dispatch = useDispatch();
@@ -173,14 +210,22 @@ const VisualizerInner = (props: VisualizerProps) => {
         />
 
         {/* main area */}
-        <VisualizationCanvas className={S.Canvas} />
+        <VisualizationCanvas
+          className={S.Canvas}
+          onColumnClick={onColumnClick}
+          onSeriesClick={onSeriesClick}
+        />
 
         {/* footer */}
         <Footer className={S.Footer} />
 
         {/* right side bar */}
         <Box className={S.settingsSidebar}>
-          <VizSettingsSidebar className={S.settingsSidebarContent} />
+          <VizSettingsSidebar
+            className={S.settingsSidebarContent}
+            onShowWidget={onShowWidget}
+            currentWidget={currentWidget}
+          />
         </Box>
 
         {createPortal(

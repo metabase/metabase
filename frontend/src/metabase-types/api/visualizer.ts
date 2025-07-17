@@ -32,3 +32,9 @@ export type VisualizerVizDefinition = {
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>;
   settings: VisualizationSettings;
 };
+
+export type Widget = {
+  id: string;
+  section?: string;
+  props: Record<string, unknown>;
+};
