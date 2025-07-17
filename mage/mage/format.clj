@@ -14,9 +14,9 @@
     file-paths :arguments}]
   (let [mode (->mode force-check?)]
     (when-not (seq file-paths)
-      (throw (ex-info (str (c/red "No files to " mode ".")
+      (throw (ex-info (str "No files to " mode "."
                            "\nPlease specify file paths as arguments.")
-                      {:babashka/exit 1})))
+                      {:babashka/exit 0})))
     (printf (c/green "%sing %s...\n") mode (str/join ", " file-paths)) (flush)
     (let [cmd (str "clojure -T:cljfmt " mode " '" (pr-str {:paths file-paths}) "'")]
       (println "Running: " cmd)
@@ -30,8 +30,8 @@
     (println (str "Checking for updated files against " (c/green target-branch)))
     (if (seq updated-files)
       (files (assoc parsed :arguments updated-files))
-      (throw (ex-info (str (c/red "No updated clj, cljc, or cljs files to check against " target-branch "."))
-                      {:babashka/exit 1})))))
+      (throw (ex-info (str "No updated clj, cljc, or cljs files to check against " target-branch ".")
+                      {:babashka/exit 0})))))
 
 (defn staged
   "Formats or checks all staged clojure files with cljfmt."
