@@ -1,6 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isEntityName } from "metabase-lib/v1/types/utils/isa";
@@ -27,6 +28,10 @@ export function getSemanticTypeError(
     return undefined;
   }
 
+  const fieldsByName = _.indexBy(table.fields ?? [], (field) => field.name);
+  const parentName = field.nfc_path?.[0] ?? "";
+  const parentField = fieldsByName[parentName];
+
   return (
     <>
       {t`There are other fields with this semantic type: `}
@@ -42,6 +47,13 @@ export function getSemanticTypeError(
         return (
           <Fragment key={index}>
             <Link to={href} style={{ textDecoration: "underline" }}>
+              {parentField && (
+                <>
+                  {parentField.display_name}
+                  {": "}
+                </>
+              )}
+
               {field.display_name}
             </Link>
 
