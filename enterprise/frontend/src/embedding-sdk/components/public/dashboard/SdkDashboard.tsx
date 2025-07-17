@@ -19,6 +19,7 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { useBreadcrumbContext } from "embedding-sdk/hooks/use-breadcrumb-context";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -36,6 +37,7 @@ import {
 } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { useGetDashboardQuery } from "metabase/api";
 import {
   type DashboardContextProps,
   DashboardContextProvider,
@@ -153,6 +155,20 @@ const SdkDashboardInner = ({
   });
 
   const { isLocaleLoading } = useLocale();
+  const { data: dashboard } = useGetDashboardQuery({ id: dashboardId });
+  const { updateCurrentLocation } = useBreadcrumbContext();
+
+  // Update breadcrumb when dashboard changes
+  useEffect(() => {
+    if (dashboard) {
+      updateCurrentLocation({
+        id: `dashboard-${dashboard.id}`,
+        name: dashboard.name,
+        type: 'dashboard',
+      });
+    }
+  }, [dashboard, updateCurrentLocation]);
+  
   const { displayOptions } = useSdkDashboardParams({
     dashboardId,
     withDownloads,

@@ -5,9 +5,11 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { useBreadcrumbContext } from "embedding-sdk/hooks/use-breadcrumb-context";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
+import { useGetCollectionQuery } from "metabase/api";
 import type {
   MetabaseCollectionItem,
   SdkCollectionId,
@@ -17,7 +19,6 @@ import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/Collection
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { isNotNull } from "metabase/lib/types";
-import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs/CollectionBreadcrumbs";
 import { Stack } from "metabase/ui";
 import type {
   CollectionEssentials,
@@ -112,9 +113,23 @@ export const CollectionBrowserInner = ({
   const [currentCollectionId, setCurrentCollectionId] =
     useState<CollectionId>(baseCollectionId);
 
+  const { data: currentCollection } = useGetCollectionQuery({ id: currentCollectionId });
+  const { updateCurrentLocation } = useBreadcrumbContext();
+
   useEffect(() => {
     setCurrentCollectionId(baseCollectionId);
   }, [baseCollectionId]);
+
+  // Update breadcrumb when collection changes
+  useEffect(() => {
+    if (currentCollectionId && currentCollection) {
+      updateCurrentLocation({
+        id: `collection-${currentCollectionId}`,
+        name: currentCollection.name,
+        type: 'collection',
+      });
+    }
+  }, [currentCollectionId, currentCollection, updateCurrentLocation]);
 
   const onClickItem = (item: MetabaseCollectionItem) => {
     if (onClick) {
@@ -126,21 +141,12 @@ export const CollectionBrowserInner = ({
     }
   };
 
-  const onClickBreadcrumbItem = (item: CollectionEssentials) => {
-    setCurrentCollectionId(item.id);
-  };
-
   const collectionTypes = visibleEntityTypes
     .map((entityType) => ENTITY_NAME_MAP[entityType])
     .filter(isNotNull);
 
   return (
     <Stack w="100%" h="100%" gap="sm" className={className} style={style}>
-      <CollectionBreadcrumbs
-        collectionId={currentCollectionId}
-        onClick={onClickBreadcrumbItem}
-        baseCollectionId={baseCollectionId}
-      />
       <CollectionItemsTable
         collectionId={currentCollectionId}
         onClick={onClickItem}
