@@ -214,9 +214,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         setDefaultDate("2023", "11", "01");
         H.filterWidget().icon("close").click();
         SQLFilter.toggleRequired();
-        H.filterWidget()
-          .findByTestId("field-set-content")
-          .should("have.text", "November 1, 2023");
+        H.filterWidget().should("contain.text", "November 1, 2023");
       });
 
       it("when there's a default value and template tag is required, can reset it back", () => {
@@ -228,9 +226,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
           cy.findByText("Update filter").click();
         });
         H.filterWidget().icon("revert").click();
-        H.filterWidget()
-          .findByTestId("field-set-content")
-          .should("have.text", "November 1, 2023");
+        H.filterWidget().should("contain.text", "November 1, 2023");
       });
     });
   });
@@ -243,8 +239,8 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     SQLFilter.setWidgetValue("Gizmo");
     SQLFilter.runQuery();
 
-    cy.get("fieldset")
-      .findByText("Testingparamvisbility77")
+    H.filterWidget()
+      .findByPlaceholderText("Testingparamvisbility77")
       .should("be.visible");
 
     // close sidebar
@@ -260,8 +256,8 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1 active filter").click();
 
-    cy.get("fieldset")
-      .findByText("Testingparamvisbility77")
+    H.filterWidget()
+      .findByPlaceholderText("Testingparamvisbility77")
       .should("be.visible");
   });
 

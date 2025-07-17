@@ -215,9 +215,7 @@ describe("scenarios > question > native", () => {
             .blur();
         });
 
-        cy.findAllByTestId("field-set")
-          .first()
-          .should("have.text", "Unit updated");
+        H.filterWidget({ name: "Unit updated" }).should("exist");
       });
 
       it("should handle required prop for time grouping", () => {

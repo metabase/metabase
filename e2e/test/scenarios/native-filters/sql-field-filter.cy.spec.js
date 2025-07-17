@@ -55,9 +55,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       H.filterWidget().click();
       H.clearFilterWidget();
       SQLFilter.toggleRequired();
-      H.filterWidget()
-        .findByTestId("field-set-content")
-        .should("have.text", "5");
+      H.filterWidget().should("contain.text", "5");
     });
 
     it("when there's a default value and value is unset, updating filter sets the default back", () => {
@@ -72,9 +70,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       cy.log("make sure the dialog is gone");
       cy.findByRole("dialog").should("not.exist");
 
-      H.filterWidget()
-        .findByTestId("field-set-content")
-        .should("have.text", "10");
+      H.filterWidget().should("contain.text", "10");
     });
 
     it("when there's a default value and template tag is required, can reset it back", () => {
@@ -86,9 +82,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
         cy.findByText("Update filter").click();
       });
       H.filterWidget().icon("revert").click();
-      H.filterWidget()
-        .findByTestId("field-set-content")
-        .should("have.text", "8");
+      H.filterWidget().should("contain.text", "8");
     });
   });
 

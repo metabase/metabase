@@ -48,7 +48,7 @@ export function chooseType(filterType) {
  * @param {string} value
  */
 export function setWidgetValue(value) {
-  filterWidget().click().type(value);
+  filterWidget().type(value);
 }
 
 /**

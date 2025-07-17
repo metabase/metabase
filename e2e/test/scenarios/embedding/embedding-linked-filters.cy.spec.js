@@ -503,9 +503,5 @@ function searchFieldValuesFilter() {
 }
 
 function removeValueForFilter(label) {
-  cy.get("legend")
-    .contains(label)
-    .closest("fieldset")
-    .find(".Icon-close")
-    .click();
+  H.filterWidget({ name: label }).icon("close").click();
 }

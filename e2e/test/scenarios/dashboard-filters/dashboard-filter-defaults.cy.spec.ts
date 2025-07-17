@@ -86,7 +86,7 @@ describe("scenarios > dashboard > filters > reset", () => {
     );
     H.editDashboard();
 
-    openFilterOptions("Filter Two");
+    H.filterWidget({ name: "Filter Two", isEditing: true }).click();
 
     H.sidebar().within(() => {
       cy.findByLabelText("Input box").click();
@@ -148,7 +148,7 @@ describe("scenarios > dashboard > filters > reset", () => {
     );
     H.editDashboard();
 
-    openFilterOptions("Filter One");
+    H.filterWidget({ name: "Filter One", isEditing: true }).click();
 
     H.sidebar().within(() => {
       cy.findByLabelText("Input box").click();
@@ -167,10 +167,6 @@ describe("scenarios > dashboard > filters > reset", () => {
     H.filterWidget().contains("Foo").should("be.visible");
   });
 });
-
-function openFilterOptions(name: string) {
-  cy.findByText(name).parent().icon("gear").click();
-}
 
 function clearDefaultFilterValue() {
   cy.findByLabelText("No default").parent().icon("close").click();

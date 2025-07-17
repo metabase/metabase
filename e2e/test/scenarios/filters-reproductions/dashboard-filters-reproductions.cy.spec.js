@@ -833,9 +833,7 @@ describe("issue 17775", () => {
     H.editDashboard();
 
     // Make sure filter can be connected to the custom column using UI, rather than using API.
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .find(".Icon-gear")
-      .click();
+    H.filterWidget({ isEditing: true }).click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column to filter on")
@@ -879,7 +877,9 @@ describe("issue 19494", () => {
     sectionId: "string",
   };
   function connectFilterToCard({ filterName, cardPosition }) {
-    cy.findByText(filterName).find(".Icon-gear").click();
+    H.filterWidget({ isEditing: true })
+      .filter(`:contains("${filterName}")`)
+      .click();
 
     // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText("Select…").eq(cardPosition).click();
@@ -1042,9 +1042,7 @@ describe("issue 20656", () => {
     // Trying to edit the filter should not show mapping fields and shouldn't break frontend (metabase#24536)
     H.editDashboard();
 
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .find(".Icon-gear")
-      .click();
+    H.filterWidget({ isEditing: true }).click();
 
     H.getDashboardCard().within(() => {
       cy.findByText("Column to filter on");
@@ -1258,9 +1256,7 @@ describe("issue 22788", () => {
   }
 
   function openFilterSettings() {
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .find(".Icon-gear")
-      .click();
+    H.filterWidget({ isEditing: true }).click();
   }
 
   beforeEach(() => {
@@ -1498,10 +1494,7 @@ describe("issues 15279 and 24500", () => {
     cy.log("Make sure corrupted filter cannot connect to any field");
     // The corrupted filter is only visible when editing the dashboard
     H.editDashboard();
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .findByText("unnamed")
-      .icon("gear")
-      .click();
+    H.filterWidget({ name: "unnamed", isEditing: true }).click();
     cy.findByTestId("parameter-mapper-container").should(
       "contain",
       "No valid fields",
@@ -2136,10 +2129,6 @@ describe("issue 27768", () => {
     sectionId: "string",
   };
 
-  function getFilterOptions(filterName) {
-    cy.findByText(filterName).find(".Icon-gear").click();
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -2159,7 +2148,7 @@ describe("issue 27768", () => {
     // We need to manually connect the filter to the custom column using the UI,
     // but when we fix the issue, it should be safe to do this via API
     H.editDashboard();
-    getFilterOptions(filter.name);
+    H.filterWidget({ isEditing: true, name: filter.name }).click();
 
     H.getDashboardCard().findByText("Select…").click();
     H.popover().contains("CCategory").click();
@@ -2175,7 +2164,7 @@ describe("issue 27768", () => {
 
     // Make sure the filter is still connected to the custom column
     H.editDashboard();
-    getFilterOptions(filter.name);
+    H.filterWidget({ isEditing: true, name: filter.name }).click();
 
     H.getDashboardCard().within(() => {
       cy.findByText("Select…").should("not.exist");

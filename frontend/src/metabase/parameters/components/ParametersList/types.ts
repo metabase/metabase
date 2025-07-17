@@ -30,7 +30,6 @@ export type ParametersListProps = {
     ) => void;
     setEditingParameter: (parameterId: ParameterId | null) => void;
     enableParameterRequiredBehavior: boolean;
-    widgetsVariant?: "default" | "subtle";
     widgetsWithinPortal?: boolean;
     widgetsPopoverPosition: ParameterWidgetProps["popoverPosition"];
     layout?: "horizontal" | "vertical";
