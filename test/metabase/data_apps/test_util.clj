@@ -15,6 +15,7 @@
     (with-data-app-cleanup!
       (create-data-app-via-api!)
       (is (= ...)))"
+  {:style/indent 0}
   [& body]
   `(tu/with-model-cleanup [:model/DataAppRelease :model/DataAppDefinition :model/DataApp]
      ~@body))
