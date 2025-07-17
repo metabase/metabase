@@ -249,3 +249,21 @@
 (methodical/defmethod events/publish-event! ::channel-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::permissions-group-event ::event)
+(derive :event/group-create ::permissions-group-event)
+(derive :event/group-update ::permissions-group-event)
+(derive :event/group-delete ::permissions-group-event)
+
+(methodical/defmethod events/publish-event! ::permissions-group-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::permissions-group-membership-event ::event)
+(derive :event/group-membership-create ::permissions-group-membership-event)
+(derive :event/group-membership-update ::permissions-group-membership-event)
+(derive :event/group-membership-delete ::permissions-group-membership-event)
+
+(methodical/defmethod events/publish-event! ::permissions-group-membership-event
+  [topic event]
+  (audit-log/record-event! topic event))
