@@ -795,7 +795,9 @@
         (recur xs (conj prefix x))))))
 
 ;;; Clj doesn't have `regexp?`, but Cljs does
-#?(:clj (defn- regexp? [x]
+#?(:clj (defn regexp?
+          "Check if something is a regex."
+          [x]
           (instance? java.util.regex.Pattern x)))
 
 (derive :dispatch-type/nil        :dispatch-type/*)

@@ -297,14 +297,14 @@
              :interval-ms 100})"
   [{:keys [thunk done? timeout-ms interval-ms]
     :or   {timeout-ms 1000 interval-ms 100}}]
-  (let [start-time (System/currentTimeMillis)]
+  (let [start-time (System/nanoTime)]
     (loop []
       (let [response (thunk)]
         (if (done? response)
           response
-          (let [current-time (System/currentTimeMillis)
+          (let [current-time (System/nanoTime)
                 elapsed-time (- current-time start-time)]
-            (if (>= elapsed-time timeout-ms)
+            (if (>= elapsed-time (* 1e6 timeout-ms))
               nil ; timeout reached
               (do
                 (Thread/sleep (long interval-ms))
