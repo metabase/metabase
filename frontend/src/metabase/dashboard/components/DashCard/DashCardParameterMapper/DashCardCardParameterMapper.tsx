@@ -160,7 +160,7 @@ export function DashCardCardParameterMapper({
         <span className={S.Warning}>
           {isAction
             ? t`Action parameters do not support dropdown lists or search box filters, and can't limit values for linked filters.`
-            : t`Native question variables do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
+            : t`Native question variables can't limit values for linked filters.`}
         </span>
       )}
     </Flex>

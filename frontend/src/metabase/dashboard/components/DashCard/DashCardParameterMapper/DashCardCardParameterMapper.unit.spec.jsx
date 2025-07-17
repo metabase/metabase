@@ -356,7 +356,7 @@ describe("DashCardCardParameterMapper", () => {
       });
       expect(
         screen.getByText(
-          /Native question variables do not support dropdown lists/i,
+          /Native question variables can't limit values for linked filters/i,
         ),
       ).toBeInTheDocument();
     });
@@ -385,7 +385,7 @@ describe("DashCardCardParameterMapper", () => {
       });
       expect(
         screen.getByText(
-          /Native question variables do not support dropdown lists/i,
+          /Native question variables can't limit values for linked filters/i,
         ),
       ).toBeInTheDocument();
     });
