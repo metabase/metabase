@@ -13,7 +13,7 @@
 
   &.grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, 150px);
+    grid-template-columns: 1fr 1fr 1fr;
   }
 }
 
@@ -21,7 +21,6 @@
 .Wrapper {
   position: relative;
   list-style: none;
-  width: 150px;
   margin-bottom: 0.5rem;
 
   &.active {

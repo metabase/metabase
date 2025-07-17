@@ -58,9 +58,9 @@ export const CanvasWidgetWrapper = forwardRef<
         className={styles.Page}
         data-id={component?.id?.toString()}
         {...props}
-      />
-
-      {/*{onComponentRender(component)}*/}
+      >
+        {onComponentRender(component)}
+      </button>
 
       {!active && onRemove ? (
         <button className={styles.Remove} onClick={onRemove}>

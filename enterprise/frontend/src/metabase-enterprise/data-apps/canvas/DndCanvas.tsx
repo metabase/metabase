@@ -1,17 +1,20 @@
-import type {
-  DragEndEvent,
-  DragStartEvent,
-  DropAnimation,
-  MeasuringConfiguration,
-  UniqueIdentifier,
-} from "@dnd-kit/core";
 import {
+  type CollisionDetection,
   DndContext,
+  type DragEndEvent,
   DragOverlay,
+  type DragStartEvent,
+  type DropAnimation,
+  type MeasuringConfiguration,
   MeasuringStrategy,
   PointerSensor,
+  type UniqueIdentifier,
   closestCenter,
+  defaultDropAnimation,
   defaultDropAnimationSideEffects,
+  getFirstCollision,
+  pointerWithin,
+  rectIntersection,
   useDndContext,
   useSensor,
   useSensors,
@@ -19,9 +22,14 @@ import {
 import { SortableContext, arrayMove, useSortable } from "@dnd-kit/sortable";
 import { CSS, isKeyboardEvent } from "@dnd-kit/utilities";
 import classNames from "classnames";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
-import type { DataAppWidget } from "metabase-enterprise/data-apps/types";
+import type {
+  DataAppWidget,
+  DataAppWidgetSection,
+  WidgetId,
+} from "metabase-enterprise/data-apps/types";
 
 import {
   CanvasWidgetWrapper,
@@ -37,22 +45,11 @@ const measuring: MeasuringConfiguration = {
 };
 
 const dropAnimation: DropAnimation = {
-  keyframes({ transform }) {
-    return [
-      { transform: CSS.Transform.toString(transform.initial) },
-      {
-        transform: CSS.Transform.toString({
-          scaleX: 0.98,
-          scaleY: 0.98,
-          x: transform.final.x - 10,
-          y: transform.final.y - 10,
-        }),
-      },
-    ];
-  },
   sideEffects: defaultDropAnimationSideEffects({
-    className: {
-      active: styles.active,
+    styles: {
+      active: {
+        opacity: "0.5",
+      },
     },
   }),
 };
@@ -60,73 +57,244 @@ const dropAnimation: DropAnimation = {
 interface Props {
   components: DataAppWidget[];
   onComponentsUpdate: (newComponents: DataAppWidget[]) => void;
-
-  onComponentRender: (component: DataAppWidget) => React.ReactNode;
+  renderCanvasComponent: (id: WidgetId) => React.ReactNode;
 }
 
 export const DndCanvas = ({
   components,
   onComponentsUpdate,
-  onComponentRender,
+  renderCanvasComponent,
 }: Props) => {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+  const [clonedItems, setClonedItems] = useState<DataAppWidget[] | null>(null);
   const activeIndex =
     activeId != null ? components.findIndex(({ id }) => id === activeId) : -1;
   const sensors = useSensors(useSensor(PointerSensor));
 
+  const lastOverId = useRef<UniqueIdentifier | null>(null);
+  const recentlyMovedToNewContainer = useRef(false);
+
+  const componentsMap = useMemo(() => {
+    const map = new Map<WidgetId, DataAppWidget>();
+    components.forEach((item) => map.set(item.id, item));
+    return map;
+  }, [components]);
+
+  const collisionDetectionStrategy: CollisionDetection = useCallback(
+    (args) => {
+      console.log("collisionDetectionStrategy", args);
+
+      const activeWidget = componentsMap.get(activeId as WidgetId);
+
+      if (activeId && activeWidget && activeWidget.type === "section") {
+        return closestCenter({
+          ...args,
+          droppableContainers: args.droppableContainers.filter((container) => {
+            return (
+              componentsMap.get(container.id as WidgetId)?.type === "section"
+            );
+          }),
+        });
+      }
+
+      // Start by finding any intersecting droppable
+      const pointerIntersections = pointerWithin(args);
+      const intersections =
+        pointerIntersections.length > 0
+          ? // If there are droppables intersecting with the pointer, return those
+            pointerIntersections
+          : rectIntersection(args);
+      let overId = getFirstCollision(intersections, "id");
+
+      if (overId != null) {
+        const overWidget = componentsMap.get(overId as WidgetId);
+        if (overWidget && overWidget.type === "section") {
+          const containerItems = overWidget.childrenIds;
+
+          // If a container is matched and it contains items (columns 'A', 'B', 'C')
+          if (containerItems.length > 0) {
+            // Return the closest droppable within that container
+            overId = closestCenter({
+              ...args,
+              droppableContainers: args.droppableContainers.filter(
+                (container) =>
+                  container.id !== overId &&
+                  containerItems.includes(container.id),
+              ),
+            })[0]?.id;
+          }
+        }
+
+        lastOverId.current = overId;
+
+        return [{ id: overId }];
+      }
+
+      // When a draggable item moves to a new container, the layout may shift
+      // and the `overId` may become `null`. We manually set the cached `lastOverId`
+      // to the id of the draggable item that was moved to the new container, otherwise
+      // the previous `overId` will be returned which can cause items to incorrectly shift positions
+      if (recentlyMovedToNewContainer.current) {
+        lastOverId.current = activeId;
+      }
+
+      // If no droppable is matched, return the last match
+      return lastOverId.current ? [{ id: lastOverId.current }] : [];
+    },
+    [activeId, componentsMap],
+  );
+
   function handleDragStart({ active }: DragStartEvent) {
     setActiveId(active.id);
+    setClonedItems(components);
   }
 
   function handleDragCancel() {
-    setActiveId(null);
-  }
-
-  function handleDragEnd({ over }: DragEndEvent) {
-    if (over) {
-      const overIndex = components.findIndex(({ id }) => id === over.id);
-
-      if (activeIndex !== overIndex) {
-        onComponentsUpdate(arrayMove(components, activeIndex, overIndex));
-      }
+    if (clonedItems) {
+      // Reset items to their original state in case items have been
+      // Dragged across containers
+      onComponentsUpdate(clonedItems);
     }
 
     setActiveId(null);
+    setClonedItems(null);
   }
+
+  const findContainer = (id: UniqueIdentifier) => {
+    const parent = components.find((item) =>
+      item.childrenIds?.includes(id as WidgetId),
+    ); // TODO: optimize complexity
+
+    return parent?.id || "root";
+  };
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      recentlyMovedToNewContainer.current = false;
+    });
+  }, [components]);
 
   return (
     <DndContext
+      collisionDetection={collisionDetectionStrategy}
       onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
+      // onDragMove={handleDragMove}
+      onDragOver={({ active, over }) => {
+        console.log("onDragOver", { active, over });
+
+        const overId = over?.id;
+
+        if (overId == null /*|| active.id in items*/) {
+          return;
+        }
+
+        const overContainerId = findContainer(overId);
+        const activeContainerId = findContainer(active.id);
+
+        if (!overContainerId || !activeContainerId) {
+          return;
+        }
+
+        if (activeContainerId !== overContainerId) {
+          const newItems = components.map((item) => {
+            if (active.id === item.id) {
+              return {
+                ...item,
+                parentId: overContainerId,
+              };
+            }
+
+            return item;
+          });
+
+          recentlyMovedToNewContainer.current = true;
+
+          onComponentsUpdate(newItems);
+        }
+      }}
+      onDragEnd={({ active, over }) => {
+        // const activeWidget = componentsMap.get(active.id as WidgetId);
+        //
+        // if (activeWidget && activeWidget.type === "section" && over?.id) {
+        //   setContainers((containers) => {
+        //     const activeIndex = containers.indexOf(active.id);
+        //     const overIndex = containers.indexOf(over.id);
+        //
+        //     return arrayMove(containers, activeIndex, overIndex);
+        //   });
+        // }
+
+        const activeContainerId = findContainer(active.id);
+
+        if (!activeContainerId) {
+          setActiveId(null);
+          return;
+        }
+
+        const overId = over?.id;
+
+        if (overId == null) {
+          setActiveId(null);
+          return;
+        }
+
+        // if (overId === PLACEHOLDER_ID) {
+        //   const newContainerId = getNextContainerId();
+        //
+        //   unstable_batchedUpdates(() => {
+        //     setContainers((containers) => [...containers, newContainerId]);
+        //     setItems((items) => ({
+        //       ...items,
+        //       [activeContainer]: items[activeContainer].filter(
+        //         (id) => id !== activeId
+        //       ),
+        //       [newContainerId]: [active.id],
+        //     }));
+        //     setActiveId(null);
+        //   });
+        //   return;
+        // }
+
+        const overContainerId = findContainer(overId);
+
+        if (overContainerId) {
+          const activeIndex = (
+            componentsMap.get(activeContainerId) as DataAppWidgetSection
+          ).childrenIds.indexOf(active.id);
+          const overIndex = (
+            componentsMap.get(overContainerId) as DataAppWidgetSection
+          ).childrenIds.indexOf(overId);
+
+          if (activeIndex !== overIndex) {
+            // TODO: respect the insert position index
+            const newComponents = [
+              ...components.map((component) => {
+                if (component.id === activeContainerId) {
+                  component.childrenIds = component.childrenIds.filter(
+                    (id) => id !== active.id,
+                  );
+                }
+
+                if (component.id === overContainerId) {
+                  component.childrenIds = [...component.childrenIds, active.id];
+                }
+
+                return component;
+              }),
+            ];
+
+            onComponentsUpdate(newComponents);
+          }
+        }
+
+        setActiveId(null);
+      }}
       onDragCancel={handleDragCancel}
       sensors={sensors}
-      collisionDetection={closestCenter}
+      // collisionDetection={closestCenter}
       measuring={measuring}
     >
-      <SortableContext items={components}>
-        <ul className={classNames(styles.Pages, styles.grid)}>
-          {components.map((component, index) => (
-            <SortablePage
-              id={component.id}
-              index={index + 1}
-              component={component}
-              key={component.id}
-              activeIndex={activeIndex}
-              onRemove={() =>
-                onComponentsUpdate(
-                  components.filter(({ id }) => id !== component.id),
-                )
-              }
-              onComponentRender={onComponentRender}
-            />
-          ))}
-        </ul>
-      </SortableContext>
-      <DragOverlay dropAnimation={dropAnimation}>
-        {activeId != null ? (
-          <PageOverlay id={activeId} components={components} />
-        ) : null}
-      </DragOverlay>
+      {renderCanvasComponent("root")}
     </DndContext>
   );
 };

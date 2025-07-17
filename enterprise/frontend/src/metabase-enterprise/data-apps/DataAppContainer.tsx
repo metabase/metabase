@@ -35,7 +35,7 @@ const MOCK_COMPONENTS: DataAppWidget[] = [
   {
     id: "root",
     type: "section",
-    childrenIds: ["1"],
+    childrenIds: ["1", "3"],
     options: {
       width: 3,
     },
@@ -52,7 +52,14 @@ const MOCK_COMPONENTS: DataAppWidget[] = [
     id: "2",
     type: "button",
     options: {
-      text: "Testio",
+      text: "Testio 2",
+    },
+  },
+  {
+    id: "3",
+    type: "button",
+    options: {
+      text: "Testio 3",
     },
   },
 ];
