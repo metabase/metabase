@@ -2749,6 +2749,67 @@ H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
       target_id: ORDERS_DASHBOARD_ID,
     });
   });
+
+  it("should track dashboard_filter_moved event when moving a filter", () => {
+    H.createQuestionAndDashboard({
+      dashboardDetails: {
+        parameters: [
+          createMockParameter({
+            id: "1b9cd9f1",
+            name: "Category",
+            type: "string/=",
+            slug: "category",
+            sectionId: "string",
+          }),
+        ],
+      },
+      questionDetails: {
+        display: "bar",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+          ],
+        },
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+      H.editDashboard();
+      H.addHeadingWhileEditing("heading card");
+      cy.wrap(dashboard_id).as("dashboardId");
+    });
+
+    H.editingDashboardParametersContainer().within(() => {
+      H.filterWidget({ isEditing: true }).contains("Category").click();
+    });
+
+    cy.get("@dashboardId").then((dashboardId) => {
+      H.moveDashboardFilter("test question");
+      H.expectUnstructuredSnowplowEvent({
+        event: "dashboard_filter_moved",
+        triggered_from: null,
+        event_detail: "bar",
+        target_id: dashboardId,
+      });
+
+      H.moveDashboardFilter("heading card");
+      H.expectUnstructuredSnowplowEvent({
+        event: "dashboard_filter_moved",
+        triggered_from: "bar",
+        event_detail: "heading",
+        target_id: dashboardId,
+      });
+
+      H.moveDashboardFilter("Top of page");
+      H.expectUnstructuredSnowplowEvent({
+        event: "dashboard_filter_moved",
+        triggered_from: "heading",
+        event_detail: null,
+        target_id: dashboardId,
+      });
+    });
+  });
 });
 
 function isFilterSelected(filter, bool) {
