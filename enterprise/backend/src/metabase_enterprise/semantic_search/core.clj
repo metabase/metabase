@@ -5,24 +5,22 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase.premium-features.core :refer [defenterprise]]))
 
-;; TODO: Update :feature from :none to the appropriate token feature once semantic search feature is added
-
 (defenterprise supported?
   "Enterprise implementation of semantic search engine support check."
-  :feature :none
+  :feature :semantic-search
   []
   ;; TODO: figure out the right criteria here
   (some? semantic.db/db-url))
 
 (defenterprise results
   "Enterprise implementation of semantic search results."
-  :feature :none
+  :feature :semantic-search
   [search-ctx]
   (semantic.index/query-index search-ctx))
 
 (defenterprise update-index!
   "Enterprise implementation of semantic index updating."
-  :feature :none
+  :feature :semantic-search
   [document-reducible]
   (let [documents (vec document-reducible)]
     (when (seq documents)
@@ -34,7 +32,7 @@
 
 (defenterprise delete-from-index!
   "Enterprise implementation of semantic index deletion."
-  :feature :none
+  :feature :semantic-search
   [model ids]
   (semantic.index/delete-from-index! model ids)
   {model (count ids)})
@@ -42,7 +40,7 @@
 ;; TODO: add reindexing logic when index is detected as stale
 (defenterprise init!
   "Initialize the semantic search table and populate it with initial data."
-  :feature :none
+  :feature :semantic-search
   [searchable-documents _opts]
   (semantic.db/init-db!)
   (semantic.index/create-index-table! {:force-reset? true})
@@ -50,7 +48,7 @@
 
 (defenterprise reindex!
   "Reindex the semantic search index."
-  :feature :none
+  :feature :semantic-search
   [searchable-documents _opts]
   ;; TODO:implement reindexing without dropping the table
   (semantic.index/create-index-table! {:force-reset? true})
@@ -58,6 +56,6 @@
 
 (defenterprise reset-tracking!
   "Enterprise implementation of semantic search tracking reset."
-  :feature :none
+  :feature :semantic-search
   []
   nil)
