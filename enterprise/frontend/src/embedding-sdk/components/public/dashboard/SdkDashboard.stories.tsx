@@ -16,8 +16,8 @@ import {
   Title,
 } from "metabase/ui";
 
-import { InteractiveQuestion } from "../InteractiveQuestion";
 import { MetabaseProvider } from "../MetabaseProvider";
+import { SdkQuestion } from "../SdkQuestion";
 
 import { SdkDashboard, type SdkDashboardProps } from "./SdkDashboard";
 
@@ -180,8 +180,8 @@ export const WithCustomQuestionLayout = {
     dashboardId: DASHBOARD_ID,
     renderDrillThroughQuestion: () => (
       <Stack>
-        <InteractiveQuestion.Title />
-        <InteractiveQuestion.QuestionVisualization />
+        <SdkQuestion.Title />
+        <SdkQuestion.QuestionVisualization />
         <div>This is a custom question layout.</div>
       </Stack>
     ),

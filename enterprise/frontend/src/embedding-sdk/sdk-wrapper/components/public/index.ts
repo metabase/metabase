@@ -5,7 +5,7 @@ export * from "./dashboard/EditableDashboard";
 export * from "./dashboard/InteractiveDashboard";
 export * from "./dashboard/StaticDashboard";
 export * from "./debug/SdkDebugInfo";
-export * from "./InteractiveQuestion";
+export { SdkQuestion as InteractiveQuestion } from "./SdkQuestion";
 export * from "./StaticQuestion";
 // eslint-disable-next-line no-literal-metabase-strings -- Export
 export * from "./MetabaseProvider";

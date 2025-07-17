@@ -48,7 +48,7 @@ export {
   type InteractiveQuestionSummarizeDropdownProps,
   type InteractiveQuestionTitleProps,
   type DrillThroughQuestionProps,
-} from "./components/public/InteractiveQuestion";
+} from "./components/public/SdkQuestion";
 export { type MetabaseProviderProps } from "./components/public/MetabaseProvider";
 export { type StaticQuestionProps } from "./components/public/StaticQuestion";
 

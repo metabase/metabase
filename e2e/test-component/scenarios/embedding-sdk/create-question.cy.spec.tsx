@@ -1,4 +1,4 @@
-import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
+import { SdkQuestion } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -33,7 +33,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     mountSdkContent(
       <Flex p="xl">
-        <InteractiveQuestion questionId="new" />
+        <SdkQuestion questionId="new" />
       </Flex>,
     );
 
@@ -77,7 +77,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     mountSdkContent(
       <Flex p="xl">
-        <InteractiveQuestion questionId="new" />
+        <SdkQuestion questionId="new" />
       </Flex>,
     );
 
@@ -118,7 +118,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     mountSdkContent(
       <Flex p="xl">
-        <InteractiveQuestion questionId="new" />
+        <SdkQuestion questionId="new" />
       </Flex>,
     );
 
@@ -187,7 +187,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     cy.log('1. `entityTypes` = ["table"]');
     mountSdkContent(
       <Flex p="xl">
-        <InteractiveQuestion questionId="new" entityTypes={["table"]} />
+        <SdkQuestion questionId="new" entityTypes={["table"]} />
       </Flex>,
     );
 
@@ -203,7 +203,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     cy.log('2. `entityTypes` = ["model"]');
     mountSdkContent(
       <Flex p="xl">
-        <InteractiveQuestion questionId="new" entityTypes={["model"]} />
+        <SdkQuestion questionId="new" entityTypes={["model"]} />
       </Flex>,
     );
 
@@ -219,10 +219,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     cy.log('3. `entityTypes` = ["model", "table]');
     mountSdkContent(
       <Flex p="xl">
-        <InteractiveQuestion
-          questionId="new"
-          entityTypes={["model", "table"]}
-        />
+        <SdkQuestion questionId="new" entityTypes={["model", "table"]} />
       </Flex>,
     );
 

@@ -1,7 +1,7 @@
 import { getHostedBundleStoryDecorator } from "embedding-sdk/sdk-wrapper/test/getHostedBundleStoryDecorator";
 import { getStorybookSdkAuthConfigForUser } from "embedding-sdk/test/CommonSdkStoryWrapper";
 
-import { InteractiveQuestion } from "../InteractiveQuestion";
+import { SdkQuestion } from "../SdkQuestion/SdkQuestion";
 
 import { MetabaseProvider } from "./MetabaseProvider";
 
@@ -18,18 +18,18 @@ export default {
 
 export const Default = () => (
   <MetabaseProvider authConfig={config}>
-    <InteractiveQuestion questionId={QUESTION_ID} />
+    <SdkQuestion questionId={QUESTION_ID} />
   </MetabaseProvider>
 );
 
 export const MultipleProviders = () => (
   <>
     <MetabaseProvider authConfig={config}>
-      <InteractiveQuestion questionId={QUESTION_ID} />
+      <SdkQuestion questionId={QUESTION_ID} />
     </MetabaseProvider>
 
     <MetabaseProvider authConfig={config}>
-      <InteractiveQuestion questionId={QUESTION_ID + 1} />
+      <SdkQuestion questionId={QUESTION_ID + 1} />
     </MetabaseProvider>
   </>
 );

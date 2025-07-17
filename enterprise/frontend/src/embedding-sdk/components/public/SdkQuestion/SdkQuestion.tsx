@@ -177,7 +177,6 @@ const SdkQuestion = withPublicComponentWrapper(
   _SdkQuestion,
 ) as typeof _SdkQuestion & InteractiveQuestionComponents;
 
-
 SdkQuestion.BackButton = BackButton;
 SdkQuestion.Filter = Filter;
 SdkQuestion.FilterDropdown = FilterDropdown;

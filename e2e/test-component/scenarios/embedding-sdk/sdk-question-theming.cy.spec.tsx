@@ -1,7 +1,4 @@
-import {
-  InteractiveQuestion,
-  type MetabaseTheme,
-} from "@metabase/embedding-sdk-react";
+import { type MetabaseTheme, SdkQuestion } from "@metabase/embedding-sdk-react";
 import Color from "color";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -246,7 +243,7 @@ function setupInteractiveQuestionWithTheme(theme: MetabaseTheme) {
   cy.get<number>("@questionId").then((questionId) => {
     mountSdkContent(
       <Box bg={theme.colors?.background} h="100vh">
-        <InteractiveQuestion questionId={questionId} />
+        <SdkQuestion questionId={questionId} />
       </Box>,
       { sdkProviderProps: { theme } },
     );

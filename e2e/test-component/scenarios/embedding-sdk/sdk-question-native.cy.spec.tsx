@@ -1,4 +1,4 @@
-import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
+import { SdkQuestion } from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -80,7 +80,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
 
       return (
         <Box>
-          <InteractiveQuestion questionId={questionId} />
+          <SdkQuestion questionId={questionId} />
 
           <Button onClick={() => setQuestionId(nativeQuestionId)}>
             use native question

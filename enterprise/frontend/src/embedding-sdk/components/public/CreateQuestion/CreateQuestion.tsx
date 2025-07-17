@@ -1,7 +1,4 @@
-import {
-  InteractiveQuestion,
-  type InteractiveQuestionProps,
-} from "embedding-sdk";
+import { type BaseInteractiveQuestionProps, SdkQuestion } from "../SdkQuestion";
 
 /**
  * @interface
@@ -14,5 +11,5 @@ export type CreateQuestionProps = Omit<
 >;
 
 export const CreateQuestion = (props: CreateQuestionProps = {}) => (
-  <InteractiveQuestion {...props} questionId="new" />
+  <SdkQuestion {...props} questionId="new" />
 );
