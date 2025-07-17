@@ -1,11 +1,18 @@
 import { type ReactNode, createContext, useCallback, useState } from "react";
 import _ from "underscore";
 
+export type BreadcrumbItemType =
+  | "collection"
+  | "dashboard"
+  | "question"
+  | "model"
+  | "metric";
+
 export interface BreadcrumbItem {
-  id: string;
+  id: number | string;
   name: string;
-  type: "collection" | "dashboard" | "question" | "drilldown";
-  action?: () => void; // undefined for current location
+  type: BreadcrumbItemType;
+  navigateTo?: () => void;
   isCurrent?: boolean;
 }
 
@@ -39,11 +46,11 @@ export const SdkBreadcrumbProvider = ({
       const updated = prev.map((breadcrumb) => ({
         ...breadcrumb,
         isCurrent: false,
-        action: breadcrumb.action || (() => {}),
+        action: breadcrumb.navigateTo || (() => {}),
       }));
 
       // Add new item as current
-      return [...updated, { ...item, isCurrent: true, action: undefined }];
+      return [...updated, { ...item, isCurrent: true }];
     });
   }, []);
 
@@ -66,11 +73,11 @@ export const SdkBreadcrumbProvider = ({
         };
 
         // Add the new current location
-        return [...updated, { ...item, isCurrent: true, action: undefined }];
+        return [...updated, { ...item, isCurrent: true }];
       }
 
       // First breadcrumb
-      return [{ ...item, isCurrent: true, action: undefined }];
+      return [{ ...item, isCurrent: true }];
     });
   }, []);
 
@@ -82,14 +89,11 @@ export const SdkBreadcrumbProvider = ({
       );
 
       if (clickedIndex === -1) {
-        console.warn(`Breadcrumb with id ${item.id} not found`);
         return;
       }
 
       // Execute the breadcrumb's action if it exists
-      if (item.action) {
-        item.action();
-      }
+      item?.navigateTo?.();
 
       // Truncate breadcrumbs to the clicked item and mark it as current
       setBreadcrumbs((prev) => {
@@ -97,7 +101,7 @@ export const SdkBreadcrumbProvider = ({
         return truncated.map((breadcrumb, index) => ({
           ...breadcrumb,
           isCurrent: index === clickedIndex,
-          action: index === clickedIndex ? undefined : breadcrumb.action,
+          // Keep the action even when current, so it can be clicked again
         }));
       });
     },

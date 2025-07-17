@@ -1,11 +1,11 @@
-import { type ComponentType, useEffect, useState } from "react";
+import { type ComponentType, useEffect, useMemo, useState } from "react";
 
 import {
   CollectionNotFoundError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { useBreadcrumbContext } from "embedding-sdk/hooks/private/use-breadcrumb-context";
+import { useSdkBreadcrumb } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
@@ -109,39 +109,36 @@ export const CollectionBrowserInner = ({
   const [currentCollectionId, setCurrentCollectionId] =
     useState<CollectionId>(baseCollectionId);
 
-  const { data: currentCollection, isFetching: isFetchingCollection } =
-    useGetCollectionQuery({
-      id: currentCollectionId,
-    });
+  const { breadcrumbs, updateCurrentLocation } = useSdkBreadcrumb({
+    consumer: "collection",
+  });
 
-  const { updateCurrentLocation } = useBreadcrumbContext();
+  const { data: currentCollection, isFetching: isFetchingCollection } =
+    useGetCollectionQuery({ id: currentCollectionId });
+
+  const latestBreadcrumbCollection = useMemo(() => {
+    return breadcrumbs[breadcrumbs.length - 1];
+  }, [breadcrumbs]);
 
   useEffect(() => {
     setCurrentCollectionId(baseCollectionId);
   }, [baseCollectionId]);
 
-  // Update breadcrumb when collection changes
+  // Update the breadcrumb when collection changes.
   // This cannot be done in onClickItem as we need to populate the
   // initial collection's name in the breadcrumb.
   useEffect(() => {
-    if (currentCollectionId && currentCollection && !isFetchingCollection) {
+    if (currentCollection && !isFetchingCollection) {
       updateCurrentLocation({
-        id: `collection-${currentCollectionId}`,
-        name: currentCollection.name,
         type: "collection",
+        id: currentCollection.id,
+        name: currentCollection.name,
       });
     }
-  }, [
-    currentCollectionId,
-    currentCollection,
-    updateCurrentLocation,
-    isFetchingCollection,
-  ]);
+  }, [currentCollection, updateCurrentLocation, isFetchingCollection]);
 
   const onClickItem = (item: MetabaseCollectionItem) => {
-    if (onClick) {
-      onClick(item);
-    }
+    onClick?.(item);
 
     if (item.model === "collection") {
       setCurrentCollectionId(item.id as CollectionId);
@@ -154,6 +151,9 @@ export const CollectionBrowserInner = ({
 
   return (
     <Stack w="100%" h="100%" gap="sm" className={className} style={style}>
+      <div>{`collectionId = ${currentCollectionId}`}</div>
+      <div>{`latestBreadcrumbCollection = ${latestBreadcrumbCollection?.id}`}</div>
+
       <CollectionItemsTable
         collectionId={currentCollectionId}
         onClick={onClickItem}

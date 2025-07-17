@@ -4,9 +4,15 @@ import {
   EmptyBreadcrumbContext,
   SdkBreadcrumbContext,
   type SdkBreadcrumbContextType,
-} from "embedding-sdk/components/private/Breadcrumb/SdkBreadcrumbProvider";
+} from "embedding-sdk/components/private/Breadcrumb";
 
-export const useBreadcrumbContext = (): SdkBreadcrumbContextType => {
+interface BreadcrumbOptions {
+  consumer?: "collection" | "dashboard" | "question";
+}
+
+export const useSdkBreadcrumb = (
+  _options: BreadcrumbOptions = {},
+): SdkBreadcrumbContextType => {
   const context = useContext(SdkBreadcrumbContext);
 
   // The breadcrumb is optional.

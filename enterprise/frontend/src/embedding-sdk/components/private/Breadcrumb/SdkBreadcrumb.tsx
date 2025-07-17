@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { match } from "ts-pattern";
 
-import { useBreadcrumbContext } from "embedding-sdk/hooks/private/use-breadcrumb-context";
+import { useSdkBreadcrumb } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import { Badge } from "metabase/common/components/Badge";
 import type { IconName } from "metabase/ui";
 
@@ -11,23 +11,23 @@ import {
   BreadcrumbsPathSeparator,
   PathContainer,
 } from "./SdkBreadcrumb.styled";
-import type { BreadcrumbItem } from "./SdkBreadcrumbProvider";
+import type {
+  BreadcrumbItem,
+  BreadcrumbItemType,
+} from "./SdkBreadcrumbProvider";
 
 export interface SdkBreadcrumbProps {
   className?: string;
   style?: React.CSSProperties;
+  onBreadcrumbClick?: (breadcrumb: BreadcrumbItem) => void;
 }
 
-const getBreadcrumbIcon = (type: BreadcrumbItem["type"]) =>
-  match<BreadcrumbItem["type"], IconName>(type)
-    .with("collection", () => "folder")
-    .with("dashboard", () => "dashboard")
-    .with("question", () => "question")
-    .with("drilldown", () => "chevronright")
-    .exhaustive();
-
-export const SdkBreadcrumb = ({ className, style }: SdkBreadcrumbProps) => {
-  const { breadcrumbs, navigateToBreadcrumb } = useBreadcrumbContext();
+export const SdkBreadcrumb = ({
+  className,
+  style,
+  onBreadcrumbClick,
+}: SdkBreadcrumbProps) => {
+  const { breadcrumbs, navigateToBreadcrumb } = useSdkBreadcrumb();
 
   if (breadcrumbs.length === 0) {
     return null;
@@ -39,14 +39,13 @@ export const SdkBreadcrumb = ({ className, style }: SdkBreadcrumbProps) => {
         {breadcrumbs.map((breadcrumb, index) => (
           <Fragment key={breadcrumb.id}>
             <Badge
-              icon={{ name: getBreadcrumbIcon(breadcrumb.type) }}
+              icon={getBreadcrumbIcon(breadcrumb.type)}
               inactiveColor="text-light"
               isSingleLine
-              onClick={
-                breadcrumb.isCurrent
-                  ? undefined
-                  : () => navigateToBreadcrumb(breadcrumb)
-              }
+              onClick={() => {
+                navigateToBreadcrumb(breadcrumb);
+                onBreadcrumbClick?.(breadcrumb);
+              }}
             >
               {breadcrumb.name}
             </Badge>
@@ -60,3 +59,12 @@ export const SdkBreadcrumb = ({ className, style }: SdkBreadcrumbProps) => {
     </PublicComponentStylesWrapper>
   );
 };
+
+const getBreadcrumbIcon = (type: BreadcrumbItemType): IconName =>
+  match<BreadcrumbItemType, IconName>(type)
+    .with("collection", () => "folder")
+    .with("dashboard", () => "dashboard")
+    .with("question", () => "table2")
+    .with("model", () => "model")
+    .with("metric", () => "metric")
+    .exhaustive();

@@ -1,15 +1,21 @@
 import { useState } from "react";
+import { match } from "ts-pattern";
 
+import { InteractiveDashboard } from "embedding-sdk/components/public";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { questionIdArgType } from "embedding-sdk/test/storybook-id-args";
 import type { SdkCollectionId } from "embedding-sdk/types";
-import { Box } from "metabase/ui";
+import { Stack } from "metabase/ui";
 
 import { CollectionBrowser } from "../../public/CollectionBrowser";
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
 
 import { SdkBreadcrumb } from "./SdkBreadcrumb";
-import { SdkBreadcrumbProvider } from "./SdkBreadcrumbProvider";
+import {
+  type BreadcrumbItem,
+  type BreadcrumbItemType,
+  SdkBreadcrumbProvider,
+} from "./SdkBreadcrumbProvider";
 
 export default {
   title: "EmbeddingSDK/SdkBreadcrumb",
@@ -23,32 +29,46 @@ export default {
   },
 };
 
-type View = "collection" | "question";
+type View =
+  | { type: "collection"; id: SdkCollectionId }
+  | { type: Exclude<BreadcrumbItemType, "collection">; id: string | number };
 
 export const Default = {
   render() {
-    const [view, setView] = useState<View>("collection");
-    const [resourceId, setResourceId] = useState<SdkCollectionId | null>(null);
+    const [view, setView] = useState<View>({ type: "collection", id: "root" });
+
+    const onBreadcrumbClick = ({ id, type }: BreadcrumbItem) =>
+      setView({ id, type });
 
     return (
       <SdkBreadcrumbProvider>
-        <Box p="md">
-          {view === "collection" && (
+        <Stack p="md" gap="sm">
+          <SdkBreadcrumb onBreadcrumbClick={onBreadcrumbClick} />
+          <code>view: {JSON.stringify(view)}</code>
+
+          {view.type === "collection" && (
             <CollectionBrowser
               collectionId="root"
               onClick={(item) => {
-                if (item.type === "question") {
-                  setView("question");
-                  setResourceId(item.id);
-                }
+                const type = match<string, BreadcrumbItemType>(item.model)
+                  .with("card", () => "question")
+                  .otherwise((model) => model as BreadcrumbItemType);
+
+                setView({ type, id: item.id });
               }}
             />
           )}
 
-          {view === "question" && (
-            <InteractiveQuestion questionId={resourceId} />
+          {(view.type === "question" ||
+            view.type === "metric" ||
+            view.type === "model") && (
+            <InteractiveQuestion questionId={view.id} />
           )}
-        </Box>
+
+          {view.type === "dashboard" && (
+            <InteractiveDashboard dashboardId={view.id} />
+          )}
+        </Stack>
       </SdkBreadcrumbProvider>
     );
   },
