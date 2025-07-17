@@ -21,6 +21,10 @@
   "The name of the index table used for semantic search."
   :search_index)
 
+(def ^:dynamic *vector-dimensions*
+  "The number of dimensions in the vector embeddings for the current model."
+  1024)
+
 (defn- index-table-schema
   "Schema for the index table."
   []
@@ -35,9 +39,10 @@
      [:last_editor_id :int]
      [:model_updated_at :timestamp-with-time-zone]
      [:archived :boolean [:default false]]
+     [:verified :boolean]
      [:official_collection :boolean]
      [:legacy_input :jsonb]
-     [:embedding [:raw "vector(1024)"] :not-null]
+     [:embedding [:raw (format "vector(%d)" *vector-dimensions*)] :not-null]
      [:content :text :not-null]
      [:metadata :jsonb]
      [[:constraint unique-constraint-name]
@@ -51,7 +56,7 @@
 (defn- doc->db-record
   "Convert a document to a database record with embedding."
   [{:keys [model id searchable_text created_at creator_id updated_at
-           last_editor_id archived official_collection legacy_input] :as doc}]
+           last_editor_id archived verified official_collection legacy_input] :as doc}]
   (let [embedding (embedding/get-embedding searchable_text)]
     {:model               model
      :model_id            id
@@ -60,6 +65,7 @@
      :last_editor_id      last_editor_id
      :model_updated_at    updated_at
      :archived            archived
+     :verified            verified
      :official_collection official_collection
      :embedding           [:raw (format-embedding embedding)]
      :content             searchable_text
@@ -67,7 +73,8 @@
      :metadata            [:cast (json/encode doc) :jsonb]}))
 
 (defn populate-index!
-  "Inserts a set of documents into the index table."
+  "Inserts a set of documents into the index table. Throws when trying to insert
+  existing model + model_id pairs. (Use upsert-index! to update existing documents)"
   [documents]
   (jdbc/with-transaction [tx @db/data-source]
     (doseq [doc documents]
@@ -125,10 +132,12 @@
 
 (defn- search-filters
   "Generate WHERE conditions based on search context filters."
-  [{:keys [archived? models created-at created-by last-edited-at last-edited-by]}]
+  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by]}]
   (let [conditions (filter some?
                            [(when (some? archived?)
                               [:= :archived archived?])
+                            (when (some? verified)
+                              [:= :verified verified])
                             (when (seq models)
                               [:in :model models])
                             (when (seq created-by)
@@ -153,6 +162,7 @@
         base-query {:select [[:model_id :model_id]
                              [:model :model]
                              [:content :content]
+                             [:verified :verified]
                              [[:raw (str "embedding <=> " (format-embedding embedding))] :distance]
                              [:metadata :metadata]]
                     :from   [*index-table-name*]
@@ -188,13 +198,13 @@
       (let [embedding   (embedding/get-embedding search-string)
             query       (semantic-search-query embedding search-context)
             t2-model    (fn [doc] (:model (search/spec (:model doc))))
-            t2-instance (fn [doc] (t2/instance (t2-model doc) doc))]
-        (->> (jdbc/plan @db/data-source (sql/format query))
-             (map unqualify-keys)
-             (map decode-metadata)
-             (map legacy-input-with-score)
-             ;; important this is done eagerly to avoid surprises with dynamic vars
-             (filterv (comp mi/can-read? t2-instance)))))))
+            t2-instance (fn [doc] (t2/instance (t2-model doc) doc))
+            xform       (comp (map unqualify-keys)
+                              (map decode-metadata)
+                              (map legacy-input-with-score)
+                              (filter (comp mi/can-read? t2-instance)))
+            reducible   (jdbc/plan @db/data-source (sql/format query))]
+        (transduce xform conj [] reducible)))))
 
 (defn delete-from-index!
   "Deletes documents from the index table based on model and model_ids."

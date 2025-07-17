@@ -1786,7 +1786,8 @@
   enterprise/semantic-search
   {:team "Metabot"
    :api  #{metabase-enterprise.semantic-search.core}
-   :uses #{models
+   :uses #{connection-pool
+           models
            premium-features
            search
            util}}
