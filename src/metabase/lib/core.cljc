@@ -311,9 +311,7 @@
   implicitly-joined-ident
   model-ident
   native-ident
-  placeholder-card-entity-id-for-adhoc-query
-  remove-model-ident
-  replace-placeholder-idents]
+  remove-model-ident]
  [lib.native
   engine
   extract-template-tags

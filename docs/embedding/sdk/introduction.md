@@ -118,7 +118,11 @@ The SDK doesn't support:
 - Subscriptions
 - Alerts
 - Server-side rendering (SSR)
+
+Other limitations:
+
 - Multiple _interactive_ dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
+- If you have Leaflet 1.x as a dependency in your app, you may run into compatibility issues. You can try using Leaflet 2.x instead.
 
 ## Issues, feature requests and support
 

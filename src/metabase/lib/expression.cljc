@@ -456,7 +456,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    ;; The legacy format, which uses a map to represent the expressions loses the ordering,
+    ;; The legacy format, which uses a map to represent the expressions, loses the ordering
     ;; if ten or more expressions are used. Preserving the order would require to use a
     ;; map type preserving the order both when converting to the legacy format and when
     ;; converting from JS to CLJ. This could be done by changing the legacy format or
@@ -467,9 +467,15 @@
     ;; Clojure map, so there are plenty of possibilities to mess this up.)
     ;; Changing the legacy/wire format is probably the right way to go, but that's a bigger
     ;; endeavor.
-    _expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+    expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
    (let [stage (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)]
+         expr-name (when expression-position
+                     (some-> (expressions query stage-number)
+                             (nth expression-position nil)
+                             lib.util/expression-name))
+         columns (cond->> (lib.metadata.calculation/visible-columns query stage-number stage)
+                   expr-name (into [] (remove #(and (= (:lib/source %) :source/expressions)
+                                                    (= (:name %) expr-name)))))]
      (not-empty columns))))
 
 (mu/defn expression-ref :- :mbql.clause/expression
