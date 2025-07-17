@@ -134,7 +134,7 @@ export type SearchRequest = {
   display_type?: string[] | null;
   has_temporal_dimensions?: boolean | null;
   required_non_temporal_dimension_ids?: number[] | null;
-  search_engine?: "semantic";
+  search_engine?: "appdb" | "semantic";
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;

@@ -9,7 +9,7 @@ export const SearchFilterKeys = {
   LastEditedAt: "last_edited_at",
   NativeQuery: "search_native_query",
   SearchTrashedItems: "archived",
-  SemanticSearch: "semantic_search",
+  DisableSemanticSearch: "disable_semantic_search",
 } as const;
 
 export const enabledSearchTypes: EnabledSearchModel[] = [
