@@ -40,7 +40,7 @@ export type SearchFilterPropTypes = {
   [SearchFilterKeys.LastEditedAt]: LastEditedAtFilterProps;
   [SearchFilterKeys.NativeQuery]: NativeQueryFilterProps;
   [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilterProps;
-  [SearchFilterKeys.DisableSemanticSearch]: SemanticSearchFilterProps;
+  [SearchFilterKeys.SemanticSearch]: SemanticSearchFilterProps;
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;

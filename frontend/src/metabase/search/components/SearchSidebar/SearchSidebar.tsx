@@ -27,9 +27,8 @@ type SearchSidebarProps = {
 };
 
 export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
-  // TODO: don't ship this to prod
-  const DisableSemanticSearchFilter: SearchFilterToggle = {
-    label: () => t`Disable semantic search`,
+  const test: SearchFilterToggle = {
+    label: () => t`Use semantic search`,
     type: "toggle",
     fromUrl: (value) => value === "true",
     toUrl: (value: boolean) => (value ? "true" : null),
@@ -42,7 +41,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     [SearchFilterKeys.LastEditedBy]: LastEditedByFilter,
     [SearchFilterKeys.LastEditedAt]: LastEditedAtFilter,
     [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
-    [SearchFilterKeys.DisableSemanticSearch]: DisableSemanticSearchFilter,
+    [SearchFilterKeys.SemanticSearch]: test,
     [SearchFilterKeys.NativeQuery]: NativeQueryFilter,
     [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilter,
   };
@@ -51,10 +50,18 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     if (!val) {
       onChange(_.omit(value, key));
     } else {
-      onChange({
+      let nextValue = {
         ...value,
         [key]: val,
-      });
+      };
+
+      if (key === SearchFilterKeys.SemanticSearch && !!val) {
+        nextValue = _.omit(nextValue, SearchFilterKeys.NativeQuery);
+      } else if (key === SearchFilterKeys.NativeQuery && !!val) {
+        nextValue = _.omit(nextValue, SearchFilterKeys.SemanticSearch);
+      }
+
+      onChange(nextValue);
     }
   };
 
@@ -101,7 +108,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
         {getFilter(SearchFilterKeys.LastEditedAt)}
       </Stack>
       {getFilter(SearchFilterKeys.Verified)}
-      {getFilter(SearchFilterKeys.DisableSemanticSearch)}
+      {getFilter(SearchFilterKeys.SemanticSearch)}
       {getFilter(SearchFilterKeys.NativeQuery)}
       {getFilter(SearchFilterKeys.SearchTrashedItems)}
     </Stack>
