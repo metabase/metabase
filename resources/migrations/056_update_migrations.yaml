@@ -320,6 +320,23 @@ databaseChangeLog:
                   type: ${boolean.type}
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v56.2025-07-07T08:59:40
+      author: edpaget
+      comment: add column for tenant attributes
+      preConditions: # not needed
+      changes:
+        - addColumn:
+            tableName: tenant
+            columns:
+              - column:
+                  name: attributes
+                  type: ${text.type}
+                  remarks: JSON object containing custom tenant attributes
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
