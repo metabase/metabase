@@ -132,6 +132,13 @@
           (lib.util/update-query-stage -1 dissoc :filters)))
     metric-query))
 
+(defn- auto-generated-name?
+  "Returns true if the name looks like an auto-generated temp name (20 uppercase letters)."
+  [name]
+  (and (string? name)
+       (= 20 (count name))
+       (re-matches #"^[A-Z]+$" name)))
+
 (defn- replace-metric-aggregation-refs [query stage-number lookup]
   (if-let [aggregations (lib/aggregations query stage-number)]
     (let [columns (lib/visible-columns query stage-number)]
@@ -146,12 +153,14 @@
                                         (if-let [col (lib/find-matching-column &match columns)]
                                           (lib/ref col)
                                           ;; This is probably due to a field-id where it shouldn't be
-                                          &match))]
+                                          &match))
+                          ;; Hack to verify my understanding:
+                          use-metric-name? (and metric-name (not (auto-generated-name? metric-name)))]
                       (update (lib.util/fresh-uuids replacement)
                               1
                               #(merge
                                 %
-                                (when metric-name {:name metric-name})
+                                (when use-metric-name? {:name metric-name})
                                 (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
                     (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
     query))
