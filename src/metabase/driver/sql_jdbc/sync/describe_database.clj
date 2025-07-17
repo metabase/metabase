@@ -105,6 +105,15 @@
       true
       (catch Throwable e
 
+        (try
+          (when (and (not (.isClosed conn))
+                     (not (.isValid conn 5)))
+              ;; if the connection is not valid anymore but hasn't been closed by the driver,
+              ;; we close it so that [[sql-jdbc.execute/try-ensure-open-conn!]] can attempt to reopen it
+              ;; we've observed the snowflake driver hit this case
+            (.close conn))
+          (catch Throwable _))
+
         (let [allow? (driver/query-canceled? driver e)]
 
           (if allow?
