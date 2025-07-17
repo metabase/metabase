@@ -29,8 +29,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       resourceName: DASHBOARD_NAME,
     });
 
-    cy.wait("@persistSettings");
-
     cy.log("1. set embed settings to non-default values");
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow downloads")
@@ -132,8 +130,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       resourceName: DASHBOARD_NAME,
     });
 
-    cy.wait("@persistSettings");
-
     cy.log("1. change brand color to red");
     cy.findByLabelText("#509EE3").click();
 
@@ -166,8 +162,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
     });
-
-    cy.wait("@persistSettings");
 
     cy.log("1. select sso auth method");
     getEmbedSidebar().within(() => {

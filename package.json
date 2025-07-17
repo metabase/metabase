@@ -508,6 +508,9 @@
     ],
     "+(.storybook|.storybook-sdk)/**/*.{js,jsx,ts,tsx,css}": [
       "prettier --write"
+    ],
+    "**/*": [
+      "./bin/mage -token-scan"
     ]
   },
   "browserslist": [

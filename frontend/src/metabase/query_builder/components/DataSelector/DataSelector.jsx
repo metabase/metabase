@@ -155,6 +155,7 @@ export class UnconnectedDataSelector extends Component {
     useOnlyAvailableSchema: PropTypes.bool,
     isInitiallyOpen: PropTypes.bool,
     tableFilter: PropTypes.func,
+    fieldFilter: PropTypes.func,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
     canSelectModel: PropTypes.bool,
@@ -218,7 +219,7 @@ export class UnconnectedDataSelector extends Component {
   // asynchronously loaded
   //
   _getComputedState(props, state) {
-    const { metadata, tableFilter } = props;
+    const { metadata, tableFilter, fieldFilter } = props;
     const {
       selectedDatabaseId,
       selectedSchemaId,
@@ -292,6 +293,10 @@ export class UnconnectedDataSelector extends Component {
 
     if (tables && tableFilter) {
       tables = tables.filter(tableFilter);
+    }
+
+    if (fields && fieldFilter) {
+      fields = fields.filter(fieldFilter);
     }
 
     return {

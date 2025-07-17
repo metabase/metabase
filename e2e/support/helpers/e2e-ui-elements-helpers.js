@@ -1,5 +1,7 @@
 // Functions that get key elements in the app
 
+import { dashboardParameterSidebar } from "./e2e-dashboard-helpers";
+
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
@@ -210,6 +212,18 @@ export function toggleFilterWidgetValues(
     values.forEach((value) => cy.findByText(value).click());
     cy.button(buttonLabel).click();
   });
+}
+
+/**
+ * Moves a dashboard filter to a dashcard / top nav
+ * (it must be in 'editing' mode prior to that)
+ */
+export function moveDashboardFilter(destination, { showFilter = false } = {}) {
+  dashboardParameterSidebar().findByPlaceholderText("Move filter").click();
+  popover().findByText(destination).click();
+  if (showFilter) {
+    undoToast().button("Show filter").click();
+  }
 }
 
 export const openQuestionActions = (action) => {

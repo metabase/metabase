@@ -9,6 +9,10 @@
   }
 }
 
+.active {
+  border-color: var(--mb-color-brand) !important;
+}
+
 .link {
   border-radius: inherit;
 }
@@ -42,6 +46,10 @@
       }
     }
   }
+}
+
+.description {
+  line-height: var(--mantine-line-height-lg) !important;
 }
 
 .name {

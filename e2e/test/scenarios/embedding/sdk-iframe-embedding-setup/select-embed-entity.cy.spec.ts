@@ -83,6 +83,24 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.getIframeBody().within(() => {
       cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
     });
+
+    cy.log("select the same the dashboard again");
+    getEmbedSidebar().within(() => {
+      cy.findByText(SECOND_DASHBOARD_NAME).click();
+      cy.findByText(SECOND_DASHBOARD_NAME).click();
+    });
+
+    cy.get("@secondDashboardId").then((secondDashboardId) => {
+      cy.log("only a single snowplow event should be sent");
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "embed_wizard_resource_selected",
+          target_id: secondDashboardId,
+          event_detail: "dashboard",
+        },
+        1,
+      );
+    });
   });
 
   it("can select a recent question to embed", () => {
