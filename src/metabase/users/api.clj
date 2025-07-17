@@ -397,7 +397,8 @@
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
   (-> (api/check-404 (fetch-user :id id))
-      (t2/hydrate :user_group_memberships)))
+      (t2/hydrate :user_group_memberships)
+      tenants/attribute-structure))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
