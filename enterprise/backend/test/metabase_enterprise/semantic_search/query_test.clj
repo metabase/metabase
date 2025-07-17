@@ -108,125 +108,131 @@
 
 (deftest basic-query-test
   (testing "Simple queries with no filters"
-    (mt/as-admin
-      (with-mocked-embeddings!
-        (with-index!
-          (testing "Dog-related query finds dog content"
-            (let [results (semantic.index/query-index {:search-string "puppy"})]
-              (is (= "Dog Training Guide" (-> results first :name)))))
+    (mt/with-premium-features #{:semantic-search}
+      (mt/as-admin
+        (with-mocked-embeddings!
+          (with-index!
+            (testing "Dog-related query finds dog content"
+              (let [results (semantic.index/query-index {:search-string "puppy"})]
+                (is (= "Dog Training Guide" (-> results first :name)))))
 
-          (testing "Bird-related query finds bird content"
-            (let [results (semantic.index/query-index {:search-string "avian"})]
-              (is (= "Bird Watching Tips" (-> results first :name))))))))))
+            (testing "Bird-related query finds bird content"
+              (let [results (semantic.index/query-index {:search-string "avian"})]
+                (is (= "Bird Watching Tips" (-> results first :name)))))))))))
 
 (deftest model-filtering-test
   (testing "Filter results by model type"
-    (mt/as-admin
-      (with-mocked-embeddings!
-        (with-index!
-          (testing "Filter for cards only"
-            (let [card-results (semantic.index/query-index {:search-string "avian" :models ["card"]})
-                  filtered-results (filter-for-mock-embeddings card-results)]
-              (is (pos? (count filtered-results)))
-              (is (every? #(= "card" (:model %)) card-results))))
+    (mt/with-premium-features #{:semantic-search}
+      (mt/as-admin
+        (with-mocked-embeddings!
+          (with-index!
+            (testing "Filter for cards only"
+              (let [card-results (semantic.index/query-index {:search-string "avian" :models ["card"]})
+                    filtered-results (filter-for-mock-embeddings card-results)]
+                (is (pos? (count filtered-results)))
+                (is (every? #(= "card" (:model %)) card-results))))
 
-          (testing "Filter for dashboards only"
-            (let [dashboard-results (semantic.index/query-index {:search-string "marine mammal" :models ["dashboard"]})
-                  filtered-results (filter-for-mock-embeddings dashboard-results)]
-              (is (pos? (count filtered-results)))
-              (is (every? #(= "dashboard" (:model %)) dashboard-results))))
+            (testing "Filter for dashboards only"
+              (let [dashboard-results (semantic.index/query-index {:search-string "marine mammal" :models ["dashboard"]})
+                    filtered-results (filter-for-mock-embeddings dashboard-results)]
+                (is (pos? (count filtered-results)))
+                (is (every? #(= "dashboard" (:model %)) dashboard-results))))
 
-          (testing "Filter for multiple model types"
-            (let [mixed-results (semantic.index/query-index {:search-string "predator" :models ["card" "dashboard"]})
-                  filtered-results (filter-for-mock-embeddings mixed-results)]
-              (is (pos? (count filtered-results)))
-              (is (every? #(contains? #{"card" "dashboard"} (:model %)) mixed-results)))))))))
+            (testing "Filter for multiple model types"
+              (let [mixed-results (semantic.index/query-index {:search-string "predator" :models ["card" "dashboard"]})
+                    filtered-results (filter-for-mock-embeddings mixed-results)]
+                (is (pos? (count filtered-results)))
+                (is (every? #(contains? #{"card" "dashboard"} (:model %)) mixed-results))))))))))
 
 (deftest archived-filtering-test
   (testing "Filter results by archived status"
-    (mt/as-admin
-      (with-mocked-embeddings!
-        (with-index!
-          (testing "Include only non-archived items"
-            (let [active-results (semantic.index/query-index {:search-string "feline" :archived? false})]
-              (is (every? #(not (:archived %))  active-results))))
+    (mt/with-premium-features #{:semantic-search}
+      (mt/as-admin
+        (with-mocked-embeddings!
+          (with-index!
+            (testing "Include only non-archived items"
+              (let [active-results (semantic.index/query-index {:search-string "feline" :archived? false})]
+                (is (every? #(not (:archived %))  active-results))))
 
-          (testing "Include only archived items"
-            (let [archived-results (semantic.index/query-index {:search-string "feline" :archived? true})
-                  filtered-results (filter-for-mock-embeddings archived-results)]
-              (is (pos? (count filtered-results)))
-              (is (every? :archived  archived-results))))
+            (testing "Include only archived items"
+              (let [archived-results (semantic.index/query-index {:search-string "feline" :archived? true})
+                    filtered-results (filter-for-mock-embeddings archived-results)]
+                (is (pos? (count filtered-results)))
+                (is (every? :archived  archived-results))))
 
-          (testing "Include all items regardless of archived status"
-            (let [all-results (semantic.index/query-index {:search-string "feline"})
-                  filtered-results (filter-for-mock-embeddings all-results)]
-              (is (pos? (count filtered-results))))))))))
+            (testing "Include all items regardless of archived status"
+              (let [all-results (semantic.index/query-index {:search-string "feline"})
+                    filtered-results (filter-for-mock-embeddings all-results)]
+                (is (pos? (count filtered-results)))))))))))
 
 (deftest creator-filtering-test
   (testing "Filter results by creator"
-    (mt/as-admin
-      (with-mocked-embeddings!
-        (with-index!
-          (testing "Filter by single creator"
-            (let [crowberto-results (semantic.index/query-index {:search-string "aquatic" :created-by [(mt/user->id :crowberto)]})
-                  filtered-results (filter-for-mock-embeddings crowberto-results)]
-              (is (pos? (count filtered-results)))
-              (is (every? #(= (mt/user->id :crowberto) (:creator_id %)) crowberto-results))))
+    (mt/with-premium-features #{:semantic-search}
+      (mt/as-admin
+        (with-mocked-embeddings!
+          (with-index!
+            (testing "Filter by single creator"
+              (let [crowberto-results (semantic.index/query-index {:search-string "aquatic" :created-by [(mt/user->id :crowberto)]})
+                    filtered-results (filter-for-mock-embeddings crowberto-results)]
+                (is (pos? (count filtered-results)))
+                (is (every? #(= (mt/user->id :crowberto) (:creator_id %)) crowberto-results))))
 
-          (testing "Filter by multiple creators"
-            (let [multi-creator-results (semantic.index/query-index {:search-string "endangered species"
-                                                                     :created-by    [(mt/user->id :crowberto) (mt/user->id :rasta)]})]
-              (is (pos? (count multi-creator-results)))
-              (is (every? #(contains? #{(mt/user->id :crowberto) (mt/user->id :rasta)} (:creator_id %)) multi-creator-results)))))))))
+            (testing "Filter by multiple creators"
+              (let [multi-creator-results (semantic.index/query-index {:search-string "endangered species"
+                                                                       :created-by    [(mt/user->id :crowberto) (mt/user->id :rasta)]})]
+                (is (pos? (count multi-creator-results)))
+                (is (every? #(contains? #{(mt/user->id :crowberto) (mt/user->id :rasta)} (:creator_id %)) multi-creator-results))))))))))
 
 (deftest verified-filtering-test
   (testing "Filter results by verified status"
-    (mt/as-admin
-      (with-mocked-embeddings!
-        (with-index!
-          (testing "Include only verified items"
-            (let [verified-results (semantic.index/query-index {:search-string "puppy" :verified true})
-                  filtered-results (filter-for-mock-embeddings verified-results)]
-              (is (pos? (count filtered-results)))
-              (is (every? :verified verified-results))))
+    (mt/with-premium-features #{:semantic-search}
+      (mt/as-admin
+        (with-mocked-embeddings!
+          (with-index!
+            (testing "Include only verified items"
+              (let [verified-results (semantic.index/query-index {:search-string "puppy" :verified true})
+                    filtered-results (filter-for-mock-embeddings verified-results)]
+                (is (pos? (count filtered-results)))
+                (is (every? :verified verified-results))))
 
-          (testing "Include all items regardless of verified status when filter not specified"
-            (let [all-results (semantic.index/query-index {:search-string "puppy"})
-                  filtered-results (filter-for-mock-embeddings all-results)]
-              (is (pos? (count filtered-results))))))))))
+            (testing "Include all items regardless of verified status when filter not specified"
+              (let [all-results (semantic.index/query-index {:search-string "puppy"})
+                    filtered-results (filter-for-mock-embeddings all-results)]
+                (is (pos? (count filtered-results)))))))))))
 
 (deftest complex-filtering-test
   (testing "Complex filters with multiple criteria"
-    (mt/as-admin
-      (with-mocked-embeddings!
-        (with-index!
-          (testing "Non-archived cards by specific creator"
-            (let [results (semantic.index/query-index {:search-string "equine"
-                                                       :models ["card"]
-                                                       :archived? false
-                                                       :created-by [(mt/user->id :rasta)]})
-                  filtered-results (filter-for-mock-embeddings results)]
-              (is (pos? (count filtered-results)))
-              (is (every? #(and (= "card" (:model %))
-                                (not (:archived %))
-                                (= (mt/user->id :rasta) (:creator_id %))) results))))
+    (mt/with-premium-features #{:semantic-search}
+      (mt/as-admin
+        (with-mocked-embeddings!
+          (with-index!
+            (testing "Non-archived cards by specific creator"
+              (let [results (semantic.index/query-index {:search-string "equine"
+                                                         :models ["card"]
+                                                         :archived? false
+                                                         :created-by [(mt/user->id :rasta)]})
+                    filtered-results (filter-for-mock-embeddings results)]
+                (is (pos? (count filtered-results)))
+                (is (every? #(and (= "card" (:model %))
+                                  (not (:archived %))
+                                  (= (mt/user->id :rasta) (:creator_id %))) results))))
 
-          (testing "Archived dashboards by multiple creators"
-            (let [results (semantic.index/query-index {:search-string "Antarctic wildlife"
-                                                       :models ["dashboard"]
-                                                       :archived? true
-                                                       :created-by [(mt/user->id :crowberto) (mt/user->id :rasta)]})
-                  filtered-results (filter-for-mock-embeddings results)]
-              (is (pos? (count filtered-results)))
-              (is (every? #(and (= "dashboard" (:model %))
-                                (:archived %)
-                                (contains? #{(mt/user->id :crowberto) (mt/user->id :rasta)} (:creator_id %))) results))))
+            (testing "Archived dashboards by multiple creators"
+              (let [results (semantic.index/query-index {:search-string "Antarctic wildlife"
+                                                         :models ["dashboard"]
+                                                         :archived? true
+                                                         :created-by [(mt/user->id :crowberto) (mt/user->id :rasta)]})
+                    filtered-results (filter-for-mock-embeddings results)]
+                (is (pos? (count filtered-results)))
+                (is (every? #(and (= "dashboard" (:model %))
+                                  (:archived %)
+                                  (contains? #{(mt/user->id :crowberto) (mt/user->id :rasta)} (:creator_id %))) results))))
 
-          (testing "Verified items with additional filters"
-            (let [results (semantic.index/query-index {:search-string "marine mammal"
-                                                       :models ["dashboard"]
-                                                       :verified true
-                                                       :archived? false})]
-              (is (every? #(and (= "dashboard" (:model %))
-                                (:verified %)
-                                (not (:archived %))) results)))))))))
+            (testing "Verified items with additional filters"
+              (let [results (semantic.index/query-index {:search-string "marine mammal"
+                                                         :models ["dashboard"]
+                                                         :verified true
+                                                         :archived? false})]
+                (is (every? #(and (= "dashboard" (:model %))
+                                  (:verified %)
+                                  (not (:archived %))) results))))))))))
