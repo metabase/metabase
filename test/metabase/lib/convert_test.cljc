@@ -1322,7 +1322,7 @@
                                          :stages     [{:lib/type :mbql.stage/native
                                                        :query    "SELECT * FROM categories WHERE name = ?;"
                                                        :params   ["BBQ"]}
-                                                      {:lib/type :mbql.stage/mbql}]}],}]}]
+                                                      {:lib/type :mbql.stage/mbql}]}]}]}]
       (is (=? {:type  :query
                :query {:joins [{:alias        "c"
                                 :condition    [:= [:field 61325 nil] [:field "ID" {:base-type :type/BigInteger, :join-alias "c"}]]
