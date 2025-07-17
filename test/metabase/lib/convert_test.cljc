@@ -1388,8 +1388,19 @@
              :database               33001
              :lib.convert/converted? true}
             (lib/->pMBQL query)))
-    (is (=? query
-            (-> query lib/->pMBQL lib/->legacy-MBQL)))))
+    (testing (str "Round-trip back to legacy: I guess it's ok to leave the parameters in a stage since we don't really"
+                  " know if they were top-level or not in the first place")
+      (is (=? {:query {:aggregation  [[:count]]
+                       :joins        [{:alias        "c"
+                                       :condition    [:=
+                                                      [:field 33402 nil]
+                                                      [:field 33100 {:join-alias "c"}]],
+                                       :source-query {:source-table 33010
+                                                      :parameters   [{:type   :category
+                                                                      :target [:field 33101 nil]
+                                                                      :value  "BBQ"}]}}]
+                       :source-query {:source-table 33040}}}
+              (-> query lib/->pMBQL lib/->legacy-MBQL))))))
 
 (deftest ^:parallel join-parameters-test-2
   (testing "If join has top-level :parameters and its source query has :parameters, splice them together"
