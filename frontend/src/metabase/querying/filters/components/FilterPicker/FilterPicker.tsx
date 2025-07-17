@@ -5,8 +5,8 @@ import {
   ExpressionWidget,
   ExpressionWidgetHeader,
 } from "metabase/query_builder/components/expressions";
+import type { DefinedClauseName } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
-import type { DefinedClauseName } from "metabase-lib/v1/expressions";
 
 import {
   FilterColumnPicker,
