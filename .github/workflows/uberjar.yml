@@ -7,8 +7,9 @@ on:
   push:
     branches:
       - master
-      - metabot-v3-main
+      - feature-visualizer
       - internal-tools
+      - nm-semantic-search-in-metabase
     paths-ignore:
       # config files
       - ".**"
