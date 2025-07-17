@@ -92,9 +92,11 @@ function mapStateToProps(state: State) {
 const mapDispatchToProps = { fetchField, setTemplateTagConfig };
 
 const EMPTY_VALUES_CONFIG: ParameterValuesConfig = {
+  isMultiSelect: false,
   values_query_type: undefined,
   values_source_type: undefined,
   values_source_config: undefined,
+  temporal_units: undefined,
 };
 
 class TagEditorParamInner extends Component<
@@ -114,25 +116,35 @@ class TagEditorParamInner extends Component<
     newType: TemplateTagType,
   ): ParameterValuesConfig => {
     const { tag, parameter, originalQuestion } = this.props;
-    if (!parameter || !originalQuestion) {
+    if (!parameter) {
       return EMPTY_VALUES_CONFIG;
+    }
+
+    const newConfig = {
+      ...EMPTY_VALUES_CONFIG,
+      isMultiSelect: isSingleOrMultiSelectable(parameter)
+        ? parameter.isMultiSelect
+        : false,
+    };
+    if (!originalQuestion) {
+      return newConfig;
     }
 
     const query = originalQuestion.query();
     const queryInfo = Lib.queryDisplayInfo(query);
     if (!queryInfo.isNative) {
-      return EMPTY_VALUES_CONFIG;
+      return newConfig;
     }
 
     const originalTag = Lib.templateTags(query)[tag.name];
     const parameters = originalQuestion.parameters();
     const originalParameter = parameters.find(({ id }) => id === parameter.id);
     if (!originalTag || originalTag.type !== newType || !originalParameter) {
-      return EMPTY_VALUES_CONFIG;
+      return newConfig;
     }
 
     return {
-      isMultiSelect: originalParameter.isMultiSelect,
+      ...newConfig,
       values_source_type: originalParameter.values_source_type,
       values_source_config: originalParameter.values_source_config,
       values_query_type: originalParameter.values_query_type,

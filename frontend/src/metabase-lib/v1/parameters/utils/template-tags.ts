@@ -48,7 +48,6 @@ export function getTemplateTagParameter(
   config?: ParameterValuesConfig,
 ): ParameterWithTarget {
   const type = getParameterType(tag);
-  const isTemporalUnit = type === "temporal-unit";
 
   return {
     id: tag.id,
@@ -59,13 +58,11 @@ export function getTemplateTagParameter(
     default: tag.default,
     required: tag.required,
     options: tag.options,
-    isMultiSelect: config?.isMultiSelect ?? tag.type === "dimension",
+    isMultiSelect: config?.isMultiSelect,
     values_query_type: config?.values_query_type,
     values_source_type: config?.values_source_type,
     values_source_config: config?.values_source_config,
-    ...(isTemporalUnit && {
-      temporal_units: config?.temporal_units,
-    }),
+    temporal_units: config?.temporal_units,
   };
 }
 
