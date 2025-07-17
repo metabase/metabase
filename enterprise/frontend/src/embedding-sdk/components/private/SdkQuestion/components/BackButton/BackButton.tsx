@@ -23,13 +23,18 @@ export type BackButtonProps = Omit<
  * @param props
  */
 export const BackButton = ({ ...actionIconProps }: BackButtonProps) => {
-  const { onNavigateBack } = useSdkQuestionContext();
+  const { onNavigateBack, backToDashboard } = useSdkQuestionContext();
 
   if (!onNavigateBack) {
     return null;
   }
 
   return (
-    <DashboardBackButton noLink onClick={onNavigateBack} {...actionIconProps} />
+    <DashboardBackButton
+      noLink
+      onClick={onNavigateBack}
+      dashboardOverride={backToDashboard}
+      {...actionIconProps}
+    />
   );
 };

@@ -168,6 +168,7 @@ export const DashCardCardParameterMapperContent = ({
       )}
       <Flex align="center" justify="center" gap="xs" pos="relative">
         <DashCardCardParameterMapperButton
+          key={editingParameter?.id}
           handleChangeTarget={handleChangeTarget}
           isVirtual={isVirtual}
           isQuestion={isQuestion}

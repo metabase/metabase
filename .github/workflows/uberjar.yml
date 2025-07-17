@@ -10,6 +10,7 @@ on:
       - metabot-v3-main
       - feature-visualizer
       - internal-tools
+      - viz-1048-only-visualizer-compatible
     paths-ignore:
       # config files
       - ".**"
@@ -20,6 +21,8 @@ on:
       - "**test/**"
       - "**_test.clj"
       - "**/frontend/**.unit.*"
+  pull_request:
+    types: [labeled, opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
       commit:
@@ -30,6 +33,8 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     name: Get container info
+    # Skip if this is a PR without the build-docker-uberjar label
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar')
     outputs:
       editions: ${{ toJson(fromJson(steps.info.outputs.result).editions) }}
       ee: ${{ toJson(fromJson(steps.info.outputs.result).ee) }}

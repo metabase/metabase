@@ -380,6 +380,21 @@
                              :target [:dimension [:template-tag "price"]]
                              :value  [1 2]}]}))))))
 
+(deftest ^:parallel native-with-boolean-params-test
+  (testing "Make sure we can convert a parameterized query with boolean params to a native query"
+    (doseq [value [false true]]
+      (let [query {:type       :native
+                   :native     {:query         "SELECT CASE WHEN {{x}} = {{x}} THEN 1 ELSE 0 END"
+                                :template-tags {"x"
+                                                {:name         "x"
+                                                 :display-name "X"
+                                                 :type         :boolean}}}
+                   :database   (mt/id)
+                   :parameters [{:type   :boolean/=
+                                 :target [:variable [:template-tag "x"]]
+                                 :value  [value]}]}]
+        (is (= [[1]] (mt/rows (qp/process-query query))))))))
+
 (defmethod driver/database-supports? [::driver/driver ::get-parameter-count]
   [_driver _feature _database]
   true)
