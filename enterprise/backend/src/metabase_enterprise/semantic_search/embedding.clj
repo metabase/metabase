@@ -136,13 +136,12 @@
    (-model-dimensions (get-provider) model)))
 
 (comment
-  ;; Configuration via Metabase settings (Admin > Settings):
-  ;;
-  ;; ee-embedding-provider: "openai" (default) or "ollama"
-  ;; ee-embedding-model: optional override (leave empty for provider defaults)
+  ;; Configuration:
+  ;; MB_EE_EMBEDDING_PROVIDER:  "openai" (default) or "ollama"
+  ;; MB_EE_EMBEDDING_MODEL: optional override (leave empty for provider defaults)
   ;;   - OpenAI default: "text-embedding-3-small"
   ;;   - Ollama default: "mxbai-embed-large"
-  ;; ee-openai-api-key: your OpenAI API key (reuses existing LLM setting, required for OpenAI)
+  ;; MB_EE_OPENAI_API_KEY your OpenAI API key (reuses existing env var from LLM settings)
 
   (pull-model)
   (get-embedding "hello")

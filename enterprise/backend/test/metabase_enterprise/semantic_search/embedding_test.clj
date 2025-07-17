@@ -82,23 +82,23 @@
     (is (= "mxbai-embed-large" (#'embedding/default-model-for-provider :ollama)))
     (is (nil? (#'embedding/default-model-for-provider :unknown))))
 
-  (testing "get-model-for-provider uses defaults when override is nil or empty"
+  (testing "get-model uses defaults when override is nil or empty"
     (mt/with-temporary-setting-values [semantic-settings/ee-embedding-provider "openai"
                                        semantic-settings/ee-embedding-model nil]
-      (is (= "text-embedding-3-small" (#'embedding/get-model-for-provider))))
+      (is (= "text-embedding-3-small" (#'embedding/get-model))))
 
     (mt/with-temporary-setting-values [semantic-settings/ee-embedding-provider "openai"
                                        semantic-settings/ee-embedding-model ""]
-      (is (= "text-embedding-3-small" (#'embedding/get-model-for-provider))))
+      (is (= "text-embedding-3-small" (#'embedding/get-model))))
 
     (mt/with-temporary-setting-values [semantic-settings/ee-embedding-provider "ollama"
                                        semantic-settings/ee-embedding-model nil]
-      (is (= "mxbai-embed-large" (#'embedding/get-model-for-provider)))))
+      (is (= "mxbai-embed-large" (#'embedding/get-model)))))
 
-  (testing "get-model-for-provider uses override when specified"
+  (testing "get-model uses override when specified"
     (mt/with-temporary-setting-values [semantic-settings/ee-embedding-provider "openai"
                                        semantic-settings/ee-embedding-model "text-embedding-3-large"]
-      (is (= "text-embedding-3-large" (#'embedding/get-model-for-provider))))))
+      (is (= "text-embedding-3-large" (#'embedding/get-model))))))
 
 (deftest test-openai-provider-validation
   (testing "OpenAIProvider throws when API key not configured"
