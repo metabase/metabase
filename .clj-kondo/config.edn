@@ -68,6 +68,7 @@
   :metabase/validate-logging                           {:level :warning}
   :metabase/validate-mb-driver-tests                   {:level :warning}
   :metabase/validate-mb-once                           {:level :warning}
+  :metabase/discourage-millis-duration                 {:level :warning}
 
   :metabase/validate-deftest
   {:level :warning
@@ -501,6 +502,7 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
+   clojure.core/-                                                                                                            hooks.metabase.util.timing/discourage-millis-duration
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
    clojure.test/use-fixtures                                                                                                 hooks.clojure.test/use-fixtures
