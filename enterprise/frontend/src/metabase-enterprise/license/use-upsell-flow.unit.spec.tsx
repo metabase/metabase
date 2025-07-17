@@ -25,7 +25,11 @@ const TestComponent = ({
 
   return (
     <div>
-      <button onClick={triggerUpsellFlow}>Trigger Upsell Flow</button>
+      {triggerUpsellFlow !== undefined ? (
+        <button onClick={triggerUpsellFlow}>Trigger Upsell Flow</button>
+      ) : (
+        <div>Upsell flow is not available</div>
+      )}
     </div>
   );
 };
@@ -40,11 +44,13 @@ const setupContainer = ({
     is_superuser: true,
   },
   tokenActivation = true,
+  isHosted = false,
 }: Partial<{
   campaign: string;
   location: string;
   currentUser: Partial<User>;
   tokenActivation: boolean;
+  isHosted: boolean;
 }> = {}) => {
   const mockWindowOpen = jest.fn();
   Object.defineProperty(window, "open", {
@@ -61,6 +67,7 @@ const setupContainer = ({
     settings: mockSettings({
       "site-name": "Basemeta",
       "store-url": "https://test-store.metabase.com",
+      "is-hosted?": isHosted,
     }),
     currentUser: createMockUser(currentUser),
   });
@@ -207,6 +214,13 @@ describe("useUpsellFlow", () => {
           ),
         ).toBeInTheDocument();
       });
+    });
+
+    it("should not show upsell flow if the instance is hosted", () => {
+      setupContainer({ isHosted: true });
+      expect(
+        screen.getByText("Upsell flow is not available"),
+      ).toBeInTheDocument();
     });
   });
 });

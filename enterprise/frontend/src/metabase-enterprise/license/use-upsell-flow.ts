@@ -3,13 +3,9 @@ import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
-import {
-  useHasTokenFeature,
-  useSetting,
-  useStoreUrl,
-  useToast,
-} from "metabase/common/hooks";
+import { useSetting, useStoreUrl, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
+import { getIsHosted } from "metabase/setup/selectors";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 
 const NOTIFICATION_TIMEOUT = 30_000;
@@ -26,7 +22,7 @@ export function useUpsellFlow({
   campaign: string;
   location: string;
 }) {
-  const isHosted = useHasTokenFeature("hosting");
+  const isHosted = useSelector(getIsHosted);
   const storeWindowRef = useRef<WindowProxy | null>(null);
   const [sendToast] = useToast();
   const storeUrl = useStoreUrl("checkout/upgrade/self-hosted");
