@@ -125,7 +125,7 @@
 
 ;; A simple way to avoid concurrent or redundant pruning, and for pruning to happen off the main thread.
 (def ^:private pruner-dirty (atom false))
-(def ^:private pruner (agent false))
+(def ^:private pruner (agent nil))
 
 (defn- prune-definitions!
   "Remove older definitions that don't correspond to releases or latest working drafts."
