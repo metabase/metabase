@@ -27,7 +27,7 @@ import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { MetabaseQuestion } from "embedding-sdk/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
-import { useConfirmation } from "metabase/common/hooks";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
   setEditingDashboard,
