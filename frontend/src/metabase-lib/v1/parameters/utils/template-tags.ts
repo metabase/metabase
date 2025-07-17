@@ -21,13 +21,15 @@ function getParameterType(tag: TemplateTag) {
     return "date/single";
   }
   // @ts-expect-error -- preserving preexisting incorrect types (for now)
-  if (type === "string") {
+  if (type === "string" || type === "text") {
     return "string/=";
   }
   if (type === "number") {
     return "number/=";
   }
-
+  if (type === "boolean") {
+    return "boolean/=";
+  }
   if (type === "temporal-unit") {
     return "temporal-unit";
   }

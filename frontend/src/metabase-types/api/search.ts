@@ -131,6 +131,9 @@ export type SearchRequest = {
   model_ancestors?: boolean | null;
   include_dashboard_questions?: boolean | null;
   include_metadata?: boolean | null;
+  display_type?: string[] | null;
+  has_temporal_dimensions?: boolean | null;
+  required_non_temporal_dimension_ids?: number[] | null;
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;
