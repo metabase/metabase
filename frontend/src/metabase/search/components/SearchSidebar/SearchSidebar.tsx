@@ -27,8 +27,9 @@ type SearchSidebarProps = {
 };
 
 export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
-  const test: SearchFilterToggle = {
-    label: () => t`Use semantic search`,
+  // TODO: don't ship this to prod
+  const DisableSemanticSearchFilter: SearchFilterToggle = {
+    label: () => t`Disable semantic search`,
     type: "toggle",
     fromUrl: (value) => value === "true",
     toUrl: (value: boolean) => (value ? "true" : null),
@@ -41,27 +42,29 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     [SearchFilterKeys.LastEditedBy]: LastEditedByFilter,
     [SearchFilterKeys.LastEditedAt]: LastEditedAtFilter,
     [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
-    [SearchFilterKeys.SemanticSearch]: test,
+    [SearchFilterKeys.DisableSemanticSearch]: DisableSemanticSearchFilter,
     [SearchFilterKeys.NativeQuery]: NativeQueryFilter,
     [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilter,
   };
 
   const onOutputChange = (key: FilterTypeKeys, val?: SearchQueryParamValue) => {
     if (!val) {
-      onChange(_.omit(value, key));
+      const omitKeys = _.compact([
+        key,
+        // when enabling semantic search, prevent native queries from being searched
+        key === SearchFilterKeys.DisableSemanticSearch &&
+          SearchFilterKeys.NativeQuery,
+      ]);
+      onChange(_.omit(value, omitKeys));
     } else {
-      let nextValue = {
+      onChange({
         ...value,
         [key]: val,
-      };
-
-      if (key === SearchFilterKeys.SemanticSearch && !!val) {
-        nextValue = _.omit(nextValue, SearchFilterKeys.NativeQuery);
-      } else if (key === SearchFilterKeys.NativeQuery && !!val) {
-        nextValue = _.omit(nextValue, SearchFilterKeys.SemanticSearch);
-      }
-
-      onChange(nextValue);
+        // when enabling native queries search, prevent semantic search from being used
+        ...(key === SearchFilterKeys.NativeQuery && val
+          ? { [SearchFilterKeys.DisableSemanticSearch]: "true" }
+          : {}),
+      });
     }
   };
 
@@ -108,7 +111,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
         {getFilter(SearchFilterKeys.LastEditedAt)}
       </Stack>
       {getFilter(SearchFilterKeys.Verified)}
-      {getFilter(SearchFilterKeys.SemanticSearch)}
+      {getFilter(SearchFilterKeys.DisableSemanticSearch)}
       {getFilter(SearchFilterKeys.NativeQuery)}
       {getFilter(SearchFilterKeys.SearchTrashedItems)}
     </Stack>
