@@ -365,14 +365,14 @@
           ;; otherwise convert single value to SQL.
           :else
           (field-filter->replacement-snippet-info driver field-filter))]
-    (if (not (str/blank? alias))
+    (if (str/blank? alias)
+      replacement-snippet-info
       (let [[old-name] (->> [:field (:id field) {:base-type                     (:base-type field)
                                                  driver-api/qp.add.source-table (:table-id field)
                                                  ::compiling-field-filter?      true}]
                             (sql.qp/->honeysql driver)
                             (sql.qp/format-honeysql driver))]
-        (update replacement-snippet-info :replacement-snippet str/replace old-name alias))
-      replacement-snippet-info)))
+        (update replacement-snippet-info :replacement-snippet str/replace old-name alias)))))
 
 ;;; ------------------------------------ Referenced Card replacement snippet info ------------------------------------
 
