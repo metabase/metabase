@@ -99,9 +99,21 @@ export function assertDataSourceColumnSelected(
   );
 }
 
+export function deselectDatasetFromColumnList(datasetName: string) {
+  dataSource(datasetName)
+    .findAllByLabelText("Remove")
+    .first()
+    .realHover()
+    .click({ force: true });
+}
+
 export function selectDataset(datasetName: string) {
   cy.findByPlaceholderText("Search for something").clear().type(datasetName);
-  cy.findAllByText(datasetName).first().click({ force: true });
+  cy.findAllByText(datasetName)
+    .first()
+    .closest("[data-testid='swap-dataset-button']")
+    .should("not.have.attr", "aria-pressed", "true")
+    .click({ force: true });
   cy.wait("@cardQuery");
 }
 
@@ -109,20 +121,8 @@ export function deselectDataset(datasetName: string) {
   cy.findByPlaceholderText("Search for something").clear().type(datasetName);
   cy.findAllByText(datasetName)
     .first()
-    .closest("button")
-    .siblings('[data-testid="remove-dataset-button"]')
-    .first()
-    .click({ force: true });
-  cy.wait("@cardQuery");
-}
-
-export function addDataset(datasetName: string) {
-  cy.findByPlaceholderText("Search for something").clear().type(datasetName);
-  cy.findAllByText(datasetName)
-    .first()
-    .closest("button")
-    .siblings('[data-testid="add-dataset-button"]')
-    .first()
+    .closest("[data-testid='swap-dataset-button']")
+    .should("have.attr", "aria-pressed", "true")
     .click({ force: true });
   cy.wait("@cardQuery");
 }
@@ -332,4 +332,12 @@ export function closeDashcardVisualizerModal() {
 
 export function saveDashcardVisualizerModalSettings() {
   return saveDashcardVisualizerModal();
+}
+
+export function clickUndoButton() {
+  cy.findByLabelText("Undo").click();
+}
+
+export function clickRedoButton() {
+  cy.findByLabelText("Redo").click();
 }

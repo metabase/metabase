@@ -48,7 +48,11 @@ describe("scenarios > admin > datamodel", () => {
   });
 
   it("should allow to navigate to a table when on a segments page (SEM-484)", () => {
-    H.DataModel.visit();
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+    });
 
     cy.findByRole("link", { name: /Segments/ }).click();
     cy.location("pathname").should("eq", "/admin/datamodel/segments");
@@ -3199,7 +3203,7 @@ function verifyFieldSectionEmptyState() {
     .should("be.visible");
   H.DataModel.get()
     .findByText(
-      "Select a field to edit it. Then change the display name, semantic type or filtering behavior.",
+      "Select a field to edit its name, description, formatting, and more.",
     )
     .should("be.visible");
 }
