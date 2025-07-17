@@ -1269,6 +1269,27 @@
               (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
                                     {:dataset_query (mbql-count-query (mt/id) (mt/id :checkins))}))))))
 
+;; ERIC
+(deftest card-referencing-card-without-permission-should-fail
+  (testing "POST /api/card"
+    (testing "Make sure if we don't have access to table, creatings a query on query on the table should fail"
+      (data-perms/disable-perms-cache
+       (mt/with-temp [:model/Card card {:database_id   (mt/id)
+                                        :dataset_query {:query    {:source-table (mt/id :venues)}
+                                                        :type     :query
+                                                        :database (mt/id)}}]
+         (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :blocked
+                                                        :create-queries :no
+                                                        :data-model {:schemas :none}}}
+           (mt/user-http-request :rasta :post 401 (format "card/%d/query" (u/the-id card)))
+           (mt/user-http-request :rasta :post 401 "card" {:name "DUPLICATE"
+                                                          :display "table"
+                                                          :visualization_settings {}
+                                                          :database_id (mt/id)
+                                                          :dataset_query {:query    {:source-table (format "card__%s" (u/the-id card))}
+                                                                          :type     :query
+                                                                          :database (mt/id)}})))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
