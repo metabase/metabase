@@ -16,6 +16,7 @@ import {
   getUnsavedDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import { getParameterUrlSlug } from "metabase/parameters/utils/parameter-context";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
@@ -301,9 +302,7 @@ export const getParameterValuesBySlugMap = createSelector(
           dashcardList,
         );
 
-        const slug = dashcard
-          ? `${parameter.slug}-${dashcard.id}`
-          : parameter.slug;
+        const slug = getParameterUrlSlug(parameter, dashcard);
 
         return [
           slug,

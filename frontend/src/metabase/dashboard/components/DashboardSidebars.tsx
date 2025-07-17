@@ -4,7 +4,7 @@ import _ from "underscore";
 import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
-  getDashcards,
+  getDashcardList,
   getEditingParameter,
   getEditingParameterInlineDashcard,
   getParameters,
@@ -122,7 +122,7 @@ export function DashboardSidebars({
   const editingParameterInlineDashcard = useSelector(
     getEditingParameterInlineDashcard,
   );
-  const dashcards = useSelector(getDashcards);
+  const dashcards = useSelector(getDashcardList);
 
   const handleAddCard = useCallback(
     (cardId: CardId) => {
@@ -198,7 +198,7 @@ export function DashboardSidebars({
           parameter={parameter}
           editingParameterInlineDashcard={editingParameterInlineDashcard}
           otherParameters={otherParameters}
-          dashcards={Object.values(dashcards)}
+          dashcards={dashcards}
           onChangeName={setParameterName}
           onChangeType={setParameterType}
           onChangeDefaultValue={setParameterDefaultValue}
