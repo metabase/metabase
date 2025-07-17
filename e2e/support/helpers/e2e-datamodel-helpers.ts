@@ -7,6 +7,7 @@ import type {
 
 export const DataModel = {
   visit,
+  get: getDataModel,
   TablePicker: {
     get: getTablePicker,
     getDatabase: getTablePickerDatabase,
@@ -64,11 +65,13 @@ function visit({
   schemaId,
   tableId,
   fieldId,
+  skipWaiting = false,
 }: {
   databaseId?: DatabaseId;
   fieldId?: FieldId;
   schemaId?: SchemaId;
   tableId?: TableId;
+  skipWaiting?: boolean;
 } = {}) {
   cy.intercept("GET", "/api/database").as("datamodel/visit/databases");
   cy.intercept("GET", "/api/database/*").as("datamodel/visit/database");
@@ -87,56 +90,72 @@ function visit({
     fieldId != null
   ) {
     cy.visit(
-      `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}/table/${tableId}/field/${fieldId}`,
+      `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`,
     );
 
-    cy.wait([
-      "@datamodel/visit/databases",
-      "@datamodel/visit/database",
-      "@datamodel/visit/schemas",
-      "@datamodel/visit/schema",
-      "@datamodel/visit/metadata",
-    ]);
+    if (!skipWaiting) {
+      cy.wait([
+        "@datamodel/visit/databases",
+        "@datamodel/visit/database",
+        "@datamodel/visit/schemas",
+        "@datamodel/visit/schema",
+        "@datamodel/visit/metadata",
+      ]);
+    }
+
     return;
   }
 
   if (databaseId != null && schemaId != null && tableId != null) {
     cy.visit(
-      `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}/table/${tableId}`,
+      `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}`,
     );
-    cy.wait([
-      "@datamodel/visit/databases",
-      "@datamodel/visit/schemas",
-      "@datamodel/visit/schema",
-      "@datamodel/visit/metadata",
-    ]);
+
+    if (!skipWaiting) {
+      cy.wait([
+        "@datamodel/visit/databases",
+        "@datamodel/visit/schemas",
+        "@datamodel/visit/schema",
+        "@datamodel/visit/metadata",
+      ]);
+    }
+
     return;
   }
 
   if (databaseId != null && schemaId != null) {
-    cy.visit(
-      `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}`,
-    );
-    cy.wait([
-      "@datamodel/visit/databases",
-      "@datamodel/visit/schemas",
-      "@datamodel/visit/schema",
-    ]);
+    cy.visit(`/admin/datamodel/database/${databaseId}/schema/${schemaId}`);
+
+    if (!skipWaiting) {
+      cy.wait([
+        "@datamodel/visit/databases",
+        "@datamodel/visit/schemas",
+        "@datamodel/visit/schema",
+      ]);
+    }
     return;
   }
 
   if (databaseId != null) {
     cy.visit(`/admin/datamodel/database/${databaseId}`);
-    cy.wait([
-      "@datamodel/visit/databases",
-      "@datamodel/visit/schemas",
-      "@datamodel/visit/schema",
-    ]);
+
+    if (!skipWaiting) {
+      cy.wait([
+        "@datamodel/visit/databases",
+        "@datamodel/visit/schemas",
+        "@datamodel/visit/schema",
+      ]);
+    }
+
     return;
   }
 
   cy.visit("/admin/datamodel");
   cy.wait(["@datamodel/visit/databases"]);
+}
+
+function getDataModel() {
+  return cy.findByTestId("data-model");
 }
 
 /** table picker helpers */

@@ -19,7 +19,7 @@ export const ScalarRoot = styled.div`
 `;
 
 interface ScalarValueWrapperProps {
-  fontSize?: string;
+  fontSize?: string | number;
   lineHeight?: string;
 }
 

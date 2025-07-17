@@ -125,7 +125,7 @@ function UndoToast({
           {undo.icon && (
             <CardIcon
               name={undo.icon}
-              color="var(--mb-color-text-secondary-inverse)"
+              color={undo.iconColor ?? "var(--mb-color-text-secondary-inverse)"}
             />
           )}
           <Ellipsified showTooltip={false}>{renderMessage(undo)}</Ellipsified>

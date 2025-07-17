@@ -7,7 +7,7 @@ interface FindSizeInput {
   targetWidth: number;
   unit: string;
   fontFamily: string;
-  fontWeight: string;
+  fontWeight: string | number;
   step: number;
   min: number;
   max: number;
@@ -50,8 +50,8 @@ export const findSize = ({
 const MAX_SIZE_SMALL = 2.2;
 const MAX_SIZE_LARGE = 7;
 
-export const getMaxFontSize = (cardColWidth: number, totalCols: number) => {
-  if (totalCols < DEFAULT_CARD_SIZE.width) {
+export const getMaxFontSize = (cardColWidth: number, totalCols?: number) => {
+  if (totalCols != null && totalCols < DEFAULT_CARD_SIZE.width) {
     return MAX_SIZE_SMALL;
   }
 

@@ -129,23 +129,24 @@ export const LegendCaption = ({
       ) : (
         titleElement
       )}
+      {hasInfoTooltip && description && !shouldHideDescription(width) && (
+        <Tooltip
+          label={
+            <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+              {description}
+            </Markdown>
+          }
+          maw="22em"
+        >
+          <LegendDescriptionIcon
+            name="info"
+            className={cx(CS.hoverChild, CS.hoverChildSmooth)}
+            mt="3px"
+            mr="md"
+          />
+        </Tooltip>
+      )}
       <LegendRightContent>
-        {hasInfoTooltip && description && !shouldHideDescription(width) && (
-          <Tooltip
-            label={
-              <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
-                {description}
-              </Markdown>
-            }
-            maw="22em"
-          >
-            <LegendDescriptionIcon
-              name="info"
-              className={cx(CS.hoverChild, CS.hoverChildSmooth)}
-              mt="2px"
-            />
-          </Tooltip>
-        )}
         {actionButtons && <LegendActions>{actionButtons}</LegendActions>}
       </LegendRightContent>
     </LegendCaptionRoot>

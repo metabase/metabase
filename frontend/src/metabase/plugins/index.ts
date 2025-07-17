@@ -548,6 +548,11 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   SdkIframeEmbedRoute: (): ReactNode => null,
 };
 
+export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
+  shouldShowEmbedInNewItemMenu: () => false,
+  SdkIframeEmbedSetup: (): ReactNode => null,
+};
+
 export const PLUGIN_CONTENT_VERIFICATION = {
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
@@ -775,6 +780,12 @@ export const PLUGIN_DB_ROUTING = {
   ): "default" | "hidden" | "disabled" => "default",
 };
 
+export const PLUGIN_DATABASE_REPLICATION = {
+  DatabaseReplicationSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+  }>,
+};
+
 export const PLUGIN_API = {
   getRemappedCardParameterValueUrl: (
     dashboardId: DashboardId,
@@ -786,4 +797,9 @@ export const PLUGIN_API = {
     parameterId: ParameterId,
   ) =>
     `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+};
+
+export const PLUGIN_SMTP_OVERRIDE = {
+  CloudSMTPConnectionCard: PluginPlaceholder,
+  SMTPOverrideConnectionForm: PluginPlaceholder,
 };

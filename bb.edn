@@ -105,7 +105,7 @@
                   (start-db/start-db (:db-info (current-task)) db version)))}
 
   nrepl
-  {:doc      "Starts the babashka nrepl: helpful for for mage development"
+  {:doc      "Starts the babashka nrepl: helpful for mage development"
    :requires [[babashka.nrepl.server :as nrepl.server]
               [mage.color :as c]]
    :examples [["./bin/mage nrepl" "Starts the nrepl server"]]

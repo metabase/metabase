@@ -1,4 +1,4 @@
-name: E2E Embedding SDK Compatibility tests
+name: "[NOT REQUIRED] SDK Compatibility tests"
 
 on:
   push:
@@ -215,7 +215,7 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number || '' }}
       HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
-      CYPRESS_IS_EMBEDDING_SDK: true
+      CYPRESS_IS_EMBEDDING_SDK: "true"
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
       SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
@@ -322,16 +322,17 @@ jobs:
   # The job is not required, though if it's failing better to be sure that it's not caused by a breaking change.
   # For more details see `Embedding SDK integration tests with Host Apps` in `enterprise/frontend/src/embedding-sdk/dev.md`
   e2e-host-apps-tests:
-    needs: [ get-build-requirements, build ]
+    needs: [get-build-requirements, build]
     strategy:
       matrix:
-        test_suite: [
-          "vite-6-host-app-e2e",
-          "next-15-app-router-host-app-e2e",
-          "next-15-pages-router-host-app-e2e",
-          "angular-20-host-app-e2e",
-        ]
-        environment: [ "production", "development" ]
+        test_suite:
+          [
+            "vite-6-host-app-e2e",
+            "next-15-app-router-host-app-e2e",
+            "next-15-pages-router-host-app-e2e",
+            "angular-20-host-app-e2e",
+          ]
+        environment: ["production", "development"]
     if: |
       !cancelled() && needs.build.result == 'success'
     runs-on: ubuntu-22.04
@@ -344,7 +345,7 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number || '' }}
       HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
-      CYPRESS_IS_EMBEDDING_SDK: true
+      CYPRESS_IS_EMBEDDING_SDK: "true"
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
       HOST_APP_ENVIRONMENT: ${{ matrix.environment }}
