@@ -880,7 +880,9 @@
     connection
 
     (not (thread-bound? #'*resilient-connection-ctx*))
-    connection
+    (do
+      (log/warn "Requesting a resilient connection, but we're not in a resilient context")
+      connection)
 
     (some-> *resilient-connection-ctx* :conn is-conn-open)
     (:conn *resilient-connection-ctx*)
@@ -891,9 +893,11 @@
     ;; configured connection (see: https://github.com/metabase/metabase/pull/59999)
     (binding [*connection-recursion-depth* -1]
       (try
+        (log/info "Obtaining a fresh resilient connection")
         (let [{:keys [db]} *resilient-connection-ctx*
               conn (do-with-connection-with-options driver db (merge opts {:keep-open? true}) identity)]
           (set! *resilient-connection-ctx* {:db db :conn conn})
           conn)
-        (catch Throwable _
+        (catch Throwable e
+          (log/warn e "Failed obtaining a new resilient connection")
           connection)))))
