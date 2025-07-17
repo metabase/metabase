@@ -59,7 +59,8 @@
 
 (defmacro with-temp-index-table! [& body]
   `(let [test-table-name# (keyword (str "test_search_index_" (nano-id/nano-id)))]
-     (binding [semantic.index/*index-table-name* test-table-name#]
+     (binding [semantic.index/*index-table-name* test-table-name#
+               search.ingestion/*force-sync* true]
        (try
          (mt/as-admin
           (semantic.index/create-index-table! {:force-reset? true}))
@@ -101,6 +102,5 @@
   [& body]
   `(with-indexable-documents!
      (with-temp-index-table!
-       (binding [search.ingestion/*force-sync* true]
-         (search.core/reindex! :search.engine/semantic {:force-reset true})
-         ~@body))))
+       (search.core/reindex! :search.engine/semantic {:force-reset true})
+       ~@body)))
