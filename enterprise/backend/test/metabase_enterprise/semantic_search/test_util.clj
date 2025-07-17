@@ -71,30 +71,36 @@
              (catch Exception e#
                (log/error "Warning: failed to clean up test table" test-table-name# ":" (.getMessage e#)))))))))
 
+(defmacro with-indexable-documents!
+  "Add a collection of test documents to that can be indexed to the appdb."
+  [& body]
+  `(mt/dataset ~(symbol "test-data")
+               (mt/with-temp [:model/Collection       {col1# :id}  {:name "Wildlife Collection" :archived false}
+                              :model/Collection       {col2# :id}  {:name "Archived Animals" :archived true}
+                              :model/Card             {card1# :id} {:name "Dog Training Guide" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
+                              :model/Card             {}           {:name "Bird Watching Tips" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
+                              :model/Card             {}           {:name "Cat Behavior Study" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
+                              :model/Card             {}           {:name "Horse Racing Analysis" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
+                              :model/Card             {}           {:name "Fish Tank Setup" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
+                              :model/ModerationReview {}           {:moderated_item_type "card"
+                                                                    :moderated_item_id card1#
+                                                                    :moderator_id (mt/user->id :crowberto)
+                                                                    :status "verified"
+                                                                    :most_recent true}
+                              :model/Dashboard        {}           {:name "Elephant Migration" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
+                              :model/Dashboard        {}           {:name "Lion Pride Dynamics" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
+                              :model/Dashboard        {}           {:name "Penguin Colony Study" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
+                              :model/Dashboard        {}           {:name "Whale Communication" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
+                              :model/Dashboard        {}           {:name "Tiger Conservation" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
+                              :model/Database         {db-id# :id} {:name "Animal Database"}
+                              :model/Table            {}           {:name "Species Table", :db_id db-id#}]
+                 ~@body)))
+
 (defmacro with-index!
   "Ensure a clean, small index for testing populated with a few collections, cards, and dashboards."
   [& body]
-  `(with-temp-index-table!
-     (binding [search.ingestion/*force-sync* true]
-       (mt/dataset ~(symbol "test-data")
-                   (mt/with-temp [:model/Collection       {col1# :id}  {:name "Wildlife Collection" :archived false}
-                                  :model/Collection       {col2# :id}  {:name "Archived Animals" :archived true}
-                                  :model/Card             {card1# :id} {:name "Dog Training Guide" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
-                                  :model/Card             {}           {:name "Bird Watching Tips" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
-                                  :model/Card             {}           {:name "Cat Behavior Study" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
-                                  :model/Card             {}           {:name "Horse Racing Analysis" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
-                                  :model/Card             {}           {:name "Fish Tank Setup" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
-                                  :model/ModerationReview {}           {:moderated_item_type "card"
-                                                                        :moderated_item_id card1#
-                                                                        :moderator_id (mt/user->id :crowberto)
-                                                                        :status "verified"
-                                                                        :most_recent true}
-                                  :model/Dashboard        {}           {:name "Elephant Migration" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
-                                  :model/Dashboard        {}           {:name "Lion Pride Dynamics" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
-                                  :model/Dashboard        {}           {:name "Penguin Colony Study" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
-                                  :model/Dashboard        {}           {:name "Whale Communication" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
-                                  :model/Dashboard        {}           {:name "Tiger Conservation" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
-                                  :model/Database         {db-id# :id} {:name "Animal Database"}
-                                  :model/Table            {}           {:name "Species Table", :db_id db-id#}]
-                     (search.core/reindex! :search.engine/semantic {:force-reset true})
-                     ~@body)))))
+  `(with-indexable-documents!
+     (with-temp-index-table!
+       (binding [search.ingestion/*force-sync* true]
+         (search.core/reindex! :search.engine/semantic {:force-reset true})
+         ~@body))))
