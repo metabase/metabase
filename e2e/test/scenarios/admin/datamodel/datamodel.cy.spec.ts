@@ -48,7 +48,11 @@ describe("scenarios > admin > datamodel", () => {
   });
 
   it("should allow to navigate to a table when on a segments page (SEM-484)", () => {
-    H.DataModel.visit();
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+    });
 
     cy.findByRole("link", { name: /Segments/ }).click();
     cy.location("pathname").should("eq", "/admin/datamodel/segments");
