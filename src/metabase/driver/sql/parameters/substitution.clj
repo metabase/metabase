@@ -261,7 +261,16 @@
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
-(mu/defn- field->clause :- driver-api/mbql.schema.field
+(defn- field->clause
+  [field other-opts]
+  [:field
+   (:id field)
+   (merge {:base-type                     (:base-type field)
+           driver-api/qp.add.source-table (:table-id field)
+           ::compiling-field-filter?      true}
+          other-opts)])
+
+(mu/defn- field->field-filter-clause :- driver-api/mbql.schema.field
   [driver     :- :keyword
    field      :- driver-api/schema.metadata.column
    param-type :- driver-api/schema.parameter.type
@@ -272,20 +281,14 @@
   ;; middleware would work either because we don't know what Field this parameter actually refers to until we resolve
   ;; the parameter. There's probably _some_ way to structure things that would make this "duplicate" call unneeded, but
   ;; I haven't figured out what that is yet
-  [:field
-   (u/the-id field)
-   {:base-type                     (:base-type field)
-    :temporal-unit                 (align-temporal-unit-with-param-type-and-value driver field param-type value)
-    driver-api/qp.add.source-table (:table-id field)
-    ;; in case anyone needs to know we're compiling a Field filter.
-    ::compiling-field-filter?      true}])
+  (field->clause field (align-temporal-unit-with-param-type-and-value driver field param-type value)))
 
 (mu/defn- field->identifier :- driver-api/schema.common.non-blank-string
   "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
   [driver field param-type value]
-  (->> (field->clause driver field param-type value)
+  (->> (field->field-filter-clause driver field param-type value)
        (sql.qp/->honeysql driver)
        (honeysql->replacement-snippet-info driver)
        :replacement-snippet))
@@ -312,7 +315,7 @@
             (sql.qp/->honeysql driver form))]
     (cond
       (params.ops/operator? param-type)
-      (->> (assoc params :target [:template-tag (field->clause driver field param-type value)])
+      (->> (assoc params :target [:template-tag (field->field-filter-clause driver field param-type value)])
            params.ops/to-clause
            driver-api/desugar-filter-clause
            driver-api/wrap-value-literals-in-mbql
@@ -320,7 +323,7 @@
            (honeysql->replacement-snippet-info driver))
 
       (params.dates/exclusion-date-type param-type value)
-      (let [field-clause (field->clause driver field param-type value)]
+      (let [field-clause (field->field-filter-clause driver field param-type value)]
         (->> (params.dates/date-string->filter value field-clause)
              driver-api/desugar-filter-clause
              driver-api/wrap-value-literals-in-mbql
@@ -350,7 +353,7 @@
   [driver field alias replacement-snippet-info]
   (if (str/blank? alias)
     replacement-snippet-info
-    (let [[old-name] (->> field
+    (let [[old-name] (->> (field->clause field nil)
                           (sql.qp/->honeysql driver)
                           (sql.qp/format-honeysql driver))]
       (update replacement-snippet-info :replacement-snippet str/replace old-name alias))))
@@ -374,12 +377,7 @@
           ;; otherwise convert single value to SQL.
           :else
           (field-filter->replacement-snippet-info driver field-filter))]
-    (replace-alias driver
-                   [:field (:id field) {:base-type                     (:base-type field)
-                                        driver-api/qp.add.source-table (:table-id field)
-                                        ::compiling-field-filter?      true}]
-                   alias
-                   replacement-snippet-info)))
+    (replace-alias driver field alias replacement-snippet-info)))
 
 ;;; ------------------------------------ Referenced Card replacement snippet info ------------------------------------
 
@@ -397,14 +395,10 @@
 
 (defmethod ->replacement-snippet-info [:sql TemporalUnit]
   [driver {:keys [value field alias]}]
-  (let [replacement-snippet-info (honeysql->replacement-snippet-info
-                                  driver
-                                  (sql.qp/->honeysql driver [:field (:id field)
-                                                             (cond-> {:base-type (:base-type field)
-                                                                      driver-api/qp.add.source-table (:table-id field)}
-                                                               (not= value params/no-value) (assoc :temporal-unit (keyword value)))]))]
-    (replace-alias driver
-                   [:field (:id field) {:base-type (:base-type field)
-                                        driver-api/qp.add.source-table (:table-id field)}]
-                   alias
-                   replacement-snippet-info)))
+  (let [replacement-snippet-info
+        (honeysql->replacement-snippet-info
+         driver
+         (sql.qp/->honeysql driver
+                            (field->clause field (when (not= value params/no-value)
+                                                   {:temporal-unit (keyword value)}))))]
+    (replace-alias driver field alias replacement-snippet-info)))
