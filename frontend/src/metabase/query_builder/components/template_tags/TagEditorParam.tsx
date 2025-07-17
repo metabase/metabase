@@ -120,7 +120,7 @@ class TagEditorParamInner extends Component<
       return EMPTY_VALUES_CONFIG;
     }
 
-    const newConfig = {
+    const newConfig: ParameterValuesConfig = {
       ...EMPTY_VALUES_CONFIG,
       isMultiSelect: isSingleOrMultiSelectable(parameter)
         ? parameter.isMultiSelect
