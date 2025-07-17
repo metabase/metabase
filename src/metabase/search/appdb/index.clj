@@ -20,6 +20,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
+   (java.sql SQLException)
    (org.h2.jdbc JdbcSQLSyntaxErrorException)
    (org.postgresql.util PSQLException)))
 
@@ -233,7 +234,7 @@
   (when table-name
     (try
       (specialization/batch-upsert! table-name entries)
-      (catch Exception e
+      (catch SQLException e
         ;; TODO we should handle the MySQL and MariaDB flavors here too
         (if (or (instance? PSQLException (ex-cause e))
                 (instance? JdbcSQLSyntaxErrorException (ex-cause e)))
@@ -285,7 +286,9 @@
     (u/prog1 (->> [(active-table) (pending-table)]
                   (keep (fn [table-name]
                           (when table-name
-                            {search-model (t2/delete! table-name :model search-model :model_id [:in (set ids)])})))
+                            {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
+                                               ;; Race conditions with table being deleted, especially in tests.
+                                               (catch SQLException _ 0))})))
                   (apply merge-with +)
                   (into {}))
       (when (active-table)
