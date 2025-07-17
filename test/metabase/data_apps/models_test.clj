@@ -17,9 +17,7 @@
   ;; Prune *everything* unprotected to avoid flakes from other tests, or state in your dev database.
   (testing "Pruning a single app with multiple releases"
     (data-apps.tu/with-data-app-cleanup!
-      ;; Work around for MySQL flake in CI ¯\_(ツ)_/¯
-      (when (mdb/app-db)
-        (#'data-apps.models/prune-definitions! 0 0))
+      (#'data-apps.models/prune-definitions! 0 0)
       (let [retention-per-app 5
             retention-total   5
 

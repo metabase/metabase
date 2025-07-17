@@ -1,5 +1,6 @@
 (ns metabase.data-apps.models
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -126,43 +127,46 @@
   ([]
    (prune-definitions! retention-max-per-app retention-max-total))
   ([retention-max-per-app retention-max-total]
-   (t2/delete! :model/DataAppDefinition
-               {:where [:in :id
-                        {:with   [[:protected_definitions
-                                   {:select [:dad.id]
-                                    :from   [[:data_app_definition :dad]]
-                                    :where  [:or
-                                             ;; Released definitions
-                                             [:exists {:select [1]
-                                                       :from   [[:data_app_release :dar]]
-                                                       :where  [:and
-                                                                [:= :dar.app_definition_id :dad.id]
-                                                                [:= :dar.retracted false]]}]
-                                             ;; The highest revision per app
-                                             [:exists {:select [1]
-                                                       :from   [[:data_app_definition :dad2]]
-                                                       :where  [:and
-                                                                [:= :dad2.app_id :dad.app_id]
-                                                                [:= :dad2.revision_number
-                                                                 {:select [:%max.revision_number]
-                                                                  :from   [[:data_app_definition :dad3]]
-                                                                  :where  [:= :dad3.app_id :dad.app_id]}]
-                                                                [:= :dad2.id :dad.id]]}]]}]
+   ;; Working around some bizarre test flakes for MariaDB Latest only, where it claims there is no db selected when
+   ;; this is triggered after inserting new definitions.
+   (when (mdb/app-db)
+     (t2/delete! :model/DataAppDefinition
+                 {:where [:in :id
+                          {:with   [[:protected_definitions
+                                     {:select [:dad.id]
+                                      :from   [[:data_app_definition :dad]]
+                                      :where  [:or
+                                               ;; Released definitions
+                                               [:exists {:select [1]
+                                                         :from   [[:data_app_release :dar]]
+                                                         :where  [:and
+                                                                  [:= :dar.app_definition_id :dad.id]
+                                                                  [:= :dar.retracted false]]}]
+                                               ;; The highest revision per app
+                                               [:exists {:select [1]
+                                                         :from   [[:data_app_definition :dad2]]
+                                                         :where  [:and
+                                                                  [:= :dad2.app_id :dad.app_id]
+                                                                  [:= :dad2.revision_number
+                                                                   {:select [:%max.revision_number]
+                                                                    :from   [[:data_app_definition :dad3]]
+                                                                    :where  [:= :dad3.app_id :dad.app_id]}]
+                                                                  [:= :dad2.id :dad.id]]}]]}]
 
-                                  [:ranked
-                                   {:select [:dad.id :dad.app_id :dad.revision_number :dad.created_at
-                                             [[:raw "ROW_NUMBER() OVER (PARTITION BY dad.app_id ORDER BY dad.revision_number DESC)"] :app_rank]
-                                             [[:raw "ROW_NUMBER() OVER (ORDER BY dad.created_at DESC)"] :global_rank]]
-                                    :from   [[:data_app_definition :dad]]
-                                    :where  [:not [:exists {:select [1]
-                                                            :from   [[:protected_definitions :pd]]
-                                                            :where  [:= :pd.id :dad.id]}]]}]]
+                                    [:ranked
+                                     {:select [:dad.id :dad.app_id :dad.revision_number :dad.created_at
+                                               [[:raw "ROW_NUMBER() OVER (PARTITION BY dad.app_id ORDER BY dad.revision_number DESC)"] :app_rank]
+                                               [[:raw "ROW_NUMBER() OVER (ORDER BY dad.created_at DESC)"] :global_rank]]
+                                      :from   [[:data_app_definition :dad]]
+                                      :where  [:not [:exists {:select [1]
+                                                              :from   [[:protected_definitions :pd]]
+                                                              :where  [:= :pd.id :dad.id]}]]}]]
 
-                         :select [:id]
-                         :from   [:ranked]
-                         :where  [:or
-                                  [:> :app_rank retention-max-per-app]
-                                  [:> :global_rank retention-max-total]]}]})))
+                           :select [:id]
+                           :from   [:ranked]
+                           :where  [:or
+                                    [:> :app_rank retention-max-per-app]
+                                    [:> :global_rank retention-max-total]]}]}))))
 
 (defn set-latest-definition!
   "Create a new definition for an existing app."
