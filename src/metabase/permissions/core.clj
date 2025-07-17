@@ -82,6 +82,7 @@
   add-user-to-groups!
   add-user-to-group!
   allow-changing-all-users-group-members
+  allow-changing-all-external-users-group-members
   fail-to-remove-last-admin-msg
   remove-user-from-group!
   remove-user-from-groups!
