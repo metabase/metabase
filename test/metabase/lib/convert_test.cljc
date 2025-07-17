@@ -1342,3 +1342,36 @@
                                           :filter       (symbol "nil #_\"key is not present.\"")}]
                           :source-table 33040}}
               (lib/->legacy-MBQL query))))))
+
+(deftest ^:parallel convert-join-with-fields-test
+  (testing ":fields is allowed in a join top-level, we don't need to wrap it in :source-query"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :joins        [{:alias      "c"
+                                             :conditions [[:=
+                                                           {:lib/uuid "4822482b-727b-471b-8d18-973d87861522"}
+                                                           [:field
+                                                            {:lib/uuid  "c68f5bbf-a45a-4a28-b235-a60dcb2d73be"
+                                                             :base-type :type/Integer}
+                                                            33402]
+                                                           [:field
+                                                            {:join-alias "c"
+                                                             :lib/uuid   "d0f55447-6941-4c7a-a192-a37d87ea0111"
+                                                             :base-type  :type/BigInteger}
+                                                            33100]]]
+                                             :lib/type   :mbql/join
+                                             :stages     [{:lib/type     :mbql.stage/mbql
+                                                           :source-table 33010
+                                                           :fields       [[:field {:lib/uuid "7d4cb0c9-f7ec-4712-8fe7-4d06e9a3944a"} 33101]]}]}]
+                             :source-table 33040}]
+                 :database 33001}]
+      (is (=? {:database 33001
+               :type     :query
+               :query    {:joins        [{:alias        "c"
+                                          :condition    [:=
+                                                         [:field 33402 {:base-type :type/Integer}]
+                                                         [:field 33100 {:join-alias "c", :base-type :type/BigInteger}]]
+                                          :source-table 33010
+                                          :fields       [[:field 33101 nil]]}]
+                          :source-table 33040}}
+              (lib/->legacy-MBQL query))))))
