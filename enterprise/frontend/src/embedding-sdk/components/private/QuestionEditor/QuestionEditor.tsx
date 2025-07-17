@@ -2,15 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  type BaseInteractiveQuestionProps,
-  InteractiveQuestion,
-} from "embedding-sdk/components/public/InteractiveQuestion";
+import { InteractiveQuestion } from "embedding-sdk/components/public";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { Box, Button, Group, Icon, Stack, Tabs } from "metabase/ui";
 
 import { FlexibleSizeComponent } from "../FlexibleSizeComponent";
-import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
+import { useSdkQuestionContext } from "../SdkQuestion/context";
 
 import QuestionEditorS from "./QuestionEditor.module.css";
 
@@ -23,7 +20,7 @@ const QuestionEditorInner = () => {
     originalQuestion,
     onSave,
     onCreate,
-  } = useInteractiveQuestionContext();
+  } = useSdkQuestionContext();
 
   const [activeTab, setActiveTab] = useState<
     "editor" | "visualization" | (string & unknown) | null
