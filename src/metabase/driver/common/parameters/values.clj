@@ -193,8 +193,8 @@
       params/no-value)))
 
 (mu/defmethod parse-tag :dimension :- [:maybe FieldFilter]
-  [{:keys [dimension], alias :alias, :as tag} :- mbql.s/TemplateTag
-   params                                           :- [:maybe [:sequential mbql.s/Parameter]]]
+  [{:keys [dimension alias], :as tag} :- mbql.s/TemplateTag
+   params                             :- [:maybe [:sequential mbql.s/Parameter]]]
   (params/map->FieldFilter
    {:field (let [field-id (dimension->field-id dimension)]
              (or (lib.metadata/field (qp.store/metadata-provider) field-id)
@@ -251,7 +251,7 @@
       :content    (:content snippet)})))
 
 (defmethod parse-tag :temporal-unit
-  [{:keys [required dimension] :as tag} params]
+  [{:keys [required dimension alias] :as tag} params]
   (let [matching-param       (when-let [matching-params (not-empty (tag-params tag params))]
                                (when (> (count matching-params) 1)
                                  (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
@@ -281,7 +281,8 @@
                  (:default tag)
                  (if required
                    (throw (missing-required-param-exception (:display-name tag)))
-                   params/no-value))})))
+                   params/no-value))
+      :alias alias})))
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 

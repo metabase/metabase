@@ -59,7 +59,10 @@
   [:merge
    [:ref ::common]
    [:map
-    [:type [:= :temporal-unit]]]])
+    [:type [:= :temporal-unit]]
+    ;; an optional alias to use in place of the normal field ref
+    [:alias       {:optional true} :string]
+    [:dimension   {:optional true} [:ref :mbql.clause/field]]]])
 
 ;; Example:
 ;;
