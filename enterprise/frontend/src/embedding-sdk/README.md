@@ -50,6 +50,10 @@ yarn add @metabase/embedding-sdk-react
 
 For more on the SDK, check out the [SDK docs](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
 
+## Limitations
+
+For the current limitations of the SDK, see the [SDK limitations section](https://www.metabase.com/docs/latest/embedding/sdk/introduction#sdk-limitations) of the docs.
+
 ## Development docs
 
-For developing the SDK, see the [dev docs](./dev.md).
+For developing the SDK, see the [dev docs](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/dev.md).

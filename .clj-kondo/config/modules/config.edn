@@ -1585,6 +1585,17 @@
            api
            util}}
 
+  enterprise/database-replication
+  {:team "Cloud"
+   :api  #{metabase-enterprise.database-replication.api
+           metabase-enterprise.database-replication.init}
+   :uses #{analytics
+           api
+           premium-features
+           settings
+           util
+           enterprise/harbormaster}}
+
   enterprise/database-routing
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.database-routing.api}
@@ -1601,6 +1612,17 @@
            util
            warehouse-schema
            warehouses}}
+
+
+  enterprise/email
+  {:team "Admin Webapp"
+   :api  #{metabase-enterprise.email.api}
+   :uses #{api
+           channel
+           permissions
+           premium-features
+           settings
+           util}}
 
   enterprise/gsheets
   {:team  "Cloud"
@@ -1758,6 +1780,7 @@
            models
            plugins
            premium-features
+           search
            settings
            setup
            util

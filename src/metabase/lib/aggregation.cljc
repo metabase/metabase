@@ -25,6 +25,7 @@
   "Given `:metadata/column` column metadata for an aggregation, construct an `:aggregation` reference."
   [metadata :- ::lib.schema.metadata/column]
   (let [options {:lib/uuid        (str (random-uuid))
+                 :base-type       (:base-type metadata)
                  :effective-type  ((some-fn :effective-type :base-type) metadata)
                  :lib/source-name (:name metadata)}
         ag-uuid (:lib/source-uuid metadata)]
@@ -54,7 +55,9 @@
        (lib.metadata.calculation/display-name query stage-number aggregation :long)))))
 
 (defmethod lib.metadata.calculation/metadata-method :aggregation
-  [query stage-number [_ag {:keys [base-type effective-type], :as _opts} index, :as _aggregation-ref]]
+  [query
+   stage-number
+   [_ag {:keys [base-type effective-type display-name], agg-name :name, :as _opts} index, :as _aggregation-ref]]
   (let [aggregation (resolve-aggregation query stage-number index)]
     (merge
      (lib.metadata.calculation/metadata query stage-number aggregation)
@@ -63,7 +66,11 @@
      (when base-type
        {:base-type base-type})
      (when effective-type
-       {:effective-type effective-type}))))
+       {:effective-type effective-type})
+     (when agg-name
+       {:name agg-name})
+     (when display-name
+       {:display-name display-name}))))
 
 ;;; TODO -- merge this stuff into `defop` somehow.
 
@@ -430,3 +437,25 @@
   (let [ags (aggregations query stage-number)]
     (when (> (clojure.core/count ags) index)
       (nth ags index))))
+
+(mu/defn aggregable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Returns the columns that can be used in aggregation expressions."
+  ([query :- ::lib.schema/query
+    aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+   (aggregable-columns query -1 aggregation-position))
+  ([query :- ::lib.schema/query
+    stage-number :- :int
+    aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+   (let [stage (lib.util/query-stage query stage-number)
+         agg-cols (aggregations-metadata query stage-number)
+         columns (into (vec (lib.metadata.calculation/visible-columns query stage-number stage))
+                       (cond->> agg-cols
+                         aggregation-position (keep-indexed (fn [i a]
+                                                              (when (not= i aggregation-position)
+                                                                a)))))]
+     (not-empty columns))))
+
+(defmethod lib.metadata.calculation/type-of-method :aggregation
+  [query stage-number [_aggregation _opts agg-uuid, :as _aggregation-ref]]
+  (let [expression (resolve-aggregation query stage-number agg-uuid)]
+    (lib.metadata.calculation/type-of query stage-number expression)))

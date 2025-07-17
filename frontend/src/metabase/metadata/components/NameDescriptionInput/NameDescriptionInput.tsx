@@ -1,5 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Box, Group, Icon, type IconName, Text, rem } from "metabase/ui";
 
 import { Input } from "./Input";
@@ -30,39 +31,60 @@ export const NameDescriptionInput = ({
   onNameChange,
 }: Props) => {
   const { ref, width } = useElementSize();
-  const leftSectionWidth = width > 0 ? width : 40;
+  const { ref: sectionRef, width: sectionWidth } = useElementSize();
+  const leftSectionWidth = sectionWidth > 0 ? sectionWidth : 40;
+
+  const handleDescriptionChange = (value: string) => {
+    const newDescription = value.trim();
+
+    if (description !== newDescription) {
+      onDescriptionChange(newDescription);
+    }
+  };
+
+  const handleNameChange = (value: string) => {
+    const newName = value.trim();
+
+    if (name !== newName) {
+      onNameChange(newName);
+    }
+  };
 
   return (
-    <Box>
+    <Box ref={ref}>
       <Input
         classNames={{
           input: S.nameInput,
           root: S.name,
+          section: S.section,
         }}
         fw="bold"
         leftSection={
           <Group
             align="center"
+            c="text-light"
             gap={10}
-            maw={rem(140)}
+            flex="1"
+            fs="lg"
+            lh="normal"
+            maw={rem(Math.floor(width / 2))}
             px={rem(10)}
-            ref={ref}
+            ref={sectionRef}
             wrap="nowrap"
           >
             <Icon c="brand" flex="0 0 auto" name={nameIcon} size={20} />
 
             {namePrefix && (
-              <Text
-                c="text-light"
+              <Ellipsified
                 data-testid="name-prefix"
-                flex="1"
-                lh="normal"
-                lineClamp={1}
-                size="lg"
+                lines={1}
+                tooltip={namePrefix}
               >
-                {namePrefix}
-                {":"}
-              </Text>
+                <Text c="text-light" component="span" size="lg">
+                  {namePrefix}
+                  {":"}
+                </Text>
+              </Ellipsified>
             )}
           </Group>
         }
@@ -82,14 +104,14 @@ export const NameDescriptionInput = ({
         styles={{
           section: {
             // limit the flicker when element is being measured for the first time
-            visibility: width === 0 ? "hidden" : undefined,
+            visibility: sectionWidth === 0 ? "hidden" : undefined,
           },
           input: {
             paddingLeft: leftSectionWidth,
           },
         }}
         value={name}
-        onChange={onNameChange}
+        onChange={handleNameChange}
       />
 
       <Textarea
@@ -102,7 +124,7 @@ export const NameDescriptionInput = ({
         minRows={2}
         placeholder={descriptionPlaceholder}
         value={description}
-        onChange={onDescriptionChange}
+        onChange={handleDescriptionChange}
       />
     </Box>
   );

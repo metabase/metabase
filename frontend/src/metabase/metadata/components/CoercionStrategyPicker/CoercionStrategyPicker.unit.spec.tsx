@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { Field } from "metabase-types/api";
 import {
   createOrdersQuantityField,
@@ -46,9 +46,11 @@ describe("CoercionStrategyPicker", () => {
     await userEvent.click(screen.getByPlaceholderText("Select data type"));
     await userEvent.tab();
 
-    expect(
-      screen.getByText("To enable casting, please select a data type"),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText("To enable casting, please select a data type"),
+      ).toBeInTheDocument();
+    });
   });
 
   it("does not show error when type is selected", async () => {

@@ -1,3 +1,4 @@
+import Markdown from "metabase/common/components/Markdown";
 import {
   Box,
   Card,
@@ -27,9 +28,7 @@ export const DatabaseInfoSection = ({
       <Text size="lg" fw="700" mb="xs" lh={1.4}>
         {name}
       </Text>
-      <Text c="text-secondary" lh={1.4}>
-        {description}
-      </Text>
+      <Markdown c="text-secondary">{description}</Markdown>
     </Stack>
     <Box w="100%">
       <Card

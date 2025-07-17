@@ -36,6 +36,7 @@ describe("scenarios > admin > datamodel", () => {
     cy.intercept("GET", "/api/database?*").as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
+    cy.intercept("GET", "/api/database/*/schema/*").as("schema");
     cy.intercept("POST", "/api/dataset*").as("dataset");
     cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
       "updateField",
@@ -47,10 +48,15 @@ describe("scenarios > admin > datamodel", () => {
   });
 
   it("should allow to navigate to a table when on a segments page (SEM-484)", () => {
-    H.DataModel.visit();
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+    });
 
     cy.findByRole("link", { name: /Segments/ }).click();
     cy.location("pathname").should("eq", "/admin/datamodel/segments");
+    cy.wait("@schema");
 
     H.DataModel.TablePicker.getTable("Reviews").click();
     H.DataModel.TableSection.getNameInput()
@@ -62,7 +68,7 @@ describe("scenarios > admin > datamodel", () => {
     );
   });
 
-  describe("data loading", () => {
+  describe("Data loading", () => {
     it("should show 404 if database does not exist (metabase#14652)", () => {
       H.DataModel.visit({ databaseId: 54321, skipWaiting: true });
       cy.wait("@databases");
@@ -113,6 +119,40 @@ describe("scenarios > admin > datamodel", () => {
         `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
       );
     });
+
+    it(
+      "should not show 404 error if database is not selected",
+      { tags: ["@external"] },
+      () => {
+        H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+        cy.log("database not selected");
+        H.DataModel.visit();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+
+        cy.log("database selected");
+        TablePicker.getDatabase("Writable Postgres12").click();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+
+        cy.log("schema selected");
+        TablePicker.getSchema("Domestic").click();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+
+        cy.log("table selected");
+        TablePicker.getTable("Animals").click();
+        H.DataModel.get()
+          .findByText(/Not found/)
+          .should("not.exist");
+      },
+    );
   });
 
   describe("Table picker", () => {
@@ -688,6 +728,29 @@ describe("scenarios > admin > datamodel", () => {
       },
     );
 
+    it(
+      "should show empty state when table has no fields",
+      { tags: ["@external"] },
+      () => {
+        H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.queryWritableDB(
+          'alter table "Domestic"."Animals" drop column Name, drop column Score',
+        );
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+        H.DataModel.visit();
+        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getSchema("Domestic").click();
+        TablePicker.getTable("Animals").click();
+
+        TableSection.get()
+          .findByText("This table has no fields")
+          .should("be.visible");
+        TableSection.getSortButton().should("not.exist");
+      },
+    );
+
     describe("Name and description", () => {
       it("should allow changing the table name", () => {
         H.DataModel.visit({
@@ -930,16 +993,18 @@ describe("scenarios > admin > datamodel", () => {
           .should("be.checked");
 
         H.openProductsTable();
-        assertTableHeader([
-          "ID",
-          "Ean",
-          "Title",
-          "Category",
-          "Vendor",
-          "Price",
-          "Rating",
-          "Created At",
-        ]);
+        H.assertTableData({
+          columns: [
+            "ID",
+            "Ean",
+            "Title",
+            "Category",
+            "Vendor",
+            "Price",
+            "Rating",
+            "Created At",
+          ],
+        });
       });
 
       it("should allow sorting fields alphabetically", () => {
@@ -960,16 +1025,18 @@ describe("scenarios > admin > datamodel", () => {
           .should("be.checked");
 
         H.openProductsTable();
-        assertTableHeader([
-          "Category",
-          "Created At",
-          "Ean",
-          "ID",
-          "Price",
-          "Rating",
-          "Title",
-          "Vendor",
-        ]);
+        H.assertTableData({
+          columns: [
+            "Category",
+            "Created At",
+            "Ean",
+            "ID",
+            "Price",
+            "Rating",
+            "Title",
+            "Vendor",
+          ],
+        });
       });
 
       it("should allow sorting fields smartly", () => {
@@ -988,16 +1055,18 @@ describe("scenarios > admin > datamodel", () => {
           .should("be.checked");
 
         H.openProductsTable();
-        assertTableHeader([
-          "ID",
-          "Created At",
-          "Category",
-          "Ean",
-          "Price",
-          "Rating",
-          "Title",
-          "Vendor",
-        ]);
+        H.assertTableData({
+          columns: [
+            "ID",
+            "Created At",
+            "Category",
+            "Ean",
+            "Price",
+            "Rating",
+            "Title",
+            "Vendor",
+          ],
+        });
       });
 
       it("should allow sorting fields in the custom order", () => {
@@ -1030,16 +1099,18 @@ describe("scenarios > admin > datamodel", () => {
           .should("be.checked");
 
         H.openProductsTable();
-        assertTableHeader([
-          "Ean",
-          "ID",
-          "Title",
-          "Category",
-          "Vendor",
-          "Price",
-          "Rating",
-          "Created At",
-        ]);
+        H.assertTableData({
+          columns: [
+            "Ean",
+            "ID",
+            "Title",
+            "Category",
+            "Vendor",
+            "Price",
+            "Rating",
+            "Created At",
+          ],
+        });
       });
 
       it("should allow switching to predefined order after drag & drop (metabase#56482)", () => {
@@ -1477,7 +1548,7 @@ describe("scenarios > admin > datamodel", () => {
 
     describe("Metadata", () => {
       describe("Semantic type", () => {
-        it("should allow to change the type to 'No semantic type'", () => {
+        it("should allow to change the type to 'No semantic type' (metabase#59052)", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1488,8 +1559,8 @@ describe("scenarios > admin > datamodel", () => {
 
           FieldSection.getSemanticTypeInput()
             .should("have.value", "Foreign Key")
-            .click();
-          H.popover().findByText("No semantic type").click();
+            // it should allow to just type to search (metabase#59052)
+            .type("no sema{downarrow}{enter}");
           cy.wait("@updateField");
           H.undoToast().should(
             "contain.text",
@@ -1515,7 +1586,7 @@ describe("scenarios > admin > datamodel", () => {
           );
         });
 
-        it("should allow to change the type to 'Foreign Key' and choose the target field", () => {
+        it("should allow to change the type to 'Foreign Key' and choose the target field (metabase#59052)", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1542,8 +1613,8 @@ describe("scenarios > admin > datamodel", () => {
 
           FieldSection.getSemanticTypeFkTarget()
             .should("have.value", "")
-            .click();
-          H.popover().findByText("Products → ID").click();
+            // it should allow to just type to search (metabase#59052)
+            .type("products{downarrow}{enter}");
           cy.wait("@updateField");
           H.undoToast().should(
             "contain.text",
@@ -1685,7 +1756,7 @@ describe("scenarios > admin > datamodel", () => {
           });
         });
 
-        it("should allow to change the type to 'Currency' and choose the currency", () => {
+        it("should allow to change the type to 'Currency' and choose the currency (metabase#59052)", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1717,8 +1788,8 @@ describe("scenarios > admin > datamodel", () => {
             .scrollIntoView()
             .should("be.visible")
             .and("have.value", "US Dollar")
-            .click();
-          H.popover().findByText("Canadian Dollar").click();
+            // it should allow to just type to search (metabase#59052)
+            .type("canadian{downarrow}{enter}");
           cy.wait("@updateField");
           verifyAndCloseToast("Semantic type of Tax updated");
 
@@ -1883,11 +1954,10 @@ describe("scenarios > admin > datamodel", () => {
           cy.log("verify preview");
           TableSection.clickField("Tax");
           FieldSection.getPreviewButton().click();
-
-          // TODO: assert table preview shows empty state
-          // https://linear.app/metabase/issue/SEM-433/empty-table-preview-of-columns-with-hidden-visibility
-          // Currently works incorrectly because of metabase#60487
-
+          PreviewSection.get()
+            .findByText("This field is hidden")
+            .should("be.visible");
+          cy.get("@dataset.all").should("have.length", 0);
           PreviewSection.getPreviewTypeInput().findByText("Detail").click();
           cy.wait("@dataset");
           PreviewSection.get().findByText("Tax").should("not.exist");
@@ -1930,11 +2000,10 @@ describe("scenarios > admin > datamodel", () => {
           cy.log("verify preview");
           TableSection.clickField("Tax");
           FieldSection.getPreviewButton().click();
-          cy.wait("@dataset");
-          // TODO: https://linear.app/metabase/issue/SEM-433/empty-table-preview-of-columns-with-hidden-visibility
           PreviewSection.get()
-            .findByText("Every field is hidden right now")
+            .findByText("This field is hidden")
             .should("be.visible");
+          cy.get("@dataset.all").should("have.length", 0);
           verifyObjectDetailPreview({
             index: 4,
             row: ["Tax", "2.07"],
@@ -2000,9 +2069,10 @@ describe("scenarios > admin > datamodel", () => {
           TableSection.clickField("Quantity");
           FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-          PreviewSection.get()
-            .findByPlaceholderText("Enter a number")
-            .should("be.visible");
+          PreviewSection.get().within(() => {
+            cy.findByPlaceholderText("Enter a number").should("be.visible");
+            cy.button(/Add filter/).should("not.exist");
+          });
 
           cy.reload();
           FieldSection.getFilteringInput()
@@ -2030,12 +2100,11 @@ describe("scenarios > admin > datamodel", () => {
           TableSection.clickField("Quantity");
           FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-          PreviewSection.get()
-            .findByPlaceholderText("Min")
-            .should("be.visible");
-          PreviewSection.get()
-            .findByPlaceholderText("Max")
-            .should("be.visible");
+          PreviewSection.get().within(() => {
+            cy.findByPlaceholderText("Min").should("be.visible");
+            cy.findByPlaceholderText("Max").should("be.visible");
+            cy.button(/Add filter/).should("not.exist");
+          });
 
           cy.reload();
           FieldSection.getFilteringInput()
@@ -2066,9 +2135,10 @@ describe("scenarios > admin > datamodel", () => {
           TableSection.clickField("Quantity");
           FieldSection.getPreviewButton().click();
           PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-          PreviewSection.get()
-            .findByPlaceholderText("Search the list")
-            .should("be.visible");
+          PreviewSection.get().within(() => {
+            cy.findByPlaceholderText("Search the list").should("be.visible");
+            cy.button(/Add filter/).should("not.exist");
+          });
 
           cy.reload();
           FieldSection.getFilteringInput()
@@ -2215,65 +2285,66 @@ describe("scenarios > admin > datamodel", () => {
         });
 
         it("should allow 'Custom mapping' null values", () => {
-          const databaseId = 2;
           const remappedNullValue = "nothin";
 
-          H.restore("withSqlite");
           cy.signInAsAdmin();
+          H.addSqliteDatabase();
 
-          H.withDatabase(
-            databaseId,
-            ({ NUMBER_WITH_NULLS: { NUM }, NUMBER_WITH_NULLS_ID }) => {
-              cy.request("GET", `/api/database/${databaseId}/schemas`).then(
-                ({ body }) => {
-                  const [schemaName] = body;
+          cy.get<number>("@sqliteID").then((databaseId) => {
+            H.withDatabase(
+              databaseId,
+              ({ NUMBER_WITH_NULLS: { NUM }, NUMBER_WITH_NULLS_ID }) => {
+                cy.request("GET", `/api/database/${databaseId}/schemas`).then(
+                  ({ body }) => {
+                    const [schemaName] = body;
 
-                  H.DataModel.visit({
-                    databaseId,
-                    schemaId: `${databaseId}:${schemaName}`,
-                    tableId: NUMBER_WITH_NULLS_ID,
-                    fieldId: NUM,
-                  });
-                },
-              );
+                    H.DataModel.visit({
+                      databaseId,
+                      schemaId: `${databaseId}:${schemaName}`,
+                      tableId: NUMBER_WITH_NULLS_ID,
+                      fieldId: NUM,
+                    });
+                  },
+                );
 
-              cy.log("Change `null` to custom mapping");
-              FieldSection.getDisplayValuesInput().scrollIntoView().click();
-              H.popover().findByText("Custom mapping").click();
-              cy.wait("@updateFieldValues");
-              H.undoToast().should(
-                "contain.text",
-                "Display values of Num updated",
-              );
-              H.undoToast().icon("close").click({
-                force: true, // it's behind a modal
-              });
-
-              H.modal()
-                .should("be.visible")
-                .within(() => {
-                  cy.findAllByPlaceholderText("Enter value")
-                    .filter("[value='null']")
-                    .clear()
-                    .type(remappedNullValue);
-                  cy.button("Save").click();
+                cy.log("Change `null` to custom mapping");
+                FieldSection.getDisplayValuesInput().scrollIntoView().click();
+                H.popover().findByText("Custom mapping").click();
+                cy.wait("@updateFieldValues");
+                H.undoToast().should(
+                  "contain.text",
+                  "Display values of Num updated",
+                );
+                H.undoToast().icon("close").click({
+                  force: true, // it's behind a modal
                 });
-              cy.wait("@updateFieldValues");
-              H.undoToast().should(
-                "contain.text",
-                "Display values of Num updated",
-              );
 
-              cy.log("Make sure custom mapping appears in QB");
-              H.openTable({
-                database: databaseId,
-                table: NUMBER_WITH_NULLS_ID,
-              });
-              cy.findAllByRole("gridcell", { name: remappedNullValue }).should(
-                "be.visible",
-              );
-            },
-          );
+                H.modal()
+                  .should("be.visible")
+                  .within(() => {
+                    cy.findAllByPlaceholderText("Enter value")
+                      .filter("[value='null']")
+                      .clear()
+                      .type(remappedNullValue);
+                    cy.button("Save").click();
+                  });
+                cy.wait("@updateFieldValues");
+                H.undoToast().should(
+                  "contain.text",
+                  "Display values of Num updated",
+                );
+
+                cy.log("Make sure custom mapping appears in QB");
+                H.openTable({
+                  database: databaseId,
+                  table: NUMBER_WITH_NULLS_ID,
+                });
+                cy.findAllByRole("gridcell", {
+                  name: remappedNullValue,
+                }).should("be.visible");
+              },
+            );
+          });
         });
 
         it("should correctly show remapped column value", () => {
@@ -2614,6 +2685,91 @@ describe("scenarios > admin > datamodel", () => {
           H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
           TableSection.getField("Json → A").should("not.exist");
+        });
+
+        it("should let you change the name of JSON-unfolded columns (metabase#55563)", () => {
+          H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
+          TablePicker.getTable("Many Data Types").click();
+          TableSection.clickField("Json → A");
+
+          TableSection.getFieldNameInput("Json → A").clear().type("A").blur();
+          FieldSection.getPreviewButton().click();
+
+          FieldSection.getNameInput().should("have.value", "A");
+          FieldSection.get()
+            .findByTestId("name-prefix")
+            .should("be.visible")
+            .and("have.text", "Json:");
+          verifyTablePreview({
+            column: "A",
+            values: ["10", "10"],
+          });
+        });
+
+        it("should smartly truncate prefix name", () => {
+          const shortPrefix = "Short prefix";
+          const longPrefix = "Legendarily long column prefix";
+          H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
+          TablePicker.getTable("Many Data Types").click();
+          TableSection.clickField("Json → A");
+
+          cy.log("should not truncante short prefixes");
+          TableSection.getFieldNameInput("Json")
+            .clear()
+            .type(shortPrefix)
+            .blur();
+
+          cy.log("in field section");
+          FieldSection.get()
+            .findByTestId("name-prefix")
+            .should("have.text", `${shortPrefix}:`)
+            .then((element) => {
+              H.assertIsNotEllipsified(element[0]);
+            });
+          FieldSection.get().findByTestId("name-prefix").realHover();
+          H.tooltip().should("not.exist");
+
+          cy.log("in table section");
+          TableSection.getField("Json → D")
+            .findByTestId("name-prefix")
+            .should("have.text", `${shortPrefix}:`)
+            .then((element) => {
+              H.assertIsNotEllipsified(element[0]);
+            });
+          TableSection.getField("Json → D")
+            .findByTestId("name-prefix")
+            .realHover();
+          H.tooltip().should("not.exist");
+
+          cy.log("should truncante long prefixes");
+          TableSection.getFieldNameInput(shortPrefix)
+            .clear()
+            .type(longPrefix)
+            .blur();
+
+          cy.log("in field section");
+          FieldSection.get()
+            .findByTestId("name-prefix")
+            .should("have.text", `${longPrefix}:`)
+            .then((element) => {
+              H.assertIsEllipsified(element[0]);
+            });
+          FieldSection.get()
+            .findByTestId("name-prefix")
+            .realHover({ scrollBehavior: "center" });
+          H.tooltip().should("be.visible").and("have.text", longPrefix);
+
+          // hide tooltip
+          FieldSection.getDescriptionInput().realHover();
+          H.tooltip().should("not.exist");
+
+          cy.log("in table section");
+          TableSection.getField("Json → D")
+            .scrollIntoView({ offset: { left: 0, top: -400 } })
+            .findByTestId("name-prefix")
+            .should("have.text", `${longPrefix}:`)
+            .realHover({ scrollBehavior: "center" });
+          H.tooltip().should("be.visible").and("have.text", longPrefix);
         });
       });
     });
@@ -3002,6 +3158,261 @@ describe("scenarios > admin > datamodel", () => {
         .should("be.visible");
     });
   });
+
+  describe("Undos", { tags: "@external" }, () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_data_types" });
+      cy.signInAsAdmin();
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: "many_data_types",
+      });
+    });
+
+    it("allows to undo every action", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.QUANTITY,
+      });
+
+      cy.log("table section");
+
+      cy.log("name");
+      TableSection.getNameInput().type("a").blur();
+      verifyToastAndUndo("Table name updated");
+      TableSection.getNameInput().should("have.value", "Orders");
+
+      cy.log("description");
+      TableSection.getDescriptionInput().type("a").blur();
+      verifyToastAndUndo("Table description updated");
+      TableSection.getDescriptionInput().should(
+        "have.value",
+        "Confirmed Sample Company orders for a product, from a user.",
+      );
+
+      cy.log("predefined field order");
+      TableSection.getSortButton().click();
+      TableSection.getSortOrderInput()
+        .findByLabelText("Alphabetical order")
+        .click();
+      verifyToastAndUndo("Field order updated");
+      TableSection.getSortOrderInput()
+        .findByDisplayValue("database")
+        .should("be.checked");
+
+      cy.log("custom field order");
+      H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        vertical: 50,
+      });
+      verifyToastAndUndo("Field order updated");
+      TableSection.getSortOrderInput()
+        .findByDisplayValue("database")
+        .should("be.checked");
+      TableSection.get().button("Done").click();
+
+      cy.log("field name");
+      TableSection.getFieldNameInput("Quantity").type("a").blur();
+      verifyToastAndUndo("Name of Quantity updated");
+      TableSection.getFieldNameInput("Quantity").should(
+        "have.value",
+        "Quantity",
+      );
+
+      cy.log("field description");
+      TableSection.getFieldDescriptionInput("Quantity").type("a").blur();
+      verifyToastAndUndo("Description of Quantity updated");
+      TableSection.getFieldDescriptionInput("Quantity").should(
+        "have.value",
+        "Number of products bought.",
+      );
+
+      cy.log("field section");
+
+      cy.log("name");
+      FieldSection.getNameInput().type("a").blur();
+      verifyToastAndUndo("Name of Quantity updated");
+      FieldSection.getNameInput().should("have.value", "Quantity");
+
+      cy.log("description");
+      FieldSection.getDescriptionInput().type("a").blur();
+      verifyToastAndUndo("Description of Quantity updated");
+      FieldSection.getDescriptionInput().should(
+        "have.value",
+        "Number of products bought.",
+      );
+
+      cy.log("coercion strategy");
+      FieldSection.getCoercionToggle().parent().scrollIntoView().click();
+      H.popover()
+        .findByText("UNIX seconds → Datetime")
+        .scrollIntoView()
+        .click();
+      verifyToastAndUndo("Casting enabled for Quantity");
+      FieldSection.getCoercionToggle().should("not.be.checked");
+
+      cy.log("semantic type");
+      FieldSection.getSemanticTypeInput().click();
+      H.popover().findByText("Score").click();
+      verifyToastAndUndo("Semantic type of Quantity updated");
+      FieldSection.getSemanticTypeInput().should("have.value", "Quantity");
+
+      cy.log("visibility");
+      FieldSection.getVisibilityInput().click();
+      H.popover().findByText("Only in detail views").click();
+      verifyToastAndUndo("Visibility of Quantity updated");
+      FieldSection.getVisibilityInput().should("have.value", "Everywhere");
+
+      cy.log("filtering");
+      FieldSection.getFilteringInput().click();
+      H.popover().findByText("Search box").click();
+      verifyToastAndUndo("Filtering of Quantity updated");
+      FieldSection.getFilteringInput().should(
+        "have.value",
+        "A list of all values",
+      );
+
+      cy.log("display values");
+      FieldSection.getDisplayValuesInput().click();
+      H.popover().findByText("Custom mapping").click();
+      H.modal().should("be.visible");
+      H.modal().button("Close").click();
+      verifyToastAndUndo("Display values of Quantity updated");
+      FieldSection.getDisplayValuesInput().should(
+        "have.value",
+        "Use original value",
+      );
+
+      cy.log("custom mapping");
+      FieldSection.getDisplayValuesInput().click();
+      H.popover().findByText("Custom mapping").click();
+      verifyAndCloseToast("Display values of Quantity updated");
+      H.modal().within(() => {
+        cy.findByDisplayValue("0")
+          .clear()
+          .type("XYZ", { scrollBehavior: "center" })
+          .blur();
+        cy.button("Save").click();
+      });
+      verifyToastAndUndo("Display values of Quantity updated");
+      FieldSection.get().button("Edit mapping").click();
+      H.modal().within(() => {
+        cy.findByDisplayValue("0").should("be.visible");
+        cy.findByDisplayValue("XYZ").should("not.exist");
+        cy.button("Close").click();
+      });
+
+      cy.log("foreign key");
+      TableSection.clickField("User ID");
+      FieldSection.getDisplayValuesInput().click();
+      H.popover().findByText("Use foreign key").click();
+      verifyToastAndUndo("Display values of User ID updated");
+      FieldSection.getDisplayValuesInput().should(
+        "have.value",
+        "Use original value",
+      );
+
+      cy.log("JSON unfolding");
+      TablePicker.getDatabase("Writable Postgres12").click();
+      TablePicker.getTable("Many Data Types").click();
+      TableSection.clickField("Json");
+      FieldSection.getUnfoldJsonInput().click();
+      H.popover().findByText("No").click();
+      verifyToastAndUndo("JSON unfolding disabled for Json");
+      FieldSection.getUnfoldJsonInput().should("have.value", "Yes");
+
+      cy.log("formatting");
+      TablePicker.getTable("Orders").click();
+      TableSection.clickField("Quantity");
+
+      cy.log("prefix (ChartSettingInput)");
+      FieldSection.getPrefixInput().type("5").blur();
+      verifyToastAndUndo("Formatting of Quantity updated");
+      FieldSection.getPrefixInput().should("have.value", "");
+
+      cy.log("multiply by number (ChartSettingInputNumeric)");
+      FieldSection.getMultiplyByNumberInput().type("5").blur();
+      verifyToastAndUndo("Formatting of Quantity updated");
+      FieldSection.getMultiplyByNumberInput().should("have.value", "");
+
+      cy.log("mini bar chart (ChartSettingToggle)");
+      FieldSection.getMiniBarChartToggle()
+        .parent()
+        .click({ scrollBehavior: "center" });
+      verifyToastAndUndo("Formatting of Quantity updated");
+      FieldSection.getMiniBarChartToggle().should("not.be.checked");
+    });
+  });
+
+  describe("Responsiveness", () => {
+    it("should hide labels of buttons when they don't fit", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.QUANTITY,
+      });
+
+      cy.log("buttons should show labels when they fit");
+      TableSection.getSyncOptionsButton().should("have.text", "Sync options");
+      TableSection.getSortButton().should("have.text", "Sorting").click();
+      TableSection.getSortDoneButton().should("have.text", "Done").click();
+      FieldSection.getPreviewButton().should("have.text", "Preview");
+      FieldSection.getFieldValuesButton().should("have.text", "Field values");
+
+      cy.log("buttons should not show labels when they don't fit");
+      cy.viewport(800, 800);
+      TableSection.getSyncOptionsButton().should(
+        "not.have.text",
+        "Sync options",
+      );
+      TableSection.getSortButton().should("not.have.text", "Sorting").click();
+      TableSection.getSortDoneButton().should("not.have.text", "Done").click();
+      FieldSection.getPreviewButton().should("not.have.text", "Preview");
+      FieldSection.getFieldValuesButton().should(
+        "not.have.text",
+        "Field values",
+      );
+
+      cy.log("buttons should have tooltips when labels are not shown");
+      TableSection.getSyncOptionsButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Sync options");
+
+      TableSection.getSortButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Sorting");
+
+      TableSection.getSortButton().click();
+      TableSection.getSortDoneButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Done");
+      TableSection.getSortDoneButton().click();
+
+      FieldSection.getPreviewButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Preview");
+
+      FieldSection.getFieldValuesButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Field values");
+
+      cy.log("button labels should reappear when they can fit again");
+      cy.viewport(1200, 800);
+      TableSection.getSyncOptionsButton().should("have.text", "Sync options");
+      TableSection.getSortButton().should("have.text", "Sorting").click();
+      TableSection.getSortDoneButton().should("have.text", "Done").click();
+      FieldSection.getPreviewButton().should("have.text", "Preview");
+      FieldSection.getFieldValuesButton().should("have.text", "Field values");
+    });
+  });
 });
 
 function turnTableVisibilityOff(tableId: TableId) {
@@ -3010,15 +3421,6 @@ function turnTableVisibilityOff(tableId: TableId) {
     visibility_type: "hidden",
   });
 }
-
-const assertTableHeader = (columns: string[]) => {
-  cy.findAllByTestId("header-cell").should("have.length", columns.length);
-
-  columns.forEach((column, index) => {
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByTestId("header-cell").eq(index).should("have.text", column);
-  });
-};
 
 const setDataModelPermissions = ({
   tableIds = [],
@@ -3056,7 +3458,7 @@ function verifyFieldSectionEmptyState() {
     .should("be.visible");
   H.DataModel.get()
     .findByText(
-      "Select a field to edit it. Then change the display name, semantic type or filtering behavior.",
+      "Select a field to edit its name, description, formatting, and more.",
     )
     .should("be.visible");
 }
@@ -3124,5 +3526,12 @@ function verifyObjectDetailPreview({
 
 function verifyAndCloseToast(message: string) {
   H.undoToast().should("contain.text", message);
+  H.undoToast().icon("close").click({ force: true });
+}
+
+function verifyToastAndUndo(message: string) {
+  H.undoToast().should("contain.text", message);
+  H.undoToast().button("Undo").click();
+  H.undoToast().should("contain.text", "Change undone");
   H.undoToast().icon("close").click();
 }

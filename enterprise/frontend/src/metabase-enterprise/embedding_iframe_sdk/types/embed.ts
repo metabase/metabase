@@ -119,7 +119,7 @@ export type SdkIframeEmbedBaseSettings = {
   _isLocalhost?: boolean;
 };
 
-type SdkIframeEmbedTemplateSettings =
+export type SdkIframeEmbedTemplateSettings =
   | DashboardEmbedOptions
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
