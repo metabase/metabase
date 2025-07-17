@@ -18,11 +18,11 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
 import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
+import { useBreadcrumbContext } from "embedding-sdk/hooks/private/use-breadcrumb-context";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
-import { useBreadcrumbContext } from "embedding-sdk/hooks/use-breadcrumb-context";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { MetabaseQuestion } from "embedding-sdk/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
@@ -167,7 +167,7 @@ const SdkDashboardInner = ({
       });
     }
   }, [dashboard, updateCurrentLocation]);
-  
+
   const { displayOptions } = useSdkDashboardParams({
     dashboardId,
     withDownloads,

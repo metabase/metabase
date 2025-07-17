@@ -5,26 +5,22 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { useBreadcrumbContext } from "embedding-sdk/hooks/use-breadcrumb-context";
+import { useBreadcrumbContext } from "embedding-sdk/hooks/private/use-breadcrumb-context";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
-import { useGetCollectionQuery } from "metabase/api";
 import type {
   MetabaseCollectionItem,
   SdkCollectionId,
 } from "embedding-sdk/types/collection";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
+import { useGetCollectionQuery } from "metabase/api";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { isNotNull } from "metabase/lib/types";
 import { Stack } from "metabase/ui";
-import type {
-  CollectionEssentials,
-  CollectionId,
-  CollectionItemModel,
-} from "metabase-types/api";
+import type { CollectionId, CollectionItemModel } from "metabase-types/api";
 
 const USER_FACING_ENTITY_NAMES = [
   "collection",
@@ -113,7 +109,11 @@ export const CollectionBrowserInner = ({
   const [currentCollectionId, setCurrentCollectionId] =
     useState<CollectionId>(baseCollectionId);
 
-  const { data: currentCollection } = useGetCollectionQuery({ id: currentCollectionId });
+  const { data: currentCollection, isFetching: isFetchingCollection } =
+    useGetCollectionQuery({
+      id: currentCollectionId,
+    });
+
   const { updateCurrentLocation } = useBreadcrumbContext();
 
   useEffect(() => {
@@ -121,15 +121,22 @@ export const CollectionBrowserInner = ({
   }, [baseCollectionId]);
 
   // Update breadcrumb when collection changes
+  // This cannot be done in onClickItem as we need to populate the
+  // initial collection's name in the breadcrumb.
   useEffect(() => {
-    if (currentCollectionId && currentCollection) {
+    if (currentCollectionId && currentCollection && !isFetchingCollection) {
       updateCurrentLocation({
         id: `collection-${currentCollectionId}`,
         name: currentCollection.name,
-        type: 'collection',
+        type: "collection",
       });
     }
-  }, [currentCollectionId, currentCollection, updateCurrentLocation]);
+  }, [
+    currentCollectionId,
+    currentCollection,
+    updateCurrentLocation,
+    isFetchingCollection,
+  ]);
 
   const onClickItem = (item: MetabaseCollectionItem) => {
     if (onClick) {
