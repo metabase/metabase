@@ -3,7 +3,6 @@ import type {
   CompletionResult as CodeMirrorCompletionResult,
 } from "@codemirror/autocomplete";
 
-// eslint-disable-next-line no-restricted-imports
 import type { IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 

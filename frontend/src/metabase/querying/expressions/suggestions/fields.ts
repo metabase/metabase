@@ -1,6 +1,5 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
 
-// eslint-disable-next-line no-restricted-imports
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
