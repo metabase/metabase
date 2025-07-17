@@ -1086,6 +1086,14 @@
      [timer]
      (/ (- (System/nanoTime) timer) 1e6)))
 
+#?(:clj
+   (defn since-ms-wall-clock
+     "Return how many milliseconds have elapsed since the given system millisecond time.
+     For cases where you can't use u/start-timer, e.g., external time sources or process boundaries."
+     [start-ms]
+     #_{:clj-kondo/ignore [:metabase/discourage-millis-duration]}
+     (- (System/currentTimeMillis) start-ms)))
+
 (defn group-by
   "(group-by first                  [[1 3]   [1 4]   [2 5]])   => {1 [[1 3] [1 4]], 2 [[2 5]]}
    (group-by first second           [[1 3]   [1 4]   [2 5]])   => {1 [3 4],         2 [5]}
