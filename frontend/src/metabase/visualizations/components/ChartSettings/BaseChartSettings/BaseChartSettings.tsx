@@ -36,6 +36,7 @@ export const BaseChartSettings = ({
   chartSettings,
   transformedSeries,
   className,
+  onShowWidget,
   ...stackProps
 }: BaseChartSettingsProps) => {
   const {
@@ -160,17 +161,25 @@ export const BaseChartSettings = ({
   // allows a widget to temporarily replace itself with a different widget
   const handleShowWidget = useCallback(
     (widget: Widget, ref: HTMLElement | null) => {
-      setPopoverRef(ref);
-      setCurrentWidget(widget);
+      if (onShowWidget) {
+        onShowWidget(widget);
+      } else {
+        setPopoverRef(ref);
+        setCurrentWidget(widget);
+      }
     },
-    [],
+    [onShowWidget],
   );
 
   // go back to previously selected section
   const handleEndShowWidget = useCallback(() => {
-    setPopoverRef(null);
-    setCurrentWidget(null);
-  }, []);
+    if (onShowWidget) {
+      onShowWidget(null);
+    } else {
+      setPopoverRef(null);
+      setCurrentWidget(null);
+    }
+  }, [onShowWidget]);
 
   const handleChangeSeriesColor = useCallback(
     (seriesKey: string, color: string) => {

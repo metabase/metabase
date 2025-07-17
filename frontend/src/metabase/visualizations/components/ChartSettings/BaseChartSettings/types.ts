@@ -11,6 +11,7 @@ export type BaseChartSettingsProps = {
   computedSettings?: ComputedVisualizationSettings;
   question?: Question;
   widgets: Widget[];
+  onShowWidget?: (widget: Widget | null) => void;
 } & CommonChartSettingsProps &
   Pick<UseChartSettingsStateReturned, "chartSettings" | "transformedSeries"> &
   StackProps;
