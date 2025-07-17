@@ -30,6 +30,7 @@
    ;; TODO - we should avoid hardcoding this to make it easier to add new integrations. Maybe look at something like
    ;; the keys of `(methods sso/sso-get)`
    [:sso_source       [:enum :saml :jwt]]
+   [:jwt_attributes   {:optional true} [:maybe :map]]
    [:login_attributes [:maybe :map]]
    [:tenant_id        [:maybe ms/PositiveInt]]])
 

@@ -40,7 +40,7 @@
 (def ^:private AttributeStatus
   "Describes a possible value of an attribute and where it is sourced from."
   [:map
-   [:source [:enum :user :tenant :system]]
+   [:source [:enum :user :tenant :system :jwt]]
    [:frozen boolean?]
    [:value :string]])
 
@@ -54,9 +54,11 @@
 
 (mu/defn combine :- CombinedAttributes
   "Combines user, tenant, and system attributes. User can override "
-  ([user :- [:maybe SimpleAttributes]]
-   (combine user nil nil))
   ([user :- [:maybe SimpleAttributes]
+    jwt :- [:maybe SimpleAttributes]]
+   (combine user jwt nil nil))
+  ([user :- [:maybe SimpleAttributes]
+    jwt :- [:maybe SimpleAttributes]
     tenant :- [:maybe SimpleAttributes]
     system :- [:maybe SystemAttributes]]
    (letfn [(value-map [s f vs] (into {}
@@ -71,6 +73,7 @@
      (merge-with error
                  (merge-with shadow
                              (value-map :tenant false tenant)
+                             (value-map :jwt false jwt)
                              (value-map :user false user))
                  (value-map :system true system)))))
 
@@ -79,6 +82,7 @@
    metadata about their provenance."
   metabase-enterprise.tenants.core
   [user]
-  (let [combined-attributes (combine (:login_attributes user))]
+  (let [combined-attributes (combine (:login_attributes user)
+                                     (:jwt_attributes user))]
     (assoc user
            :structured_attributes combined-attributes)))

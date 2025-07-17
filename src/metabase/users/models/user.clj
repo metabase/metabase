@@ -41,6 +41,7 @@
 
 (t2/deftransforms :model/User
   {:login_attributes mi/transform-json-no-keywordization
+   :jwt_attributes   mi/transform-json-no-keywordization
    :settings         mi/transform-encrypted-json
    :sso_source       mi/transform-keyword
    :type             mi/transform-keyword})
@@ -192,7 +193,7 @@
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
   fetching themselves. Needed to power the admin page."
-  (into default-user-columns [:sso_source :is_active :updated_at :login_attributes :locale]))
+  (into default-user-columns [:sso_source :is_active :updated_at :login_attributes :jwt_attributes :locale]))
 
 (def non-admin-or-self-visible-columns
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
@@ -298,6 +299,7 @@
    [:email                             ms/Email]
    [:password         {:optional true} [:maybe ms/NonBlankString]]
    [:login_attributes {:optional true} [:maybe LoginAttributes]]
+   [:jwt_attributes   {:optional true} [:maybe LoginAttributes]]
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
    [:locale           {:optional true} [:maybe ms/KeywordOrString]]
    [:type             {:optional true} [:maybe ms/KeywordOrString]]
@@ -405,5 +407,5 @@
 
 (defn add-attributes
   "Adds the `:attributes` key to a user."
-  [{:keys [login_attributes] :as user}]
-  (assoc user :attributes (merge {} (tenants/login-attributes user) login_attributes)))
+  [{:keys [login_attributes jwt_attributes] :as user}]
+  (assoc user :attributes (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)))

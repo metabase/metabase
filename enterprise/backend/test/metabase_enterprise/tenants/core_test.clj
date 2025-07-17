@@ -135,15 +135,18 @@
           (let [user {:id 1
                       :email "test@example.com"
                       :tenant_id tenant-id
-                      :login_attributes {"role" "admin" "department" "engineering"}}
+                      :login_attributes {"role" "admin" "department" "engineering"}
+                      :jwt_attributes {"session" "abc123"}}
                 result (tenants/attribute-structure user)]
             (is (= {:id 1
                     :email "test@example.com"
                     :tenant_id tenant-id
                     :login_attributes {"role" "admin"
                                        "department" "engineering"}
+                    :jwt_attributes {"session" "abc123"}
                     :structured_attributes {"role" {:source :user :frozen false :value "admin"}
                                             "department" {:source :user :frozen false :value "engineering"}
+                                            "session" {:source :jwt :frozen false :value "abc123"}
                                             "environment" {:source :tenant :frozen false :value "production"}
                                             "region" {:source :tenant :frozen false :value "us-east-1"}
                                             "@tenant.slug" {:source :system :frozen true :value "test-tenant"}}}
@@ -161,13 +164,15 @@
           (let [user {:id 1
                       :email "test@example.com"
                       :tenant_id tenant-id
-                      :login_attributes {"role" "user-role" "department" "engineering"}}
+                      :login_attributes {"role" "user-role" "department" "engineering"}
+                      :jwt_attributes nil}
                 result (tenants/attribute-structure user)]
             (is (= {:id 1
                     :email "test@example.com"
                     :tenant_id tenant-id
                     :login_attributes {"role" "user-role"
                                        "department" "engineering"}
+                    :jwt_attributes nil
                     :structured_attributes {"role" {:source :user :frozen false :value "user-role"
                                                     :original {:source :tenant :frozen false :value "tenant-role"}}
                                             "department" {:source :user :frozen false :value "engineering"}
@@ -181,11 +186,13 @@
       (mt/with-temporary-setting-values [use-tenants true]
         (let [user {:id 1
                     :email "test@example.com"
-                    :login_attributes {"role" "admin" "department" "engineering"}}
+                    :login_attributes {"role" "admin" "department" "engineering"}
+                    :jwt_attributes nil}
               result (tenants/attribute-structure user)]
           (is (= {:id 1
                   :email "test@example.com"
                   :login_attributes {"role" "admin" "department" "engineering"}
+                  :jwt_attributes nil
                   :structured_attributes {"role" {:source :user :frozen false :value "admin"}
                                           "department" {:source :user :frozen false :value "engineering"}}}
                  result)))))))
@@ -197,12 +204,14 @@
         (let [user {:id 1
                     :email "test@example.com"
                     :tenant_id nil
-                    :login_attributes {"role" "admin"}}
+                    :login_attributes {"role" "admin"}
+                    :jwt_attributes nil}
               result (tenants/attribute-structure user)]
           (is (= {:id 1
                   :email "test@example.com"
                   :tenant_id nil
                   :login_attributes {"role" "admin"}
+                  :jwt_attributes nil
                   :structured_attributes {"role" {:source :user :frozen false :value "admin"}}}
                  result)))))))
 
@@ -213,12 +222,14 @@
         (let [user {:id 1
                     :email "test@example.com"
                     :tenant_id 99999
-                    :login_attributes {"role" "admin"}}
+                    :login_attributes {"role" "admin"}
+                    :jwt_attributes nil}
               result (tenants/attribute-structure user)]
           (is (= {:id 1
                   :email "test@example.com"
                   :tenant_id 99999
                   :login_attributes {"role" "admin"}
+                  :jwt_attributes nil
                   :structured_attributes {"role" {:source :user :frozen false :value "admin"}}}
                  result)))))))
 
@@ -232,12 +243,14 @@
           (let [user {:id 1
                       :email "test@example.com"
                       :tenant_id tenant-id
-                      :login_attributes {"role" "admin"}}
+                      :login_attributes {"role" "admin"}
+                      :jwt_attributes nil}
                 result (tenants/attribute-structure user)]
             (is (= {:id 1
                     :email "test@example.com"
                     :tenant_id tenant-id
                     :login_attributes {"role" "admin"}
+                    :jwt_attributes nil
                     :structured_attributes {"role" {:source :user :frozen false :value "admin"}
                                             "@tenant.slug" {:source :system :frozen true :value "empty-tenant"}}}
                    result))))))))
@@ -253,12 +266,14 @@
           (let [user {:id 1
                       :email "test@example.com"
                       :tenant_id tenant-id
-                      :login_attributes {"role" "admin"}}
+                      :login_attributes {"role" "admin"}
+                      :jwt_attributes nil}
                 result (tenants/attribute-structure user)]
             (is (= {:id 1
                     :email "test@example.com"
                     :tenant_id tenant-id
                     :login_attributes {"role" "admin"}
+                    :jwt_attributes nil
                     :structured_attributes {"role" {:source :user :frozen false :value "admin"}
                                             "@tenant.slug" {:source :system :frozen true :value "empty-attrs-tenant"}}}
                    result))))))))
@@ -274,11 +289,13 @@
           (let [user {:id 1
                       :email "test@example.com"
                       :tenant_id tenant-id
-                      :login_attributes nil}
+                      :login_attributes nil
+                      :jwt_attributes nil}
                 result (tenants/attribute-structure user)]
             (is (= {:id 1
                     :email "test@example.com"
                     :tenant_id tenant-id :login_attributes nil
+                    :jwt_attributes nil
                     :structured_attributes {"environment" {:source :tenant :frozen false :value "production"}
                                             "@tenant.slug" {:source :system :frozen true :value "test-tenant"}}}
                    result))))))))
@@ -294,12 +311,14 @@
           (let [user {:id 1
                       :email "test@example.com"
                       :tenant_id tenant-id
-                      :login_attributes {}}
+                      :login_attributes {}
+                      :jwt_attributes nil}
                 result (tenants/attribute-structure user)]
             (is (= {:id 1
                     :email "test@example.com"
                     :tenant_id tenant-id
                     :login_attributes {}
+                    :jwt_attributes nil
                     :structured_attributes {"environment" {:source :tenant :frozen false :value "production"}
                                             "@tenant.slug" {:source :system :frozen true :value "test-tenant"}}}
                    result))))))))
@@ -318,7 +337,8 @@
                       :last_name "Doe"
                       :is_active true
                       :tenant_id tenant-id
-                      :login_attributes {"role" "user"}}
+                      :login_attributes {"role" "user"}
+                      :jwt_attributes nil}
                 result (tenants/attribute-structure user)]
             (is (= {:id 1
                     :email "test@example.com"
@@ -327,6 +347,7 @@
                     :is_active true
                     :tenant_id tenant-id
                     :login_attributes {"role" "user"}
+                    :jwt_attributes nil
                     :structured_attributes {"role" {:source :user :frozen false :value "user"}
                                             "environment" {:source :tenant :frozen false :value "production"}
                                             "@tenant.slug" {:source :system :frozen true :value "test-tenant"}}}
@@ -338,11 +359,41 @@
       (let [user {:id 1
                   :email "test@example.com"
                   :tenant_id 1
-                  :login_attributes {"role" "admin"}}
+                  :login_attributes {"role" "admin"}
+                  :jwt_attributes nil}
             result (tenants/attribute-structure user)]
         (is (= {:id 1
                 :email "test@example.com"
                 :tenant_id 1
                 :login_attributes {"role" "admin"}
+                :jwt_attributes nil
                 :structured_attributes {"role" {:source :user :frozen false :value "admin"}}}
                result))))))
+
+(deftest attribute-structure-ee-jwt-overrides-tenant-test
+  (testing "EE version where JWT attributes override tenant attributes"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp
+          [:model/Tenant {tenant-id :id} {:name "Test Tenant"
+                                          :slug "test-tenant"
+                                          :attributes {"environment" "production"
+                                                       "role" "tenant-role"}}]
+          (let [user {:id 1
+                      :email "test@example.com"
+                      :tenant_id tenant-id
+                      :login_attributes {"department" "engineering"}
+                      :jwt_attributes {"role" "jwt-role" "scope" "admin"}}
+                result (tenants/attribute-structure user)]
+            (is (= {:id 1
+                    :email "test@example.com"
+                    :tenant_id tenant-id
+                    :login_attributes {"department" "engineering"}
+                    :jwt_attributes {"role" "jwt-role" "scope" "admin"}
+                    :structured_attributes {"department" {:source :user :frozen false :value "engineering"}
+                                            "role" {:source :jwt :frozen false :value "jwt-role"
+                                                    :original {:source :tenant :frozen false :value "tenant-role"}}
+                                            "scope" {:source :jwt :frozen false :value "admin"}
+                                            "environment" {:source :tenant :frozen false :value "production"}
+                                            "@tenant.slug" {:source :system :frozen true :value "test-tenant"}}}
+                   result))))))))

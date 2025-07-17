@@ -532,9 +532,11 @@
     (testing "should add :attributes key with merged login attributes"
       (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
         (let [user {:login_attributes {"user_attr" "user_value"}
+                    :jwt_attributes {"jwt_attr" "jwt_value"}
                     :email "test@example.com"}
               result (user/add-attributes user)]
           (is (= {"tenant_attr" "tenant_value"
+                  "jwt_attr" "jwt_value"
                   "user_attr" "user_value"}
                  (:attributes result)))
           (is (= user (dissoc result :attributes))))))
@@ -574,6 +576,7 @@
                                                           "tenant_only" "tenant_val"})]
         (let [user {:login_attributes {"shared_key" "user_value"
                                        "user_only" "user_val"}
+                    :jwt_attributes   {"shared_key" "jwt_value"}
                     :email "test@example.com"}
               result (user/add-attributes user)]
           (is (= {"shared_key" "user_value"
