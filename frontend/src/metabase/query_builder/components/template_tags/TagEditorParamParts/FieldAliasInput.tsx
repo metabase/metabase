@@ -61,13 +61,21 @@ function FieldAlisHelpInfo() {
         <Box p="md" maw="20rem">
           <Text>
             {jt`Required only if the query uses an alias to refer to the mapped field's table. For example, if you map the variable to the ${(
-              <Code key="field">{"products.category"}</Code>
+              <Code key="field" bg="bg-medium">
+                {"products.category"}
+              </Code>
             )} field, but the query aliases the ${(
-              <Code key="table">{"products"}</Code>
+              <Code key="table" bg="bg-medium">
+                {"products"}
+              </Code>
             )} table as ${(
-              <Code key="table-alias">{"p"}</Code>
+              <Code key="table-alias" bg="bg-medium">
+                {"p"}
+              </Code>
             )}, you'd enter ${(
-              <Code key="field-alias">{"p.category"}</Code>
+              <Code key="field-alias" bg="bg-medium">
+                {"p.category"}
+              </Code>
             )}.`}
           </Text>
         </Box>
