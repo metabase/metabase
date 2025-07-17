@@ -18,9 +18,8 @@ interface SemanticTypeAndTargetPickerProps {
   label?: string;
   selectProps?: Omit<SelectProps, "data" | "value" | "onChange">;
   semanticTypeError?: ReactNode;
-  onUpdateField: (
-    field: Field,
-    updates: Partial<
+  onChange: (
+    patch: Partial<
       Pick<Field, "semantic_type" | "fk_target_field_id" | "settings">
     >,
   ) => void;
@@ -33,7 +32,7 @@ export const SemanticTypeAndTargetPicker = ({
   label,
   selectProps,
   semanticTypeError,
-  onUpdateField,
+  onChange,
 }: SemanticTypeAndTargetPickerProps) => {
   const showFKTargetSelect = isFK(field);
   const showCurrencyTypeSelect = isCurrency(field);
@@ -41,25 +40,25 @@ export const SemanticTypeAndTargetPicker = ({
   const handleChangeSemanticType = (semanticType: string | null) => {
     // If we are changing the field from a FK to something else, we should delete any FKs present
     if (field.fk_target_field_id != null && isFK(field)) {
-      onUpdateField(field, {
+      onChange({
         semantic_type: semanticType,
         fk_target_field_id: null,
       });
     } else {
-      onUpdateField(field, {
+      onChange({
         semantic_type: semanticType,
       });
     }
   };
 
   const handleChangeCurrency = (currency: string) => {
-    onUpdateField(field, {
+    onChange({
       settings: { ...field.settings, currency },
     });
   };
 
   const handleChangeTarget = (fieldId: FieldId | null) => {
-    onUpdateField(field, {
+    onChange({
       fk_target_field_id: fieldId,
     });
   };

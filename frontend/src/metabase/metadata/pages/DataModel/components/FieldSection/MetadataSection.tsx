@@ -5,8 +5,8 @@ import {
   useListDatabaseIdFieldsQuery,
   useUpdateFieldMutation,
 } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
 import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DatabaseId, Field, Table } from "metabase-types/api";
@@ -14,6 +14,10 @@ import type { DatabaseId, Field, Table } from "metabase-types/api";
 import { TitledSection } from "../TitledSection";
 
 import { getSemanticTypeError } from "./utils";
+
+type Patch = Partial<
+  Pick<Field, "settings" | "semantic_type" | "fk_target_field_id">
+>;
 
 interface Props {
   databaseId: DatabaseId;
@@ -28,35 +32,32 @@ const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
   const [updateField] = useUpdateFieldMutation();
-  const [sendToast] = useToast();
   const semanticTypeError = useMemo(() => {
     return getSemanticTypeError(table, field);
   }, [table, field]);
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
 
-  const handleUpdateField = async (
-    field: Field,
-    updates: Partial<
-      Pick<Field, "settings" | "semantic_type" | "fk_target_field_id">
-    >,
-  ) => {
-    const { id: _id, ...fieldAttributes } = field;
-    const { error } = await updateField({
-      id,
-      ...fieldAttributes,
-      ...updates,
-    });
+  const handleChange = async (patch: Patch) => {
+    const { error } = await updateField({ id, ...patch });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update semantic type of ${field.display_name}`,
-      });
+      sendErrorToast(
+        t`Failed to update semantic type of ${field.display_name}`,
+      );
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Semantic type of ${field.display_name} updated`,
-      });
+      sendSuccessToast(
+        t`Semantic type of ${field.display_name} updated`,
+        async () => {
+          const { error } = await updateField({
+            id,
+            fk_target_field_id: field.fk_target_field_id,
+            semantic_type: field.semantic_type,
+            settings: field.settings,
+          });
+          sendUndoToast(error);
+        },
+      );
     }
   };
 
@@ -68,7 +69,7 @@ const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
         idFields={idFields}
         label={t`Semantic type`}
         semanticTypeError={semanticTypeError}
-        onUpdateField={handleUpdateField}
+        onChange={handleChange}
       />
     </TitledSection>
   );
