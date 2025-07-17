@@ -212,7 +212,7 @@ const DashboardContextProviderInner = forwardRef(
         // When forcing a refetch, we want to clear the cache
         const effectiveIsNavigatingBackToDashboard =
           isNavigatingBackToDashboard && !forceRefetch;
-        if (hasDashboardChanged) {
+        if (hasDashboardChanged || forceRefetch) {
           setError(null);
 
           initialize({ clearCache: !effectiveIsNavigatingBackToDashboard });
@@ -403,6 +403,7 @@ const DashboardContextProviderInner = forwardRef(
           onError,
           dashcardMenu,
           dashboardActions,
+          onNewQuestion,
 
           navigateToNewCardFromDashboard,
           isLoading,
