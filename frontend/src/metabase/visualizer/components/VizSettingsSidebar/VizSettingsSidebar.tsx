@@ -73,7 +73,6 @@ export function VizSettingsSidebar(props: VizSettingsSidebarProps) {
         <SeriesSettings
           currentWidget={currentWidget}
           widgets={widgets}
-          display={settings["card.display"]}
           computedSettings={settings}
           transformedSeries={transformedSeries}
           onCloseClick={() => onShowWidget(null)}

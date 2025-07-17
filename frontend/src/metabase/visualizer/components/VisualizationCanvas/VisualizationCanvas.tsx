@@ -72,19 +72,32 @@ export function VisualizationCanvas({
 
   const handleVisualizationClick = useCallback(
     (c: ClickObject | null) => {
+      if (!c) {
+        return;
+      }
+
+      if (display === "funnel") {
+        return;
+      }
+
+      if (display === "pie" && c.data) {
+        onSeriesClick(String(c.data[0]?.value));
+        return;
+      }
+
       // Means we clicked on the legend
-      if (c && "dimensions" in c && c.dimensions?.length) {
+      if ("dimensions" in c && c.dimensions?.length) {
         onSeriesClick(String(c.dimensions[0].value));
         return;
       }
 
       // Means we have a breakout
-      if (c?.data?.length === 3) {
+      if (c.data?.length === 3) {
         onSeriesClick(String(c.data[1].value));
         return;
       }
 
-      const columnName = c?.column?.name;
+      const columnName = c.column?.name;
 
       if (!columnName) {
         return;
@@ -97,7 +110,7 @@ export function VisualizationCanvas({
 
       onColumnClick(column);
     },
-    [columnValuesMapping, onColumnClick, onSeriesClick],
+    [columnValuesMapping, onColumnClick, onSeriesClick, display],
   );
 
   let rawSeries = useSelector(getVisualizerRawSeries);
@@ -148,7 +161,7 @@ export function VisualizationCanvas({
             // TableInteractive crashes when trying to use metabase-lib
             isDashboard
             handleVisualizationClick={handleVisualizationClick}
-            forceDefaultActions
+            isInVisualizerCanvas
           />
         </Box>
 

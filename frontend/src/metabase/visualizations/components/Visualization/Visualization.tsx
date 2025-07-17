@@ -136,7 +136,6 @@ type VisualizationOwnProps = {
   };
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
-  forceDefaultActions?: boolean;
   headerIcon?: IconProps;
   width?: number | null;
   height?: number | null;
@@ -181,6 +180,11 @@ type VisualizationOwnProps = {
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
+  /**
+   * This is basically used to hijack some click actions
+   * to reroute them to the visualizer canvas
+   */
+  isInVisualizerCanvas?: boolean;
 } & VisualizationPassThroughProps;
 
 type VisualizationProps = StateDispatchProps &
@@ -440,7 +444,7 @@ class Visualization extends PureComponent<
       visualizerRawSeries = [],
       isRawTable,
       getExtraDataForClick = () => ({}),
-      forceDefaultActions,
+      isInVisualizerCanvas,
     } = this.props;
 
     const clicked = isVisualizerDashboardCard(dashcard)
@@ -451,7 +455,7 @@ class Visualization extends PureComponent<
         )
       : clickedObject;
 
-    if (forceDefaultActions) {
+    if (isInVisualizerCanvas) {
       return [
         {
           name: "forced-default",
@@ -642,6 +646,7 @@ class Visualization extends PureComponent<
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
       titleMenuItems,
+      isInVisualizerCanvas,
     } = this.props;
     const { width, height } = this.getNormalizedSizes();
 
@@ -907,6 +912,7 @@ class Visualization extends PureComponent<
                     onVisualizationClick={this.handleVisualizationClick}
                     onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                     titleMenuItems={hasHeader ? undefined : titleMenuItems}
+                    isInVisualizerCanvas={isInVisualizerCanvas}
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}

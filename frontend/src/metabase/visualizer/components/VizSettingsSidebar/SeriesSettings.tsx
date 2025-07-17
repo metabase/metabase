@@ -1,24 +1,24 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { ActionIcon, Box, Flex, Icon, Space, Tabs } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { getVisualizationType } from "metabase/visualizer/selectors";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   DatasetColumn,
   RawSeries,
   TransformedSeries,
-  VisualizationDisplay,
   Widget,
 } from "metabase-types/api";
 
 interface SeriesSettingsProps {
   currentWidget: Widget;
   widgets: Widget[];
-  display: VisualizationDisplay;
   computedSettings: ComputedVisualizationSettings;
   transformedSeries: RawSeries | TransformedSeries | undefined;
   onCloseClick: () => void;
@@ -28,14 +28,16 @@ interface SeriesSettingsProps {
  * This component is used in the visualizer sidebar to display
  * the series settings widget and the formatting widget.
  */
+// TODO rename this component to something more meaningful
 export const SeriesSettings = ({
   currentWidget,
   widgets,
-  display,
   computedSettings,
   transformedSeries,
   onCloseClick,
 }: SeriesSettingsProps) => {
+  const display = useSelector(getVisualizationType);
+
   const label = useMemo(() => {
     if (currentWidget?.props?.seriesKey !== undefined) {
       return "" + currentWidget.props.seriesKey;
@@ -64,7 +66,7 @@ export const SeriesSettings = ({
       currentWidget &&
       widgets.find((widget) => widget.id === "series_settings");
 
-    // In the pie the chart, clicking on the "measure" settings menu will only
+    // In the pie chart, clicking on the "measure" settings menu will only
     // open a formatting widget, and we don't want the style widget (used only
     // for dimension) to override that
     if (display === "pie" && currentWidget?.id === "column_settings") {
@@ -141,6 +143,12 @@ export const SeriesSettings = ({
   );
 
   const [currentSection, setCurrentSection] = useState(sections[0]);
+
+  useEffect(() => {
+    if (sections.length > 0 && !sections.includes(currentSection)) {
+      setCurrentSection(sections[0]);
+    }
+  }, [sections, currentSection]);
 
   const hasMultipleSections = sections.length > 1;
 

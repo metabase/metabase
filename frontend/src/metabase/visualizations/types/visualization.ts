@@ -184,6 +184,12 @@ export interface VisualizationProps {
    * Used for visualizer cards to jump to underlying questions
    */
   titleMenuItems?: React.ReactNode;
+
+  /**
+   * This is basically used to hijack some click actions
+   * to reroute them to the visualizer canvas
+   */
+  isInVisualizerCanvas?: boolean;
 }
 
 export type VisualizationPassThroughProps = {
