@@ -6,12 +6,13 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
-import { useToast } from "metabase/common/hooks";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
   SortableFieldList,
 } from "metabase/metadata/components";
+import { useMetadataToasts } from "metabase/metadata/hooks";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Button, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
@@ -33,7 +34,8 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const [updateTableSorting, { isLoading: isChangingSorting }] =
     useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = table.fields && table.fields.length > 0;
 
@@ -44,15 +46,14 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update table name`,
-      });
+      sendErrorToast(t`Failed to update table name`);
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Table name updated`,
+      sendSuccessToast(t`Table name updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          display_name: table.display_name,
+        });
+        sendUndoToast(error);
       });
     }
   };
@@ -61,15 +62,14 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     const { error } = await updateTable({ id: table.id, description });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update table description`,
-      });
+      sendErrorToast(t`Failed to update table description`);
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Table description updated`,
+      sendSuccessToast(t`Table description updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          description: table.description ?? "",
+        });
+        sendUndoToast(error);
       });
     }
   };
@@ -81,15 +81,14 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update field order`,
-      });
+      sendErrorToast(t`Failed to update field order`);
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Field order updated`,
+      sendSuccessToast(t`Field order updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          field_order: table.field_order,
+        });
+        sendUndoToast(error);
       });
     }
   };
@@ -101,15 +100,23 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update field order`,
-      });
+      sendErrorToast(t`Failed to update field order`);
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Field order updated`,
+      sendSuccessToast(t`Field order updated`, async () => {
+        const { error: fieldsOrderError } = await updateTableFieldsOrder({
+          id: table.id,
+          field_order: table.fields?.map(getRawTableFieldId) ?? [],
+        });
+
+        if (table.field_order !== "custom") {
+          const { error: tableError } = await updateTable({
+            id: table.id,
+            field_order: table.field_order,
+          });
+          sendUndoToast(fieldsOrderError ?? tableError);
+        } else {
+          sendUndoToast(fieldsOrderError);
+        }
       });
     }
   };
