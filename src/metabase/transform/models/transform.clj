@@ -117,15 +117,19 @@
                      :display-name display-name
                      :same-display-name-table-ids table-ids}))))
 
-(defn- validate-for-view* [q] nil)
+(defn- validate-stage-for-view* [s]
+  (let [has-limit (contains? s :limit)
+        has-order-by (seq (:order-by s))]
+    (when has-order-by
+      (when-not has-limit
+        #{::order-by-no-limit}))))
 
 (defn- validate-for-view [dataset-query]
   (let [query (dataset-query->query dataset-query)
         query-type (query-type query)]
     (when (not= query-type :native)
-      (let [preprocessed (driver-api/preprocess query)]
-        [(validate-for-view* query)
-         (validate-for-view* preprocessed)]))))
+      (let [last-stage (lib/query-stage query -1)]
+        (validate-stage-for-view* last-stage)))))
 
 (defn insert-returning-instance!
   "Create new transform."
