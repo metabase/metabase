@@ -29,7 +29,7 @@
   [filter-key]
   (case filter-key
     ;; Boolean filters
-    (:archived? :has-temporal-dimensions? :search-native-query :verified) true
+    (:archived? :search-native-query :verified) true
     ;; Collection filters (sets/sequences)
     (:created-by :last-edited-by :ids) #{1}
     :display-type #{"table"}
@@ -79,7 +79,6 @@
    :non-temporal-dim-ids         "[1]"
    :has-temporal-dim             true
    :display-type                 ["line"]
-   :has-temporal-dimensions?     true
    :models                       (disj search.config/all-models "dataset")})
 
 (deftest with-filters-test
@@ -123,7 +122,6 @@
                       [:in :search_index.last_editor_id [321]]
                       [:= :search_index.non_temporal_dim_ids "[1]"]
                       [:= :search_index.has_temporal_dim true]
-                      [:in :search_index.display_type ["line"]]
-                      [:= :search_index.has_temporal_dimensions true]}}
+                      [:in :search_index.display_type ["line"]]}}
            (-> (search.filter/with-filters kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
                (update :where set))))))
