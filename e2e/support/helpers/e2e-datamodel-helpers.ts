@@ -52,6 +52,8 @@ export const DataModel = {
     getDisplayValuesFkTargetInput: getFieldDisplayValuesFkTargetInput,
     getUnfoldJsonInput: getFieldUnfoldJsonInput,
     getStyleInput: getFieldStyleInput,
+    getMiniBarChartToggle: getFieldMiniBarChartToggle,
+    getMultiplyByNumberInput: getFieldMultiplyByNumberInput,
     getPrefixInput: getFieldPrefixInput,
     getSuffixInput: getFieldSuffixInput,
   },
@@ -333,6 +335,14 @@ function getFieldUnfoldJsonInput() {
   return getFieldSection().findByPlaceholderText(
     "Select whether to unfold JSON",
   );
+}
+
+function getFieldMiniBarChartToggle() {
+  return getFieldSection().findByLabelText("Show a mini bar chart");
+}
+
+function getFieldMultiplyByNumberInput() {
+  return getFieldSection().findByLabelText("Multiply by a number");
 }
 
 function getFieldStyleInput() {
