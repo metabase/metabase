@@ -130,15 +130,16 @@ class TagEditorParamInner extends Component<
       return newConfig;
     }
 
-    const query = originalQuestion.query();
-    const queryInfo = Lib.queryDisplayInfo(query);
-    if (!queryInfo.isNative) {
+    const originalQuery = originalQuestion.query();
+    const originalQueryInfo = Lib.queryDisplayInfo(originalQuery);
+    if (!originalQueryInfo.isNative) {
       return newConfig;
     }
 
-    const originalTag = Lib.templateTags(query)[tag.name];
-    const parameters = originalQuestion.parameters();
-    const originalParameter = parameters.find(({ id }) => id === parameter.id);
+    const originalTag = Lib.templateTags(originalQuery)[tag.name];
+    const originalParameter = originalQuestion
+      .parameters()
+      .find(({ id }) => id === parameter.id);
     if (!originalTag || originalTag.type !== newType || !originalParameter) {
       return newConfig;
     }
