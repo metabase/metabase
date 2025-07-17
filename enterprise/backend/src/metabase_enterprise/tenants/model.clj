@@ -3,7 +3,9 @@
    [metabase.audit-app.core :as audit-app]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -12,6 +14,9 @@
 (defmethod audit-app/model-details :model/Tenant
   [entity _event-type]
   (select-keys entity [:name :slug :is_active]))
+
+(t2/deftransforms :model/Tenant
+  {:attributes mi/transform-json-no-keywordization})
 
 (def Slug
   "The malli schema for a tenant's slug"
@@ -51,3 +56,15 @@
           (into {})))
    :id
    {:default 0}))
+
+(def Attributes
+  "Attributes attached to a tenant that will be passed down to users in the tenant."
+  [:map-of
+   [:and
+    (mu/with-api-error-message
+     ms/KeywordOrString
+     (deferred-tru "attribute keys must be a keyword or string"))
+    (mu/with-api-error-message
+     [:fn (fn [k] (re-matches #"^(?!@).*" (name k)))]
+     (deferred-tru "attribute keys must not start with `@`"))]
+   :any])
