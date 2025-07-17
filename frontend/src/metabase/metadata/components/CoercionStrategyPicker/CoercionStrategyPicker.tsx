@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { coercions_for_type } from "cljs/metabase.types.core";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { Select, type SelectProps } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
@@ -23,14 +22,14 @@ export const CoercionStrategyPicker = ({
   ...props
 }: Props) => {
   const [isTouched, setIsTouched] = useState(false);
-  // debounce to prevent error briefly shown when disabling casting
-  const isTouchedDebounced = useDebouncedValue(isTouched, 100);
   const data = useMemo(() => {
     return coercions_for_type(baseType).map((coercion: string) => ({
       label: humanizeCoercionStrategy(coercion),
       value: coercion,
     }));
   }, [baseType]);
+  const error =
+    value == null ? t`To enable casting, please select a data type` : null;
 
   return (
     <Select
@@ -48,11 +47,7 @@ export const CoercionStrategyPicker = ({
         ...comboboxProps,
       }}
       data={data}
-      error={
-        isTouchedDebounced && value == null
-          ? t`To enable casting, please select a data type`
-          : undefined
-      }
+      error={isTouched ? error : null}
       placeholder={t`Select data type`}
       value={value}
       onBlur={() => setIsTouched(true)}
