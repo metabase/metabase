@@ -80,8 +80,8 @@ export function VisualizationCanvas({
         return;
       }
 
-      if (display === "pie" && c.data) {
-        onSeriesClick(String(c.data[0]?.value));
+      if (display === "pie" && c.dimensions) {
+        onSeriesClick(String(c.dimensions[0]?.value));
         return;
       }
 
