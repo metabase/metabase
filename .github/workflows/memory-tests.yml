@@ -1,0 +1,109 @@
+name: Memory Tests
+
+on:
+  workflow_call:
+    inputs:
+      skip:
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      timeout:
+        description: 'Timeout in minutes'
+        required: false
+        default: '30'
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-memory
+  cancel-in-progress: true
+
+jobs:
+  memory-tests:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: ${{ fromJSON(inputs.timeout || '60') }}
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+      mysql:
+        image: mysql:8.0
+        ports:
+          - "3306:3306"
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_DATABASE: circle_test
+    env:
+      CI: 'true'
+      # PostgreSQL config
+      MB_POSTGRESQL_TEST_HOST: localhost
+      MB_POSTGRESQL_TEST_PORT: 5432
+      MB_POSTGRESQL_TEST_DBNAME: mb_test
+      MB_POSTGRESQL_TEST_USER: mb_test
+      # MySQL config
+      MB_MYSQL_TEST_HOST: localhost
+      MB_MYSQL_TEST_PORT: 3306
+      MB_MYSQL_TEST_DBNAME: circle_test
+      MB_MYSQL_TEST_USER: root
+      # BigQuery secrets
+      MB_BIGQUERY_TEST_PROJECT_ID: ${{ secrets.BIGQUERY_TEST_PROJECT_ID }}
+      MB_BIGQUERY_TEST_CLIENT_ID: ${{ secrets.MB_BIGQUERY_TEST_CLIENT_ID }}
+      MB_BIGQUERY_TEST_CLIENT_SECRET: ${{ secrets.MB_BIGQUERY_TEST_CLIENT_SECRET }}
+      MB_BIGQUERY_TEST_ACCESS_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_ACCESS_TOKEN }}
+      MB_BIGQUERY_TEST_REFRESH_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_REFRESH_TOKEN }}
+      # Snowflake secrets
+      MB_SNOWFLAKE_TEST_USER: METABASE CI
+      MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+      MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
+      MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+      # Set drivers to include all we want to test
+      DRIVERS: postgres,mysql,sqlite,bigquery-cloud-sdk,snowflake
+    name: "Memory Tests"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: driver
+      - name: Prepare static-viz
+        run: yarn build-static-viz
+        shell: bash
+        env:
+          MB_EDITION: ee
+      - name: Run Memory Tests
+        run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:small-ram :only-tags [:mb/memory]
+        shell: bash
+      - name: Publish Test Report (JUnit)
+        uses: dorny/test-reporter@v1
+        if: failure()
+        with:
+          path: "target/junit/**/*_test.xml"
+          name: JUnit Test Report memory-tests
+          reporter: java-junit
+          list-suites: failed
+          list-tests: failed
+          fail-on-error: false
+      - name: Upload Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-memory-tests
+          path: logs/test-log.json
+          retention-days: 1
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}

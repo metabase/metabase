@@ -320,7 +320,7 @@
   :test
   {:extra-paths ["test_config"]
    :exec-fn     metabase.test-runner/find-and-run-tests-cli
-   :exec-args   {:exclude-tags [:metabot-v3/e2e]}
+   :exec-args   {:exclude-tags [:metabot-v3/e2e :mb/memory]}
    :jvm-opts    ["-Dmb.run.mode=test"
                  "-Dmacaw.run.mode=test"
                  "-Dmb.db.in.memory=true"
@@ -330,6 +330,12 @@
                  ;; Different port from normal `:dev` so you can run tests on a different server.
                  ;; TODO -- figure out how to do a random port like in the old project.clj?
                  "-Dmb.jetty.port=3001"]}
+
+  :small-ram
+  {:jvm-opts ["-Xmx400m"
+              "-Xms400m"
+              "-Dci=TRUE"]
+   :extra-paths ["performance"]}
 
   ;; run the dev server with
   ;; clojure -M:run
