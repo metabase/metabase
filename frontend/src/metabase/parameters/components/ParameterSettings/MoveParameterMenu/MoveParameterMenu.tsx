@@ -88,7 +88,6 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
         <SelectItem
           title={getDashcardTitle(dashcard)}
           icon={getDashcardIcon(dashcard)}
-          subtitle={isHeadingDashCard(dashcard) ? t`Heading` : undefined}
         />
       );
     },
@@ -153,15 +152,7 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
   );
 }
 
-function SelectItem({
-  icon,
-  title,
-  subtitle,
-}: {
-  icon: IconName;
-  title: string;
-  subtitle?: string;
-}) {
+function SelectItem({ icon, title }: { icon: IconName; title: string }) {
   return (
     <Group p="sm" w="100%">
       <Flex direction="column" flex={1} justify="center" gap="xs" miw={0}>
@@ -173,11 +164,6 @@ function SelectItem({
         >
           {title}
         </Text>
-        {!!subtitle && (
-          <Text className={S.MoveParameterMenuOptionText} size="sm">
-            {subtitle}
-          </Text>
-        )}
       </Flex>
       <Icon name={icon} />
     </Group>

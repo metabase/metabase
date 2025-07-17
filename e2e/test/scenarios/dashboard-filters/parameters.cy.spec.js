@@ -2588,7 +2588,7 @@ describe("scenarios > dashboard > parameters", () => {
         H.filterWidget({ isEditing: true }).contains("Count").click();
       });
 
-      H.moveDashboardFilter("Heading");
+      H.moveDashboardFilter("Heading Text");
       H.dashboardParameterSidebar().button("Done").click();
 
       H.getDashboardCard(0)
