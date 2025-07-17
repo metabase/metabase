@@ -320,7 +320,7 @@
   :test
   {:extra-paths ["test_config"]
    :exec-fn     metabase.test-runner/find-and-run-tests-cli
-   :exec-args   {:exclude-tags [:metabot-v3/e2e :mb/memory]}
+   :exec-args   {:exclude-tags [:metabot-v3/e2e]}
    :jvm-opts    ["-Dmb.run.mode=test"
                  "-Dmacaw.run.mode=test"
                  "-Dmb.db.in.memory=true"
