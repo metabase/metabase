@@ -175,17 +175,10 @@ export const ParameterDropdownWidget = ({
   );
 };
 
-// For backward compatibility, we check `parameter.isMultiSelect`
-// (can be `undefined`) and not `getIsMultiSelect(parameter)` which defaults to
-// `true`. Existing native query parameters with `isMultiSelect: undefined`
-// should be single-value.
 export function isTextWidget(parameter: UiParameter) {
   const canQuery = getQueryType(parameter) !== "none";
-  return (
-    parameter.hasVariableTemplateTagTarget &&
-    !parameter.isMultiSelect &&
-    !canQuery
-  );
+  const isMultiSelect = getIsMultiSelect(parameter);
+  return parameter.hasVariableTemplateTagTarget && !canQuery && !isMultiSelect;
 }
 
 function isFieldWidget(
