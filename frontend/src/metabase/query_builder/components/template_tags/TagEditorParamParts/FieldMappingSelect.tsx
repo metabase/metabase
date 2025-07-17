@@ -32,7 +32,7 @@ export function FieldMappingSelect({
       <ContainerLabel>
         {t`Field to map to`}
         {tag.dimension == null && (
-          <Text c="error" component="span" ml="sm">
+          <Text c="error" component="span" ml="xs">
             {t`(required)`}
           </Text>
         )}
@@ -51,9 +51,16 @@ export function FieldMappingSelect({
             hasSelectedDimensionField ? tag?.dimension?.[1] : null
           }
           setFieldFn={setFieldFn}
+          fieldFilter={getFieldFilter(tag)}
           isInitiallyOpen={!tag.dimension}
         />
       )}
     </InputContainer>
   );
+}
+
+function getFieldFilter(tag: TemplateTag) {
+  if (tag.type === "temporal-unit") {
+    return (field: Field) => field.isDate();
+  }
 }

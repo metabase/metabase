@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
 import { useDiscardTableFieldValuesMutation } from "metabase/api";
-import { useTemporaryState, useToast } from "metabase/common/hooks";
+import { useTemporaryState } from "metabase/common/hooks";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
@@ -11,18 +12,14 @@ interface Props {
 
 export const DiscardTableFieldValuesButton = ({ tableId }: Props) => {
   const [discardTableFieldValues] = useDiscardTableFieldValuesMutation();
-  const [sendToast] = useToast();
+  const { sendErrorToast } = useMetadataToasts();
   const [started, setStarted] = useTemporaryState(false, 2000);
 
   const handleClick = async () => {
     const { error } = await discardTableFieldValues(tableId);
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to discard values`,
-      });
+      sendErrorToast(t`Failed to discard values`);
     } else {
       setStarted(true);
     }

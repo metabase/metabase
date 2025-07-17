@@ -35,6 +35,7 @@ import type {
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
+  VisualizationDisplay,
   WritebackAction,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -42,6 +43,7 @@ import type { Dispatch, GetState } from "metabase-types/store";
 import {
   trackAutoApplyFiltersDisabled,
   trackFilterCreated,
+  trackFilterMoved,
   trackFilterRequired,
 } from "../analytics";
 import {
@@ -63,6 +65,7 @@ import {
 } from "../selectors";
 import {
   findDashCardForInlineParameter,
+  hasInlineParameters,
   isDashcardInlineParameter,
   isQuestionDashCard,
   supportsInlineParameters,
@@ -141,6 +144,92 @@ export function duplicateParameters(
 
   return newParameters;
 }
+
+type MoveParameterOpts = {
+  parameterId: ParameterId;
+  destination:
+    | "top-nav"
+    | {
+        id: number;
+        type: "dashcard";
+      };
+  canUndo?: boolean;
+};
+
+export const moveParameter =
+  ({ parameterId, destination, canUndo = true }: MoveParameterOpts) =>
+  (dispatch: Dispatch, getState: GetState) => {
+    const dashboardId = getDashboardId(getState());
+    if (!dashboardId) {
+      throw new Error(`Dashboard ID not found`);
+    }
+
+    const dashcardMap = getDashcards(getState());
+    const parameterDashcard = findDashCardForInlineParameter(
+      parameterId,
+      Object.values(dashcardMap),
+    );
+
+    let analyticsOrigin: VisualizationDisplay | null = null;
+    let analyticsDestination: VisualizationDisplay | null = null;
+
+    if (parameterDashcard) {
+      analyticsOrigin = parameterDashcard.card.display;
+      dispatch(
+        setDashCardAttributes({
+          id: parameterDashcard.id,
+          attributes: {
+            inline_parameters: parameterDashcard.inline_parameters.filter(
+              (id) => id !== parameterId,
+            ),
+          },
+        }),
+      );
+    }
+
+    if (typeof destination === "object" && destination.type === "dashcard") {
+      const dashcard = dashcardMap[destination.id];
+      if (!dashcard) {
+        throw new Error(`Dashcard with id ${destination.id} not found`);
+      }
+      analyticsDestination = dashcard.card.display;
+      const currentInlineParameters = hasInlineParameters(dashcard)
+        ? dashcard.inline_parameters
+        : [];
+      dispatch(
+        setDashCardAttributes({
+          id: destination.id,
+          attributes: {
+            inline_parameters: [...currentInlineParameters, parameterId],
+          },
+        }),
+      );
+    }
+
+    trackFilterMoved(dashboardId, analyticsOrigin, analyticsDestination);
+
+    if (canUndo) {
+      dispatch(
+        addUndo({
+          message: t`Filter moved`,
+          undo: true,
+          action: () =>
+            dispatch(
+              moveParameter({
+                parameterId,
+                destination: parameterDashcard
+                  ? {
+                      type: "dashcard",
+                      id: parameterDashcard.id,
+                    }
+                  : "top-nav",
+                canUndo: false,
+              }),
+            ),
+        }),
+      );
+    }
+  };
 
 export const setEditingParameter =
   (parameterId: ParameterId | null) => (dispatch: Dispatch) => {

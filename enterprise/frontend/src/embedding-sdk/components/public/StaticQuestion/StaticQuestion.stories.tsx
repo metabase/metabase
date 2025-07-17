@@ -6,6 +6,7 @@ import {
   questionIdArgType,
   questionIds,
 } from "embedding-sdk/test/storybook-id-args";
+import { Box } from "metabase/ui";
 
 import { StaticQuestion } from "./StaticQuestion";
 
@@ -22,11 +23,23 @@ export default {
   decorators: [CommonSdkStoryWrapper],
   argTypes: {
     questionId: questionIdArgType,
+    withDownloads: {
+      control: "boolean",
+      defaultValue: false,
+    },
+    withChartTypeSelector: {
+      control: "boolean",
+      defaultValue: false,
+    },
   },
 };
 
 const Template: StoryFn<StaticQuestionComponentProps> = (args) => {
-  return <StaticQuestion {...args} />;
+  return (
+    <Box p="md">
+      <StaticQuestion {...args} />
+    </Box>
+  );
 };
 
 export const Default = {
@@ -35,5 +48,7 @@ export const Default = {
   args: {
     questionId: QUESTION_ID,
     isSaveEnabled: true,
+    withDownloads: false,
+    withChartTypeSelector: false,
   },
 };

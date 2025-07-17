@@ -23,6 +23,7 @@ export const DataModel = {
     getNameInput: getTableNameInput,
     getDescriptionInput: getTableDescriptionInput,
     getSortButton: getTableSortButton,
+    getSortDoneButton: getTableSortDoneButton,
     getSortOrderInput: getTableSortOrderInput,
     getSyncOptionsButton: getTableSyncOptionsButton,
     getField: getTableSectionField,
@@ -51,6 +52,8 @@ export const DataModel = {
     getDisplayValuesFkTargetInput: getFieldDisplayValuesFkTargetInput,
     getUnfoldJsonInput: getFieldUnfoldJsonInput,
     getStyleInput: getFieldStyleInput,
+    getMiniBarChartToggle: getFieldMiniBarChartToggle,
+    getMultiplyByNumberInput: getFieldMultiplyByNumberInput,
     getPrefixInput: getFieldPrefixInput,
     getSuffixInput: getFieldSuffixInput,
   },
@@ -221,6 +224,10 @@ function getTableSortButton() {
   return getTableSection().button(/Sorting/);
 }
 
+function getTableSortDoneButton() {
+  return getTableSection().button(/Done/);
+}
+
 function getTableSortOrderInput() {
   return getTableSection().findByLabelText("Column order");
 }
@@ -328,6 +335,14 @@ function getFieldUnfoldJsonInput() {
   return getFieldSection().findByPlaceholderText(
     "Select whether to unfold JSON",
   );
+}
+
+function getFieldMiniBarChartToggle() {
+  return getFieldSection().findByLabelText("Show a mini bar chart");
+}
+
+function getFieldMultiplyByNumberInput() {
+  return getFieldSection().findByLabelText("Multiply by a number");
 }
 
 function getFieldStyleInput() {
