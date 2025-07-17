@@ -329,12 +329,14 @@ class TagEditorParamInner extends Component<
           />
         )}
 
-        <FilterWidgetLabelInput
-          tag={tag}
-          onChange={(value) =>
-            this.setParameterAttribute("display-name", value)
-          }
-        />
+        {(!isDimension || widgetOptions.length > 0) && (
+          <FilterWidgetLabelInput
+            tag={tag}
+            onChange={(value) =>
+              this.setParameterAttribute("display-name", value)
+            }
+          />
+        )}
 
         {parameter && isTemporalUnit && (
           <>
