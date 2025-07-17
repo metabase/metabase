@@ -29,7 +29,6 @@
   TODO (Cam 6/19/25) -- rename this to `add-remaps` or something that makes it's purposes a little less opaque."
   (:require
    [clojure.data :as data]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as helpers]
@@ -47,7 +46,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]))
 
 (def ^:private ExternalRemappingDimension
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
@@ -231,7 +231,7 @@
   `breakout` clauses as needed. Returns a map with `:query` (the updated query) and `:remaps` (a sequence
   of [[:sequential ExternalRemappingDimension]] information maps)."
   [query]
-  (let [query (walk/postwalk
+  (let [query (perf/postwalk
                (fn [form]
                  (if (and (map? form)
                           ((some-fn :source-table :source-query) form)
