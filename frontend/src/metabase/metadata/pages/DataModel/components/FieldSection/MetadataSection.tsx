@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -9,16 +9,19 @@ import { useToast } from "metabase/common/hooks";
 import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type { DatabaseId, Field } from "metabase-types/api";
+import type { DatabaseId, Field, Table } from "metabase-types/api";
 
 import { TitledSection } from "../TitledSection";
+
+import { getSemanticTypeError } from "./utils";
 
 interface Props {
   databaseId: DatabaseId;
   field: Field;
+  table: Table;
 }
 
-const MetadataSectionBase = ({ databaseId, field }: Props) => {
+const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
   const id = getRawTableFieldId(field);
   const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
     id: databaseId,
@@ -26,6 +29,9 @@ const MetadataSectionBase = ({ databaseId, field }: Props) => {
   });
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
+  const semanticTypeError = useMemo(() => {
+    return getSemanticTypeError(table, field);
+  }, [table, field]);
 
   const handleUpdateField = async (
     field: Field,
@@ -61,6 +67,7 @@ const MetadataSectionBase = ({ databaseId, field }: Props) => {
         field={field}
         idFields={idFields}
         label={t`Semantic type`}
+        semanticTypeError={semanticTypeError}
         onUpdateField={handleUpdateField}
       />
     </TitledSection>

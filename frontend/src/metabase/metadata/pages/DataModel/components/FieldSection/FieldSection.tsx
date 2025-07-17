@@ -8,7 +8,7 @@ import { NameDescriptionInput } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatabaseId, Field } from "metabase-types/api";
+import type { DatabaseId, Field, Table } from "metabase-types/api";
 
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
@@ -19,6 +19,7 @@ import { MetadataSection } from "./MetadataSection";
 interface Props {
   databaseId: DatabaseId;
   field: Field;
+  table: Table;
   isPreviewOpen: boolean;
   parent?: Field;
   onFieldValuesClick: () => void;
@@ -30,6 +31,7 @@ const FieldSectionBase = ({
   field,
   isPreviewOpen,
   parent,
+  table,
   onFieldValuesClick,
   onPreviewClick,
 }: Props) => {
@@ -144,7 +146,7 @@ const FieldSectionBase = ({
 
       <Stack gap="xl" px="xl">
         <DataSection field={field} />
-        <MetadataSection databaseId={databaseId} field={field} />
+        <MetadataSection databaseId={databaseId} field={field} table={table} />
         <BehaviorSection databaseId={databaseId} field={field} />
         <FormattingSection field={field} />
       </Stack>

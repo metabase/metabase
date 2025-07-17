@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { getFieldCurrency } from "metabase/metadata/utils/field";
 import { Flex, type SelectProps, Stack, rem } from "metabase/ui";
 import { isCurrency, isFK } from "metabase-lib/v1/types/utils/isa";
@@ -10,12 +12,12 @@ import { SemanticTypePicker } from "../SemanticTypePicker";
 import SubInputIllustration from "./illustrations/sub-input.svg?component";
 
 interface SemanticTypeAndTargetPickerProps {
-  className?: string;
   description?: string;
   field: Field;
   idFields: Field[];
   label?: string;
   selectProps?: Omit<SelectProps, "data" | "value" | "onChange">;
+  semanticTypeError?: ReactNode;
   onUpdateField: (
     field: Field,
     updates: Partial<
@@ -25,12 +27,12 @@ interface SemanticTypeAndTargetPickerProps {
 }
 
 export const SemanticTypeAndTargetPicker = ({
-  className,
   description,
   field,
   idFields,
   label,
   selectProps,
+  semanticTypeError,
   onUpdateField,
 }: SemanticTypeAndTargetPickerProps) => {
   const showFKTargetSelect = isFK(field);
@@ -66,8 +68,8 @@ export const SemanticTypeAndTargetPicker = ({
     <Stack gap={0}>
       <SemanticTypePicker
         {...selectProps}
-        className={className}
         description={description}
+        error={semanticTypeError}
         field={field}
         label={label}
         value={field.semantic_type}
@@ -82,7 +84,6 @@ export const SemanticTypeAndTargetPicker = ({
 
           <CurrencyPicker
             {...selectProps}
-            className={className}
             value={getFieldCurrency(field)}
             onChange={handleChangeCurrency}
           />
@@ -97,7 +98,6 @@ export const SemanticTypeAndTargetPicker = ({
 
           <FkTargetPicker
             {...selectProps}
-            className={className}
             field={field}
             idFields={idFields}
             value={field.fk_target_field_id}
