@@ -624,7 +624,7 @@
            (let [inner-query (chain-stages base)]
              ;; if [[chain-stages]] returns any additional keys like `:filter` at the top-level then we need to wrap
              ;; it all in `:source-query` (QUE-1566)
-             (if (seq (set/difference (set (keys inner-query)) #{:source-table :source-query :fields}))
+             (if (seq (set/difference (set (keys inner-query)) #{:source-table :source-query :fields :source-metadata}))
                {:source-query inner-query}
                inner-query)))))
 
