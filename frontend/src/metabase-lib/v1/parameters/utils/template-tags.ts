@@ -46,11 +46,9 @@ export function getTemplateTagParameter(
   tag: TemplateTag,
   oldParameter?: Parameter,
 ): ParameterWithTarget {
-  const type = getParameterType(tag);
-
   return {
     id: tag.id,
-    type,
+    type: getParameterType(tag),
     target: getParameterTarget(tag),
     name: tag["display-name"],
     slug: tag.name,

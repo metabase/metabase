@@ -844,7 +844,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
       FieldFilter.openEntryForm();
 
-      H.multiAutocompleteInput().type("Tw");
+      H.fieldValuesCombobox().type("Tw");
       // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().last().findByText("Twenty").click();
       H.multiAutocompleteValue(0)
