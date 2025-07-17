@@ -5,6 +5,7 @@ import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
 import { useSetting, useStoreUrl, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
+import { getIsHosted } from "metabase/setup/selectors";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 
 const NOTIFICATION_TIMEOUT = 30_000;
@@ -21,6 +22,7 @@ export function useUpsellFlow({
   campaign: string;
   location: string;
 }) {
+  const isHosted = useSelector(getIsHosted);
   const storeWindowRef = useRef<WindowProxy | null>(null);
   const [sendToast] = useToast();
   const storeUrl = useStoreUrl("checkout/upgrade/self-hosted");
@@ -87,6 +89,13 @@ export function useUpsellFlow({
       sendMessageTokenActivation(false, storeWindowRef.current, storeOrigin);
     }
   }, [tokenStatus, error, sendToast, storeOrigin]);
+
+  // upsell flow is available only for self-hosted instances
+  if (isHosted) {
+    return {
+      triggerUpsellFlow: undefined,
+    };
+  }
 
   return {
     triggerUpsellFlow: openStoresTab,

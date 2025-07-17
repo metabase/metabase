@@ -22,7 +22,7 @@ describe("Add data modal (Starter: hosted instance without the attached DWH)", (
       ).toBeInTheDocument();
       expect(screen.getByText("Upload CSV files")).toBeInTheDocument();
       expect(screen.getByText("Sync with Google Sheets")).toBeInTheDocument();
-      const upsellLink = screen.getByRole("button", { name: "Add" });
+      const upsellLink = screen.getByRole("link", { name: "Add" });
       expect(upsellLink).toBeInTheDocument();
     });
 
