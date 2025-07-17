@@ -335,8 +335,8 @@
   {:extra-paths ["performance"]}
 
   :small-ram
-  {:jvm-opts ["-Xmx400m"
-              "-Xms400m"
+  {:jvm-opts ["-Xmx500m"
+              "-Xms500m"
               "-Dci=TRUE"]
    :extra-paths ["performance"]}
 
