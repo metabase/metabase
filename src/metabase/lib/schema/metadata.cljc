@@ -239,6 +239,11 @@
          (= (:lib/source m) :source/joins)
          true))])
 
+(mr/def ::column.fingerprint
+  [:map
+   [:global {:optional true} [:map-of :keyword :any]]
+   [:type   {:optional true} [:map-of ::lib.schema.common/base-type [:map-of :keyword :any]]]])
+
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
 
@@ -400,6 +405,8 @@
     ;; do. (See [[metabase.lib.field/field-values-search-info]]). Note that all metadata providers may not return this
     ;; column. The JVM provider currently does not, since the QP doesn't need it for anything.
     [:has-field-values {:optional true} [:maybe [:ref ::column.has-field-values]]]
+    ;;
+    [:fingerprint {:optional true} [:maybe [:ref ::column.fingerprint]]]
     ;;
     ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
     ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in

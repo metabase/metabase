@@ -357,7 +357,8 @@
         (_ :guard (every-pred map? :source-table))
         (assoc &match ::gtap? true)))))
 
-(defn- expected-cols [query]
+(mu/defn- expected-cols :- [:sequential ::mbql.s/SourceQueryMetadata]
+  [query :- ::mbql.s/Query]
   (request/as-admin
     ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols) query)))
 
@@ -400,10 +401,13 @@
 
 ;;;; Post-processing
 
-(defn- merge-metadata
+(mu/defn- merge-metadata :- [:map
+                             [:cols [:sequential ::mbql.s/SourceQueryMetadata]]]
   "Merge column metadata from the non-sandboxed version of the query into the sandboxed results `metadata`. This way the
   final results metadata coming back matches what we'd get if the query was not running in a sandbox."
-  [original-metadata metadata]
+  [original-metadata :- [:sequential ::mbql.s/SourceQueryMetadata]
+   metadata          :- [:map
+                         [:cols [:sequential ::mbql.s/SourceQueryMetadata]]]]
   (letfn [(merge-cols [cols]
             (let [col-name->expected-col (m/index-by :name original-metadata)]
               (for [col cols]

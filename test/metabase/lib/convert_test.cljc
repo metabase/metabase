@@ -2,6 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
@@ -1398,4 +1399,20 @@
                                 :condition    [:= [:field 61325 nil] [:field "ID" {:base-type :type/BigInteger, :join-alias "c"}]]
                                 :source-query {:native "SELECT * FROM categories WHERE name = ?;"
                                                :params ["BBQ"]}}]}}
+              (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel metadata->legacy-test
+  (testing "Do not convert lib keys to snake_case when converting metadata"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
+                    lib/append-stage)
+          query (-> query
+                    (lib/update-query-stage 0 assoc :lib/stage-metadata {:lib/type :metadata/results
+                                                                         :columns  (lib/returned-columns query)}))]
+      (is (not (me/humanize (mr/explain ::lib.schema/query query))))
+      (is (=? {:query {:source-metadata [{:name                     "ID"
+                                          :base_type                :type/BigInteger
+                                          :lib/desired-column-alias "ID"}
+                                         {:name                     "NAME"
+                                          :base_type                :type/Text
+                                          :lib/desired-column-alias "NAME"}]}}
               (lib.convert/->legacy-MBQL query))))))

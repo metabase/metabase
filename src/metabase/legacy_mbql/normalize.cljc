@@ -466,7 +466,12 @@
    :source-metadata {::sequence normalize-source-metadata}
    :viz-settings    maybe-normalize-token
    :create-row      normalize-actions-row
-   :update-row      normalize-actions-row})
+   :update-row      normalize-actions-row
+
+   ;; HACK TODO (Cam 7/17/25) -- seems icky for the legacy MBQL schema to have to know about namespaced keys like
+   ;; this. I guess this can go away once we stop converting back and forth between MBQL 4 and 5 inside the QP
+   :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata
+   {::sequence normalize-source-metadata}})
 
 (defn normalize-tokens
   "Recursively normalize tokens in `x`.

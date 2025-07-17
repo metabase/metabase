@@ -4,6 +4,7 @@
   (:require
    [clojure.core :as core]
    [clojure.set :as set]
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.legacy-mbql.schema.helpers :as helpers :refer [is-clause?]]
@@ -17,6 +18,7 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.literal :as lib.schema.literal]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
@@ -1352,15 +1354,31 @@
   This metadata automatically gets added for all source queries that are referenced via the `card__id` `:source-table`
   form; for explicit `:source-query`s you should usually include this information yourself when specifying explicit
   `:source-query`s."
-  [:map
-   [:name         ::lib.schema.common/non-blank-string]
-   [:base_type    ::lib.schema.common/base-type]
-   ;; this is only used by the annotate post-processing stage, not really needed at all for pre-processing, might be
-   ;; able to remove this as a requirement
-   [:display_name ::lib.schema.common/non-blank-string]
-   [:semantic_type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-   ;; you'll need to provide this in order to use BINNING
-   [:fingerprint   {:optional true} [:maybe :map]]])
+  [:and
+   [:map
+    [:name         ::lib.schema.common/non-blank-string]
+    [:base_type    ::lib.schema.common/base-type]
+    ;; this is only used by the annotate post-processing stage, not really needed at all for pre-processing, might be
+    ;; able to remove this as a requirement
+    [:display_name ::lib.schema.common/non-blank-string]
+    [:semantic_type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+    ;; you'll need to provide this in order to use BINNING
+    [:fingerprint   {:optional true} [:maybe [:ref ::lib.schema.metadata/column.fingerprint]]]]
+   (letfn [(disallowed-key? [k]
+             (core/or (core/not (keyword? k))
+                      (let [disallowed-char (if (qualified-keyword? k)
+                                              "_"
+                                              "-")]
+                        (str/includes? (str k) disallowed-char))))]
+     [:fn
+      {:error/message "legacy source query metadata should use snake_case keys (except for namespaced lib keys, which should use kebab-case)"
+       :error/fn      (fn [{m :value} _]
+                        (str "legacy source query metadata should use snake_case keys (except for namespaced lib keys, which should use kebab-case), got: "
+                             (when (map? m)
+                               (into #{} (filter disallowed-key?) (keys m)))))}
+      (fn [m]
+        (core/and (map? m)
+                  (every? (complement disallowed-key?) (keys m))))])])
 
 (def SourceQueryMetadata
   "Alias for ::SourceQueryMetadata -- prefer that instead."

@@ -513,7 +513,9 @@
 
 (defn- stage-metadata->legacy-metadata [stage-metadata]
   (into []
-        (comp (map #(update-keys % u/->snake_case_en))
+        (comp (map #(update-keys % (fn [k]
+                                     (cond-> k
+                                       (simple-keyword? k) u/->snake_case_en))))
               (map #(dissoc % :lib/type)))
         (:columns stage-metadata)))
 

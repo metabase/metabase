@@ -188,7 +188,7 @@
      query
      middleware)))
 
-(mu/defn query->expected-cols :- [:maybe [:sequential ::annotate/qp-results-cased-col]]
+(mu/defn query->expected-cols :- [:maybe [:sequential ::mbql.s/SourceQueryMetadata]]
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
   queries with native source queries won't work, since we don't need the results."
