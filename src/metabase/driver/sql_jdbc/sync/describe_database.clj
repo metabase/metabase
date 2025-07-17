@@ -80,6 +80,11 @@
       (.setQueryTimeout *select-probe-query-timeout-seconds*)
       (.execute))))
 
+(defn- pr-table [table-schema table-name]
+  (str (when table-schema
+         (str (pr-str table-schema) \.))
+       (pr-str table-name)))
+
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc
   [driver ^Connection conn table-schema table-name]
   ;; Query completes = we have SELECT privileges
@@ -91,26 +96,21 @@
         ;; unrecoverably closed
         conn (sql-jdbc.execute/try-ensure-open-conn! driver conn :force-local? true)]
     (log/debugf "have-select-privilege? sql-jdbc: Checking for SELECT privileges for %s with query\n%s"
-                (str (when table-schema
-                       (str (pr-str table-schema) \.))
-                     (pr-str table-name))
+                (pr-table table-schema table-name)
                 (pr-str sql-args))
     (try
       (log/debug "have-select-privilege? sql-jdbc: Attempt to execute probe query")
       (execute-select-probe-query driver conn sql-args)
-      (log/infof "%s: SELECT privileges confirmed"
-                 (str (when table-schema
-                        (str (pr-str table-schema) \.))
-                      (pr-str table-name)))
+      (log/infof "%s: SELECT privileges confirmed" (pr-table table-schema table-name))
       true
       (catch Throwable e
+
         (let [allow? (driver/query-canceled? driver e)]
-          (log/info (if allow?
-                      "%s: Assuming SELECT privileges: caught timeout exception"
-                      "%s: Assuming no SELECT privileges: caught exception")
-                    (str (when table-schema
-                           (str (pr-str table-schema) \.))
-                         (pr-str table-name)))
+
+          (if allow?
+            (log/infof "%s: Assuming SELECT privileges: caught timeout exception" (pr-table table-schema table-name))
+            (log/debugf e "%s: Assuming no SELECT privileges: caught exception" (pr-table table-schema table-name)))
+
           ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
           ;; affecting anything higher
           (try (when-not (.getAutoCommit conn)
