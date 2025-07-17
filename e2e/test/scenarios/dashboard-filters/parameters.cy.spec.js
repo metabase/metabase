@@ -2542,7 +2542,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    it("should allow moving filters on a single tab dashboard", () => {
+    it("should allow moving filters on a dashboard with tabs", () => {
       const TAB_1 = { id: 1, name: "Tab 1" };
       const TAB_2 = { id: 2, name: "Tab 2" };
 
