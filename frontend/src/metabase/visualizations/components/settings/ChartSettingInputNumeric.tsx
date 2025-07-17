@@ -1,5 +1,5 @@
 import debounce from "lodash.debounce";
-import { type ChangeEvent, useMemo, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 
 import { TextInput } from "metabase/ui";
@@ -69,6 +69,10 @@ export const ChartSettingInputNumeric = ({
       handleChangeRef.current(e);
     }, 400);
   }, [handleChangeRef]);
+
+  useEffect(() => {
+    setInputValue(value?.toString() ?? "");
+  }, [value]);
 
   return (
     <TextInput

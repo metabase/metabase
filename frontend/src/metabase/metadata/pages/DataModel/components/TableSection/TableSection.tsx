@@ -103,11 +103,20 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
       sendErrorToast(t`Failed to update field order`);
     } else {
       sendSuccessToast(t`Field order updated`, async () => {
-        const { error } = await updateTableFieldsOrder({
+        const { error: fieldsOrderError } = await updateTableFieldsOrder({
           id: table.id,
           field_order: table.fields?.map(getRawTableFieldId) ?? [],
         });
-        sendUndoToast(error);
+
+        if (table.field_order !== "custom") {
+          const { error: tableError } = await updateTable({
+            id: table.id,
+            field_order: table.field_order,
+          });
+          sendUndoToast(fieldsOrderError ?? tableError);
+        } else {
+          sendUndoToast(fieldsOrderError);
+        }
       });
     }
   };

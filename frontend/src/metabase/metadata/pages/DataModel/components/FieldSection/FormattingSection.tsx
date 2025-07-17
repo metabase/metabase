@@ -39,7 +39,10 @@ const FormattingSectionBase = ({ field }: Props) => {
       sendSuccessToast(
         t`Formatting of ${field.display_name} updated`,
         async () => {
-          const { error } = await updateField({ id, settings: field.settings });
+          const { error } = await updateField({
+            id,
+            settings: field.settings ?? {},
+          });
           sendUndoToast(error);
         },
       );
