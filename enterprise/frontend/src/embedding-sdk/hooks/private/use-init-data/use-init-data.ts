@@ -3,8 +3,11 @@ import { useMount } from "react-use";
 import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
-import { MetabaseProviderStore } from "embedding-sdk/sdk-shared/lib/metabase-provider-store";
-import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import {
+  useSdkDispatch,
+  useSdkSelector,
+  useSdkStore,
+} from "embedding-sdk/store";
 import { initAuth } from "embedding-sdk/store/auth";
 import { setFetchRefreshTokenFn } from "embedding-sdk/store/reducer";
 import { getFetchRefreshTokenFn } from "embedding-sdk/store/selectors";
@@ -28,6 +31,7 @@ export const useInitData = ({
   // it fires them twice as well, making debugging harder as they show up twice in the network tab and in the logs
   const hasBeenInitialized = useRef(false);
 
+  const store = useSdkStore();
   const dispatch = useSdkDispatch();
 
   const fetchRefreshTokenFnFromStore = useSdkSelector(getFetchRefreshTokenFn);
@@ -50,7 +54,6 @@ export const useInitData = ({
       return;
     }
 
-    const store = MetabaseProviderStore.getInstance()?.getSdkStore();
     const isAuthUninitialized =
       store && store.getState().sdk.loginStatus.status === "uninitialized";
 
