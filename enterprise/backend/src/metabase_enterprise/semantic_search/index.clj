@@ -82,6 +82,8 @@
                                (partition-all batch-size)
                                (map (fn [db-records]
                                       (jdbc/execute! tx (records->sql db-records))
+                                      ;; TODO should this return (or at least log) the number of docs actually
+                                      ;; updated, not just the number in the batch?
                                       (u/prog1 (->> db-records (map :model) frequencies)
                                         (log/trace "semantic search processed a batch of" (count db-records)
                                                    "documents with frequencies" <>)))))
@@ -226,10 +228,15 @@
   [row]
   (into {} (map (fn [[k v]] [(keyword (name k)) v]) row)))
 
-(defn- decode-metadata
+(defn- decode-pgobject
   "Decode a PGObject (returned from a jsonb field) into a Clojure map."
+  [^PGobject obj]
+  (json/decode (.getValue ^PGobject obj) true))
+
+(defn- decode-metadata
+  "Decode `row`s `:metadata`."
   [row]
-  (update row :metadata #(json/decode (.getValue ^PGobject %) true)))
+  (update row :metadata decode-pgobject))
 
 (defn- filter-read-permitted
   "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."

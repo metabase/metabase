@@ -45,6 +45,29 @@
    "Butterfly Migration"   [0.17  0.28 -0.39  0.50]
    "insect patterns"       [0.18  0.29 -0.38  0.49]})
 
+(defn get-mock-embedding
+  "Lookup the embedding for `text` in [[mock-embeddings]]."
+  [text]
+  (get mock-embeddings text [0.01 0.02 0.03 0.04]))
+
+(def mock-documents
+  [{:model "card"
+    :id "123"
+    :searchable_text "Dog Training Guide"
+    :created_at #t "2025-01-01T12:00:00Z"
+    :creator_id 1
+    :archived false
+    :legacy_input {:model "card" :id "123"}
+    :metadata {:title "Dog Training Guide" :description "How to teach an old dog new tricks"}}
+   {:model "dashboard"
+    :id "456"
+    :searchable_text "Elephant Migration"
+    :created_at #t "2025-02-01T12:00:00Z"
+    :creator_id 2
+    :archived true
+    :legacy_input {:model "dashboard" :id "456"}
+    :metadata {:title "Elephant Migration" :description "How do elephants deal with schema upgrades?"}}])
+
 (defn filter-for-mock-embeddings
   "Filter results to only include items whose names are keys in mock-embeddings map."
   [results]
@@ -55,8 +78,7 @@
   #_:clj-kondo/ignore
   `(binding [semantic.index/*vector-dimensions* 4]
      (with-redefs [semantic.embedding/pull-model (fn [] nil)
-                   semantic.embedding/get-embedding (fn [text#]
-                                                      (get mock-embeddings text# [0.01 0.02 0.03 0.04]))]
+                   semantic.embedding/get-embedding get-mock-embedding]
        ~@body)))
 
 (defmacro with-temp-index-table! [& body]
