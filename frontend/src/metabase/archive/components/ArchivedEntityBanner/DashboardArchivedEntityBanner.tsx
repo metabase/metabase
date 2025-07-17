@@ -17,14 +17,14 @@ export const DashboardArchivedEntityBanner = () => {
   const invalidateBookmarks = async () =>
     await dispatch(Bookmarks.actions.invalidateLists());
 
+  if (!dashboard) {
+    return null;
+  }
+
   const name = dashboard?.name;
   const canWrite = Boolean(dashboard?.can_write);
   const canRestore = Boolean(dashboard?.can_restore);
   const canDelete = Boolean(dashboard?.can_delete);
-
-  if (!dashboard) {
-    return null;
-  }
 
   return (
     <ArchivedEntityBanner
