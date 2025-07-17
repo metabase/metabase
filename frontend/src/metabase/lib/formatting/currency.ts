@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { currency } from "cljs/metabase.util.currency";
 
-// Type definitions for currency data structure
 export interface CurrencyInfo {
   symbol: string;
   name: string;
@@ -30,7 +29,6 @@ export interface CompactCurrencyOptions {
   currency_style: CurrencyStyle;
 }
 
-// Cache for currency map
 let currencyMapCache: Record<string, CurrencyInfo>;
 
 export function getCurrencySymbol(currencyCode: string): string {
