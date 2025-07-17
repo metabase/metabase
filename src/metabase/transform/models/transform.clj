@@ -77,7 +77,7 @@
 
 (defn- query-type
   [query]
-  (or (and (lib/native-stage? query 0)
+  (or (and (lib/native-stage? query -1)
            :native)
       :query))
 
