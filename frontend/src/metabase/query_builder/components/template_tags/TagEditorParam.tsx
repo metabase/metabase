@@ -46,6 +46,7 @@ import {
   FilterWidgetLabelInput,
   FilterWidgetTypeSelect,
 } from "./TagEditorParamParts";
+import { FieldAliasInput } from "./TagEditorParamParts/FieldAliasInput";
 import {
   ContainerLabel,
   InputContainer,
@@ -146,6 +147,7 @@ class TagEditorParamInner extends Component<
         type: type,
         default: undefined,
         dimension: undefined,
+        alias: undefined,
         "widget-type": type === "dimension" ? "none" : undefined,
       });
 
@@ -237,9 +239,10 @@ class TagEditorParamInner extends Component<
         return;
       }
 
-      const newTag = {
+      const newTag: TemplateTag = {
         ...tag,
         dimension,
+        alias: undefined,
         "widget-type": getDefaultParameterWidgetType(tag, field),
       };
 
@@ -247,6 +250,13 @@ class TagEditorParamInner extends Component<
         ...newTag,
         options: getDefaultParameterOptions(newTag),
       });
+    }
+  };
+
+  setAlias = (alias: string | undefined) => {
+    const { tag, setTemplateTag } = this.props;
+    if (tag.alias !== alias) {
+      setTemplateTag({ ...tag, alias });
     }
   };
 
@@ -366,6 +376,10 @@ class TagEditorParamInner extends Component<
             databases={databases}
             setFieldFn={this.setDimension}
           />
+        )}
+
+        {hasSelectedDimensionField && (
+          <FieldAliasInput tag={tag} field={field} onChange={this.setAlias} />
         )}
 
         {hasSelectedDimensionField && (

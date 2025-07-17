@@ -213,6 +213,9 @@ export interface TemplateTag {
   // Snippet specific
   "snippet-id"?: number;
   "snippet-name"?: string;
+
+  // Field filter specific
+  alias?: string;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;
