@@ -124,7 +124,7 @@
 
 ;; A simple way to avoid concurrent or redundant pruning, and for pruning to happen off the main thread.
 (def ^:private pruner-dirty (atom false))
-(def ^:private pruner (agent nil))
+(def ^:private pruner (agent :never-started))
 
 (defn- prune-definitions!
   "Remove older definitions that don't correspond to releases or latest working drafts."
@@ -174,6 +174,7 @@
    (prune-definitions-async! retention-max-per-app retention-max-total))
   ([& opts]
    (reset! pruner-dirty true)
+   (send pruner (constantly :started))
    (send-off pruner (fn [_]
                       (when @pruner-dirty
                         (try
@@ -182,7 +183,8 @@
                             (log/warn e "Failure pruning Data App definitions"))
                           (finally
                             ;; Reset the dirty flag even if it failed, to avoid spinning on expensive failures.
-                            (reset! pruner-dirty false))))))))
+                            (reset! pruner-dirty false)
+                            :finished)))))))
 
 (defn set-latest-definition!
   "Create a new definition for an existing app."

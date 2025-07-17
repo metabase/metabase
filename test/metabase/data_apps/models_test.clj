@@ -32,7 +32,10 @@
         (let [call-count  5
               keep-count  2
               invocations (atom 0)
-              block-fn    (fn [] (u/poll {:thunk #(deref @#'data-apps.models/pruner), :done? false?}))
+              block-fn    #(u/poll {:thunk (fn []
+                                             [@@#'data-apps.models/pruner-dirty
+                                              (deref @#'data-apps.models/pruner)])
+                                    :done? #{[false :finished]}})
               latch       (CountDownLatch. call-count)
               original-fn (mt/dynamic-value @#'data-apps.models/prune-definitions!)]
           ;; Wait for any prior pruning to finish, so we don't get de-duplicated with it.
