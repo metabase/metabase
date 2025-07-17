@@ -3,10 +3,8 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.app-db.core :as mdb]
    [metabase.data-apps.models :as data-apps.models]
    [metabase.data-apps.test-util :as data-apps.tu]
-   [metabase.driver.mysql :as mysql]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])
