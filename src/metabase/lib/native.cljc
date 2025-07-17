@@ -12,6 +12,7 @@
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.util.humanization :as u.humanization]
@@ -157,7 +158,7 @@
        ;; Otherwise just an empty map, no tags.
        {}))))
 
-(defn- assert-native-query! [stage]
+(defn- assert-native-query [stage]
   (assert (= (:lib/type stage) :mbql.stage/native) (i18n/tru "Must be a native query")))
 
 (def ^:private all-native-extra-keys
@@ -188,7 +189,7 @@
              stage-without-old-extras (apply dissoc stage extras-to-remove)
              result (merge stage-without-old-extras (select-keys native-extras required-extras))
              missing-keys (set/difference required-extras (set (keys native-extras)))]
-         (assert-native-query! (lib.util/query-stage query 0))
+         (assert-native-query (lib.util/query-stage query 0))
          (assert (empty? missing-keys)
                  (i18n/tru "Missing extra, required keys for native query: {0}"
                            (pr-str missing-keys)))
@@ -310,7 +311,7 @@
    Native extras must be provided if the new database requires it."
   [query :- ::lib.schema/query
    metadata-provider :- ::lib.schema.metadata/metadata-providerable]
-  (assert-native-query! (lib.util/query-stage query 0))
+  (assert-native-query (lib.util/query-stage query 0))
   (let [stages-without-fields (->> (:stages query)
                                    (mapv (fn [stage]
                                            (update stage :template-tags update-vals #(dissoc % :dimension)))))]
@@ -329,19 +330,21 @@
   (lib.util/update-query-stage
    query 0
    (fn [{existing-tags :template-tags :as stage}]
-     (assert-native-query! stage)
+     (assert-native-query stage)
      (assoc stage
             :native inner-query
             :template-tags (extract-template-tags inner-query existing-tags)))))
 
+;;; TODO (Cam 7/16/25) -- this really doesn't seem to do what I'd expect, maybe we should rename it something like
+;;; `with-replaced-template-tags`
 (mu/defn with-template-tags :- ::lib.schema/query
   "Updates the native query's template tags."
   [query :- ::lib.schema/query
-   tags :- ::lib.schema.template-tag/template-tag-map]
+   tags  :- ::lib.schema.template-tag/template-tag-map]
   (lib.util/update-query-stage
    query 0
    (fn [{existing-tags :template-tags :as stage}]
-     (assert-native-query! stage)
+     (assert-native-query stage)
      (let [valid-tags (keys existing-tags)]
        (assoc stage :template-tags
               (merge existing-tags (select-keys tags valid-tags)))))))
@@ -383,7 +386,7 @@
    This is only filled in by [[metabase.warehouses.api/add-native-perms-info]]
    and added to metadata when pulling a database from the list of dbs in js."
   [query :- ::lib.schema/query]
-  (assert-native-query! (lib.util/query-stage query 0))
+  (assert-native-query (lib.util/query-stage query 0))
   (= :write (:native-permissions (lib.metadata/database query))))
 
 (defmethod lib.query/can-run-method :mbql.stage/native
@@ -401,5 +404,5 @@
   "Returns the database engine.
    Must be a native query"
   [query :- ::lib.schema/query]
-  (assert-native-query! (lib.util/query-stage query 0))
+  (assert-native-query (lib.util/query-stage query 0))
   (:engine (lib.metadata/database query)))

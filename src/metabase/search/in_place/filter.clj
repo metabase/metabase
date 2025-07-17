@@ -14,7 +14,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.audit-app.core :as audit]
-   [metabase.driver.common.parameters.dates :as params.dates]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.config
     :as search.config

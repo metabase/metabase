@@ -1,146 +1,276 @@
-(ns metabase.driver.common.parameters.dates-test
+(ns metabase.query-processor.parameters.dates-test
   (:require
    [clojure.test :refer :all]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [java-time.api :as t]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.test :as mt]))
 
 (deftest ^:parallel date-string->filter-test
   (testing "year and month"
-    (is (= [:between
-            [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
-            "2019-04-01"
-            "2019-04-30"]
-           (params.dates/date-string->filter "2019-04" [:field "field" {:base-type :type/DateTime}]))))
+    (is (=? [:between
+             {}
+             [:field {:base-type :type/DateTime, :temporal-unit :day} "field"]
+             "2019-04-01"
+             "2019-04-30"]
+            (params.dates/date-string->filter
+             "2019-04"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-2
   (testing "quarter year"
-    (is (= [:between
-            [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
-            "2019-04-01"
-            "2019-06-30"]
-           (params.dates/date-string->filter "Q2-2019" [:field "field" {:base-type :type/DateTime}]))))
+    (is (=? [:between
+             {}
+             [:field {:base-type :type/DateTime, :temporal-unit :day} "field"]
+             "2019-04-01"
+             "2019-06-30"]
+            (params.dates/date-string->filter
+             "Q2-2019"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-3
   (testing "single day"
-    (is (= [:=
-            [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
-            "2019-04-01"]
-           (params.dates/date-string->filter "2019-04-01" [:field "field" {:base-type :type/DateTime}]))))
+    (is (=? [:=
+             {}
+             [:field {:base-type :type/DateTime, :temporal-unit :day} "field"]
+             "2019-04-01"]
+            (params.dates/date-string->filter
+             "2019-04-01"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-4
   (testing "single minute"
-    (is (= [:=
-            [:field "field" {:base-type :type/DateTime, :temporal-unit :minute}]
-            "2019-04-01T09:33:00"]
-           (params.dates/date-string->filter "2019-04-01T09:33:00" [:field "field" {:base-type :type/DateTime}]))))
+    (is (=? [:=
+             {}
+             [:field {:base-type :type/DateTime, :temporal-unit :minute} "field"]
+             "2019-04-01T09:33:00"]
+            (params.dates/date-string->filter
+             "2019-04-01T09:33:00"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-5
   (testing "day range"
-    (is (= [:between
-            [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
-            "2019-04-01"
-            "2019-04-03"]
-           (params.dates/date-string->filter "2019-04-01~2019-04-03" [:field "field" {:base-type :type/DateTime}]))))
+    (is (=? [:between
+             {}
+             [:field {:base-type :type/DateTime, :temporal-unit :day} "field"]
+             "2019-04-01"
+             "2019-04-03"]
+            (params.dates/date-string->filter
+             "2019-04-01~2019-04-03"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-6
   (testing "datetime range"
-    (is (= [:between
-            [:field "field" {:base-type :type/DateTime, :temporal-unit :default}]
-            "2019-04-01T12:30:00"
-            "2019-04-03T16:30:00"]
-           (params.dates/date-string->filter "2019-04-01T12:30~2019-04-03T16:30" [:field "field" {:base-type :type/DateTime}]))))
+    (is (=? [:between
+             {}
+             [:field {:base-type :type/DateTime, :temporal-unit :default} "field"]
+             "2019-04-01T12:30:00"
+             "2019-04-03T16:30:00"]
+            (params.dates/date-string->filter
+             "2019-04-01T12:30~2019-04-03T16:30"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-7
   (testing "after day"
-    (is (= [:>
-            [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
-            "2019-04-01"]
-           (params.dates/date-string->filter "2019-04-01~" [:field "field" {:base-type :type/DateTime}]))))
+    (is (=? [:>
+             {}
+             [:field {:base-type :type/DateTime, :temporal-unit :day} "field"]
+             "2019-04-01"]
+            (params.dates/date-string->filter
+             "2019-04-01~"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-8
   (testing "relative (past) exclusive"
-    (is (= [:time-interval
-            [:field "field" {:base-type :type/DateTime}]
-            -3
-            :day
-            {:include-current false}]
-           (params.dates/date-string->filter "past3days" [:field "field" {:base-type :type/DateTime}]))))
+    (is (=? [:time-interval
+             {:include-current false}
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"]
+             -3
+             :day]
+            (params.dates/date-string->filter
+             "past3days"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-9
   (testing "relative (past) inclusive"
-    (is (= [:time-interval [:field "field" {:base-type :type/DateTime}]
-            -3
-            :day
-            {:include-current true}]
-           (params.dates/date-string->filter "past3days~" [:field "field" {:base-type :type/DateTime}]))))
+    (is (=? [:time-interval
+             {:include-current true}
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"]
+             -3
+             :day]
+            (params.dates/date-string->filter
+             "past3days~"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-10
   (testing "relative (next) exclusive"
-    (is (= [:time-interval [:field "field" {:base-type :type/DateTime}]
-            3
-            :day
-            {:include-current false}]
-           (params.dates/date-string->filter "next3days" [:field "field" {:base-type :type/DateTime}]))))
+    (is (=? [:time-interval
+             {:include-current false}
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"]
+             3
+             :day]
+            (params.dates/date-string->filter
+             "next3days"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-11
   (testing "relative (next) inclusive"
-    (is (= [:time-interval [:field "field" {:base-type :type/DateTime}]
-            3
-            :day
-            {:include-current true}]
-           (params.dates/date-string->filter "next3days~" [:field "field" {:base-type :type/DateTime}]))))
+    (is (=? [:time-interval
+             {:include-current true}
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"]
+             3
+             :day]
+            (params.dates/date-string->filter
+             "next3days~"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-12
   (testing "quarters (#21083)"
-    (is (= [:time-interval [:field "field" {:base-type :type/DateTime}] -30 :quarter {:include-current false}]
-           (params.dates/date-string->filter "past30quarters" [:field "field" {:base-type :type/DateTime}]))))
+    (is (=? [:time-interval
+             {:include-current false}
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"]
+             -30
+             :quarter]
+            (params.dates/date-string->filter
+             "past30quarters"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-13
   (testing "relative (past) with starting from "
-    (is (= [:relative-time-interval
-            [:field "field" {:base-type :type/DateTime}]
-            -3
-            :day
-            -3
-            :year]
-           (params.dates/date-string->filter "past3days-from-3years" [:field "field" {:base-type :type/DateTime}]))))
+    (is (=? [:relative-time-interval
+             {}
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"]
+             -3
+             :day
+             -3
+             :year]
+            (params.dates/date-string->filter
+             "past3days-from-3years"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-14
   (testing "relative (next) with starting from"
-    (is (= [:relative-time-interval
-            [:field "field" {:base-type :type/DateTime}]
-            7
-            :hour
-            13
-            :month]
-           (params.dates/date-string->filter "next7hours-from-13months" [:field "field" {:base-type :type/DateTime}]))))
+    (is (=? [:relative-time-interval
+             {}
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"]
+             7
+             :hour
+             13
+             :month]
+            (params.dates/date-string->filter
+             "next7hours-from-13months"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-15a
   (testing "exclusions"
     (mt/with-clock #t "2016-06-07T12:13:55Z"
       (testing "hours"
-        (is (= [:!=
-                [:field "field" {:base-type :type/DateTime, :temporal-unit :hour-of-day}]
-                "2016-06-07T00:00:00Z"]
-               (params.dates/date-string->filter "exclude-hours-0" [:field "field" {:base-type :type/DateTime}])))
-        (is (= [:!=
-                [:field "field" {:base-type :type/DateTime, :temporal-unit :hour-of-day}]
-                "2016-06-07T00:00:00Z"
-                "2016-06-07T23:00:00Z"]
-               (params.dates/date-string->filter "exclude-hours-0-23" [:field "field" {:base-type :type/DateTime}])))
-        (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-hours-\""
-                     (params.dates/date-string->filter "exclude-hours-" [:field "field" {:base-type :type/DateTime}])))
-        (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-hours-24-3\""
-                     (params.dates/date-string->filter "exclude-hours-24-3" [:field "field" {:base-type :type/DateTime}]))))
+        (is (=? [:!=
+                 {}
+                 [:field {:base-type :type/DateTime, :temporal-unit :hour-of-day} "field"]
+                 "2016-06-07T00:00:00Z"]
+                (params.dates/date-string->filter
+                 "exclude-hours-0"
+                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
+        (is (=? [:!=
+                 {}
+                 [:field {:base-type :type/DateTime, :temporal-unit :hour-of-day} "field"]
+                 "2016-06-07T00:00:00Z"
+                 "2016-06-07T23:00:00Z"]
+                (params.dates/date-string->filter
+                 "exclude-hours-0-23"
+                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Don't know how to parse date string \"exclude-hours-\""
+             (params.dates/date-string->filter
+              "exclude-hours-"
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Don't know how to parse date string \"exclude-hours-24-3\""
+             (params.dates/date-string->filter
+              "exclude-hours-24-3"
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))))
+
+(deftest ^:parallel date-string->filter-test-15b
+  (testing "exclusions"
+    (mt/with-clock #t "2016-06-07T12:13:55Z"
       (testing "quarters"
-        (is (= [:!=
-                [:field "field" {:base-type :type/DateTime, :temporal-unit :quarter-of-year}]
-                "2016-01-01"]
-               (params.dates/date-string->filter "exclude-quarters-1" [:field "field" {:base-type :type/DateTime}])))
-        (is (= [:!=
-                [:field "field" {:base-type :type/DateTime, :temporal-unit :quarter-of-year}]
-                "2016-04-01"
-                "2016-07-01"
-                "2016-10-01"]
-               (params.dates/date-string->filter "exclude-quarters-2-3-4" [:field "field" {:base-type :type/DateTime}])))
-        (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-quarters-Q1\""
-                     (params.dates/date-string->filter "exclude-quarters-Q1" [:field "field" {:base-type :type/DateTime}]))))
+        (is (=? [:!=
+                 {}
+                 [:field {:base-type :type/DateTime, :temporal-unit :quarter-of-year} "field"]
+                 "2016-01-01"]
+                (params.dates/date-string->filter
+                 "exclude-quarters-1"
+                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
+        (is (=? [:!=
+                 {}
+                 [:field {:base-type :type/DateTime, :temporal-unit :quarter-of-year} "field"]
+                 "2016-04-01"
+                 "2016-07-01"
+                 "2016-10-01"]
+                (params.dates/date-string->filter
+                 "exclude-quarters-2-3-4"
+                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Don't know how to parse date string \"exclude-quarters-Q1\""
+             (params.dates/date-string->filter
+              "exclude-quarters-Q1"
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))))
+
+(deftest ^:parallel date-string->filter-test-15c
+  (testing "exclusions"
+    (mt/with-clock #t "2016-06-07T12:13:55Z"
       (testing "days"
-        (is (= [:!=
-                [:field "field" {:base-type :type/DateTime, :temporal-unit :day-of-week}]
-                "2016-06-10"
-                "2016-06-07"]
-               (params.dates/date-string->filter "exclude-days-Fri-Tue" [:field "field" {:base-type :type/DateTime}])))
-        (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-days-Friday\""
-                     (params.dates/date-string->filter "exclude-days-Friday" [:field "field" {:base-type :type/DateTime}]))))
+        (is (=? [:!=
+                 {}
+                 [:field {:base-type :type/DateTime, :temporal-unit :day-of-week} "field"]
+                 "2016-06-10"
+                 "2016-06-07"]
+                (params.dates/date-string->filter
+                 "exclude-days-Fri-Tue"
+                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Don't know how to parse date string \"exclude-days-Friday\""
+             (params.dates/date-string->filter
+              "exclude-days-Friday"
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))))
+
+(deftest ^:parallel date-string->filter-test-15d
+  (testing "exclusions"
+    (mt/with-clock #t "2016-06-07T12:13:55Z"
       (testing "months"
-        (is (= [:!=
-                [:field "field" {:base-type :type/DateTime, :temporal-unit :month-of-year}]
-                "2016-12-01"
-                "2016-04-01"
-                "2016-09-01"]
-               (params.dates/date-string->filter "exclude-months-Dec-Apr-Sep" [:field "field" {:base-type :type/DateTime}])))
-        (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-months-April\""
-                     (params.dates/date-string->filter "exclude-months-April" [:field "field" {:base-type :type/DateTime}]))))
+        (is (=? [:!=
+                 {}
+                 [:field {:base-type :type/DateTime, :temporal-unit :month-of-year} "field"]
+                 "2016-12-01"
+                 "2016-04-01"
+                 "2016-09-01"]
+                (params.dates/date-string->filter
+                 "exclude-months-Dec-Apr-Sep"
+                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Don't know how to parse date string \"exclude-months-April\""
+             (params.dates/date-string->filter
+              "exclude-months-April"
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))))
+
+(deftest ^:parallel date-string->filter-test-15e
+  (testing "exclusions"
+    (mt/with-clock #t "2016-06-07T12:13:55Z"
       (testing "minutes"
-        (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-minutes-15-30\""
-                     (params.dates/date-string->filter "exclude-minutes-15-30" [:field "field" {:base-type :type/DateTime}])))))))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Don't know how to parse date string \"exclude-minutes-15-30\""
+             (params.dates/date-string->filter
+              "exclude-minutes-15-30"
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))))
 
 (defn do-date-string-range-test
   [s->expected]

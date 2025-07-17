@@ -26,21 +26,33 @@
       snippets and prepared statement args, and combine the sequence of fragments back into a single SQL string."
   (:require
    [clojure.set :as set]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.store :as qp.store]))
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util.malli :as mu]))
 
-(defn expand-inner
+(mu/defn expand-stage :- ::lib.schema/stage
   "Expand parameters inside an *inner* native `query`. Not recursive -- recursive transformations are handled in
   the `middleware.parameters` functions that invoke this function."
-  [inner-query]
-  (if-not (driver.u/supports? driver/*driver* :native-parameters (lib.metadata/database (qp.store/metadata-provider)))
-    inner-query
-    ;; Totally ridiculous, but top-level native queries use the key `:query` for SQL or equivalent, while native
-    ;; source queries use `:native`. So we need to handle either case.
-    (let [source-query?           (:native inner-query)
-          substituted-inner-query (driver/substitute-native-parameters driver/*driver*
-                                                                       (set/rename-keys inner-query {:native :query}))]
-      (cond-> (dissoc substituted-inner-query :parameters :template-tags)
-        source-query? (set/rename-keys {:query :native})))))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   stage                 :- ::lib.schema/stage]
+  (if-not (driver.u/supports? driver/*driver* :native-parameters (lib.metadata/database metadata-providerable))
+    stage
+    (let [thunk             (^:once fn* []
+                             (-> stage
+                                 (set/rename-keys {:native :query})
+                                 (m/update-existing :parameters (fn [parameters]
+                                                                  (mapv lib/->legacy-MBQL parameters)))
+                                 (m/update-existing :template-tags update-vals lib/->legacy-MBQL)
+                                 (->> (driver/substitute-native-parameters driver/*driver*))
+                                 (set/rename-keys {:query :native})))
+          substituted-stage (if (qp.store/initialized?)
+                              (thunk)
+                              (qp.store/with-metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
+                                (thunk)))]
+      (dissoc substituted-stage :parameters :template-tags))))
