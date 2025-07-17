@@ -517,24 +517,35 @@
               (map #(dissoc % :lib/type)))
         (:columns stage-metadata)))
 
-(mu/defn- chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]
-  ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
-  ;; In legacy, an inner query might have both :source-query, and :source-metadata giving the metadata for that nested
-  ;; :source-query.
-  ;; In pMBQL, the :lib/stage-metadata is attached to the same stage it applies to.
-  ;; So when chaining pMBQL stages back into legacy form, if stage n has :lib/stage-metadata, stage n+1 needs
-  ;; :source-metadata attached.
-  (let [inner-query (first (reduce (fn [[inner stage-metadata] stage]
-                                     [(cond-> (->legacy-MBQL stage)
-                                        inner          (assoc :source-query inner)
-                                        stage-metadata (assoc :source-metadata (stage-metadata->legacy-metadata stage-metadata)))
-                                      ;; Get the :lib/stage-metadata off the original pMBQL stage, not the converted one.
-                                      (:lib/stage-metadata stage)])
-                                   nil
-                                   stages))]
-    (cond-> inner-query
-      ;; If this is a native query, inner query will be used like: `{:type :native :native #_inner-query {:query ...}}`
-      (:native inner-query) (set/rename-keys {:native :query}))))
+(mu/defn- chain-stages
+  ([m]
+   (chain-stages m nil))
+
+  ([{:keys [stages]}                                       :- [:map [:stages [:sequential :map]]]
+    {:keys [top-level?], :or {top-level? true}, :as _opts} :- [:maybe
+                                                               [:map
+                                                                [:top-level? [:maybe :boolean]]]]]
+   ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
+   ;; In legacy, an inner query might have both :source-query, and :source-metadata giving the metadata for that nested
+   ;; :source-query.
+   ;; In pMBQL, the :lib/stage-metadata is attached to the same stage it applies to.
+   ;; So when chaining pMBQL stages back into legacy form, if stage n has :lib/stage-metadata, stage n+1 needs
+   ;; :source-metadata attached.
+   (let [inner-query (first (reduce (fn [[inner stage-metadata] stage]
+                                      [(cond-> (->legacy-MBQL stage)
+                                         inner          (assoc :source-query inner)
+                                         stage-metadata (assoc :source-metadata (stage-metadata->legacy-metadata stage-metadata)))
+                                       ;; Get the :lib/stage-metadata off the original pMBQL stage, not the converted one.
+                                       (:lib/stage-metadata stage)])
+                                    nil
+                                    stages))]
+     (cond-> inner-query
+       ;; If this is a native query, inner query will be used like:
+       ;;
+       ;;    {:type :native :native #_inner-query {:query ...}}
+       ;;
+       ;; only applies to the top level!
+       (and top-level? (:native inner-query)) (set/rename-keys {:native :query})))))
 
 (defmethod ->legacy-MBQL :dispatch-type/map [m]
   (into {}
@@ -621,7 +632,7 @@
                (update-list->legacy-boolean-expression :conditions :condition))
            (when (seq (:columns metadata))
              {:source-metadata (stage-metadata->legacy-metadata metadata)})
-           (let [inner-query (chain-stages base)]
+           (let [inner-query (chain-stages base {:top-level? false})]
              ;; if [[chain-stages]] returns any additional keys like `:filter` at the top-level then we need to wrap
              ;; it all in `:source-query` (QUE-1566)
              (if (seq (set/difference (set (keys inner-query)) #{:source-table :source-query :fields :source-metadata}))

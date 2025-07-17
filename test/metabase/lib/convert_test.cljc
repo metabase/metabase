@@ -1375,3 +1375,27 @@
                                           :fields       [[:field 33101 nil]]}]
                           :source-table 33040}}
               (lib/->legacy-MBQL query))))))
+
+(deftest ^:parallel join-native-source-query->legacy-test
+  (testing "join :source-query should rename :query to :native for native stages"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type :mbql.stage/mbql
+                             :joins    [{:lib/type   :mbql/join
+                                         :alias      "c"
+                                         :conditions [[:=
+                                                       {:lib/uuid "43813e7b-ebf7-4278-8ab4-af23be9ffc0d"}
+                                                       [:field
+                                                        {:lib/uuid "b8ad483b-1ff8-4979-bb3e-c006fe5caf46"}
+                                                        61325]
+                                                       [:field
+                                                        {:base-type :type/BigInteger, :join-alias "c", :lib/uuid "3000ef3f-a190-4f47-88df-404150748352"}
+                                                        "ID"]]]
+                                         :stages     [{:lib/type :mbql.stage/native
+                                                       :native   "SELECT * FROM categories WHERE name = ?;"
+                                                       :params   ["BBQ"]}]}]}]}]
+      (is (=? {:type  :query
+               :query {:joins [{:alias        "c"
+                                :condition    [:= [:field 61325 nil] [:field "ID" {:base-type :type/BigInteger, :join-alias "c"}]]
+                                :source-query {:native "SELECT * FROM categories WHERE name = ?;"
+                                               :params ["BBQ"]}}]}}
+              (lib.convert/->legacy-MBQL query))))))
