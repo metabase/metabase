@@ -51,16 +51,16 @@ function SearchApp({ location }) {
     q: searchText,
     ..._.omit(searchFilters, [
       SearchFilterKeys.Type,
-      SearchFilterKeys.SemanticSearch,
+      SearchFilterKeys.DisableSemanticSearch,
     ]),
     models: models && (Array.isArray(models) ? models : [models]),
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
     context: SearchContextTypes.SEARCH_APP,
     include_dashboard_questions: true,
-    ...(searchFilters[SearchFilterKeys.SemanticSearch]
-      ? { search_engine: "semantic" }
-      : {}),
+    search_engine: searchFilters[SearchFilterKeys.DisableSemanticSearch]
+      ? "appdb"
+      : "semantic",
   };
 
   const onChangeLocation = useCallback(
