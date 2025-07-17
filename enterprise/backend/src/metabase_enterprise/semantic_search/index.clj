@@ -170,15 +170,23 @@
 (defn populate-index!
   "Inserts a set of documents into the index table. Throws when trying to insert
   existing model + model_id pairs. (Use upsert-index! to update existing documents)"
-  [documents]
-  (when (and table-name (seq documents))
-   (jdbc/with-transaction [tx @db/data-source]
-     (doseq [doc documents]
-       (jdbc/execute!
-        tx
-        (sql/format
-         (-> (sql.helpers/insert-into *index-table-name*)
-             (sql.helpers/values [(doc->db-record doc)]))))))))
+  ([documents]
+   (let [active-table (active-table)
+         pending-table (pending-table)]
+     ;; Update both active and pending tables if they exist
+     (when active-table
+       (populate-index! documents active-table))
+     (when pending-table
+       (populate-index! documents pending-table))))
+  ([documents table-name]
+   (when (and table-name (seq documents))
+     (jdbc/with-transaction [tx @db/data-source]
+       (doseq [doc documents]
+         (jdbc/execute!
+          tx
+          (sql/format
+           (-> (sql.helpers/insert-into table-name)
+               (sql.helpers/values [(doc->db-record doc)])))))))))
 
 (defn- upsert-honeysql
   [doc table-name]
