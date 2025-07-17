@@ -76,12 +76,13 @@
 (defn do-with-released-app!
   "Create a temporary data app with a released definition for testing."
   [data-app thunk]
-  (with-data-app! [app (cond-> data-app
-                         (not (contains? data-app :definition))
-                         (assoc :definition {:config     default-app-definition-config
-                                             :creator_id (mt/user->id :crowberto)}))]
-    (data-apps.models/release! (:id app) (mt/user->id :crowberto))
-    (thunk (data-apps.models/get-published-data-app (:slug app)))))
+  (let [creator-id (or (:creator_id data-app) (mt/user->id :crowberto))]
+    (with-data-app! [app (cond-> data-app
+                           (not (contains? data-app :definition))
+                           (assoc :definition {:config     default-app-definition-config
+                                               :creator_id creator-id}))]
+      (data-apps.models/release! (:id app) creator-id)
+      (thunk (data-apps.models/get-published-data-app (:slug app))))))
 
 (defmacro with-released-app!
   "Macro that sets up temporary data apps with released definitions for testing. Supports both single and multiple app creation.
