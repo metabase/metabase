@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import _ from "underscore";
 
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
@@ -14,6 +15,7 @@ import { SearchFilterKeys } from "metabase/search/constants";
 import type {
   FilterTypeKeys,
   SearchFilterComponent,
+  SearchFilterToggle,
   SearchQueryParamValue,
   URLSearchFilterQueryParams,
 } from "metabase/search/types";
@@ -25,6 +27,13 @@ type SearchSidebarProps = {
 };
 
 export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
+  const test: SearchFilterToggle = {
+    label: () => t`Use semantic search`,
+    type: "toggle",
+    fromUrl: (value) => value === "true",
+    toUrl: (value: boolean) => (value ? "true" : null),
+  };
+
   const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
     [SearchFilterKeys.Type]: TypeFilter,
     [SearchFilterKeys.CreatedBy]: CreatedByFilter,
@@ -32,6 +41,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     [SearchFilterKeys.LastEditedBy]: LastEditedByFilter,
     [SearchFilterKeys.LastEditedAt]: LastEditedAtFilter,
     [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
+    [SearchFilterKeys.SemanticSearch]: test,
     [SearchFilterKeys.NativeQuery]: NativeQueryFilter,
     [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilter,
   };
@@ -40,10 +50,18 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     if (!val) {
       onChange(_.omit(value, key));
     } else {
-      onChange({
+      let nextValue = {
         ...value,
         [key]: val,
-      });
+      };
+
+      if (key === SearchFilterKeys.SemanticSearch && !!val) {
+        nextValue = _.omit(nextValue, SearchFilterKeys.NativeQuery);
+      } else if (key === SearchFilterKeys.NativeQuery && !!val) {
+        nextValue = _.omit(nextValue, SearchFilterKeys.SemanticSearch);
+      }
+
+      onChange(nextValue);
     }
   };
 
@@ -90,6 +108,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
         {getFilter(SearchFilterKeys.LastEditedAt)}
       </Stack>
       {getFilter(SearchFilterKeys.Verified)}
+      {getFilter(SearchFilterKeys.SemanticSearch)}
       {getFilter(SearchFilterKeys.NativeQuery)}
       {getFilter(SearchFilterKeys.SearchTrashedItems)}
     </Stack>

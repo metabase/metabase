@@ -133,7 +133,7 @@ export type SearchRequest = {
   include_metadata?: boolean | null;
   non_temporal_dim_ids?: string | null;
   has_temporal_dim?: boolean | null;
-  search_engine?: string | null;
+  search_engine?: "appdb" | "in-place" | "semantic" | null;
   display_type?: string[] | null;
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here
