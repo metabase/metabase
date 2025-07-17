@@ -24,6 +24,7 @@
    [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
@@ -31,6 +32,7 @@
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.options]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
@@ -64,6 +66,7 @@
          lib.filter/keep-me
          lib.ident/keep-me
          lib.join/keep-me
+         metabase.lib.join.util/keep-me
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
@@ -71,6 +74,7 @@
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
+         metabase.lib.options
          lib.order-by/keep-me
          lib.query/keep-me
          lib.ref/keep-me
@@ -286,6 +290,8 @@
   with-join-fields
   with-join-strategy
   with-join-conditions]
+ [metabase.lib.join.util
+  current-join-alias]
  [lib.metric
   available-metrics]
  [lib.limit
@@ -324,6 +330,9 @@
   with-native-extras
   with-native-query
   with-template-tags]
+ [metabase.lib.options
+  options
+  update-options]
  [lib.order-by
   change-direction
   order-by
@@ -377,5 +386,10 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.util
+  fresh-uuids
   normalized-query-type
-  source-table-id])
+  previous-stage
+  previous-stage-number
+  query-stage
+  source-table-id
+  update-query-stage])

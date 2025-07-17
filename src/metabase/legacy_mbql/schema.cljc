@@ -1494,7 +1494,14 @@
     {:error/message "Joins must have either a `source-table` or `source-query`, but not both."}
     (every-pred
      (some-fn :source-table :source-query)
-     (complement (every-pred :source-table :source-query)))]])
+     (complement (every-pred :source-table :source-query)))]
+   (let [disallowed-keys #{:filter :breakout :aggreggation :expressions :joins}]
+     [:fn
+      {:error/message "Join should not have top-level 'inner' query keys like :fields or :filter -- they should go in :source-query"
+       :error/fn      (fn [{join :value} _]
+                        (when (map? join)
+                          (str "join should not have top-level 'inner' query keys, found " (set/intersection (set (keys join)) disallowed-keys))))}
+      (complement (apply some-fn disallowed-keys))])])
 
 (def Join
   "Alias for ::Join. Prefer that going forward."

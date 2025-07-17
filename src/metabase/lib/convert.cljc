@@ -621,7 +621,12 @@
                (update-list->legacy-boolean-expression :conditions :condition))
            (when (seq (:columns metadata))
              {:source-metadata (stage-metadata->legacy-metadata metadata)})
-           (chain-stages base))))
+           (let [inner-query (chain-stages base)]
+             ;; if [[chain-stages]] returns any additional keys like `:filter` at the top-level then we need to wrap
+             ;; it all in `:source-query` (QUE-1566)
+             (if (seq (set/difference (set (keys inner-query)) #{:source-table :source-query}))
+               {:source-query inner-query}
+               inner-query)))))
 
 (defn- source-card->legacy-source-table
   "If a pMBQL query stage has `:source-card` convert it to legacy-style `:source-table \"card__<id>\"`."
