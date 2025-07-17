@@ -18,17 +18,17 @@ export interface CurrencyOption {
   value: string;
 }
 
+export type CurrencyStyle = "symbol" | "code" | "name";
+
 export interface CurrencyStyleOption {
   name: string;
-  value: "symbol" | "code" | "name";
+  value: CurrencyStyle;
 }
 
 export interface CompactCurrencyOptions {
   digits: number;
-  currency_style: string;
+  currency_style: CurrencyStyle;
 }
-
-export type CurrencyStyle = "symbol" | "code" | "name";
 
 // Cache for currency map
 let currencyMapCache: Record<string, CurrencyInfo>;
@@ -98,31 +98,4 @@ export function getCurrencyOptions(): CurrencyOption[] {
     name: currency.name,
     value: currency.code,
   }));
-}
-
-export function sortCurrencyOptionsByPriority<T extends { value: string }>(
-  currencyOptions: T[],
-  key: keyof T = "label" as keyof T,
-): T[] {
-  // Sort alphabetically by label keeping USD, CAD, and EUR in front
-  return currencyOptions.sort((a, b) => {
-    const priority = ["USD", "CAD", "EUR"];
-    const aIdx = priority.indexOf(a.value);
-    const bIdx = priority.indexOf(b.value);
-    if (aIdx !== -1 && bIdx !== -1) {
-      return aIdx - bIdx;
-    }
-    if (aIdx !== -1) {
-      return -1;
-    }
-    if (bIdx !== -1) {
-      return 1;
-    }
-    const aValue = a[key];
-    const bValue = b[key];
-    if (typeof aValue === "string" && typeof bValue === "string") {
-      return aValue.localeCompare(bValue);
-    }
-    return 0;
-  });
 }
