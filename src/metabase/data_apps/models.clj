@@ -178,7 +178,7 @@
    (send-off pruner (fn [last-status]
                       (if @pruner-dirty
                         (try
-                          (apply prune-definitions! #p opts)
+                          (apply prune-definitions! opts)
                           :finished
                           (catch Exception e
                             (log/warn e "Failure pruning Data App definitions")
