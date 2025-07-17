@@ -73,7 +73,8 @@
      :metadata            [:cast (json/encode doc) :jsonb]}))
 
 (defn populate-index!
-  "Inserts a set of documents into the index table. Throws "
+  "Inserts a set of documents into the index table. Throws when trying to insert
+  existing model + model_id pairs. (Use upsert-index! to update existing documents)"
   [documents]
   (jdbc/with-transaction [tx @db/data-source]
     (doseq [doc documents]
@@ -201,7 +202,6 @@
             xform       (comp (map unqualify-keys)
                               (map decode-metadata)
                               (map legacy-input-with-score)
-                              ;; important this is done eagerly to avoid surprises with dynamic vars
                               (filter (comp mi/can-read? t2-instance)))
             reducible   (jdbc/plan @db/data-source (sql/format query))]
         (transduce xform conj [] reducible)))))
