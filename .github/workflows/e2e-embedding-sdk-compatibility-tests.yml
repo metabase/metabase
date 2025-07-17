@@ -1,6 +1,10 @@
 name: "[NOT REQUIRED] SDK Compatibility tests"
 
-# Skipped as they're failing
+# Note: these are currently never called, we're skipping them as they're failing, below is the original triggers
+on:
+  workflow_call:
+
+# Original trigger (commented for reference):
 # on:
 #   push:
 #     branches:
