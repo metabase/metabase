@@ -43,6 +43,7 @@
                                                                             (apply original-fn opts))]
             (dotimes [_ call-count]
               (prune-async! keep-count keep-count)))
+          ;; Wait for our own invocations to complete.
           (block-fn)
           (testing "We skip consecutive pruning, if nothing has changed."
             (is (= 1 @invocations)))
