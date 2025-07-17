@@ -54,10 +54,11 @@
 (defmacro ^:private with-mocked-embeddings! [& body]
   ;; TODO: it's warning about not using with-redefs outside of tests but we *are* using it in tests
   #_:clj-kondo/ignore
-  `(with-redefs [semantic.embedding/pull-model (fn [] nil)
-                 semantic.embedding/get-embedding (fn [text#]
-                                                    (get mock-embeddings text# [0.01 0.02 0.03 0.04]))]
-     ~@body))
+  `(binding [semantic.index/*vector-dimensions* 4]
+     (with-redefs [semantic.embedding/pull-model (fn [] nil)
+                   semantic.embedding/get-embedding (fn [text#]
+                                                      (get mock-embeddings text# [0.01 0.02 0.03 0.04]))]
+       ~@body)))
 
 (def ^:private init-delay
   (delay
@@ -79,16 +80,16 @@
   `(let [test-table-name# (keyword (str "test_search_index_" (nano-id/nano-id)))]
      (binding [semantic.index/*index-table-name* test-table-name#]
        (with-redefs [semantic.embedding/model-dimensions (constantly 4)]
-        (try
-          (mt/as-admin
-            (semantic.index/create-index-table! {:force-reset? true}))
-          ~@body
-          (finally
-            (try
-              (mt/as-admin
-                (semantic.index/drop-index-table!))
-              (catch Exception e#
-                (log/error "Warning: failed to clean up test table" test-table-name# ":" (.getMessage e#))))))))))
+         (try
+           (mt/as-admin
+             (semantic.index/create-index-table! {:force-reset? true}))
+           ~@body
+           (finally
+             (try
+               (mt/as-admin
+                 (semantic.index/drop-index-table!))
+               (catch Exception e#
+                 (log/error "Warning: failed to clean up test table" test-table-name# ":" (.getMessage e#))))))))))
 
 (defmacro with-index!
   "Ensure a clean, small index for testing populated with a few collections, cards, and dashboards."
