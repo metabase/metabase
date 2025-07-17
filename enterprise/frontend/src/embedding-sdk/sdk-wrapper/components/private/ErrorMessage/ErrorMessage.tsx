@@ -1,5 +1,5 @@
 import { SDK_BUNDLE_LOADING_ERROR_MESSAGE } from "embedding-sdk/sdk-wrapper/config";
-import { colors } from "metabase/lib/colors/palette";
+import { colors } from "metabase/lib/colors/colors";
 
 export const ErrorMessage = () => (
   <div style={{ padding: "0.5rem" }}>
