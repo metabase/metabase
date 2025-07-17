@@ -66,9 +66,8 @@
           (testing "We keep 2 unreferenced definition + HEAD"
             ;; Getting CI issues with the latest MariaDB, it claims there is "No database selected" for the Delete.
             (when-not (mariadb-appdb?)
-              ;; Well, that's unexpected, but the focus of this test.
-              (is (= #{#_8 #_9 10}
-                     (t2/select-fn-set :revision_number :model/DataAppDefinition :app_id (:id app)))))))))))
+              (t2/select-fn-vec (juxt :app_id :revision_number) :model/DataAppDefinition)
+              (is (= #{8 9 10} (t2/select-fn-set :revision_number :model/DataAppDefinition :app_id (:id app)))))))))))
 
 (deftest prune-definitions-test
   ;; Getting CI issues with the latest MariaDB, it claims there is "No database selected" for the Delete.

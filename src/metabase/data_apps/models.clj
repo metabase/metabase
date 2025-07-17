@@ -157,7 +157,7 @@
                                   [:ranked
                                    {:select [:dad.id :dad.app_id :dad.revision_number :dad.created_at
                                              [[:raw "ROW_NUMBER() OVER (PARTITION BY dad.app_id ORDER BY dad.revision_number DESC)"] :app_rank]
-                                             [[:raw "ROW_NUMBER() OVER (ORDER BY dad.created_at DESC)"] :global_rank]]
+                                             [[:raw "ROW_NUMBER() OVER (ORDER BY dad.id DESC)"] :global_rank]]
                                     :from   [[:data_app_definition :dad]]
                                     :where  [:not [:exists {:select [1]
                                                             :from   [[:protected_definitions :pd]]
