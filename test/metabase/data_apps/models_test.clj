@@ -29,18 +29,21 @@
           (data-apps.models/set-latest-definition! (:id app) {:creator_id (mt/user->id :crowberto)
                                                               :config     data-apps.tu/default-app-definition-config}))
         (is (= 10 (t2/count :model/DataAppDefinition :app_id (:id app))))
-        (let [original-fn (mt/dynamic-value @#'data-apps.models/prune-definitions!)
+        (let [call-count  5
+              keep-count  2
               invocations (atom 0)
-              num-invokes 5
-              latch       (CountDownLatch. num-invokes)
-              keep-count  2]
+              block-fn    (fn [] (u/poll {:thunk #(deref @#'data-apps.models/pruner), :done? false?}))
+              latch       (CountDownLatch. call-count)
+              original-fn (mt/dynamic-value @#'data-apps.models/prune-definitions!)]
+          ;; Wait for any prior pruning to finish, so we don't get de-duplicated with it.
+          (block-fn)
           (mt/with-dynamic-fn-redefs [data-apps.models/prune-definitions! (fn [& opts]
                                                                             (swap! invocations inc)
                                                                             (.countDown latch)
                                                                             (apply original-fn opts))]
-            (dotimes [_ num-invokes]
+            (dotimes [_ call-count]
               (prune-async! keep-count keep-count)))
-          (u/poll {:thunk #(deref @#'data-apps.models/pruner), :done? false?})
+          (block-fn)
           (testing "We skip consecutive pruning, if nothing has changed."
             (is (= 1 @invocations)))
           (testing "We keep 2 unreferenced definition + HEAD"
