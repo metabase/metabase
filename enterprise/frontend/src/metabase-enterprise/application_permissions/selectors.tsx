@@ -111,11 +111,12 @@ export const getApplicationPermissionEditor = createSelector(
     const entities = allGroups.map((group) => {
       const isAdmin = isAdminGroup(group);
       const isExternal =
-        !!externalUsersGroup && PLUGIN_TENANTS.isExternalUsersGroup(group);
+        !!externalUsersGroup && PLUGIN_TENANTS.isTenantGroup(group);
 
       return {
         id: group.id,
         name: getGroupNameLocalized(group),
+        icon: isExternal ? <PLUGIN_TENANTS.TenantGroupHintIcon /> : undefined,
         permissions: [
           getPermission(
             permissions,

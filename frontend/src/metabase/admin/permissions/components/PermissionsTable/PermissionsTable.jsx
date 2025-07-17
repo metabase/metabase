@@ -5,13 +5,12 @@ import { useRef, useState } from "react";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
-import { Text, Tooltip } from "metabase/ui";
+import { Flex, Text, Tooltip } from "metabase/ui";
 
 import { PermissionsSelect } from "../PermissionsSelect";
 
 import {
   ColumnName,
-  EntityName,
   EntityNameLink,
   HintIcon,
   PermissionTableHeaderCell,
@@ -118,7 +117,10 @@ export function PermissionsTable({
                       {entityName}
                     </EntityNameLink>
                   ) : (
-                    <EntityName>{entityName}</EntityName>
+                    <Flex gap="xs" fw="bold">
+                      {entityName}
+                      {entity.icon}
+                    </Flex>
                   )}
                   {entity.callout && (
                     <Text c="text-secondary">{entity.callout}</Text>

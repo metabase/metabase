@@ -10,7 +10,7 @@ const SPECIAL_GROUP_NAMES = new Map([
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   ["Administrators", t`Administrators`],
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  ["All External Users", t`External Users`],
+  ["All External Users", t`All External Users`],
 ]);
 
 export function isDefaultGroup(group: Pick<GroupInfo, "magic_group_type">) {

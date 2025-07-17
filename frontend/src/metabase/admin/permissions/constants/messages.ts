@@ -11,17 +11,17 @@ export const Messages = {
     return t`Change "No self-service (Deprecated)" View data access to enable custom Create queries permissions.`;
   },
   get EXTERNAL_USERS_NO_ACCESS_COLLECTION() {
-    return t`External Users can only access tenant collections`;
+    return t`External users can only access tenant collections`;
   },
   get EXTERNAL_USERS_NO_ACCESS_DATABASE() {
-    return t`External Users cannot manage database permissions`;
+    return t`External users cannot manage database permissions`;
   },
 
   get EXTERNAL_USERS_NO_ACCESS_SETTINGS() {
-    return t`External Users cannot have settings permissions`;
+    return t`External users cannot have settings permissions`;
   },
   get EXTERNAL_USERS_NO_ACCESS_MONITORING() {
-    return t`External Users cannot have monitioring permissions`;
+    return t`External users cannot have monitoring permissions`;
   },
 };
 

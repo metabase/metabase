@@ -44,7 +44,7 @@ export const getGroupsSidebar = createSelector(
     const externalGroupItems = externalGroups.map((group) => ({
       ...group,
       name: getGroupNameLocalized(group),
-      icon: "globe",
+      icon: group.magic_group_type ? "bolt" : "globe",
     }));
 
     const entityGroups = [

@@ -236,68 +236,78 @@ export const getCollectionsPermissionEditor = createSelector(
     const hasChildren = collection.children?.length > 0;
     const toggleLabel = hasChildren ? getToggleLabel(namespace) : null;
     const defaultGroup = _.find(groups, isDefaultGroup);
+    const isTenantCollection = PLUGIN_TENANTS.isTenantCollection(collection);
 
-    const entities = groups.map((group: GroupType) => {
-      const isAdmin = isAdminGroup(group);
-      const isExternal = PLUGIN_TENANTS.isExternalUsersGroup(group);
+    const entities = groups
+      .map((group: GroupType) => {
+        const isAdmin = isAdminGroup(group);
+        const isExternal = PLUGIN_TENANTS.isExternalUsersGroup(group);
+        const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
 
-      const defaultGroupPermission = getCollectionPermission(
-        permissions,
-        defaultGroup.id,
-        collection.id,
-      );
+        if (isTenantGroup && !isTenantCollection) {
+          return null;
+        }
 
-      const confirmations = (newValue: DataPermissionValue) => [
-        getPermissionWarningModal(
-          newValue,
-          defaultGroupPermission,
-          null,
-          defaultGroup,
-          group.id,
-        ),
-      ];
+        const defaultGroupPermission = getCollectionPermission(
+          permissions,
+          defaultGroup.id,
+          collection.id,
+        );
 
-      const isIACollection = isInstanceAnalyticsCollection(collection);
-      const isTenantCollection = PLUGIN_TENANTS.isTenantCollection(collection);
+        const confirmations = (newValue: DataPermissionValue) => [
+          getPermissionWarningModal(
+            newValue,
+            defaultGroupPermission,
+            null,
+            defaultGroup,
+            group.id,
+          ),
+        ];
 
-      const options = isIACollection
-        ? [COLLECTION_OPTIONS.read, COLLECTION_OPTIONS.none]
-        : [
-            COLLECTION_OPTIONS.write,
-            COLLECTION_OPTIONS.read,
-            COLLECTION_OPTIONS.none,
-          ];
+        const isIACollection = isInstanceAnalyticsCollection(collection);
 
-      const disabledTooltip = isIACollection
-        ? PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE
-        : isExternal
-          ? Messages.EXTERNAL_USERS_NO_ACCESS_COLLECTION
-          : Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+        const options = isIACollection
+          ? [COLLECTION_OPTIONS.read, COLLECTION_OPTIONS.none]
+          : [
+              COLLECTION_OPTIONS.write,
+              COLLECTION_OPTIONS.read,
+              COLLECTION_OPTIONS.none,
+            ];
 
-      const disabled =
-        (isTenantCollection && !isExternal) || isAdmin || isExternal;
+        const disabledTooltip = isIACollection
+          ? PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE
+          : isExternal
+            ? Messages.EXTERNAL_USERS_NO_ACCESS_COLLECTION
+            : Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
 
-      return {
-        id: group.id,
-        name: getGroupNameLocalized(group),
-        permissions: [
-          {
-            toggleLabel,
-            hasChildren,
-            isDisabled: disabled,
-            disabledTooltip: isAdmin || isExternal ? disabledTooltip : null,
-            value: getCollectionPermission(
-              permissions,
-              group.id,
-              collection.id,
-            ),
-            warning: getCollectionWarning(group.id, collection, permissions),
-            confirmations,
-            options,
-          },
-        ],
-      };
-    });
+        const disabled =
+          (isTenantCollection && !isExternal) || isAdmin || isExternal;
+
+        return {
+          id: group.id,
+          name: getGroupNameLocalized(group),
+          icon: isTenantGroup ? (
+            <PLUGIN_TENANTS.TenantGroupHintIcon />
+          ) : undefined,
+          permissions: [
+            {
+              toggleLabel,
+              hasChildren,
+              isDisabled: disabled,
+              disabledTooltip: isAdmin || isExternal ? disabledTooltip : null,
+              value: getCollectionPermission(
+                permissions,
+                group.id,
+                collection.id,
+              ),
+              warning: getCollectionWarning(group.id, collection, permissions),
+              confirmations,
+              options,
+            },
+          ],
+        };
+      })
+      .filter(Boolean);
 
     return {
       title: t`Permissions for ${collection.name}`,
