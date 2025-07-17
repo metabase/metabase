@@ -71,19 +71,8 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
           <Text lh="xl" mb="lg">
             {children}
           </Text>
-          {match(buttonLink)
-            .with(P.string, () => (
-              <ExternalLink
-                className={S.UpsellCTALink}
-                href={url}
-                onClickCapture={() =>
-                  trackUpsellClicked({ location, campaign })
-                }
-              >
-                {buttonText}
-              </ExternalLink>
-            ))
-            .otherwise(() => (
+          {match(onClick)
+            .with(P.nonNullable, () => (
               <Box
                 component="button"
                 className={S.UpsellCTALink}
@@ -94,6 +83,17 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
               >
                 {buttonText}
               </Box>
+            ))
+            .otherwise(() => (
+              <ExternalLink
+                className={S.UpsellCTALink}
+                href={url}
+                onClickCapture={() =>
+                  trackUpsellClicked({ location, campaign })
+                }
+              >
+                {buttonText}
+              </ExternalLink>
             ))}
         </Stack>
       </Flex>
