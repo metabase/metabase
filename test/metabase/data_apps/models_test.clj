@@ -10,6 +10,8 @@
   (:import
    (java.time Instant)))
 
+(set! *warn-on-reflection* true)
+
 (deftest prune-definitions-test
   ;; Prune *everything* unprotected to avoid flakes from other tests, or state in your dev database.
   (testing "Pruning a single app with multiple releases"
