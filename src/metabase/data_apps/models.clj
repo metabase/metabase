@@ -86,6 +86,7 @@
   [app-id]
   [:coalesce
    [:+
+    ;; MySQL requires an extra subselect wrapper to circumvent its rule against having a source table as the target.
     {:select [:%max.revision_number]
      :from [[{:select [:*] :from [:data_app_definition]} :dumb_alias]]
      :where [:= :app_id app-id]}
