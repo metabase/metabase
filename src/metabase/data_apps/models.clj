@@ -174,7 +174,7 @@
    (prune-definitions-async! retention-max-per-app retention-max-total))
   ([& opts]
    (reset! pruner-dirty true)
-   (send pruner (constantly :started))
+   (send-off pruner (fn [existing] (if @pruner-dirty :started existing)))
    (send-off pruner (fn [last-status]
                       (if @pruner-dirty
                         (try

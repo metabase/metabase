@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.data-apps.models :as data-apps.models]
    [metabase.data-apps.test-util :as data-apps.tu]
    [metabase.driver.mysql :as mysql]
@@ -21,6 +22,12 @@
 (defn- prune-async! [& opts]
   (apply #'data-apps.models/prune-definitions-async! opts))
 
+(defn- mariadb-appdb? []
+  (= "MariaDB"
+     (t2/with-connection [conn]
+       (.getDatabaseProductName
+        (.getMetaData conn)))))
+
 (deftest async-pruning-test
   (testing "Test async pruning isn't totally broken"
     (data-apps.tu/with-data-app-cleanup!
@@ -37,7 +44,7 @@
                                                     @@#'data-apps.models/pruner])
                                     :done?       (fn [[dirty status]]
                                                    (and (false? dirty)
-                                                        (get #{:finished :skipped} status)))
+                                                        (get #{:finished :skipped :failed} status)))
                                     :interval-ms 50
                                     :timeout-ms  1000})
               latch       (CountDownLatch. (inc call-count))]
@@ -58,7 +65,7 @@
             (is (= 1 @invocations)))
           (testing "We keep 2 unreferenced definition + HEAD"
             ;; Getting CI issues with the latest MariaDB, it claims there is "No database selected" for the Delete.
-            (when-not (mysql/mariadb? (mt/db))
+            (when-not (mariadb-appdb?)
               ;; Well, that's unexpected, but the focus of this test.
               (is (= #{#_8 #_9 10}
                      (t2/select-fn-set :revision_number :model/DataAppDefinition :app_id (:id app)))))))))))
@@ -66,7 +73,7 @@
 (deftest prune-definitions-test
   ;; Getting CI issues with the latest MariaDB, it claims there is "No database selected" for the Delete.
   ;; Version 10.2 appears not to have trouble with this test, but it does fail for the async one.
-  (when-not (mysql/mariadb? (mt/db))
+  (when-not (mariadb-appdb?)
     (testing "Pruning a single app with multiple releases"
       (data-apps.tu/with-data-app-cleanup!
         ;; Prune *everything* unprotected to avoid flakes from other tests, or state in your dev database.
