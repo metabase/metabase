@@ -268,7 +268,7 @@ jobs:
             build-static-viz: true
             test-args: >-
               :only '"test"'
-              :exclude-tags [:mb/driver-tests :mb/memory]
+              :exclude-tags '[:mb/driver-tests :mb/memory]'
               :partition/total 2
               :partition/index 0
             exclude-tags: '[:mb/driver-tests :mb/memory]'
