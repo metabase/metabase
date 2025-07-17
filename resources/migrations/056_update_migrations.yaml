@@ -360,6 +360,40 @@ databaseChangeLog:
               - column:
                   name: upstream_card_id
 
+  - changeSet:
+      id: v56.2025-17-20T20:43:43
+      author: metamben
+      comment: Add event table for asynchronous result_metadata syncing
+      changes:
+        - createTable:
+            tableName: result_metadata_sync_event
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The type of the event
+                  name: type
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The id of the referenced card or table
+                  name: reference_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The time the even was generated
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
