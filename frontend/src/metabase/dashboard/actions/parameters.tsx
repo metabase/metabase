@@ -38,6 +38,7 @@ import type {
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
+  VisualizationDisplay,
   WritebackAction,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -45,6 +46,7 @@ import type { Dispatch, GetState } from "metabase-types/store";
 import {
   trackAutoApplyFiltersDisabled,
   trackFilterCreated,
+  trackFilterMoved,
   trackFilterRequired,
 } from "../analytics";
 import {
@@ -162,13 +164,22 @@ type MoveParameterOpts = {
 export const moveParameter =
   ({ parameterId, destination, canUndo = true }: MoveParameterOpts) =>
   (dispatch: Dispatch, getState: GetState) => {
+    const dashboardId = getDashboardId(getState());
+    if (!dashboardId) {
+      throw new Error(`Dashboard ID not found`);
+    }
+
     const dashcardMap = getDashcards(getState());
     const parameterDashcard = findDashCardForInlineParameter(
       parameterId,
       Object.values(dashcardMap),
     );
 
+    let analyticsOrigin: VisualizationDisplay | null = null;
+    let analyticsDestination: VisualizationDisplay | null = null;
+
     if (parameterDashcard) {
+      analyticsOrigin = parameterDashcard.card.display;
       dispatch(
         setDashCardAttributes({
           id: parameterDashcard.id,
@@ -190,6 +201,7 @@ export const moveParameter =
       if (!dashcard) {
         throw new Error(`Dashcard with id ${destination.id} not found`);
       }
+      analyticsDestination = dashcard.card.display;
       const currentInlineParameters = hasInlineParameters(dashcard)
         ? dashcard.inline_parameters
         : [];
@@ -202,6 +214,8 @@ export const moveParameter =
         }),
       );
     }
+
+    trackFilterMoved(dashboardId, analyticsOrigin, analyticsDestination);
 
     if (canUndo) {
       const undoMove = () => {
