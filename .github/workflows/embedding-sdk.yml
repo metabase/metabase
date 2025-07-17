@@ -1,14 +1,37 @@
 name: SDK
 
 on:
-  workflow_call:
+  push:
+    branches:
+      - master
+      - release-**
+    pull_request:
+      branches:
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.set.outputs.should_run }}
+    steps:
+      - id: set
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "pull_request" && "${{ toJson(github.event.pull_request.labels.*.name) }}" == *"Embedding/SDK"* ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi
+
   files-changed:
+    needs: [files-changed, gate]
+    if: needs.gate.outputs.should_run == 'true'
     name: Check which files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 3
@@ -26,9 +49,10 @@ jobs:
           filters: .github/file-paths.yaml
 
   build:
-    needs: [files-changed]
+    needs: [files-changed, gate]
     if: |
       !cancelled() &&
+      needs.gate.outputs.should_run == 'true' &&
       (needs.files-changed.outputs.e2e_embedding_sdk == 'true' ||
       needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
       needs.files-changed.outputs.embedding_documentation == 'true')
@@ -51,10 +75,11 @@ jobs:
           path: resources/embedding-sdk
 
   embedding-sdk-cli-snippets-type-check:
-    needs: [files-changed, build]
+    needs: [files-changed, build, gate]
     if: |
       needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
-      needs.build.result == 'success'
+      needs.build.result == 'success' &&
+      needs.gate.outputs.should_run == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -70,10 +95,11 @@ jobs:
         run: yarn run embedding-sdk:cli-snippets:type-check
 
   embedding-sdk-docs-snippets-type-check:
-    needs: [files-changed, build]
+    needs: [files-changed, build, gate]
     if: |
       needs.files-changed.outputs.embedding_documentation == 'true' &&
-      needs.build.result == 'success'
+      needs.build.result == 'success' &&
+      needs.gate.outputs.should_run == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -89,10 +115,11 @@ jobs:
         run: yarn run embedding-sdk:docs-snippets:type-check
 
   embedding-sdk-api-documentation-generation-validation:
-    needs: [files-changed, build]
+    needs: [files-changed, build, gate]
     if: |
       needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
-      needs.build.result == 'success'
+      needs.build.result == 'success' &&
+      needs.gate.outputs.should_run == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -141,7 +168,7 @@ jobs:
   sdk-e2e-tests:
     name: "SDK e2e tests"
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
-    needs: [build]
+    needs: [build, gate]
     secrets: inherit
     with:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
@@ -172,7 +199,8 @@ jobs:
       - embedding-sdk-api-documentation-generation-validation
       - sdk-e2e-tests
       - e2e-component-tests-embedding-sdk-cross-version
-    if: always() && !cancelled()
+      - gate
+    if: always() && !cancelled() && needs.gate.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
