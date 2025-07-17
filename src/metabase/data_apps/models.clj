@@ -175,16 +175,18 @@
   ([& opts]
    (reset! pruner-dirty true)
    (send pruner (constantly :started))
-   (send-off pruner (fn [_]
-                      (when @pruner-dirty
+   (send-off pruner (fn [last-status]
+                      (if @pruner-dirty
                         (try
-                          (apply prune-definitions! opts)
+                          (apply prune-definitions! #p opts)
+                          :finished
                           (catch Exception e
-                            (log/warn e "Failure pruning Data App definitions"))
+                            (log/warn e "Failure pruning Data App definitions")
+                            :failed)
                           (finally
                             ;; Reset the dirty flag even if it failed, to avoid spinning on expensive failures.
-                            (reset! pruner-dirty false)
-                            :finished)))))))
+                            (reset! pruner-dirty false)))
+                        (get #{:skipped :finished} last-status :skipped))))))
 
 (defn set-latest-definition!
   "Create a new definition for an existing app."
@@ -231,7 +233,7 @@
                                                      :model/DataAppRelease
                                                      :app_id app-id
                                                      :retracted false
-                                                     ;; it's append only table so sorting by id for better perf
+                                                     ;; it's an append-only table so sorting by id for better perf
                                                      {:order-by [[:id :desc]]})]
     (t2/select-one :model/DataAppDefinition release-definition-id)))
 

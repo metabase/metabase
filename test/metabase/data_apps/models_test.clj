@@ -32,21 +32,27 @@
         (let [call-count  5
               keep-count  2
               invocations (atom 0)
-              block-fn    #(u/poll {:thunk (fn []
-                                             [@@#'data-apps.models/pruner-dirty
-                                              (deref @#'data-apps.models/pruner)])
-                                    :done? #{[false :finished]}})
-              latch       (CountDownLatch. call-count)
-              original-fn (mt/dynamic-value @#'data-apps.models/prune-definitions!)]
+              block-fn    #(u/poll {:thunk       (fn []
+                                                   [@@#'data-apps.models/pruner-dirty
+                                                    @@#'data-apps.models/pruner])
+                                    :done?       (fn [[dirty status]]
+                                                   (and (false? dirty)
+                                                        (get #{:finished :skipped} status)))
+                                    :interval-ms 50
+                                    :timeout-ms  1000})
+              latch       (CountDownLatch. (inc call-count))]
           ;; Wait for any prior pruning to finish, so we don't get de-duplicated with it.
           (block-fn)
-          (mt/with-dynamic-fn-redefs [data-apps.models/prune-definitions! (fn [& opts]
-                                                                            (swap! invocations inc)
-                                                                            (.countDown latch)
-                                                                            (apply original-fn opts))]
+          (mt/with-dynamic-fn-redefs [data-apps.models/prune-definitions!
+                                      (let [original-fn (mt/dynamic-value @#'data-apps.models/prune-definitions!)]
+                                        (fn [& opts]
+                                          (swap! invocations inc)
+                                          (.countDown latch)
+                                          (apply original-fn opts)))]
             (dotimes [_ call-count]
               (prune-async! keep-count keep-count)))
           ;; Wait for our own invocations to complete.
+          (.countDown latch)
           (block-fn)
           (testing "We skip consecutive pruning, if nothing has changed."
             (is (= 1 @invocations)))
