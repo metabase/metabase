@@ -6,7 +6,6 @@ import type {
   Card,
   Parameter,
   ParameterTarget,
-  ParameterValuesConfig,
   TemplateTag,
 } from "metabase-types/api";
 
@@ -45,7 +44,7 @@ function getParameterTarget(tag: TemplateTag): ParameterTarget {
 
 export function getTemplateTagParameter(
   tag: TemplateTag,
-  config?: ParameterValuesConfig,
+  oldParameter?: Parameter,
 ): ParameterWithTarget {
   const type = getParameterType(tag);
 
@@ -58,11 +57,11 @@ export function getTemplateTagParameter(
     default: tag.default,
     required: tag.required,
     options: tag.options,
-    isMultiSelect: config?.isMultiSelect ?? tag.type === "dimension",
-    values_query_type: config?.values_query_type,
-    values_source_type: config?.values_source_type,
-    values_source_config: config?.values_source_config,
-    temporal_units: config?.temporal_units,
+    isMultiSelect: oldParameter?.isMultiSelect ?? tag.type === "dimension",
+    values_query_type: oldParameter?.values_query_type,
+    values_source_type: oldParameter?.values_source_type,
+    values_source_config: oldParameter?.values_source_config,
+    temporal_units: oldParameter?.temporal_units,
   };
 }
 
