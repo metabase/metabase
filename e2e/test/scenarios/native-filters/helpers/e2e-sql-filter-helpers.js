@@ -29,7 +29,7 @@ export function openTypePickerFromDefaultFilterType() {
 /**
  * Sets the SQL filter type.
  *
- * @param {("Text"|"Number"|"Date"|"Field Filter")} filterType
+ * @param {("Text"|"Number"|"Date"|"Boolean"|"Field Filter")} filterType
  *
  * @example
  * chooseType("Date");

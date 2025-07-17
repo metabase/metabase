@@ -85,6 +85,7 @@ H.describeWithSnowplow(
       cy.findByRole("link", { name: "Table Metadata" }).click();
 
       H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
+      H.DataModel.TablePicker.getSchema(EMPTY_SCHEMA_NAME).click();
       H.DataModel.TablePicker.getTables().should("have.length", 1);
       H.DataModel.TablePicker.getTable("Dog Breeds").should("be.visible");
     });
