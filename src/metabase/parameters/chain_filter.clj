@@ -67,7 +67,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
-   [metabase.driver.common.parameters.dates :as params.dates]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.util.match :as lib.util.match]

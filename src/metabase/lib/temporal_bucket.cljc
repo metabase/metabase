@@ -468,9 +468,9 @@
                                     original-effective-type)
           options                 (-> options
                                       (assoc :temporal-unit unit
-                                             :effective-type new-effective-type
-                                             :metabase.lib.field/original-effective-type original-effective-type)
-                                      (m/assoc-some :metabase.lib.field/original-temporal-unit original-temporal-unit))]
+                                             :effective-type new-effective-type)
+                                      (m/assoc-some :metabase.lib.field/original-effective-type original-effective-type
+                                                    :metabase.lib.field/original-temporal-unit  original-temporal-unit))]
       [tag options id-or-name])
     ;; `unit` is `nil`: remove the temporal bucket and remember it :metabase.lib.field/original-temporal-unit.
     (let [original-effective-type (:metabase.lib.field/original-effective-type options)

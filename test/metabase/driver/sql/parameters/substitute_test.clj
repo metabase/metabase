@@ -4,8 +4,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.parse :as params.parse]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.test-metadata :as meta]
@@ -478,7 +478,7 @@
   [{:keys [parameters], inner :native, :as query}]
   (driver/with-driver :h2
     (mt/with-metadata-provider meta/metadata-provider
-      (let [inner' (qp.native/expand-inner (update inner :parameters #(concat parameters %)))]
+      (let [inner' (qp.native/expand-stage (update inner :parameters #(concat parameters %)))]
         (assoc query :native inner')))))
 
 (defn- expand* [query]

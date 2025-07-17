@@ -1,4 +1,4 @@
-(ns ^{:deprecated "0.56.0"} metabase.driver.common.parameters.operators
+(ns metabase.query-processor.parameters.operators
   "This namespace handles parameters that are operators.
 
     {:type :number/between
@@ -6,15 +6,14 @@
               [:field
                26
                {:source-field 5}]]
-     :value [3 5]}
-
-  DEPRECATED: prefer [[metabase.query-processor.parameters.operators]] going forward."
-
-  #_{:clj-kondo/ignore [:metabase/modules]}
+     :value [3 5]}"
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
@@ -37,14 +36,16 @@
   (boolean (operator-arity param-type)))
 
 (mu/defn- verify-type-and-arity
-  [field param-type param-value]
+  [field       :- :mbql.clause/field
+   param-type
+   param-value]
   (letfn [(maybe-arity-error [n]
             (when (not= n (count param-value))
               (throw (ex-info (format "Operations Invalid arity: expected %s but received %s"
                                       n (count param-value))
                               {:param-type  param-type
                                :param-value param-value
-                               :field-id    (second field)
+                               :field-id    (last field)
                                :type        qp.error-type/invalid-parameter}))))]
     (condp = (operator-arity param-type)
       :unary
@@ -58,40 +59,39 @@
         (throw (ex-info (tru "Invalid values provided for operator: {0}" param-type)
                         {:param-type  param-type
                          :param-value param-value
-                         :field-id    (second field)
+                         :field-id    (last field)
                          :type        qp.error-type/invalid-parameter})))
 
       (throw (ex-info (tru "Unrecognized operation: {0}" param-type)
                       {:param-type  param-type
                        :param-value param-value
-                       :field-id    (second field)
+                       :field-id    (last field)
                        :type        qp.error-type/invalid-parameter})))))
 
 (defn- normalize-param
   [param]
-  (case (:type param)
-    :number/between
-    (let [[l u] (:value param)]
-      (cond-> param
-        (nil? u) (assoc :type :number/>=, :value [l])
-        (nil? l) (assoc :type :number/<=, :value [u])))
-    param))
+  (lib.normalize/normalize ::lib.schema.parameter/parameter param))
 
-(mu/defn to-clause :- mbql.s/Filter
+(mu/defn to-clause :- ::lib.schema.expression/boolean
   "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
   [param]
-  (let [{param-type :type, [a b :as param-value] :value, [_ field] :target, options :options} (normalize-param param)]
-    (verify-type-and-arity field param-type param-value)
-    (let [field'  (mbql.u/wrap-field-id-if-needed field)
-          opts-fn (operator-options-fn param-type)]
-      (case (operator-arity param-type)
-        :binary   (opts-fn [(keyword (name param-type)) field' a b] options)
-        :unary    (opts-fn [(keyword (name param-type)) field' a] options)
-        :variadic (opts-fn (into [(keyword (name param-type)) field'] param-value) options)
-
-        (throw (ex-info (format "Unrecognized operator: %s" param-type)
-                        {:param-type param-type
-                         :param-value param-value
-                         :field-id    (second field)
-                         :type        qp.error-type/invalid-parameter}))))))
+  (let [{param-type :type, [a b :as param-value] :value, target :target, options :options} (normalize-param param)
+        field-ref (or (lib.util.match/match-one target
+                        :field
+                        (lib.convert/->pMBQL &match))
+                      (throw (ex-info (format "Invalid target: expected :field ref, got: %s" (pr-str target))
+                                      {:target target, :type qp.error-type/invalid-parameter})))
+        options   (or options {})]
+    (verify-type-and-arity field-ref param-type param-value)
+    (-> (case (operator-arity param-type)
+          :binary   [(keyword (name param-type)) options field-ref a b]
+          :unary    [(keyword (name param-type)) options field-ref a]
+          :variadic (into [(keyword (name param-type)) options field-ref] param-value)
+          #_else
+          (throw (ex-info (format "Unrecognized operator: %s" param-type)
+                          {:param-type  param-type
+                           :param-value param-value
+                           :field-id    (last field-ref)
+                           :type        qp.error-type/invalid-parameter})))
+        lib.normalize/normalize)))

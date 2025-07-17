@@ -124,6 +124,11 @@
     (when (= (:type card-meta) :metric)
       (assoc card-meta :lib/type :metadata/metric))))
 
+(mu/defn native-query-snippet :- [:maybe ::lib.schema.metadata/native-query-snippet]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   snippet-id            :- ::lib.schema.id/native-query-snippet]
+  (lib.metadata.protocols/native-query-snippet (->metadata-provider metadata-providerable) snippet-id))
+
 (mu/defn table-or-card :- [:maybe [:or ::lib.schema.metadata/card ::lib.schema.metadata/table]]
   "Convenience, for frontend JS usage (see #31915): look up metadata based on Table ID, handling legacy-style
   `card__<id>` strings as well. Throws an Exception (Clj-only, due to Malli validation) if passed an integer Table ID

@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.template-tag
   (:require
    [malli.core :as mc]
+   [medley.core :as m]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]

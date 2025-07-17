@@ -29,7 +29,7 @@
               (is (malli= [:map
                            [:native ms/NonBlankString]
                            [:params [:= ["G%"]]]]
-                          (qp.native/expand-inner query))))))))))
+                          (qp.native/expand-stage query))))))))))
 
 (deftest ^:parallel native-query-with-card-template-tag-include-referenced-card-ids-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries :native-parameter-card-reference)
@@ -49,7 +49,7 @@
           ;; to run Card 2 that should be sufficient to run it even if it references Card 1 (see #15131)
           (mt/with-metadata-provider (mt/id)
             (is (=? {:query-permissions/referenced-card-ids #{Integer/MAX_VALUE card-2-id}}
-                    (qp.native/expand-inner {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
+                    (qp.native/expand-stage {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
                                              :template-tags {"card" {:name         "card"
                                                                      :display-name "card"
                                                                      :type         :card

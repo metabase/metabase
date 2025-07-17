@@ -48,7 +48,7 @@
   Signifies this is one of the new 'operator' parameter types added in 0.39.0 or so. These parameters can only be used
   for [[TemplateTag:FieldFilter]]s or for Dashboard parameters mapped to MBQL queries. The value of this key is the
   arity for the parameter, either `:unary`, `:binary`, or `:variadic`. See
-  the [[metabase.driver.common.parameters.operators]] namespace for more information.
+  the [[metabase.query-processor.parameters.operators]] namespace for more information.
 
   ### `:allowed-for`
 
@@ -194,13 +194,13 @@
 (mr/def ::dimension.target
   [:multi {:dispatch lib.schema.common/mbql-clause-tag
            :error/fn (fn [{:keys [value]} _]
-                       (str "Invalid :dimension target: must be either a :field or a :template-tag, got: "
+                       (str "Invalid :dimension target: must be a :field, :template-tag, or :expression, got: "
                             (pr-str value)))}
    [:field        [:ref ::legacy-field-ref]]
    [:expression   [:ref ::legacy-expression-ref]]
    [:template-tag [:ref ::template-tag]]])
 
-(mr/def ::DimensionOptions
+(mr/def ::dimension.options
   [:map
    {:error/message "dimension options"}
    [:stage-number {:optional true} :int]])
@@ -209,10 +209,11 @@
   [:catn
    [:tag     [:= {:decode/normalize lib.schema.common/normalize-keyword} :dimension]]
    [:target  ::dimension.target]
-   [:options [:? [:maybe ::DimensionOptions]]]])
-;;; this is the reference like [:template-tag <whatever>], not the schema for native query template tags -- that lives
-;;; in [[metabase.lib.schema.template-tag]]
+   [:options [:? [:maybe ::dimension.options]]]])
+
 (mr/def ::template-tag
+  "This is the reference like [:template-tag <whatever>], not the schema for native query template tags -- that lives
+  in [[metabase.lib.schema.template-tag]]."
   [:tuple
    #_tag      [:= {:decode/normalize lib.schema.common/normalize-keyword} :template-tag]
    #_tag-name [:multi {:dispatch map?}
@@ -234,8 +235,21 @@
    [:dimension [:ref ::dimension]]
    [:variable  [:ref ::variable]]])
 
+(defn- normalize-parameter
+  [param]
+  (when (map? param)
+    (let [param (lib.schema.common/normalize-map param)]
+      (case (keyword (:type param))
+        :number/between
+        (let [[l u] (:value param)]
+          (cond-> param
+            (nil? u) (assoc :type :number/>=, :value [l])
+            (nil? l) (assoc :type :number/<=, :value [u])))
+        param))))
+
 (mr/def ::parameter
   [:map
+   {:decode/normalize normalize-parameter}
    [:type [:ref ::type]]
    ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
    ;; At some point we need to go fix those tests and then make these keys required

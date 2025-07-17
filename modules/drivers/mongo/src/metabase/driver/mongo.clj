@@ -160,7 +160,7 @@
   7)
 
 (def ^:private leaf-fields-limit
-  "Consider at most 1K leaf paths to sync. That combined with [[describe-table-query-depth]] (= 7) gives at most 
+  "Consider at most 1K leaf paths to sync. That combined with [[describe-table-query-depth]] (= 7) gives at most
   7K app-db fields per collection."
   1000)
 
@@ -179,12 +179,12 @@
 (def ^:private unwind-stages
   "Sequence of stages repeated in _search_ phase of [[describe-table-pipeline]]
     for [[describe-table-query-depth]] times.
-  
+
     Each repetion $unwinds documents having `val` of type \"object\", so those are __swapped__ for sequence
     of their children.
-  
+
     Documents with non-object val are left untouched.
-  
+
     Each document that is processed has path from parent stored in `path`. `indices` represent indices of keys
     in the `path` in parent objects as per $objectToArray."
   [{"$addFields" {"kvs" {"$cond" [{"$eq" [{"$type" "$val"} "object"]} {"$objectToArray" "$val"} nil]}}}
@@ -494,7 +494,7 @@
   (mongo.connection/with-mongo-client [_ (driver-api/database (driver-api/metadata-provider))]
     (mongo.execute/execute-reducible-query query respond)))
 
-(defmethod driver/substitute-native-parameters :mongo
+(defmethod driver/substitute-native-parameters-mbql-5 :mongo
   [driver inner-query]
   (mongo.params/substitute-native-parameters driver inner-query))
 

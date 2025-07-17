@@ -1,8 +1,8 @@
 (ns metabase.channel.params
   (:require
    [clojure.string :as str]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.parse :as params.parse]))
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]))
 
 (defn- param-name->path
   [param-name]

@@ -1,12 +1,12 @@
-(ns metabase.driver.common.parameters.parse-test
+(ns metabase.query-processor.parameters.parse-test
   (:require
    [clojure.test :refer :all]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.query-processor.parameters :as params]
+   [metabase.query-processor.parameters.parse :as params.parse]
    [metabase.lib.parse :as lib.parse]))
 
-(defn- param [field-name] (params/->Param field-name))
-(defn- optional [& args] (params/->Optional args))
+(defn- param [field-name] (params/param field-name))
+(defn- optional [& args] (params/optional args))
 
 (defn- normalize-tokens
   [tokens]
