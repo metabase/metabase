@@ -3,7 +3,7 @@ import type { CompletionContext } from "@codemirror/autocomplete";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { clausesForMode } from "../clause";
+import { getSupportedClauses } from "../clause";
 import {
   GROUP,
   LOGICAL_AND,
@@ -34,13 +34,9 @@ export function suggestFunctions({ expressionMode, query, metadata }: Options) {
   }
 
   const database = getDatabase(query, metadata);
-  const functions = clausesForMode(expressionMode)
-    .filter((clause) => database?.hasFeature(clause.requiresFeature))
-    .map((func) =>
-      expressionClauseCompletion(func, {
-        type: "function",
-      }),
-    );
+  const functions = getSupportedClauses({ expressionMode, database }).map(
+    (func) => expressionClauseCompletion(func, { type: "function" }),
+  );
 
   const matcher = fuzzyMatcher({ options: functions });
 

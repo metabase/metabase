@@ -1,6 +1,5 @@
 export * from "./clause";
 export * from "./complete";
-export * from "./config";
 export * from "./diagnostics";
 export * from "./errors";
 export * from "./formatter";

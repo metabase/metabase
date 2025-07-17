@@ -3,7 +3,7 @@ import type { CompletionContext } from "@codemirror/autocomplete";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { clausesForMode } from "../clause";
+import { getSupportedClauses } from "../clause";
 import { GROUP } from "../pratt";
 import { getDatabase } from "../utils";
 
@@ -32,9 +32,9 @@ export function suggestAggregations({
   }
 
   const database = getDatabase(query, metadata);
-  const aggregations = clausesForMode(expressionMode)
-    .filter((clause) => database?.hasFeature(clause.requiresFeature))
-    .map((agg) => expressionClauseCompletion(agg, { type: "aggregation" }));
+  const aggregations = getSupportedClauses({ expressionMode, database }).map(
+    (agg) => expressionClauseCompletion(agg, { type: "aggregation" }),
+  );
 
   const matcher = fuzzyMatcher({ options: aggregations });
 

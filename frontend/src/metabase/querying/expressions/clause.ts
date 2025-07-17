@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
+import type Database from "metabase-lib/v1/metadata/Database";
 
 import {
   AGGREGATION_FUNCTIONS,
@@ -78,3 +79,22 @@ export const clausesForMode = _.memoize(
   },
   (expressionMode) => expressionMode,
 );
+
+export function getSupportedClauses({
+  expressionMode,
+  database,
+}: {
+  expressionMode: Lib.ExpressionMode;
+  database?: Database | null;
+}) {
+  return clausesForMode(expressionMode)
+    .filter((clause) => database?.hasFeature(clause.requiresFeature))
+    .filter(function disableOffsetInFilterExpressions(clause) {
+      const isOffset = clause.name === "offset";
+      const isFilterExpression = expressionMode === "filter";
+      const isOffsetInFilterExpression = isOffset && isFilterExpression;
+      return !isOffsetInFilterExpression;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
