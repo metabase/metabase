@@ -35,10 +35,9 @@
   [x]
   (into []
         (distinct)
-        (lib.util.match/match x
+        (lib.util.match/match (dissoc x :lib/stage-metadata)
           [:field (_opts :guard (every-pred :source-field (complement :join-alias))) _id-or-oname]
-          (when-not (some #{:lib/stage-metadata} &parents)
-            &match))))
+          &match)))
 
 (defn- join-alias [dest-table-name source-fk-field-name source-fk-join-alias]
   (lib.join.u/format-implicit-join-name dest-table-name source-fk-field-name source-fk-join-alias))
@@ -110,7 +109,7 @@
   problematic case is when refs with and without `:source-field-name` are mixed, but there should be the same implicit
   join for all of them."
   [metadata-providerable                                            :- ::lib.schema.metadata/metadata-providerable
-   {:keys [source-field source-field-name source-field-join-alias]} :- ::lib.schema.ref/field.options]
+   {:keys [source-field source-field-name source-field-join-alias]} :- :map] ; not `::lib.schema.ref/field.options` because this might come from a legacy ref
   (let [fk-field (lib.metadata/field metadata-providerable source-field)]
     (m/assoc-some {:fk-field-id source-field}
                   :fk-field-name (when (and (some? source-field-name) (not= source-field-name (:name fk-field)))
@@ -173,25 +172,33 @@
                    join-alias])))
         (visible-joins query path stage)))
 
+;;; TODO (Cam 7/17/25) -- it seems weird to be updating quite possibly the least important part of stage metadata --
+;;; legacy `:field-ref`, which is generally only provided by the QP as a courtesy for use for legacy purposes as a key
+;;; in viz settings and nothing else. Why aren't we adding `:metabase.lib.join/join-alias` keys or anything like that?
+;;; Why aren't we adding metadata for the fields we spliced in here? It all seems kinda fishy. It might be possible to
+;;; take this out completely without breaking anything.
 (mu/defn- add-implicit-joins-aliases-to-metadata :- ::lib.schema/stage
-  "Add `:join-alias`es to fields containing `:source-field` in `:lib/stage-metadata` of `query`.
+  "Add `:join-alias`es to legacy field refs for fields containing `:source-field` in `:lib/stage-metadata` of `query`.
   It is required, that `:source-query` has already it's joins resolved. It is valid, when no `:join-alias` could be
   found. For examaple during remaps, metadata contain fields with `:source-field`, that are not used further in their
   `:source-query`."
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
-  (when-let [previous-path (lib.walk/previous-path path)]
-    (let [previous-stage            (get-in query previous-path)
-          fk-field-info->join-alias (construct-fk-field-info->join-alias query previous-path previous-stage)]
-      (update-in stage
-                 [:lib/stage-metadata :columns]
-                 #(lib.util.match/replace %
-                    [:field (opts :guard (every-pred :source-field (complement :join-alias))) id-or-name]
-                    (let [join-alias (fk-field-info->join-alias (field-opts->fk-field-info query opts))]
-                      (if (some? join-alias)
-                        [:field (assoc opts :join-alias join-alias) id-or-name]
-                        &match)))))))
+  (let [fk-field-info->join-alias (construct-fk-field-info->join-alias query path stage)]
+    (letfn [(update-legacy-field-ref [field-ref]
+              ;; field ref should be a LEGACY field ref.
+              (lib.util.match/replace field-ref
+                [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
+                (let [join-alias (fk-field-info->join-alias (field-opts->fk-field-info query opts))]
+                  (if (some? join-alias)
+                    [:field id-or-name (assoc opts :join-alias join-alias)]
+                    &match))))
+            (update-col [col]
+              (m/update-existing col :field-ref update-legacy-field-ref))
+            (update-cols [cols]
+              (mapv update-col cols))]
+      (update-in stage [:lib/stage-metadata :columns] update-cols))))
 
 (mu/defn- add-join-alias-to-fields-with-source-field :- ::lib.schema/stage
   "Add `:field` `:join-alias` to `:field` clauses with `:source-field` in `form`. Ignore `:lib/stage-metadata`."
@@ -389,13 +396,13 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
-  (let [first-stage? (zero? (last path))]
-    (-> stage
-        (cond->> (and (not first-stage?) (:lib/stage-metadata stage)) (add-implicit-joins-aliases-to-metadata query path))
-        (->> (resolve-implicit-joins-this-level query path)))))
+  (-> stage
+      (->> (resolve-implicit-joins-this-level query path))
+      (cond->> (:lib/stage-metadata stage) (add-implicit-joins-aliases-to-metadata query path))))
 
 (mu/defn- first-pass :- [:maybe ::lib.schema/stage]
-  "The first pass adds all of the new joins and updates metadata."
+  "The first pass adds all of the new joins ([[resolve-implicit-joins-this-level]]) and updates
+  metadata ([[add-implicit-joins-aliases-to-metadata]])."
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
@@ -410,7 +417,8 @@
     (resolve-implicit-joins query path stage)))
 
 (mu/defn- second-pass :- [:maybe ::lib.schema/stage]
-  "The second pass adds fields needed to perform any newly-added implicit joins in the next stage to the current stage."
+  "The second pass adds fields needed to perform any newly-added implicit joins in the next stage to the current
+  stage ([[add-fields-from-next-stage]])."
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]

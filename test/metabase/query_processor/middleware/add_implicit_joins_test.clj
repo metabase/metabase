@@ -929,6 +929,42 @@
                               :condition    [:= $orders.product-id->category &Q2.$reviews.product-id->category]
                               :strategy     :left-join}]})))))
 
+(deftest ^:parallel metadata-join-alias-test-2
+  ;; With remapping, metadata may contain field with `:source-field` which is not used in corresponding query.
+  ;;   See [[metabase.parameters.custom-values-test/with-mbql-card-test]].
+  (testing "`:join-alias` is correctly updated in metadata fields containing `:source-field`"
+    (testing "#26631 Case 2: Join query with implicit join into a query with a table as source"
+      (is (=? (lib.tu.macros/mbql-query products
+                {:source-table $$products
+                 :joins        [{:join-alias      "Q2"
+                                 :fields          :all
+                                 :condition       [:= $category &Q2.$orders.product-id->category]
+                                 :strategy        :left-join
+                                 :source-query    {:source-table $$orders
+                                                   :aggregation  [[:count]]
+                                                   :breakout     [&PRODUCTS__via__PRODUCT_ID.$orders.product-id->category]
+                                                   :joins        [{:alias        "PRODUCTS__via__PRODUCT_ID"
+                                                                   :fields       :none
+                                                                   :strategy     :left-join
+                                                                   :condition    [:= $orders.product-id &PRODUCTS__via__PRODUCT_ID.$id]
+                                                                   :source-table $$products
+                                                                   :fk-field-id  %orders.product-id}]}
+                                 :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID.$orders.product-id->category}]}]})
+              (add-implicit-joins
+               (lib.tu.macros/mbql-query products
+                 {:source-table $$products
+                  :joins        [{:join-alias      "Q2"
+                                  :fields          :all
+                                  :condition       [:= $category &Q2.$orders.product-id->category]
+                                  :strategy        :left-join
+                                  :source-query    {:source-table $$orders
+                                                    :aggregation  [[:count]]
+                                                    :breakout     [$orders.product-id->category]}
+                                  :source-metadata [{:name         "CATEGORY"
+                                                     :display_name "Category"
+                                                     :base_type    :type/Number
+                                                     :field_ref    $orders.product-id->category}]}]})))))))
+
 (deftest ^:parallel test-59695
   (testing "Resolving an implicit join should not add field refs to incorrect places (#59695)"
     (let [mp    (lib.tu/mock-metadata-provider
