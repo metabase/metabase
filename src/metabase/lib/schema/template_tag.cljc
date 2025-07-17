@@ -21,7 +21,7 @@
 (mr/def ::type
   [:enum
    {:decode/normalize common/normalize-keyword}
-   :snippet :card :dimension :number :text :date :temporal-unit])
+   :snippet :card :dimension :number :text :date :boolean :temporal-unit])
 
 (mr/def ::name
   [:ref

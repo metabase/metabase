@@ -18,7 +18,6 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -363,7 +362,7 @@
   "Check that a `card`, if it is using another Card as its source, does not have circular references between source
   Cards. (e.g. Card A cannot use itself as a source, or if A uses Card B as a source, Card B cannot use Card A, and so
   forth.)"
-  [{query :dataset_query, id :id}] ; don't use `u/the-id` here so that we can use this with `pre-insert` too
+  [{query :dataset_query, id :id}]      ; don't use `u/the-id` here so that we can use this with `pre-insert` too
   (loop [query query, ids-already-seen #{id}]
     (let [source-card-id (qp.util/query->source-card-id query)]
       (cond
@@ -632,7 +631,7 @@
                  (= (:type old-card-info) :model)
                  (not (model-supports-implicit-actions? changes)))
         (disable-implicit-action-for-model! id))
-      ;; Changing from a Model to a Question: archive associated actions and strip the model out of `:ident`s.
+      ;; Changing from a Model to a Question: archive associated actions
       (when (and (= (:type changes) :question)
                  (= (:type old-card-info) :model))
         (t2/update! :model/Action {:model_id id :type [:not= :implicit]} {:archived true})
@@ -668,82 +667,6 @@
                                                    (:database_id card))
                                                   (lib/query (:dataset_query card))
                                                   lib/suggested-name))))
-
-(defn- derive-ident [prefix entity_id stage-number tail]
-  (let [entity_id (cond-> entity_id
-                    (instance? clojure.lang.IDeref entity_id) deref)]
-    (if (= entity_id ::before-insert)
-      ;; If this is a fresh insert, it's safe to generate them at random rather than deriving them!
-      (u/generate-nano-id)
-      ;; If entity_id is provided instead, then derive an opaque string based on that entity_id.
-      (str prefix "_" entity_id "@" stage-number "__" tail))))
-
-(defn- ensure-clause-idents-list [existing xs prefix stage-number {:keys [entity_id] :as _ctx}]
-  (into {} (map (fn [i]
-                  [i (or (get existing i)
-                         (derive-ident prefix entity_id stage-number i))]))
-        (range (count xs))))
-
-(defn- ensure-clause-idents-expressions [existing expressions stage-number {:keys [entity_id] :as _ctx}]
-  (m/map-kv-vals (fn [expr-name _expr-clause]
-                   (or (get existing expr-name)
-                       (derive-ident "expression" entity_id stage-number expr-name)))
-                 expressions))
-
-(defn- ensure-clause-idents-joins [joins stage-number {:keys [entity_id] :as _ctx}]
-  (mapv #(cond-> %
-           (not (:ident %)) (assoc :ident (derive-ident "join" entity_id stage-number (:alias %))))
-        joins))
-
-(defn- ensure-clause-idents-inner [inner-query ctx]
-  (mbql.u/map-stages
-   (fn [query stage-number]
-     (cond-> query
-       (:aggregation query) (update :aggregation-idents
-                                    ensure-clause-idents-list (:aggregation query) "aggregation" stage-number ctx)
-       (:expressions query) (update :expression-idents
-                                    ensure-clause-idents-expressions (:expressions query) stage-number ctx)
-       (:breakout query) (update :breakout-idents
-                                 ensure-clause-idents-list (:breakout query) "breakout" stage-number ctx)
-       (:joins query) (update :joins
-                              ensure-clause-idents-joins stage-number ctx)))
-   inner-query))
-
-(defn- ensure-clause-idents-outer [{:keys [query type] :as outer-query} ctx]
-  (cond-> outer-query
-    (and (= type :query) query) (update :query ensure-clause-idents-inner ctx)))
-
-(defn- ensure-clause-idents
-  ([card]
-   (ensure-clause-idents card nil))
-  ([card forced-entity-id]
-   (let [hashed-eid (atom false)
-         entity-id  (or forced-entity-id
-                        (:entity_id card)
-                        (delay
-                          ;; When the card does not already have an `entity_id`, use serdes hashing to backfill it.
-                          ;; If the columns necessary for that serdes hashing were not selected, throw a specific error
-                          ;; which is caught and logged below.
-                          ;; NOTE: These columns must be kept in sync with the [[serdes/hash-fields]] for :model/Card.
-                          (when-not (every? #(contains? card %) [:collection_id :created_at :name])
-                            (throw (ex-info "Best-effort backfill of :entity_id on :model/Card failed"
-                                            {::best-effort-backfill true})))
-                          (reset! hashed-eid true)
-                          (serdes/backfill-entity-id card)))
-         ;; Calculate the new query. If we need to backfill its `:entity_id` but it fails, it will throw a specific
-         ;; exception that gets caught here, making query' nil. In that case the card is returned unchanged.
-         query'    (when (:dataset_query card)
-                     (try
-                       (ensure-clause-idents-outer (:dataset_query card) {:entity_id entity-id})
-                       (catch clojure.lang.ExceptionInfo e
-                         (when-not (::best-effort-backfill (ex-data e))
-                           (throw e))
-                         (log/warnf "Best-effort backfill of :entity_id failed for Card %d" (:id card))
-                         nil)))]
-     (cond-> card
-       query'      (assoc :dataset_query query')
-       ;; If we did have to generate the hashed entity_id, include it on the returned card as well.
-       @hashed-eid (assoc :entity_id @entity-id)))))
 
 ;; Schema upgrade: 20 to 21 ==========================================================================================
 ;; Originally this backfilled `:ident`s on all columns in `:result_metadata`.
@@ -797,7 +720,6 @@
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
-      ensure-clause-idents
       ;; At this point, the card should be at schema version 20 or higher.
       upgrade-card-schema-to-latest))
 
@@ -807,9 +729,9 @@
       (assoc :metabase_version config/mb-version-string
              :card_schema current-schema-version)
       maybe-normalize-query
-      ; Add any missing idents on the query (expr, breakout, agg) before populating :result_metadata.
-      (ensure-clause-idents ::before-insert)
-      (u/assoc-default :entity_id (u/generate-nano-id)) ; Must have an entity_id before populating the metadata.
+      ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
+      ;; since we're removing `:ident`s; we can probably remove this now.
+      (u/assoc-default :entity_id (u/generate-nano-id))
       card.metadata/populate-result-metadata
       pre-insert
       populate-query-fields))
@@ -826,24 +748,6 @@
   (if-let [dashboard-id (:dashboard_id changes)]
     (assoc card :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))
     card))
-
-(defn- strip-model-from-idents
-  [result-metadata
-   {eid :entity_id :as _card}]
-  (mapv #(lib/remove-model-ident % eid) result-metadata))
-
-(defn- normalize-result-metadata-idents
-  "If the `:type` is changing, the `:result_metadata` needs to change too, either adding or removing model details
-  from the `:ident`s."
-  [card]
-  (let [changes (t2/changes card)
-        input-metadata (:result_metadata card)
-        updated-metadata (case (:type changes)
-                           :question (strip-model-from-idents input-metadata card)
-                           :model (card.metadata/fix-incoming-idents input-metadata card)
-                           nil)]
-    (cond-> card
-      updated-metadata (assoc :result_metadata updated-metadata))))
 
 (defn- populate-result-metadata
   "If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
@@ -865,7 +769,6 @@
         (assoc :card_schema current-schema-version)
         (apply-dashboard-question-updates changes)
         maybe-normalize-query
-        normalize-result-metadata-idents
         (populate-result-metadata changes verified-result-metadata?)
         (pre-update changes)
         populate-query-fields
@@ -878,10 +781,9 @@
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
   (t2/delete! :model/ParameterCard :card_id id)
-  (t2/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (t2/delete! 'Revision :model "Card", :model_id id))
+  (t2/delete! :model/ModerationReview :moderated_item_type "card", :moderated_item_id id)
+  (t2/delete! :model/Revision :model "Card", :model_id id))
 
-;; NOTE: The columns required for this hashing must be kept in sync with [[ensure-clause-idents]].
 (defmethod serdes/hash-fields :model/Card
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
@@ -1014,11 +916,10 @@
                                                  :creator_id (:id creator)
                                                  :parameters (or parameters [])
                                                  :parameter_mappings (or parameter_mappings [])
-                                                 :entity_id          (u/generate-nano-id))
+                                                 :entity_id (u/generate-nano-id))
                                                 (cond-> (nil? type)
                                                   (assoc :type :question))
-                                                maybe-normalize-query
-                                                (ensure-clause-idents ::before-insert))
+                                                maybe-normalize-query)
          {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
                                              {:query     (:dataset_query card-data)
                                               :metadata  result_metadata
@@ -1155,12 +1056,12 @@
   eg. in [[breakouts-->identifier->action]] docstring. Then, dashcards are fetched and updates are generated
   by [[updates-for-dashcards]]. Updates are then executed."
   [card-before card-after]
-  (let [card->breakout     #(-> % :dataset_query mbql.normalize/normalize :query :breakout)
-        breakout-before    (card->breakout card-before)
-        breakout-after     (card->breakout card-after)]
+  (let [card->breakout  #(-> % :dataset_query mbql.normalize/normalize :query :breakout)
+        breakout-before (card->breakout card-before)
+        breakout-after  (card->breakout card-after)]
     (when-some [identifier->action (breakouts-->identifier->action breakout-before breakout-after)]
-      (let [dashcards          (t2/select :model/DashboardCard :card_id (some :id [card-after card-before]))
-            updates            (updates-for-dashcards identifier->action dashcards)]
+      (let [dashcards (t2/select :model/DashboardCard :card_id (some :id [card-after card-before]))
+            updates   (updates-for-dashcards identifier->action dashcards)]
         ;; Beware. This can have negative impact on card update performance as queries are fired in sequence. I'm not
         ;; aware of more reasonable way.
         (when (seq updates)
@@ -1337,7 +1238,8 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(def ^:private base-search-spec
+(defn ^:private base-search-spec
+  []
   {:model        :model/Card
    :attrs        {:archived            true
                   :collection-id       true
@@ -1356,7 +1258,13 @@
                   :verified            [:= "verified" :mr.status]
                   :view-count          true
                   :created-at          true
-                  :updated-at          true}
+                  :updated-at          true
+                  :display-type        :this.display
+                  ;; Visualizer compatibility filtering
+                  :has-temporal-dimensions [:case
+                                            [:and [:is-not :this.result_metadata nil]
+                                             [:like :this.result_metadata "%\"temporal_unit\":%"]] true
+                                            :else false]}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
@@ -1391,10 +1299,10 @@
    #_:end})
 
 (search/define-spec "card"
-  (-> base-search-spec (sql.helpers/where [:= :this.type "question"])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "question"])))
 
 (search/define-spec "dataset"
-  (-> base-search-spec (sql.helpers/where [:= :this.type "model"])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "model"])))
 
 (search/define-spec "metric"
-  (-> base-search-spec (sql.helpers/where [:= :this.type "metric"])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "metric"])))

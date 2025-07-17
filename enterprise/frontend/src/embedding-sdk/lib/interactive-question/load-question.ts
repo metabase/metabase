@@ -14,6 +14,7 @@ export const loadQuestionSdk =
     deserializedCard,
     questionId: initQuestionId,
     initialSqlParameters,
+    targetDashboardId,
   }: LoadSdkQuestionParams) =>
   async (
     dispatch: Dispatch,
@@ -36,6 +37,9 @@ export const loadQuestionSdk =
       originalCard && new Question(originalCard, metadata);
 
     let question = new Question(card, metadata);
+    if (targetDashboardId) {
+      question = question.setDashboardId(targetDashboardId);
+    }
 
     question = question.applyTemplateTagParameters();
 
