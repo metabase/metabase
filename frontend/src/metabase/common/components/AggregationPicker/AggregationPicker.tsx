@@ -17,7 +17,7 @@ import { useSelector } from "metabase/lib/redux";
 import {
   ExpressionWidget,
   ExpressionWidgetHeader,
-} from "metabase/query_builder/components/expressions/ExpressionWidget";
+} from "metabase/query_builder/components/expressions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
