@@ -6,8 +6,8 @@ describe("position", () => {
   it("returns the correct position", () => {
     const token = new Token({
       type: CALL,
-      pos: 4,
-      length: 12,
+      start: 4,
+      end: 16,
       text: "foo",
     });
     const node = {
