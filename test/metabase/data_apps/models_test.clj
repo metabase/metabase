@@ -20,7 +20,7 @@
       (let [retention-per-app 5
             retention-total   5
 
-           ;; Create an app with a bunch of releases with a bunch of interspersed definitions.
+            ;; Create an app with a bunch of releases with a bunch of interspersed definitions.
             num-versions      5
             defs-per-version  5
             num-definitions   (inc (* num-versions defs-per-version))
@@ -36,7 +36,7 @@
                                                                       :creator_id      creator_id
                                                                       :revision_number (inc i)
                                                                       :config          data-apps.tu/default-app-definition-config})]
-                                   ;; Create release for positions 1 and 4 (0-indexed) = revisions 2 and 5
+                                    ;; Create release for positions 1 and 4 (0-indexed) = revisions 2 and 5
                                     (when (= 1 (mod i defs-per-version))
                                       (t2/insert! :model/DataAppRelease
                                                   {:app_id            app-id
@@ -52,7 +52,7 @@
             revisions         (revisions-fn)]
 
         (testing "Definitions were deleted"
-         ;; We expect some deletions based on retention policies
+          ;; We expect some deletions based on retention policies
           (is (= 15 deleted-count)))
 
         (testing "Final count respects global retention limit"
@@ -66,8 +66,8 @@
                                             (map inc)))))
 
         (testing "We additionally retain the 5 most recent versions"
-         ;; Given that we are retaining v22 (because it's released) and v26 (because it's the latest), it would
-         ;; probably be more intuitive to NOT keep versions 20 and 21 as we already have the 5 most recent.
+          ;; Given that we are retaining v22 (because it's released) and v26 (because it's the latest), it would
+          ;; probably be more intuitive to NOT keep versions 20 and 21 as we already have the 5 most recent.
           (is (= #{2 7 12 17 20 21 22 23 24 25 26} revisions)))
 
         (testing "Idempotency: running pruning again should delete nothing"
@@ -80,37 +80,37 @@
             retention-per-app   5
             retention-total     18
 
-           ;; Create N apps with definitions created in time order
-           ;; App 1 oldest, App N newest.
-           ;; Each app has the following sequence of definitions: u r u u r u u u u u, where
-           ;; u - unreleased
-           ;; r - was released
+            ;; Create N apps with definitions created in time order
+            ;; App 1 oldest, App N newest.
+            ;; Each app has the following sequence of definitions: u r u u r u u u u u, where
+            ;; u - unreleased
+            ;; r - was released
             protected-revisions [2 5 10]
-            app-ids                (doall
-                                    (for [i (range num-apps)]
-                                      (let [app-idx    (inc i)
-                                            creator_id (mt/user->id :crowberto)
-                                            app-id     (t2/insert-returning-pk! :model/DataApp
-                                                                                {:name       (str "App " (inc app-idx))
-                                                                                 :slug       (str "app-" (inc app-idx))
-                                                                                 :creator_id creator_id
-                                                                                 :status     :private})]
-                                        (doseq [i (range 10)]
-                                          (let [time (+ 1000000 (* app-idx 10000) (* i 1000))
-                                                did  (t2/insert-returning-pk! :model/DataAppDefinition
-                                                                              {:app_id          app-id
-                                                                               :creator_id      creator_id
-                                                                               :revision_number (inc i)
-                                                                               :config          data-apps.tu/default-app-definition-config
-                                                                               :created_at      (Instant/ofEpochSecond time)})]
-                                        ;; Create release for positions 1 and 4 (0-indexed) = revisions 2 and 5
-                                            (when (#{1 4} i)
-                                              (t2/insert! :model/DataAppRelease
-                                                          {:app_id            app-id
-                                                           :app_definition_id did
-                                                           :creator_id        creator_id
-                                                           :created_at        (Instant/ofEpochSecond (+ time 100))}))))
-                                        app-id)))
+            app-ids             (doall
+                                 (for [i (range num-apps)]
+                                   (let [app-idx    (inc i)
+                                         creator_id (mt/user->id :crowberto)
+                                         app-id     (t2/insert-returning-pk! :model/DataApp
+                                                                             {:name       (str "App " (inc app-idx))
+                                                                              :slug       (str "app-" (inc app-idx))
+                                                                              :creator_id creator_id
+                                                                              :status     :private})]
+                                     (doseq [i (range 10)]
+                                       (let [time (+ 1000000 (* app-idx 10000) (* i 1000))
+                                             did  (t2/insert-returning-pk! :model/DataAppDefinition
+                                                                           {:app_id          app-id
+                                                                            :creator_id      creator_id
+                                                                            :revision_number (inc i)
+                                                                            :config          data-apps.tu/default-app-definition-config
+                                                                            :created_at      (Instant/ofEpochSecond time)})]
+                                         ;; Create release for positions 1 and 4 (0-indexed) = revisions 2 and 5
+                                         (when (#{1 4} i)
+                                           (t2/insert! :model/DataAppRelease
+                                                       {:app_id            app-id
+                                                        :app_definition_id did
+                                                        :creator_id        creator_id
+                                                        :created_at        (Instant/ofEpochSecond (+ time 100))}))))
+                                     app-id)))
 
             deleted-count       (#'data-apps.models/prune-definitions! retention-per-app retention-total)
 
@@ -120,11 +120,11 @@
             remaining-pairs     (remaining-pairs-fn)]
 
         (testing "Definitions were deleted"
-         ;; We expect some deletions based on retention policies
+          ;; We expect some deletions based on retention policies
           (is (= 21 deleted-count)))
 
         (testing "Final count respects global retention limit"
-         ;; This is a lax inequality as we're also keeping additional protected definitions.
+          ;; This is a lax inequality as we're also keeping additional protected definitions.
           (is (<= (max (* num-apps retention-per-app) retention-total)
                   (count remaining-pairs))))
 
@@ -137,11 +137,11 @@
                      (mapcat (fn [app-id revisions]
                                (map (partial vector app-id) revisions))
                              app-ids
-                             [[2   5         10]
-                              [2   5         10]
-                              [2   5 6 7 8 9 10]
-                              [2 4 5 6 7 8 9 10]
-                              [2 4 5 6 7 8 9 10]]))
+                             [[2     5 10]
+                              [2     5 10]
+                              [2     5 6 7 8 9 10]
+                              [2   4 5 6 7 8 9 10]
+                              [2   4 5 6 7 8 9 10]]))
                remaining-pairs))
 
         (testing "Idempotency: running pruning again should delete nothing"
