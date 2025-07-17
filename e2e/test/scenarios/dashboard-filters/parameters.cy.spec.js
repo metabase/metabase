@@ -860,7 +860,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget");
+        expect(search).to.match(/\?category-\d+=Gadget/);
       });
 
       // Add a second filter
@@ -887,7 +887,7 @@ describe("scenarios > dashboard > parameters", () => {
         .should("exist");
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget&count=6000");
+        expect(search).to.match(/\?category-\d+=Gadget&count-\d+=6000/);
       });
 
       H.getDashboardCard(1).within(() => {
@@ -902,7 +902,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget&count=");
+        expect(search).to.match(/\?category-\d+=Gadget&count-\d+=/);
       });
     });
 
@@ -982,7 +982,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?count=4000");
+        expect(search).to.match(/\?count-\d+=4000/);
       });
     });
 
@@ -1265,7 +1265,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Gizmo").should("not.exist");
       });
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Doohickey&category_1=");
+        expect(search).to.match(/\?category-\d+=Doohickey&category_1-\d+=/);
       });
 
       H.getDashboardCard(2).within(() => {
@@ -1280,7 +1280,9 @@ describe("scenarios > dashboard > parameters", () => {
         .findByText(/No results/)
         .should("exist");
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Doohickey&category_1=Gizmo");
+        expect(search).to.match(
+          /\?category-\d+=Doohickey&category_1-\d+=Gizmo/,
+        );
       });
 
       H.getDashboardCard(0).within(() => H.clearFilterWidget());
@@ -1290,7 +1292,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Gizmo").should("exist");
       });
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=&category_1=Gizmo");
+        expect(search).to.match(/\?category-\d+=&category_1-\d+=Gizmo/);
       });
     });
 
@@ -1314,6 +1316,7 @@ describe("scenarios > dashboard > parameters", () => {
               row: 1,
               size_x: 12,
               size_y: 6,
+              inline_parameters: [categoryParameter.id],
               parameter_mappings: [
                 {
                   parameter_id: categoryParameter.id,
@@ -1354,14 +1357,14 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       H.getDashboardCard(1).within(() => {
-        cy.findByText("Gadget").should("be.visible");
+        cy.findAllByText("Gadget").should("be.visible");
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gizmo").should("not.exist");
         cy.findByText("Widget").should("not.exist");
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget");
+        expect(search).to.match(/\?category-\d+=Gadget/);
       });
     });
 
@@ -1480,7 +1483,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget");
+        expect(search).to.match(/\?category-\d+=Gadget/);
       });
 
       // Verify filter doesn't show up in the dashboard header
@@ -1631,7 +1634,7 @@ describe("scenarios > dashboard > parameters", () => {
         });
 
         cy.location().should(({ search }) => {
-          expect(search).to.eq("?category=Gadget");
+          expect(search).to.match(/\?category-\d+=Gadget/);
         });
 
         // Verify filter doesn't show up in the dashboard header
@@ -1820,7 +1823,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget");
+        expect(search).to.match(/\?category-\d+=Gadget/);
       });
     });
 
@@ -1998,7 +2001,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?count=4000");
+        expect(search).to.match(/\?count-\d+=4000/);
       });
     });
 
@@ -2324,8 +2327,8 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq(
-          "?category=Widget&category_1=Doohickey&count=5000",
+        expect(search).to.match(
+          /\?category-\d+=Widget&category_1-\d+=Doohickey&count=5000/,
         );
       });
     });
@@ -2390,7 +2393,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget");
+        expect(search).to.match(/\?category-\d+=Gadget/);
       });
     });
 
@@ -2503,6 +2506,88 @@ H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
       event_detail: "id",
       target_id: ORDERS_DASHBOARD_ID,
     });
+  });
+
+  it("should allow parameters with same name in different contexts but not within same context", () => {
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Test Question",
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 5,
+        },
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    H.editDashboard();
+
+    // Dashboard-level Category
+    H.setFilter("Text or Category", "Is", "Category");
+    H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+    cy.button("Done").click();
+
+    // Try to add another dashboard-level filter with the same name
+    H.setFilter("Text or Category", "Is", "Category");
+    H.sidebar()
+      .findByText("This label is already in use.")
+      .should("be.visible");
+
+    H.sidebar().button("Remove").click();
+
+    // Question-level Category
+    H.setDashCardFilter(0, "Text or Category", "Is", "Category");
+    H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+    cy.button("Done").click();
+
+    H.saveDashboard();
+
+    // Dashboard-level Category
+    H.filterWidget().contains("Category").click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+
+    // Question dashcard Category
+    H.getDashboardCard(0).findByTestId("parameter-widget").click();
+    H.popover().within(() => {
+      cy.findByText("Gizmo").click();
+      cy.button("Add filter").click();
+    });
+
+    H.getDashboardCard(0).findByText("No results!").should("be.visible");
+    // Verify URL has unique slugs for inline parameters
+    cy.url().should(
+      "match",
+      /\/dashboard\/\d+\?category=Gadget&category-\d+=Gizmo/,
+    );
+
+    // Capture current URL and construct new URL with same parameter names but different values
+    cy.location().then(({ pathname, search }) => {
+      const params = new URLSearchParams(search);
+
+      // Update parameter values while preserving parameter names
+      params.set("category", "Widget");
+      const categoryParam = [...params.keys()].find((key) =>
+        key.startsWith("category-"),
+      );
+      if (categoryParam) {
+        params.set(categoryParam, "Gadget");
+      }
+
+      cy.visit(`${pathname}?${params.toString()}`);
+    });
+
+    // Ensure values from the URL are applied correctly
+    cy.findByTestId("dashboard-parameters-widget-container")
+      .findByText("Widget")
+      .should("be.visible");
+    H.getDashboardCard(0)
+      .findByTestId("parameter-widget")
+      .findByText("Gadget")
+      .should("be.visible");
   });
 });
 

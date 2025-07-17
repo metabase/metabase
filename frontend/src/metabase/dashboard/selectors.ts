@@ -16,6 +16,7 @@ import {
   getUnsavedDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import { getParameterUrlSlug } from "metabase/parameters/utils/parameter-context";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
@@ -27,10 +28,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { getIsWebApp } from "metabase/selectors/web-app";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import Question from "metabase-lib/v1/Question";
-import {
-  getValuePopulatedParameters as _getValuePopulatedParameters,
-  getParameterValuesBySlug,
-} from "metabase-lib/v1/parameters/utils/parameter-values";
+import { getValuePopulatedParameters as _getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   DashCardId,
@@ -287,12 +285,31 @@ const getIsParameterValuesEmpty = createSelector(
 );
 
 export const getParameterValuesBySlugMap = createSelector(
-  [getDashboardComplete, getParameterValues],
-  (dashboard, parameterValues) => {
+  [getDashboardComplete, getParameterValues, getDashcards],
+  (dashboard, parameterValues, dashcards) => {
     if (!dashboard) {
       return {};
     }
-    return getParameterValuesBySlug(dashboard.parameters, parameterValues);
+
+    const parameters = dashboard.parameters ?? [];
+    const parameterValuesById = parameterValues ?? {};
+    const dashcardList = Object.values(dashcards);
+
+    return Object.fromEntries(
+      parameters.map((parameter) => {
+        const dashcard = findDashCardForInlineParameter(
+          parameter.id,
+          dashcardList,
+        );
+
+        const slug = getParameterUrlSlug(parameter, dashcard);
+
+        return [
+          slug,
+          parameter.value ?? parameterValuesById[parameter.id] ?? null,
+        ];
+      }),
+    );
   },
 );
 

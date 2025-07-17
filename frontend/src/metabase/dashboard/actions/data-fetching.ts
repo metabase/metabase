@@ -1,4 +1,5 @@
 import { createAction } from "@reduxjs/toolkit";
+import type { Query } from "history";
 import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
 import { match } from "ts-pattern";
@@ -19,6 +20,7 @@ import {
 import {
   expandInlineDashboard,
   fetchDataOrError,
+  findDashCardForInlineParameter,
   getAllDashboardCards,
   getCurrentTabDashboardCards,
   getDashboardType,
@@ -33,6 +35,7 @@ import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { uuid } from "metabase/lib/uuid";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import { getParameterUrlSlug } from "metabase/parameters/utils/parameter-context";
 import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -46,7 +49,7 @@ import {
 } from "metabase/services";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
+import { getParameterValueFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 import type {
@@ -57,6 +60,9 @@ import type {
   DashboardId,
   Dataset,
   DatasetQuery,
+  ParameterId,
+  ParameterValueOrArray,
+  ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -613,6 +619,53 @@ function sortById(a: UiParameter, b: UiParameter) {
   return a.id.localeCompare(b.id);
 }
 
+function getParameterValuesByIdFromQueryParamsWithInlineSupport(
+  parameters: UiParameter[],
+  queryParams: Query,
+  dashcards: DashboardCard[],
+  lastUsedParametersValues?: ParameterValuesMap,
+): Record<ParameterId, ParameterValueOrArray> {
+  const entries = parameters
+    .map((parameter) => {
+      const dashcard = findDashCardForInlineParameter(parameter.id, dashcards);
+
+      if (dashcard) {
+        const inlineSlug = getParameterUrlSlug(parameter, dashcard);
+        const modifiedQueryParams = { ...queryParams };
+
+        if (queryParams[inlineSlug] !== undefined) {
+          modifiedQueryParams[parameter.slug] = queryParams[inlineSlug];
+          const value = getParameterValueFromQueryParams(
+            parameter,
+            modifiedQueryParams,
+            lastUsedParametersValues,
+          );
+          return value !== null ? ([parameter.id, value] as const) : null;
+        } else {
+          // For inline parameters without a value in the URL, check for default or last used
+          const value = getParameterValueFromQueryParams(
+            parameter,
+            {},
+            lastUsedParametersValues,
+          );
+          return value !== null ? ([parameter.id, value] as const) : null;
+        }
+      } else {
+        const value = getParameterValueFromQueryParams(
+          parameter,
+          queryParams,
+          lastUsedParametersValues,
+        );
+        return value !== null ? ([parameter.id, value] as const) : null;
+      }
+    })
+    .filter(
+      (entry): entry is [ParameterId, ParameterValueOrArray] => entry !== null,
+    );
+
+  return Object.fromEntries(entries);
+}
+
 // normalizr schemas
 const dashcardSchema = new schema.Entity("dashcard");
 const dashboardSchema = new schema.Entity("dashboard", {
@@ -630,7 +683,7 @@ export const fetchDashboard = createAsyncThunk(
       options: { preserveParameters = false, clearCache = true } = {},
     }: {
       dashId: DashboardId;
-      queryParams: ParameterValues;
+      queryParams: ParameterValues | null;
       options?: { preserveParameters?: boolean; clearCache?: boolean };
     },
     { getState, dispatch, rejectWithValue },
@@ -764,9 +817,10 @@ export const fetchDashboard = createAsyncThunk(
       );
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
-        : getParameterValuesByIdFromQueryParams(
+        : getParameterValuesByIdFromQueryParamsWithInlineSupport(
             parameters,
-            queryParams,
+            queryParams ?? {},
+            result.dashcards,
             lastUsedParametersValues,
           );
 
