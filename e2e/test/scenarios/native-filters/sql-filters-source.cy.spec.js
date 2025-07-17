@@ -714,7 +714,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       SQLFilter.enterParameterizedQuery("SELECT * FROM {{ tag }}");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Number");
-      SQLFilter.setMultiValue();
+      cy.findByLabelText("Multiple values").click();
       H.setSearchBoxFilterType();
       H.setFilterListSource({
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
@@ -800,7 +800,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       SQLFilter.enterParameterizedQuery("SELECT {{ tag }}");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Number");
-      SQLFilter.setMultiValue();
+      cy.findByLabelText("Multiple values").click();
 
       H.setSearchBoxFilterType();
       H.setFilterListSource({
