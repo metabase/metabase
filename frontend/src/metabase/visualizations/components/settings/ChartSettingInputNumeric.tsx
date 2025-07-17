@@ -81,7 +81,7 @@ export const ChartSettingInputNumeric = ({
       placeholder={placeholder}
       type="text"
       error={inputValue && isNaN(Number(inputValue))}
-      value={String(inputValue)}
+      value={inputValue}
       onChange={(e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.value.split("").every((ch) => ALLOWED_CHARS.has(ch))) {
           setInputValue(e.target.value);
