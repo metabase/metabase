@@ -116,20 +116,24 @@
                      :schema schema
                      :display-name display-name
                      :same-display-name-table-ids table-ids}))))
+;; WIP
+(defmethod driver/validate-query-for-view :postgres [_ query]
+  (let [last-stage (lib/query-stage query -1)
+        has-limit (contains? last-stage :limit)
+        has-order-by (seq (:order-by last-stage))]
 
-(defn- validate-stage-for-view* [s]
-  (let [has-limit (contains? s :limit)
-        has-order-by (seq (:order-by s))]
-    (when has-order-by
-      (when-not has-limit
-        #{::order-by-no-limit}))))
+    (if (and has-order-by (not has-limit))
+      {:status :warning
+       :issues [{:type :order-by-without-limit
+                 :severity :warning
+                 :message "ORDER BY without limit cannot be used in a view, will be ignored"}]}
+      {:status :valid})))
 
-(defn- validate-for-view [dataset-query]
+(defn- validate-for-view [driver dataset-query]
   (let [query (dataset-query->query dataset-query)
         query-type (query-type query)]
     (when (not= query-type :native)
-      (let [last-stage (lib/query-stage query -1)]
-        (validate-stage-for-view* last-stage)))))
+      (driver/validate-query-for-view driver query))))
 
 (defn insert-returning-instance!
   "Create new transform."
