@@ -822,9 +822,7 @@
 
   > **Code health:** Healthy"
   ([n unit]
-   (let [n    (if (string? n) (keyword n) n)
-         unit (if (string? unit) (keyword unit) unit)]
-     (lib.core/describe-temporal-interval n unit)))
+   (describe-temporal-interval n unit {}))
   ([n unit opts]
    (let [n    (if (string? n) (keyword n) n)
          unit (if (string? unit) (keyword unit) unit)]

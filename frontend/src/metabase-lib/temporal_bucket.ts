@@ -55,14 +55,10 @@ export function defaultTemporalBucket(
 
 type IntervalAmount = number | "current" | "next" | "last";
 
-type TemporalIntervalOptions = {
-  "include-current"?: boolean;
-};
-
 export function describeTemporalInterval(
   n: IntervalAmount,
   unit?: TemporalUnit,
-  opts?: TemporalIntervalOptions,
+  opts?: { "include-current"?: boolean },
 ): string {
   return ML.describe_temporal_interval(n, unit, opts);
 }
