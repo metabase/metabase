@@ -240,6 +240,7 @@ function getTargetsForVariables(legacyNativeQuery: NativeQuery): Target[] {
           text: TYPE.Text,
           number: TYPE.Number,
           date: TYPE.Temporal,
+          boolean: TYPE.Boolean,
         }[type]
       : undefined;
 

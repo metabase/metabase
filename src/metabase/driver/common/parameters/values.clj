@@ -319,6 +319,10 @@
   [tag params]
   (param-value-for-raw-value-tag tag params))
 
+(defmethod parse-tag :boolean
+  [tag params]
+  (param-value-for-raw-value-tag tag params))
+
 ;;; Parsing Values
 
 (mu/defn- parse-number :- number?
