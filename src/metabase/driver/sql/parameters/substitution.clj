@@ -365,7 +365,7 @@
           ;; otherwise convert single value to SQL.
           :else
           (field-filter->replacement-snippet-info driver field-filter))]
-    (if alias
+    (if (not (str/blank? alias))
       (let [[old-name] (->> [:field (:id field) {:base-type (:base-type field)
                                                  driver-api/qp.add.source-table (:table-id field)}]
                             (sql.qp/->honeysql driver)
