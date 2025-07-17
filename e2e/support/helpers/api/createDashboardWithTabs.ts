@@ -7,6 +7,7 @@ export function createDashboardWithTabs({
   tabs,
   ...dashboardDetails
 }: DashboardDetails): Cypress.Chainable<Dashboard> {
+  console.log(dashboardDetails, dashcards, tabs);
   // @ts-expect-error - Cypress typings don't account for what happens in then() here
   return createDashboard(dashboardDetails).then(({ body: dashboard }) => {
     cy.request<Dashboard>("PUT", `/api/dashboard/${dashboard.id}`, {
