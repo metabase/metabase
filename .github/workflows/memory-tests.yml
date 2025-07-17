@@ -82,7 +82,7 @@ jobs:
         env:
           MB_EDITION: ee
       - name: Run Memory Tests
-        run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:small-ram :only '"performance"'
+        run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:performance:small-ram :only '"performance"'
         shell: bash
       - name: Publish Test Report (JUnit)
         uses: dorny/test-reporter@v1

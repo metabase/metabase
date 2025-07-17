@@ -331,6 +331,9 @@
                  ;; TODO -- figure out how to do a random port like in the old project.clj?
                  "-Dmb.jetty.port=3001"]}
 
+  :performance
+  {:extra-paths ["performance"]}
+
   :small-ram
   {:jvm-opts ["-Xmx400m"
               "-Xms400m"
