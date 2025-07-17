@@ -127,7 +127,7 @@
 (defn searchable-documents
   "Return all existing searchable documents from the database."
   []
-  (vec (query->documents (search-items-reducible))))
+  (query->documents (search-items-reducible)))
 
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."
