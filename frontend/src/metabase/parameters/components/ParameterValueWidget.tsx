@@ -22,6 +22,7 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   areParameterValuesIdentical,
+  getIsMultiSelect,
   parameterHasNoDisplayValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Dashboard, ParameterId } from "metabase-types/api";
@@ -349,8 +350,9 @@ function hasNoPopover(parameter: UiParameter) {
 }
 
 function isTextWidget(parameter: UiParameter) {
+  const isMultiSelect = getIsMultiSelect(parameter);
   const canQuery = getQueryType(parameter) !== "none";
-  return parameter.hasVariableTemplateTagTarget && !canQuery;
+  return parameter.hasVariableTemplateTagTarget && !isMultiSelect && !canQuery;
 }
 
 function wrapArray<T>(value: T | T[]): T[] {
