@@ -9,9 +9,9 @@ import { t } from "ttag";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
   DashboardNotFoundError,
-  PublicComponentWrapper,
   SdkError,
   SdkLoader,
+  withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
@@ -23,17 +23,6 @@ import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { setEditingDashboard, toggleSidebar } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
-import { Grid } from "metabase/dashboard/components/Dashboard/components/Grid";
-import {
-  DashboardInfoButton,
-  ExportAsPdfButton,
-  FullscreenToggle,
-  NightModeToggleButton,
-} from "metabase/dashboard/components/DashboardHeader/buttons";
-import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
-import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
-import { DashboardTitle } from "metabase/dashboard/components/DashboardTitle";
-import { RefreshWidget } from "metabase/dashboard/components/RefreshWidget";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   type DashboardContextProps,
@@ -233,18 +222,30 @@ const SdkDashboardInner = ({
   );
 };
 
-export const SdkDashboard = ({ ...props }: SdkDashboardInnerProps) => (
-  <PublicComponentWrapper>
-    <SdkDashboardInner {...props} />
-  </PublicComponentWrapper>
-);
+export const SdkDashboard = withPublicComponentWrapper(
+  SdkDashboardInner,
+) as typeof SdkDashboardInner &
+  Pick<
+    typeof Dashboard,
+    | "Grid"
+    | "Header"
+    | "Title"
+    | "Tabs"
+    | "ParametersList"
+    | "FullscreenButton"
+    | "ExportAsPdfButton"
+    | "InfoButton"
+    | "NightModeButton"
+    | "RefreshPeriod"
+  >;
 
-SdkDashboard.Grid = Grid;
-SdkDashboard.ParameterList = DashboardParameterList;
-SdkDashboard.Title = DashboardTitle;
-SdkDashboard.Tabs = DashboardTabs;
-SdkDashboard.FullscreenButton = FullscreenToggle;
-SdkDashboard.ExportAsPdfButton = ExportAsPdfButton;
-SdkDashboard.InfoButton = DashboardInfoButton;
-SdkDashboard.NightModeButton = NightModeToggleButton;
-SdkDashboard.RefreshPeriod = RefreshWidget;
+SdkDashboard.Grid = Dashboard.Grid;
+SdkDashboard.Header = Dashboard.Header;
+SdkDashboard.Title = Dashboard.Title;
+SdkDashboard.Tabs = Dashboard.Tabs;
+SdkDashboard.ParametersList = Dashboard.ParametersList;
+SdkDashboard.FullscreenButton = Dashboard.FullscreenButton;
+SdkDashboard.ExportAsPdfButton = Dashboard.ExportAsPdfButton;
+SdkDashboard.InfoButton = Dashboard.InfoButton;
+SdkDashboard.NightModeButton = Dashboard.NightModeButton;
+SdkDashboard.RefreshPeriod = Dashboard.RefreshPeriod;
