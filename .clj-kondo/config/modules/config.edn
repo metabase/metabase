@@ -1766,9 +1766,11 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.semantic-search.core}
    :uses #{connection-pool
+           llm
            models
            premium-features
            search
+           settings
            util}}
 
   enterprise/serialization

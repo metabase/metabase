@@ -61,6 +61,7 @@
   enable-query-reference-validation?
   enable-sandboxes?
   enable-scim?
+  enable-semantic-search?
   enable-serialization?
   enable-session-timeout-config?
   enable-snippet-collections?
