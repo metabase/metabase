@@ -4,11 +4,15 @@
    [metabase-enterprise.semantic-search.db :as semantic.db]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util.log :as log]
-   [nano-id.core :as nano-id]))
+   [nano-id.core :as nano-id]
+   [toucan2.core :as t2]))
 
 (def ^:private mock-embeddings
   "Static mapping from strings to (made-up) 4-dimensional embedding vectors for testing. Each pair of strings represents a
@@ -34,7 +38,13 @@
    "Tiger Conservation"    [0.65 -0.74  0.83 -0.92]
    "endangered species"    [0.66 -0.73  0.84 -0.91]
    "Butterfly Migration"   [0.17  0.28 -0.39  0.50]
-   "insect patterns"       [0.18  0.29 -0.38  0.49]})
+   "insect patterns"       [0.18  0.29 -0.38  0.49]
+   "Loch Ness Stuff"       [0.88  0.40  0.12 -0.34]
+   "prehistoric monsters"  [0.89  0.41  0.13 -0.33]
+   "Bigfoot Sightings"     [0.91  0.56  0.75  0.11]
+   "spooky video evidence" [0.90  0.56  0.74  0.12]
+   "Monsters Table"        [0.44  0.13 -0.44  -0.88]
+   "monster facts"         [0.43  0.14 -0.43  -0.89]})
 
 (defn- filter-for-mock-embeddings
   "Filter results to only include items whose names are keys in mock-embeddings map."
@@ -86,11 +96,13 @@
        (mt/dataset ~(symbol "test-data")
          (mt/with-temp [:model/Collection       {col1# :id}  {:name "Wildlife Collection" :archived false}
                         :model/Collection       {col2# :id}  {:name "Archived Animals" :archived true}
+                        :model/Collection       {col3# :id}  {:name "Cryptozoology", :archived false}
                         :model/Card             {card1# :id} {:name "Dog Training Guide" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
                         :model/Card             {}           {:name "Bird Watching Tips" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
                         :model/Card             {}           {:name "Cat Behavior Study" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
                         :model/Card             {}           {:name "Horse Racing Analysis" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
                         :model/Card             {}           {:name "Fish Tank Setup" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
+                        :model/Card             {}           {:name "Bigfoot Sightings" :collection_id col3# :creator_id (mt/user->id :crowberto), :archived false}
                         :model/ModerationReview {}           {:moderated_item_type "card"
                                                               :moderated_item_id card1#
                                                               :moderator_id (mt/user->id :crowberto)
@@ -101,8 +113,10 @@
                         :model/Dashboard        {}           {:name "Penguin Colony Study" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
                         :model/Dashboard        {}           {:name "Whale Communication" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
                         :model/Dashboard        {}           {:name "Tiger Conservation" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
+                        :model/Dashboard        {}           {:name "Loch Ness Stuff" :collection_id col3# :creator_id (mt/user->id :crowberto), :archived false}
                         :model/Database         {db-id# :id} {:name "Animal Database"}
-                        :model/Table            {}           {:name "Species Table", :db_id db-id#}]
+                        :model/Table            {}           {:name "Species Table", :db_id db-id#}
+                        :model/Table            {}           {:name "Monsters Table", :db_id db-id#, :active true}]
            (search.core/reindex! :search.engine/semantic {:force-reset true})
            ~@body)))))
 
@@ -236,3 +250,37 @@
                 (is (every? #(and (= "dashboard" (:model %))
                                   (:verified %)
                                   (not (:archived %))) results))))))))))
+
+(deftest permissions-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-mocked-embeddings!
+      (with-index!
+        (let [monsters-table   (t2/select-one-pk :model/Table :name "Monsters Table")
+              q                (fn [model s] (map :name (semantic.index/query-index {:search-string s, :models [model]})))
+              all-users        (perms-group/all-users)
+              unrestrict-table (fn [table-id]
+                                 (data-perms/set-table-permission! all-users table-id :perms/create-queries :query-builder)
+                                 (data-perms/set-table-permission! all-users table-id :perms/view-data      :unrestricted))
+              restrict-table   (fn [table-id]
+                                 (data-perms/set-table-permission! all-users table-id :perms/create-queries :no)
+                                 (data-perms/set-table-permission! all-users table-id :perms/view-data      :blocked))]
+          (perms/revoke-collection-permissions! (perms-group/all-users) (t2/select-one :model/Collection :name "Cryptozoology"))
+          (restrict-table monsters-table)
+          (testing "admin"
+            (mt/with-test-user :crowberto
+              (testing "collection permissions"
+                (is (some #{"Loch Ness Stuff"}   (q "dashboard" "prehistoric monsters")))
+                (is (some #{"Bigfoot Sightings"} (q "card"      "spooky video evidence"))))
+              (testing "data permissions"
+                (is (some #{"Monsters Table"} (q "table" "monster facts"))))))
+          (testing "all-users"
+            (mt/with-test-user :rasta
+              (testing "collection permissions"
+                (is (not-any? #{"Loch Ness Stuff"}   (q "dashboard" "prehistoric monsters")))
+                (is (not-any? #{"Bigfoot Sightings"} (q "card"      "spooky video evidence"))))
+              (testing "data permissions"
+                (is (not-any? #{"Monsters Table"} (q "table" "monster facts"))))
+              (testing "give data permissions"
+                (unrestrict-table monsters-table)
+                (data-perms/disable-perms-cache
+                 (is (some #{"Monsters Table"} (q "table" "monster facts"))))))))))))
