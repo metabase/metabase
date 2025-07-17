@@ -4,8 +4,10 @@
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.util :as u]
    [metabase.util.log :as log]
-   [nano-id.core :as nano-id]))
+   [nano-id.core :as nano-id]
+   [next.jdbc :as jdbc]))
 
 (def ^:private init-delay
   (delay
@@ -104,3 +106,14 @@
      (with-temp-index-table!
        (search.core/reindex! :search.engine/semantic {:force-reset true})
        ~@body)))
+
+(defn table-exists-in-db?!
+  "Check if a table actually exists in the database"
+  [table-name]
+  (when table-name
+    (try
+      (let [result (jdbc/execute! @semantic.db/data-source
+                                  ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = ?)"
+                                   (u/lower-case-en (name table-name))])]
+        (-> result first vals first))
+      (catch Exception _ false))))
