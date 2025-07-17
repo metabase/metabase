@@ -104,6 +104,18 @@ describe("issue 61013", () => {
       cy.findByText("Orders question").should("be.visible");
       cy.findByText("2,000 rows").should("be.visible");
     });
+
+    cy.findByTestId("edit-bar")
+      .findByText("You're editing this dashboard.")
+      .should("be.visible");
+
+    H.saveDashboard();
+
+    H.getDashboardCards().should("have.length", 1);
+    H.getDashboardCard(0).within(() => {
+      cy.findByText("Orders question").should("be.visible");
+      cy.findByText("2,000 rows").should("be.visible");
+    });
   });
 
   it("should not wait for cards to load before switching to edit mode", () => {
