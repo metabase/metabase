@@ -132,7 +132,7 @@
 (lib.hierarchy/derive :metric ::ref)
 
 (letfn [(f [[tag :as _clause]]
-          (lib.hierarchy/isa? tag ::re))]
+          (lib.hierarchy/isa? tag ::ref))]
   (mr/def ::ref
     [:and
      ::mbql-clause/clause
