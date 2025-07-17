@@ -7,8 +7,8 @@
   background: var(--mb-color-background);
   color: var(--mb-color-text-primary);
   border: 1px solid var(--mb-color-border);
-  padding-left: 12px;
-  padding-right: 12px;
+  padding-left: var(--mantine-spacing-sm);
+  padding-right: var(--mantine-spacing-sm);
   border-radius: var(--mantine-radius-sm);
   transition: all 0.2s ease-in-out;
 
@@ -28,7 +28,9 @@
 
     .Prefix,
     .parameterIcon,
-    .widgetStatus {
+    .widgetStatus,
+    .widgetStatus button {
+      transition: all 0.2s ease-in-out;
       color: var(--mb-base-color-brand-60);
     }
   }
