@@ -51,9 +51,16 @@ export function FieldMappingSelect({
             hasSelectedDimensionField ? tag?.dimension?.[1] : null
           }
           setFieldFn={setFieldFn}
+          fieldFilter={getFieldFilter(tag)}
           isInitiallyOpen={!tag.dimension}
         />
       )}
     </InputContainer>
   );
+}
+
+function getFieldFilter(tag: TemplateTag) {
+  if (tag.type === "temporal-unit") {
+    return (field: Field) => field.isDate();
+  }
 }
