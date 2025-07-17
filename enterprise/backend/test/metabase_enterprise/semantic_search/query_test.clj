@@ -7,12 +7,15 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util.log :as log]
    [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
+
+(use-fixtures :once #'semantic.tu/once-fixture)
 
 (def ^:private mock-embeddings
   "Static mapping from strings to (made-up) 4-dimensional embedding vectors for testing. Each pair of strings represents a
@@ -59,18 +62,6 @@
                    semantic.embedding/get-embedding (fn [text#]
                                                       (get mock-embeddings text# [0.01 0.02 0.03 0.04]))]
        ~@body)))
-
-(def ^:private init-delay
-  (delay
-    (when-not @semantic.db/data-source
-      (semantic.db/init-db!))))
-
-(defn- once-fixture [f]
-  (when semantic.db/db-url
-    @init-delay
-    (f)))
-
-(use-fixtures :once #'once-fixture)
 
 (deftest database-initialised-test
   (is (some? @semantic.db/data-source))
