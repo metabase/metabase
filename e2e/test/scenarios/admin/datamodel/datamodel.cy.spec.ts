@@ -3281,6 +3281,35 @@ describe("scenarios > admin > datamodel", () => {
         "Use original value",
       );
 
+      cy.log("custom mapping");
+      FieldSection.getDisplayValuesInput().click();
+      H.popover().findByText("Custom mapping").click();
+      verifyAndCloseToast("Display values of Quantity updated");
+      H.modal().within(() => {
+        cy.findByDisplayValue("0")
+          .clear()
+          .type("XYZ", { scrollBehavior: "center" })
+          .blur();
+        cy.button("Save").click();
+      });
+      verifyToastAndUndo("Display values of Quantity updated");
+      FieldSection.get().button("Edit mapping").click();
+      H.modal().within(() => {
+        cy.findByDisplayValue("0").should("be.visible");
+        cy.findByDisplayValue("XYZ").should("not.exist");
+        cy.button("Close").click();
+      });
+
+      cy.log("foreign key");
+      TableSection.clickField("User ID");
+      FieldSection.getDisplayValuesInput().click();
+      H.popover().findByText("Use foreign key").click();
+      verifyToastAndUndo("Display values of User ID updated");
+      FieldSection.getDisplayValuesInput().should(
+        "have.value",
+        "Use original value",
+      );
+
       cy.log("JSON unfolding");
       TablePicker.getDatabase("Writable Postgres12").click();
       TablePicker.getTable("Many Data Types").click();
@@ -3425,7 +3454,7 @@ function verifyObjectDetailPreview({
 
 function verifyAndCloseToast(message: string) {
   H.undoToast().should("contain.text", message);
-  H.undoToast().icon("close").click();
+  H.undoToast().icon("close").click({ force: true });
 }
 
 function verifyToastAndUndo(message: string) {
