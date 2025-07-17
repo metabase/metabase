@@ -225,7 +225,6 @@ describe("scenarios > dashboard > parameters", () => {
 
     // Remove filter (metabase#17933)
     cy.icon("pencil").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     H.filterWidget({ isEditing: true, name: startsWith.name }).click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
