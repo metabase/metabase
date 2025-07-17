@@ -421,26 +421,20 @@
         query (lib/query mp (lib.metadata/card mp (:id card)))]
     (is (=? [{:name         "ID"
               :display-name "ID"
-              :ident        (lib/native-ident "ID" (:entity-id card))
               :lib/source   :source/card}
              {:name         "NAME"
               :display-name "Name"
-              :ident        (lib/native-ident "NAME" (:entity-id card))
               :lib/source   :source/card}
              {:name         "CATEGORY_ID"
               :display-name "Category ID"
-              :ident        (lib/native-ident "CATEGORY_ID" (:entity-id card))
               :lib/source   :source/card}
              {:name         "LATITUDE"
               :display-name "Latitude"
-              :ident        (lib/native-ident "LATITUDE" (:entity-id card))
               :lib/source   :source/card}
              {:name         "LONGITUDE"
               :display-name "Longitude"
-              :ident        (lib/native-ident "LONGITUDE" (:entity-id card))
               :lib/source   :source/card}
              {:name         "PRICE"
               :display-name "Price"
-              :ident        (lib/native-ident "PRICE" (:entity-id card))
               :lib/source   :source/card}]
             (lib/returned-columns query)))))

@@ -23,6 +23,7 @@ export const DataModel = {
     getNameInput: getTableNameInput,
     getDescriptionInput: getTableDescriptionInput,
     getSortButton: getTableSortButton,
+    getSortDoneButton: getTableSortDoneButton,
     getSortOrderInput: getTableSortOrderInput,
     getSyncOptionsButton: getTableSyncOptionsButton,
     getField: getTableSectionField,
@@ -221,6 +222,10 @@ function getTableDescriptionInput() {
 
 function getTableSortButton() {
   return getTableSection().button(/Sorting/);
+}
+
+function getTableSortDoneButton() {
+  return getTableSection().button(/Done/);
 }
 
 function getTableSortOrderInput() {

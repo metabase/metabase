@@ -16,16 +16,22 @@ export const getEmbedSidebar = () => cy.findByRole("complementary");
 export const getRecentItemCards = () =>
   cy.findAllByTestId("embed-recent-item-card");
 
-export const visitNewEmbedPage = () => {
+export const visitNewEmbedPage = ({ locale }: { locale?: string } = {}) => {
   cy.intercept("GET", "/api/dashboard/*").as("dashboard");
-  cy.visit("/embed-iframe");
+
+  const params = new URLSearchParams();
+
+  if (locale) {
+    params.append("locale", locale);
+  }
+
+  cy.visit("/embed-iframe?" + params);
   cy.wait("@dashboard");
 
-  cy.get("#iframe-embed-container").should(
-    "have.attr",
-    "data-iframe-loaded",
-    "true",
-  );
+  cy.get("#iframe-embed-container", {
+    // we are loading lots of JS, so on a slow connection it will take a long while.
+    timeout: 20000,
+  }).should("have.attr", "data-iframe-loaded", "true");
 };
 
 export const assertRecentItemName = (

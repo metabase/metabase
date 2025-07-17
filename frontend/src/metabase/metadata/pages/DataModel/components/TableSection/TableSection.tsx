@@ -13,14 +13,18 @@ import {
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Button, Group, Icon, Loader, Stack, Text } from "metabase/ui";
+import { Box, Group, Loader, Stack, Text } from "metabase/ui";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
+import { ResponsiveButton } from "../ResponsiveButton";
 
 import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
+import { useResponsiveButtons } from "./hooks";
+
+const OUTLINE_SAFETY_MARGIN = 2;
 
 interface Props {
   params: RouteParams;
@@ -31,13 +35,24 @@ interface Props {
 const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const { fieldId, ...parsedParams } = parseRouteParams(params);
   const [updateTable] = useUpdateTableMutation();
-  const [updateTableSorting, { isLoading: isChangingSorting }] =
+  const [updateTableSorting, { isLoading: isUpdatingSorting }] =
     useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
   const [isSorting, setIsSorting] = useState(false);
-  const hasFields = table.fields && table.fields.length > 0;
+  const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const {
+    buttonsContainerRef,
+    showButtonLabel,
+    setDoneButtonWidth,
+    setSortingButtonWidth,
+    setSyncButtonWidth,
+  } = useResponsiveButtons({
+    hasFields,
+    isSorting,
+    isUpdatingSorting,
+  });
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateTable({
@@ -144,42 +159,47 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
         />
       </Box>
 
-      <Stack gap="lg" px="xl">
+      <Stack gap="lg" px="xl" pt={OUTLINE_SAFETY_MARGIN}>
         <Stack gap={12}>
-          <Group align="center" gap="md" justify="space-between">
+          <Group
+            align="center"
+            gap="md"
+            justify="space-between"
+            miw={0}
+            wrap="nowrap"
+          >
             <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
 
             <Group
-              className={S.buttons}
               flex="1"
               gap="md"
               justify="flex-end"
+              miw={0}
+              ref={buttonsContainerRef}
               wrap="nowrap"
             >
-              {isChangingSorting && (
-                <Loader size="xs" data-testid="loading-indicator" />
+              {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
+
+              {isUpdatingSorting && (
+                <Loader data-testid="loading-indicator" size="xs" />
               )}
 
               {!isSorting && hasFields && (
-                <Button
-                  h={32}
-                  leftSection={<Icon name="sort_arrows" />}
-                  px="sm"
-                  py="xs"
-                  size="xs"
+                <ResponsiveButton
+                  icon="sort_arrows"
+                  showLabel={showButtonLabel}
                   onClick={() => setIsSorting(true)}
-                >{t`Sorting`}</Button>
+                  onRequestWidth={setSortingButtonWidth}
+                >{t`Sorting`}</ResponsiveButton>
               )}
 
               {!isSorting && (
-                <Button
-                  h={32}
-                  leftSection={<Icon name="gear_settings_filled" />}
-                  px="sm"
-                  py="xs"
-                  size="xs"
+                <ResponsiveButton
+                  icon="gear_settings_filled"
+                  showLabel={showButtonLabel}
                   onClick={onSyncOptionsClick}
-                >{t`Sync options`}</Button>
+                  onRequestWidth={setSyncButtonWidth}
+                >{t`Sync options`}</ResponsiveButton>
               )}
 
               {isSorting && (
@@ -190,13 +210,13 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
               )}
 
               {isSorting && (
-                <Button
-                  h={32}
-                  px="md"
-                  py="xs"
-                  size="xs"
+                <ResponsiveButton
+                  icon="check"
+                  showLabel={showButtonLabel}
+                  showIconWithLabel={false}
                   onClick={() => setIsSorting(false)}
-                >{t`Done`}</Button>
+                  onRequestWidth={setDoneButtonWidth}
+                >{t`Done`}</ResponsiveButton>
               )}
             </Group>
           </Group>
