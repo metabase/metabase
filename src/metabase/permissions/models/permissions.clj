@@ -416,7 +416,8 @@
 (defn grant-application-permissions!
   "Grant full permissions for a group to access a Application permisisons."
   [group-or-id perm-type]
-  (when (perms-group/is-tenant-group? group-or-id)
+  (when (and (perms-group/is-tenant-group? group-or-id)
+             (not= perm-type :subscription))
     (throw (ex-info (tru "Cannot grant application permission to a tenant group.") {})))
   (grant-permissions! group-or-id (permissions.path/application-perms-path perm-type)))
 
