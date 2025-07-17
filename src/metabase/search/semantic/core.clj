@@ -127,10 +127,7 @@
       (throw e))))
 
 (comment
-  (def docs (->> (search.ingestion/searchable-documents)
-                 remove-indexed-entities
-                 vec))
-  (into #{} (map :model docs))
+  (def docs (vec (search.ingestion/searchable-documents)))
   (init! docs {})
   (reindex! docs {}))
 

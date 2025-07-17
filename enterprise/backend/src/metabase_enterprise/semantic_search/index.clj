@@ -35,6 +35,10 @@
   "The number of documents to process per batch when updating the index."
   150)
 
+(def ^:dynamic *vector-dimensions*
+  "The number of dimensions in the vector embeddings for the current model."
+  1024)
+
 (defn- index-table-schema
   "Schema for the index table."
   [vector-dimensions]
