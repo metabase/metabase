@@ -7,12 +7,12 @@ import type {
 import type { IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-export type Completion = CodeMirrorCompletion & {
+export type ExpressionSuggestion = CodeMirrorCompletion & {
   icon: IconName;
   matches?: [number, number][];
   column?: Lib.ColumnMetadata;
 };
 
 export type CompletionResult = CodeMirrorCompletionResult & {
-  options: Completion[];
+  options: ExpressionSuggestion[];
 };

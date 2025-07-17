@@ -7,13 +7,14 @@ import type { EditorState } from "@codemirror/state";
 import { useMemo } from "react";
 import { usePrevious } from "react-use";
 
-import type { Completion } from "metabase/querying/expressions";
+import type { ExpressionSuggestion } from "metabase/querying/expressions";
 
 export function useCompletions(state: EditorState) {
   const completions = useMemo(() => {
     return {
       status: completionStatus(state),
-      options: (currentCompletions(state) ?? []) as readonly Completion[],
+      options: (currentCompletions(state) ??
+        []) as readonly ExpressionSuggestion[],
       selectedOption: selectedCompletionIndex(state),
     };
   }, [state]);

@@ -3,7 +3,7 @@ import { EditorView, tooltips } from "@codemirror/view";
 import { useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
-import { suggestions } from "metabase/querying/expressions/complete";
+import { suggestions } from "metabase/querying/expressions";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 

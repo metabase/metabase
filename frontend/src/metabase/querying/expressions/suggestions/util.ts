@@ -13,7 +13,7 @@ import {
 } from "../pratt";
 import type { MBQLClauseFunctionConfig } from "../types";
 
-import type { Completion } from "./types";
+import type { ExpressionSuggestion } from "./types";
 
 export function expressionClauseCompletion(
   clause: MBQLClauseFunctionConfig,
@@ -24,7 +24,7 @@ export function expressionClauseCompletion(
     type: string;
     matches?: [number, number][];
   },
-): Completion {
+): ExpressionSuggestion {
   const completion = snippetCompletion(expressionClauseSnippet(clause), {
     type,
     label: clause.displayName,
@@ -47,7 +47,7 @@ export const fuzzyMatcher = _.memoize(function ({
   options,
   keys = ["displayLabel"],
 }: {
-  options: Completion[];
+  options: ExpressionSuggestion[];
   keys?: (string | { name: string; weight?: number })[];
 }) {
   const fuse = new Fuse(options, {
