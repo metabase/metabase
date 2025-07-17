@@ -82,6 +82,7 @@
 (t2/define-before-delete :model/PermissionsGroupMembership
   [{:keys [group_id user_id]}]
   (check-not-all-users-group group_id)
+  (check-not-all-external-users-group group_id)
   ;; Otherwise if this is the Admin group...
   (when (= group_id (:id (perms-group/admin)))
     ;; ...and this is the last membership, throw an exception

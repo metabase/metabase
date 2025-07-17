@@ -672,6 +672,72 @@
         (is (= {:is-superuser? false, :pgm-exists? false}
                (superuser-and-admin-pgm-info email)))))))
 
+(deftest create-tenant-user-auto-assigned-to-external-users-group-test
+  (testing "POST /api/user"
+    (testing "Creating a tenant user automatically assigns them to All External Users group even when no groups are specified"
+      (mt/with-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Test Tenant" :slug "test-tenant"}]
+            (let [user-name (mt/random-name)
+                  email     (mt/random-email)]
+              (mt/with-model-cleanup [:model/User]
+                (mt/with-fake-inbox
+                  (let [resp (mt/user-http-request :crowberto :post 200 "user"
+                                                   {:first_name             user-name
+                                                    :last_name              user-name
+                                                    :email                  email
+                                                    :tenant_id              tenant-id})]
+                    (testing "response includes user_group_memberships"
+                      (is (= #{{:id (:id (perms-group/all-external-users))}}
+                             (set (:user_group_memberships resp)))))
+
+                    (testing "user is actually assigned to all expected groups in database"
+                      (let [created-user (t2/select-one :model/User :email email)]
+                        (is (= #{"All External Users"}
+                               (user-test/user-group-names created-user)))))
+
+                    (testing "tenant_id is set correctly"
+                      (let [created-user (t2/select-one :model/User :email email)]
+                        (is (= tenant-id (:tenant_id created-user)))))))))))))))
+
+(deftest create-tenant-user-must-assign-to-external-users-group-test
+  (testing "POST /api/user"
+    (testing "Creating a tenant user automatically assigns them to All External Users group even when other groups are specified"
+      (mt/with-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/PermissionsGroup group-1 {:name "Custom Group 1" :is_tenant_group true}
+                         :model/PermissionsGroup group-2 {:name "Custom Group 2" :is_tenant_group true}
+                         :model/Tenant {tenant-id :id} {:name "Test Tenant" :slug "test-tenant"}]
+            (let [user-name (mt/random-name)
+                  email     (mt/random-email)]
+              (mt/with-model-cleanup [:model/User]
+                (mt/with-fake-inbox
+                  (let [resp (mt/user-http-request :crowberto :post 400 "user"
+                                                   {:first_name             user-name
+                                                    :last_name              user-name
+                                                    :email                  email
+                                                    :tenant_id              tenant-id
+                                                    :user_group_memberships (group-or-ids->user-group-memberships
+                                                                             [group-1 group-2])})]
+                    (is (= "You cannot add or remove users to/from the 'All External Users' group." resp))))))))))))
+
+(deftest create-user-must-assign-to-all-users-group
+  (testing "POST /api/user"
+    (testing "Creating a tenant user automatically assigns them to All External Users group even when other groups are specified"
+      (mt/with-temp [:model/PermissionsGroup group-1 {:name "Custom Group 1"}
+                     :model/PermissionsGroup group-2 {:name "Custom Group 2"}]
+        (let [user-name (mt/random-name)
+              email     (mt/random-email)]
+          (mt/with-model-cleanup [:model/User]
+            (mt/with-fake-inbox
+              (let [resp (mt/user-http-request :crowberto :post 400 "user"
+                                               {:first_name             user-name
+                                                :last_name              user-name
+                                                :email                  email
+                                                :user_group_memberships (group-or-ids->user-group-memberships
+                                                                         [group-1 group-2])})]
+                (is (= "You cannot add or remove users to/from the 'All Users' group." resp))))))))))
+
 (deftest create-user-mixed-case-email
   (testing "POST /api/user/:id"
     (testing "can create a new User with a mixed case email and the email is normalized to lower case"
@@ -687,7 +753,7 @@
                                                    :email            (u/upper-case-en email)
                                                    :login_attributes {:test "value"}}))
                            (finally
-                             ;; clean up after ourselves
+                               ;; clean up after ourselves
                              (t2/delete! :model/User :email email)))))))))))
 
 (deftest create-user-mixed-case-email-2
@@ -811,7 +877,7 @@
           nonames   {:first_name nil :last_name nil}
           firstname {:first_name "Test" :last_name nil}
           lastname  {:first_name nil :last_name "User"}]
-      ;; starting with names
+        ;; starting with names
       (is (nil? (#'api.user/updated-user-name names {})))
       (is (nil? (#'api.user/updated-user-name names {:first_name "Test"})))
       (is (nil? (#'api.user/updated-user-name names {:last_name "User"})))
@@ -819,7 +885,7 @@
       (is (= {:first_name "T" :last_name "U"} (#'api.user/updated-user-name names {:first_name "T" :last_name "U"})))
       (is (= {:first_name "Test" :last_name "U"} (#'api.user/updated-user-name names {:last_name "U"})))
       (is (= {:first_name "T" :last_name "User"} (#'api.user/updated-user-name names {:first_name "T"})))
-      ;; starting with 'nil' names
+        ;; starting with 'nil' names
       (is (nil? (#'api.user/updated-user-name nonames {})))
       (is (nil? (#'api.user/updated-user-name nonames {:first_name nil})))
       (is (nil? (#'api.user/updated-user-name nonames {:last_name nil})))
@@ -827,7 +893,7 @@
       (is (= {:first_name "T" :last_name "U"} (#'api.user/updated-user-name nonames {:first_name "T" :last_name "U"})))
       (is (= {:first_name nil :last_name "U"} (#'api.user/updated-user-name nonames {:last_name "U"})))
       (is (= {:first_name "T" :last_name nil} (#'api.user/updated-user-name nonames {:first_name "T"})))
-      ;; starting with one name nil
+        ;; starting with one name nil
       (is (nil? (#'api.user/updated-user-name firstname {:first_name "Test" :last_name nil})))
       (is (nil? (#'api.user/updated-user-name firstname {:first_name "Test"})))
       (is (nil? (#'api.user/updated-user-name lastname {:first_name nil :last_name "User"})))
@@ -996,7 +1062,7 @@
 (deftest update-groups-test-2
   (testing "PUT /api/user/:id"
     (testing "if we pass user_group_memberships, and are updating ourselves as a non-superuser, the entire call should fail"
-      ;; By wrapping the test in this macro even if the test fails it will restore the original values
+        ;; By wrapping the test in this macro even if the test fails it will restore the original values
       (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:first_name "Rasta"}
         (mt/test-helpers-set-global-values!
           (with-preserved-rasta-personal-collection-name!
@@ -1156,7 +1222,7 @@
   (testing "PUT /api/user/:id/reactivate"
     (testing "Test that reactivating a disabled account works"
       (mt/with-temp [:model/User user {:is_active false}]
-        ;; now try creating the same user again, should re-activiate the original
+          ;; now try creating the same user again, should re-activiate the original
         (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user))
                               {:first_name (:first_name user)
                                :last_name  "whatever"
@@ -1194,10 +1260,10 @@
   (mt/with-temp [:model/User user {:password "def", :is_superuser (boolean superuser?)}]
     (let [creds           {:username (:email user), :password "def"}
           hashed-password (t2/select-one-fn :password :model/User, :%lower.email (u/lower-case-en (:email user)))]
-      ;; use API to reset the users password
+        ;; use API to reset the users password
       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
                                                                         :old_password "def"})
-      ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
+        ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
       (not= hashed-password (t2/select-one-fn :password :model/User, :%lower.email (u/lower-case-en (:email user)))))))
 
 (deftest can-reset-password-test
@@ -1415,7 +1481,8 @@
                                              :last_name "Manager"
                                              :email email
                                              :tenant_id tenant-id
-                                             :user_group_memberships [{:id tenant-group-id
+                                             :user_group_memberships [{:id (u/the-id (perms/all-external-users-group))}
+                                                                      {:id tenant-group-id
                                                                        :is_group_manager true}]})))))
 
           (testing "cannot make external user group manager via PUT"
@@ -1423,5 +1490,6 @@
               ;; This test is expected to fail until group manager restrictions are implemented
               (is (=? {:message "External users cannot be made group managers"}
                       (mt/user-http-request :crowberto :put 400 (str "user/" external-user-id)
-                                            {:user_group_memberships [{:id tenant-group-id
+                                            {:user_group_memberships [{:id (u/the-id (perms/all-external-users-group))}
+                                                                      {:id tenant-group-id
                                                                        :is_group_manager true}]}))))))))))
