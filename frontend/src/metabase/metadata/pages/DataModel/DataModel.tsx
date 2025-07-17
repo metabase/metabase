@@ -236,7 +236,7 @@ export const DataModel = ({ children, location, params }: Props) => {
                   }
                   message={
                     table
-                      ? t`Select a field to edit it. Then change the display name, semantic type or filtering behavior.`
+                      ? t`Select a field to edit its name, description, formatting, and more.`
                       : t`Browse your databases to find the table you’d like to edit.`
                   }
                 />

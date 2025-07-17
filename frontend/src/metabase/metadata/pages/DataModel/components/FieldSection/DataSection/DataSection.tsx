@@ -2,8 +2,8 @@ import { type ChangeEvent, memo, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
 import { CoercionStrategyPicker } from "metabase/metadata/components";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   canCoerceFieldType,
   getFieldRawName,
@@ -31,62 +31,74 @@ const DataSectionBase = ({ field }: Props) => {
   const [autoFocusCoercionPicker, setAutoFocusCoercionPicker] = useState(false);
   const [isCoercionPickerOpen, setIsCoercionPickerOpen] = useState(false);
   const [updateField] = useUpdateFieldMutation();
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
 
   useEffect(() => {
     setIsCasting(field.coercion_strategy != null);
     setAutoFocusCoercionPicker(false);
   }, [field.coercion_strategy]);
 
-  const handleCastingChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    setIsCasting(event.target.checked);
-    setAutoFocusCoercionPicker(event.target.checked);
-    setIsCoercionPickerOpen(true);
+  const disableCasting = async () => {
+    const { error } = await updateField({
+      id,
+      coercion_strategy: null,
+    });
 
-    if (!event.target.checked && field.coercion_strategy !== null) {
-      const { error } = await updateField({
-        id,
-        coercion_strategy: null,
-      });
-
-      if (error) {
-        sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "var(--mb-color-warning)",
-          message: t`Failed to disable casting for ${field.display_name}`,
-        });
-      } else {
-        sendToast({
-          icon: "check",
-          message: t`Casting disabled for ${field.display_name}`,
-        });
-      }
+    if (error) {
+      sendErrorToast(t`Failed to disable casting for ${field.display_name}`);
+    } else {
+      sendSuccessToast(
+        t`Casting disabled for ${field.display_name}`,
+        async () => {
+          const { error } = await updateField({
+            id,
+            coercion_strategy: field.coercion_strategy,
+          });
+          sendUndoToast(error);
+        },
+      );
     }
   };
 
-  const handleCoercionStrategyChange = async (coercionStrategy: string) => {
+  const handleCastingChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    setIsCasting(event.target.checked);
+    setAutoFocusCoercionPicker(event.target.checked);
+
+    if (event.target.checked) {
+      setIsCoercionPickerOpen(true);
+    } else if (field.coercion_strategy != null) {
+      await disableCasting();
+    }
+  };
+
+  const handleCoercionStrategyChange = async (
+    coercionStrategy: string | null,
+  ) => {
     const { error } = await updateField({
       id,
       coercion_strategy: coercionStrategy,
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message:
-          field.coercion_strategy == null
-            ? t`Failed to enable casting for ${field.display_name}`
-            : t`Failed to update casting for ${field.display_name}`,
-      });
+      sendErrorToast(
+        field.coercion_strategy == null
+          ? t`Failed to enable casting for ${field.display_name}`
+          : t`Failed to update casting for ${field.display_name}`,
+      );
     } else {
-      sendToast({
-        icon: "check",
-        message:
-          field.coercion_strategy == null
-            ? t`Casting enabled for ${field.display_name}`
-            : t`Casting updated for ${field.display_name}`,
-      });
+      sendSuccessToast(
+        field.coercion_strategy == null
+          ? t`Casting enabled for ${field.display_name}`
+          : t`Casting updated for ${field.display_name}`,
+        async () => {
+          const { error } = await updateField({
+            id,
+            coercion_strategy: field.coercion_strategy,
+          });
+          sendUndoToast(error);
+        },
+      );
     }
   };
 

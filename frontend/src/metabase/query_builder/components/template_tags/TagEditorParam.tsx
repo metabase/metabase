@@ -243,7 +243,9 @@ class TagEditorParamInner extends Component<
         ...tag,
         dimension,
         alias: undefined,
-        "widget-type": getDefaultParameterWidgetType(tag, field),
+        ...(tag.type === "dimension"
+          ? { "widget-type": getDefaultParameterWidgetType(tag, field) }
+          : {}),
       };
 
       setTemplateTag({
@@ -287,11 +289,17 @@ class TagEditorParamInner extends Component<
       embeddedParameterVisibility,
       setTemplateTagConfig,
     } = this.props;
+
+    const isDimension = tag.type === "dimension";
+    const isTemporalUnit = tag.type === "temporal-unit";
+    const hasSelectedDimensionField =
+      (isDimension || isTemporalUnit) && Array.isArray(tag.dimension);
+
     let widgetOptions: WidgetOption[] = [];
     let field: Field | null = null;
     let table: Table | null | undefined = null;
     let fieldMetadataLoaded = false;
-    if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
+    if ((isDimension || isTemporalUnit) && Array.isArray(tag.dimension)) {
       field = metadata.field(tag.dimension[1]);
       if (field) {
         widgetOptions = getParameterOptionsForField(field);
@@ -299,11 +307,6 @@ class TagEditorParamInner extends Component<
         fieldMetadataLoaded = true;
       }
     }
-
-    const isDimension = tag.type === "dimension";
-    const isTemporalUnit = tag.type === "temporal-unit";
-    const hasSelectedDimensionField =
-      isDimension && Array.isArray(tag.dimension);
     const hasWidgetOptions = widgetOptions.length > 0;
 
     return (
@@ -311,26 +314,49 @@ class TagEditorParamInner extends Component<
         className={TagEditorParamS.TagContainer}
         data-testid={`tag-editor-variable-${tag.name}`}
       >
-        {isTemporalUnit && parameter && (
+        <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
+        <Box component="h3" className={TagEditorParamS.TagName}>
+          {tag.name}
+        </Box>
+        <VariableTypeSelect value={tag.type} onChange={this.setType} />
+
+        {(isDimension || isTemporalUnit) && (
+          <FieldMappingSelect
+            tag={tag}
+            hasSelectedDimensionField={hasSelectedDimensionField}
+            table={table}
+            field={field}
+            fieldMetadataLoaded={fieldMetadataLoaded}
+            database={database}
+            databases={databases}
+            setFieldFn={this.setDimension}
+          />
+        )}
+
+        {isDimension && hasSelectedDimensionField && (
+          <FieldAliasInput tag={tag} field={field} onChange={this.setAlias} />
+        )}
+
+        {hasSelectedDimensionField && (
+          <FilterWidgetTypeSelect
+            tag={tag}
+            value={this.getFilterWidgetTypeValue(tag)}
+            onChange={this.setWidgetType}
+            options={widgetOptions}
+          />
+        )}
+
+        {(!isDimension || hasWidgetOptions) && (
+          <FilterWidgetLabelInput
+            tag={tag}
+            onChange={(value) =>
+              this.setParameterAttribute("display-name", value)
+            }
+          />
+        )}
+
+        {parameter && isTemporalUnit && (
           <>
-            <ContainerLabel paddingTop>{t`Parameter name`}</ContainerLabel>
-            <Box mb="xl" className={TagEditorParamS.Parameter}>
-              {tag.name}
-            </Box>
-
-            <ContainerLabel>{t`Parameter type`}</ContainerLabel>
-            <Box
-              mb="xl"
-              className={TagEditorParamS.Parameter}
-            >{t`time_grouping`}</Box>
-
-            <FilterWidgetLabelInput
-              tag={tag}
-              onChange={(value) =>
-                this.setParameterAttribute("display-name", value)
-              }
-            />
-
             <ContainerLabel>{t`Time grouping options`}</ContainerLabel>
             <Box mb="xl">
               <TemporalUnitSettings
@@ -353,51 +379,6 @@ class TagEditorParamInner extends Component<
               />
             </Box>
           </>
-        )}
-
-        {!isTemporalUnit && (
-          <>
-            <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
-            <Box component="h3" className={TagEditorParamS.TagName}>
-              {tag.name}
-            </Box>
-            <VariableTypeSelect value={tag.type} onChange={this.setType} />
-          </>
-        )}
-
-        {tag.type === "dimension" && (
-          <FieldMappingSelect
-            tag={tag}
-            hasSelectedDimensionField={hasSelectedDimensionField}
-            table={table}
-            field={field}
-            fieldMetadataLoaded={fieldMetadataLoaded}
-            database={database}
-            databases={databases}
-            setFieldFn={this.setDimension}
-          />
-        )}
-
-        {hasSelectedDimensionField && (
-          <FieldAliasInput tag={tag} field={field} onChange={this.setAlias} />
-        )}
-
-        {hasSelectedDimensionField && (
-          <FilterWidgetTypeSelect
-            tag={tag}
-            value={this.getFilterWidgetTypeValue(tag)}
-            onChange={this.setWidgetType}
-            options={widgetOptions}
-          />
-        )}
-
-        {(hasWidgetOptions || (!isDimension && !isTemporalUnit)) && (
-          <FilterWidgetLabelInput
-            tag={tag}
-            onChange={(value) =>
-              this.setParameterAttribute("display-name", value)
-            }
-          />
         )}
 
         {parameter && canUseCustomSource(parameter) && (
