@@ -1,6 +1,7 @@
 import type { FunctionComponent } from "react";
 
 import { Loader } from "embedding-sdk/sdk-wrapper/components/private/Loader/Loader";
+import { SDK_BUNDLE_LOADING_ERROR_MESSAGE } from "embedding-sdk/sdk-wrapper/config";
 import { useWaitForSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-wait-for-sdk-bundle";
 
 type Props<TComponentProps> = {
@@ -12,10 +13,16 @@ const ComponentWrapperInner = <TComponentProps,>({
   getComponent,
   componentProps,
 }: Props<TComponentProps>) => {
-  const { isLoading } = useWaitForSdkBundle();
+  const { isLoading, isError } = useWaitForSdkBundle();
 
   if (isLoading) {
     return <Loader />;
+  }
+
+  if (isError) {
+    return (
+      <div style={{ margin: "1rem 0" }}>{SDK_BUNDLE_LOADING_ERROR_MESSAGE}</div>
+    );
   }
 
   const Component = getComponent();

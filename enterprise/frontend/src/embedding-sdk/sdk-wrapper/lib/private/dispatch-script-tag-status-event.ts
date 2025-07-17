@@ -1,11 +1,11 @@
-import { SCRIPT_TAG_LOADING_EVENT_NAME } from "embedding-sdk/sdk-wrapper/config";
-import type { ScriptTagLoadingEvent } from "embedding-sdk/sdk-wrapper/types/script-tag";
+import { SDK_BUNDLE_SCRIPT_LOADING_EVENT_NAME } from "embedding-sdk/sdk-wrapper/config";
+import type { SdkBundleScriptLoadingEvent } from "embedding-sdk/sdk-wrapper/types/sdk-bundle-script";
 
 export function dispatchScriptTagStatusEvent(
-  status: ScriptTagLoadingEvent["status"],
+  status: SdkBundleScriptLoadingEvent["status"],
 ) {
-  const sdkLoadingEvent = new CustomEvent<ScriptTagLoadingEvent>(
-    SCRIPT_TAG_LOADING_EVENT_NAME,
+  const sdkLoadingEvent = new CustomEvent<SdkBundleScriptLoadingEvent>(
+    SDK_BUNDLE_SCRIPT_LOADING_EVENT_NAME,
     {
       bubbles: true,
       composed: true,

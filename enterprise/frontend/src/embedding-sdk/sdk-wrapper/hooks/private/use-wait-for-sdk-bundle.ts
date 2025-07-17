@@ -1,32 +1,34 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { SCRIPT_TAG_LOADING_EVENT_NAME } from "embedding-sdk/sdk-wrapper/config";
-import type { ScriptTagLoadingEvent } from "embedding-sdk/sdk-wrapper/types/script-tag";
+import { SDK_BUNDLE_SCRIPT_LOADING_EVENT_NAME } from "embedding-sdk/sdk-wrapper/config";
+import type {
+  SdkBundleScriptLoadingEvent,
+  SdkBundleScriptLoadingState,
+} from "embedding-sdk/sdk-wrapper/types/sdk-bundle-script";
 
 export function useWaitForSdkBundle() {
-  const [isLoading, setLoading] = useState<boolean>(
-    window.EMBEDDING_SDK_BUNDLE_LOADING ?? true,
+  const [loadingState, setLoadingState] = useState<SdkBundleScriptLoadingState>(
+    window.EMBEDDING_SDK_BUNDLE_LOADING_STATE ?? "loading",
   );
 
+  const isLoaded = loadingState === "loaded";
+  const isLoading = loadingState === "loading";
+  const isError = loadingState === "error";
+
   const updateLoadingState = useCallback(
-    (isLoading: boolean) => {
-      window.EMBEDDING_SDK_BUNDLE_LOADING = isLoading;
-      setLoading(isLoading);
+    (loadingState: SdkBundleScriptLoadingState) => {
+      window.EMBEDDING_SDK_BUNDLE_LOADING_STATE = loadingState;
+      setLoadingState(loadingState);
     },
-    [setLoading],
+    [setLoadingState],
   );
 
   const handleSdkLoadingEvent = useCallback(
     (event: Event) => {
-      const customEvent = event as CustomEvent<ScriptTagLoadingEvent>;
+      const customEvent = event as CustomEvent<SdkBundleScriptLoadingEvent>;
 
-      switch (customEvent.detail.status) {
-        case "loading":
-          updateLoadingState(true);
-          return;
-        case "loaded":
-          updateLoadingState(false);
-          return;
+      if (customEvent.detail.status) {
+        updateLoadingState(customEvent.detail.status);
       }
     },
     [updateLoadingState],
@@ -34,17 +36,17 @@ export function useWaitForSdkBundle() {
 
   useEffect(() => {
     document.addEventListener(
-      SCRIPT_TAG_LOADING_EVENT_NAME,
+      SDK_BUNDLE_SCRIPT_LOADING_EVENT_NAME,
       handleSdkLoadingEvent,
     );
 
     return () => {
       document.removeEventListener(
-        SCRIPT_TAG_LOADING_EVENT_NAME,
+        SDK_BUNDLE_SCRIPT_LOADING_EVENT_NAME,
         handleSdkLoadingEvent,
       );
     };
   }, [handleSdkLoadingEvent]);
 
-  return { isLoading };
+  return { isLoaded, isLoading, isError };
 }

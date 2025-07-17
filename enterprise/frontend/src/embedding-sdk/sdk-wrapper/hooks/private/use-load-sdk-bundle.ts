@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { SCRIPT_TAG_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk/sdk-wrapper/config";
+import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk/sdk-wrapper/config";
 import { dispatchScriptTagStatusEvent } from "embedding-sdk/sdk-wrapper/lib/private/dispatch-script-tag-status-event";
 import { getSdkBundleScriptElement } from "embedding-sdk/sdk-wrapper/lib/private/get-sdk-bundle-script-element";
 
@@ -9,7 +9,7 @@ const loadSdkBundle = async (metabaseInstanceUrl: string) => {
     const script = document.createElement("script");
 
     script.async = true;
-    script.dataset[SCRIPT_TAG_DATA_ATTRIBUTE_PASCAL_CASED] = "true";
+    script.dataset[SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED] = "true";
     script.src = `${process.env.EMBEDDING_SDK_BUNDLE_HOST || metabaseInstanceUrl}/app/embedding-sdk.js`;
 
     document.body.appendChild(script);
