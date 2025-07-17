@@ -49,54 +49,52 @@ describe("EditableDashboard", () => {
     expect(screen.getByText("Save")).toBeInTheDocument();
   });
 
-  it("should only show edit button, refresh, and fullscreen toggles when isFullscreen=false", async () => {
-    await setup({ isFullscreen: false });
+  it("should show the edit and download button if downloads are enabled", async () => {
+    await setup({
+      props: { withDownloads: true },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
     });
 
     const dashboardHeader = within(screen.getByTestId("dashboard-header"));
+
     expect(
       dashboardHeader.getAllByTestId("dashboard-header-row-button"),
-    ).toHaveLength(3);
+    ).toHaveLength(2);
 
-    expect(dashboardHeader.getByLabelText("Auto Refresh")).toBeInTheDocument();
     expect(
       dashboardHeader.getByLabelText("Edit dashboard"),
     ).toBeInTheDocument();
-    expect(
-      dashboardHeader.queryByLabelText("Nighttime mode"),
-    ).not.toBeInTheDocument();
 
     expect(
-      dashboardHeader.getByLabelText("Enter fullscreen"),
+      dashboardHeader.getByLabelText("Download as PDF"),
     ).toBeInTheDocument();
   });
 
-  it("should only show refresh, nightmode, and fullscreen toggles when isFullscreen=true", async () => {
-    await setup({ isFullscreen: true });
+  it("should not show download button if downloads are disabled", async () => {
+    await setup({
+      props: { withDownloads: false },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
     });
 
     const dashboardHeader = within(screen.getByTestId("dashboard-header"));
+
     expect(
       dashboardHeader.getAllByTestId("dashboard-header-row-button"),
-    ).toHaveLength(3);
+    ).toHaveLength(1);
 
-    expect(dashboardHeader.getByLabelText("Auto Refresh")).toBeInTheDocument();
     expect(
-      dashboardHeader.queryByLabelText("Edit dashboard"),
+      dashboardHeader.getByLabelText("Edit dashboard"),
+    ).toBeInTheDocument();
+
+    expect(
+      dashboardHeader.queryByLabelText("Download as PDF"),
     ).not.toBeInTheDocument();
-    expect(
-      dashboardHeader.getByLabelText("Nighttime mode"),
-    ).toBeInTheDocument();
-
-    expect(
-      dashboardHeader.getByLabelText("Exit fullscreen"),
-    ).toBeInTheDocument();
   });
 
   it("should allow to create a new question in addition to adding existing questions", async () => {

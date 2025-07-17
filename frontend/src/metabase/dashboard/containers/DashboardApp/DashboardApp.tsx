@@ -14,6 +14,10 @@ import {
   toggleSidebar,
 } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
+import {
+  DASHBOARD_EDITING_ACTIONS,
+  DASHBOARD_VIEW_ACTIONS,
+} from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
 import { addDashboardQuestion } from "metabase/dashboard/components/QuestionPicker/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
@@ -66,6 +70,9 @@ function DashboardAppInner({
     </>
   );
 }
+
+export const DASHBOARD_APP_ACTIONS = ({ isEditing }: { isEditing: boolean }) =>
+  isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS;
 
 export const DashboardApp = ({
   location,
@@ -146,6 +153,7 @@ export const DashboardApp = ({
           dispatch(setEditingDashboard(dashboard));
           dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
         }}
+        dashboardActions={DASHBOARD_APP_ACTIONS}
       >
         <DashboardAppInner location={location} route={route}>
           {children}

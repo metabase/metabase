@@ -27,6 +27,7 @@ const meta = {
   },
   decorators: [CommonSdkStoryWrapper],
   argTypes: {
+    // Core props
     dashboardId: dashboardIdArgType,
     "dataPickerProps.entityTypes": {
       control: "check",

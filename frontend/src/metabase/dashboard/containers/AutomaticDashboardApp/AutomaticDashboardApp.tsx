@@ -212,6 +212,7 @@ export const AutomaticDashboardApp = ({
       }
       downloadsEnabled={{ pdf: false, results: false }}
       dashcardMenu={null}
+      dashboardActions={null}
     >
       <AutomaticDashboardAppInner />
     </DashboardContextProvider>

@@ -1,7 +1,4 @@
-import {
-  DASHBOARD_EDITING_ACTIONS,
-  SDK_DASHBOARD_VIEW_ACTIONS,
-} from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import { DASHBOARD_EDITING_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
@@ -37,8 +34,8 @@ export const EditableDashboard = (props: EditableDashboardProps) => {
     isEditing
       ? DASHBOARD_EDITING_ACTIONS
       : downloadsEnabled.pdf
-        ? [...SDK_DASHBOARD_VIEW_ACTIONS, DASHBOARD_ACTION.DOWNLOAD_PDF]
-        : SDK_DASHBOARD_VIEW_ACTIONS;
+        ? [DASHBOARD_ACTION.EDIT_DASHBOARD, DASHBOARD_ACTION.DOWNLOAD_PDF]
+        : [DASHBOARD_ACTION.EDIT_DASHBOARD];
 
   const getClickActionMode: SdkDashboardInnerProps["getClickActionMode"] = ({
     question,
