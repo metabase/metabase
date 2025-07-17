@@ -137,7 +137,8 @@
 
 (defn- add-implicit-breakouts
   [stage]
-  (if-let [breakouts (not-empty (:breakout stage))]
+  (if-let [breakouts (and (not (:for-transform (lib.options/options stage)))
+                          (not-empty (:breakout stage)))]
     (let [finest-temp-breakout (finest-temporal-breakout-index breakouts 1)
           breakout-exprs (if finest-temp-breakout
                            (concat (m/remove-nth finest-temp-breakout breakouts)
