@@ -51,6 +51,14 @@ export function setWidgetValue(value) {
   filterWidget().click().type(value);
 }
 
+export function setSingleValue() {
+  cy.findByLabelText("Single value").click();
+}
+
+export function setMultiValue() {
+  cy.findByLabelText("Multiple values").click();
+}
+
 /**
  * Enter a default value when filter is marked as required.
  *

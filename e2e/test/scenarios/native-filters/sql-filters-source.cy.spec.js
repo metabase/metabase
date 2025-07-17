@@ -714,6 +714,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       SQLFilter.enterParameterizedQuery("SELECT * FROM {{ tag }}");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Number");
+      SQLFilter.setMultiValue();
       H.setSearchBoxFilterType();
       H.setFilterListSource({
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
@@ -799,6 +800,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       SQLFilter.enterParameterizedQuery("SELECT {{ tag }}");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Number");
+      SQLFilter.setMultiValue();
 
       H.setSearchBoxFilterType();
       H.setFilterListSource({
@@ -900,7 +902,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     SQLFilter.openTypePickerFromSelectedFilterType("Text");
     SQLFilter.chooseType("Number");
 
-    cy.get("[data-checked='true']").should("have.text", "Input box");
+    cy.findByLabelText("Input box").should("be.checked");
 
     H.setSearchBoxFilterType();
     H.checkFilterListSourceHasValue({ values: [] });
@@ -911,7 +913,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
     SQLFilter.openTypePickerFromSelectedFilterType("Number");
     SQLFilter.chooseType("Text");
-    cy.get("[data-checked='true']").should("have.text", "Search box");
+    cy.findByLabelText("Search box").should("be.checked");
     H.checkFilterListSourceHasValue({ values: ["Foo", "Bar"] });
   });
 });
