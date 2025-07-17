@@ -1151,3 +1151,11 @@
     (format "DEV: %s %s"
             (str t/*testing-vars*)
             (:user env/env))))
+
+(def ^:dynamic *use-routing-details*
+  "Used to decide if routing details should be used for a db."
+  false)
+
+(def ^:dynamic *use-routing-dataset*
+  "Used to override the dataset name for routing tests."
+  false)
