@@ -281,7 +281,7 @@
   ;; middleware would work either because we don't know what Field this parameter actually refers to until we resolve
   ;; the parameter. There's probably _some_ way to structure things that would make this "duplicate" call unneeded, but
   ;; I haven't figured out what that is yet
-  (field->clause field (align-temporal-unit-with-param-type-and-value driver field param-type value)))
+  (field->clause field {:temporal-unit (align-temporal-unit-with-param-type-and-value driver field param-type value)}))
 
 (mu/defn- field->identifier :- driver-api/schema.common.non-blank-string
   "Return an approprate snippet to represent this `field` in SQL given its param type.
