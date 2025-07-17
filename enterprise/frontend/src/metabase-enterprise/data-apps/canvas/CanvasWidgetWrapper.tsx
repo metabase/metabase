@@ -1,9 +1,9 @@
-import type { UniqueIdentifier } from "@dnd-kit/core";
 import classNames from "classnames";
 import { type HTMLAttributes, forwardRef } from "react";
 
 import { Icon } from "metabase/ui";
-import type { DataAppWidget } from "metabase-enterprise/data-apps/types";
+
+import type { DataAppWidget } from "../types";
 
 import styles from "./DndCanvas.module.css";
 

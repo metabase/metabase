@@ -67,8 +67,6 @@ export const DndCanvas = ({
 }: Props) => {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [clonedItems, setClonedItems] = useState<DataAppWidget[] | null>(null);
-  const activeIndex =
-    activeId != null ? components.findIndex(({ id }) => id === activeId) : -1;
   const sensors = useSensors(useSensor(PointerSensor));
 
   const lastOverId = useRef<UniqueIdentifier | null>(null);
@@ -82,11 +80,12 @@ export const DndCanvas = ({
 
   const collisionDetectionStrategy: CollisionDetection = useCallback(
     (args) => {
-      console.log("collisionDetectionStrategy", args);
+      // console.log("collisionDetectionStrategy", args);
 
       const activeWidget = componentsMap.get(activeId as WidgetId);
 
       if (activeId && activeWidget && activeWidget.type === "section") {
+        console.log("collisionDetectionStrategy - CASE 1");
         return closestCenter({
           ...args,
           droppableContainers: args.droppableContainers.filter((container) => {
@@ -99,6 +98,9 @@ export const DndCanvas = ({
 
       // Start by finding any intersecting droppable
       const pointerIntersections = pointerWithin(args);
+
+      console.log(pointerIntersections);
+
       const intersections =
         pointerIntersections.length > 0
           ? // If there are droppables intersecting with the pointer, return those
@@ -127,6 +129,7 @@ export const DndCanvas = ({
 
         lastOverId.current = overId;
 
+        console.log("collisionDetectionStrategy - CASE 2");
         return [{ id: overId }];
       }
 
@@ -138,6 +141,7 @@ export const DndCanvas = ({
         lastOverId.current = activeId;
       }
 
+      console.log("collisionDetectionStrategy - CASE 3");
       // If no droppable is matched, return the last match
       return lastOverId.current ? [{ id: lastOverId.current }] : [];
     },
@@ -150,6 +154,8 @@ export const DndCanvas = ({
   }
 
   function handleDragCancel() {
+    console.log("onDragCancel");
+
     if (clonedItems) {
       // Reset items to their original state in case items have been
       // Dragged across containers
@@ -276,7 +282,14 @@ export const DndCanvas = ({
                 }
 
                 if (component.id === overContainerId) {
-                  component.childrenIds = [...component.childrenIds, active.id];
+                  component.childrenIds = [
+                    ...component.childrenIds.slice(0, overIndex),
+                    active.id,
+                    ...component.childrenIds.slice(
+                      overIndex,
+                      component.childrenIds?.length,
+                    ),
+                  ];
                 }
 
                 return component;

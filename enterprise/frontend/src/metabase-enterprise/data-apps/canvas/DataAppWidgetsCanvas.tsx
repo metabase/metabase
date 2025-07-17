@@ -4,9 +4,8 @@ import { useMemo } from "react";
 import { Box } from "metabase/ui";
 import { WIDGET_COMPONENTS_MAP } from "metabase-enterprise/data-apps/canvas/widgets";
 
+import { DndCanvas } from "../canvas-2/DndCanvas";
 import type { DataAppWidget, WidgetId } from "../types";
-
-import { DndCanvas } from "./DndCanvas";
 
 type DataAppWidgetsCanvasProps = {
   components: DataAppWidget[];

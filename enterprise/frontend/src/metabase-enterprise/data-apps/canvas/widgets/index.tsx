@@ -41,7 +41,7 @@ export const WIDGET_COMPONENTS_MAP = {
         justify="stretch"
         style={{
           flexBasis: `${widget.options.width / 3}`,
-          minWidth: "33%",
+          minWidth: "10rem",
           minHeight: "10rem",
           border: "1px solid var(--mb-color-border)",
           // eslint-disable-next-line no-color-literals
