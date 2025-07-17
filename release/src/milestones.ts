@@ -321,7 +321,7 @@ export async function checkMilestoneForRelease({
     github,
     owner,
     repo,
-    version,
+    majorVersion: Number(getMajorVersion(version)),
     ignorePatches: true, // ignore patch versions since we don't release notes for them
     ignorePreReleases: true, // ignore pre-releases because we want cumulative notes for them
   });

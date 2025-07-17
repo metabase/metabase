@@ -165,7 +165,7 @@ jobs:
           const version = '${{ inputs.version }}';
 
           const requirements = getBuildRequirements(version);
-          const build_process = getMajorVersion(version) < 46 ? 'legacy' : 'new';
+          const build_process = Number(getMajorVersion(version)) < 46 ? 'legacy' : 'new';
           console.log('Build process:', build_process);
 
           return {

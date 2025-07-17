@@ -267,12 +267,11 @@ export async function hasCommitBeenReleased({
   ref,
   majorVersion,
 }: GithubProps & { ref: string; majorVersion: number }) {
-  // TODO: a better approach would be to fetch the ref and see if it has any release tags
   const lastTag = await getLastReleaseTag({
     github,
     owner,
     repo,
-    version: `v0.${majorVersion}.0`,
+    majorVersion,
     ignorePatches: false,
     ignorePreReleases: false,
   });

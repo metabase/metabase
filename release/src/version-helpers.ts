@@ -1,8 +1,32 @@
 import type { GithubProps, Tag } from "./types";
 
-// https://regexr.com/7l1ip
+// in v56 we introduced a new versioning format
+const FIRST_NEW_VERSION_FORMAT = 56;
+
 export const isValidVersionString = (versionString: string) => {
-  return /^(v0|v1)\.(\d|\.){3,}(\-(RC|rc|alpha|beta))*\d*$/.test(versionString);
+  return isOldVersionFormat(versionString) || isNewVersionFormat(versionString);
+};
+
+// v0.55.4.5 | v1.55.4.5
+export const isOldVersionFormat = (versionString: string): boolean => {
+  // https://regexr.com/8g1n3
+  const format = /^(v0|v1)\.(\d+|\.){3,}(\-(RC|rc|alpha|beta){1})*\d*$/.exec(versionString);
+  if (!format) {
+    return false;
+  }
+  const majorVersion = Number(versionString.split(".")[1]);
+  return majorVersion < FIRST_NEW_VERSION_FORMAT;
+}
+
+// v56.4.5 | v56.4.5-agpl
+export const isNewVersionFormat = (versionString: string): boolean => {
+  // https://regexr.com/8g1n6
+  const format = /^v\d+\.(\d+|\.){1,3}(\-(beta|agpl|agpl-beta){1}){0,1}$/.test(versionString);
+  if (!format) {
+    return false;
+  }
+  const majorVersion = Number(versionString.replace('v', '').split(".")[0]);
+  return majorVersion >= FIRST_NEW_VERSION_FORMAT;
 };
 
 export const isValidCommitHash = (commitHash: string) => {
@@ -13,14 +37,29 @@ export const getOSSVersion = (versionString: string) => {
   if (!isValidVersionString(versionString)) {
     throw new Error(`Invalid version string: ${versionString}`);
   }
-  return versionString.replace(/^(v0|v1)\./, "v0.");
+  if (!isEnterpriseVersion(versionString)) {
+    return versionString; // already in OSS format
+  }
+
+  if (isOldVersionFormat(versionString)) {
+    return versionString.replace(/^(v0|v1)\./, "v0.");
+  }
+
+  const { suffix } = getVersionParts(versionString);
+  return `${versionString.replaceAll(suffix, "")}-agpl${suffix}`;
 };
 
 export const getEnterpriseVersion = (versionString: string) => {
   if (!isValidVersionString(versionString)) {
     throw new Error(`Invalid version string: ${versionString}`);
   }
-  return versionString.replace(/^(v0|v1)\./, "v1.");
+  if (isEnterpriseVersion(versionString)) {
+    return versionString; // already in Enterprise format
+  }
+  if (isOldVersionFormat(versionString)) {
+    return versionString.replace(/^(v0|v1)\./, "v1.");
+  }
+  return versionString.replace(/-agpl/, "");
 };
 
 export const getCanonicalVersion = (
@@ -46,39 +85,52 @@ export const getVersionType = (versionString: string) => {
     throw new Error(`Invalid version string: ${versionString}`);
   }
 
-  const versionPartsCount = versionString
-    .replace(/\-\w.+/gi, "") // pre-release suffix
-    .replace(/\.0$/, "") // majors have a trailing .0
-    .split(".").length;
+  const versionParts = getVersionParts(versionString);
 
-  switch (versionPartsCount) {
-    case 2: // x.88
-      return "major";
-    case 3: // x.88.2
-      return "minor";
-    case 4: // x.88.2.3
-      return "patch";
-    default:
-      return "invalid";
+  if (versionParts.patch != null) {
+    return "patch";
   }
+
+  if (versionParts.minor !== "0") {
+    return "minor";
+  }
+
+  return "major";
 };
 
 export const isEnterpriseVersion = (versionString: string): boolean => {
-  return /^v1./i.test(versionString);
+  if(!isValidVersionString(versionString)){
+    return false;
+  }
+
+  if (isOldVersionFormat(versionString)) {
+    return /^v1./i.test(versionString);
+  }
+
+  return !/-agpl/i.test(versionString);
 };
 
 export const isPreReleaseVersion = (version: string) =>
   isValidVersionString(version) && /rc|alpha|beta/i.test(version);
 
-const getVersionParts = (versionString: string) => {
+export const getVersionParts = (versionString: string) => {
+  const prefix = isOldVersionFormat(versionString)
+    ? (isEnterpriseVersion(versionString) ? "v1." : "v0.")
+    : "v";
+
+  const suffix = /(-[-\w\d]+)$/.exec(versionString)?.[0] || "";
+
   const parts = versionString
-    .replace(/^[^\.]+\./, "")
-    .replace(/-rc\d+/i, "")
+    .replace(isOldVersionFormat(versionString) ? /^[^\.]+\./ : /^v/, "")
+    .replace(/-[-\w\d]+/i, "")
     .split(".");
+
   return {
     major: parts[0],
     minor: parts[1] || "0",
     patch: parts[2],
+    prefix, // includes the . if applicable
+    suffix, // includes the - if applicable
   };
 };
 
@@ -103,7 +155,9 @@ export const getReleaseBranch = (versionString: string) => {
 export const getVersionFromReleaseBranch = (branch: string) => {
   const majorVersion = getMajorVersionNumberFromReleaseBranch(branch);
 
-  return `v0.${majorVersion}.0`;
+  return Number(majorVersion) >= FIRST_NEW_VERSION_FORMAT
+   ? `v${majorVersion}.0`
+   : `v0.${majorVersion}.0`;
 };
 
 const SDK_TAG_REGEXP = /embedding-sdk-(0\.\d+\.\d+(-\w+)?)$/;
@@ -172,35 +226,37 @@ export const getSdkVersionFromReleaseBranchName = async ({
   return sdkVersion;
 };
 
-export const getDotXs = (version: string, number: number) => {
-  const pieces = version.replace(/-.+/, "").split("."); // ignore any -suffixes
-  return pieces.slice(0, number + 1).join(".") + ".x";
+export const getDotXs = (version: string): string[] => {
+  const { prefix, major, minor } = getVersionParts(version);
+  const versionType = getVersionType(version);
+
+  if (versionType === 'major') {
+    return [`${prefix}${major}.x`];
+  }
+  return [`${prefix}${major}.x`, `${prefix}${major}.${minor}.x`];
 };
 
 export const getDotXVersion = (version: string) => {
   const versionType = getVersionType(version);
+  const { prefix, major, minor } = getVersionParts(version);
 
   if (versionType === "major") {
-    return getDotXs(version, 1);
+    return `${prefix}${major}.x`;
   }
 
-  return getDotXs(version, 2);
+  return  `${prefix}${major}.${minor}.x`;
 };
 
-export const getExtraTagsForVersion = ({ version }: { version: string }) => {
+export const getExtraTagsForVersion = ({ version }: { version: string }): string[] => {
   const ossVerion = getOSSVersion(version);
   const eeVersion = getEnterpriseVersion(version);
-  const versionType = getVersionType(version);
 
   // eg. v0.23.x / v1.23.x
-  const tags = [getDotXs(ossVerion, 1), getDotXs(eeVersion, 1)];
+  const tags = isOldVersionFormat(version)
+    ? [...getDotXs(ossVerion), ...getDotXs(eeVersion)]
+    : getDotXs(eeVersion);
 
-  if (versionType === "major") {
-    return tags;
-  }
-
-  // eg. v0.23.4.x / v1.23.4.x
-  return [...tags, getDotXs(ossVerion, 2), getDotXs(eeVersion, 2)];
+  return tags;
 };
 
 /**
@@ -291,6 +347,7 @@ export const getBuildRequirements = (version: string) => {
   return versionRequirements[Number(lastKey)];
 };
 
+// used for opening the next milestone
 export const getNextVersions = (versionString: string): string[] => {
   if (!isValidVersionString(versionString)) {
     throw new Error(`Invalid version string: ${versionString}`);
@@ -303,10 +360,7 @@ export const getNextVersions = (versionString: string): string[] => {
   const editionString = isEnterpriseVersion(versionString) ? "v1." : "v0.";
 
   // minor releases -> next minor release
-  const [major, minor] = versionString
-    .replace(/(v1|v0)\./, "")
-    .split(".")
-    .map(Number);
+  const {major, minor} = getVersionParts(versionString);
 
   const versionType = getVersionType(versionString);
 
@@ -327,7 +381,7 @@ export const getNextVersions = (versionString: string): string[] => {
 
 // our milestones don't have the v prefix or a .0 suffix
 export const getMilestoneName = (version: string) => {
-  const [_prefix, major, minor] = getOSSVersion(version).split(/\.|\-/g);
+  const { major, minor } = getVersionParts(version);
 
   return Number(minor) ? `0.${major}.${minor}` : `0.${major}`;
 };
@@ -395,18 +449,22 @@ export async function getLastReleaseTag({
   github,
   owner,
   repo,
-  version = "",
+  majorVersion,
   ignorePatches,
   ignorePreReleases,
 }: GithubProps & {
-  version?: string;
+  majorVersion: number;
   ignorePatches?: boolean;
   ignorePreReleases?: boolean;
 }) {
+  const refFilter = majorVersion < FIRST_NEW_VERSION_FORMAT
+    ? `tags/v0.${majorVersion}`
+    : `tags/v${majorVersion}`;
+
   const tags = await github.paginate(github.rest.git.listMatchingRefs, {
     owner,
     repo,
-    ref: `tags/v0.${version ? getMajorVersion(version) : ""}`,
+    ref: refFilter,
   });
 
   const lastRelease = getLastReleaseFromTags({
@@ -418,21 +476,15 @@ export async function getLastReleaseTag({
   return lastRelease;
 }
 
+// used for auto-releasing
 export const findNextPatchVersion = (version: string) => {
   if (!isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
   }
 
-  const [mainVersion, suffix] = version.split("-");
-
-  const [major, minor, patch] = mainVersion
-    .replace(/(v1|v0)\./, "")
-    .split(".")
-    .map(Number);
-
-  const baseVersion = `v0.${major}.${minor || 0}.${(patch || 0) + 1}`;
-
-  return suffix ? `${baseVersion}-${suffix}` : baseVersion;
+  const { major, minor, patch, prefix, suffix } = getVersionParts(version);
+  const baseVersion = `${prefix}${major}.${minor || 0}.${(Number(patch || 0)) + 1}`;
+  return `${baseVersion}${suffix}`;
 };
 
 export const getNextPatchVersion = async ({
@@ -445,7 +497,7 @@ export const getNextPatchVersion = async ({
     github,
     owner,
     repo,
-    version: `v0.${majorVersion.toString()}.0`,
+    majorVersion,
     ignorePatches: false,
     ignorePreReleases: false,
   });
