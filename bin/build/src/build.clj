@@ -121,7 +121,7 @@
                                                       {:step        step-name
                                                        :valid-steps (keys all-steps)})))]]
          (step-fn {:version version, :edition edition})
-         (u/announce "Did %s in %d ms." step-name (/ (- (System/nanoTime) start-time-ns) 1e6)))
+         (u/announce "Did %s in %d ms." step-name (quot (- (System/nanoTime) start-time-ns) 1000000)))
        (u/announce "All build steps finished.")))))
 
 (defn build-cli

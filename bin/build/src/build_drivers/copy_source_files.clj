@@ -33,4 +33,4 @@
       (copy-files dirs (c/compiled-source-target-dir driver))
       (u/announce "Copied files in %d directories in %d ms."
                   (count dirs)
-                  (/ (- (System/nanoTime) start-time-ns) 1e6)))))
+                  (quot (- (System/nanoTime) start-time-ns) 1000000)))))

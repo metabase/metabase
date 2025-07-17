@@ -35,5 +35,5 @@
          (copy-source-files/copy-source-files! driver edition)
          (compile-source-files/compile-clojure-source-files! driver edition)
          (create-uberjar/create-uberjar! driver edition)
-         (u/announce "Built %s driver in %d ms." driver (/ (- (System/nanoTime) start-time-ns) 1e6))
+         (u/announce "Built %s driver in %d ms." driver (quot (- (System/nanoTime) start-time-ns) 1000000))
          (verify/verify-driver driver))))))

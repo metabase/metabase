@@ -25,7 +25,7 @@
 (defn- do-with-duration-ms [thunk f]
   (let [start-time-ns (System/nanoTime)
         result        (thunk)
-        elapsed-ms    (/ (- (System/nanoTime) start-time-ns) 1e6)]
+        elapsed-ms    (quot (- (System/nanoTime) start-time-ns) 1000000)]
     (f elapsed-ms)
     result))
 

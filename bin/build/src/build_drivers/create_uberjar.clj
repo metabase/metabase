@@ -89,4 +89,4 @@
         ;; we need to skip this file since on MacOS it conflicts with other licenses, see:
         ;; https://ask.clojure.org/index.php/13231/switch-tools-build-pull-from-jars-rather-than-exploding-onto
         :exclude           ["META-INF/LICENSE"]})
-      (u/announce "Created uberjar in %d ms." (/ (- (System/nanoTime) start-time-ns) 1e6)))))
+      (u/announce "Created uberjar in %d ms." (quot (- (System/nanoTime) start-time-ns) 1000000)))))

@@ -57,4 +57,4 @@
           (compile a-namespace)))
       (u/announce "Compiled %d namespace(s) in %d ms."
                   (count namespaces)
-                  (/ (- (System/nanoTime) start-time-ns) 1e6)))))
+                  (quot (- (System/nanoTime) start-time-ns) 1000000)))))
