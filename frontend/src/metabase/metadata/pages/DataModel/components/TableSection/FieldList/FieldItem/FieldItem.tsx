@@ -176,7 +176,7 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
         </Group>
 
         <Box
-          className={S.input}
+          className={cx(S.input, S.description)}
           // TODO: fix EditableText or use something else
           // https://linear.app/metabase/issue/SEM-429/data-model-inline-field-namedescription-inputs
           component={EditableText}
