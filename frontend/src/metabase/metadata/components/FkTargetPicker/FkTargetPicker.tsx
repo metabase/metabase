@@ -69,9 +69,11 @@ export const FkTargetPicker = ({
     return getRawTableFieldId(field);
   };
 
-  const handleChange = (value: string) => {
-    const fieldId = getFieldIdFromValue(value);
-    onChange(fieldId);
+  const handleChange = (value: string | null) => {
+    if (value != null) {
+      const fieldId = getFieldIdFromValue(value);
+      onChange(fieldId);
+    }
   };
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
@@ -144,11 +146,7 @@ export const FkTargetPicker = ({
         );
       }}
       searchable
-      value={
-        stringifyValue(value) === ""
-          ? (null as unknown as undefined) // passing null is the only way to deselect current value
-          : stringifyValue(value)
-      }
+      value={stringifyValue(value)}
       onChange={handleChange}
       onFocus={handleFocus}
       {...props}
@@ -166,14 +164,14 @@ function getData(comparableIdFields: Field[], includeSchema: boolean) {
           field.table,
           includeSchema && field.table ? field.table.schema : undefined,
         ),
-        value: stringifyValue(getRawTableFieldId(field)),
+        value: stringifyValue(getRawTableFieldId(field)) ?? "",
       };
     })
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function stringifyValue(value: FieldId | null): string {
-  return value === null ? "" : JSON.stringify(value);
+function stringifyValue(value: FieldId | null): string | null {
+  return value === null ? null : JSON.stringify(value);
 }
 
 function getFkFieldPlaceholder(field: ApiField, idFields: Field[]) {
