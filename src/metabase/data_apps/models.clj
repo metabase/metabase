@@ -3,6 +3,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -122,51 +123,67 @@
 ;;                                        Public APIs                                             ;;
 ;;------------------------------------------------------------------------------------------------;;
 
+;; A simple way to avoid concurrent or redundant pruning, and for pruning to happen off the main thread.
+(def ^:private pruner-dirty (atom false))
+(def ^:private pruner (agent false))
+
 (defn- prune-definitions!
   "Remove older definitions that don't correspond to releases or latest working drafts."
   ([]
    (prune-definitions! retention-max-per-app retention-max-total))
   ([retention-max-per-app retention-max-total]
-   ;; Working around some bizarre test flakes for MariaDB Latest only, where it claims there is no db selected when
-   ;; this is triggered after inserting new definitions.
-   (when (mdb/app-db)
-     (t2/delete! :model/DataAppDefinition
-                 {:where [:in :id
-                          {:with   [[:protected_definitions
-                                     {:select [:dad.id]
-                                      :from   [[:data_app_definition :dad]]
-                                      :where  [:or
-                                               ;; Released definitions
-                                               [:exists {:select [1]
-                                                         :from   [[:data_app_release :dar]]
-                                                         :where  [:and
-                                                                  [:= :dar.app_definition_id :dad.id]
-                                                                  [:= :dar.retracted false]]}]
-                                               ;; The highest revision per app
-                                               [:exists {:select [1]
-                                                         :from   [[:data_app_definition :dad2]]
-                                                         :where  [:and
-                                                                  [:= :dad2.app_id :dad.app_id]
-                                                                  [:= :dad2.revision_number
-                                                                   {:select [:%max.revision_number]
-                                                                    :from   [[:data_app_definition :dad3]]
-                                                                    :where  [:= :dad3.app_id :dad.app_id]}]
-                                                                  [:= :dad2.id :dad.id]]}]]}]
+   (t2/delete! :model/DataAppDefinition
+               {:where [:in :id
+                        {:with   [[:protected_definitions
+                                   {:select [:dad.id]
+                                    :from   [[:data_app_definition :dad]]
+                                    :where  [:or
+                                             ;; Released definitions
+                                             [:exists {:select [1]
+                                                       :from   [[:data_app_release :dar]]
+                                                       :where  [:and
+                                                                [:= :dar.app_definition_id :dad.id]
+                                                                [:= :dar.retracted false]]}]
+                                             ;; The highest revision per app
+                                             [:exists {:select [1]
+                                                       :from   [[:data_app_definition :dad2]]
+                                                       :where  [:and
+                                                                [:= :dad2.app_id :dad.app_id]
+                                                                [:= :dad2.revision_number
+                                                                 {:select [:%max.revision_number]
+                                                                  :from   [[:data_app_definition :dad3]]
+                                                                  :where  [:= :dad3.app_id :dad.app_id]}]
+                                                                [:= :dad2.id :dad.id]]}]]}]
 
-                                    [:ranked
-                                     {:select [:dad.id :dad.app_id :dad.revision_number :dad.created_at
-                                               [[:raw "ROW_NUMBER() OVER (PARTITION BY dad.app_id ORDER BY dad.revision_number DESC)"] :app_rank]
-                                               [[:raw "ROW_NUMBER() OVER (ORDER BY dad.created_at DESC)"] :global_rank]]
-                                      :from   [[:data_app_definition :dad]]
-                                      :where  [:not [:exists {:select [1]
-                                                              :from   [[:protected_definitions :pd]]
-                                                              :where  [:= :pd.id :dad.id]}]]}]]
+                                  [:ranked
+                                   {:select [:dad.id :dad.app_id :dad.revision_number :dad.created_at
+                                             [[:raw "ROW_NUMBER() OVER (PARTITION BY dad.app_id ORDER BY dad.revision_number DESC)"] :app_rank]
+                                             [[:raw "ROW_NUMBER() OVER (ORDER BY dad.created_at DESC)"] :global_rank]]
+                                    :from   [[:data_app_definition :dad]]
+                                    :where  [:not [:exists {:select [1]
+                                                            :from   [[:protected_definitions :pd]]
+                                                            :where  [:= :pd.id :dad.id]}]]}]]
 
-                           :select [:id]
-                           :from   [:ranked]
-                           :where  [:or
-                                    [:> :app_rank retention-max-per-app]
-                                    [:> :global_rank retention-max-total]]}]}))))
+                         :select [:id]
+                         :from   [:ranked]
+                         :where  [:or
+                                  [:> :app_rank retention-max-per-app]
+                                  [:> :global_rank retention-max-total]]}]})))
+
+(defn- prune-definitions-async!
+  ([]
+   (prune-definitions-async! retention-max-per-app retention-max-total))
+  ([& opts]
+   (reset! pruner-dirty true)
+   (send-off pruner (fn [_]
+                      (when @pruner-dirty
+                        (try
+                          (apply prune-definitions! opts)
+                          (catch Exception e
+                            (log/warn e "Failure pruning Data App definitions"))
+                          (finally
+                            ;; Reset the dirty flag even if it failed, to avoid spinning on expensive failures.
+                            (reset! pruner-dirty false))))))))
 
 (defn set-latest-definition!
   "Create a new definition for an existing app."
@@ -175,7 +192,7 @@
                                           (merge definition
                                                  {:app_id          app-id
                                                   :revision_number (next-revision-number-hsql app-id)}))
-    (prune-definitions!)))
+    (prune-definitions-async!)))
 
 (defn create-app!
   "Create a new App with an initial definition."

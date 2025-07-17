@@ -3,21 +3,55 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.app-db.core :as mdb]
    [metabase.data-apps.models :as data-apps.models]
    [metabase.data-apps.test-util :as data-apps.tu]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (java.time Instant)))
+   (java.time Instant)
+   (java.util.concurrent CountDownLatch)))
 
 (set! *warn-on-reflection* true)
+
+(defn- prune-definitions! [& opts]
+  (apply #'data-apps.models/prune-definitions! opts))
+
+(defn- prune-async! [& opts]
+  (apply #'data-apps.models/prune-definitions-async! opts))
+
+(deftest async-pruning-test
+  (testing "Test async pruning isn't totally broken"
+    (data-apps.tu/with-data-app-cleanup!
+      (data-apps.tu/with-data-app! [app {:name "MyApp"}]
+        (dotimes [_ 10]
+          (data-apps.models/set-latest-definition! (:id app) {:creator_id (mt/user->id :crowberto)
+                                                              :config     data-apps.tu/default-app-definition-config}))
+        (is (= 10 (t2/count :model/DataAppDefinition :app_id (:id app))))
+        (let [original-fn (mt/dynamic-value @#'data-apps.models/prune-definitions!)
+              invocations (atom 0)
+              num-invokes 5
+              latch       (CountDownLatch. num-invokes)
+              keep-count  2]
+          (mt/with-dynamic-fn-redefs [data-apps.models/prune-definitions! (fn [& opts]
+                                                                            (swap! invocations inc)
+                                                                            (.countDown latch)
+                                                                            (apply original-fn opts))]
+            (dotimes [_ num-invokes]
+              (prune-async! keep-count keep-count)))
+          (u/poll {:thunk #(deref @#'data-apps.models/pruner), :done? false?})
+          (testing "We skip consecutive pruning, if nothing has changed."
+            (is (= 1 @invocations)))
+          (testing "We keep 2 unreferenced definition + HEAD"
+            ;; Well, that's unexpected, but the focus of this test.
+            (is (= #{#_8 #_9 10}
+                   (t2/select-fn-set :revision_number :model/DataAppDefinition :app_id (:id app))))))))))
 
 (deftest prune-definitions-test
   ;; Prune *everything* unprotected to avoid flakes from other tests, or state in your dev database.
   (testing "Pruning a single app with multiple releases"
     (data-apps.tu/with-data-app-cleanup!
-      (#'data-apps.models/prune-definitions! 0 0)
+      (prune-definitions! 0 0)
       (let [retention-per-app 5
             retention-total   5
 
@@ -25,27 +59,22 @@
             num-versions      5
             defs-per-version  5
             num-definitions   (inc (* num-versions defs-per-version))
-            app-id            (let [creator_id (mt/user->id :crowberto)
-                                    app-id     (t2/insert-returning-pk! :model/DataApp
-                                                                        {:name       "My app for singles"
-                                                                         :slug       "single-tingle"
-                                                                         :creator_id creator_id
-                                                                         :status     :private})]
+            app-id            (let [creator-id (mt/user->id :crowberto)
+                                    {app-id :id} (data-apps.models/create-app!
+                                                  {:name       "My app for singles"
+                                                   :slug       "single-tingle"
+                                                   :creator_id creator-id})]
                                 (doseq [i (range num-definitions)]
-                                  (let [did (t2/insert-returning-pk! :model/DataAppDefinition
-                                                                     {:app_id          app-id
-                                                                      :creator_id      creator_id
-                                                                      :revision_number (inc i)
-                                                                      :config          data-apps.tu/default-app-definition-config})]
+                                  (let [_ (data-apps.models/set-latest-definition!
+                                           app-id
+                                           {:creator_id creator-id
+                                            :config     data-apps.tu/default-app-definition-config})]
                                     ;; Create release for positions 1 and 4 (0-indexed) = revisions 2 and 5
                                     (when (= 1 (mod i defs-per-version))
-                                      (t2/insert! :model/DataAppRelease
-                                                  {:app_id            app-id
-                                                   :app_definition_id did
-                                                   :creator_id        creator_id}))))
+                                      (data-apps.models/release! app-id creator-id))))
                                 app-id)
 
-            deleted-count     (#'data-apps.models/prune-definitions! retention-per-app retention-total)
+            deleted-count     (prune-definitions! retention-per-app retention-total)
 
             revisions-fn      #(t2/select-fn-set :revision_number
                                                  [:model/DataAppDefinition :app_id :revision_number]
@@ -72,7 +101,7 @@
           (is (= #{2 7 12 17 20 21 22 23 24 25 26} revisions)))
 
         (testing "Idempotency: running pruning again should delete nothing"
-          (is (= 0 (#'data-apps.models/prune-definitions! retention-per-app retention-total)))
+          (is (= 0 (prune-definitions! retention-per-app retention-total)))
           (is (= revisions (revisions-fn)))))))
 
   (testing "Pruning multiple apps with multiple releases"
