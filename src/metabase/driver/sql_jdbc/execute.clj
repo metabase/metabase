@@ -751,7 +751,6 @@
                         (inject-remark driver sql))
                    sql)
         max-rows (driver-api/determine-query-max-rows outer-query)]
-    #_(execute-reducible-query driver sql params max-rows context respond)
     (do-with-connection-with-options
      driver
      (driver-api/database (driver-api/metadata-provider))
