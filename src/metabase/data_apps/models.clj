@@ -1,6 +1,5 @@
 (ns metabase.data-apps.models
   (:require
-   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.log :as log]
