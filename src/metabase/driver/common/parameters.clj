@@ -26,7 +26,7 @@
   [x]
   (instance? FieldFilter x))
 
-(p.types/defrecord+ TemporalUnit [field value]
+(p.types/defrecord+ TemporalUnit [field value alias]
   pretty/PrettyPrintable
   (pretty [this]
     (list (pretty/qualify-symbol-for-*ns* `map->TemporalUnit) (into {} this))))

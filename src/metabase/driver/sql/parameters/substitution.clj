@@ -346,6 +346,15 @@
       :else                                           (prepend-field
                                                        (field-filter->equals-clause-sql driver value)))))
 
+(defn- replace-alias
+  [driver field alias replacement-snippet-info]
+  (if (str/blank? alias)
+    replacement-snippet-info
+    (let [[old-name] (->> field
+                          (sql.qp/->honeysql driver)
+                          (sql.qp/format-honeysql driver))]
+      (update replacement-snippet-info :replacement-snippet str/replace old-name alias))))
+
 (mu/defmethod ->replacement-snippet-info [:sql FieldFilter]
   [driver                            :- :keyword
    {:keys [value alias field], :as field-filter} :- [:map
@@ -365,14 +374,12 @@
           ;; otherwise convert single value to SQL.
           :else
           (field-filter->replacement-snippet-info driver field-filter))]
-    (if (str/blank? alias)
-      replacement-snippet-info
-      (let [[old-name] (->> [:field (:id field) {:base-type                     (:base-type field)
-                                                 driver-api/qp.add.source-table (:table-id field)
-                                                 ::compiling-field-filter?      true}]
-                            (sql.qp/->honeysql driver)
-                            (sql.qp/format-honeysql driver))]
-        (update replacement-snippet-info :replacement-snippet str/replace old-name alias)))))
+    (replace-alias driver
+                   [:field (:id field) {:base-type                     (:base-type field)
+                                        driver-api/qp.add.source-table (:table-id field)
+                                        ::compiling-field-filter?      true}]
+                   alias
+                   replacement-snippet-info)))
 
 ;;; ------------------------------------ Referenced Card replacement snippet info ------------------------------------
 
@@ -389,9 +396,15 @@
    :replacement-snippet     content})
 
 (defmethod ->replacement-snippet-info [:sql TemporalUnit]
-  [driver {:keys [value field]}]
-  (honeysql->replacement-snippet-info driver
-                                      (sql.qp/->honeysql driver [:field (:id field)
-                                                                 (cond-> {:base-type (:base-type field)
-                                                                          driver-api/qp.add.source-table (:table-id field)}
-                                                                   (not= value params/no-value) (assoc :temporal-unit (keyword value)))])))
+  [driver {:keys [value field alias]}]
+  (let [replacement-snippet-info (honeysql->replacement-snippet-info
+                                  driver
+                                  (sql.qp/->honeysql driver [:field (:id field)
+                                                             (cond-> {:base-type (:base-type field)
+                                                                      driver-api/qp.add.source-table (:table-id field)}
+                                                               (not= value params/no-value) (assoc :temporal-unit (keyword value)))]))]
+    (replace-alias driver
+                   [:field (:id field) {:base-type (:base-type field)
+                                        driver-api/qp.add.source-table (:table-id field)}]
+                   alias
+                   replacement-snippet-info)))
