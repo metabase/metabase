@@ -11,7 +11,8 @@
    [nano-id.core :as nano-id]))
 
 (def ^:private mock-embeddings
-  "Static mapping from strings to made-up 4-dimensional embedding vectors for testing"
+  "Static mapping from strings to (made-up) 4-dimensional embedding vectors for testing. Each pair of strings represents a
+  document and a search query that should be most semantically similar to it, according to the embeddings."
   {"Dog Training Guide"    [0.12 -0.34  0.56 -0.78]
    "puppy"                 [0.13 -0.33  0.57 -0.77]
    "Bird Watching Tips"    [0.23  0.45 -0.67  0.89]
@@ -160,29 +161,29 @@
             (let [multi-creator-results (semantic.index/query-index {:search-string "endangered species"
                                                                      :created-by    [(mt/user->id :crowberto) (mt/user->id :rasta)]})]
               (is (pos? (count multi-creator-results)))
-              (is (every? #(contains? #{(mt/user->id :crowberto) (mt/user->id :rasta)} (:creator_id %)) multi-creator-results))))))))
+              (is (every? #(contains? #{(mt/user->id :crowberto) (mt/user->id :rasta)} (:creator_id %)) multi-creator-results)))))))))
 
-  (deftest complex-filtering-test
-    (testing "Complex filters with multiple criteria"
-      (mt/as-admin
-        (with-mocked-embeddings!
-          (with-index!
-            (testing "Non-archived cards by specific creator"
-              (let [results (semantic.index/query-index {:search-string "equine"
-                                                         :models ["card"]
-                                                         :archived? false
-                                                         :created-by [(mt/user->id :rasta)]})]
-                (is (pos? (count results)))
-                (is (every? #(and (= "card" (:model %))
-                                  (not (:archived %))
-                                  (= (mt/user->id :rasta) (:creator_id %))) results))))
+(deftest complex-filtering-test
+  (testing "Complex filters with multiple criteria"
+    (mt/as-admin
+      (with-mocked-embeddings!
+        (with-index!
+          (testing "Non-archived cards by specific creator"
+            (let [results (semantic.index/query-index {:search-string "equine"
+                                                       :models ["card"]
+                                                       :archived? false
+                                                       :created-by [(mt/user->id :rasta)]})]
+              (is (pos? (count results)))
+              (is (every? #(and (= "card" (:model %))
+                                (not (:archived %))
+                                (= (mt/user->id :rasta) (:creator_id %))) results))))
 
-            (testing "Archived dashboards by multiple creators"
-              (let [results (semantic.index/query-index {:search-string "Antarctic wildlife"
-                                                         :models ["dashboard"]
-                                                         :archived? true
-                                                         :created-by [(mt/user->id :crowberto) (mt/user->id :rasta)]})]
-                (is (pos? (count results)))
-                (is (every? #(and (= "dashboard" (:model %))
-                                  (:archived %)
-                                  (contains? #{(mt/user->id :crowberto) (mt/user->id :rasta)} (:creator_id %))) results))))))))))
+          (testing "Archived dashboards by multiple creators"
+            (let [results (semantic.index/query-index {:search-string "Antarctic wildlife"
+                                                       :models ["dashboard"]
+                                                       :archived? true
+                                                       :created-by [(mt/user->id :crowberto) (mt/user->id :rasta)]})]
+              (is (pos? (count results)))
+              (is (every? #(and (= "dashboard" (:model %))
+                                (:archived %)
+                                (contains? #{(mt/user->id :crowberto) (mt/user->id :rasta)} (:creator_id %))) results)))))))))
