@@ -17,11 +17,16 @@
   }
 }
 
+.MoveParameterMenuOptionIcon {
+  color: var(--mb-color-text-medium);
+}
+
 .MoveParameterMenuOptionText {
   color: var(--mb-color-text-dark);
 }
 
 .MoveParameterMenuOption[aria-selected="true"] {
+  .MoveParameterMenuOptionIcon,
   .MoveParameterMenuOptionText {
     color: var(--mb-color-text-white);
   }

@@ -165,7 +165,7 @@ function SelectItem({ icon, title }: { icon: IconName; title: string }) {
           {title}
         </Text>
       </Flex>
-      <Icon name={icon} />
+      <Icon className={S.MoveParameterMenuOptionIcon} name={icon} />
     </Group>
   );
 }
