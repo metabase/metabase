@@ -2,7 +2,6 @@
   "Helpers for working with `:ident` fields on columns."
   (:require
    [clojure.string :as str]
-   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (defn explicitly-joined-ident
@@ -74,32 +73,3 @@
   "Returns the `:ident` for a \"remapped\" field."
   [target-ident source-ident]
   (str "remapped[" source-ident "]__to__" target-ident))
-
-;; ## Placeholder :idents
-;; We need the `:entity_id` of the card for native and model idents, but ad-hoc queries don't have an `:entity_id`
-;; yet. In that case we generate a **placeholder** `:entity_id` which gets replaced when the card is saved.
-
-;; This is sailing pretty close to the wind. It wouldn't work so neatly for a multi-stage query, since we might have
-;; references to these temporary idents in the later stages. But Card `:entity_id`s are only needed for idents on
-;; models and native queries. Native queries are single stage, and models have to be saved to become models!
-;; So we generate a placeholder `:entity_id` and then replace them in `:result_metadata` before saving the card.
-(defn placeholder-card-entity-id-for-adhoc-query
-  "Returns a string that can be used as a placeholder for the `:entity_id` of a card, when running an ad-hoc query.
-
-  The resulting `:ident`s are temporary! But they should not be able to \"escape\", since they only appear in idents
-  for the columns of models (which must be saved) and native queries (which only have one stage, free of refs).
-
-  On saving a card, any occurrences of such a placeholder in the `:ident`s of its `:result_metadata` are updated.
-
-  These placeholders deliberately contain characters which are not in the NanoID alphabet."
-  []
-  (str "$$ADHOC[" (u/generate-nano-id) "]"))    ; A model created without an `entity_id` properly defined.
-
-(def ^:private placeholder-regex
-  #"\$\$ADHOC\[[A-Za-z0-9_-]{21}\]")
-
-(defn replace-placeholder-idents
-  "Given an `:ident` and the true `:entity_id` for a card, overwrite the placeholders."
-  [ident card-entity-id]
-  (when ident
-    (str/replace ident placeholder-regex card-entity-id)))
