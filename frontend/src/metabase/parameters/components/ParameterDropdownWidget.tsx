@@ -28,8 +28,10 @@ import { NumberInputWidget } from "./widgets/NumberInputWidget";
 import { ParameterFieldWidget } from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import { StringInputWidget } from "./widgets/StringInputWidget";
 import { TemporalUnitWidget } from "./widgets/TemporalUnitWidget";
+import { TextWidget } from "./widgets/TextWidget";
 
 type ParameterDropdownWidgetProps = {
+  onFocusChanged: (focused: boolean) => void;
   onPopoverClose?: () => void;
 } & ParameterValueWidgetProps;
 
@@ -40,6 +42,9 @@ export const ParameterDropdownWidget = ({
   onPopoverClose,
   className,
   isEditing,
+  commitImmediately,
+  placeholder,
+  onFocusChanged,
   parameters,
   question,
   dashboard,
@@ -110,6 +115,20 @@ export const ParameterDropdownWidget = ({
     );
   }
 
+  if (isTextWidget(parameter)) {
+    return (
+      <TextWidget
+        value={value}
+        setValue={setValue}
+        className={className}
+        isEditing={isEditing}
+        commitImmediately={commitImmediately}
+        placeholder={placeholder}
+        focusChanged={onFocusChanged}
+      />
+    );
+  }
+
   if (isNumberParameter(parameter) && getQueryType(parameter) !== "list") {
     const arity = getNumberParameterArity(parameter);
 
@@ -155,6 +174,11 @@ export const ParameterDropdownWidget = ({
     />
   );
 };
+
+function isTextWidget(parameter: UiParameter) {
+  const canQuery = getQueryType(parameter) !== "none";
+  return parameter.hasVariableTemplateTagTarget && !canQuery;
+}
 
 function isFieldWidget(
   parameter: UiParameter,
