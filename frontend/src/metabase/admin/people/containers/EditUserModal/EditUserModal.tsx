@@ -65,6 +65,7 @@ export const EditUserModal = ({
           initialValues={initialValues}
           onSubmit={handleSubmit}
           external={external}
+          userId={userId}
           edit
         />
       </LoadingAndErrorWrapper>

@@ -11,6 +11,7 @@ import {
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Button } from "metabase/ui";
+import { LoginAttributesWidget } from "metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget";
 import type { Tenant } from "metabase-types/api";
 
 const MAX_SLUG_LENGTH = 255;
@@ -85,6 +86,10 @@ export const TenantForm = ({
             description={t`A unique identifier for the tenant. Cannot be changed later.`}
             disabled={!!initialValues.slug}
             mb="xl"
+          />
+          <LoginAttributesWidget
+            name="attributes"
+            description={t`Default attributes to be applied to all users in this tenant.`}
           />
           <FormFooter>
             <FormErrorMessage inline />
