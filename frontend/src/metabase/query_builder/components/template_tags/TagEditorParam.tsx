@@ -333,7 +333,7 @@ class TagEditorParamInner extends Component<
           />
         )}
 
-        {isDimension && hasSelectedDimensionField && (
+        {hasSelectedDimensionField && (
           <FieldAliasInput tag={tag} field={field} onChange={this.setAlias} />
         )}
 

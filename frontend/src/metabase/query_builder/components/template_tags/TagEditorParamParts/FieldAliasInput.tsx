@@ -1,6 +1,14 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
-import { TextInputBlurChange } from "metabase/ui";
+import {
+  Box,
+  Code,
+  Group,
+  HoverCard,
+  Icon,
+  Text,
+  TextInputBlurChange,
+} from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { TemplateTag } from "metabase-types/api";
 
@@ -27,7 +35,12 @@ export function FieldAliasInput({
 
   return (
     <InputContainer>
-      <ContainerLabel>{t`Field alias`}</ContainerLabel>
+      <ContainerLabel>
+        <Group gap="xs">
+          {t`Table and field alias`}
+          <FieldAlisHelpInfo />
+        </Group>
+      </ContainerLabel>
       <TextInputBlurChange
         id={`tag-editor-field-alias_${tag.id}`}
         value={tag["alias"]}
@@ -35,5 +48,30 @@ export function FieldAliasInput({
         onBlurChange={(event) => handleChange(event.target.value)}
       />
     </InputContainer>
+  );
+}
+
+function FieldAlisHelpInfo() {
+  return (
+    <HoverCard>
+      <HoverCard.Target>
+        <Icon c="text-secondary" name="info_filled" />
+      </HoverCard.Target>
+      <HoverCard.Dropdown>
+        <Box p="md" maw="20rem">
+          <Text>
+            {jt`Required only if the query uses an alias to refer to the mapped field's table. For example, if you map the variable to the ${(
+              <Code key="field">{"products.category"}</Code>
+            )} field, but the query aliases the ${(
+              <Code key="table">{"products"}</Code>
+            )} table as ${(
+              <Code key="table-alias">{"p"}</Code>
+            )}, you'd enter ${(
+              <Code key="field-alias">{"p.category"}</Code>
+            )}.`}
+          </Text>
+        </Box>
+      </HoverCard.Dropdown>
+    </HoverCard>
   );
 }
