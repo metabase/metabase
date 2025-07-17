@@ -306,19 +306,12 @@
   composed-metadata-provider]
  [lib.metadata.ident
   add-model-ident
-  assert-idents-present!
   explicitly-joined-ident
   implicit-join-clause-ident
   implicitly-joined-ident
   model-ident
   native-ident
-  placeholder-card-entity-id-for-adhoc-query
-  remove-model-ident
-  replace-placeholder-idents
-  valid-basic-ident?
-  valid-model-ident?
-  valid-native-ident?
-  valid-native-model-ident?]
+  remove-model-ident]
  [lib.native
   engine
   extract-template-tags
@@ -331,7 +324,6 @@
   template-tag-card-ids
   template-tags-referenced-cards
   template-tags
-  validate-native-query
   with-different-database
   with-native-extras
   with-native-query

@@ -51,7 +51,7 @@ export const CoercionStrategyPicker = ({
       placeholder={t`Select data type`}
       value={value}
       onBlur={() => setIsTouched(true)}
-      onChange={onChange}
+      onChange={(value) => onChange(value)}
       {...props}
     />
   );

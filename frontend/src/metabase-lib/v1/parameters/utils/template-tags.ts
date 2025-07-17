@@ -21,13 +21,15 @@ function getParameterType(tag: TemplateTag) {
     return "date/single";
   }
   // @ts-expect-error -- preserving preexisting incorrect types (for now)
-  if (type === "string") {
+  if (type === "string" || type === "text") {
     return "string/=";
   }
   if (type === "number") {
     return "number/=";
   }
-
+  if (type === "boolean") {
+    return "boolean/=";
+  }
   if (type === "temporal-unit") {
     return "temporal-unit";
   }
@@ -36,7 +38,7 @@ function getParameterType(tag: TemplateTag) {
 }
 
 function getParameterTarget(tag: TemplateTag): ParameterTarget {
-  return tag.type === "dimension"
+  return tag.type === "dimension" || tag.type === "temporal-unit"
     ? ["dimension", ["template-tag", tag.name]]
     : ["variable", ["template-tag", tag.name]];
 }
@@ -81,8 +83,9 @@ export function getTemplateTagParameters(
         tag.type != null &&
         tag.type !== "card" &&
         tag.type !== "snippet" &&
-        ((tag["widget-type"] && tag["widget-type"] !== "none") ||
-          tag.type !== "dimension"),
+        ((tag.type !== "dimension" && tag.type !== "temporal-unit") ||
+          tag.dimension != null ||
+          (tag["widget-type"] && tag["widget-type"] !== "none")),
     )
     .map((tag) => getTemplateTagParameter(tag, parametersById[tag.id]));
 }

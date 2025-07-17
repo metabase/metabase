@@ -80,7 +80,6 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -370,7 +369,6 @@
   "Inner implementation of [[display-info]], which caches this function's results. See there for documentation."
   [a-query stage-number x]
   (-> a-query
-      (lib.stage/ensure-previous-stages-have-metadata stage-number nil)
       (lib.core/display-info stage-number x)
       display-info->js))
 
@@ -1919,15 +1917,6 @@
   [database-id metadata inner-query]
   (lib.core/native-query (metadataProvider database-id metadata) inner-query))
 
-(defn ^:export validate-native-query
-  "Validates the syntax of a native query.
-
-  *Native* in this sense means a pMBQL query where the first stage is `:mbql.stage/native`.
-
-  > **Code health:** Healthy"
-  [a-native-query]
-  (to-array (lib.core/validate-native-query a-native-query)))
-
 (defn ^:export with-native-query
   "Update the raw native query. The first stage of `a-query` must already be a native stage.
 
@@ -2625,10 +2614,3 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
-
-(defn ^:export random-ident
-  "Returns a randomly generated `ident` string, suitable for a Card's `entity_id` or a query.
-
-  > **Code health:** Healthy, Single use. Only called when creating a new card/query."
-  []
-  (lib.core/random-ident))
