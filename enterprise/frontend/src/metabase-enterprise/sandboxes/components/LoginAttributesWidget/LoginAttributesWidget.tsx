@@ -24,8 +24,8 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
   userId?: UserId;
 }
 
-// if the value set in the ui is the same as the tenant value, don't save it to the user
-const isTenantValue = (
+// if the value set in the ui is the same as the tenant or jwt value, don't save it to the user
+const isInheritedValue = (
   [key, inputValue]: [UserAttributeKey, UserAttributeValue],
   structuredAttributes: StructuredUserAttributes,
 ) => {
@@ -34,10 +34,12 @@ const isTenantValue = (
     return false;
   }
 
-  const tenantValue =
+  const inheritedValue =
     attribute?.original?.value ??
-    (attribute.source === "tenant" ? attribute.value : undefined);
-  return tenantValue === inputValue;
+    (attribute.source === "tenant" || attribute.source === "jwt"
+      ? attribute.value
+      : undefined);
+  return inheritedValue === inputValue;
 };
 
 export const LoginAttributesWidget = ({
@@ -64,7 +66,7 @@ export const LoginAttributesWidget = ({
     const validEntries = Object.entries(newValue).filter(
       ([key, value]) =>
         !key.startsWith("@") &&
-        !isTenantValue([key, value], structuredAttributes ?? {}),
+        !isInheritedValue([key, value], structuredAttributes ?? {}),
     );
     setValue(Object.fromEntries(validEntries));
   };

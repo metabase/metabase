@@ -56,6 +56,7 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_query_table_analysis_id
                     deleteCascade: true
+
   - changeSet:
       id: v56.2025-06-06T20:11:56
       author: nvoxland
@@ -200,6 +201,21 @@ databaseChangeLog:
             dbms: h2
             path: instance_analytics_views/users/v2/h2-users.sql
             relativeToChangelogFile: true
+
+  - changeSet:
+      id: v56.2025-06-17T20:11:55
+      author: edpaget
+      comment: Add column to user for jwt-set attributes
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: jwt_attributes
+                  type: ${text.type}
+                  remarks: JSON object containing attributes set through jwt
+                  constraints:
+                    nullable: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

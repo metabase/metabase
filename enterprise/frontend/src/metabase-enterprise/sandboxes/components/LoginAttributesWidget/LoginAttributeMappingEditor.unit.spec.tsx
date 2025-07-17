@@ -32,6 +32,23 @@ const structuredAttributes: StructuredUserAttributes = {
     frozen: false,
     value: "green",
   },
+  session: {
+    // inherited JWT attribute
+    source: "jwt",
+    frozen: false,
+    value: "abc123",
+  },
+  role: {
+    // overridden JWT attribute
+    source: "user",
+    frozen: false,
+    value: "admin",
+    original: {
+      source: "jwt",
+      frozen: false,
+      value: "user",
+    },
+  },
   personal: {
     // personal attribute
     source: "user",
@@ -194,6 +211,15 @@ describe("LoginAttributeMappingEditor", () => {
       expect(await screen.findByDisplayValue("secret")).toBeInTheDocument();
     });
 
+    it("shows JWT attributes with text keys", async () => {
+      setup({ structuredAttributes });
+
+      expect(await screen.findByText("session")).toBeInTheDocument();
+      expect(await screen.findByDisplayValue("abc123")).toBeInTheDocument();
+      expect(await screen.findByText("role")).toBeInTheDocument();
+      expect(await screen.findByDisplayValue("admin")).toBeInTheDocument();
+    });
+
     it("can add a new attribute", async () => {
       const { onChange } = setup({ structuredAttributes });
 
@@ -212,6 +238,8 @@ describe("LoginAttributeMappingEditor", () => {
         "@tenant.slug": "bug_gym",
         type: "insect",
         color: "green",
+        session: "abc123",
+        role: "admin",
         personal: "secret",
         newAttribute: "newValue",
       });
@@ -227,6 +255,8 @@ describe("LoginAttributeMappingEditor", () => {
         "@tenant.slug": "bug_gym",
         type: "insect",
         color: "green",
+        session: "abc123",
+        role: "admin",
         public: "newSecret",
       });
     });
@@ -241,6 +271,8 @@ describe("LoginAttributeMappingEditor", () => {
         "@tenant.slug": "bug_gym",
         type: "insect",
         color: "green",
+        session: "abc123",
+        role: "admin",
       });
     });
 
@@ -252,6 +284,8 @@ describe("LoginAttributeMappingEditor", () => {
         "@tenant.slug": "bug_gym",
         type: "insect",
         color: "blue",
+        session: "abc123",
+        role: "admin",
         personal: "secret",
       });
     });
@@ -264,6 +298,8 @@ describe("LoginAttributeMappingEditor", () => {
         "@tenant.slug": "bug_gym",
         type: "ick",
         color: "green",
+        session: "abc123",
+        role: "admin",
         personal: "secret",
       });
     });
@@ -272,8 +308,9 @@ describe("LoginAttributeMappingEditor", () => {
       const { onChange } = setup({ structuredAttributes });
 
       expect(await screen.findByDisplayValue("insect")).toBeInTheDocument();
-      const revertButton = await screen.findByLabelText("refresh icon");
-      await userEvent.click(revertButton);
+      const revertButtons = await screen.findAllByLabelText("refresh icon");
+      // Click the revert button for the tenant attribute (type)
+      await userEvent.click(revertButtons[1]);
 
       expect(await screen.findByDisplayValue("bug")).toBeInTheDocument();
       expect(screen.queryByDisplayValue("insect")).not.toBeInTheDocument();
@@ -282,6 +319,57 @@ describe("LoginAttributeMappingEditor", () => {
         "@tenant.slug": "bug_gym",
         type: "bug",
         color: "green",
+        session: "abc123",
+        role: "admin",
+        personal: "secret",
+      });
+    });
+
+    it("can override a JWT attribute value", async () => {
+      const { onChange } = setup({ structuredAttributes });
+
+      await changeInput("abc123", "xyz789");
+      expect(onChange).toHaveBeenLastCalledWith({
+        "@tenant.slug": "bug_gym",
+        type: "insect",
+        color: "green",
+        session: "xyz789",
+        role: "admin",
+        personal: "secret",
+      });
+    });
+
+    it("can change an overridden JWT attribute value", async () => {
+      const { onChange } = setup({ structuredAttributes });
+
+      await changeInput("admin", "superuser");
+      expect(onChange).toHaveBeenLastCalledWith({
+        "@tenant.slug": "bug_gym",
+        type: "insect",
+        color: "green",
+        session: "abc123",
+        role: "superuser",
+        personal: "secret",
+      });
+    });
+
+    it("can revert a JWT attribute value", async () => {
+      const { onChange } = setup({ structuredAttributes });
+
+      expect(await screen.findByDisplayValue("admin")).toBeInTheDocument();
+      const revertButtons = await screen.findAllByLabelText("refresh icon");
+      // Click the revert button for the JWT attribute (role)
+      await userEvent.click(revertButtons[0]);
+
+      expect(await screen.findByDisplayValue("user")).toBeInTheDocument();
+      expect(screen.queryByDisplayValue("admin")).not.toBeInTheDocument();
+
+      expect(onChange).toHaveBeenLastCalledWith({
+        "@tenant.slug": "bug_gym",
+        type: "insect",
+        color: "green",
+        session: "abc123",
+        role: "user",
         personal: "secret",
       });
     });
