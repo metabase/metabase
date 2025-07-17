@@ -2450,6 +2450,251 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
   });
+
+  describe("moving filters", () => {
+    const categoryParameter = createMockParameter({
+      id: "1b9cd9f1",
+      name: "Category",
+      type: "string/=",
+      slug: "category",
+      sectionId: "string",
+    });
+
+    const countParameter = createMockParameter({
+      id: "88a1257c",
+      name: "Count",
+      type: "number/<=",
+      slug: "count",
+      sectionId: "number",
+    });
+
+    const categoryFieldRef = [
+      "field",
+      PRODUCTS.CATEGORY,
+      { "source-field": ORDERS.PRODUCT_ID },
+    ];
+
+    it("should allow moving filters on a single tab dashboard", () => {
+      H.createQuestionAndDashboard({
+        dashboardDetails: {
+          parameters: [categoryParameter, countParameter],
+        },
+        questionDetails: {
+          display: "bar",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [categoryFieldRef],
+          },
+        },
+        cardDetails: {
+          inline_parameters: [categoryParameter.id],
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+        H.editDashboard();
+      });
+
+      // Wire-up filters with the card
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").click();
+      });
+      H.selectDashboardFilter(H.getDashboardCard(0), "Count");
+      H.dashboardParameterSidebar().button("Done").click();
+
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
+      H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+
+      // Move card filter to the header
+      H.moveDashboardFilter("Top of page");
+
+      H.getDashboardCard(0).findByText("Category").should("not.exist");
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category")
+          .should("exist");
+      });
+
+      // Move header filter to the card
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").click();
+      });
+      H.moveDashboardFilter("test question");
+
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").should("exist");
+      });
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Count")
+          .should("not.exist");
+      });
+
+      // Save and assert changes are applied
+      H.saveDashboard();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget().contains("Count").should("exist");
+      });
+      H.dashboardParametersContainer().within(() => {
+        H.filterWidget().contains("Count").should("not.exist");
+      });
+    });
+
+    it("should allow moving filters on a dashboard with tabs", () => {
+      const TAB_1 = { id: 1, name: "Tab 1" };
+      const TAB_2 = { id: 2, name: "Tab 2" };
+
+      H.createDashboardWithTabs({
+        parameters: [categoryParameter, countParameter],
+        tabs: [TAB_1, TAB_2],
+        dashcards: [
+          createMockHeadingDashboardCard({
+            id: -1,
+            dashboard_tab_id: TAB_2.id,
+            inline_parameters: [categoryParameter.id],
+            size_x: 24,
+            size_y: 2,
+          }),
+          createMockDashboardCard({
+            id: -2,
+            card_id: ORDERS_BY_YEAR_QUESTION_ID,
+            dashboard_tab_id: TAB_1.id,
+            inline_parameters: [countParameter.id],
+            parameter_mappings: [
+              {
+                parameter_id: countParameter.id,
+                card_id: ORDERS_BY_YEAR_QUESTION_ID,
+                target: [
+                  "dimension",
+                  ["field", "count", { "base-type": "type/Integer" }],
+                  { "stage-number": 1 },
+                ],
+              },
+            ],
+            row: 1,
+            size_x: 18,
+            size_y: 6,
+          }),
+        ],
+      }).then((dashboard) => {
+        H.visitDashboard(dashboard.id);
+        H.editDashboard();
+      });
+
+      // Move filter from tab 1 to tab 2
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").click();
+      });
+
+      H.moveDashboardFilter("Heading Text");
+      H.dashboardParameterSidebar().button("Done").click();
+
+      H.getDashboardCard(0)
+        .findByTestId("editing-parameter-widget")
+        .should("not.exist");
+      H.editingDashboardParametersContainer().should("not.exist");
+
+      // Move filter from tab 2 to tab 1
+      H.goToTab("Tab 2");
+
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").should("exist");
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
+
+      H.moveDashboardFilter(/Orders, Count/);
+      H.dashboardParameterSidebar().button("Done").click();
+
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category")
+          .should("not.exist");
+      });
+      H.editingDashboardParametersContainer().should("not.exist");
+
+      H.goToTab("Tab 1");
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
+      H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+      H.dashboardParameterSidebar().button("Done").click();
+
+      // Save and assert changes are applied
+      H.saveDashboard();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget().contains("Category").should("exist");
+        H.filterWidget().contains("Count").should("not.exist");
+      });
+    });
+
+    it("should allow undoing a move", () => {
+      H.createQuestionAndDashboard({
+        dashboardDetails: {
+          parameters: [categoryParameter, countParameter],
+        },
+        questionDetails: {
+          display: "bar",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [categoryFieldRef],
+          },
+        },
+        cardDetails: {
+          inline_parameters: [categoryParameter.id],
+          size_x: 18,
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+        H.editDashboard();
+      });
+
+      // Move card filter to the header
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Category").click();
+      });
+      H.dashboardParameterSidebar()
+        .findByPlaceholderText("Move filter")
+        .click();
+      H.popover().findByText("Top of page").click();
+
+      // Undo
+      H.undo();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category")
+          .should("exist");
+      });
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Category")
+          .should("not.exist");
+      });
+
+      // Move header filter to the card
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").click();
+      });
+      H.dashboardParameterSidebar()
+        .findByPlaceholderText("Move filter")
+        .click();
+      H.popover().findByText("test question").click();
+      H.dashboardParameterSidebar().button("Done").click();
+
+      // Undo
+      H.undo();
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true })
+          .contains("Count")
+          .should("not.exist");
+      });
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").should("exist");
+      });
+    });
+  });
 });
 
 H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
