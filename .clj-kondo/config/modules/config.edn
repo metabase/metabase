@@ -981,6 +981,10 @@
            users
            util}}
 
+  queue
+  {:api  #{metabase.queue.core}
+   :uses #{models util}}
+
   request
   {:team "Admin Webapp"
    :api  #{metabase.request.core
