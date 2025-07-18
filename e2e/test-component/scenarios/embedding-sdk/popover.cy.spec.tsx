@@ -1,7 +1,7 @@
 import {
   EditableDashboard,
   InteractiveDashboard,
-  SdkQuestion,
+  InteractiveQuestion,
 } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -87,7 +87,9 @@ describe("scenarios > embedding-sdk > popovers", () => {
   });
 
   it("should prevent closing the ChartNestedSettingsSeriesSingle popover when clicking it", () => {
-    mountSdkContent(<SdkQuestion questionId={ORDERS_BY_YEAR_QUESTION_ID} />);
+    mountSdkContent(
+      <InteractiveQuestion questionId={ORDERS_BY_YEAR_QUESTION_ID} />,
+    );
 
     H.openVizSettingsSidebar();
 
@@ -106,7 +108,7 @@ describe("scenarios > embedding-sdk > popovers", () => {
 
   it("should prevent closing the ChartSettingMultiSelect when clicking it", () => {
     cy.get<string>("@questionId").then((questionId) => {
-      mountSdkContent(<SdkQuestion questionId={questionId} />);
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />);
     });
 
     H.openVizSettingsSidebar();
@@ -130,7 +132,9 @@ describe("scenarios > embedding-sdk > popovers", () => {
   });
 
   it("should prevent closing the ChartSettingColorPicker when clicking it", () => {
-    mountSdkContent(<SdkQuestion questionId={ORDERS_BY_YEAR_QUESTION_ID} />);
+    mountSdkContent(
+      <InteractiveQuestion questionId={ORDERS_BY_YEAR_QUESTION_ID} />,
+    );
 
     H.openVizSettingsSidebar();
 
@@ -182,7 +186,7 @@ describe("scenarios > embedding-sdk > popovers", () => {
 
   it("should prevent closing the ComparisonPicker when clicking it", () => {
     cy.get<string>("@questionId").then((questionId) => {
-      mountSdkContent(<SdkQuestion questionId={questionId} />);
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />);
     });
 
     cy.findByTestId("chart-type-selector-button").click();

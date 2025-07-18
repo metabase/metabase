@@ -7,9 +7,26 @@ EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
 defineGlobalReact();
 
-export * from "embedding-sdk/sdk-wrapper/components/public";
-export * from "embedding-sdk/sdk-wrapper/hooks/public";
-export * from "embedding-sdk/sdk-wrapper/lib/public";
+export * from "./sdk-wrapper/components/public/CollectionBrowser";
+export * from "./sdk-wrapper/components/public/CreateQuestion";
+export * from "./sdk-wrapper/components/public/CreateDashboardModal";
+export * from "./sdk-wrapper/components/public/dashboard/EditableDashboard";
+export * from "./sdk-wrapper/components/public/dashboard/InteractiveDashboard";
+export * from "./sdk-wrapper/components/public/dashboard/StaticDashboard";
+export * from "./sdk-wrapper/components/public/debug/SdkDebugInfo";
+export { SdkQuestion as InteractiveQuestion } from "./sdk-wrapper/components/public/SdkQuestion";
+export * from "./sdk-wrapper/components/public/StaticQuestion";
+// eslint-disable-next-line no-literal-metabase-strings -- Export
+export * from "./sdk-wrapper/components/public/MetabaseProvider";
+export * from "./sdk-wrapper/components/public/MetabotQuestion";
+
+export { useApplicationName } from "./sdk-wrapper/hooks/public/use-application-name";
+export { useAvailableFonts } from "./sdk-wrapper/hooks/public/use-available-fonts";
+export { useCurrentUser } from "./sdk-wrapper/hooks/public/use-current-user";
+export { useMetabaseAuthStatus } from "./sdk-wrapper/hooks/public/use-metabase-auth-status";
+
+export * from "./sdk-wrapper/lib/public/define-metabase-auth-config";
+export * from "./sdk-wrapper/lib/public/define-metabase-theme";
 
 export {
   type CollectionBrowserProps,

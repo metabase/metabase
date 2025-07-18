@@ -1,4 +1,7 @@
-import { MetabaseProvider, SdkQuestion } from "@metabase/embedding-sdk-react";
+import {
+  InteractiveQuestion,
+  MetabaseProvider,
+} from "@metabase/embedding-sdk-react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { METABASE_INSTANCE_URL } from "e2e/support/helpers";
@@ -31,7 +34,7 @@ function setup({
       }}
       locale={locale}
     >
-      <SdkQuestion questionId={ORDERS_QUESTION_ID} />,
+      <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
     </MetabaseProvider>,
   );
 

@@ -3,8 +3,8 @@ import {
   CreateDashboardModal,
   EditableDashboard,
   InteractiveDashboard,
+  InteractiveQuestion,
   MetabaseProvider,
-  SdkQuestion,
   StaticQuestion,
   defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
@@ -76,7 +76,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
           theme={theme}
         >
-          <SdkQuestion questionId="new" />
+          <InteractiveQuestion questionId="new" />
         </MetabaseProvider>,
       );
 
@@ -99,7 +99,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-          <SdkQuestion questionId="new" />
+          <InteractiveQuestion questionId="new" />
         </MetabaseProvider>,
       );
 
@@ -125,7 +125,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
           theme={theme}
         >
-          <SdkQuestion questionId="new" />
+          <InteractiveQuestion questionId="new" />
         </MetabaseProvider>,
       );
 
@@ -350,7 +350,7 @@ describe("scenarios > embedding-sdk > styles", () => {
     it("mantine modals should render with our styles", () => {
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-          <SdkQuestion questionId={ORDERS_QUESTION_ID} />
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>,
       );
 
@@ -506,13 +506,16 @@ describe("scenarios > embedding-sdk > styles", () => {
       });
 
       it("should render DragOverlay of SortableList with our styles", () => {
-        mountSdkContent(<SdkQuestion questionId={ORDERS_QUESTION_ID} />, {
-          sdkProviderProps: {
-            theme: {
-              fontFamily: "Impact",
+        mountSdkContent(
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+          {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
             },
           },
-        });
+        );
 
         H.openVizSettingsSidebar();
 
@@ -580,7 +583,10 @@ describe("scenarios > embedding-sdk > styles", () => {
           >
             <Button color="brand">outside sdk wrapper</Button>
 
-            <SdkQuestion questionId={ORDERS_QUESTION_ID} isSaveEnabled />
+            <InteractiveQuestion
+              questionId={ORDERS_QUESTION_ID}
+              isSaveEnabled
+            />
           </MetabaseProvider>
         </MantineProvider>,
       );
