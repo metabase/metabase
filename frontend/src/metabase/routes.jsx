@@ -45,6 +45,7 @@ import {
 } from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
+import { ReportEditor } from "metabase/reports";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
@@ -284,6 +285,13 @@ export const getRoutes = (store) => {
             <Route path="query" component={QueryBuilder} />
             <Route path="metabot" component={QueryBuilder} />
           </Route>
+
+          {/* REPORTS */}
+          <Route
+            path="/reports/new"
+            title={t`New Report`}
+            component={ReportEditor}
+          />
 
           {/* METRICS V2 */}
           <Route path="/metric">
