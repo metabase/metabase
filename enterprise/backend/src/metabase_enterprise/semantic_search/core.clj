@@ -48,6 +48,8 @@
   :feature :semantic-search
   [searchable-documents _opts]
   ;; TODO:implement reindexing without dropping the table
+  (when-not @semantic.db/data-source
+    (semantic.db/init-db!))
   (semantic.index/create-index-table! {:force-reset? true})
   (semantic.index/populate-index! (into [] searchable-documents)))
 
