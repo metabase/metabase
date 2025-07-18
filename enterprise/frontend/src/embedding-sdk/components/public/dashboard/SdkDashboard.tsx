@@ -319,7 +319,8 @@ const SdkDashboardInner = ({
         ))
         .with("queryBuilder", () => (
           <DashboardQueryBuilder
-            targetDashboardId={dashboardId}
+            // dashboardId can be an entity_id, which is not supported, let's use dashboard.id (numeric id) if we have it
+            targetDashboardId={dashboard?.id ?? dashboardId}
             onCreate={(question) => {
               setNewDashboardQuestionId(question.id);
               setRenderMode("dashboard");
