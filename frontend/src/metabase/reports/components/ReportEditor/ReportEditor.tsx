@@ -7,7 +7,7 @@ import { Node } from "@tiptap/core";
 import { createRoot } from "react-dom/client";
 import { t } from "ttag";
 
-import { Box, Button, Group, Stack, Text, useMantineTheme } from "metabase/ui";
+import { Box, Button, Group, Paper, Stack, Text, useMantineTheme } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import { useSearchQuery } from "metabase/api";
 import { skipToken } from "@reduxjs/toolkit/query";
@@ -540,93 +540,12 @@ const ReportEditor = () => {
 
   return (
     <EditorContainer>
-      <EditorToolbar>
-        <Group gap="xs">
-          <ToolbarButton
-            onClick={handleBold}
-            title={t`Bold (Ctrl+B)`}
-            data-testid="bold-button"
-          >
-            <Icon name="bolt" size={16} />
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={handleItalic}
-            title={t`Italic (Ctrl+I)`}
-            data-testid="italic-button"
-          >
-            <Icon name="pencil" size={16} />
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={handleStrike}
-            title={t`Strikethrough`}
-            data-testid="strike-button"
-          >
-            <Icon name="line" size={16} />
-          </ToolbarButton>
-        </Group>
-
-        <Group gap="xs">
-          <ToolbarButton
-            onClick={() => handleHeading(1)}
-            title={t`Heading 1`}
-            data-testid="h1-button"
-          >
-            <Text size="sm" fw="bold">H1</Text>
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() => handleHeading(2)}
-            title={t`Heading 2`}
-            data-testid="h2-button"
-          >
-            <Text size="sm" fw="bold">H2</Text>
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() => handleHeading(3)}
-            title={t`Heading 3`}
-            data-testid="h3-button"
-          >
-            <Text size="sm" fw="bold">H3</Text>
-          </ToolbarButton>
-        </Group>
-
-        <Group gap="xs">
-          <ToolbarButton
-            onClick={handleBulletList}
-            title={t`Bullet List`}
-            data-testid="bullet-list-button"
-          >
-            <Icon name="list" size={16} />
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={handleOrderedList}
-            title={t`Numbered List`}
-            data-testid="ordered-list-button"
-          >
-            <Icon name="list" size={16} />
-          </ToolbarButton>
-        </Group>
-
-        <Group gap="xs">
-          <ToolbarButton
-            onClick={handleBlockquote}
-            title={t`Blockquote`}
-            data-testid="blockquote-button"
-          >
-            <Icon name="info" size={16} />
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={handleCodeBlock}
-            title={t`Code Block`}
-            data-testid="code-block-button"
-          >
-            <Icon name="sql" size={16} />
-          </ToolbarButton>
-        </Group>
-      </EditorToolbar>
-
-      <StyledEditorContent>
+    <Paper maw={800} m="lg">
+    <StyledEditorContent>
         <EditorContent editor={editor} />
       </StyledEditorContent>
+    </Paper>
+
 
       {showMentions && mentionRect && (
         <MentionSuggestions
@@ -635,14 +554,6 @@ const ReportEditor = () => {
           clientRect={mentionRect}
         />
       )}
-
-      <Stack gap="md" mt="lg">
-        <Group>
-          <Button onClick={handleSave} variant="filled">
-            {t`Save Report`}
-          </Button>
-        </Group>
-      </Stack>
     </EditorContainer>
   );
 };
