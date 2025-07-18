@@ -127,7 +127,7 @@ jobs:
         id: run-java-tests
         run: >-
           clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev
-          :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          :exclude-tags '[:mb/driver-tests :mb/memory ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           ${{ matrix.job.test-args }}
 
       - name: Upload Test Results

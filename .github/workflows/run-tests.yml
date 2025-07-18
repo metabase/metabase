@@ -110,3 +110,10 @@ jobs:
     needs: files-changed
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
+
+  memory-tests:
+    needs: files-changed
+    uses: ./.github/workflows/memory-tests.yml
+    secrets: inherit
+    with:
+      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}

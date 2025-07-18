@@ -331,6 +331,15 @@
                  ;; TODO -- figure out how to do a random port like in the old project.clj?
                  "-Dmb.jetty.port=3001"]}
 
+  :performance
+  {:extra-paths ["performance"]}
+
+  :small-ram
+  {:jvm-opts ["-Xmx500m"
+              "-Xms500m"
+              "-Dci=TRUE"]
+   :extra-paths ["performance"]}
+
   ;; run the dev server with
   ;; clojure -M:run
   ;; clojure -M:run:drivers (include all drivers)
