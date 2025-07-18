@@ -1114,7 +1114,7 @@
                   (is (= #{["A" "X" 100] ["A" "Y" 150] ["B" "X" 300] ["B" "Y" 200]}
                          (set (get-in result [:data :rows])))))))
             (finally
-              (.drop coll))))))))
+              (mongo.util/drop coll))))))))
 
 (deftest nested-id-basic-breakout-combined-test
   (testing "Combined test for basic nested _id field scenarios (#34577)"
@@ -1198,7 +1198,7 @@
                          (set rows))
                       "Results are as expected - breakout by both _id.type and type fields"))))
             (finally
-              (.drop coll))))))))
+              (mongo.util/drop coll))))))))
 
 (deftest nested-id-deep-projection-style-combined-test
   (testing "Test for deep nested _id fields (#34577)"
@@ -1299,4 +1299,4 @@
                          (set (get-in result [:data :rows])))
                       "Results are what we expect"))))
             (finally
-              (.drop coll))))))))
+              (mongo.util/drop coll))))))))
