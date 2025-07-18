@@ -106,22 +106,33 @@ export const CollectionBrowserInner = ({
     getCollectionIdSlugFromReference(state, collectionId),
   );
 
-  const [currentCollectionId, setCurrentCollectionId] =
+  // Internal collection state.
+  const [internalCollectionId, setInternalCollectionId] =
     useState<CollectionId>(baseCollectionId);
 
-  const { breadcrumbs, updateCurrentLocation } = useSdkBreadcrumb({
-    consumer: "collection",
-  });
+  const { breadcrumbs, updateCurrentLocation, isBreadcrumbEnabled } =
+    useSdkBreadcrumb({
+      consumer: "collection",
+    });
 
-  const { data: currentCollection, isFetching: isFetchingCollection } =
-    useGetCollectionQuery({ id: currentCollectionId });
-
-  const latestBreadcrumbCollection = useMemo(() => {
-    return breadcrumbs[breadcrumbs.length - 1];
+  const latestBreadcrumbCollectionId = useMemo(() => {
+    return breadcrumbs[breadcrumbs.length - 1].id as CollectionId;
   }, [breadcrumbs]);
 
+  // Use breadcrumb state when enabled, otherwise use internal state
+  const effectiveCollectionId = useMemo(() => {
+    if (isBreadcrumbEnabled) {
+      return latestBreadcrumbCollectionId;
+    }
+
+    return internalCollectionId;
+  }, [isBreadcrumbEnabled, latestBreadcrumbCollectionId, internalCollectionId]);
+
+  const { data: currentCollection, isFetching: isFetchingCollection } =
+    useGetCollectionQuery({ id: effectiveCollectionId });
+
   useEffect(() => {
-    setCurrentCollectionId(baseCollectionId);
+    setInternalCollectionId(baseCollectionId);
   }, [baseCollectionId]);
 
   // Update the breadcrumb when collection changes.
@@ -141,7 +152,7 @@ export const CollectionBrowserInner = ({
     onClick?.(item);
 
     if (item.model === "collection") {
-      setCurrentCollectionId(item.id as CollectionId);
+      setInternalCollectionId(item.id as CollectionId);
     }
   };
 
@@ -151,11 +162,8 @@ export const CollectionBrowserInner = ({
 
   return (
     <Stack w="100%" h="100%" gap="sm" className={className} style={style}>
-      <div>{`collectionId = ${currentCollectionId}`}</div>
-      <div>{`latestBreadcrumbCollection = ${latestBreadcrumbCollection?.id}`}</div>
-
       <CollectionItemsTable
-        collectionId={currentCollectionId}
+        collectionId={effectiveCollectionId}
         onClick={onClickItem}
         pageSize={pageSize}
         models={collectionTypes}
