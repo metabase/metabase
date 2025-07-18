@@ -35,6 +35,7 @@
                               :query-reference-validation
                               :sandboxes
                               :scim
+                              :semantic-search
                               :serialization
                               :session-timeout-config
                               :snippet-collections
@@ -47,6 +48,7 @@
                               :collection-cleanup
                               :database-routing
                               :cloud-custom-smtp}
+    (def res (:token-features (mt/user-http-request :crowberto :get 200 "session/properties")))
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
@@ -74,6 +76,7 @@
             :query_reference_validation     true
             :sandboxes                      true
             :scim                           true
+            :semantic_search                true
             :serialization                  true
             :session_timeout_config         true
             :snippet_collections            true
