@@ -194,7 +194,8 @@
        [:has_temporal_dim                    {:optional true} [:maybe :boolean]]]]
   (api/check-valid-page-params (request/limit) (request/offset))
   (try
-    (let [ctx (search/search-context
+    (u/prog1 (search/search
+              (search/search-context
                {:archived                            archived
                 :context                             context
                 :created-at                          created-at
@@ -222,9 +223,8 @@
                 :include-metadata?                   include-metadata
                 :non-temporal-dim-ids                (process-non-temporal-dim-ids non-temporal-dim-ids)
                 :has-temporal-dim                    has-temporal-dim
-                :display-type                        (set display-type)})]
-      (u/prog1 (search/search ctx)
-        (analytics/inc! :metabase-search/response-ok)))
+                :display-type                        (set display-type)}))
+      (analytics/inc! :metabase-search/response-ok))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]
         (when (or (not status-code) (= 5 (quot status-code 100)))
