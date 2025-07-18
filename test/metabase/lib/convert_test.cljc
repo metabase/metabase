@@ -2,7 +2,6 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
-   [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
@@ -1401,18 +1400,48 @@
                                                :params ["BBQ"]}}]}}
               (lib.convert/->legacy-MBQL query))))))
 
-(deftest ^:parallel metadata->legacy-test
+(deftest ^:parallel metadata-roundtrip-test
   (testing "Do not convert lib keys to snake_case when converting metadata"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
-                    lib/append-stage)
-          query (-> query
-                    (lib/update-query-stage 0 assoc :lib/stage-metadata {:lib/type :metadata/results
-                                                                         :columns  (lib/returned-columns query)}))]
-      (is (not (me/humanize (mr/explain ::lib.schema/query query))))
-      (is (=? {:query {:source-metadata [{:name                     "ID"
-                                          :base_type                :type/BigInteger
-                                          :lib/desired-column-alias "ID"}
-                                         {:name                     "NAME"
-                                          :base_type                :type/Text
-                                          :lib/desired-column-alias "NAME"}]}}
-              (lib.convert/->legacy-MBQL query))))))
+    (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
+                              lib/append-stage)
+          columns         (lib/returned-columns query)
+          test-cases      [{:mbql-5-path  [:stages 0 :lib/stage-metadata :columns]
+                            :mbql-4-path  [:query :source-metadata]
+                            :mbql-4-shape :legacy}
+                           {:mbql-5-path  [:info :metadata/model-metadata]
+                            :mbql-4-path  [:info :metadata/model-metadata]
+                            :mbql-4-shape :lib}
+                           {:mbql-5-path  [:info :pivot/result-metadata]
+                            :mbql-4-path  [:info :pivot/result-metadata]
+                            :mbql-4-shape :lib}]
+          expected-shapes {:legacy [{:name                     "ID"
+                                     :base_type                :type/BigInteger
+                                     :lib/desired-column-alias "ID"}
+                                    {:name                     "NAME"
+                                     :base_type                :type/Text
+                                     :lib/desired-column-alias "NAME"
+                                     :fingerprint              {:global {}
+                                                                :type   {:type/Text {}}}}]
+                           :lib    [{:name                     "ID"
+                                     :base-type                :type/BigInteger
+                                     :lib/desired-column-alias "ID"}
+                                    {:name                     "NAME"
+                                     :base-type                :type/Text
+                                     :lib/desired-column-alias "NAME"
+                                     :fingerprint              {:global {}
+                                                                :type   {:type/Text {}}}}]}]
+      (testing "5 => 4"
+        (doseq [{:keys [mbql-5-path mbql-4-path mbql-4-shape]} test-cases]
+          (testing (pr-str mbql-5-path)
+            (let [query (assoc-in query mbql-5-path columns)]
+              (is (=? (assoc-in {} mbql-4-path (expected-shapes mbql-4-shape))
+                      (lib.convert/->legacy-MBQL query)))))))
+      (testing "4 => 5"
+        (doseq [{:keys [mbql-5-path mbql-4-path mbql-4-shape]} test-cases]
+          (testing (pr-str mbql-4-path)
+            (let [query (-> {:database 1, :type :query, :query {:source-query {}}}
+                            (assoc-in mbql-4-path (case mbql-4-shape
+                                                    :lib    columns
+                                                    :legacy (#'lib.convert/stage-metadata->legacy-metadata {:columns columns}))))]
+              (is (=? (assoc-in {:stages [{} {}]} mbql-5-path (expected-shapes :lib))
+                      (lib.convert/->pMBQL query))))))))))

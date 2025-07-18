@@ -578,7 +578,9 @@
                                                             (lib/query meta/metadata-provider {:database (meta/id), :type :query, :query q1}))]
                                                    (-> col
                                                        (dissoc :lib/type)
-                                                       (update-keys u/->snake_case_en)))
+                                                       (update-keys (fn [k]
+                                                                      (cond-> k
+                                                                        (simple-keyword? k) u/->snake_case_en)))))
                                 :alias           "Question 54"
                                 :condition       [:= $id [:field %orders.id {:join-alias "Question 54"}]]
                                 :fields          [[:field %orders.id {:join-alias "Question 54"}]

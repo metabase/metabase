@@ -241,8 +241,31 @@
 
 (mr/def ::column.fingerprint
   [:map
-   [:global {:optional true} [:map-of :keyword :any]]
-   [:type   {:optional true} [:map-of ::lib.schema.common/base-type [:map-of :keyword :any]]]])
+   {:decode/normalize lib.schema.common/normalize-map}
+   [:global {:optional true} [:map-of {:decode/normalize lib.schema.common/normalize-map} :keyword :any]]
+   [:type   {:optional true} [:map-of
+                              {:decode/normalize (fn [m]
+                                                   (when (map? m)
+                                                     (update-keys m keyword)))}
+                              ::lib.schema.common/base-type
+                              [:map-of {:decode/normalize lib.schema.common/normalize-map} :keyword :any]]]])
+
+(def column-visibility-types
+  "Possible values for column `:visibility-type`."
+  #{:normal       ; Default setting.  field has no visibility restrictions.
+    :details-only ; For long blob like columns such as JSON.  field is not shown in some places on the frontend.
+    :hidden       ; Lightweight hiding which removes field as a choice in most of the UI.  should still be returned in queries.
+    :sensitive    ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
+    :retired})    ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
+
+(mr/def ::column.visibility-type
+  (into [:enum {:decode/normalize keyword}] column-visibility-types))
+
+(mr/def ::column.legacy-source
+  "Possible values for `column.source` -- this is added by [[metabase.lib.metadata.result-metadata]] for historical
+  reasons (it is used in a few places in the FE). DO NOT use this in the backend for any purpose, use `:lib/source`
+  instead."
+  [:enum {:decode/normalize keyword} :aggregation :fields :breakout :native])
 
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
@@ -278,9 +301,11 @@
     [:id             {:optional true} [:maybe ::lib.schema.id/field]]
     [:display-name   {:optional true} [:maybe :string]]
     [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+    [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
     ;; type of this column in the data warehouse, e.g. `TEXT` or `INTEGER`
     [:database-type  {:optional true} [:maybe :string]]
     [:active         {:optional true} :boolean]
+    [:visibility-type {:optional true} [:maybe ::column.visibility-type]]
     ;; if this is a field from another table (implicit join), this is the field in the current table that should be
     ;; used to perform the implicit join. e.g. if current table is `VENUES` and this field is `CATEGORIES.ID`, then the
     ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
@@ -408,6 +433,12 @@
     ;;
     [:fingerprint {:optional true} [:maybe [:ref ::column.fingerprint]]]
     ;;
+    ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
+    ;; legacy viz settings. This should not be used for anything other than that.
+    [:field-ref {:optional true} [:maybe [:ref :metabase.legacy-mbql.schema/Reference]]]
+    ;;
+    [:source {:optional true} [:maybe [:ref ::column.legacy-source]]]
+    ;;
     ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
     ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in
     ;; the application database, look at the implementation for fetching a `:metadata/column`
@@ -454,8 +485,8 @@
   [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric
    :metadata/segment])
 
-(mr/def ::card.result-metadata.map
-  "Schema for the maps in card `:result-metadata`. These can be either
+(mr/def ::lib-or-legacy-column
+  "Schema for the maps in card `:result-metadata` and similar. These can be either
   `:metabase.lib.schema.metadata/result-metadata` (i.e., kebab-cased) maps, or map snake_cased as returned by QP
   metadata, but they should NOT be a mixture of both -- if we mixed them somehow there is a bug in our code."
   [:multi
@@ -465,17 +496,8 @@
      [:ref ::column]
      [:map
       {:error/message "If a Card result metadata column has :lib/type it MUST be a valid kebab-cased :metabase.lib.schema.metadata/column"}]]]
-   ;; If it's not already MLv2 metadata just make sure it at the least something that can pass for legacy metadata.
-   ;; This is a sanity check -- we should not be seen maps that have duplicate keys because of case confusion. They
-   ;; should be all one or the other.
    [false
-    [:and
-     [:map]
-     [:fn
-      {:error/message "map that does not mix snake_case and kebab-case simple keywords"}
-      (fn [m]
-        (not (and (contains? m :display-name)
-                  (contains? m :display_name))))]]]])
+    [:ref :metabase.legacy-mbql.schema/legacy-column-metadata]]])
 
 (defn- normalize-card-query [query]
   (when query
@@ -526,7 +548,7 @@
    [:dataset-query   {:optional true} ::card.query]
    ;; vector of column metadata maps; these are ALMOST the correct shape to be [[ColumnMetadata]], but they're
    ;; probably missing `:lib/type` and probably using `:snake_case` keys.
-   [:result-metadata {:optional true} [:maybe [:sequential ::card.result-metadata.map]]]
+   [:result-metadata {:optional true} [:maybe [:sequential ::lib-or-legacy-column]]]
    ;; what sort of saved query this is, e.g. a normal Saved Question or a Model or a V2 Metric.
    [:type            {:optional true} [:maybe [:ref ::card.type]]]
    ;; Table ID is nullable in the application database, because native queries are not necessarily associated with a

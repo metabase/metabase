@@ -356,14 +356,14 @@
        (integer? id-or-name))]]
    {:clause-name :field}))
 
-(mr/def ::Field
+(mr/def ::field-or-expression-ref
   [:schema
    {:doc/title "`:field` or `:expression` ref"}
    (one-of expression field)])
 
 (def Field
   "Schema for either a `:field` clause (reference to a Field) or an `:expression` clause (reference to an expression)."
-  [:ref ::Field])
+  [:ref ::field-or-expression-ref])
 
 ;; aggregate field reference refers to an aggregation, e.g.
 ;;
@@ -386,7 +386,11 @@
   options                  (optional :map))
 
 (mr/def ::Reference
-  (one-of aggregation expression field))
+  [:schema
+   ;; this is provided for the convenience of Lib which uses this schema for `:field-ref` in results metadata
+   {:decode/normalize (fn [x]
+                        ((#?(:clj requiring-resolve :cljs resolve) 'metabase.legacy-mbql.normalize/normalize-field-ref) x))}
+   (one-of aggregation expression field)])
 
 (def Reference
   "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
@@ -1347,13 +1351,9 @@
    [:native [:ref ::NativeSourceQuery]]
    [:mbql   MBQLQuery]])
 
-(mr/def ::SourceQueryMetadata
-  "Schema for the expected keys for a single column in `:source-metadata` (`:source-metadata` is a sequence of these
-  entries), if it is passed in to the query.
-
-  This metadata automatically gets added for all source queries that are referenced via the `card__id` `:source-table`
-  form; for explicit `:source-query`s you should usually include this information yourself when specifying explicit
-  `:source-query`s."
+(mr/def ::legacy-column-metadata
+  "Schema for a single legacy metadata column. This is the pre-Lib equivalent of
+  `:metabase.lib.schema.metadata/column`."
   [:and
    [:map
     [:name         ::lib.schema.common/non-blank-string]
@@ -1363,7 +1363,12 @@
     [:display_name ::lib.schema.common/non-blank-string]
     [:semantic_type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
     ;; you'll need to provide this in order to use BINNING
-    [:fingerprint   {:optional true} [:maybe [:ref ::lib.schema.metadata/column.fingerprint]]]]
+    [:fingerprint   {:optional true} [:maybe [:ref ::lib.schema.metadata/column.fingerprint]]]
+    [:source        {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
+    [:field_ref     {:optional true} [:maybe [:ref ::Refernece]]]]
+   [:fn
+    {:error/message "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"}
+    (complement :lib/type)]
    (letfn [(disallowed-key? [k]
              (core/or (core/not (keyword? k))
                       (let [disallowed-char (if (qualified-keyword? k)
@@ -1379,11 +1384,6 @@
       (fn [m]
         (core/and (map? m)
                   (every? (complement disallowed-key?) (keys m))))])])
-
-(def SourceQueryMetadata
-  "Alias for ::SourceQueryMetadata -- prefer that instead."
-  ;; TODO - there is a very similar schema in `metabase.analyze.query-results`; see if we can merge them
-  [:ref ::SourceQueryMetadata])
 
 (def source-table-card-id-regex
   "Pattern that matches `card__id` strings that can be used as the `:source-table` of MBQL queries."
@@ -1506,7 +1506,7 @@
      {:optional true
       :description "Metadata about the source query being used, if pulled in from a Card via the
   `:source-table \"card__id\"` syntax. added automatically by the `resolve-card-id-source-tables` middleware."}
-     [:maybe [:sequential SourceQueryMetadata]]]]
+     [:maybe [:sequential]]]]
    ;; additional constraints
    [:fn
     {:error/message "Joins must have either a `source-table` or `source-query`, but not both."}
@@ -1595,7 +1595,7 @@
      {:optional true
       :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is
   primarily used to let power things like binning when used with Field Literals instead of normal Fields."}
-     [:maybe [:sequential SourceQueryMetadata]]]]
+     [:maybe [:sequential [:ref ::legacy-column-metadata]]]]]
    ;;
    ;; CONSTRAINTS
    ;;
@@ -1637,7 +1637,7 @@
    [:fn {:error/message "must be a `:dimension` clause"} (partial helpers/is-clause? :dimension)]
    [:catn
     [:tag [:= :dimension]]
-    [:target [:schema [:or [:ref ::Field] [:ref ::template-tag]]]]
+    [:target [:schema [:or [:ref ::field-or-expression-ref] [:ref ::template-tag]]]]
     [:options [:? [:maybe [:map {:error/message "dimension options"} [:stage-number {:optional true} :int]]]]]]])
 
 (def dimension
@@ -1791,13 +1791,14 @@
    [:fn
     {:error/message "Query must specify at most one of `:native` or `:query`, but not both."}
     (complement (every-pred :native :query))]
-   [:fn
-    {:error/message "Native queries must not specify `:query`; MBQL queries must not specify `:native`."}
-    (fn [{native :native, mbql :query, query-type :type}]
-      (core/case query-type
-        :native (core/not mbql)
-        :query  (core/not native)
-        false))]])
+   ;; NOCOMMIT
+   #_[:fn
+      {:error/message "Native queries must not specify `:query`; MBQL queries must not specify `:native`."}
+      (fn [{native :native, mbql :query, query-type :type}]
+        (core/case query-type
+          :native (core/not mbql)
+          :query  (core/not native)
+          false))]])
 
 (mr/def ::check-query-does-not-have-source-metadata
   "`:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the

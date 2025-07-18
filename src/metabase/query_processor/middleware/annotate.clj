@@ -4,8 +4,10 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.driver.common :as driver.common]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns]
@@ -21,8 +23,8 @@
 
 (mr/def ::col
   [:map
-   [:source    {:optional true} ::lib.metadata.result-metadata/legacy-source]
-   [:field_ref {:optional true} ::lib.metadata.result-metadata/super-broken-legacy-field-ref]])
+   [:source    {:optional true} ::lib.schema.metadata/column.legacy-source]
+   [:field_ref {:optional true} ::mbql.s/Reference]])
 
 (def ^:private ^{:arglists '([k])} key->qp-results-key
   "Convert unnamespaced keys to snake case for traditional reasons; `:lib/` keys and the like can stay in kebab case

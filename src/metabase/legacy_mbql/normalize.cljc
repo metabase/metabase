@@ -397,27 +397,35 @@
   [clause]
   (-> clause normalize-tokens canonicalize-mbql-clauses))
 
-(defn- update-existing! [transient-map k f]
-  (if-some [v (get transient-map k)]
-    (assoc! transient-map k (f v))
-    transient-map))
-
-(defn normalize-source-metadata
+(mu/defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
-  [metadata]
-  {:pre [(map? metadata)
-         #?(:clj  (instance? clojure.lang.IEditableCollection metadata)
-            :cljs (implements? cljs.core.IEditableCollection metadata))]}
-  (let [m (transient metadata)]
-    (-> (reduce #(update-existing! %1 %2 keyword) m
-                [:base_type :effective_type :semantic_type :visibility_type :source :unit
-                 ;; HACK ! Not even a legacy key, but now that we keep `:lib/` keys around we should normalize it just
-                 ;; so test results don't get kooky
-                 :lib/source])
-        (update-existing! :field_ref normalize-field-ref)
-        (update-existing! :fingerprint #?(:clj perf/keywordize-keys :cljs walk/keywordize-keys))
-        (update-existing! :binning_info #(m/update-existing % :binning_strategy keyword))
-        persistent!)))
+  [metadata :- :map]
+  {:pre [(map? metadata)]}
+  (into (empty metadata)
+        (map (fn [[k v]]
+               (let [k (keyword k)
+                     k ((if (simple-keyword? k)
+                          u/->snake_case_en
+                          u/->kebab-case-en) k)
+                     _ (when (= k :fingerprint)
+                         (when-let [base-type (first (keys (:type v)))]
+                           (assert (isa? base-type :type/*)
+                                   (str "BAD FINGERPRINT! " (pr-str v)))))
+                     v (case k
+                         (:base_type
+                          :effective_type
+                          :semantic_type
+                          :visibility_type
+                          :source
+                          :unit
+                          :lib/source) (keyword v)
+                         :field_ref    (normalize-field-ref v)
+                         :fingerprint  (#?(:clj perf/keywordize-keys :cljs walk/keywordize-keys) v)
+                         :binning_info (m/update-existing v :binning_strategy keyword)
+                         #_else
+                         v)]
+                 [k v])))
+        metadata))
 
 (defn- normalize-native-query
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
@@ -457,6 +465,7 @@
    :info            {:metadata/model-metadata identity
                      ;; the original query that runs through qp.pivot should be ignored here entirely
                      :pivot/original-query    (fn [_] nil)
+                     :pivot/result-metadata   identity
                      ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
                      :visualization-settings  identity
                      :context                 maybe-normalize-token}
@@ -467,11 +476,11 @@
    :viz-settings    maybe-normalize-token
    :create-row      normalize-actions-row
    :update-row      normalize-actions-row
-
+   ;;
    ;; HACK TODO (Cam 7/17/25) -- seems icky for the legacy MBQL schema to have to know about namespaced keys like
    ;; this. I guess this can go away once we stop converting back and forth between MBQL 4 and 5 inside the QP
    :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata
-   {::sequence normalize-source-metadata}})
+   identity})
 
 (defn normalize-tokens
   "Recursively normalize tokens in `x`.

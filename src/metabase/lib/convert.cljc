@@ -696,7 +696,8 @@
 
 (defmethod ->legacy-MBQL :mbql/query [query]
   (try
-    (let [base        (disqualify query)
+    (let [base        (merge (disqualify (dissoc query :info))
+                             (select-keys query [:info]))
           parameters  (:parameters base)
           inner-query (chain-stages base)
           query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
