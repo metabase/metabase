@@ -6,7 +6,7 @@
    [toucan2.core :as t2]))
 
 (defn- clear-test-rows [queues]
-  (t2/delete! :model/QueuePayload :queue_name [:in (map name queues)]))
+  (t2/delete! :model/QueueMessage :queue_name [:in (map name queues)]))
 
 (defn- mock-batch-handler [batch _args] (map #(if (= "err" %)
                                                 (throw (ex-info "Error in handler" {:message %}))

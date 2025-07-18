@@ -238,7 +238,7 @@ databaseChangeLog:
       comment: Create the table backing the message queue
       changes:
         - createTable:
-            tableName: queue_payload
+            tableName: queue_message
             remarks: Lightweight message queue for cross-cluster communication
             columns:
               - column:
@@ -262,13 +262,32 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  remarks: The number of actual messages in the payload
-                  name: num_messages
-                  type: int
+                  remarks: The status of the message
+                  name: status
+                  type: varchar(10)
+                  defaultValue: 'pending'
                   constraints:
                     nullable: false
               - column:
-                  remarks: A json-formatted array of messages
+                  remarks: Heartbeat to ensure status is not stuck
+                  name: status_heartbeat
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Number of failures processing this message
+                  name: failures
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Current owner of the message
+                  name: owner
+                  type: varchar(36)
+              - column:
+                  remarks: The content of the message
                   name: payload
                   type: ${text.type}
                   constraints:

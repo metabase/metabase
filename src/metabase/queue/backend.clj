@@ -1,23 +1,32 @@
 (ns metabase.queue.backend)
 
+(def ^:dynamic *backend*
+  "Backend to use for the queue."
+  :queue.backend/appdb)
+
+(defmulti define-queue!
+  "Defines a queue with the given name. This is a no-op if the queue already exists."
+  {:arglists '([queue-type queue-name])}
+  (fn [queue-type _queue-name]
+    queue-type))
+
 (defmulti publish!
-  "Publishes the messages to the queue. This is a no-op if the message list is empty or nil."
-  {:arglists '([queue-type queue-name messages])}
-  (fn [queue-type _queue-name _messages]
+  "Publishes the message to the queue. This is a no-op if the payload is empty or nil."
+  {:arglists '([queue-type queue-name payload])}
+  (fn [queue-type _queue-name _payload]
     queue-type))
 
 (defmulti queue-length
-  "The number of unprocessed message _batches_ waiting in the queue.
-  Since each batch can contain multiple messages, this is not the same as the number of messages in the queue.
-  Does not include messages waiting to be persisted or messages currently being handled by a handler"
+  "The number of unprocessed messages waiting in the queue.
+  Does not include messages currently being handled by a handler"
   {:arglists '([queue-type queue-name])}
   (fn [queue-type _queue-name]
     queue-type))
 
 (defmulti listen!
   "Creates a queue with the given name. This is a no-op if the queue already exists. Returns queue name if created, nil if not created"
-  {:arglists '([queue-type queue-name batch-handler])}
-  (fn [queue-type _queue-name _batch-handler]
+  {:arglists '([queue-type queue-name])}
+  (fn [queue-type _queue-name]
     queue-type))
 
 (defmulti clear-queue!
