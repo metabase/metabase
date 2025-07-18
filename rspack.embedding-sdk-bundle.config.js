@@ -221,8 +221,10 @@ const config = {
             fs.mkdirSync(path.dirname(appPath), { recursive: true });
             fs.copyFileSync(tempPath, appPath);
 
-            // cleanup the temp directory to prevent bloat.
-            fs.rmSync(TMP_BUILD_PATH, { recursive: true });
+            if (!isDevMode) {
+              // cleanup the temp directory to prevent bloat.
+              fs.rmSync(TMP_BUILD_PATH, { recursive: true });
+            }
           },
         );
       },
