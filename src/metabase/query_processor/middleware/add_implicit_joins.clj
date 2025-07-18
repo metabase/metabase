@@ -144,13 +144,7 @@
 
 (mu/defn- distinct-fields :- [:or ::qp.schema/xform ::lib.schema/fields]
   ([]
-   (m/distinct-by
-    (fn [field-ref]
-      (lib.util.match/replace field-ref
-        :field
-        (lib/update-options &match (fn [opts]
-                                     (-> (m/remove-keys qualified-keyword? opts)
-                                         (dissoc :base-type :effective-type))))))))
+   (m/distinct-by lib/ref-distinct-key))
   ([fields :- [:sequential ::lib.schema.ref/ref]]
    (into []
          (distinct-fields)

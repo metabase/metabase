@@ -37,6 +37,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
+   [metabase.lib.schema.util]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.swap :as lib.swap]
@@ -72,11 +73,12 @@
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
-         metabase.lib.options
+         metabase.lib.options/keep-me
          lib.order-by/keep-me
          lib.query/keep-me
          lib.ref/keep-me
          lib.remove-replace/keep-me
+         metabase.lib.schema.util/keep-me
          lib.segment/keep-me
          lib.stage/keep-me
          lib.swap/keep-me
@@ -360,6 +362,8 @@
   rename-join
   replace-clause
   replace-join]
+ [metabase.lib.schema.util
+  ref-distinct-key]
  [lib.segment
   available-segments]
  [lib.stage
