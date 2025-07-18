@@ -234,7 +234,7 @@
 
 ;; These filters are really only supported by the :appdb engine as they require a search index.
 ;; By building this no-op filter definition for the in-place engine we can atleast appropriately
-;; reduce the intended supported models that are searched.
+;; reduce the intended supported models that are searched. See PR 60912
 (doseq [model ["card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:non-temporal-dim-ids model]
     [_filter _model query _non-temporal-dim-ids]
