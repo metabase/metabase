@@ -591,155 +591,6 @@
                             :from   [[table-identifier]]}]
       (sql-jdbc/query driver database query))))
 
-(comment
-
-  (require '[metabase.test :as mt])
-
-  (require '[clojure.java.jdbc :as jdbc])
-
-  (mt/test-driver :snowflake
-    (let [driver driver/*driver*]
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver
-       (mt/db)
-       nil
-       (fn [^Connection conn]
-         (let [db (-> (mt/db) :details :db)]
-           (with-open [stmt (.createStatement conn)]
-             (.execute stmt (format "USE DATABASE \"%s\"" db)))
-                         ;; Now the session has a current database!
-           (let [schema "PUBLIC"
-                 table-name "categories"]
-             (sql-jdbc.sync/have-select-privilege? driver conn schema table-name)))))))
-
-  (mt/test-driver :snowflake
-    (let [driver driver/*driver*]
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver
-       (mt/db)
-       nil
-       (fn [^Connection conn]
-         (let [db (-> (mt/db) :details :db)]
-           (with-open [stmt (.createStatement conn)]
-             (.execute stmt (format "USE DATABASE \"%s\"" db)))
-                         ;; Now the session has a current database!
-           (let [schema "PUBLIC"
-                 table-name "categories"]
-             (into #{}
-                   (filter (fn [{schema :schema table-name :name}]
-                             (sql-jdbc.sync/have-select-privilege? driver conn schema table-name)))
-                   (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db))))))))
-
-  (require '[toucan2.core :as t2])
-
-  (let [driver :snowflake
-        db (t2/select-one :model/Database :id 821)]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     db
-     nil
-     (fn [^Connection conn]
-       (let [db-name (-> db :details :db)]
-         (with-open [stmt (.createStatement conn)]
-           (.execute stmt (format "USE DATABASE \"%s\"" db-name)))
-         ;; Now the session has a current database!
-         (into #{}
-               (filter (fn [{schema :schema table-name :name}]
-                         (sql-jdbc.sync/have-select-privilege? driver conn schema table-name)))
-               (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name))))))
-
-  ;; current test
-  (let [driver :snowflake
-        db (t2/select-one :model/Database :id 821)]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     db
-     nil
-     (fn [^Connection conn]
-       (let [db-name (-> db :details :db)]
-         (with-open [stmt (.createStatement conn)]
-           (.execute stmt (format "USE DATABASE \"%s\"" db-name)))
-         (let [tables (into [] (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name))]
-           (into #{}
-                 (filter (fn [{schema :schema table-name :name}]
-                           (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))
-                         tables)))))))
-
-  (let [driver :snowflake
-        db (t2/select-one :model/Database :id 821)]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     db
-     nil
-     (fn [^Connection conn]
-       (let [db-name (-> db :details :db)
-             tables (vec (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name))]
-         (into #{}
-               (filter (fn [{schema :schema table-name :name}]
-                         (sql-jdbc.execute/do-with-connection-with-options
-                          driver
-                          db
-                          nil
-                          (fn [probe-conn]
-                            (sql-jdbc.sync/have-select-privilege? driver probe-conn schema table-name))))
-                       tables))))))
-
-  (let [driver :snowflake
-        db (t2/select-one :model/Database :id 821)]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     db
-     nil
-     (fn [^Connection conn]
-       (let [db-name (-> db :details :db)]
-         (into #{}
-               (filter (fn [{schema :schema table-name :name}]
-                         (sql-jdbc.execute/do-with-connection-with-options
-                          driver
-                          db
-                          nil
-                          (fn [probe-conn]
-                            (sql-jdbc.sync/have-select-privilege? driver probe-conn schema table-name)))))
-               (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name))))))
-
-  ;; bronsas repro
-  (let [driver :snowflake
-        db (t2/select-one :model/Database :id 821)]
-    (driver/do-with-resilient-connection
-     driver db
-     (fn [driver db]
-       (sql-jdbc.execute/do-with-connection-with-options
-        driver
-        db
-        nil
-        (fn [^Connection conn]
-          (let [db-name (-> db :details :db)]
-            (with-open [stmt (.createStatement conn)]
-              (.execute stmt (format "USE DATABASE \"%s\"" db-name)))
-            (into #{}
-                  (filter (fn [{schema :schema table-name :name}]
-                            (sql-jdbc.sync/have-select-privilege? driver conn schema table-name)))
-                  (vec (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name)))))))))
-
-  #_(let [driver :snowflake
-          db (t2/select-one :model/Database :id 821)]
-      (sql.jdbc.execute/do-with-resilient-connection
-       (fn [driver db]
-         (sql-jdbc.execute/do-with-connection-with-options
-          driver
-          db
-          nil
-          (fn [^Connection conn]
-            (let [db-name (-> db :details :db)]
-              (with-open [stmt (.createStatement conn)]
-                (.execute stmt (format "USE DATABASE \"%s\"" db-name)))
-              (into #{}
-                    (filter (fn [{schema :schema table-name :name}]
-                              (sql-jdbc.sync/have-select-privilege? driver conn schema table-name)))
-                    (vec (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name)))))))))
-
-  (tap> 1))
-
 (defmethod driver/describe-database :snowflake
   [driver database]
   (let [db-name          (db-name database)
@@ -762,11 +613,8 @@
          ;; for each of the schemas we wanted to sync. Right now we're fetching EVERY table, including ones from schemas
          ;; we aren't interested in.
          (fn [^Connection conn]
-           (tap> "getting table for snowflake describe-database")
-           (tap> {:inclusion-patterns inclusion-patterns :exclusion-patterns exclusion-patterns})
            {:tables (into #{}
                           (comp (filter (fn [{schema :schema table-name :name}]
-                                          ;; (tap> {:schema schema :table-name table-name})
                                           (and (not (contains? excluded-schemas schema))
                                                (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns
                                                                                                             exclusion-patterns
@@ -778,7 +626,7 @@
                           ;; See [[metabase.driver.snowflake/describe-database-default-schema-test]] and
                           ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6
                           ;; for more info.
-                          (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name))}))))))
+                          (vec (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name)))}))))))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]

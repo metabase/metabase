@@ -95,7 +95,6 @@
         ;; outer unrealized resultsets (like the [[all-schemas]] results) may get
         ;; unrecoverably closed
         conn (sql-jdbc.execute/try-ensure-open-conn! driver conn-1 :force-local? true)]
-    ;; (assert (not (identical? conn conn-1)))
     (log/debugf "have-select-privilege? sql-jdbc: Checking for SELECT privileges for %s with query\n%s"
                 (pr-table table-schema table-name)
                 (pr-str sql-args))
@@ -103,11 +102,8 @@
       (log/debug "have-select-privilege? sql-jdbc: Attempt to execute probe query")
       (execute-select-probe-query driver conn sql-args)
       (log/infof "%s: SELECT privileges confirmed" (pr-table table-schema table-name))
-      (tap> (str "%s: SELECT privileges confirmed" (pr-table table-schema table-name)))
       true
       (catch Throwable e
-        (tap> {:is-valid-1 (.isValid conn 5)})
-        (tap> {:is-conn-open-1 (#'sql-jdbc.execute/is-conn-open conn)})
         (try
           (when (and (not (.isClosed conn))
                      (not (.isValid conn 5)))
@@ -116,40 +112,24 @@
             (.close conn))
           (catch Throwable _))
         (let [allow? (driver/query-canceled? driver e)]
-          (log/info (if allow?
-                      (log/infof "%s: Assuming SELECT privileges: caught timeout exception" (pr-table table-schema table-name))
-                      (log/debugf e "%s: Assuming no SELECT privileges: caught exception" (pr-table table-schema table-name)))
-                    (str (when table-schema
-                           (str (pr-str table-schema) \.))
-                         (pr-str table-name)))
-          (tap> (str (if allow?
-                       (log/infof "%s: Assuming SELECT privileges: caught timeout exception" (pr-table table-schema table-name))
-                       (log/debugf e "%s: Assuming no SELECT privileges: caught exception" (pr-table table-schema table-name)))
-                     (str (when table-schema
-                            (str (pr-str table-schema) \.))
-                          (pr-str table-name))))
-          (tap> {:is-valid-2 (.isValid conn 5)})
-          (tap> {:is-conn-open-2 (#'sql-jdbc.execute/is-conn-open conn)})
-          (tap> e)
+
+          (if allow?
+            (log/infof "%s: Assuming SELECT privileges: caught timeout exception" (pr-table table-schema table-name))
+            (log/debugf e "%s: Assuming no SELECT privileges: caught exception" (pr-table table-schema table-name)))
+
           ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
           ;; affecting anything higher
           (try (when-not (.getAutoCommit conn)
                  (.rollback conn))
                (catch Throwable _))
-          (if (and (not allow?) (instance? net.snowflake.client.jdbc.SnowflakeSQLException e) (not (first retry?)))
-            (do
-              (tap> "Retrying have-select-privilege? sql-jdbc")
-              (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name true))
-            (do (tap> "Not retrying have-select-privilege? sql-jdbc")
-                allow?)))))))
+          (if (and (not allow?) (not (first retry?)))
+            (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name true)
+            allow?))))))
 
 (defn- jdbc-get-tables
   [driver ^DatabaseMetaData metadata catalog schema-pattern tablename-pattern types]
   (sql-jdbc.sync.common/reducible-results
    #(do (log/debugf "jdbc-get-tables: Calling .getTables for catalog `%s`" catalog)
-        (tap> "calling .getTables from jdbc-get-tables")
-        (tap> {:driver driver :metadata metadata})
-        (tap> {:catalog catalog :schema-pattern schema-pattern :tablename-pattern tablename-pattern :type types})
         (.getTables metadata catalog
                     (some->> schema-pattern (driver/escape-entity-name-for-metadata driver))
                     (some->> tablename-pattern (driver/escape-entity-name-for-metadata driver))
@@ -160,7 +140,6 @@
              schema (.getString rset "TABLE_SCHEM")
              ttype (.getString rset "TABLE_TYPE")]
          (log/debugf "jdbc-get-tables: Fetched object: schema `%s` name `%s` type `%s`" schema name ttype)
-        ;;  (tap> {:name name :schema schema :ttype ttype})
          {:name        name
           :schema      schema
           :description (when-let [remarks (.getString rset "REMARKS")]

@@ -875,7 +875,6 @@
   Not thread-safe."
 
   ^Connection [driver ^Connection connection & {:keys [force-local?] :as opts}]
-  (tap> {:is-conn-open (is-conn-open connection)})
   (cond
     (and (not force-local?) (is-conn-open connection))
     connection
@@ -883,7 +882,6 @@
     (not (thread-bound? #'*resilient-connection-ctx*))
     (do
       (log/warn "Requesting a resilient connection, but we're not in a resilient context")
-      (tap> "Requesting a resilient connection, but we're not in a resilient context")
       connection)
 
     (some-> *resilient-connection-ctx* :conn is-conn-open)
@@ -896,13 +894,10 @@
     (binding [*connection-recursion-depth* -1]
       (try
         (log/info "Obtaining a fresh resilient connection")
-        (tap> "Obtaining a fresh resilient connection")
         (let [{:keys [db]} *resilient-connection-ctx*
               conn (do-with-connection-with-options driver db (merge opts {:keep-open? true}) identity)]
           (set! *resilient-connection-ctx* {:db db :conn conn})
           conn)
         (catch Throwable e
           (log/warn e "Failed obtaining a new resilient connection")
-          (tap> e)
-          (tap> "Failed obtaining a new resilient connection")
           connection)))))
