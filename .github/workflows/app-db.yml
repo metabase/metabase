@@ -35,21 +35,21 @@ jobs:
             build-static-viz: false
             test-args: >-
               :only '"enterprise/backend/test"'
-            exclude-tags: '[:mb/driver-tests :mb/memory]'
+            exclude-tag: ':mb/driver-tests'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 0
-            exclude-tags: '[:mb/driver-tests :mb/memory]'
+            exclude-tag: ':mb/driver-tests'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 1
-            exclude-tags: '[:mb/driver-tests :mb/memory]'
+            exclude-tag: ':mb/driver-tests'
 
     services:
       mysql:
@@ -147,21 +147,21 @@ jobs:
             build-static-viz: false
             test-args: >-
               :only '"enterprise/backend/test"'
-            exclude-tags: '[:mb/driver-tests :mb/memory]'
+            exclude-tag: ':mb/driver-tests'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 0
-            exclude-tags: '[:mb/driver-tests :mb/memory]'
+            exclude-tag: ':mb/driver-tests'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 1
-            exclude-tags: '[:mb/driver-tests :mb/memory]'
+            exclude-tag: ':mb/driver-tests'
 
     services:
       mysql:
@@ -263,22 +263,22 @@ jobs:
             build-static-viz: false
             test-args: >-
               :only '"enterprise/backend/test"'
-            exclude-tags: '[:mb/driver-tests :mb/memory]'
+            exclude-tag: ':mb/driver-tests'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
               :only '"test"'
-              :exclude-tags '[:mb/driver-tests :mb/memory]'
+              :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 0
-            exclude-tags: '[:mb/driver-tests :mb/memory]'
+            exclude-tag: ':mb/driver-tests'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 1
-            exclude-tags: '[:mb/driver-tests :mb/memory]'
+            exclude-tag: ':mb/driver-tests'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
