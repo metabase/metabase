@@ -27,7 +27,7 @@ title: Driver interface changelog
 
 - Added a feature `:expressions/today` for drivers that support generating a date for the current day.
 
-## Metabase 0.55.8
+## Metabase 0.55.9
 
 - Add multi-method `driver/do-with-resilient-connection` for executing functions in a context where closed connections may be automatically reopened
 
