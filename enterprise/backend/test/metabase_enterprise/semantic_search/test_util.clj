@@ -1,9 +1,12 @@
 (ns metabase-enterprise.semantic-search.test-util
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.semantic-search.db :as semantic.db]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [nano-id.core :as nano-id]
@@ -93,12 +96,12 @@
                search.ingestion/*force-sync* true]
        (try
          (mt/as-admin
-          (semantic.index/create-index-table! {:force-reset? true}))
+           (semantic.index/create-index-table! {:force-reset? true}))
          ~@body
          (finally
            (try
              (mt/as-admin
-              (semantic.index/drop-index-table!))
+               (semantic.index/drop-index-table!))
              (catch Exception e#
                (log/error "Warning: failed to clean up test table" test-table-name# ":" (.getMessage e#)))))))))
 
@@ -106,52 +109,52 @@
   "Add a collection of test documents to that can be indexed to the appdb."
   [& body]
   `(mt/dataset ~(symbol "test-data")
-               (mt/with-temp [:model/Collection       {col1# :id}  {:name "Wildlife Collection" :archived false}
+     (mt/with-temp [:model/Collection       {col1# :id}  {:name "Wildlife Collection" :archived false}
 
-                              :model/Collection       {col2# :id}  {:name "Archived Animals" :archived true}
+                    :model/Collection       {col2# :id}  {:name "Archived Animals" :archived true}
 
-                              :model/Collection       {col3# :id}  {:name "Cryptozoology", :archived false}
+                    :model/Collection       {col3# :id}  {:name "Cryptozoology", :archived false}
 
-                              :model/Card             {card1# :id} {:name "Dog Training Guide" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
+                    :model/Card             {card1# :id} {:name "Dog Training Guide" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
 
-                              :model/Card             {}           {:name "Bird Watching Tips" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
+                    :model/Card             {}           {:name "Bird Watching Tips" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
 
-                              :model/Card             {}           {:name "Cat Behavior Study" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
+                    :model/Card             {}           {:name "Cat Behavior Study" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
 
-                              :model/Card             {}           {:name "Horse Racing Analysis" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
+                    :model/Card             {}           {:name "Horse Racing Analysis" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
 
-                              :model/Card             {}           {:name "Fish Tank Setup" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
+                    :model/Card             {}           {:name "Fish Tank Setup" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
 
-                              :model/Card             {}           {:name "Bigfoot Sightings" :collection_id col3# :creator_id (mt/user->id :crowberto), :archived false}
+                    :model/Card             {}           {:name "Bigfoot Sightings" :collection_id col3# :creator_id (mt/user->id :crowberto), :archived false}
 
-                              :model/ModerationReview {}           {:moderated_item_type "card"
+                    :model/ModerationReview {}           {:moderated_item_type "card"
 
-                                                                    :moderated_item_id card1#
+                                                          :moderated_item_id card1#
 
-                                                                    :moderator_id (mt/user->id :crowberto)
+                                                          :moderator_id (mt/user->id :crowberto)
 
-                                                                    :status "verified"
+                                                          :status "verified"
 
-                                                                    :most_recent true}
+                                                          :most_recent true}
 
-                              :model/Dashboard        {}           {:name "Elephant Migration" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
+                    :model/Dashboard        {}           {:name "Elephant Migration" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
 
-                              :model/Dashboard        {}           {:name "Lion Pride Dynamics" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
+                    :model/Dashboard        {}           {:name "Lion Pride Dynamics" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
 
-                              :model/Dashboard        {}           {:name "Penguin Colony Study" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
+                    :model/Dashboard        {}           {:name "Penguin Colony Study" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
 
-                              :model/Dashboard        {}           {:name "Whale Communication" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
+                    :model/Dashboard        {}           {:name "Whale Communication" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
 
-                              :model/Dashboard        {}           {:name "Tiger Conservation" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
+                    :model/Dashboard        {}           {:name "Tiger Conservation" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
 
-                              :model/Dashboard        {}           {:name "Loch Ness Stuff" :collection_id col3# :creator_id (mt/user->id :crowberto), :archived false}
+                    :model/Dashboard        {}           {:name "Loch Ness Stuff" :collection_id col3# :creator_id (mt/user->id :crowberto), :archived false}
 
-                              :model/Database         {db-id# :id} {:name "Animal Database"}
+                    :model/Database         {db-id# :id} {:name "Animal Database"}
 
-                              :model/Table            {}           {:name "Species Table", :db_id db-id#}
+                    :model/Table            {}           {:name "Species Table", :db_id db-id#}
 
-                              :model/Table            {}           {:name "Monsters Table", :db_id db-id#, :active true}]
-                 ~@body)))
+                    :model/Table            {}           {:name "Monsters Table", :db_id db-id#, :active true}]
+       ~@body)))
 
 (defmacro with-index!
   "Ensure a clean, small index for testing populated with a few collections, cards, and dashboards."
@@ -161,6 +164,16 @@
        (search.core/reindex! :search.engine/semantic {:force-reset true})
        ~@body)))
 
+(defn- table->name
+  [table-name-or-kw]
+  (cond-> table-name-or-kw
+    (keyword? table-name-or-kw)
+    ;; TODO The nano ids we use for temp test table names can contain uppercase chars and hyphens, which postgres will
+    ;; convert to lowercase and _ if unquoted. We should just quote the table names and avoid the need for this.
+    (-> name
+        u/lower-case-en
+        (str/replace "-" "_"))))
+
 (defn table-exists-in-db?
   "Check if a table actually exists in the database"
   [table-name]
@@ -168,6 +181,17 @@
     (try
       (let [result (jdbc/execute! @semantic.db/data-source
                                   ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = ?)"
-                                   (u/lower-case-en (name table-name))])]
+                                   (table->name table-name)])]
+        (-> result first vals first))
+      (catch Exception _ false))))
+
+(defn table-has-index?
+  [table-name index-name-pattern]
+  (when table-name
+    (try
+      (let [result (jdbc/execute! @semantic.db/data-source
+                                  ["SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname LIKE ?)"
+                                   (table->name table-name)
+                                   index-name-pattern])]
         (-> result first vals first))
       (catch Exception _ false))))
