@@ -50,39 +50,42 @@
   (str "'[" (str/join ", " embedding) "]'::vector"))
 
 (defn- doc->db-record
-  "Convert a document to a database record with embedding."
-  [{:keys [model id searchable_text created_at creator_id updated_at
-           last_editor_id archived verified official_collection legacy_input] :as doc}]
-  (let [embedding (embedding/get-embedding searchable_text)]
-    {:model               model
-     :model_id            id
-     :creator_id          creator_id
-     :model_created_at    created_at
-     :last_editor_id      last_editor_id
-     :model_updated_at    updated_at
-     :archived            archived
-     :verified            verified
-     :official_collection official_collection
-     :embedding           [:raw (format-embedding embedding)]
-     :content             searchable_text
-     :legacy_input        [:cast (json/encode legacy_input) :jsonb]
-     :metadata            [:cast (json/encode doc) :jsonb]}))
+  "Convert a document to a database record with a provided embedding."
+  [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
+                         last_editor_id archived verified official_collection legacy_input] :as doc}]
+  {:model               model
+   :model_id            id
+   :creator_id          creator_id
+   :model_created_at    created_at
+   :last_editor_id      last_editor_id
+   :model_updated_at    updated_at
+   :archived            archived
+   :verified            verified
+   :official_collection official_collection
+   :embedding           [:raw (format-embedding embedding-vec)]
+   :content             searchable_text
+   :legacy_input        [:cast (json/encode legacy_input) :jsonb]
+   :metadata            [:cast (json/encode doc) :jsonb]})
 
 (defn populate-index!
   "Inserts a set of documents into the index table. Throws when trying to insert
   existing model + model_id pairs. (Use upsert-index! to update existing documents)"
   [documents]
-  (jdbc/with-transaction [tx @db/data-source]
-    (doseq [doc documents]
-      (jdbc/execute!
-       tx
-       (sql/format
-        (-> (sql.helpers/insert-into *index-table-name*)
-            (sql.helpers/values [(doc->db-record doc)])))))))
+  (when (seq documents)
+    (let [texts (mapv :searchable_text documents)
+          embeddings (embedding/get-embeddings-batch texts)
+          doc-records (mapv doc->db-record embeddings documents)]
+      (jdbc/with-transaction [tx @db/data-source]
+        (doseq [record doc-records]
+          (jdbc/execute!
+           tx
+           (sql/format
+            (-> (sql.helpers/insert-into *index-table-name*)
+                (sql.helpers/values [record])))))))))
 
 (defn- upsert-honeysql
-  [doc]
-  (let [db-record (doc->db-record doc)]
+  [embedding-vec doc]
+  (let [db-record (doc->db-record embedding-vec doc)]
     (->
      (sql.helpers/insert-into *index-table-name*)
      (sql.helpers/values [db-record])
@@ -94,12 +97,15 @@
   "Inserts or updates documents in the index table. If a document with the same
   model + model_id already exists, it will be replaced."
   [documents]
-  (jdbc/with-transaction [tx @db/data-source]
-    (doseq [doc documents]
-      (jdbc/execute!
-       tx
-       (sql/format
-        (upsert-honeysql doc))))))
+  (when (seq documents)
+    (let [texts (mapv :searchable_text documents)
+          embeddings (embedding/get-embeddings-batch texts)]
+      (jdbc/with-transaction [tx @db/data-source]
+        (doseq [[embedding-vec doc] (map vector embeddings documents)]
+          (jdbc/execute!
+           tx
+           (sql/format
+            (upsert-honeysql embedding-vec doc))))))))
 
 (defn- drop-index-table-sql
   []
