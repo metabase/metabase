@@ -7,6 +7,7 @@
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.models.interface :as mi]
    [metabase.search.core :as search]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [nano-id.core :as nano-id]
    [next.jdbc :as jdbc]
@@ -190,6 +191,18 @@
   [row]
   (update row :metadata #(json/decode (.getValue ^PGobject %) true)))
 
+(defn- filter-read-permitted
+  "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
+  [docs]
+  (let [doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
+        t2-instances  (for [[t2-model docs] (group-by doc->t2-model docs)
+                            t2-instance     (t2/select t2-model :id [:in (map :id docs)])]
+                        t2-instance)
+        doc->t2       (comp (u/index-by (juxt :id t2/model) t2-instances)
+                            (fn [doc]
+                              [(:id doc) (doc->t2-model doc)]))]
+    (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) docs)))
+
 (defn query-index
   "Query the index for documents similar to the search string."
   [search-context]
@@ -197,14 +210,12 @@
     (when-not (str/blank? search-string)
       (let [embedding   (embedding/get-embedding search-string)
             query       (semantic-search-query embedding search-context)
-            t2-model    (fn [doc] (:model (search/spec (:model doc))))
-            t2-instance (fn [doc] (t2/instance (t2-model doc) doc))
             xform       (comp (map unqualify-keys)
                               (map decode-metadata)
-                              (map legacy-input-with-score)
-                              (filter (comp mi/can-read? t2-instance)))
+                              (map legacy-input-with-score))
             reducible   (jdbc/plan @db/data-source (sql/format query))]
-        (transduce xform conj [] reducible)))))
+        (-> (transduce xform conj [] reducible)
+            filter-read-permitted)))))
 
 (defn delete-from-index!
   "Deletes documents from the index table based on model and model_ids."
