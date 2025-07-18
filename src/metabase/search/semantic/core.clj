@@ -18,7 +18,7 @@
   "Check if semantic search is supported on this instance."
   metabase-enterprise.semantic-search.core
   []
-  (oss-semantic-search-error))
+  false)
 
 (defenterprise results
   "Execute a semantic search query and return results."
