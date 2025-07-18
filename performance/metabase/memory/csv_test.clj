@@ -37,10 +37,14 @@
 SELECT replace(hex(zeroblob(1024)), '00', 'xx') FROM generate_series;"
    :postgres "SELECT repeat('x', 2048) FROM generate_series(1, 1000000)"
    :mysql "SELECT REPEAT('x', 2048)
-FROM information_schema.columns c1
-CROSS JOIN information_schema.columns c2
-CROSS JOIN information_schema.columns c3
-LIMIT 1000000"
+FROM
+  (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) d1,
+  (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) d2,
+  (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) d3,
+  (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) d4,
+  (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) d5,
+  (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) d6
+LIMIT 1000000;"
    :bigquery-cloud-sdk "SELECT REPEAT('x', 2048) FROM UNNEST(GENERATE_ARRAY(1, 1000000)) AS num"
    :snowflake "SELECT REPEAT('x', 2048) FROM TABLE(GENERATOR(ROWCOUNT => 1000000))"
    :clickhouse "SELECT repeat('x', 2048)
@@ -49,7 +53,7 @@ LIMIT 1000000;"
    })
 
 (deftest large-csv-test
-  (mt/test-drivers #{:postgres #_:mysql :sqlite #_:bigquery-cloud-sdk #_ :snowflake}
+  (mt/test-drivers #{:postgres :mysql :sqlite #_:bigquery-cloud-sdk #_ :snowflake}
     (testing "Can download large CSVs without holding the entire results in memory #60733"
       (let [large-query (or (driver->query driver/*driver*)
                             (throw (ex-info "Driver doesn't implement big query"
@@ -65,6 +69,7 @@ LIMIT 1000000;"
             (format "Only consumed %s but expected ~2gb" (readable size)))))))
 
 (comment
+  (time (clojure.test/run-test large-csv-test))
   (mt/set-test-drivers! #{:postgres})
   (mt/set-test-drivers! #{:mysql})
   (mt/set-test-drivers! #{:sqlite})
