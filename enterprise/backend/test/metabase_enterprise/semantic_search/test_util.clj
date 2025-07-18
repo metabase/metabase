@@ -161,7 +161,7 @@
        (search.core/reindex! :search.engine/semantic {:force-reset true})
        ~@body)))
 
-(defn table-exists-in-db?!
+(defn table-exists-in-db?
   "Check if a table actually exists in the database"
   [table-name]
   (when table-name

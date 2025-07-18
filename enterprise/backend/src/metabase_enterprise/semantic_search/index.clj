@@ -75,14 +75,13 @@
 
 (defn- batch-update!
   ([records->sql documents embeddings]
-   (jdbc/with-transaction [tx @db/data-source]
-     (batch-update! tx records->sql documents embeddings)))
-  ([tx records->sql documents embeddings]
+   (batch-update! @db/data-source records->sql documents embeddings))
+  ([connectable records->sql documents embeddings]
    (when (seq documents)
      (u/prog1 (transduce (comp (map (fn [[doc embedding]] (doc->db-record embedding doc)))
                                (partition-all *batch-size*)
                                (map (fn [db-records]
-                                      (jdbc/execute! tx (records->sql db-records))
+                                      (jdbc/execute! connectable (records->sql db-records))
                                       ;; TODO should this return (or at least log) the number of docs actually
                                       ;; updated, not just the number in the batch?
                                       (u/prog1 (->> db-records (map :model) frequencies)
@@ -94,13 +93,12 @@
 
 (defn- batch-delete-ids!
   ([model ids->sql ids]
-   (jdbc/with-transaction [tx @db/data-source]
-     (batch-delete-ids! tx model ids->sql ids)))
-  ([tx model ids->sql ids]
+   (batch-delete-ids! @db/data-source model ids->sql ids))
+  ([connectable model ids->sql ids]
    (when (seq ids)
      (u/prog1 (->> (transduce (comp (partition-all *batch-size*)
                                     (map (fn [ids]
-                                           (jdbc/execute! tx (ids->sql ids))
+                                           (jdbc/execute! connectable (ids->sql ids))
                                            (u/prog1 (count ids)
                                              (log/trace "semantic search deleted a batch of" <>
                                                         "documents with model type" model)))))
