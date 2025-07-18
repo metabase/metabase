@@ -14,7 +14,7 @@
   :audit      :getter)
 
 (defsetting search-engine
-  (i18n/deferred-tru "Which engine to use when performing search. Supported values are :in-place, :appdb, and :semantic")
+  (i18n/deferred-tru "Which engine to use by default when performing search. Supported values are :in-place, :appdb, and :semantic")
   :visibility :internal
   :export?    false
   :default    :appdb
