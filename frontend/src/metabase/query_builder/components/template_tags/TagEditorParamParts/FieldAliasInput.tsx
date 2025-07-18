@@ -58,7 +58,7 @@ function FieldAlisHelpInfo() {
         <Icon c="text-secondary" name="info_filled" />
       </HoverCard.Target>
       <HoverCard.Dropdown>
-        <Box p="md" maw="20rem">
+        <Box p="md" maw="24rem">
           <Text>
             {jt`Required only if the query uses an alias to refer to the mapped field's table. For example, if you map the variable to the ${(
               <Code key="field" bg="bg-medium">
