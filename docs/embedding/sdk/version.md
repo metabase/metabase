@@ -8,35 +8,32 @@ title: Embedded analytics SDK - versions
 
 The SDK stable version tracks with the Metabase version.
 
-So, for example, if you're on Metabase 53 (`0.53.x`, `1.53.x`), _any_ version 0.53.x of the @metabase/embedding-sdk-react npm package will be compatible.
+So, for example, if you're on Metabase 55 (`0.55.x`, `1.55.x`), _any_ version 0.55.x of the @metabase/embedding-sdk-react npm package will be compatible.
 
-To simplify things, we publish dist-tags for each stable Metabase version. For example, to install the latest version of the SDK compatible with Metabase 53, run:
+To simplify things, we publish dist-tags for each stable Metabase version. For example, to install the latest version of the SDK compatible with Metabase 55, run:
 
 ```sh
-npm install @metabase/embedding-sdk-react@53-stable
+npm install @metabase/embedding-sdk-react@55-stable
 ```
 
 To grab the latest version of the SDK that works with Metabase nightly builds, use the `canary` dist-tag.
 
 ## Minimum SDK version
 
-52 is the minimum version supported for the Embedded analytics SDK.
+Version 52 is the minimum version supported for the Embedded analytics SDK.
 
-## Version pinning when using the SDK with Metabase Cloud
+## Instances on Metabase Cloud will be pinned to a specific version
 
-To pin your version of Metabase, go to **Admin settings > Settings > Embedding**. Go to the Embedded analytics SDK card and scroll to **Version pinning** and click **Request version pinning**.
+By default, if you're running on Metabase Cloud and using the Embedded analytics SDK, we'll pin your version to avoid breaking changes. 
 
-## Version pinning requirements
+Normally, Metabase Cloud upgrades your Metabase as new versions roll out so you don't have to deal with upgrades. But if you're using the SDK with Metabase Cloud, you'll want to upgrade manually to make sure your embeds don't break when you upgrade both your Metabase and your SDK version.
 
-To pin a version of Metabase, you must:
+### Manually pinning your instance version on Metabase Cloud
 
-- Be on Metabase Cloud (obviously)
-- Be on the Pro or Enterprise plans
+To manually pin your version of Metabase:
 
-## Why you'd want to pin your Metabase Cloud version
+1. Go to **Admin settings > Settings > Embedding**.
+2. Go to the Embedded analytics SDK card.
+3. Scroll to **Version pinning** and click **Request version pinning**.
 
-Normally, Metabase Cloud upgrades your Metabase as new versions roll out so that you don't have to deal with upgrades.
-
-But if you're using the SDK with Metabase Cloud, you'll want to upgrade manually to make sure your embeds don't break when you upgrade both your Metabase and your SDK version.
-
-To upgrade manually, you can pin your Metabase version so that it stays in sync with the SDK version you're using. That way you can choose when to upgrade your Metabase.
+This will open a mailto link to our support team.
