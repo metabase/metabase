@@ -29,10 +29,13 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- identifier
   ([table-key]

@@ -1365,7 +1365,7 @@
     ;; you'll need to provide this in order to use BINNING
     [:fingerprint   {:optional true} [:maybe [:ref ::lib.schema.metadata/column.fingerprint]]]
     [:source        {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
-    [:field_ref     {:optional true} [:maybe [:ref ::Refernece]]]]
+    [:field_ref     {:optional true} [:maybe [:ref ::Reference]]]]
    [:fn
     {:error/message "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"}
     (complement :lib/type)]
@@ -1506,7 +1506,7 @@
      {:optional true
       :description "Metadata about the source query being used, if pulled in from a Card via the
   `:source-table \"card__id\"` syntax. added automatically by the `resolve-card-id-source-tables` middleware."}
-     [:maybe [:sequential]]]]
+     [:maybe [:sequential [:ref ::legacy-column-metadata]]]]]
    ;; additional constraints
    [:fn
     {:error/message "Joins must have either a `source-table` or `source-query`, but not both."}
