@@ -222,7 +222,7 @@
           (testing (format "\nField filter with %s Field" field)
             (testing (format "\nfiltering against %s value '%s'" value-type value)
               (field-filter-param-test-is-count-= expected-count
-                                                  :attempts field value-type value (name field)))))))))
+                                                  :attempts field value-type value (mt/make-alias driver/*driver* (name field))))))))))
 
 (deftest ^:parallel alias-field-filter-param-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
