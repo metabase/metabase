@@ -28,18 +28,21 @@ export function ParameterMultiSelectInput({
 }: ParameterMultiSelectInputProps) {
   return (
     <InputContainer>
-      <ContainerLabel>
-        <Group gap="xs">
-          {t`People can pick`}
-          {tag.type !== "dimension" && <ParameterMultiSelectHelpInfo />}
-        </Group>
-      </ContainerLabel>
+      <ContainerLabel>{t`People can pick`}</ContainerLabel>
       <Radio.Group
         value={getIsMultiSelect(parameter).toString()}
         onChange={(value) => onChangeMultiSelect(value === "true")}
       >
         <Stack gap="xs">
-          <Radio label={t`Multiple values`} value="true" />
+          <Radio
+            label={
+              <Group gap="xs">
+                {t`Multiple values`}
+                {tag.type !== "dimension" && <ParameterMultiSelectHelpInfo />}
+              </Group>
+            }
+            value="true"
+          />
           <Radio label={t`A single value`} value="false" />
         </Stack>
       </Radio.Group>
