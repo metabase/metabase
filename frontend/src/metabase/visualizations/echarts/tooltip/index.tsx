@@ -29,6 +29,7 @@ export const getTooltipPositionFn =
     _rect: unknown,
     size: { contentSize: [number, number] },
   ) => {
+    // eslint-disable-next-line no-direct-document-references
     const { clientWidth, clientHeight } = document.documentElement;
     const containerRect = containerRef.current?.getBoundingClientRect();
     const containerX = containerRect?.x ?? 0;
@@ -65,9 +66,13 @@ export const getTooltipPositionFn =
     return [tooltipRelativeX, tooltipRelativeY];
   };
 
-export const getTooltipBaseOption = (
-  containerRef: React.RefObject<HTMLDivElement>,
-) => {
+export const getTooltipBaseOption = ({
+  containerRef,
+  rootElement,
+}: {
+  containerRef: React.RefObject<HTMLDivElement>;
+  rootElement: HTMLElement;
+}) => {
   return {
     enterable: true,
     className: TooltipStyles.ChartTooltipRoot,
@@ -77,7 +82,7 @@ export const getTooltipBaseOption = (
         ? echartsTooltipContainerSelector
         : `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID} ${echartsTooltipContainerSelector}`;
 
-      let container = document.querySelector(
+      let container = rootElement.querySelector(
         containerSelector,
       ) as HTMLDivElement;
 
@@ -95,10 +100,10 @@ export const getTooltipBaseOption = (
         );
 
         if (!isEmbeddingSdk()) {
-          document.body.append(container);
+          rootElement.append(container);
         } else {
-          document
-            .getElementById(EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID)
+          rootElement
+            .querySelector(`#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`)
             ?.append(container);
         }
       }

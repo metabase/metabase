@@ -12,6 +12,7 @@ const esmPackages = [
   "html-void-elements",
   "is-absolute-url",
   "jose",
+  "kebab-case",
   "property-information",
   "rehype-external-links",
   "screenfull",

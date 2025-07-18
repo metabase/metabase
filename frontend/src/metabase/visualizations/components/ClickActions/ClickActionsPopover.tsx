@@ -1,6 +1,7 @@
 import { Component } from "react";
 import type * as tippy from "tippy.js";
 
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import { getEventTarget } from "metabase/lib/dom";
 import { connect } from "metabase/lib/redux";
 import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
@@ -32,12 +33,16 @@ interface ChartClickActionsProps {
   onClose?: () => void;
 }
 
+interface ChartClickActionsInnerProps extends ChartClickActionsProps {
+  rootElement: HTMLElement;
+}
+
 interface State {
   popoverAction: PopoverClickAction | null;
 }
 
-export class ClickActionsPopover extends Component<
-  ChartClickActionsProps,
+class ClickActionsPopoverInner extends Component<
+  ChartClickActionsInnerProps,
   State
 > {
   state: State = {
@@ -46,7 +51,7 @@ export class ClickActionsPopover extends Component<
 
   instance: tippy.Instance | null = null;
 
-  componentDidUpdate(prevProps: Readonly<ChartClickActionsProps>): void {
+  componentDidUpdate(prevProps: Readonly<ChartClickActionsInnerProps>): void {
     const { clicked } = this.props;
     const { popoverAction } = this.state;
     // Terrible way of doing this, but if when we update, we used to have a clicked object, and now we don't,
@@ -89,7 +94,10 @@ export class ClickActionsPopover extends Component<
         return clicked.element;
       }
     } else if (clicked.event) {
-      return getEventTarget(clicked.event);
+      return getEventTarget({
+        rootElement: this.props.rootElement,
+        event: clicked.event,
+      });
     }
 
     return null;
@@ -163,4 +171,10 @@ export class ClickActionsPopover extends Component<
   }
 }
 
-export const ConnectedClickActionsPopover = connect()(ClickActionsPopover);
+export const ConnectedClickActionsPopover = connect()((
+  props: ChartClickActionsProps,
+) => {
+  const rootElement = useRootElement();
+
+  return <ClickActionsPopoverInner rootElement={rootElement} {...props} />;
+});

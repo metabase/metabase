@@ -63,7 +63,7 @@ const ChartSettingFieldsPicker = ({
     [fields, options],
   );
 
-  const isDragDisabled = fields?.length <= 1;
+  const isDragDisabled = sortableFields?.length <= 1;
 
   const renderItem = useCallback(
     ({ item: sortableField, id, index: fieldIndex }) => {
@@ -149,11 +149,11 @@ const ChartSettingFieldsPicker = ({
             className={cx(CS.textBrand, CS.textBold, CS.py1)}
             onClick={() => {
               const remaining = options.filter(
-                (o) => fields.indexOf(o.value) < 0,
+                (o) => sortableFields.indexOf(o.value) < 0,
               );
               if (remaining.length === 1) {
                 // if there's only one unused option, use it
-                onChange(fields.concat([remaining[0].value]));
+                onChange(sortableFields.concat([remaining[0].value]));
               } else {
                 // otherwise leave add a new blank item
                 onChange(fields.concat([undefined]));

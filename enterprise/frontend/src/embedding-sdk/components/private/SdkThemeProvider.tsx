@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { MetabaseTheme } from "embedding-sdk";
 import { DEFAULT_FONT } from "embedding-sdk/config";
 import { getEmbeddingThemeOverride } from "embedding-sdk/lib/theme";
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { useSelector } from "metabase/lib/redux";
 import { getSettings } from "metabase/selectors/settings";
@@ -18,6 +19,8 @@ interface Props {
 }
 
 export const SdkThemeProvider = ({ theme, children }: Props) => {
+  const rootElement = useRootElement();
+
   const font = useSelector(getFont);
   const appColors = useSelector((state) =>
     getApplicationColors(getSettings(state)),
@@ -28,11 +31,16 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
     // This must be done before ThemeProvider calls getThemeOverrides.
     setGlobalEmbeddingColors(theme?.colors, appColors ?? {});
 
-    return getEmbeddingThemeOverride(theme || {}, font);
-  }, [appColors, theme, font]);
+    return getEmbeddingThemeOverride(theme || {}, font, rootElement);
+  }, [rootElement, appColors, theme, font]);
 
   return (
-    <ThemeProvider theme={themeOverride}>
+    <ThemeProvider
+      theme={themeOverride}
+      mantineProviderProps={{
+        getRootElement: () => rootElement,
+      }}
+    >
       <GlobalSdkCssVariables />
       {children}
     </ThemeProvider>

@@ -12,6 +12,7 @@ import type { MantineTheme } from "metabase/ui";
  */
 export function getMetabaseCssVariables(theme: MantineTheme) {
   return css`
+    :host,
     :root {
       --mb-default-font-family: "${theme.fontFamily}";
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
@@ -28,6 +29,7 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
 
 export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
   return css`
+    :host,
     :root {
       --mb-default-font-family: ${font};
       ${getSdkDesignSystemCssVariables(theme)}

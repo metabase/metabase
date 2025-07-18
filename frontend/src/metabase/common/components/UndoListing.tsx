@@ -15,6 +15,7 @@ import {
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { capitalize, inflect } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -180,6 +181,7 @@ export function UndoListing() {
 }
 
 const target = document.createElement("div");
+// eslint-disable-next-line no-direct-document-references
 document.body.appendChild(target);
 
 // The react transition group state transitions are flaky in cypress
@@ -210,6 +212,7 @@ export function UndoListOverlay({
   onUndo: (undo: Undo) => void;
   onDismiss: (undo: Undo) => void;
 }) {
+  const rootElement = useRootElement();
   const ref = useRef<HTMLUListElement>(null);
   const prevUndos = useRef<Undo[]>([]);
 
@@ -237,7 +240,7 @@ export function UndoListOverlay({
       if (prev.length < undos.length) {
         // Avoid moving the portal if we're not adding new undos.
         // Undos transitioning out do not need to be rendered on top.
-        document.body.appendChild(target);
+        rootElement.appendChild(target);
       }
 
       // Allow new items to transition
@@ -249,7 +252,7 @@ export function UndoListOverlay({
       });
     }, 1);
     return () => clearTimeout(timeout);
-  }, [undos]);
+  }, [rootElement, undos]);
 
   useLayoutEffect(() => {
     // We measure the height of all toasts so we know where to render
