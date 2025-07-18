@@ -3,14 +3,16 @@
   (:require
    [metabase-enterprise.semantic-search.db :as semantic.db]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise supported?
   "Enterprise implementation of semantic search engine support check."
   :feature :semantic-search
   []
-  ;; TODO: figure out the right criteria here
-  (some? semantic.db/db-url))
+  (and
+   (some? semantic.db/db-url)
+   (semantic.settings/semantic-search-enabled)))
 
 (defenterprise results
   "Enterprise implementation of semantic search results."
