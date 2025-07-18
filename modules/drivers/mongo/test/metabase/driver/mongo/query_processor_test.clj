@@ -62,8 +62,8 @@
                   :mbql?       true}
                  (qp.compile/compile
                   (mt/mbql-query attempts
-                                 {:aggregation [[:count]]
-                                  :filter      [:time-interval $datetime :last :month]})))))))))
+                    {:aggregation [[:count]]
+                     :filter      [:time-interval $datetime :last :month]})))))))))
 
 (deftest ^:parallel absolute-datetime-test
   (mt/test-driver :mongo
@@ -103,8 +103,8 @@
                     :mbql?       true}
                    (qp.compile/compile
                     (mt/mbql-query attempts
-                                   {:aggregation [[:count]]
-                                    :filter      [:time-interval $datetime :last :month]}))))))))))
+                      {:aggregation [[:count]]
+                       :filter      [:time-interval $datetime :last :month]}))))))))))
 
 (deftest ^:parallel no-initial-projection-test-2
   (mt/test-driver :mongo
@@ -117,10 +117,10 @@
                     query (mt/with-metadata-provider (mt/id)
                             (qp.compile/compile
                              (mt/mbql-query attempts
-                                            {:aggregation [[:count]]
-                                             :breakout    [[:field %datetime {:temporal-unit :month}]
-                                                           [:field %datetime {:temporal-unit :day}]]
-                                             :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
+                               {:aggregation [[:count]]
+                                :breakout    [[:field %datetime {:temporal-unit :month}]
+                                              [:field %datetime {:temporal-unit :day}]]
+                                :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
                 (is (= {:projections ["datetime" "datetime_2" "count"]
                         :query       [{"$match"
                                        {"$and"
@@ -197,10 +197,10 @@
                     ["2019-11-18T20:00:00Z" 1]
                     ["2019-11-17T14:00:00Z" 1]]
                    (mt/rows (mt/run-mbql-query attempts
-                                               {:aggregation [[:count]]
-                                                :breakout    [[:field %datetime {:temporal-unit :hour}]]
-                                                :order-by    [[:desc [:field %datetime {:temporal-unit :hour}]]]
-                                                :limit       4}))))))
+                              {:aggregation [[:count]]
+                               :breakout    [[:field %datetime {:temporal-unit :hour}]]
+                               :order-by    [[:desc [:field %datetime {:temporal-unit :hour}]]]
+                               :limit       4}))))))
         (testing "Querying in Kathmandu works"
           (mt/with-system-timezone-id! "Asia/Kathmandu"
             (is (= [["2019-11-21T01:00:00+05:45" 1]
@@ -208,10 +208,10 @@
                     ["2019-11-19T02:00:00+05:45" 1]
                     ["2019-11-17T19:00:00+05:45" 1]]
                    (mt/rows (mt/run-mbql-query attempts
-                                               {:aggregation [[:count]]
-                                                :breakout    [[:field %datetime {:temporal-unit :hour}]]
-                                                :order-by    [[:desc [:field %datetime {:temporal-unit :hour}]]]
-                                                :limit       4}))))))))))
+                              {:aggregation [[:count]]
+                               :breakout    [[:field %datetime {:temporal-unit :hour}]]
+                               :order-by    [[:desc [:field %datetime {:temporal-unit :hour}]]]
+                               :limit       4}))))))))))
 
 (deftest ^:parallel nested-columns-test
   (mt/test-driver :mongo
@@ -227,8 +227,8 @@
                   :mbql?       true}
                  (qp.compile/compile
                   (mt/mbql-query tips
-                                 {:aggregation [[:count]]
-                                  :filter      [:= $tips.source.username "tupac"]}))))
+                    {:aggregation [[:count]]
+                     :filter      [:= $tips.source.username "tupac"]}))))
 
           (is (= {:projections ["source.username" "count"]
                   :query       [{"$group" {"_id"   {"source" {"username" "$source.username"}}
@@ -241,13 +241,13 @@
                   :mbql?       true}
                  (qp.compile/compile
                   (mt/mbql-query tips
-                                 {:aggregation [[:count]]
-                                  :breakout    [$tips.source.username]}))))
+                    {:aggregation [[:count]]
+                     :breakout    [$tips.source.username]}))))
           (testing "Nested fields in join condition aliases are transformed to use `_` instead of a `.` (#32182)"
             (let [query    (mt/mbql-query tips
-                                          {:joins [{:alias        "Tips"
-                                                    :source-table $$tips
-                                                    :condition    [:= $tips.source.categories &Tips.$tips.source.categories]}]})
+                             {:joins [{:alias        "Tips"
+                                       :source-table $$tips
+                                       :condition    [:= $tips.source.categories &Tips.$tips.source.categories]}]})
                   compiled (mongo.qp/mbql->native query)
                   let-lhs  (-> compiled (get-in [:query 0 "$lookup" :let]) keys first)]
               (is (and (not (str/includes? let-lhs "."))
@@ -267,9 +267,9 @@
               :mbql?       true}
              (qp.compile/compile
               (mt/mbql-query venues
-                             {:aggregation [[:distinct $name]
-                                            [:distinct $price]]
-                              :limit       5})))))))
+                {:aggregation [[:distinct $name]
+                               [:distinct $price]]
+                 :limit       5})))))))
 
 (deftest ^:parallel multiple-aggregations-with-distinct-count-expression-test
   (mt/test-driver
@@ -293,9 +293,9 @@
               :mbql?       true}
              (qp.compile/compile
               (mt/mbql-query venues
-                             {:aggregation [[:+ [:distinct $name] [:distinct $price]]
-                                            [:- [:distinct $name] [:distinct $price]]]
-                              :limit       5})))))))
+                {:aggregation [[:+ [:distinct $name] [:distinct $price]]
+                               [:- [:distinct $name] [:distinct $price]]]
+                 :limit       5})))))))
 
 (defn- extract-projections [projections q]
   (select-keys (get-in q [:query 0 "$project"]) projections))
@@ -308,10 +308,10 @@
               ["bob" "cobb"]
               (qp.compile/compile
                (mt/mbql-query venues
-                              {:fields      [[:expression "bob"] [:expression "cobb"]]
-                               :expressions {:bob  [:field $latitude nil]
-                                             :cobb [:field $name nil]}
-                               :limit       5}))))))))
+                 {:fields      [[:expression "bob"] [:expression "cobb"]]
+                  :expressions {:bob  [:field $latitude nil]
+                                :cobb [:field $name nil]}
+                  :limit       5}))))))))
 
 (deftest ^:parallel expressions-test-2
   (mt/test-driver :mongo
@@ -322,10 +322,10 @@
               ["bob" "cobb"]
               (qp.compile/compile
                (mt/mbql-query venues
-                              {:fields      [[:expression "bob"] [:expression "cobb"]]
-                               :expressions {:bob  [:abs $latitude]
-                                             :cobb [:upper $name]}
-                               :limit       5}))))))))
+                 {:fields      [[:expression "bob"] [:expression "cobb"]]
+                  :expressions {:bob  [:abs $latitude]
+                                :cobb [:upper $name]}
+                  :limit       5}))))))))
 
 (deftest ^:parallel expressions-test-3
   (mt/test-driver :mongo
@@ -335,9 +335,9 @@
               ["bob"]
               (qp.compile/compile
                (mt/mbql-query venues
-                              {:fields      [[:expression "bob"]]
-                               :expressions {:bob [:+ $price 300]}
-                               :limit       5}))))))))
+                 {:fields      [[:expression "bob"]]
+                  :expressions {:bob [:+ $price 300]}
+                  :limit       5}))))))))
 
 (deftest ^:parallel expressions-test-4
   (mt/test-driver :mongo
@@ -347,9 +347,9 @@
               ["bob"]
               (qp.compile/compile
                (mt/mbql-query venues
-                              {:fields      [[:expression "bob"]]
-                               :expressions {:bob [:abs [:- $price 300]]}
-                               :limit       5}))))))))
+                 {:fields      [[:expression "bob"]]
+                  :expressions {:bob [:abs [:- $price 300]]}
+                  :limit       5}))))))))
 
 (deftest ^:parallel expressions-test-5
   (mt/test-driver :mongo
@@ -360,10 +360,10 @@
               ["bob" "cobb"]
               (qp.compile/compile
                (mt/mbql-query venues
-                              {:fields      [[:expression "bob"] [:expression "cobb"]]
-                               :expressions {:bob  [:abs $latitude]
-                                             :cobb [:ceil [:expression "bob"]]}
-                               :limit       5}))))))))
+                 {:fields      [[:expression "bob"] [:expression "cobb"]]
+                  :expressions {:bob  [:abs $latitude]
+                                :cobb [:ceil [:expression "bob"]]}
+                  :limit       5}))))))))
 
 (deftest ^:parallel expressions-test-6
   (mt/test-driver :mongo
@@ -373,8 +373,8 @@
               ["bob"]
               (qp.compile/compile
                (mt/mbql-query venues
-                              {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
-                               :limit       5}))))))))
+                 {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
+                  :limit       5}))))))))
 
 (deftest ^:parallel expressions-test-7
   (mt/test-driver :mongo
@@ -387,9 +387,9 @@
                             {"$project" {"_id" false, "asdf" "$_id.asdf", "count" true}}]}
              (qp.compile/compile
               (mt/mbql-query venues
-                             {:expressions {:asdf ["field" $price nil]},
-                              :aggregation [["count"]],
-                              :breakout    [["expression" "asdf"]]})))))))
+                {:expressions {:asdf ["field" $price nil]},
+                 :aggregation [["count"]],
+                 :breakout    [["expression" "asdf"]]})))))))
 
 (deftest ^:parallel compile-time-interval-test
   (mt/test-driver :mongo
@@ -422,8 +422,8 @@
                  (:query
                   (qp.compile/compile
                    (mt/mbql-query checkins
-                                  {:filter   [:time-interval $date -4 :month]
-                                   :breakout [!day.date]}))))))))))
+                     {:filter   [:time-interval $date -4 :month]
+                      :breakout [!day.date]}))))))))))
 
 ;;; TODO: I don't think MongoDB syncs its version, or at least we're not USING the synced version info. If we used it
 ;;; then we could use a mock Database here and parallelize this test.
@@ -565,34 +565,34 @@
     :mongo
     (testing "Field aliases have deterministic unique indices"
       (let [query    (mt/mbql-query
-                   nil
-                   {:joins        [{:alias        "Products"
-                                    :source-table $$products
-                                    :condition    [:= &Products.products.id $orders.product_id]
-                                    :fields       :all}
-                                   {:alias        "People"
-                                    :source-table $$people
-                                    :condition    [:= &People.people.id $orders.user_id]
-                                    :fields       :all}]
-                    :source-query {:source-table $$orders
-                                   :joins        [{:alias        "Products"
-                                                   :source-table $$products
-                                                   :condition    [:= &Products.products.id $orders.product_id]
-                                                   :fields       :all}
-                                                  {:alias        "People"
-                                                   :source-table $$people
-                                                   :condition    [:= &People.people.id $orders.user_id]
-                                                   :fields       :all}]}})
+                       nil
+                       {:joins        [{:alias        "Products"
+                                        :source-table $$products
+                                        :condition    [:= &Products.products.id $orders.product_id]
+                                        :fields       :all}
+                                       {:alias        "People"
+                                        :source-table $$people
+                                        :condition    [:= &People.people.id $orders.user_id]
+                                        :fields       :all}]
+                        :source-query {:source-table $$orders
+                                       :joins        [{:alias        "Products"
+                                                       :source-table $$products
+                                                       :condition    [:= &Products.products.id $orders.product_id]
+                                                       :fields       :all}
+                                                      {:alias        "People"
+                                                       :source-table $$people
+                                                       :condition    [:= &People.people.id $orders.user_id]
+                                                       :fields       :all}]}})
             compiled (qp.compile/compile query)
             indices  (reduce (fn [acc lookup-stage]
                                (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
                                      ;; Following expression ensures index is an integer.
                                      index        (parse-long (re-find #"\d+$" let-var-name))]
                                 ;; Following expression tests that index is unique.
-                                (is (not (contains? acc index)))
-                                (conj acc index)))
-                            #{}
-                            (filter #(contains? % "$lookup") (:query compiled)))]
+                                 (is (not (contains? acc index)))
+                                 (conj acc index)))
+                             #{}
+                             (filter #(contains? % "$lookup") (:query compiled)))]
         (is (= #{1 2 3 4} indices))))))
 
 (deftest ^:parallel parse-query-string-test
@@ -619,16 +619,16 @@
   (mt/test-driver :mongo
     (testing "$$variable references in join conditions are preserved when rhs is a literal value (QUE-1500)"
       (let [query (mt/mbql-query users
-                                 {:joins    [{:condition    [:and
-                                                             [:= $id &c.checkins.user_id]
-                                                             [:= $name [:value "Felipinho Asklepios" {:base_type :type/Text}]]]
-                                              :source-table $$checkins
-                                              :alias        "c"
-                                              :fields       [&c.checkins.date]}]
-                                  :fields   [$id $name &c.checkins.date]
-                                  :order-by [[:asc $id]
-                                             [:asc &c.checkins.id]]
-                                  :limit    3})]
+                    {:joins    [{:condition    [:and
+                                                [:= $id &c.checkins.user_id]
+                                                [:= $name [:value "Felipinho Asklepios" {:base_type :type/Text}]]]
+                                 :source-table $$checkins
+                                 :alias        "c"
+                                 :fields       [&c.checkins.date]}]
+                     :fields   [$id $name &c.checkins.date]
+                     :order-by [[:asc $id]
+                                [:asc &c.checkins.id]]
+                     :limit    3})]
         (testing "qp.compile"
           (is (= [{"$lookup"
                    {:as   "join_alias_c"
@@ -679,8 +679,8 @@
               table-b-c-id (lib.metadata/field mp (mt/id :table_b :c_id))
               table-c-c-id (lib.metadata/field mp (mt/id :table_c :c_id))
               query        (-> (lib/query mp table-a)
-                        (lib/join (lib/join-clause table-b [(lib/= table-a-b-id  table-b-b-id)]))
-                        (lib/join (lib/join-clause table-c [(lib/= table-b-c-id table-c-c-id)])))]
+                               (lib/join (lib/join-clause table-b [(lib/= table-a-b-id  table-b-b-id)]))
+                               (lib/join (lib/join-clause table-c [(lib/= table-b-c-id table-c-c-id)])))]
           (is (= [[1 "a_id" "b_id" 1 "b_id" "c_id" 1 "c_id"]]
                  (mt/rows (qp/process-query query)))))))))
 

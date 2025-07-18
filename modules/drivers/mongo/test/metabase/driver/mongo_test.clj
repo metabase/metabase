@@ -869,8 +869,8 @@
                (mt/rows
                 (mt/run-mbql-query coll
                   {:filter      [:and
-                            [:= $coll.json_field.key_1 "value_jf_a" "value_jf_b"]
-                            [:= $list_field "value_lf_a"]]
+                                 [:= $coll.json_field.key_1 "value_jf_a" "value_jf_b"]
+                                 [:= $list_field "value_lf_a"]]
                    :aggregation [[:count]]
                    :breakout    [$coll.metas.group_field]}))))))))
 

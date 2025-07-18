@@ -331,9 +331,9 @@ function(bin) {
   [column]
   (mongo-let [day_of_week (add-start-of-week-offset {$dayOfWeek {:date column :timezone (driver-api/results-timezone-id)}}
                                                     (driver.common/start-of-week-offset :mongo))]
-             {$cond {:if   {$eq [day_of_week 0]}
-                     :then 7
-                     :else day_of_week}}))
+    {$cond {:if   {$eq [day_of_week 0]}
+            :then 7
+            :else day_of_week}}))
 
 (defn- week
   [column]
@@ -345,11 +345,11 @@ function(bin) {
 (defn- truncate-to-resolution [column resolution]
   (mongo-let [parts {:$dateToParts {:timezone (driver-api/results-timezone-id)
                                     :date     column}}]
-             {:$dateFromParts (into {:timezone (driver-api/results-timezone-id)}
-                                    (for [part (concat (take-while (partial not= resolution)
-                                                                   [:year :month :day :hour :minute :second :millisecond])
-                                                       [resolution])]
-                                      [part (str (name parts) \. (name part))]))}))
+    {:$dateFromParts (into {:timezone (driver-api/results-timezone-id)}
+                           (for [part (concat (take-while (partial not= resolution)
+                                                          [:year :month :day :hour :minute :second :millisecond])
+                                              [resolution])]
+                             [part (str (name parts) \. (name part))]))}))
 
 (defn- days-till-start-of-first-full-week
   [column]
@@ -396,12 +396,12 @@ function(bin) {
           :day                   (truncate :day)
           :day-of-week           (day-of-week column)
           :day-of-week-iso       (binding [driver.common/*start-of-week* :monday]
-                              (day-of-week column))
+                                   (day-of-week column))
           :day-of-month          (extract $dayOfMonth column)
           :day-of-year           (extract $dayOfYear column)
           :week                  (if supports-dateTrunc?
-                              (truncate :week)
-                              (truncate-to-resolution (week column) :day))
+                                   (truncate :week)
+                                   (truncate-to-resolution (week column) :day))
           :week-of-year          (let [week-start (if supports-dateTrunc?
                                                     (truncate :week)
                                                     (week column))]
@@ -419,11 +419,11 @@ function(bin) {
           (if supports-dateTrunc?
             (truncate :quarter)
             (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (driver-api/results-timezone-id)}}]
-                       {:$dateFromParts {:year     :$$parts.year
-                                         :month    {$subtract [:$$parts.month
-                                                               {$mod [{$add [:$$parts.month 2]}
-                                                                      3]}]}
-                                         :timezone (driver-api/results-timezone-id)}}))
+              {:$dateFromParts {:year     :$$parts.year
+                                :month    {$subtract [:$$parts.month
+                                                      {$mod [{$add [:$$parts.month 2]}
+                                                             3]}]}
+                                :timezone (driver-api/results-timezone-id)}}))
 
           :quarter-of-year
           {:$toInt {:$ceil {$divide [(extract $month column) 3.0]}}}
@@ -623,12 +623,12 @@ function(bin) {
   [[_ & [_ & divisors :as args]]]
   ;; division works outside in (/ 1 2 3) => (/ (/ 1 2) 3)
   (let [division               (reduce
-                  (fn [accum head]
-                    (if accum
-                      {"$divide" [accum head]}
-                      head))
-                  nil
-                  (map ->rvalue args))
+                                (fn [accum head]
+                                  (if accum
+                                    {"$divide" [accum head]}
+                                    head))
+                                nil
+                                (map ->rvalue args))
         literal-zero?          (some #(and (number? %) (zero? %)) divisors)
         non-literal-nil-checks (mapv (fn [divisor] {"$eq" [(->rvalue divisor) 0]}) (remove number? divisors))]
     (cond
@@ -860,10 +860,10 @@ function(bin) {
               "Wrong prefix or suffix value.")
       {$regexMatch {"input"   (->rvalue field)
                     "regex"   (if (= (first value) :value)
-                              (str prefix (->rvalue value) suffix)
-                              {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})
-                                                               (->rvalue value)
-                                                               (when (some? suffix) {$literal suffix})])})
+                                (str prefix (->rvalue value) suffix)
+                                {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})
+                                                                 (->rvalue value)
+                                                                 (when (some? suffix) {$literal suffix})])})
                     "options" (if (get options :case-sensitive true) "" "i")}})))
 
 ;; these are changed to {field {$regex "regex"}} instead of {field #regex} for serialization purposes. When doing
@@ -1040,8 +1040,8 @@ function(bin) {
   See [[find-mapped-field-name]] for an explanation why this is done."
   [expr alias]
   (driver-api/replace expr
-                      [:field _ {:join-alias alias}]
-                      (update &match 2 set/rename-keys {:join-alias ::join-local})))
+    [:field _ {:join-alias alias}]
+    (update &match 2 set/rename-keys {:join-alias ::join-local})))
 
 (defn- get-field-mappings [source-query projections]
   (when source-query
@@ -1071,7 +1071,7 @@ function(bin) {
         ;; Find the fields the join condition refers to that are not coming from the joined query.
         ;; These have to be bound in the :let property of the $lookup stage, they cannot be referred to directly.
         own-fields                                                                (driver-api/match condition
-                     [:field _ (_ :guard #(not= (:join-alias %) alias))])
+                                                                                    [:field _ (_ :guard #(not= (:join-alias %) alias))])
         ;; Map the own fields to a fresh alias and to its rvalue.
         mapping                                                                   (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
                                                                                                                ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
@@ -1080,7 +1080,7 @@ function(bin) {
                                                                                                                (str/replace #"[~\. -]" "_")
                                                                                                                (str "__" (next-alias-index)))]
                                                                                                  {:field f, :rvalue (->rvalue f), :alias alias}))
-                     own-fields)]
+                                                                                       own-fields)]
     ;; Add the mappings from the source query and the let bindings of $lookup to the field mappings.
     ;; In the join pipeline the let bindings have to referenced with the prefix $$, so we add $ to the name.
     (binding [*field-mappings* (merge *field-mappings*
@@ -1264,9 +1264,9 @@ function(bin) {
                ;; to the desired alias
                aggr-name     (some (fn [suffix]
                                      (let [alias (str desired-alias suffix)]
-                                   (when-not (aliases-taken alias)
-                                     alias)))
-                               (cons "" (iterate inc 1)))]
+                                       (when-not (aliases-taken alias)
+                                         alias)))
+                                   (cons "" (iterate inc 1)))]
            [(str \$ aggr-name) (assoc aggregations-seen aggr-expr aggr-name)])
 
          :else
@@ -1332,7 +1332,7 @@ function(bin) {
         raggr-expr (->rvalue aggr-expr')
         expandeds  (map (fn [[aggr name]]
                           (expand-aggregation [:aggregation-options aggr {:name name}]))
-                       aggregations-seen)]
+                        aggregations-seen)]
     {:group  (into {} (map :group) expandeds)
      :post   (cond-> [(into {} (mapcat :post) expandeds)]
                (not= raggr-expr (str \$ aggr-name)) (conj {aggr-name raggr-expr}))
@@ -1389,27 +1389,27 @@ function(bin) {
         (driver-api/finest-temporal-breakout-index breakouts 2)
 
         sort-index   (or finest-temporal-index
-                       (dec (count breakouts)))
+                         (dec (count breakouts)))
         sort-name    (first (nth (seq id) sort-index))
         default-sort {(sort-lookup id sort-name) 1}
         user-sort    (when order-by
                        (binding [*field-mappings*
                                  (merge *field-mappings*
                                         (into {} (map (juxt identity field-alias)) breakouts))]
-                      (order-by->$sort order-by)))
+                         (order-by->$sort order-by)))
         sort-expr    (or
                    ;; if there is only one breakout, always use the user's sort order
-                   (when (= (count id) 1)
-                     (window-sort id user-sort))
+                      (when (= (count id) 1)
+                        (window-sort id user-sort))
 
                    ;; if we don't have a temporal breakout, sort by the last breakout, but
                    ;; use the user's sort direction if specified
-                   (when-not finest-temporal-index
-                     (->> user-sort
-                          (filter #(= sort-name (first %)))
-                          (window-sort id)))
+                      (when-not finest-temporal-index
+                        (->> user-sort
+                             (filter #(= sort-name (first %)))
+                             (window-sort id)))
 
-                   default-sort)
+                      default-sort)
 
         partition-expr (into {}
                              (map (fn [[name]] [name (str "$_id." name)]))
@@ -1590,7 +1590,7 @@ function(bin) {
                                                             (let [[_ _ {:keys [temporal-unit]}] field]
                                                               (and (some? temporal-unit)
                                                                    (not= temporal-unit :default)))))))]
-                      [(->lvalue field) (->rvalue field)])
+                                  [(->lvalue field) (->rvalue field)])
         ;; We have already compiled breakout fields into the document.
         breakout-field-mappings (into {} (map (juxt identity field-alias)) breakout)
         ;; We have already sorted ascending by the breakout fields so we don't have to repeat the
