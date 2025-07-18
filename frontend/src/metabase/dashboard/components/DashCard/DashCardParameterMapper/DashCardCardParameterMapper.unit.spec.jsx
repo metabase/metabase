@@ -332,7 +332,9 @@ describe("DashCardCardParameterMapper", () => {
         target: ["variable", ["template-tag", "source"]],
       });
       expect(
-        screen.getByText(/Action parameters do not support dropdown lists/i),
+        screen.getByText(
+          /Action parameters only accept a single value\. They do not support dropdown lists/i,
+        ),
       ).toBeInTheDocument();
     });
   });

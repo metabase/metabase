@@ -18,6 +18,7 @@ import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
 import { Box, Flex, Icon, Text, Transition } from "metabase/ui";
 import { getMobileHeight } from "metabase/visualizations/shared/utils/sizes";
 import type Question from "metabase-lib/v1/Question";
+import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { isParameterVariableTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Card,
@@ -158,7 +159,9 @@ export function DashCardCardParameterMapper({
       </Transition>
       {target && isParameterVariableTarget(target) && isAction && (
         <span className={S.Warning}>
-          {t`Action parameters do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
+          {editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
+            ? t`Action parameters do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+            : t`Action parameters only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
         </span>
       )}
     </Flex>
