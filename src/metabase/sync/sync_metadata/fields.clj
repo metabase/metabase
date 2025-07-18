@@ -40,6 +40,7 @@
     for logging purposes by higher-level sync logic."
   (:require
    [metabase.driver.util :as driver.u]
+   [metabase.queries.core :as queries]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
@@ -63,11 +64,14 @@
   [database    :- i/DatabaseInstance
    table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
-  (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
-     ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
-     ;; Re-fetch our metadata because there might be some things that have changed after calling
-     ;; `sync-instances`
-     (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))
+  (try
+    (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
+       ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
+       ;; Re-fetch our metadata because there might be some things that have changed after calling
+       ;; `sync-instances`
+       (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table)))
+    (finally
+      (queries/emit-table-changed-events! [(:id table)]))))
 
 (defn- select-best-matching-name
   "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.

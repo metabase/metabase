@@ -4,6 +4,7 @@
    [metabase.queries.metadata]
    [metabase.queries.models.card]
    [metabase.queries.models.card.metadata]
+   [metabase.queries.models.card.metadata-sync-event]
    [metabase.queries.models.parameter-card]
    [metabase.queries.models.query]
    [potemkin :as p]))
@@ -34,6 +35,10 @@
   with-can-run-adhoc-query]
  [metabase.queries.models.card.metadata
   refresh-metadata]
+ [metabase.queries.models.card.metadata-sync-event
+  emit-card-changed-events!
+  emit-card-needs-refresh-events!
+  emit-table-changed-events!]
  [metabase.queries.models.parameter-card]
  [metabase.queries.models.query
   average-execution-time-ms

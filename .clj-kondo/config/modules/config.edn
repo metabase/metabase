@@ -1181,6 +1181,7 @@
            lib
            models
            query-processor
+           queries
            settings
            task
            task-history
