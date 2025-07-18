@@ -6,7 +6,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import type { SwitchProps } from "metabase/ui";
+import { Icon, type SwitchProps, Tooltip } from "metabase/ui";
 import type { EngineField, EngineFieldOption } from "metabase-types/api";
 
 import { FIELD_OVERRIDES } from "../../constants";
@@ -92,9 +92,17 @@ const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
 };
 
 const getInputProps = (field: EngineField) => {
+  const icon = field["helper-text"] ? <Icon name="info" /> : undefined;
+
+  const rightSection =
+    field["helper-text"] && icon ? (
+      <Tooltip label={field["helper-text"]}>{icon}</Tooltip>
+    ) : (
+      icon
+    );
+
   return {
-    rightIcon: field["helper-text"] ? ("info" as const) : undefined,
-    rightIconTooltip: field["helper-text"],
+    rightSection,
   };
 };
 
