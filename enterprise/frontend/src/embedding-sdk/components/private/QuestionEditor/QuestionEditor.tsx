@@ -2,7 +2,10 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { InteractiveQuestion } from "embedding-sdk/components/public";
+import {
+  type BaseInteractiveQuestionProps,
+  InteractiveQuestion,
+} from "embedding-sdk/components/public";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { Box, Button, Group, Icon, Stack, Tabs } from "metabase/ui";
 
