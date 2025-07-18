@@ -312,15 +312,25 @@
      {}
      results)))
 
-(defn- maybe-add-nested-fields [nested-column-lookup col nfc-path root-database-position]
-  (let [new-path (conj (or nfc-path []) (:name col))
-        nested-fields (get nested-column-lookup new-path)]
-    (cond-> (assoc col :database-position root-database-position)
-      (and (= :type/Dictionary (:base-type col)) nested-fields)
-      (assoc :nested-fields (into #{}
-                                  (map #(maybe-add-nested-fields nested-column-lookup % new-path root-database-position))
-                                  nested-fields)
-             :visibility-type :details-only))))
+(def nested-fields-limit
+  "The depth of nested objects that we'll attempt to unfold"
+  5)
+
+(defn- maybe-add-nested-fields
+  ([nested-column-lookup col nfc-path root-database-position]
+   (maybe-add-nested-fields nested-column-lookup col nfc-path root-database-position 0))
+  ([nested-column-lookup col nfc-path root-database-position recursion-limit]
+   (let [col (assoc col :database-position root-database-position)]
+     (if (> recursion-limit nested-fields-limit)
+       col
+       (let [new-path (conj (or nfc-path []) (:name col))
+             nested-fields (get nested-column-lookup new-path)]
+         (cond-> col
+           (and (= :type/Dictionary (:base-type col)) nested-fields)
+           (assoc :nested-fields (into #{}
+                                       (map #(maybe-add-nested-fields nested-column-lookup % new-path root-database-position (inc recursion-limit)))
+                                       nested-fields)
+                  :visibility-type :details-only)))))))
 
 (defn- describe-dataset-rows [nested-column-lookup dataset-id table-name table-rows]
   (let [max-position (transduce (keep :ordinal_position) max -1 table-rows)]
