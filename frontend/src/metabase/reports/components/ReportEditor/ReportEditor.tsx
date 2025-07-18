@@ -523,6 +523,7 @@ const ReportEditor = () => {
   const [sidebarWidth, setSidebarWidth] = useState(300);
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<HTMLDivElement>(null);
+  const [documentEntities, setDocumentEntities] = useState<any[]>([]);
 
   // Get the current theme and store to pass to node views
   const theme = useMantineTheme();
@@ -618,6 +619,46 @@ const ReportEditor = () => {
     ],
     content: "",
   });
+
+  // Function to extract Metabase entities from the document
+  const extractEntitiesFromDocument = useCallback(() => {
+    if (!editor) return;
+
+    const entities: any[] = [];
+    const doc = editor.state.doc;
+
+    doc.descendants((node: any) => {
+      if (node.type.name === 'metabaseVisualization') {
+        entities.push({
+          id: node.attrs.id,
+          name: node.attrs.name,
+          type: node.attrs.type,
+          model: node.attrs.model,
+        });
+      }
+    });
+
+    setDocumentEntities(entities);
+  }, [editor]);
+
+  // Update entities list when editor content changes
+  useEffect(() => {
+    if (editor) {
+      // Extract entities on initial load
+      extractEntitiesFromDocument();
+
+      // Listen for content changes
+      const updateHandler = () => {
+        extractEntitiesFromDocument();
+      };
+
+      editor.on('update', updateHandler);
+
+      return () => {
+        editor.off('update', updateHandler);
+      };
+    }
+  }, [editor, extractEntitiesFromDocument]);
 
   const handleSave = useCallback(() => {
     if (editor) {
@@ -744,12 +785,64 @@ const ReportEditor = () => {
             paddingLeft: '8px'
           }}
         >
-                    <Paper m="lg" style={{ height: 'fit-content', minHeight: '500px' }}>
+                              <Paper m="lg" style={{ height: 'fit-content', minHeight: '500px' }}>
             <Stack p="md" gap="md">
-              <Text size="lg" fw={500}>Report Tools</Text>
+              <Text size="lg" fw={500}>Document Entities</Text>
 
               <Stack gap="xs">
-                <Text size="sm" fw={500}>Formatting</Text>
+                <Text size="sm" fw={500}>
+                  Metabase Items ({documentEntities.length})
+                </Text>
+                {documentEntities.length === 0 ? (
+                  <Text size="xs" color="dimmed" style={{ fontStyle: 'italic' }}>
+                    No Metabase entities in this document yet. Use @ to add charts, tables, or dashboards.
+                  </Text>
+                ) : (
+                  <Stack gap="xs">
+                    {documentEntities.map((entity, index) => (
+                      <Box
+                        key={`${entity.id}-${index}`}
+                        style={{
+                          padding: '8px',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '4px',
+                          backgroundColor: '#f8f9fa',
+                        }}
+                      >
+                        <Group style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <Box style={{ flex: 1 }}>
+                            <Text size="sm" fw={500} style={{ marginBottom: '2px' }}>
+                              {entity.name}
+                            </Text>
+                            <Group gap="xs">
+                              <Text size="xs" color="dimmed">
+                                {entity.model === 'table' ? 'Table' :
+                                 entity.model === 'card' ? 'Question' :
+                                 entity.model === 'dashboard' ? 'Dashboard' :
+                                 entity.model}
+                              </Text>
+                              <Text size="xs" color="dimmed">
+                                ID: {entity.id}
+                              </Text>
+                            </Group>
+                          </Box>
+                          <Icon
+                            name={entity.model === 'table' ? 'table' :
+                                  entity.model === 'card' ? 'insight' :
+                                  entity.model === 'dashboard' ? 'dashboard' :
+                                  'info'}
+                            size={16}
+                            style={{ color: '#666', flexShrink: 0 }}
+                          />
+                        </Group>
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+              </Stack>
+
+              <Stack gap="xs">
+                <Text size="sm" fw={500}>Quick Actions</Text>
                 <Group gap="xs">
                   <Button
                     size="xs"
@@ -768,43 +861,10 @@ const ReportEditor = () => {
                     Italic
                   </Button>
                 </Group>
-              </Stack>
-
-              <Stack gap="xs">
-                <Text size="sm" fw={500}>Structure</Text>
-                <Group gap="xs">
-                  <Button
-                    size="xs"
-                    variant={editor?.isActive('heading', { level: 1 }) ? 'filled' : 'outline'}
-                    onClick={() => handleHeading(1)}
-                  >
-                    <Icon name="line" size={12} style={{ marginRight: '4px' }} />
-                    H1
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant={editor?.isActive('heading', { level: 2 }) ? 'filled' : 'outline'}
-                    onClick={() => handleHeading(2)}
-                  >
-                    <Icon name="line" size={12} style={{ marginRight: '4px' }} />
-                    H2
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant={editor?.isActive('bulletList') ? 'filled' : 'outline'}
-                    onClick={handleBulletList}
-                  >
-                    <Icon name="list" size={12} style={{ marginRight: '4px' }} />
-                    List
-                  </Button>
-                </Group>
-              </Stack>
-
-              <Stack gap="xs">
-                <Text size="sm" fw={500}>Actions</Text>
                 <Button
                   size="sm"
                   onClick={handleSave}
+                  style={{ marginTop: '8px' }}
                 >
                   <Icon name="sql" size={14} style={{ marginRight: '4px' }} />
                   Save Report
@@ -817,7 +877,7 @@ const ReportEditor = () => {
                   Use @ to mention charts, tables, or dashboards from your Metabase instance.
                 </Text>
                 <Text size="xs" color="dimmed">
-                  Use the formatting tools above to structure your report.
+                  Entities will appear in the list above as you add them to your report.
                 </Text>
               </Stack>
             </Stack>
