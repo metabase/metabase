@@ -6,14 +6,20 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  getIcon,
+  queryIcon,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { Card, TemplateTag } from "metabase-types/api";
+import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
+import type { Card, TemplateTag, TemplateTagType } from "metabase-types/api";
 import {
   createMockCard,
   createMockNativeDatasetQuery,
-  createMockParameter,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
@@ -70,7 +76,7 @@ const setup = ({
       tag={tag}
       database={databaseMetadata}
       databases={metadata.databasesList()}
-      parameter={createMockParameter()}
+      parameter={getTemplateTagParameter(tag)}
       setTemplateTag={setTemplateTag}
       setParameterValue={setParameterValue}
     />,
@@ -345,6 +351,53 @@ describe("TagEditorParam", () => {
         required: false,
         default: "abc",
       });
+    });
+  });
+
+  describe("multi select", () => {
+    it.each<TemplateTagType>(["text", "number"])(
+      "should support single and multiple values with %s variables",
+      async (type) => {
+        const tag = createMockTemplateTag({ type });
+        setup({ tag });
+        expect(screen.getByLabelText("Multiple values")).toBeInTheDocument();
+        expect(screen.getByLabelText("A single value")).toBeInTheDocument();
+
+        await userEvent.hover(getIcon("info_filled"));
+        expect(await screen.findByText(/category IN/)).toBeInTheDocument();
+      },
+    );
+
+    it("should support single and multiple values with field filters", () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PEOPLE.SOURCE, null],
+      });
+      setup({ tag });
+      expect(screen.getByLabelText("Multiple values")).toBeInTheDocument();
+      expect(screen.getByLabelText("A single value")).toBeInTheDocument();
+      expect(queryIcon("info_filled")).not.toBeInTheDocument();
+    });
+
+    it("should not support single and multiple values with date variables", () => {
+      const tag = createMockTemplateTag({ type: "date" });
+      setup({ tag });
+      expect(
+        screen.queryByLabelText("Multiple values"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("A single value")).not.toBeInTheDocument();
+    });
+
+    it("should not support single and multiple values with time grouping", () => {
+      const tag = createMockTemplateTag({
+        type: "temporal-unit",
+        dimension: ["field", PEOPLE.CREATED_AT, null],
+      });
+      setup({ tag });
+      expect(
+        screen.queryByLabelText("Multiple values"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("A single value")).not.toBeInTheDocument();
     });
   });
 });
