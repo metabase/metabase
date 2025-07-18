@@ -5,6 +5,7 @@ import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/mode
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 
 import {
+  type EditableDashboardOwnProps,
   SdkDashboard,
   type SdkDashboardInnerProps,
   type SdkDashboardProps,
@@ -15,7 +16,8 @@ import {
  * @expand
  * @category Dashboard
  */
-export type EditableDashboardProps = SdkDashboardProps;
+export type EditableDashboardProps = SdkDashboardProps &
+  EditableDashboardOwnProps;
 
 /**
  * A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard.

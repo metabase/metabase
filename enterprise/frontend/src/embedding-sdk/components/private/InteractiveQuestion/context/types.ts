@@ -11,6 +11,7 @@ import type {
 } from "embedding-sdk/types/question";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";
+import type { DashboardId } from "metabase-types/api";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 type InteractiveQuestionConfig = {
@@ -56,8 +57,8 @@ type InteractiveQuestionConfig = {
    * A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`
    */
   onSave?: (
-    question: MetabaseQuestion | undefined,
-    context: { isNewQuestion: boolean },
+    question: MetabaseQuestion,
+    context: { isNewQuestion: boolean; dashboardTabId?: number | undefined },
   ) => void;
 
   /**
@@ -69,6 +70,15 @@ type InteractiveQuestionConfig = {
    * A callback function that triggers when a user clicks the back button.
    */
   onNavigateBack?: () => void;
+
+  /**
+   * When provided, this dashboard will be used to navigate back to the dashboard from other view
+   * instead of the state from Redux in `qb.parentDashboard.dashboardId`
+   */
+  backToDashboard?: {
+    id: DashboardId;
+    name: string;
+  };
 };
 
 export type QuestionMockLocationParameters = {
@@ -95,6 +105,7 @@ export type InteractiveQuestionContextType = Omit<
     | "isSaveEnabled"
     | "targetCollection"
     | "withDownloads"
+    | "backToDashboard"
   > &
   Pick<InteractiveQuestionProviderProps, "variant"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;

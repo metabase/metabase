@@ -57,7 +57,7 @@ jobs:
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
       CYPRESS_QA_DB_MONGO: ${{ inputs.name == 'mongo' }}
-      CYPRESS_IS_EMBEDDING_SDK: ${{ inputs.name == 'embedding-sdk' }}
+      CYPRESS_IS_EMBEDDING_SDK: "${{ inputs.name == 'embedding-sdk' }}"
       mongo: ${{ inputs.name == 'mongo' }}
       postgres: ${{ inputs.name != 'mongo' }}
       mysql: ${{ inputs.name != 'mongo' }}

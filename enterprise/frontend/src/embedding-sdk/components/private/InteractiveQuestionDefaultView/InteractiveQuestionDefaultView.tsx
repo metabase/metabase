@@ -113,9 +113,7 @@ export const InteractiveQuestionDefaultView = ({
   }
 
   const showSaveButton =
-    shouldShowSaveButton({ question, originalQuestion }) &&
-    isSaveEnabled &&
-    !isSaveModalOpen;
+    shouldShowSaveButton({ question, originalQuestion }) && isSaveEnabled;
 
   return (
     <FlexibleSizeComponent
@@ -124,22 +122,19 @@ export const InteractiveQuestionDefaultView = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      {queryResults && (
-        <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
-          <Group justify="space-between" align="flex-end">
-            <Group gap="xs">
-              <Box mr="sm">
-                <InteractiveQuestion.BackButton />
-              </Box>
-              <DefaultViewTitle
-                title={title}
-                withResetButton={withResetButton}
-              />
-            </Group>
-            {showSaveButton && (
-              <InteractiveQuestion.SaveButton onClick={openSaveModal} />
-            )}
+      <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+        <Group justify="space-between" align="flex-end">
+          <Group gap="xs">
+            <Box mr="sm">
+              <InteractiveQuestion.BackButton />
+            </Box>
+            <DefaultViewTitle title={title} withResetButton={withResetButton} />
           </Group>
+          {showSaveButton && (
+            <InteractiveQuestion.SaveButton onClick={openSaveModal} />
+          )}
+        </Group>
+        {queryResults && (
           <Group
             justify="space-between"
             p="sm"
@@ -187,8 +182,8 @@ export const InteractiveQuestionDefaultView = ({
               />
             </Group>
           </Group>
-        </Stack>
-      )}
+        )}
+      </Stack>
 
       <Box className={InteractiveQuestionS.Main} p="sm" w="100%" h="100%">
         <Box className={InteractiveQuestionS.Content}>

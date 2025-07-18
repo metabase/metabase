@@ -14,6 +14,7 @@ const setup = async (
     props?: Partial<SdkDashboardProps>;
     providerProps?: Partial<MetabaseProviderProps>;
     isLocaleLoading?: boolean;
+    dashboardName?: string;
   } = {},
 ) => {
   return setupSdkDashboard({
@@ -47,7 +48,7 @@ describe("SdkDashboard", () => {
   });
 
   it("should allow to navigate back to dashboard from a question", async () => {
-    await setup();
+    await setup({ dashboardName: "Test dashboard" });
 
     await userEvent.click(screen.getByText("Here is a card title"));
 
@@ -55,9 +56,9 @@ describe("SdkDashboard", () => {
       await screen.findByTestId("query-visualization-root"),
     ).toBeInTheDocument();
 
-    expect(screen.getByLabelText("Back to Dashboard")).toBeInTheDocument();
+    expect(screen.getByLabelText("Back to Test dashboard")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByLabelText("Back to Dashboard"));
+    await userEvent.click(screen.getByLabelText("Back to Test dashboard"));
 
     expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
 
@@ -68,7 +69,7 @@ describe("SdkDashboard", () => {
   });
 
   it("should allow to navigate back to dashboard from a question with empty results", async () => {
-    await setup();
+    await setup({ dashboardName: "Test dashboard" });
 
     await userEvent.click(screen.getByText("Here is a card title"));
 
@@ -76,7 +77,7 @@ describe("SdkDashboard", () => {
       await screen.findByTestId("query-visualization-root"),
     ).toBeInTheDocument();
 
-    expect(screen.getByLabelText("Back to Dashboard")).toBeInTheDocument();
+    expect(screen.getByLabelText("Back to Test dashboard")).toBeInTheDocument();
 
     await userEvent.click(screen.getByText("Back to previous results"));
 

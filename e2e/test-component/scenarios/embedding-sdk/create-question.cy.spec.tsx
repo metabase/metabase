@@ -73,6 +73,37 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     getSdkRoot().contains("My Orders");
   });
 
+  it("can create a question without visualizing it first (EMB-584)", () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <Flex p="xl">
+        <InteractiveQuestion questionId="new" />
+      </Flex>,
+    );
+
+    getSdkRoot().within(() => {
+      cy.findByText("New question").should("be.visible");
+      cy.button("Save").should("not.exist");
+    });
+
+    popover().findByRole("link", { name: "Orders" }).click();
+
+    getSdkRoot().button("Save").should("be.visible").click();
+
+    const expectedQuestionName = "Orders question";
+    modal().within(() => {
+      cy.findByRole("heading", { name: "Save new question" }).should(
+        "be.visible",
+      );
+      cy.findByLabelText("Name").clear().type(expectedQuestionName);
+      cy.button("Save").click();
+    });
+
+    getSdkRoot().findByText(expectedQuestionName).should("be.visible");
+  });
+
   it("can save a question in a dashboard", () => {
     createQuestion({
       name: "Total Orders",

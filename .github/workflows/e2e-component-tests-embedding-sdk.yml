@@ -116,7 +116,7 @@ jobs:
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.MB_PRO_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.MB_PRO_SELF_HOSTED_TOKEN }}
       CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
-      CYPRESS_IS_EMBEDDING_SDK: true
+      CYPRESS_IS_EMBEDDING_SDK: "true"
       COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
