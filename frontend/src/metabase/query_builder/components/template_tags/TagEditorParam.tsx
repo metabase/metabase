@@ -15,9 +15,7 @@ import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type Field from "metabase-lib/v1/metadata/Field";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Table from "metabase-lib/v1/metadata/Table";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   getDefaultParameterOptions,
@@ -47,13 +45,13 @@ import {
   FilterWidgetLabelInput,
   FilterWidgetTypeSelect,
 } from "./TagEditorParamParts";
+import { FieldAliasInput } from "./TagEditorParamParts/FieldAliasInput";
 import { ParameterMultiSelectInput } from "./TagEditorParamParts/ParameterMultiSelectInput";
 import {
   ContainerLabel,
   InputContainer,
 } from "./TagEditorParamParts/TagEditorParam";
 import { VariableTypeSelect } from "./TagEditorParamParts/VariableTypeSelect";
-import type { WidgetOption } from "./types";
 
 interface StateProps {
   metadata: Metadata;
@@ -162,6 +160,7 @@ class TagEditorParamInner extends Component<
         type: type,
         default: undefined,
         dimension: undefined,
+        alias: undefined,
         "widget-type": type === "dimension" ? "none" : undefined,
       });
 
@@ -253,9 +252,10 @@ class TagEditorParamInner extends Component<
         return;
       }
 
-      const newTag = {
+      const newTag: TemplateTag = {
         ...tag,
         dimension,
+        alias: undefined,
         ...(tag.type === "dimension"
           ? { "widget-type": getDefaultParameterWidgetType(tag, field) }
           : {}),
@@ -265,6 +265,13 @@ class TagEditorParamInner extends Component<
         ...newTag,
         options: getDefaultParameterOptions(newTag),
       });
+    }
+  };
+
+  setAlias = (alias: string | undefined) => {
+    const { tag, setTemplateTag } = this.props;
+    if (tag.alias !== alias) {
+      setTemplateTag({ ...tag, alias });
     }
   };
 
@@ -298,22 +305,11 @@ class TagEditorParamInner extends Component<
 
     const isDimension = tag.type === "dimension";
     const isTemporalUnit = tag.type === "temporal-unit";
-    const hasSelectedDimensionField =
-      (isDimension || isTemporalUnit) && Array.isArray(tag.dimension);
-
-    let widgetOptions: WidgetOption[] = [];
-    let field: Field | null = null;
-    let table: Table | null | undefined = null;
-    let fieldMetadataLoaded = false;
-    if ((isDimension || isTemporalUnit) && Array.isArray(tag.dimension)) {
-      field = metadata.field(tag.dimension[1]);
-      if (field) {
-        widgetOptions = getParameterOptionsForField(field);
-        table = field.table;
-        fieldMetadataLoaded = true;
-      }
-    }
-    const hasWidgetOptions = widgetOptions.length > 0;
+    const field = Array.isArray(tag.dimension)
+      ? metadata.field(tag.dimension[1])
+      : null;
+    const widgetOptions =
+      field != null ? getParameterOptionsForField(field) : [];
 
     return (
       <Box
@@ -329,17 +325,18 @@ class TagEditorParamInner extends Component<
         {(isDimension || isTemporalUnit) && (
           <FieldMappingSelect
             tag={tag}
-            hasSelectedDimensionField={hasSelectedDimensionField}
-            table={table}
             field={field}
-            fieldMetadataLoaded={fieldMetadataLoaded}
             database={database}
             databases={databases}
             setFieldFn={this.setDimension}
           />
         )}
 
-        {isDimension && hasSelectedDimensionField && (
+        {(isDimension || isTemporalUnit) && field != null && (
+          <FieldAliasInput tag={tag} onChange={this.setAlias} />
+        )}
+
+        {isDimension && field != null && (
           <FilterWidgetTypeSelect
             tag={tag}
             value={this.getFilterWidgetTypeValue(tag)}
@@ -348,7 +345,7 @@ class TagEditorParamInner extends Component<
           />
         )}
 
-        {(!isDimension || hasWidgetOptions) && (
+        {(!isDimension || widgetOptions.length > 0) && (
           <FilterWidgetLabelInput
             tag={tag}
             onChange={(value) =>
