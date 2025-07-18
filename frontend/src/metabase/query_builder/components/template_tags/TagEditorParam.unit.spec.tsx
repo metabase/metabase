@@ -284,7 +284,7 @@ describe("TagEditorParam", () => {
           "widget-type": type === "dimension" ? "date/all-options" : undefined,
         });
         const { setTemplateTag } = setup({ tag });
-        await userEvent.clear(screen.getByPlaceholderText("CREATED_AT"));
+        await userEvent.clear(screen.getByTestId("field-alias-input"));
         await userEvent.tab();
         expect(setTemplateTag).toHaveBeenCalledWith({
           ...tag,
