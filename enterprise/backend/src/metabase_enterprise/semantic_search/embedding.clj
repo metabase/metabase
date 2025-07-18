@@ -5,7 +5,12 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [potemkin.types :as p]))
+   [potemkin.types :as p])
+  (:import
+   [com.knuddels.jtokkit Encodings]
+   [com.knuddels.jtokkit.api Encoding EncodingType]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ollama-supported-models
   "Map of supported Ollama models to their embedding dimensions."
@@ -18,6 +23,70 @@
   {"text-embedding-3-small" 1536
    "text-embedding-3-large" 3072
    "text-embedding-ada-002" 1536})
+
+;;; Token Counting for OpenAI Models
+
+(def ^:private ^Encoding openai-encoding
+  "OpenAI tokenizer encoding for cl100k_base (used by text-embedding models)."
+  (delay (.getEncoding (Encodings/newDefaultEncodingRegistry) EncodingType/CL100K_BASE)))
+
+(defn- count-tokens
+  "Count the number of tokens in a text string using OpenAI's cl100k_base encoding."
+  [^String text]
+  (when text
+    (let [^Encoding encoding @openai-encoding]
+      (.size (.encode encoding text)))))
+
+(defn- count-tokens-batch
+  "Count the total number of tokens across multiple text strings."
+  [texts]
+  (reduce + 0 (map count-tokens texts)))
+
+;;; Batching Logic
+
+(def ^:dynamic ^:private *max-tokens-per-batch*
+  "Maximum number of tokens allowed per batch for OpenAI embedding API. The real limit is 8192, but we're using a lower
+  limit in case there are discrepencies between the tokenizers."
+  8000)
+
+(defn- create-batches
+  "Split texts into batches that don't exceed the threshold.
+   Returns a vector of batches, where each batch is a vector of texts.
+   - threshold: Maximum allowed measure per batch
+   - measure: Function to measure each text (e.g., count-tokens)
+   - texts: Collection of texts to batch"
+  [threshold measure texts]
+  (let [step (fn [{:keys [current-batch current-measure batches] :as acc} text]
+               (let [text-measure (measure text)]
+                 (cond
+                   ;; Single text exceeds the limit - skip it with warning
+                   (> text-measure threshold)
+                   (do
+                     (log/warn
+                      (format "Skipping text that exceeds maximum measure per batch: %s"
+                              (str (subs text 0 10) "..."))
+                      {:measure text-measure :threshold threshold})
+                     acc)
+
+                   ;; Adding this text would exceed the limit - start new batch
+                   (> (+ current-measure text-measure) threshold)
+                   (assoc acc
+                          :current-batch [text]
+                          :current-measure text-measure
+                          :batches (conj batches current-batch))
+
+                   ;; Add to current batch
+                   :else
+                   (assoc acc
+                          :current-batch (conj current-batch text)
+                          :current-measure (+ current-measure text-measure)))))
+        {:keys [batches current-batch]}
+        (reduce step
+                {:current-batch [] :current-measure 0 :batches []}
+                texts)]
+    (if (seq current-batch)
+      (conj batches current-batch)
+      batches)))
 
 (defn- default-model-for-provider
   "Get the default model for a given provider."
@@ -40,6 +109,9 @@
   "Protocol for embedding providers."
   (-get-embedding [provider text]
     "Generate an embedding vector for the given text.")
+  (-get-embeddings-batch [provider texts]
+    "Generate embedding vectors for multiple texts in a single API call.
+     Returns a vector of embeddings in the same order as the input texts.")
   (-pull-model [provider]
     "Pull/download the embedding model if needed (no-op for cloud providers).")
   (-model-dimensions [provider model]
@@ -49,7 +121,7 @@
   EmbeddingProvider
   (-get-embedding [_ text]
     (try
-      (log/info "Generating Ollama embedding for text of length:" (count text))
+      (log/debug "Generating Ollama embedding for text of length:" (count text))
       (-> (http/post "http://localhost:11434/api/embeddings"
                      {:headers {"Content-Type" "application/json"}
                       :body    (json/encode {:model (get-model)
@@ -61,9 +133,15 @@
         (log/error e "Failed to generate Ollama embedding for text of length:" (count text))
         (throw e))))
 
+  (-get-embeddings-batch [this texts]
+    ;; Ollama doesn't have a native batch API, so we fall back to individual calls
+    ;; No special batching needed for Ollama - just process all texts
+    (log/debug "Generating" (count texts) "Ollama embeddings (using individual calls)")
+    (mapv #(-get-embedding this %) texts))
+
   (-pull-model [_]
     (try
-      (log/info "Pulling embedding model from Ollama...")
+      (log/debug "Pulling embedding model from Ollama...")
       (http/post "http://localhost:11434/api/pull"
                  {:headers {"Content-Type" "application/json"}
                   :body    (json/encode {:model (get-model)})})
@@ -76,25 +154,41 @@
 
 (defrecord OpenAIProvider []
   EmbeddingProvider
-  (-get-embedding [_ text]
+  (-get-embedding [this text]
     (try
-      (log/info "Generating OpenAI embedding for text of length:" (count text))
-      (let [api-key (semantic-settings/openai-api-key)
-            model (get-model)
-            endpoint "https://api.openai.com/v1/embeddings"]
-        (when-not api-key
-          (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
-        (-> (http/post endpoint
-                       {:headers {"Content-Type" "application/json"
-                                  "Authorization" (str "Bearer " api-key)}
-                        :body    (json/encode {:model model
-                                               :input text})})
-            :body
-            (json/decode true)
-            (get-in [:data 0 :embedding])))
+      (log/debug "Generating OpenAI embedding for text of length:" (count text))
+      (first (-get-embeddings-batch this [text]))
       (catch Exception e
         (log/error e "Failed to generate OpenAI embedding for text of length:" (count text))
         (throw e))))
+
+  (-get-embeddings-batch [_ texts]
+    (let [api-key (semantic-settings/openai-api-key)
+          model (get-model)
+          endpoint "https://api.openai.com/v1/embeddings"]
+      (when-not api-key
+        (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
+      (let [batches (create-batches *max-tokens-per-batch* count-tokens texts)
+            batch-results (mapv (fn [batch-texts]
+                                  (try
+                                    (log/debug "Generating" (count batch-texts) "OpenAI embeddings in batch")
+                                    (-> (http/post endpoint
+                                                   {:headers {"Content-Type" "application/json"
+                                                              "Authorization" (str "Bearer " api-key)}
+                                                    :body    (json/encode {:model model
+                                                                           :input batch-texts})})
+                                        :body
+                                        (json/decode true)
+                                        :data
+                                        (->> (map :embedding)))
+                                    (catch Exception e
+                                      (log/error e "Failed to generate OpenAI embeddings for batch of" (count batch-texts) "texts")
+                                      (throw e))))
+                                batches)]
+        (log/debug "Processed" (count texts) "texts in" (count batches) "batches"
+                   "with token counts:" (mapv count-tokens-batch batches))
+        ;; Flatten the batch results to get a single vector of embeddings
+        (vec (mapcat identity batch-results)))))
 
   (-pull-model [_]
     (log/info "OpenAI provider does not require pulling a model"))
@@ -135,6 +229,14 @@
      (-model-dimensions provider model)))
   ([model]
    (-model-dimensions (get-provider) model)))
+
+(defn get-embeddings-batch
+  "Generate embeddings for multiple texts using the configured provider.
+   Each provider handles its own batching logic internally if needed."
+  [texts]
+  (when (seq texts)
+    (let [provider (get-provider)]
+      (-get-embeddings-batch provider texts))))
 
 (comment
   ;; Configuration:
