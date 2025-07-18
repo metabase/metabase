@@ -558,6 +558,7 @@
                                :first_name             user-name
                                :last_name              user-name
                                :common_name            (str user-name " " user-name)
+                               :jwt_attributes         nil
                                :login_attributes       {:test "value"}})
                        (-> resp
                            mt/boolean-ids-and-timestamps
@@ -740,6 +741,7 @@
                          :email        "cam.eron@metabase.com"
                          :first_name   "Cam"
                          :last_name    "Eron"
+                         :jwt_attributes         nil
                          :is_superuser true})
                        (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
                                                  {:last_name "Eron"
@@ -767,6 +769,7 @@
                  :email                  "testuser@metabase.com"
                  :first_name             "Test"
                  :login_attributes       {:test "value"}
+                 :jwt_attributes         nil
                  :common_name            "Test User"
                  :last_name              "User"})
                (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
@@ -842,7 +845,7 @@
         (letfn [(change-user-via-api! [m]
                   (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) m)
                       (t2/hydrate :personal_collection_id ::personal-collection-name)
-                      (dissoc :user_group_memberships :personal_collection_id :email :is_superuser)
+                      (dissoc :user_group_memberships :personal_collection_id :email :is_superuser :jwt_attributes)
                       (#(apply (partial dissoc %) (keys @user-defaults)))
                       mt/boolean-ids-and-timestamps))]
           (testing "Name keys ommitted does not update the user"

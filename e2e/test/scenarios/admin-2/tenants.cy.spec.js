@@ -442,7 +442,7 @@ describe("Tenants - management", () => {
     });
 
     cy.findAllByRole("button", { name: /ellipsis/ })
-      .should("have.length", 2)
+      .should("have.length", 3)
       .last()
       .click();
     H.popover().findByText("Edit user").click();

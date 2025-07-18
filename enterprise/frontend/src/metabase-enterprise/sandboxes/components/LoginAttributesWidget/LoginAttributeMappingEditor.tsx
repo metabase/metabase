@@ -73,7 +73,9 @@ export const buildStructuredEntries = (
         disabled: frozen,
         revert:
           original ||
-          (source === "tenant" ? { value, source, frozen: false } : undefined),
+          (source === "tenant" || source === "jwt"
+            ? { value, source, frozen: false }
+            : undefined),
       },
     }))
     .sort((a, b) =>
@@ -267,17 +269,32 @@ const ValueInput = ({
   );
 };
 
-const InfoCard = ({ source }: { source?: "tenant" | "system" | "user" }) =>
-  !["tenant", "system"].includes(source ?? "") ? null : (
+const infoText = (source?: "tenant" | "system" | "jwt" | "user"): string => {
+  switch (source) {
+    case "tenant":
+      return t`This attribute is inherited from the tenant, but you can override its value`;
+    case "system":
+      return t`This attribute is system defined`;
+    case "jwt":
+      return t`This attribute was set by the login token, but you can override its value`;
+    default:
+      return "";
+  }
+};
+
+const InfoCard = ({
+  source,
+}: {
+  source?: "tenant" | "system" | "user" | "jwt";
+}) =>
+  !["tenant", "system", "jwt"].includes(source ?? "") ? null : (
     <HoverCard>
       <HoverCard.Target>
         <Icon name="info_filled" c="text-light" />
       </HoverCard.Target>
       <HoverCard.Dropdown maw="20rem">
         <Text p="sm" maw="20rem">
-          {source === "tenant"
-            ? t`This attribute is inherited from the tenant, but you can override its value`
-            : t`This attribute is system defined`}
+          {infoText(source)}
         </Text>
       </HoverCard.Dropdown>
     </HoverCard>

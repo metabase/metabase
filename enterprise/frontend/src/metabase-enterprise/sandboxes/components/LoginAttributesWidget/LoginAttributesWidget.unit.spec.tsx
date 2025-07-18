@@ -48,6 +48,11 @@ const structuredAttributes: StructuredUserAttributes = {
     frozen: false,
     value: "secret",
   },
+  session: {
+    source: "jwt",
+    frozen: false,
+    value: "abc123",
+  },
   "@tenant.slug": {
     // immutable tenant slug
     source: "system",
@@ -109,6 +114,22 @@ describe("LoginAttributesWidget", () => {
     expect(submittedValues).toEqual({
       login_attributes: {
         personal: "secret",
+      },
+    });
+  });
+
+  it("should not save a user attribute with the same key and value as a JWT attribute", async () => {
+    const { onSubmit } = setup();
+
+    await screen.findByText("Attributes");
+    await changeInput("abc123", "abc123");
+    await userEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+    const submittedValues = onSubmit.mock.calls[0][0];
+    expect(submittedValues).toEqual({
+      login_attributes: {
+        personal: "secret",
+        type: "insect",
       },
     });
   });

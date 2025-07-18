@@ -52,6 +52,7 @@
   (let [tenant (when-let [tenant-id (:tenant_id user)]
                  (t2/select-one :model/Tenant :id tenant-id))
         combined-attributes (tenants/combine (:login_attributes user)
+                                             (:jwt_attributes user)
                                              (:attributes tenant)
                                              (when tenant
                                                {"@tenant.slug" (:slug tenant)}))]
