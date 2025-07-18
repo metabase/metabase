@@ -20,8 +20,9 @@ type FieldAliasInputProps = {
 
 export function FieldAliasInput({ tag, onChange }: FieldAliasInputProps) {
   const handleChange = (value: string) => {
-    if (value.length > 0) {
-      onChange(value);
+    const trimmedValue = value.trim();
+    if (trimmedValue.length > 0) {
+      onChange(trimmedValue);
     } else {
       onChange(undefined);
     }
