@@ -2,9 +2,12 @@ import cx from "classnames";
 import {
   type PropsWithChildren,
   type ReactNode,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import { usePrevious } from "react-use";
 
 import { FieldSet } from "metabase/common/components/FieldSet";
 import { Sortable } from "metabase/common/components/Sortable";
@@ -76,7 +79,18 @@ export const ParameterWidget = ({
 }: ParameterWidgetProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const isEditingParameter = editingParameter?.id === parameter.id;
+  const wasEditingParameter = usePrevious(isEditingParameter);
   const fieldHasValueOrFocus = parameter.value != null || isFocused;
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!wasEditingParameter && isEditingParameter && element) {
+      if (!isInViewport(element)) {
+        element.scrollIntoView({ block: "center" });
+      }
+    }
+  }, [isEditingParameter, wasEditingParameter]);
 
   const tc = useTranslateContent();
   const maybeTranslatedParameterName = tc(parameter.name);
@@ -114,6 +128,7 @@ export const ParameterWidget = ({
             setEditingParameter?.(isEditingParameter ? null : parameter.id)
           }
           data-testid={hasTestId ? "editing-parameter-widget" : undefined}
+          ref={ref}
         >
           <div className={CS.mr1} onClick={(e) => e.stopPropagation()}>
             {dragHandle}
@@ -134,6 +149,7 @@ export const ParameterWidget = ({
         className={cx(className, S.SubtleParameterWidget, {
           [S.fullWidth]: fullWidth,
         })}
+        ref={ref}
       >
         <ParameterValueWidget
           parameter={parameter}
@@ -207,3 +223,17 @@ export const ParameterWidget = ({
     </Box>
   );
 };
+
+function isInViewport(element: HTMLElement) {
+  const rect = element.getBoundingClientRect();
+  const viewportHeight =
+    window.innerHeight ?? document.documentElement.clientHeight;
+  const viewportWidth =
+    window.innerWidth ?? document.documentElement.clientWidth;
+  return (
+    rect.top >= 0 &&
+    rect.left >= 0 &&
+    rect.bottom <= viewportHeight &&
+    rect.right <= viewportWidth
+  );
+}
