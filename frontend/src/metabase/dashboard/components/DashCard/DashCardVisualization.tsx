@@ -21,6 +21,7 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { getSetting } from "metabase/selectors/settings";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import {
   Box,
   Button,
@@ -91,6 +92,18 @@ const DashCardLoadingView = ({
   expectedDuration,
   display,
 }: LoadingViewProps & { display?: CardDisplayType }) => {
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const getPreamble = () => {
+    if (isSlow === "usually-fast") {
+      return t`This usually loads immediately, but is currently taking longer.`;
+    }
+    if (expectedDuration) {
+      return jt`This usually takes around ${(
+        <span className={CS.textNoWrap}>{duration(expectedDuration)}</span>
+      )}.`;
+    }
+  };
+
   return (
     <div
       data-testid="loading-indicator"
@@ -122,15 +135,24 @@ const DashCardLoadingView = ({
               <HoverCard.Dropdown ml={-8} className={EmbedFrameS.dropdown}>
                 <div className={cx(CS.p2, CS.textCentered)}>
                   <Text fw="bold">{t`Waiting for your data`}</Text>
-                  <Text lh="1.5">
-                    {isSlow === "usually-slow"
-                      ? jt`This usually takes an average of ${(
-                          <span className={CS.textNoWrap}>
-                            {duration(expectedDuration ?? 0)}
-                          </span>
-                        )}, but is currently taking longer.`
-                      : t`This usually loads immediately, but is currently taking longer.`}
+                  <Text lh="1.5" mt={4}>
+                    {getPreamble()}{" "}
+                    {t`You can use caching to speed up question loading.`}
                   </Text>
+                  {showMetabaseLinks && (
+                    <Button
+                      mt={12}
+                      variant="subtle"
+                      size="compact-md"
+                      rightSection={<Icon name="external" />}
+                      component="a"
+                      href="https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {t`Making dashboards faster`}
+                    </Button>
+                  )}
                 </div>
               </HoverCard.Dropdown>
             </HoverCard>
