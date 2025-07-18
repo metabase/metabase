@@ -110,18 +110,20 @@ export function isArtificialColumn(column: DatasetColumn) {
   return column.source === "artificial";
 }
 
-export function partitionTimeDimensions<T extends DatasetColumn[]>(
-  columns: T,
-): { dimensions: T; timeDimensions: T; otherDimensions: T } {
+export function partitionTimeDimensions(columns: DatasetColumn[]): {
+  dimensions: DatasetColumn[];
+  timeDimensions: DatasetColumn[];
+  otherDimensions: DatasetColumn[];
+} {
   // Extract only dimension columns (exclude metrics and pivot group columns)
   const dimensions = columns.filter(
     (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
-  ) as T;
+  );
 
   // Partition temporal & non-temporal dimensions
   const [timeDimensions, otherDimensions] = _.partition(dimensions, (col) =>
     isDate(col),
-  ) as unknown as [T, T];
+  );
 
   return { dimensions, timeDimensions, otherDimensions };
 }

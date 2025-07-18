@@ -17,8 +17,10 @@ import {
   getVisualizerComputedSettingsForFlatSeries,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
-import { createDataSource } from "metabase/visualizer/utils";
-import { partitionTimeDimensions } from "metabase/visualizer/visualizations/compat";
+import {
+  createDataSource,
+  partitionTimeDimensions,
+} from "metabase/visualizer/utils";
 import {
   addDataSource,
   removeDataSource,
@@ -136,7 +138,10 @@ export function DatasetsList({
         include_dashboard_questions: true,
         include_metadata: true,
         has_temporal_dim: timeDimensions.length > 0,
-        non_temporal_dim_ids: JSON.stringify(nonTemporalDimIds),
+        non_temporal_dim_ids:
+          nonTemporalDimIds.length > 0
+            ? JSON.stringify(nonTemporalDimIds)
+            : undefined,
       },
       {
         skip: muted,
