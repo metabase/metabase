@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Mention from "@tiptap/extension-mention";
@@ -7,7 +7,7 @@ import { Node } from "@tiptap/core";
 import { createRoot } from "react-dom/client";
 import { t } from "ttag";
 
-import { Box, Button, Group, Paper, Stack, Text, useMantineTheme } from "metabase/ui";
+import { Box, Button, Group, Paper, Stack, Text, useMantineTheme, Flex } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import { useSearchQuery } from "metabase/api";
 import { skipToken } from "@reduxjs/toolkit/query";
@@ -520,6 +520,9 @@ const ReportEditor = () => {
   const [showMentions, setShowMentions] = useState(false);
   const [mentionCommand, setMentionCommand] = useState<((item: any) => void) | null>(null);
   const [mentionRect, setMentionRect] = useState(null);
+  const [sidebarWidth, setSidebarWidth] = useState(300);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef<HTMLDivElement>(null);
 
   // Get the current theme and store to pass to node views
   const theme = useMantineTheme();
@@ -656,15 +659,173 @@ const ReportEditor = () => {
     editor?.chain().focus().toggleCodeBlock().run();
   }, [editor]);
 
+  // Resize handling
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    setIsResizing(true);
+    e.preventDefault();
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isResizing) return;
+
+    const containerRect = resizeRef.current?.parentElement?.getBoundingClientRect();
+    if (containerRect) {
+      const newSidebarWidth = containerRect.right - e.clientX;
+      const minWidth = 200;
+      const maxWidth = containerRect.width - 400; // Leave at least 400px for editor
+
+      setSidebarWidth(Math.max(minWidth, Math.min(maxWidth, newSidebarWidth)));
+    }
+  }, [isResizing]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isResizing, handleMouseMove, handleMouseUp]);
+
   return (
-    <EditorContainer>
-    <Paper maw={800} m="lg">
-    <StyledEditorContent>
-        <EditorContent editor={editor} />
-      </StyledEditorContent>
-    </Paper>
+    <Box style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Main content area with resizable layout */}
+      <Flex style={{ flex: 1, overflow: 'hidden' }}>
+        {/* Editor section */}
+        <Box
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            paddingRight: '8px'
+          }}
+        >
+          <EditorContainer>
+            <Paper m="lg" style={{ maxWidth: 'none' }}>
+              <StyledEditorContent>
+                <EditorContent editor={editor} />
+              </StyledEditorContent>
+            </Paper>
+          </EditorContainer>
+        </Box>
 
+        {/* Resize handle */}
+        <Box
+          ref={resizeRef}
+          onMouseDown={handleMouseDown}
+          style={{
+            width: '4px',
+            backgroundColor: isResizing ? '#1976d2' : '#e0e0e0',
+            cursor: 'col-resize',
+            flexShrink: 0,
+            transition: isResizing ? 'none' : 'background-color 0.2s',
+            ':hover': {
+              backgroundColor: '#1976d2'
+            }
+          }}
+        />
 
+        {/* Sidebar */}
+        <Box
+          style={{
+            width: `${sidebarWidth}px`,
+            overflow: 'auto',
+            flexShrink: 0,
+            paddingLeft: '8px'
+          }}
+        >
+                    <Paper m="lg" style={{ height: 'fit-content', minHeight: '500px' }}>
+            <Stack p="md" gap="md">
+              <Text size="lg" fw={500}>Report Tools</Text>
+
+              <Stack gap="xs">
+                <Text size="sm" fw={500}>Formatting</Text>
+                <Group gap="xs">
+                  <Button
+                    size="xs"
+                    variant={editor?.isActive('bold') ? 'filled' : 'outline'}
+                    onClick={handleBold}
+                  >
+                    <Icon name="bolt" size={12} style={{ marginRight: '4px' }} />
+                    Bold
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant={editor?.isActive('italic') ? 'filled' : 'outline'}
+                    onClick={handleItalic}
+                  >
+                    <Icon name="pencil" size={12} style={{ marginRight: '4px' }} />
+                    Italic
+                  </Button>
+                </Group>
+              </Stack>
+
+              <Stack gap="xs">
+                <Text size="sm" fw={500}>Structure</Text>
+                <Group gap="xs">
+                  <Button
+                    size="xs"
+                    variant={editor?.isActive('heading', { level: 1 }) ? 'filled' : 'outline'}
+                    onClick={() => handleHeading(1)}
+                  >
+                    <Icon name="line" size={12} style={{ marginRight: '4px' }} />
+                    H1
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant={editor?.isActive('heading', { level: 2 }) ? 'filled' : 'outline'}
+                    onClick={() => handleHeading(2)}
+                  >
+                    <Icon name="line" size={12} style={{ marginRight: '4px' }} />
+                    H2
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant={editor?.isActive('bulletList') ? 'filled' : 'outline'}
+                    onClick={handleBulletList}
+                  >
+                    <Icon name="list" size={12} style={{ marginRight: '4px' }} />
+                    List
+                  </Button>
+                </Group>
+              </Stack>
+
+              <Stack gap="xs">
+                <Text size="sm" fw={500}>Actions</Text>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                >
+                  <Icon name="sql" size={14} style={{ marginRight: '4px' }} />
+                  Save Report
+                </Button>
+              </Stack>
+
+              <Stack gap="xs">
+                <Text size="sm" fw={500}>Help</Text>
+                <Text size="xs" color="dimmed">
+                  Use @ to mention charts, tables, or dashboards from your Metabase instance.
+                </Text>
+                <Text size="xs" color="dimmed">
+                  Use the formatting tools above to structure your report.
+                </Text>
+              </Stack>
+            </Stack>
+          </Paper>
+        </Box>
+      </Flex>
+
+      {/* Mention suggestions overlay */}
       {showMentions && mentionRect && (
         <MentionSuggestions
           items={searchResults?.data || []}
@@ -672,7 +833,7 @@ const ReportEditor = () => {
           clientRect={mentionRect}
         />
       )}
-    </EditorContainer>
+    </Box>
   );
 };
 
