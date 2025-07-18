@@ -1267,3 +1267,72 @@
                       (let [result (qp/process-query (qp/userland-query multi-stage-query))]
                         (is (= :failed (:status result)))
                         (is (re-find #"You do not have permissions to view Card" (:error result)))))))))))))))
+
+(deftest e2e-deeply-nested-source-cards-with-blocked-table-test
+  (testing "Deeply nested source cards (Card 3 -> Card 2 -> Card 1 -> Source Table) work with unrelated blocked table"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          ;; Block access to reviews table (unrelated to our card chain)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :reviews) :perms/view-data :blocked)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            ;; Card 1: Direct query on venues table
+            (let [card-1-query (mt/mbql-query venues
+                                 {:fields [$id $name $category_id]
+                                  :order-by [[:asc $id]]
+                                  :limit 3})]
+              (mt/with-temp [:model/Card {card-1-id :id} {:collection_id (u/the-id collection)
+                                                          :dataset_query card-1-query}]
+                ;; Card 2: Query using Card 1 as source
+                (let [card-2-query (mt/mbql-query nil
+                                     {:source-table (format "card__%d" card-1-id)
+                                      :fields [[:field (mt/id :venues :id) {:base-type :type/BigInteger}]
+                                               [:field (mt/id :venues :name) {:base-type :type/Text}]]
+                                      :limit 2})]
+                  (mt/with-temp [:model/Card {card-2-id :id} {:collection_id (u/the-id collection)
+                                                              :dataset_query card-2-query}]
+                    ;; Card 3: Query using Card 2 as source
+                    (let [card-3-query (mt/mbql-query nil
+                                         {:source-table (format "card__%d" card-2-id)
+                                          :order-by [[:asc [:field (mt/id :venues :id) {:base-type :type/BigInteger}]]]
+                                          :limit 1})]
+                      (mt/with-temp [:model/Card {card-3-id :id} {:collection_id (u/the-id collection)
+                                                                  :dataset_query card-3-query}]
+                        (mt/with-test-user :rasta
+                          (let [expected [[1 "Red Medicine"]]]
+                            (testing "Should be able to run Card 3 directly (Card 3 -> Card 2 -> Card 1 -> venues)"
+                              (binding [qp.perms/*card-id* card-3-id]
+                                (is (= expected
+                                       (mt/rows (qp/process-query card-3-query))))))
+
+                            (testing "Should be able to run ad-hoc query using Card 3 as source"
+                              (let [ad-hoc-query (mt/mbql-query nil
+                                                   {:source-table (format "card__%d" card-3-id)})]
+                                (is (= expected
+                                       (mt/rows (qp/process-query (qp/userland-query ad-hoc-query)))))))
+
+                            (testing "Should be able to run ad-hoc query using Card 2 as source"
+                              (let [ad-hoc-query (mt/mbql-query nil
+                                                   {:source-table (format "card__%d" card-2-id)
+                                                    :limit 1})]
+                                (is (= expected
+                                       (mt/rows (qp/process-query (qp/userland-query ad-hoc-query)))))))
+
+                            (testing "Should be able to run ad-hoc query using Card 1 as source"
+                              (let [ad-hoc-query (mt/mbql-query nil
+                                                   {:source-table (format "card__%d" card-1-id)
+                                                    :fields [[:field (mt/id :venues :id) {:base-type :type/BigInteger}]
+                                                             [:field (mt/id :venues :name) {:base-type :type/Text}]]
+                                                    :limit 1})]
+                                (is (= expected
+                                       (mt/rows (qp/process-query (qp/userland-query ad-hoc-query)))))))
+
+                            (testing "Blocked table (reviews) should still be inaccessible"
+                              (is (thrown-with-msg?
+                                   ExceptionInfo
+                                   #"You do not have permissions to run this query"
+                                   (mt/rows
+                                    (qp/process-query (qp/userland-query (mt/mbql-query reviews {:limit 1})))))))))))))))))))))

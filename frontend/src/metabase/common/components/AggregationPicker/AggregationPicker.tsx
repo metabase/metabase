@@ -357,7 +357,6 @@ export function AggregationPicker({
       renderItemWrapper={renderItemWrapper}
       maxHeight={Infinity}
       itemTestId="dimension-list-item"
-      withBorders
       globalSearch
       fuzzySearch
     />

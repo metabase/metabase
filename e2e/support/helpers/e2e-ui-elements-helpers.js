@@ -1,5 +1,7 @@
 // Functions that get key elements in the app
 
+import { dashboardParameterSidebar } from "./e2e-dashboard-helpers";
+
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
@@ -212,6 +214,18 @@ export function toggleFilterWidgetValues(
   });
 }
 
+/**
+ * Moves a dashboard filter to a dashcard / top nav
+ * (it must be in 'editing' mode prior to that)
+ */
+export function moveDashboardFilter(destination, { showFilter = false } = {}) {
+  dashboardParameterSidebar().findByPlaceholderText("Move filter").click();
+  popover().findByText(destination).click();
+  if (showFilter) {
+    undoToast().button("Show filter").click();
+  }
+}
+
 export const openQuestionActions = (action) => {
   cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
 
@@ -415,17 +429,18 @@ export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
       clientY: 0,
     });
 
-  // HACK: TanStack table resize handler does not resize column if we fire only one mousemove event
   cy.get("body")
-    .trigger("mousemove", {
-      clientX: moveX / 2,
-      clientY: 0,
-    })
     .trigger("mousemove", {
       clientX: moveX,
       clientY: 0,
+    })
+    // UI requires time to update, causes flakiness without the delay
+    .wait(100)
+    .trigger("mouseup", {
+      button: 0,
+      clientX: moveX,
+      clientY: 0,
     });
-  cy.get("body").trigger("mouseup", { force: true });
 }
 
 export function openObjectDetail(rowIndex) {

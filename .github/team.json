@@ -8,7 +8,6 @@
         "romeovs",
         "bshepherdson",
         "metamben",
-        "appleby",
         "uladzimirdev",
         "wzimrin",
         "ericnormand",
@@ -51,7 +50,6 @@
         "piranha",
         "crisptrutski",
         "deniskaber",
-        "wotbrew",
         "spalt08",
         "stasgavrylov"
       ]
@@ -77,7 +75,6 @@
         "kulyk",
         "tsplude",
         "lorem--ipsum",
-        "noahmoss",
         "bpander"
       ]
     },
@@ -93,9 +90,12 @@
       "name": "Metabot",
       "label": ".Team/Metabot",
       "members": [
+        "appleby",
+        "noahmoss",
         "retro",
         "sloansparger",
-        "somtom"
+        "somtom",
+        "wotbrew"
       ]
     },
     {
@@ -106,7 +106,9 @@
     {
       "name": "Cloud",
       "label": "cloud",
-      "members": []
+      "members": [
+        "filipesilva"
+      ]
     }
   ]
 }

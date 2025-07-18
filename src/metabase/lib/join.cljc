@@ -16,7 +16,6 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -267,33 +266,21 @@
            :display-name (lib.metadata.calculation/display-name query stage-number option)}
     default (assoc :default true)))
 
-(mu/defn- adjust-ident :- :map
-  [join :- [:map
-            [:ident
-             {:error/message "Join must have an ident to determine column idents"
-              :optional true}
-             ::lib.schema.common/non-blank-string]]
-   col  :- :map]
-  (cond-> col
-    (:ident join)
-    (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join))))
-
 ;;; this returns ALL the columns 'visible' within the join, regardless of `:fields` ! `:fields` is only the list of
 ;;; things to get added to the parent stage `:fields`! See QUE-1380
 ;;;
 ;;; If you want just the stuff in `:fields`, use [[join-fields-to-add-to-parent-stage]] instead.
 (mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join :- [:maybe ::lib.metadata.calculation/returned-columns]
-  [query                                         :- ::lib.schema/query
-   stage-number                                  :- :int
-   {:keys [stages], join-alias :alias, :as join} :- ::lib.schema.join/join
-   options                                       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+  [query                                          :- ::lib.schema/query
+   stage-number                                   :- :int
+   {:keys [stages], join-alias :alias, :as _join} :- ::lib.schema.join/join
+   options                                        :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (let [join-query (assoc query :stages stages)
         cols       (lib.metadata.calculation/returned-columns
                     join-query -1 (lib.util/query-stage join-query -1)
                     options)]
     (into []
           (comp (map #(column-from-join query stage-number % join-alias))
-                (map #(adjust-ident join %))
                 (lib.field.util/add-source-and-desired-aliases-xform query))
           cols)))
 
@@ -326,9 +313,7 @@
                    0
                    cols'
                    options))]
-      (into []
-            (comp (map #(column-from-join query stage-number % join-alias))
-                  (map #(adjust-ident join %)))
+      (mapv #(column-from-join query stage-number % join-alias)
             cols''))))
 
 (defmethod lib.metadata.calculation/visible-columns-method :mbql/join

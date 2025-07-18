@@ -276,7 +276,14 @@ export default class NativeQuery {
 
   variableTemplateTags(): TemplateTag[] {
     return this.templateTags().filter((t) =>
-      ["dimension", "text", "number", "date", "temporal-unit"].includes(t.type),
+      [
+        "dimension",
+        "text",
+        "number",
+        "date",
+        "boolean",
+        "temporal-unit",
+      ].includes(t.type),
     );
   }
 

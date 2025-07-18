@@ -85,5 +85,7 @@
             :whitelabel                     true
             :collection_cleanup             true
             :database_routing               true
-            :cloud_custom_smtp               true}
+            :cloud_custom_smtp              true
+            :etl_connections                false
+            :etl_connections_pg             false}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

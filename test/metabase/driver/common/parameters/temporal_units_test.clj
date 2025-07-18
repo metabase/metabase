@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (defn- ->local-date-time [t]
@@ -22,21 +21,29 @@
        qp/process-query
        (mt/formatted-rows [->local-date-time])))
 
+(defmethod driver/database-supports? [::driver/driver ::temporal-units-test]
+  [_driver _feature _database]
+  true)
+
+;;; sparksql expects you to use aliases when possible, and temporal unit params don't use aliases
+(defmethod driver/database-supports? [:sparksql ::temporal-units-test]
+  [_driver _feature _database]
+  false)
+
 (deftest can-compile-temporal-units-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units ::temporal-unit-test)
     (testing "temporal unit parameters"
-      (let [field-reference (qp.store/with-metadata-provider (mt/metadata-provider)
-                              (mt/field-reference driver/*driver* (mt/id :orders :created_at)))
-            base-query (mt/arbitrary-select-query driver/*driver* :orders (format "{{mb.time_grouping('time-unit', '%s')}}" field-reference))
+      (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
             native-query (mt/native-query
                            (assoc base-query
-                                  :template-tags {"time-unit" {:name "id"
+                                  :template-tags {"time-unit" {:name         "id"
                                                                :display-name "id"
-                                                               :type         :temporal-unit}}))
+                                                               :type         :temporal-unit
+                                                               :dimension    [:field (mt/id :orders :created_at)]}}))
             parameterized-query (assoc native-query
                                        :parameters [{:type   :temporal-unit
                                                      :name   "time-unit"
-                                                     :target [:variable [:template-tag "time-unit"]]}])
+                                                     :target [:dimension [:template-tag "time-unit"]]}])
             date-types [nil "minute" "hour" "day" "week" "month" "quarter" "year"]
             count-types ["minute-of-hour" "hour-of-day" "day-of-month"
                          "day-of-year" "month-of-year" "quarter-of-year"]
@@ -71,35 +78,38 @@
                      (subvec 0 2)))
               (str "Unexpected results for grouping " grouping)))))))
 
-(deftest bad-function-names-throw-errors-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
+(deftest bad-field-reference-throws-errors-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units ::temporal-unit-test)
     (testing "temporal unit parameters"
-      (let [base-query (mt/arbitrary-select-query driver/*driver* :orders (format "{{mb.bad_function_name('time-unit', %s)}}" "'created_at'"))
+      (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
             query (assoc (mt/native-query
                            (assoc base-query
-                                  :template-tags {"time-unit" {:name "id"
+                                  :template-tags {"time-unit" {:name         "id"
                                                                :display-name "id"
-                                                               :type         :temporal-unit}}))
+                                                               :type         :temporal-unit
+                                                               :dimension    [:field 1000000000]}}))
                          :parameters [{:type   :temporal-unit
                                        :name   "time-unit"
                                        :target [:variable [:template-tag "time-unit"]]
                                        :value  "year"}])]
         (mt/with-native-query-testing-context query
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized function: mb.bad_function_name"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"Can't find field with ID: 1,000,000,000"
                                 (run-sample-query query))))))))
 
 (deftest bad-parameter-throws-error-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units ::temporal-unit-test)
     (testing "temporal unit parameters"
-      (let [base-query (mt/arbitrary-select-query driver/*driver* :orders (format "{{mb.time_grouping('time-unit', %s)}}" "'created_at'"))
+      (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
             query (assoc (mt/native-query
                            (assoc base-query
-                                  :template-tags {"time-unit" {:name "id"
+                                  :template-tags {"time-unit" {:name         "id"
                                                                :display-name "id"
-                                                               :type         :temporal-unit}}))
+                                                               :type         :temporal-unit
+                                                               :dimension    [:field (mt/id :orders :created_at)]}}))
                          :parameters [{:type   :temporal-unit
                                        :name   "time-unit"
-                                       :target [:variable [:template-tag "time-unit"]]
+                                       :target [:dimension [:template-tag "time-unit"]]
                                        :value  "foo"}])]
         (mt/with-native-query-testing-context query
           (is (thrown-with-msg? clojure.lang.ExceptionInfo

@@ -7,7 +7,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -251,10 +250,7 @@
                                    {:result-metadata
                                     (cond->> (lib.metadata/fields metadata-provider table-id)
                                       true    (sort-by :id)
-                                      native? (mapv #(-> %
-                                                         (dissoc :table-id :id :fk-target-field-id)
-                                                         (assoc :ident (lib.metadata.ident/native-ident
-                                                                        (:name %) eid)))))}))]))))
+                                      native? (mapv #(dissoc % :table-id :id :fk-target-field-id)))}))]))))
         table-key-and-ids))
 
 (defn- make-mock-cards-special-cases
@@ -343,12 +339,7 @@
                   (lib/random-ident))]
       (-> card
           (assoc :type      :model
-                 :entity-id eid)
-          (m/update-existing :result-metadata
-                             (fn [metadata]
-                               (mapv #(cond-> %
-                                        (:ident %) (lib/add-model-ident eid))
-                                     metadata)))))))
+                 :entity-id eid)))))
 
 (mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
   "Get a `:field` 'literal' ref (a `:field` ref that uses a string column name rather than an integer ID) for a column
@@ -391,8 +382,3 @@
                                                                   :type     :native
                                                                   :native   {:query "SELECT * FROM VENUES;"}}
                                                 :result-metadata (get-in (mock-cards) [:venues :result-metadata])}))))
-
-(defn placeholder-entity-id?
-  "True if the string `s` is exactly a placeholder `entity_id` of the type generated for ad-hoc cards."
-  [s]
-  (lib.metadata.ident/placeholder? s))
