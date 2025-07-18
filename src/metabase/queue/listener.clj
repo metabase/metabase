@@ -3,11 +3,17 @@
             [metabase.queue.impl :as q.impl]
             [metabase.util.log :as log]))
 
-(defn handle! [& {:keys [queue] :as message}]
+(defn handle! [& {:keys [queue id] :as message}]
   (let [{:keys [handler]} (queue @q.impl/defined-queues)]
     (when-not handler
       (throw (ex-info "No handler defined for queue" {:queue queue})))
-    (apply handler message)))
+    (try
+      (apply handler message)
+      (log/info "Handled queue message" {:queue queue :message-id id})
+      (q.backend/message-successful! q.backend/*backend* queue id)
+      (catch Exception e
+        (log/error e "Error handling queue message" {:queue queue :message-id id})
+        (q.backend/message-failed! q.backend/*backend* queue id)))))
 
 (defn listen!
   [queue-name handler]

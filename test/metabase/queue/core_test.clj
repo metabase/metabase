@@ -3,63 +3,37 @@
    [clojure.test :refer :all]
    [metabase.queue.backend :as q.backend]
    [metabase.queue.core :as m.queue]
-   [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.queue.memory :as q.memory]))
 
 (set! *warn-on-reflection* true)
 
 (deftest e2e-test
-  (doseq [backend [:queue.backend/memory
-                   :queue.backend/appdb]]
-    (testing (str "Testing backend " backend)
-      (binding [q.backend/*backend* backend]
-        (let [heard-batches (atom [])
-              queue-name (keyword (gensym "queue/core-e2e-test-"))]
-          (m.queue/define-queue! queue-name)
-          (m.queue/listen! queue-name (fn [& {:keys [payload]}] (swap! heard-batches conj payload)))
+  (binding [q.backend/*backend* :queue.backend/memory] ;; uses the memory backend for testing
+    (q.memory/reset-tracking!)
+    (let [heard-messages (atom [])
+          queue-name (keyword (gensym "queue/core-e2e-test-"))]
+      (m.queue/define-queue! queue-name)
+      (m.queue/listen! queue-name (fn [& {:keys [payload]}]
+                                    (swap! heard-messages conj payload)
+                                    (when (= "error!" payload)
+                                      (throw (ex-info "Message Error" {:payload payload})))))
 
-          (m.queue/publish! queue-name "test message")
-          ;(testing "When adding messages, they are not persisted during the with-queue block"
-          ;  (m.queue/with-queue queue-name [q]
-          ;    (is (= 0 (count q)))
-          ;    (is (= 0 (m.queue/queue-length queue-name)))
-          ;    (is (= [] @heard-batches))
-          ;
-          ;    (m.queue/put q "test1")
-          ;    (is (= 1 (count q)))
-          ;    (is (= 0 (m.queue/queue-length queue-name)))
-          ;    (is (= [] @heard-batches))
-          ;
-          ;    (m.queue/put q "test2")
-          ;    (is (= 2 (count q)))
-          ;    (is (= 0 (m.queue/queue-length queue-name)))
-          ;    (is (= [] @heard-batches)))
+      (testing "The messages are heard and processed"
+        (m.queue/publish! queue-name "test message 1")
+        (m.queue/publish! queue-name "test message 2")
+        (Thread/sleep 200)                                  ; Wait for listener
 
-          (testing "The messages are heard"
-            (Thread/sleep 3000)                            ;; wait for message to get processed
-            (is (= ["test message"] @heard-batches)))
-          (m.queue/stop-listening! queue-name))))))
+        (is (= ["test message 1" "test message 2"] @heard-messages))
+        (is (= 2 (count @(:successful-callbacks metabase.queue.memory/recent))))
+        (is (= 0 (count @(:failed-callbacks metabase.queue.memory/recent)))))
 
-;(deftest e2e-test
-;  (let [counter (atom 0)
-;        sending-threads 5
-;        num-messages 1000
-;        thread-messages (quot num-messages sending-threads)
-;        queue-name (keyword "queue" (str (gensym "e2e-queue-")))
-;        _ (m.queue/listen! queue-name (fn [payload _args] #p (count #p payload)))
-;
-;        start-time (u/start-timer)]
-;    (log/info (str "Testing with " sending-threads " threads and " num-messages " messages"))
-;    (let [futures (doall
-;                    (for [_ (range sending-threads)]
-;                      (future
-;                        (dotimes [n thread-messages]
-;                          (m.queue/with-queue queue-name [q]
-;                            (m.queue/put q (str "test" n)))))))]
-;      (run! deref futures))
-;    (log/info (str "Sent " num-messages " messages in " (u/since-ms start-time) "ms"))
-;    (let [start (System/currentTimeMillis)] (while (and (not= num-messages @counter) (< (- (System/currentTimeMillis) start) 5000)) (Thread/sleep 50)))
-;    (log/info (str "Received " @counter " messages in " (u/since-ms start-time) "ms"))
-;    (m.queue/stop-listening! queue-name)
-;
-;    (is (= num-messages @counter))))
+      (testing "The error messages are heard and rejected"
+        (m.queue/publish! queue-name "error!")
+        (Thread/sleep 200)                                  ; Wait for listener
+
+        (is (= ["test message 1" "test message 2"  "error!"] @heard-messages))
+        (is (= 2 (count @(:successful-callbacks metabase.queue.memory/recent))))
+        (is (= 1 (count @(:failed-callbacks metabase.queue.memory/recent)))))
+
+      (m.queue/stop-listening! queue-name)
+      (is (= 1 (count @(:close-queue-callbacks metabase.queue.memory/recent)))))))

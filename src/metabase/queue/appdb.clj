@@ -16,27 +16,27 @@
   )
 
 (defn- fetch! []
-  (let [queues @listening-queues]
-    (when (not (empty? queues))
-      (t2/with-transaction [conn]
-        (when-let [row (t2/query-one
-                        conn
-                        {:select   [:*]
-                         :from     [(t2/table-name :model/QueueMessage)]
-                         :where    [:and
-                                    [:in :queue_name (map name queues)]
-                                    [:= :status "pending"]]
-                         :order-by [[:id :asc]]
-                         :limit    1
-                         :for      [:update :skip-locked]})]
-          (u/prog1 {:id      (:id row)
-                    :queue   (keyword "queue" (:queue_name row))
-                    :payload (:payload row)}
-            (t2/update! :model/QueueMessage
-                        (:id row)
-                        {:status_heartbeat (mi/now)
-                         :status           "processing"
-                         :owner            owner-id})))))))
+  (when (not (empty? @listening-queues))
+    (first @listening-queues)
+    (t2/with-transaction [conn]
+      (when-let [row (t2/query-one
+                      conn
+                      {:select   [:*]
+                       :from     [(t2/table-name :model/QueueMessage)]
+                       :where    [:and
+                                  [:in :queue_name (map name @listening-queues)]
+                                  [:= :status "pending"]]
+                       :order-by [[:id :asc]]
+                       :limit    1
+                       :for      [:update :skip-locked]})]
+        (u/prog1 {:id      (:id row)
+                  :queue   (keyword "queue" (:queue_name row))
+                  :payload (:payload row)}
+          (t2/update! :model/QueueMessage
+                      (:id row)
+                      {:status_heartbeat (mi/now)
+                       :status           "processing"
+                       :owner            owner-id}))))))
 
 ;(defn- process-batch
 ;  "Runs the handler against a batch of messages and deletes the message from the queue if the handler did not throw an exception"
@@ -120,6 +120,24 @@
     (t2/insert! :model/QueueMessage
                 {:queue_name (name queue)
                  :payload    payload})))
+
+(defmethod q.backend/message-successful! :queue.backend/appdb
+  [_ _queue-name message-id]
+  (let [deleted (t2/delete! :model/QueueMessage message-id)]
+    (when (= 0 deleted)
+      (log/warnf "Message %d was already deleted from the queue. Likely error in concurrency handling" message-id))))
+
+(defmethod q.backend/message-failed! :queue.backend/appdb
+  [_ _queue-name message-id]
+  (let [updated (t2/update! :model/QueueMessage
+                            {:id    message-id
+                             :owner owner-id}
+                            {:status           "pending"
+                             :failures         [:+ :failures 1]
+                             :status_heartbeat (mi/now)
+                             :owner            nil})]
+    (when (= 0 updated)
+      (log/warnf "Message %d was not found in the queue. Likely error in concurrency handling" message-id))))
 
 ;(deftype BatchedPersistentQueue
 ;  [queue-name]

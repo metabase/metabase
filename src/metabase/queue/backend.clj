@@ -11,7 +11,7 @@
     queue-type))
 
 (defmulti publish!
-  "Publishes the message to the queue. This is a no-op if the payload is empty or nil."
+  "Publishes the message to the queue given queue."
   {:arglists '([queue-type queue-name payload])}
   (fn [queue-type _queue-name _payload]
     queue-type))
@@ -39,4 +39,16 @@
   "Closes the queue with the given name. This is a no-op if the queue does not exist."
   {:arglists '([queue-type queue-name])}
   (fn [queue-type _queue-name]
+    queue-type))
+
+(defmulti message-successful!
+  "Mark a message as successfully processed"
+  {:arglists '([queue-type queue-name message-id])}
+  (fn [queue-type _queue-name _message-id]
+    queue-type))
+
+(defmulti message-failed!
+  "Mark a message as failed and increment failure count"
+  {:arglists '([queue-type queue-name message-id])}
+  (fn [queue-type _queue-name _message-id]
     queue-type))
