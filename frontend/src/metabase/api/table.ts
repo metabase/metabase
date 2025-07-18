@@ -71,8 +71,13 @@ export const tableApi = Api.injectEndpoints({
         url: "/api/table",
         body,
       }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("table"), tag("database"), tag("card")]),
+      invalidatesTags: (tables = [], error) =>
+        invalidateTags(error, [
+          ...tables.map((table) => idTag("table", table.id)),
+          tag("table"),
+          tag("database"),
+          tag("card"),
+        ]),
     }),
     updateTableFieldsOrder: builder.mutation<
       Table,
