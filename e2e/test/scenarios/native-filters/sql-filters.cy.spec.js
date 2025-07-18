@@ -235,6 +235,42 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     });
   });
 
+  describe("multiple values", () => {
+    it("should allow multiple values for Text variables", () => {
+      SQLFilter.enterParameterizedQuery(
+        "SELECT * FROM products WHERE category IN ({{textFilter}})",
+      );
+      H.rightSidebar().findByLabelText("Multiple values").click();
+      H.filterWidget().click();
+      H.popover().within(() => {
+        H.multiAutocompleteInput().type("Gadget,Widget");
+        cy.button("Add filter").click();
+      });
+      SQLFilter.runQuery();
+      H.tableInteractive().within(() => {
+        cy.findAllByText("Gadget").should("have.length.gte", 1);
+        cy.findAllByText("Widget").should("have.length.gte", 1);
+      });
+    });
+
+    it("should allow multiple values for Number variables", () => {
+      SQLFilter.enterParameterizedQuery(
+        "SELECT * FROM products WHERE ID IN ({{numberFilter}})",
+      );
+      H.rightSidebar().findByLabelText("Multiple values").click();
+      H.filterWidget().click();
+      H.popover().within(() => {
+        H.multiAutocompleteInput().type("1,2,3");
+        cy.button("Add filter").click();
+      });
+      SQLFilter.runQuery();
+      H.tableInteractive().within(() => {
+        cy.findAllByText("Gizmo").should("have.length.gte", 1);
+        cy.findAllByText("Doohickey").should("have.length.gte", 1);
+      });
+    });
+  });
+
   it("displays parameter field on desktop and mobile", () => {
     SQLFilter.enterParameterizedQuery(
       "SELECT * FROM products WHERE products.category = {{testingparamvisbility77}}",
