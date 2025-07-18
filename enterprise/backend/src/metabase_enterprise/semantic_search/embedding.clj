@@ -73,14 +73,14 @@
                    :else
                    (assoc acc
                           :current-batch (conj current-batch text)
-                          :current-tokens (+ current-tokens tokens)))))]
-    (let [{:keys [batches current-batch]}
-          (reduce step
-                  {:current-batch [] :current-tokens 0 :batches []}
-                  texts)]
-      (if (seq current-batch)
-        (conj batches current-batch)
-        batches))))
+                          :current-tokens (+ current-tokens tokens)))))
+        {:keys [batches current-batch]}
+        (reduce step
+                {:current-batch [] :current-tokens 0 :batches []}
+                texts)]
+    (if (seq current-batch)
+      (conj batches current-batch)
+      batches)))
 
 (defn- default-model-for-provider
   "Get the default model for a given provider."
