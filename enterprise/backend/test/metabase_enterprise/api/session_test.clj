@@ -35,6 +35,7 @@
                               :query-reference-validation
                               :sandboxes
                               :scim
+                              :semantic-search
                               :serialization
                               :session-timeout-config
                               :snippet-collections
@@ -74,6 +75,7 @@
             :query_reference_validation     true
             :sandboxes                      true
             :scim                           true
+            :semantic_search                true
             :serialization                  true
             :session_timeout_config         true
             :snippet_collections            true
