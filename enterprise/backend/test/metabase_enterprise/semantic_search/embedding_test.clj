@@ -4,6 +4,8 @@
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (deftest test-get-provider
   (testing "get-provider returns correct provider based on setting"
     (mt/with-temporary-setting-values [ee-embedding-provider "ollama"]
@@ -90,4 +92,39 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"OpenAI API key not configured"
-             (embedding/-get-embedding provider "test text")))))))
+             (embedding/-get-embedding provider "test text")))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"OpenAI API key not configured"
+             (embedding/-get-embeddings-batch provider ["test text"])))))))
+
+(deftest test-token-counting
+  (testing "count-tokens returns reasonable counts for text"
+    (is (= 2 (#'embedding/count-tokens "Hello world")))
+    (is (= 9 (#'embedding/count-tokens "This is a longer sentence with more tokens.")))
+    (is (zero? (#'embedding/count-tokens "")))
+    (is (nil? (#'embedding/count-tokens nil)))))
+
+(deftest test-batching-logic
+  (testing "create-batches handles empty input"
+    (is (empty? (#'embedding/create-batches 10 count [])))
+    (is (empty? (#'embedding/create-batches 10 count nil))))
+
+  (testing "create-batches with single short text"
+    (let [texts ["Short text"]
+          batches (#'embedding/create-batches 10 count texts)]
+      (is (= 1 (count batches)))
+      (is (= texts (first batches)))))
+
+  (testing "create-batches splits texts appropriately with smaller token limit"
+    ;; Use a smaller token limit to make testing more predictable
+    (let [texts ["This is document 1" "This is document 2" "This is document 3"]
+          batches (#'embedding/create-batches 10 #'embedding/count-tokens texts)]
+      (is (= [["This is document 1" "This is document 2"] ["This is document 3"]]
+             batches))))
+
+  (testing "create-batches skips texts that exceed token limit"
+    (let [texts ["Short" "This is a much longer text that exceeds the limit" "Also short"]
+          batches (#'embedding/create-batches 5 #'embedding/count-tokens texts)]
+      ;; Should skip the long text and batch the short ones
+      (is (= [["Short" "Also short"]] batches)))))
