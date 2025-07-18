@@ -10,6 +10,8 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { checkNotNull } from "metabase/lib/types";
+// TODO: Move this to a more suitable location for sharing.
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type {
   Collection,
   CollectionItem,
@@ -124,7 +126,12 @@ async function setup({
   });
 
   renderWithProviders(
-    <AddCardSidebar onSelect={jest.fn()} onClose={jest.fn()} />,
+    <MockDashboardContext
+      dashboardId={dashboard.id}
+      navigateToNewCardFromDashboard={null}
+    >
+      <AddCardSidebar />
+    </MockDashboardContext>,
     {
       storeInitialState: createMockState({
         currentUser: CURRENT_USER,

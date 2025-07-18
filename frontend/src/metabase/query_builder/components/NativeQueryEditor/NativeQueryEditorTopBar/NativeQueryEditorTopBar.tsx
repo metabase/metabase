@@ -138,7 +138,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
           enableParameterRequiredBehavior
         />
       )}
-      <Flex ml="auto" gap="lg" mr="lg" align="center" h="55px">
+      <Flex ml="auto" gap="lg" mr="lg" align="center" h="55px" pl="md">
         {isNativeEditorOpen && hasEditingSidebar && !readOnly && (
           <NativeQueryEditorActionButtons
             features={sidebarFeatures}

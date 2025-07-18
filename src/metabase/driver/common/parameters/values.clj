@@ -90,7 +90,7 @@
   compatibility."
   [tag :- mbql.s/TemplateTag]
   (let [target-type (case (:type tag)
-                      :dimension     :dimension
+                      (:dimension :temporal-unit) :dimension
                       :variable)]
     #{[target-type [:template-tag (:name tag)]]
       [target-type [:template-tag {:id (:id tag)}]]}))
@@ -126,9 +126,9 @@
                 param-display-name)
            {:type qp.error-type/missing-required-parameter}))
 
-(mu/defn- field-filter->field-id :- ::lib.schema.id/field
-  [field-filter]
-  (second field-filter))
+(mu/defn- dimension->field-id :- ::lib.schema.id/field
+  [dimension]
+  (second dimension))
 
 (mu/defn- field-filter-value
   "Get parameter value(s) for a Field filter. Returns map if there is a normal single value, or a vector of maps for
@@ -193,10 +193,10 @@
       params/no-value)))
 
 (mu/defmethod parse-tag :dimension :- [:maybe FieldFilter]
-  [{field-filter :dimension, :as tag} :- mbql.s/TemplateTag
+  [{:keys [dimension], :as tag} :- mbql.s/TemplateTag
    params                             :- [:maybe [:sequential mbql.s/Parameter]]]
   (params/map->FieldFilter
-   {:field (let [field-id (field-filter->field-id field-filter)]
+   {:field (let [field-id (dimension->field-id dimension)]
              (or (lib.metadata/field (qp.store/metadata-provider) field-id)
                  (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
                                  {:field-id field-id, :type qp.error-type/invalid-parameter}))))
@@ -250,7 +250,7 @@
       :content    (:content snippet)})))
 
 (defmethod parse-tag :temporal-unit
-  [{:keys [required] tag-name :name :as tag} params]
+  [{:keys [required dimension] :as tag} params]
   (let [matching-param       (when-let [matching-params (not-empty (tag-params tag params))]
                                (when (> (count matching-params) 1)
                                  (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
@@ -270,7 +270,10 @@
                       {:value param-value
                        :expected valid-temporal-units})))
     (params/map->TemporalUnit
-     {:name tag-name
+     {:field (let [field-id (dimension->field-id dimension)]
+               (or (lib.metadata/field (qp.store/metadata-provider) field-id)
+                   (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
+                                   {:field-id field-id, :type qp.error-type/invalid-parameter}))))
       :value (or (:value matching-param)
                  (when (and nil-value? (not required))
                    params/no-value)
@@ -316,6 +319,10 @@
   (param-value-for-raw-value-tag tag params))
 
 (defmethod parse-tag :date
+  [tag params]
+  (param-value-for-raw-value-tag tag params))
+
+(defmethod parse-tag :boolean
   [tag params]
   (param-value-for-raw-value-tag tag params))
 

@@ -20,6 +20,7 @@ export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "details-fields": [],
   source: createMockEngineSource(),
   "superseded-by": null,
+  "extra-info": null,
   ...opts,
 });
 
@@ -107,6 +108,8 @@ export const createMockTokenFeatures = (
   embedding: false,
   embedding_sdk: false,
   embedding_iframe_sdk: false,
+  etl_connections: false,
+  etl_connections_pg: false,
   hosting: false,
   official_collections: false,
   sandboxes: false,
@@ -299,6 +302,8 @@ export const createMockSettings = (
   "password-complexity": { total: 6, digit: 1 },
   "persisted-models-enabled": false,
   "persisted-model-refresh-cron-schedule": "0 0 0/6 * * ? *",
+  "database-replication-enabled": null,
+  "database-replication-connections": null,
   "premium-embedding-token": null,
   "read-only-mode": false,
   "redirect-all-requests-to-https": false,
