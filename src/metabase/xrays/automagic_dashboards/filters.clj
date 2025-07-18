@@ -21,7 +21,6 @@
     (some-> fingerprint :global :distinct-count (< 10)) inc
     (some-> fingerprint :global :distinct-count (> 20)) dec
     ((descendants :type/Category) semantic-type)        inc
-    (isa? (or effective-type base-type) :type/Boolean)  inc
     (isa? (or effective-type base-type) :type/Temporal) inc
     ((descendants :type/Temporal) semantic-type)        inc
     (isa? semantic-type :type/CreationTimestamp)        inc
@@ -49,9 +48,9 @@
   "Pick out interesting fields and sort them by interestingness."
   [fields]
   (->> fields
-       (filter (fn [{:keys [effective-type semantic_type] :as field}]
+       (filter (fn [{:keys [base_type effective_type semantic_type] :as field}]
                  (or (temporal? field)
-                     (isa? effective-type :type/Boolean)
+                     (isa? (or effective_type base_type) :type/Boolean)
                      (isa? semantic_type :type/Category))))
        sort-by-interestingness))
 
