@@ -1,5 +1,6 @@
 import { Route } from "react-router";
 
+import { EditTableDataContainer } from "./table-edit/EditTableDataContainer";
 import { BrowseTableData } from "./table-view/BrowseTableData";
 
 export function getRoutes() {
@@ -11,7 +12,7 @@ export function getRoutes() {
       />
       <Route
         path="databases/:dbId/tables/:tableId/edit(/:objectId)"
-        component={() => null}
+        component={EditTableDataContainer}
       />
     </>
   );

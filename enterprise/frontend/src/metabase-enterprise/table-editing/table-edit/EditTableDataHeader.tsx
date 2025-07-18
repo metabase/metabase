@@ -1,0 +1,80 @@
+import { useDisclosure } from "@mantine/hooks";
+import { useMemo } from "react";
+
+import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components"; // TODO: we should not use query builder components
+import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
+import { Flex, Stack } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
+
+import { TableHeader } from "../common/TableHeader";
+
+import { EditTableDataFilterButton } from "./EditTableDataFilterButton";
+
+interface EditTableDataHeaderProps {
+  databaseId: number;
+  tableId: number;
+  question?: Question;
+  onQuestionChange: (newQuestion: Question) => void;
+}
+
+export const EditTableDataHeader = ({
+  databaseId,
+  tableId,
+  question,
+  onQuestionChange,
+}: EditTableDataHeaderProps) => {
+  const hasFilters = useMemo(
+    () =>
+      question?.query() ? getFilterItems(question.query()).length > 0 : false,
+    [question],
+  );
+  const [
+    areFiltersExpanded,
+    { open: onExpandFilters, close: onCollapseFilters },
+  ] = useDisclosure(hasFilters);
+
+  return (
+    <Stack gap={0}>
+      <TableHeader databaseId={databaseId} tableId={tableId} showEditBreadcrumb>
+        {question && (
+          <EditTableDataFilterButton
+            question={question}
+            isExpanded={areFiltersExpanded}
+            onExpand={onExpandFilters}
+            onCollapse={onCollapseFilters}
+            onQuestionChange={onQuestionChange}
+          />
+        )}
+
+        <Flex gap="xs">
+          {/*
+              TODO: add back in when we have notifications
+            <TableNotificationsTrigger tableId={table.id} /> */}
+          {/* <ActionIcon
+              onClick={onUndo}
+              size="lg"
+              loading={isUndoLoading}
+              disabled={shouldDisableActions}
+            >
+              <Icon name="undo" tooltip={t`Undo changes`} />
+            </ActionIcon>
+            <ActionIcon
+              onClick={onRedo}
+              size="lg"
+              loading={isRedoLoading}
+              disabled={shouldDisableActions}
+            >
+              <Icon name="redo" tooltip={t`Redo changes`} />
+            </ActionIcon> */}
+        </Flex>
+      </TableHeader>
+      {question && (
+        <QuestionFiltersHeader
+          expanded={areFiltersExpanded}
+          question={question}
+          updateQuestion={onQuestionChange}
+        />
+      )}
+    </Stack>
+  );
+};
