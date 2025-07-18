@@ -7,11 +7,17 @@ import { Node } from "@tiptap/core";
 import { createRoot } from "react-dom/client";
 import { t } from "ttag";
 
-import { Box, Button, Group, Stack, Text } from "metabase/ui";
+import { Box, Button, Group, Stack, Text, useMantineTheme } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import { useSearchQuery } from "metabase/api";
 import { skipToken } from "@reduxjs/toolkit/query";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { MantineProvider } from "@mantine/core";
+import { ThemeProvider } from "metabase/ui";
+import { useSelector } from "metabase/lib/redux";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { useContext } from "react";
+import { MetabaseReduxContext } from "metabase/lib/redux";
 
 import { MentionSuggestions } from "./MentionSuggestions";
 import {
@@ -21,27 +27,88 @@ import {
   StyledEditorContent,
 } from "./ReportEditor.styled";
 
+// Wrapper component that provides Mantine theme and Redux context
+const VisualizationNodeWithProviders = ({ node, store }: { node: any; store: any }) => {
+  return (
+    <MetabaseReduxProvider store={store}>
+      <ThemeProvider>
+        <VisualizationNode node={node} />
+      </ThemeProvider>
+    </MetabaseReduxProvider>
+  );
+};
+
 // React component for the visualization node
 const VisualizationNode = ({ node }: { node: any }) => {
+  console.log('VisualizationNode component rendering with node:', node);
+
   const [cardData, setCardData] = useState<any>(null);
+  const [queryResult, setQueryResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+    useEffect(() => {
     const fetchCardData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Fetch card data from the API
-        const response = await fetch(`/api/card/${node.attrs.id}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch card: ${response.statusText}`);
+        const { model, id } = node.attrs;
+        console.log('Fetching data for:', { model, id });
+
+        // Skip dashboards for now
+        if (model === 'dashboard') {
+          console.log('Skipping dashboard');
+          setError('Dashboard visualizations not supported yet');
+          return;
         }
 
-        const data = await response.json();
-        setCardData(data);
+        // Fetch card data from the API
+        console.log('Fetching card data from:', `/api/card/${id}`);
+        const cardResponse = await fetch(`/api/card/${id}`);
+        console.log('Card response status:', cardResponse.status);
+
+        if (!cardResponse.ok) {
+          throw new Error(`Failed to fetch card: ${cardResponse.statusText}`);
+        }
+
+        const card = await cardResponse.json();
+        console.log('Card data:', card);
+        setCardData(card);
+
+                // For card and table types, also fetch the query result
+        if (model === 'card' || model === 'table') {
+          console.log('Fetching query results from:', `/api/card/${id}/query`);
+          const queryResponse = await fetch(`/api/card/${id}/query`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ignore_cache: false,
+              parameters: []
+            })
+          });
+          console.log('Query response status:', queryResponse.status);
+
+          if (!queryResponse.ok) {
+            throw new Error(`Failed to fetch query results: ${queryResponse.statusText}`);
+          }
+
+          const queryData = await queryResponse.json();
+          console.log('Query data:', queryData);
+          console.log('Query data structure:', {
+            hasData: !!queryData.data,
+            hasCols: !!queryData.data?.cols,
+            hasRows: !!queryData.data?.rows,
+            colsLength: queryData.data?.cols?.length,
+            rowsLength: queryData.data?.rows?.length,
+            topLevelKeys: Object.keys(queryData)
+          });
+          setQueryResult(queryData);
+        }
       } catch (err) {
+        console.error('Error fetching card data:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
         setLoading(false);
@@ -50,6 +117,8 @@ const VisualizationNode = ({ node }: { node: any }) => {
 
     if (node.attrs.id) {
       fetchCardData();
+    } else {
+      console.log('No ID found in node attrs:', node.attrs);
     }
   }, [node.attrs.id]);
 
@@ -57,7 +126,7 @@ const VisualizationNode = ({ node }: { node: any }) => {
     return (
       <Box
         style={{
-          border: "2px solid red",
+          border: "2px solid #4285f4",
           borderRadius: "8px",
           backgroundColor: "#f8f9fa",
           margin: "1rem 0",
@@ -77,9 +146,9 @@ const VisualizationNode = ({ node }: { node: any }) => {
     return (
       <Box
         style={{
-          border: "2px solid red",
+          border: "2px solid #ea4335",
           borderRadius: "8px",
-          backgroundColor: "#f8f9fa",
+          backgroundColor: "#fef7f0",
           margin: "1rem 0",
           padding: "1rem",
           minHeight: "200px",
@@ -94,7 +163,7 @@ const VisualizationNode = ({ node }: { node: any }) => {
     return (
       <Box
         style={{
-          border: "2px solid red",
+          border: "2px solid #fbbc04",
           borderRadius: "8px",
           backgroundColor: "#f8f9fa",
           margin: "1rem 0",
@@ -107,10 +176,76 @@ const VisualizationNode = ({ node }: { node: any }) => {
     );
   }
 
+  // Skip dashboards
+  if (node.attrs.model === 'dashboard') {
+    return (
+      <Box
+        style={{
+          border: "2px solid #9aa0a6",
+          borderRadius: "8px",
+          backgroundColor: "#f8f9fa",
+          margin: "1rem 0",
+          padding: "1rem",
+          minHeight: "100px",
+        }}
+      >
+        <Text
+          size="sm"
+          color="dimmed"
+          style={{ marginBottom: "0.5rem", fontWeight: "bold" }}
+        >
+          {node.attrs.name} (Dashboard)
+        </Text>
+        <Text size="sm" color="dimmed">
+          Dashboard visualizations not supported yet
+        </Text>
+      </Box>
+    );
+  }
+
+  // For cards and tables, render the actual visualization
+  if ((node.attrs.model === 'card' || node.attrs.model === 'table') && queryResult && cardData) {
+    return (
+      <Box
+        style={{
+          border: "2px solid #34a853",
+          borderRadius: "8px",
+          backgroundColor: "#ffffff",
+          margin: "1rem 0",
+          padding: "1rem",
+          minHeight: "300px",
+        }}
+      >
+        <Text
+          size="sm"
+          color="dimmed"
+          style={{ marginBottom: "1rem", fontWeight: "bold" }}
+        >
+          {node.attrs.name} ({node.attrs.model})
+        </Text>
+        <Box style={{ height: "400px", width: "100%" }}>
+          <Visualization
+            rawSeries={[{
+              card: cardData,
+              data: queryResult.data || queryResult,
+              started_at: new Date().toISOString()
+            }]}
+            isDashboard={false}
+            width={600}
+            height={400}
+            isEditing={false}
+            isQueryBuilder={false}
+          />
+        </Box>
+      </Box>
+    );
+  }
+
+  // Fallback for other types
   return (
     <Box
       style={{
-        border: "2px solid red",
+        border: "2px solid #9aa0a6",
         borderRadius: "8px",
         backgroundColor: "#f8f9fa",
         margin: "1rem 0",
@@ -125,152 +260,154 @@ const VisualizationNode = ({ node }: { node: any }) => {
       >
         {node.attrs.name} ({node.attrs.type || node.attrs.model})
       </Text>
-      <Box style={{ height: "300px", width: "100%" }}>
-        <Visualization
-          rawSeries={[{ card: cardData, data: cardData.result_metadata }]}
-          isDashboard
-          width={600}
-          height={300}
-        />
-      </Box>
+      <Text size="sm" color="dimmed">
+        Visualization type not supported yet
+      </Text>
     </Box>
   );
 };
 
-// Custom extension for rendering Metabase visualizations
-const MetabaseVisualization = Node.create({
-  name: "metabaseVisualization",
+// Function to create the custom extension with store
+const createMetabaseVisualizationExtension = (store: any) => {
+  return Node.create({
+    name: "metabaseVisualization",
 
-  addOptions() {
-    return {
-      HTMLAttributes: {},
-    };
-  },
+    addOptions() {
+      return {
+        HTMLAttributes: {},
+      };
+    },
 
-  group: "block",
+    group: "block",
 
-  atom: true,
+    atom: true,
 
-  draggable: true,
+    draggable: true,
 
-  selectable: true,
+    selectable: true,
 
-  addAttributes() {
-    return {
-      id: {
-        default: null,
-      },
-      name: {
-        default: null,
-      },
-      type: {
-        default: null,
-      },
-      model: {
-        default: null,
-      },
-    };
-  },
+    addAttributes() {
+      return {
+        id: {
+          default: null,
+        },
+        name: {
+          default: null,
+        },
+        type: {
+          default: null,
+        },
+        model: {
+          default: null,
+        },
+      };
+    },
 
-  parseHTML() {
-    return [
-      {
-        tag: "div[data-type='metabase-visualization']",
-      },
-    ];
-  },
+    parseHTML() {
+      return [
+        {
+          tag: "div[data-type='metabase-visualization']",
+        },
+      ];
+    },
 
-  renderHTML({ HTMLAttributes }) {
-    return [
-      "div",
-      {
-        "data-type": "metabase-visualization",
-        "data-id": HTMLAttributes.id,
-        "data-name": HTMLAttributes.name,
-        "data-visualization-type": HTMLAttributes.type,
-        "data-model": HTMLAttributes.model,
-        "style": "border: 2px solid red; border-radius: 8px; background-color: #f8f9fa; margin: 1rem 0; padding: 1rem; min-height: 200px;",
-      },
-      0, // This means the content is not editable
-    ];
-  },
+    renderHTML({ HTMLAttributes }) {
+      return [
+        "div",
+        {
+          "data-type": "metabase-visualization",
+          "data-id": HTMLAttributes.id,
+          "data-name": HTMLAttributes.name,
+          "data-visualization-type": HTMLAttributes.type,
+          "data-model": HTMLAttributes.model,
+          "style": "border: 2px solid red; border-radius: 8px; background-color: #f8f9fa; margin: 1rem 0; padding: 1rem; min-height: 200px;",
+        },
+        0, // This means the content is not editable
+      ];
+    },
 
     addNodeView() {
-    return ({ node, getPos, editor }: any) => {
-      console.log("Creating React node view for:", node.attrs);
+      return ({ node, getPos, editor }: any) => {
+        console.log("Creating React node view for:", node.attrs);
 
-      const dom = document.createElement("div");
-      dom.className = "metabase-visualization-container";
-      dom.setAttribute("data-type", "metabase-visualization");
-      dom.setAttribute("data-id", node.attrs.id);
-      dom.setAttribute("data-name", node.attrs.name);
-      dom.setAttribute("data-visualization-type", node.attrs.type);
-      dom.setAttribute("data-model", node.attrs.model);
+        const dom = document.createElement("div");
+        dom.className = "metabase-visualization-container";
+        dom.setAttribute("data-type", "metabase-visualization");
+        dom.setAttribute("data-id", node.attrs.id);
+        dom.setAttribute("data-name", node.attrs.name);
+        dom.setAttribute("data-visualization-type", node.attrs.type);
+        dom.setAttribute("data-model", node.attrs.model);
 
-      // Set basic styling on the container
-      dom.style.display = "block";
-      dom.style.width = "100%";
+        // Set basic styling on the container
+        dom.style.display = "block";
+        dom.style.width = "100%";
 
-      // Create React root and render component
-      const root = createRoot(dom);
+        // Create React root and render component
+        const root = createRoot(dom);
 
-      const renderComponent = () => {
-        try {
-          root.render(React.createElement(VisualizationNode, { node }));
-          console.log("React component rendered successfully");
-        } catch (error) {
-          console.error("Error rendering React component:", error);
-          // Fallback to simple HTML if React fails
-          dom.innerHTML = `
-            <div style="border: 2px solid red; border-radius: 8px; background-color: #f8f9fa; margin: 1rem 0; padding: 1rem; min-height: 200px;">
-              <div style="font-weight: bold; margin-bottom: 0.5rem;">
-                ${node.attrs.name} (${node.attrs.type || node.attrs.model})
-              </div>
-              <div style="color: #666;">
-                Error rendering React component - ID: ${node.attrs.id}
-              </div>
-            </div>
-          `;
-        }
-      };
-
-      // Initial render
-      renderComponent();
-
-      console.log("DOM element created:", dom.outerHTML);
-
-      return {
-        dom,
-        contentDOM: null,
-        update: (updatedNode: any) => {
-          if (updatedNode.type !== node.type) {
-            return false;
-          }
-          // Re-render with updated node
+        const renderComponent = () => {
           try {
-            root.render(React.createElement(VisualizationNode, { node: updatedNode }));
+            root.render(React.createElement(VisualizationNodeWithProviders, { node, store }));
+            console.log("React component rendered successfully");
+          } catch (error) {
+            console.error("Error rendering React component:", error);
+            // Fallback to simple HTML if React fails
+            dom.innerHTML = `
+              <div style="border: 2px solid red; border-radius: 8px; background-color: #f8f9fa; margin: 1rem 0; padding: 1rem; min-height: 200px;">
+                <div style="font-weight: bold; margin-bottom: 0.5rem;">
+                  ${node.attrs.name} (${node.attrs.type || node.attrs.model})
+                </div>
+                <div style="color: #666;">
+                  Error rendering React component - ID: ${node.attrs.id}
+                </div>
+              </div>
+            `;
+          }
+        };
+
+        // Initial render
+        renderComponent();
+
+        console.log("DOM element created:", dom.outerHTML);
+
+        return {
+          dom,
+          contentDOM: null,
+          update: (updatedNode: any) => {
+            if (updatedNode.type !== node.type) {
+              return false;
+            }
+                      // Re-render with updated node
+          try {
+            root.render(React.createElement(VisualizationNodeWithProviders, { node: updatedNode, store }));
           } catch (error) {
             console.error("Error updating React component:", error);
           }
-          return true;
-        },
-        destroy: () => {
-          try {
-            root.unmount();
-          } catch (error) {
-            console.error("Error unmounting React component:", error);
-          }
-        },
+            return true;
+          },
+          destroy: () => {
+            try {
+              root.unmount();
+            } catch (error) {
+              console.error("Error unmounting React component:", error);
+            }
+          },
+        };
       };
-    };
-  },
-});
+    },
+  });
+};
 
 const ReportEditor = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showMentions, setShowMentions] = useState(false);
   const [mentionCommand, setMentionCommand] = useState<((item: any) => void) | null>(null);
   const [mentionRect, setMentionRect] = useState(null);
+
+  // Get the current theme and store to pass to node views
+  const theme = useMantineTheme();
+  // Access the global store from window.Metabase.store
+  const store = (window as any).Metabase?.store;
 
   const { data: searchResults } = useSearchQuery(
     searchQuery.length >= 2 ? { q: searchQuery } : skipToken,
@@ -285,7 +422,7 @@ const ReportEditor = () => {
       Placeholder.configure({
         placeholder: t`Start writing your report... Use @ to mention charts, tables, or other Metabase entities.`,
       }),
-      MetabaseVisualization,
+      ...(store ? [createMetabaseVisualizationExtension(store)] : []),
       Mention.configure({
         HTMLAttributes: {
           class: "mention",
