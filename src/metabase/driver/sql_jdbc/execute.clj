@@ -872,8 +872,21 @@
           (try (.close conn)
                (catch Throwable _)))))))
 
-(defn- is-conn-open [^Connection conn]
-  (not (.isClosed conn)))
+(defn is-conn-open?
+  "Checks if the conn is open.
+   If `:check-valid?` is passed, ensures the connection is actually usable. If it isn't, closes it"
+  [^Connection conn & {:keys [check-valid?]}]
+  (let [is-open (not (.isClosed conn))]
+    (if (and is-open check-valid?)
+      (try
+        (if (.isValid conn 5)
+          is-open
+          ;; if the connection is not valid anymore but hasn't been closed by the driver,
+          ;; we close it so that [[sql-jdbc.execute/try-ensure-open-conn!]] can attempt to reopen it.
+          ;; we've observed the snowflake driver hit this case
+          (do (.close conn) false))
+        (catch Throwable _ is-open))
+      is-open)))
 
 (defn try-ensure-open-conn!
   "Ensure that a connection is open and usable, reconnecting if necessary and possible.
@@ -894,7 +907,7 @@
 
   ^Connection [driver ^Connection connection & {:keys [force-local?] :as opts}]
   (cond
-    (and (not force-local?) (is-conn-open connection))
+    (and (not force-local?) (is-conn-open? connection))
     connection
 
     (not (thread-bound? #'*resilient-connection-ctx*))
@@ -902,7 +915,7 @@
       (log/warn "Requesting a resilient connection, but we're not in a resilient context")
       connection)
 
-    (some-> *resilient-connection-ctx* :conn is-conn-open)
+    (some-> *resilient-connection-ctx* :conn is-conn-open?)
     (:conn *resilient-connection-ctx*)
 
     :else

@@ -105,16 +105,13 @@
       true
       (catch Throwable e
 
-        (try
-          (when (and (not (.isClosed conn))
-                     (not (.isValid conn 5)))
-              ;; if the connection is not valid anymore but hasn't been closed by the driver,
-              ;; we close it so that [[sql-jdbc.execute/try-ensure-open-conn!]] can attempt to reopen it
-              ;; we've observed the snowflake driver hit this case
-            (.close conn))
-          (catch Throwable _))
+        (let [;; Let's try to ensure the connection is not just open but also valid.
+              ;; Snowflake closes the connection but doesn't set it as  closed in the object,
+              ;; so we must explicitely check if it's valid so that subsequent calls to [[sql-jdbc.execute/try-ensure-open-conn!]]
+              ;; will obtain a new connection
+              _is-open (sql-jdbc.execute/is-conn-open? conn :check-valid? true)
 
-        (let [allow? (driver/query-canceled? driver e)]
+              allow? (driver/query-canceled? driver e)]
 
           (if allow?
             (log/infof "%s: Assuming SELECT privileges: caught timeout exception" (pr-table table-schema table-name))
