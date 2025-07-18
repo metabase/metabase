@@ -20,7 +20,11 @@ const visitEmbeddingWithSearch = (url = "/") => {
 describe("scenarios > search", () => {
   beforeEach(() => {
     H.restore();
-    cy.intercept("GET", "/api/search?q=*").as("search");
+    cy.intercept({
+      method: "GET",
+      pathname: "/api/search",
+      query: { q: "*" },
+    }).as("search");
     cy.signInAsAdmin();
   });
 
