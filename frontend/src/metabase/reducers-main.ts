@@ -8,6 +8,7 @@ import { PLUGIN_REDUCERS } from "metabase/plugins";
 import * as qb from "metabase/query_builder/reducers";
 import revisions from "metabase/redux/revisions";
 import reference from "metabase/reference/reference";
+import reportReducer from "metabase/reports/store/reportSlice";
 import { reducer as setup } from "metabase/setup/reducers";
 import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 
@@ -32,6 +33,7 @@ export function makeMainReducers() {
     admin,
     plugins: combineReducers(PLUGIN_REDUCERS),
     visualizer,
+    report: reportReducer,
   };
 }
 

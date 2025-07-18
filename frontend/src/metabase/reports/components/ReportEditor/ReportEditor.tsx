@@ -12,14 +12,28 @@ import { Icon } from "metabase/ui";
 import { useSearchQuery } from "metabase/api";
 import { skipToken } from "@reduxjs/toolkit/query";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { MantineProvider } from "@mantine/core";
 import { ThemeProvider } from "metabase/ui";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector, useDispatch } from "metabase/lib/redux";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { useContext } from "react";
 import { MetabaseReduxContext } from "metabase/lib/redux";
 
+import { updateEntities, runReport } from "../../store/reportSlice";
+import {
+  getReportEntityData,
+  getReportEntityLoading,
+  getReportEntityError,
+  getIsReportRunning,
+  getReportCanRun,
+  getReportLastRunAt,
+  getReportRunError,
+  getReportResultsWithStatus
+} from "../../store/selectors";
+
 import { MentionSuggestions } from "./MentionSuggestions";
+import { EntityResultModal } from "./EntityResultModal";
 import {
   EditorContainer,
   EditorToolbar,
@@ -42,168 +56,12 @@ const VisualizationNodeWithProviders = ({ node, store }: { node: any; store: any
 const VisualizationNode = ({ node }: { node: any }) => {
   console.log('VisualizationNode component rendering with node:', node);
 
-  const [cardData, setCardData] = useState<any>(null);
-  const [queryResult, setQueryResult] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const entityId = node.attrs.id;
+  const entityData = useSelector((state: any) => getReportEntityData(state, entityId));
+  const isLoading = useSelector((state: any) => getReportEntityLoading(state, entityId));
+  const error = useSelector((state: any) => getReportEntityError(state, entityId));
 
-    useEffect(() => {
-    const fetchCardData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const { model, id } = node.attrs;
-        console.log('Fetching data for:', { model, id });
-        console.log('Full node attrs:', node.attrs);
-
-                // Skip dashboards for now
-        if (model === 'dashboard') {
-          console.log('Skipping dashboard');
-          setError('Dashboard visualizations not supported yet');
-          return;
-        }
-
-        let card;
-
-        if (model === 'table') {
-          // For tables, we need to fetch table metadata and create a card-like object
-          console.log('Fetching table metadata from:', `/api/table/${id}`);
-          const tableResponse = await fetch(`/api/table/${id}`);
-          console.log('Table response status:', tableResponse.status);
-
-          if (!tableResponse.ok) {
-            throw new Error(`Failed to fetch table: ${tableResponse.statusText}`);
-          }
-
-          const table = await tableResponse.json();
-          console.log('Table data:', table);
-
-          // Create a card-like object for the table
-          card = {
-            id: table.id,
-            name: table.display_name || table.name,
-            display: 'table',
-            database_id: table.db_id,
-            dataset_query: {
-              database: table.db_id,
-              type: 'query',
-              query: {
-                'source-table': table.id
-              }
-            },
-            visualization_settings: {
-              'table.pivot': false,
-              'table.column_formatting': []
-            }
-          };
-        } else {
-          // For cards, fetch card data from the API
-          console.log('Fetching card data from:', `/api/card/${id}`);
-          const cardResponse = await fetch(`/api/card/${id}`);
-          console.log('Card response status:', cardResponse.status);
-
-          if (!cardResponse.ok) {
-            throw new Error(`Failed to fetch card: ${cardResponse.statusText}`);
-          }
-
-          card = await cardResponse.json();
-          console.log('Card data:', card);
-          console.log('Card display type:', card.display);
-          console.log('Card dataset_query:', card.dataset_query);
-        }
-
-        setCardData(card);
-
-                                // Handle different model types
-        if (model === 'card') {
-          // For saved questions/cards, fetch the query result
-          console.log('Fetching query results from:', `/api/card/${id}/query`);
-          const queryResponse = await fetch(`/api/card/${id}/query`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              ignore_cache: false,
-              parameters: []
-            })
-          });
-          console.log('Query response status:', queryResponse.status);
-
-          if (!queryResponse.ok) {
-            throw new Error(`Failed to fetch query results: ${queryResponse.statusText}`);
-          }
-
-          const queryData = await queryResponse.json();
-          console.log('Query data:', queryData);
-          console.log('Query data structure:', {
-            hasData: !!queryData.data,
-            hasCols: !!queryData.data?.cols,
-            hasRows: !!queryData.data?.rows,
-            colsLength: queryData.data?.cols?.length,
-            rowsLength: queryData.data?.rows?.length,
-            topLevelKeys: Object.keys(queryData),
-            hasTopLevelCols: !!queryData.cols,
-            hasTopLevelRows: !!queryData.rows,
-            topLevelColsLength: queryData.cols?.length,
-            topLevelRowsLength: queryData.rows?.length
-          });
-          setQueryResult(queryData);
-        } else if (model === 'table') {
-          // For raw tables, we need to create a simple table query using the dataset endpoint
-          console.log('Creating table query for table ID:', id);
-          const tableQueryResponse = await fetch(`/api/dataset`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              database: card.database_id,
-              type: 'query',
-              query: {
-                'source-table': id,
-                limit: 100
-              }
-            })
-          });
-
-          if (!tableQueryResponse.ok) {
-            throw new Error(`Failed to fetch table data: ${tableQueryResponse.statusText}`);
-          }
-
-          const tableData = await tableQueryResponse.json();
-          console.log('Table data:', tableData);
-          console.log('Table data structure:', {
-            hasData: !!tableData.data,
-            hasCols: !!tableData.data?.cols,
-            hasRows: !!tableData.data?.rows,
-            colsLength: tableData.data?.cols?.length,
-            rowsLength: tableData.data?.rows?.length,
-            topLevelKeys: Object.keys(tableData),
-            hasTopLevelCols: !!tableData.cols,
-            hasTopLevelRows: !!tableData.rows,
-            topLevelColsLength: tableData.cols?.length,
-            topLevelRowsLength: tableData.rows?.length
-          });
-          setQueryResult(tableData);
-        }
-      } catch (err) {
-        console.error('Error fetching card data:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (node.attrs.id) {
-      fetchCardData();
-    } else {
-      console.log('No ID found in node attrs:', node.attrs);
-    }
-  }, [node.attrs.id]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Box
         style={{
@@ -240,23 +98,6 @@ const VisualizationNode = ({ node }: { node: any }) => {
     );
   }
 
-  if (!cardData) {
-    return (
-      <Box
-        style={{
-          border: "2px solid #fbbc04",
-          borderRadius: "8px",
-          backgroundColor: "#f8f9fa",
-          margin: "1rem 0",
-          padding: "1rem",
-          minHeight: "200px",
-        }}
-      >
-        <Text>No data available</Text>
-      </Box>
-    );
-  }
-
   // Skip dashboards
   if (node.attrs.model === 'dashboard') {
     return (
@@ -284,47 +125,9 @@ const VisualizationNode = ({ node }: { node: any }) => {
     );
   }
 
-    // For cards and tables, render the actual visualization
-  if ((node.attrs.model === 'card' || node.attrs.model === 'table') && queryResult && cardData) {
-    const displayType = node.attrs.model === 'table' ? 'table' : cardData.display;
-
-        const dataToSpread = queryResult.data || queryResult;
-    console.log('Data to spread:', dataToSpread);
-    console.log('Data to spread structure:', {
-      hasData: !!dataToSpread.data,
-      hasCols: !!dataToSpread.cols,
-      hasRows: !!dataToSpread.rows,
-      topLevelKeys: Object.keys(dataToSpread),
-      colsLength: dataToSpread.cols?.length,
-      rowsLength: dataToSpread.rows?.length
-    });
-
-    const rawSeries = [{
-      ...dataToSpread,  // Spread the query result data
-      card: {
-        ...cardData,
-        display: displayType,
-        visualization_settings: {
-          ...cardData.visualization_settings,
-          ...(node.attrs.model === 'table' && {
-            'table.pivot': false,
-            'table.column_formatting': []
-          })
-        }
-      },
-      started_at: new Date().toISOString()
-    }];
-
-    console.log('About to render visualization with rawSeries:', rawSeries);
-    console.log('Data structure check:', {
-      hasCard: !!rawSeries[0].card,
-      hasData: !!rawSeries[0].data,
-      hasCols: !!rawSeries[0].cols,
-      hasRows: !!rawSeries[0].rows,
-      displayType: rawSeries[0].card.display,
-      colsCount: rawSeries[0].cols?.length,
-      rowsCount: rawSeries[0].rows?.length
-    });
+  // If we have entity data from the report run, render the visualization
+  if (entityData && Array.isArray(entityData) && entityData.length > 0) {
+    console.log('Rendering visualization with entityData:', entityData);
 
     return (
       <Box
@@ -342,43 +145,49 @@ const VisualizationNode = ({ node }: { node: any }) => {
           color="dimmed"
           style={{ marginBottom: "1rem", fontWeight: "bold" }}
         >
-          {node.attrs.name} ({node.attrs.model}) - Display: {displayType}
+          {node.attrs.name} ({node.attrs.model})
         </Text>
-                <Box style={{ height: "400px", width: "100%" }}>
-          <Visualization
-            rawSeries={rawSeries}
-            isDashboard={false}
-            width={600}
-            height={400}
-            showTitle={false}
-            handleVisualizationClick={() => {}}
-          />
+        <Box style={{ height: "400px", width: "100%" }}>
+          <EmotionCacheProvider>
+            <Visualization
+              rawSeries={entityData}
+              isDashboard={false}
+              width={600}
+              height={400}
+              showTitle={false}
+              handleVisualizationClick={() => {}}
+            />
+          </EmotionCacheProvider>
         </Box>
       </Box>
     );
   }
 
-  // Fallback for other types
+  // Placeholder when no data is available (report hasn't been run)
   return (
     <Box
       style={{
-        border: "2px solid #9aa0a6",
+        border: "2px solid #fbbc04",
         borderRadius: "8px",
-        backgroundColor: "#f8f9fa",
+        backgroundColor: "#fff8e1",
         margin: "1rem 0",
         padding: "1rem",
         minHeight: "200px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "column",
       }}
     >
       <Text
         size="sm"
         color="dimmed"
-        style={{ marginBottom: "0.5rem", fontWeight: "bold" }}
+        style={{ marginBottom: "0.5rem", fontWeight: "bold", textAlign: "center" }}
       >
-        {node.attrs.name} ({node.attrs.type || node.attrs.model})
+        {node.attrs.name} ({node.attrs.model})
       </Text>
-      <Text size="sm" color="dimmed">
-        Visualization type not supported yet
+      <Text size="sm" color="dimmed" style={{ textAlign: "center" }}>
+        {error ? `Error: ${error}` : "Run the report to see this visualization"}
       </Text>
     </Box>
   );
@@ -523,7 +332,17 @@ const ReportEditor = () => {
   const [sidebarWidth, setSidebarWidth] = useState(300);
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<HTMLDivElement>(null);
-  const [documentEntities, setDocumentEntities] = useState<any[]>([]);
+  const [selectedEntity, setSelectedEntity] = useState<any>(null);
+  const [selectedResult, setSelectedResult] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Redux state and dispatch
+  const dispatch = useDispatch();
+  const isReportRunning = useSelector((state: any) => getIsReportRunning(state));
+  const canRunReport = useSelector((state: any) => getReportCanRun(state));
+  const lastRunAt = useSelector((state: any) => getReportLastRunAt(state));
+  const runError = useSelector((state: any) => getReportRunError(state));
+  const resultsWithStatus = useSelector((state: any) => getReportResultsWithStatus(state));
 
   // Get the current theme and store to pass to node views
   const theme = useMantineTheme();
@@ -638,8 +457,9 @@ const ReportEditor = () => {
       }
     });
 
-    setDocumentEntities(entities);
-  }, [editor]);
+    // Update Redux state with the entities
+    dispatch(updateEntities(entities));
+  }, [editor, dispatch]);
 
   // Update entities list when editor content changes
   useEffect(() => {
@@ -699,6 +519,20 @@ const ReportEditor = () => {
   const handleCodeBlock = useCallback(() => {
     editor?.chain().focus().toggleCodeBlock().run();
   }, [editor]);
+
+  const handleEntityClick = useCallback((entity: any) => {
+    // Get the fresh result from Redux state instead of using the passed result
+    const currentResult = resultsWithStatus.find(r => r.entity.id === entity.id)?.result;
+    setSelectedEntity(entity);
+    setSelectedResult(currentResult);
+    setIsModalOpen(true);
+  }, [resultsWithStatus]);
+
+  const handleModalClose = useCallback(() => {
+    setIsModalOpen(false);
+    setSelectedEntity(null);
+    setSelectedResult(null);
+  }, []);
 
   // Resize handling
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -790,52 +624,97 @@ const ReportEditor = () => {
               <Text size="lg" fw={500}>Document Entities</Text>
 
               <Stack gap="xs">
-                <Text size="sm" fw={500}>
-                  Metabase Items ({documentEntities.length})
-                </Text>
-                {documentEntities.length === 0 ? (
+                <Group style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <Text size="sm" fw={500}>
+                    Metabase Items ({resultsWithStatus.length})
+                  </Text>
+                  <Button
+                    size="xs"
+                    onClick={() => dispatch(runReport())}
+                    disabled={!canRunReport}
+                    loading={isReportRunning}
+                    style={{
+                      backgroundColor: '#34a853',
+                      color: 'white',
+                      border: 'none',
+                    }}
+                  >
+                    {isReportRunning ? 'Running...' : 'Run Report'}
+                  </Button>
+                </Group>
+
+                {lastRunAt && (
+                  <Text size="xs" color="dimmed" style={{ marginBottom: '8px' }}>
+                    Last run: {new Date(lastRunAt).toLocaleString()}
+                  </Text>
+                )}
+
+                {runError && (
+                  <Text size="xs" color="red" style={{ marginBottom: '8px' }}>
+                    Error: {runError}
+                  </Text>
+                )}
+
+                {resultsWithStatus.length === 0 ? (
                   <Text size="xs" color="dimmed" style={{ fontStyle: 'italic' }}>
                     No Metabase entities in this document yet. Use @ to add charts, tables, or dashboards.
                   </Text>
                 ) : (
                   <Stack gap="xs">
-                    {documentEntities.map((entity, index) => (
-                      <Box
+                    {resultsWithStatus.map(({ entity, result, hasData, isLoading, hasError }, index) => (
+                                                                    <Box
                         key={`${entity.id}-${index}`}
+                        onClick={() => handleEntityClick(entity)}
                         style={{
                           padding: '8px',
-                          border: '1px solid #e0e0e0',
+                          border: `1px solid ${hasError ? '#ea4335' : hasData ? '#34a853' : '#fbbc04'}`,
                           borderRadius: '4px',
-                          backgroundColor: '#f8f9fa',
+                          backgroundColor: hasError ? '#fef7f0' : hasData ? '#f0f9f4' : '#fff8e1',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s, transform 0.1s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
                         }}
                       >
-                        <Group style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <Box style={{ flex: 1 }}>
-                            <Text size="sm" fw={500} style={{ marginBottom: '2px' }}>
-                              {entity.name}
-                            </Text>
-                            <Group gap="xs">
-                              <Text size="xs" color="dimmed">
-                                {entity.model === 'table' ? 'Table' :
-                                 entity.model === 'card' ? 'Question' :
-                                 entity.model === 'dashboard' ? 'Dashboard' :
-                                 entity.model}
+                          <Group style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Box style={{ flex: 1 }}>
+                              <Text size="sm" fw={500} style={{ marginBottom: '2px' }}>
+                                {entity.name}
                               </Text>
-                              <Text size="xs" color="dimmed">
-                                ID: {entity.id}
+                              <Group gap="xs">
+                                <Text size="xs" color="dimmed">
+                                  {entity.model === 'table' ? 'Table' :
+                                   entity.model === 'card' ? 'Question' :
+                                   entity.model === 'dashboard' ? 'Dashboard' :
+                                   entity.model}
+                                </Text>
+                                <Text size="xs" color="dimmed">
+                                  ID: {entity.id}
+                                </Text>
+                              </Group>
+                              <Text size="xs" color={hasError ? 'red' : hasData ? 'green' : 'orange'} style={{ marginTop: '4px' }}>
+                                {isLoading ? 'Loading...' :
+                                 hasError ? 'Error' :
+                                 hasData ? 'Ready' :
+                                 'Pending'}
                               </Text>
-                            </Group>
-                          </Box>
-                          <Icon
-                            name={entity.model === 'table' ? 'table' :
-                                  entity.model === 'card' ? 'insight' :
-                                  entity.model === 'dashboard' ? 'dashboard' :
-                                  'info'}
-                            size={16}
-                            style={{ color: '#666', flexShrink: 0 }}
-                          />
-                        </Group>
-                      </Box>
+                            </Box>
+                            <Icon
+                              name={entity.model === 'table' ? 'table' :
+                                    entity.model === 'card' ? 'insight' :
+                                    entity.model === 'dashboard' ? 'dashboard' :
+                                    'info'}
+                              size={16}
+                              style={{ color: '#666', flexShrink: 0 }}
+                            />
+                          </Group>
+                        </Box>
                     ))}
                   </Stack>
                 )}
@@ -893,6 +772,14 @@ const ReportEditor = () => {
           clientRect={mentionRect}
         />
       )}
+
+      {/* Entity result modal */}
+      <EntityResultModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        entity={selectedEntity}
+        result={selectedResult}
+      />
     </Box>
   );
 };
