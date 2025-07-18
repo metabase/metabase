@@ -30,8 +30,8 @@
    ;; TODO - we should avoid hardcoding this to make it easier to add new integrations. Maybe look at something like
    ;; the keys of `(methods sso/sso-get)`
    [:sso_source       [:enum :saml :jwt]]
-   [:jwt_attributes   {:optional true} [:maybe :map]]
-   [:login_attributes [:maybe :map]]
+   [:jwt_attributes   {:optional true} [:maybe [:map-of [:or :keyword :string] :string]]]
+   [:login_attributes [:maybe [:map-of [:or :keyword :string] :string]]]
    [:tenant_id        [:maybe ms/PositiveInt]]])
 
 (defn- maybe-throw-user-provisioning
