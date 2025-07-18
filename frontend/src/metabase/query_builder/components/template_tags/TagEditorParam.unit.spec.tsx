@@ -263,7 +263,7 @@ describe("TagEditorParam", () => {
         });
         const { setTemplateTag } = setup({ tag });
         await userEvent.type(
-          screen.getByPlaceholderText("CREATED_AT"),
+          screen.getByTestId("field-alias-input"),
           "p.created_at",
         );
         await userEvent.tab();
