@@ -27,7 +27,10 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-type RouteMap = Record<string, { path: string; testPattern: RegExp }>;
+type RouteMap = Record<
+  string,
+  { path: string; testPattern: RegExp; role?: string }
+>;
 
 export const ossRoutes: RouteMap = {
   root: { path: "", testPattern: /site name/i },
@@ -78,7 +81,7 @@ export const ossRoutes: RouteMap = {
 };
 
 export const enterpriseRoutes: RouteMap = {
-  license: { path: "/license", testPattern: /License/i },
+  license: { path: "/license", testPattern: /License/i, role: "heading" },
 };
 
 export const premiumRoutes: RouteMap = {
@@ -100,10 +103,11 @@ export const upsellRoutes: RouteMap = {
 };
 
 export const routeObjtoArray = (map: RouteMap) => {
-  return Object.entries(map).map(([name, { path, testPattern }]) => ({
+  return Object.entries(map).map(([name, { path, testPattern, role }]) => ({
     name,
     path,
     testPattern,
+    role,
   }));
 };
 

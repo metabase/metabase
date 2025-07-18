@@ -42,10 +42,14 @@ describe("Admin Settings Routing - Enterprise with all features", () => {
   describe("renders all the routes", () => {
     it.each(routes)(
       "renders the $name route",
-      async ({ path, testPattern }) => {
+      async ({ path, testPattern, role }) => {
         await setup({ isAdmin: true, initialRoute: path });
         await waitFor(() => {
-          expect(screen.queryAllByText(testPattern).length).toBeGreaterThan(0);
+          expect(
+            role
+              ? screen.getByRole(role, { name: testPattern })
+              : screen.getByText(testPattern),
+          ).toBeInTheDocument();
         });
       },
     );
