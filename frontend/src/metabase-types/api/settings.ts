@@ -586,6 +586,7 @@ export interface EnterpriseSettings extends Settings {
   "jwt-attribute-email": string | null;
   "jwt-attribute-firstname": string | null;
   "jwt-attribute-lastname": string | null;
+  "jwt-attribute-groups": string | null;
   "jwt-group-sync": boolean | null;
   "saml-enabled": boolean;
   "saml-configured": boolean;
