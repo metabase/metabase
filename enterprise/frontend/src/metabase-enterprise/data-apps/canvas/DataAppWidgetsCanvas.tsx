@@ -1,67 +1,97 @@
-import type React from "react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import { DndProvider } from "react-dnd";
+import HTML5Backend from "react-dnd-html5-backend";
 
-import { Box } from "metabase/ui";
+import { Box, Group } from "metabase/ui";
+import { ComponentsSidebar } from "metabase-enterprise/data-apps/DataAppContainer";
 import { WIDGET_COMPONENTS_MAP } from "metabase-enterprise/data-apps/canvas/widgets";
+import type { SettingsSectionKey } from "metabase-enterprise/data-apps/types";
 
-import { DndCanvas } from "../canvas-2/DndCanvas";
-import type { DataAppWidget, WidgetId } from "../types";
+import { Container } from "./DndCanvas";
+import type {
+  DataAppWidget,
+  HandleDropFnArguments,
+  WidgetId,
+} from "./canvas-types";
 
 type DataAppWidgetsCanvasProps = {
   components: DataAppWidget[];
   onComponentsUpdate: (newComponents: DataAppWidget[]) => void;
+
+  activeSettingsSection: SettingsSectionKey | undefined;
+  setActiveSettingsSection: (newValue: SettingsSectionKey | undefined) => void;
 };
 
 // TODO: we should have non-editable canvas for viewing data apps
 export const DataAppWidgetsCanvas = ({
   components,
   onComponentsUpdate,
+  activeSettingsSection,
+  setActiveSettingsSection,
 }: DataAppWidgetsCanvasProps) => {
   const componentsMap = useMemo(() => {
-    const map = new Map();
+    const map = new Map<WidgetId, DataAppWidget>();
     components.forEach((item) => map.set(item.id, item));
     return map;
   }, [components]);
 
-  // const rootSection = componentsMap.get("root");
+  const renderCanvasComponent = useCallback(
+    (id: WidgetId, handleDrop: (params: HandleDropFnArguments) => void) => {
+      const widget = componentsMap.get(id);
 
-  const renderCanvasComponent = (id: WidgetId) => {
-    const widget = componentsMap.get(id);
+      if (!widget) {
+        // eslint-disable-next-line i18next/no-literal-string
+        return <div>UNKNOWN ITEM: {id}</div>;
+      }
 
-    if (!widget) {
-      return <div>UNKNOWN ITEM: {id}</div>;
-    }
+      const WidgetComponent = WIDGET_COMPONENTS_MAP[widget.type];
 
-    const WidgetComponent = WIDGET_COMPONENTS_MAP[widget.type];
-
-    return (
-      <WidgetComponent
-        widget={widget}
-        renderCanvasComponent={renderCanvasComponent}
-      />
-    );
-  };
+      return (
+        <WidgetComponent
+          widget={widget}
+          renderCanvasComponent={renderCanvasComponent}
+          componentsMap={componentsMap}
+          handleDrop={handleDrop}
+        />
+      );
+    },
+    [componentsMap],
+  );
 
   return (
-    <Box
-      style={{
-        flexGrow: 1,
-        backgroundImage:
-          "radial-gradient(circle, var(--mb-color-border) 1px, transparent 0)",
-        backgroundSize: "16px 16px",
-        backgroundRepeat: "repeat",
-      }}
-    >
-      {/*<RootSectionComponent*/}
-      {/*  widget={rootSection}*/}
-      {/*  renderChildren={renderChildren}*/}
-      {/*/>*/}
+    // @ts-expect-error -- some issue with typings for react-dnd
+    <DndProvider backend={HTML5Backend}>
+      <Group
+        bg="var(--mb-color-bg-light)"
+        align="stretch"
+        gap={0}
+        style={{
+          flexGrow: 1,
+        }}
+      >
+        <Box
+          style={{
+            flexGrow: 1,
+            backgroundImage:
+              "radial-gradient(circle, var(--mb-color-border) 1px, transparent 0)",
+            backgroundSize: "16px 16px",
+            backgroundRepeat: "repeat",
+          }}
+        >
+          <Container
+            components={components}
+            componentsMap={componentsMap}
+            onComponentsUpdate={onComponentsUpdate}
+            renderCanvasComponent={renderCanvasComponent}
+          />
+        </Box>
 
-      <DndCanvas
-        components={components}
-        onComponentsUpdate={onComponentsUpdate}
-        renderCanvasComponent={renderCanvasComponent}
-      />
-    </Box>
+        {activeSettingsSection === "components" && (
+          <ComponentsSidebar
+            onClose={() => setActiveSettingsSection(undefined)}
+          />
+        )}
+      </Group>
+    </DndProvider>
   );
 };

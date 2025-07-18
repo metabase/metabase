@@ -31,46 +31,4 @@ export type UpdateDataAppDefinitionRequest = {
   config: DataAppDefinition["config"];
 };
 
-//// canvas stuff
-
-export type WidgetId = string;
-
-type CommonWidgetProps = {
-  id: WidgetId;
-  childrenIds?: WidgetId[];
-};
-
-export type DataAppWidgetSection = CommonWidgetProps & {
-  type: "section";
-  childrenIds: WidgetId[];
-  options: {
-    width: number; // 1 - 3
-  };
-};
-
-export type DataAppWidgetButton = CommonWidgetProps & {
-  type: "button";
-  options: {
-    text: string;
-  };
-};
-
-export type DataAppWidgetText = CommonWidgetProps & {
-  type: "text";
-  options: {
-    text: string;
-  };
-};
-
-export type DataAppWidgetTable = CommonWidgetProps & {
-  type: "table";
-  options: {
-    tableId: number;
-  };
-};
-
-export type DataAppWidget =
-  | DataAppWidgetSection
-  | DataAppWidgetButton
-  | DataAppWidgetText
-  | DataAppWidgetTable;
+export type SettingsSectionKey = "components";

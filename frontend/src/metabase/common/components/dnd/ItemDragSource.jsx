@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { DragSource } from "react-dnd";
+// import { DragSource } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 
 import { dragTypeForItem } from ".";
@@ -28,51 +28,5 @@ class ItemDragSource extends Component {
   }
 }
 
-export default DragSource(
-  (props) => dragTypeForItem(props.item),
-  {
-    canDrag({ isSelected, selected, collection, item }, monitor) {
-      // can't drag if can't write the parent collection
-      if (collection && collection.can_write === false) {
-        return false;
-      }
-
-      const numSelected = selected?.length ?? 0;
-
-      return isSelected || numSelected === 0;
-    },
-    beginDrag(props, monitor, component) {
-      return { item: props.item };
-    },
-    async endDrag({ selected, onDrop }, monitor, component) {
-      if (!monitor.didDrop()) {
-        return;
-      }
-      const { item } = monitor.getItem();
-      const { collection, pinIndex } = monitor.getDropResult();
-      if (item) {
-        const items = selected && selected.length > 0 ? selected : [item];
-        try {
-          if (collection !== undefined) {
-            await Promise.all(
-              items.map((i) => i.setCollection && i.setCollection(collection)),
-            );
-          } else if (pinIndex !== undefined) {
-            await Promise.all(
-              items.map((i) => i.setPinned && i.setPinned(pinIndex)),
-            );
-          }
-
-          onDrop && onDrop();
-        } catch (e) {
-          console.error("There was a problem moving these items: ", e);
-        }
-      }
-    },
-  },
-  (connect, monitor) => ({
-    connectDragSource: connect.dragSource(),
-    connectDragPreview: connect.dragPreview(),
-    isDragging: monitor.isDragging(),
-  }),
-)(ItemDragSource);
+// TODO: fix
+export default ItemDragSource;

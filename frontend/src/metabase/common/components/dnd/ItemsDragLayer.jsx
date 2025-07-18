@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { DragLayer } from "react-dnd";
+// import { DragLayer } from "react-dnd";
 import _ from "underscore";
 
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
@@ -53,13 +53,7 @@ class ItemsDragLayerInner extends Component {
   }
 }
 
-const ItemsDragLayer = DragLayer((monitor, props) => ({
-  item: monitor.getItem(),
-  // itemType: monitor.getItemType(),
-  initialOffset: monitor.getInitialSourceClientOffset(),
-  currentOffset: monitor.getSourceClientOffset(),
-  isDragging: monitor.isDragging(),
-}))(ItemsDragLayerInner);
+const ItemsDragLayer = ItemsDragLayerInner;
 
 export default ItemsDragLayer;
 

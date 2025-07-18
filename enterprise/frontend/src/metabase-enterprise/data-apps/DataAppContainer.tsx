@@ -22,14 +22,13 @@ import {
   useGetDataAppQuery,
   useUpdateDataAppMutation,
 } from "metabase-enterprise/api";
-import { DataAppWidgetsCanvas } from "metabase-enterprise/data-apps/canvas/DataAppWidgetsCanvas";
+import type { DataAppWidget } from "metabase-enterprise/data-apps/canvas/canvas-types";
 
-import { DataAppsComponentsList } from "./DataAppsComponentsList";
+import { DataAppWidgetsCanvas } from "./canvas/DataAppWidgetsCanvas";
+import { DataAppsComponentsList } from "./canvas/DataAppsComponentsList";
 import { DataAppEditSettingsModal } from "./modals/DataAppEditSettingsModal";
 import { DataAppPublishModal } from "./modals/DataAppPublishModal";
-import type { DataAppEditSettings, DataAppWidget } from "./types";
-
-type SettingsSectionKey = "components";
+import type { DataAppEditSettings, SettingsSectionKey } from "./types";
 
 const MOCK_COMPONENTS: DataAppWidget[] = [
   {
@@ -37,6 +36,7 @@ const MOCK_COMPONENTS: DataAppWidget[] = [
     type: "section",
     childrenIds: ["1", "3"],
     options: {
+      direction: "column",
       width: 3,
     },
   },
@@ -45,6 +45,7 @@ const MOCK_COMPONENTS: DataAppWidget[] = [
     type: "section",
     childrenIds: ["2"],
     options: {
+      direction: "column",
       width: 1,
     },
   },
@@ -174,25 +175,13 @@ export const DataAppContainer = ({
             </Button>
           </Group>
         </Group>
-        <Group
-          bg="var(--mb-color-bg-light)"
-          align="stretch"
-          gap={0}
-          style={{
-            flexGrow: 1,
-          }}
-        >
-          <DataAppWidgetsCanvas
-            components={components}
-            onComponentsUpdate={setComponents}
-          />
 
-          {activeSettingsSection === "components" && (
-            <ComponentsSidebar
-              onClose={() => setActiveSettingsSection(undefined)}
-            />
-          )}
-        </Group>
+        <DataAppWidgetsCanvas
+          components={components}
+          onComponentsUpdate={setComponents}
+          activeSettingsSection={activeSettingsSection}
+          setActiveSettingsSection={setActiveSettingsSection}
+        />
       </Stack>
 
       <DataAppEditSettingsModal
