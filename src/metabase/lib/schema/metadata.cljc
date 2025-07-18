@@ -242,13 +242,11 @@
 (mr/def ::column.fingerprint
   [:map
    {:decode/normalize lib.schema.common/normalize-map}
-   [:global {:optional true} [:map-of {:decode/normalize lib.schema.common/normalize-map} :keyword :any]]
+   [:global {:optional true} [:map-of {:decode/normalize lib.schema.common/normalize-map-no-kebab-case} :keyword :any]]
    [:type   {:optional true} [:map-of
-                              {:decode/normalize (fn [m]
-                                                   (when (map? m)
-                                                     (update-keys m keyword)))}
+                              {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
                               ::lib.schema.common/base-type
-                              [:map-of {:decode/normalize lib.schema.common/normalize-map} :keyword :any]]]])
+                              [:map-of {:decode/normalize lib.schema.common/normalize-map-no-kebab-case} :keyword :any]]]])
 
 (def column-visibility-types
   "Possible values for column `:visibility-type`."
@@ -490,13 +488,20 @@
   `:metabase.lib.schema.metadata/result-metadata` (i.e., kebab-cased) maps, or map snake_cased as returned by QP
   metadata, but they should NOT be a mixture of both -- if we mixed them somehow there is a bug in our code."
   [:multi
-   {:dispatch #(boolean (:lib/type %))}
-   [true
+   {:dispatch (fn [col]
+                ;; if this has `:lib/type` we know FOR SURE that it's lib-style metadata; but we should also be able
+                ;; to infer this fact automatically if it's using `kebab-case` keys. `:base-type` is required for both
+                ;; styles so look at that.
+                (let [col (lib.schema.common/normalize-map-no-kebab-case col)]
+                  (if ((some-fn :lib/type :base-type) col)
+                    :lib
+                    :legacy)))}
+   [:lib
     [:merge
      [:ref ::column]
      [:map
       {:error/message "If a Card result metadata column has :lib/type it MUST be a valid kebab-cased :metabase.lib.schema.metadata/column"}]]]
-   [false
+   [:legacy
     [:ref :metabase.legacy-mbql.schema/legacy-column-metadata]]])
 
 (defn- normalize-card-query [query]

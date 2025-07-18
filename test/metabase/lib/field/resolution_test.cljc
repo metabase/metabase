@@ -134,16 +134,18 @@
                                                    :database 1
                                                    :stages   [{:lib/type     :mbql.stage/mbql
                                                                :source-table 2}]}
-                                 :result-metadata [{:id    4
-                                                    :ident "ybTElkkGoYYBAyDRTIiUe"
-                                                    :name  "Field 4"}]}]})
+                                 :result-metadata [{:lib/type  :metadata/column
+                                                    :id        4
+                                                    :ident     "ybTElkkGoYYBAyDRTIiUe"
+                                                    :name      "Field 4"
+                                                    :base-type :type/Integer}]}]})
           query    (lib/query provider {:lib/type :mbql/query
                                         :database 1
                                         :stages   [{:lib/type    :mbql.stage/mbql
                                                     :source-card 3}]})]
       (is (=? [{:lib/type                 :metadata/column
-                :base-type                :type/*
-                :effective-type           :type/*
+                :base-type                :type/Integer
+                :effective-type           :type/Integer
                 :id                       4
                 :name                     "Field 4"
                 :ident                    "ybTElkkGoYYBAyDRTIiUe"
@@ -154,7 +156,7 @@
               (lib/returned-columns query)))
       (is (=? {:lib/type                :metadata/column
                :base-type               :type/Text
-               :effective-type          :type/Text
+               :effective-type          :type/Integer
                :id                      4
                :name                    "Field 4"
                :ident                   "ybTElkkGoYYBAyDRTIiUe"

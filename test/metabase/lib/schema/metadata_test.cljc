@@ -12,12 +12,12 @@
              "effective-type"            "type/Text"
              "field-ref"                 ["field" 61339 nil]
              "fingerprint"               {"global" {"distinct-count" 4, "nil%" 0.0}
-                                          "type"
-                                          {"type/Text" {"average-length" 6.375
-                                                        "percent-email"  0.0
-                                                        "percent-json"   0.0
-                                                        "percent-state"  0.0
-                                                        "percent-url"    0.0}}}
+                                          "type"   {"type/Text"   {"average-length" 6.375
+                                                                   "percent-email"  0.0
+                                                                   "percent-json"   0.0
+                                                                   "percent-state"  0.0
+                                                                   "percent-url"    0.0}
+                                                    "type/Number" {"q1" 1.459}}}
              "id"                        61339
              "lib/breakout?"             true
              "lib/deduplicated-name"     "CATEGORY"
@@ -40,11 +40,12 @@
             :effective-type            :type/Text
             :field-ref                 [:field 61339 nil]
             :fingerprint               {:global {:distinct-count 4, :nil% 0.0}
-                                        :type   {:type/Text {:average-length 6.375
-                                                             :percent-email  0.0
-                                                             :percent-json   0.0
-                                                             :percent-state  0.0
-                                                             :percent-url    0.0}}}
+                                        :type   {:type/Text   {:average-length 6.375
+                                                               :percent-email  0.0
+                                                               :percent-json   0.0
+                                                               :percent-state  0.0
+                                                               :percent-url    0.0}
+                                                 :type/Number {:q1 1.459}}}
             :id                        61339
             :name                      "CATEGORY"
             :position                  3
@@ -60,4 +61,6 @@
             :lib/source                :source/table-defaults
             :lib/source-column-alias   "CATEGORY"
             :lib/type                  :metadata/column}
-           (lib.normalize/normalize ::lib.schema.metadata/column col)))))
+           (lib.normalize/normalize ::lib.schema.metadata/column col)
+           ;; should be able to detect that this is Lib metadata based on the use of `:base-type`
+           (lib.normalize/normalize ::lib.schema.metadata/lib-or-legacy-column (dissoc col "lib/type"))))))
