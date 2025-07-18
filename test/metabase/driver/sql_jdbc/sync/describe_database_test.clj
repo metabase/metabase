@@ -362,3 +362,27 @@
                    (is (some #(= [:setReadOnly true] %) calls))
                    (is (some #(= [:setAutoCommit true] %) calls))
                    (is (some #(= (first %) :setHoldability) calls))))))))))))
+
+(deftest is-conn-open-test
+  (testing "is-conn-open with valid check"
+    (testing "returns true when connection is open and valid"
+      (let [conn (reify Connection
+                   (isClosed [_] false)
+                   (isValid [_ _] true))]
+        (is (true? (sql-jdbc.execute/is-conn-open? conn :check-valid? true)))))
+
+    (testing "returns false when connection is closed"
+      (let [conn (reify Connection
+                   (isClosed [_] true)
+                   (isValid [_ _] true))]
+        (is (false? (sql-jdbc.execute/is-conn-open? conn :check-valid? true)))))
+
+    (testing "closes connection and returns false when connection is open but not valid"
+      (let [close-called? (atom false)
+            conn (reify Connection
+                   (isClosed [_] @close-called?)
+                   (isValid [_ _] false)
+                   (close [_] (reset! close-called? true)))]
+        (is (false? (sql-jdbc.execute/is-conn-open? conn :check-valid? true)))
+        (is (true? @close-called?) "Connection should be closed when invalid")
+        (is (true? (.isClosed conn)))))))
