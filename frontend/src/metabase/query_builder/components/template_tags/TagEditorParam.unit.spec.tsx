@@ -9,7 +9,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { Card, TemplateTag } from "metabase-types/api";
+import type { Card, TemplateTag, TemplateTagType } from "metabase-types/api";
 import {
   createMockCard,
   createMockNativeDatasetQuery,
@@ -250,6 +250,62 @@ describe("TagEditorParam", () => {
         dimension: ["field", PEOPLE.ADDRESS, null],
       });
     }, 40000);
+  });
+
+  describe("field alias", () => {
+    it.each<TemplateTagType>(["dimension", "temporal-unit"])(
+      "should be possible to set a field alias for %s variables",
+      async (type) => {
+        const tag = createMockTemplateTag({
+          type,
+          dimension: ["field", PEOPLE.CREATED_AT, null],
+          "widget-type": type === "dimension" ? "date/all-options" : undefined,
+        });
+        const { setTemplateTag } = setup({ tag });
+        await userEvent.type(
+          screen.getByPlaceholderText("CREATED_AT"),
+          "p.created_at",
+        );
+        await userEvent.tab();
+        expect(setTemplateTag).toHaveBeenCalledWith({
+          ...tag,
+          alias: "p.created_at",
+        });
+      },
+    );
+
+    it.each<TemplateTagType>(["dimension", "temporal-unit"])(
+      "should be possible to remove a field alias for %s variables",
+      async (type) => {
+        const tag = createMockTemplateTag({
+          type,
+          dimension: ["field", PEOPLE.CREATED_AT, null],
+          alias: "p.created_at",
+          "widget-type": type === "dimension" ? "date/all-options" : undefined,
+        });
+        const { setTemplateTag } = setup({ tag });
+        await userEvent.clear(screen.getByPlaceholderText("CREATED_AT"));
+        await userEvent.tab();
+        expect(setTemplateTag).toHaveBeenCalledWith({
+          ...tag,
+          alias: undefined,
+        });
+      },
+    );
+
+    it.each<TemplateTagType>(["text", "number", "date"])(
+      "should not show the field alias input for % variables",
+      (type) => {
+        const tag = createMockTemplateTag({ type });
+        setup({ tag });
+        expect(
+          screen.queryByText("Table and field alias"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByTestId("field-alias-input"),
+        ).not.toBeInTheDocument();
+      },
+    );
   });
 
   describe("tag widget type", () => {
