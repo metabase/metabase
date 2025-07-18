@@ -1,8 +1,13 @@
+/* eslint-env node */
+/* eslint-disable import/no-commonjs */
+
 const path = require("path");
-const config = require("./webpack.config.js");
+
+const config = require("./rspack.main.config");
 
 module.exports = {
   mode: "production",
+  devtool: false,
   entry: {
     color_selector: "./frontend/src/metabase-shared/color_selector.js",
   },

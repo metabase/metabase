@@ -20,7 +20,7 @@ const isDevMode = WEBPACK_BUNDLE !== "production";
 
 const EMBEDDING_SDK_BUNDLE_HOST = process.env.EMBEDDING_SDK_BUNDLE_HOST || "";
 
-// TODO: Reuse babel and css configs from webpack.config.js
+// TODO: Reuse babel and css configs from rspack.config.js
 // Babel:
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",

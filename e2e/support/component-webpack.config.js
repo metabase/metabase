@@ -3,7 +3,7 @@ const path = require("path");
 
 const webpack = require("webpack");
 
-const mainConfig = require("../../webpack.config");
+const mainConfig = require("../../rspack.main.config");
 
 const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
 

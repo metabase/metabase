@@ -39,7 +39,7 @@ const sdkPackageTemplateJson = fs.readFileSync(
 const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
 const EMBEDDING_SDK_VERSION = sdkPackageTemplateJsonContent.version;
 
-// TODO: Reuse babel and css configs from webpack.config.js
+// TODO: Reuse babel and css configs from rspack.config.js
 // Babel:
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
