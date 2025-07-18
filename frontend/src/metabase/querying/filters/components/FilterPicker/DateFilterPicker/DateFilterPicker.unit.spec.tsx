@@ -38,6 +38,7 @@ function setup({
 
   renderWithProviders(
     <DateFilterPicker
+      autoFocus
       query={query}
       stageIndex={STAGE_INDEX}
       column={column}

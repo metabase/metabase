@@ -59,6 +59,7 @@ function setup({
 
   renderWithProviders(
     <CoordinateFilterPicker
+      autoFocus
       query={query}
       stageIndex={0}
       column={column}

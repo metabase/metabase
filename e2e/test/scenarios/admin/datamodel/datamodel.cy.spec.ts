@@ -3058,6 +3058,46 @@ describe("scenarios > admin > datamodel", () => {
         PreviewSection.get().findByText("No data to show").should("be.visible");
       });
     });
+
+    it("should not auto-focus inputs in filtering preview", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.PRODUCT_ID,
+      });
+
+      FieldSection.getPreviewButton().click();
+      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+
+      PreviewSection.get()
+        .findByPlaceholderText("Enter an ID")
+        .should("be.visible")
+        .and("not.be.focused");
+
+      FieldSection.getFilteringInput().click();
+      H.popover().findByText("A list of all values").click();
+
+      PreviewSection.get()
+        .findByPlaceholderText("Search the list")
+        .should("be.visible")
+        .and("not.be.focused");
+
+      TableSection.clickField("Tax");
+
+      PreviewSection.get()
+        .findByPlaceholderText("Min")
+        .should("be.visible")
+        .and("not.be.focused");
+
+      FieldSection.getFilteringInput().click();
+      H.popover().findByText("Search box").click();
+
+      PreviewSection.get()
+        .findByPlaceholderText("Enter a number")
+        .should("be.visible")
+        .and("not.be.focused");
+    });
   });
 
   describe("Error handling", { tags: "@external" }, () => {

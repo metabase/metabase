@@ -21,6 +21,7 @@ import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
 
 export function CoordinateFilterPicker({
+  autoFocus,
   query,
   stageIndex,
   column,
@@ -108,6 +109,7 @@ export function CoordinateFilterPicker({
           />
         )}
         <CoordinateValueInput
+          autoFocus={autoFocus}
           query={query}
           stageIndex={stageIndex}
           column={column}
@@ -129,6 +131,7 @@ export function CoordinateFilterPicker({
 }
 
 interface CoordinateValueInputProps {
+  autoFocus: boolean;
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
@@ -139,6 +142,7 @@ interface CoordinateValueInputProps {
 }
 
 function CoordinateValueInput({
+  autoFocus,
   query,
   stageIndex,
   column,
@@ -155,7 +159,7 @@ function CoordinateValueInput({
           stageIndex={stageIndex}
           column={column}
           values={values.filter(isNotNull)}
-          autoFocus
+          autoFocus={autoFocus}
           comboboxProps={COMBOBOX_PROPS}
           onChange={onChange}
         />
@@ -169,7 +173,7 @@ function CoordinateValueInput({
         <NumberFilterInput
           value={values[0]}
           placeholder={t`Enter a number`}
-          autoFocus
+          autoFocus={autoFocus}
           w="100%"
           aria-label={t`Filter value`}
           onChange={(newValue) => onChange([newValue])}
@@ -184,7 +188,7 @@ function CoordinateValueInput({
         <NumberFilterInput
           value={values[0]}
           placeholder={t`Min`}
-          autoFocus
+          autoFocus={autoFocus}
           onChange={(newValue) => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>
@@ -204,7 +208,7 @@ function CoordinateValueInput({
           label={t`Upper latitude`}
           value={values[0]}
           placeholder="90"
-          autoFocus
+          autoFocus={autoFocus}
           onChange={(newValue) =>
             onChange([newValue, values[1], values[2], values[3]])
           }
