@@ -274,6 +274,24 @@ describe("TagEditorParam", () => {
       },
     );
 
+    it("should trim the field alias", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PEOPLE.CREATED_AT, null],
+        "widget-type": "date/all-options",
+      });
+      const { setTemplateTag } = setup({ tag });
+      await userEvent.type(
+        screen.getByTestId("field-alias-input"),
+        " p.created_at ",
+      );
+      await userEvent.tab();
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        alias: "p.created_at",
+      });
+    });
+
     it.each<TemplateTagType>(["dimension", "temporal-unit"])(
       "should be possible to remove a field alias for %s variables",
       async (type) => {
