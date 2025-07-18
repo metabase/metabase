@@ -16,13 +16,10 @@
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
-<<<<<<< HEAD
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
-=======
    [metabase.lib.schema.info :as lib.schema.info]
->>>>>>> 9753a8a64d9 (Ensure postgres downloads don't OOM (#60807))
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.limit :as limit]
@@ -738,24 +735,21 @@
 
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
-<<<<<<< HEAD
-  {:added "0.35.0", :arglists '([driver query context respond] [driver sql params max-rows context respond])}
-  ([driver {{sql :query, params :params} :native, :as outer-query} context respond]
-   {:pre [(string? sql) (seq sql)]}
-   (let [database (lib.metadata/database (qp.store/metadata-provider))
-         sql      (if (get-in database [:details :include-user-id-and-hash] true)
-                    (->> (qp.util/query->remark driver outer-query)
-                         (inject-remark driver sql))
-                    sql)
-         max-rows (limit/determine-query-max-rows outer-query)]
-     (execute-reducible-query driver sql params max-rows context respond)))
-
-  ([driver sql params max-rows _context respond]
-   (do-with-connection-with-options
-    driver
-    (lib.metadata/database (qp.store/metadata-provider))
-    {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
-    (fn [^Connection conn]
+  {:added "0.35.0", :arglists '([driver query context respond])}
+  [driver {{sql :query, params :params} :native, :as outer-query} _context respond]
+  {:pre [(string? sql) (seq sql)]}
+  (let [database (lib.metadata/database (qp.store/metadata-provider))
+        sql      (if (get-in database [:details :include-user-id-and-hash] true)
+                   (->> (qp.util/query->remark driver outer-query)
+                        (inject-remark driver sql))
+                   sql)
+        max-rows (limit/determine-query-max-rows outer-query)]
+    (do-with-connection-with-options
+     driver
+     (lib.metadata/database (qp.store/metadata-provider))
+     {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))
+      :download? (download? (-> outer-query :info :context))}
+     (fn [^Connection conn]
       (with-open [stmt          (statement-or-prepared-statement driver conn sql params qp.pipeline/*canceled-chan*)
                   ^ResultSet rs (try
                                   (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
@@ -784,51 +778,7 @@
                                      (name driver)))
                         (catch Throwable _
                           (log/warn "Statement cancelation failed."))))))))))))
-=======
-  {:added "0.35.0", :arglists '([driver query context respond])}
-  [driver {{sql :query, params :params} :native, :as outer-query} _context respond]
-  {:pre [(string? sql) (seq sql)]}
-  (let [database (driver-api/database (driver-api/metadata-provider))
-        sql      (if (get-in database [:details :include-user-id-and-hash] true)
-                   (->> (driver-api/query->remark driver outer-query)
-                        (inject-remark driver sql))
-                   sql)
-        max-rows (driver-api/determine-query-max-rows outer-query)]
-    (do-with-connection-with-options
-     driver
-     (driver-api/database (driver-api/metadata-provider))
-     {:session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))
-      :download? (download? (-> outer-query :info :context))}
-     (fn [^Connection conn]
-       (with-open [stmt          (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
-                   ^ResultSet rs (try
-                                   (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
-                                   (catch Throwable e
-                                     (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                     {:driver driver
-                                                      :sql    (str/split-lines (driver/prettify-native-form driver sql))
-                                                      :params params
-                                                      :type   driver-api/qp.error-type.invalid-query}
-                                                     e))))]
-         (let [rsmeta           (.getMetaData rs)
-               results-metadata {:cols (column-metadata driver rsmeta)}]
-           (try (respond results-metadata (reducible-rows driver rs rsmeta (driver-api/canceled-chan)))
-                ;; Following cancels the statment on the dbms side.
-                ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
-                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statment is still
-                ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
-                ;; It also handles situation where query is canceled through [[driver-api/canceled-chan]] (#41448).
-                (finally
-                  ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
-                  ;;       It should be removed afterwards!
-                  (when-not (= :vertica driver)
-                    (try (.cancel stmt)
-                         (catch SQLFeatureNotSupportedException _
-                           (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
-                                      (name driver)))
-                         (catch Throwable _
-                           (log/warn "Statement cancelation failed."))))))))))))
->>>>>>> 9753a8a64d9 (Ensure postgres downloads don't OOM (#60807))
+
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the
