@@ -9,6 +9,7 @@
    "da"
    "de"
    "en"
+   "eo"
    "es"
    "fa"
    "fi"
