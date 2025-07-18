@@ -55,29 +55,69 @@ const VisualizationNode = ({ node }: { node: any }) => {
 
         const { model, id } = node.attrs;
         console.log('Fetching data for:', { model, id });
+        console.log('Full node attrs:', node.attrs);
 
-        // Skip dashboards for now
+                // Skip dashboards for now
         if (model === 'dashboard') {
           console.log('Skipping dashboard');
           setError('Dashboard visualizations not supported yet');
           return;
         }
 
-        // Fetch card data from the API
-        console.log('Fetching card data from:', `/api/card/${id}`);
-        const cardResponse = await fetch(`/api/card/${id}`);
-        console.log('Card response status:', cardResponse.status);
+        let card;
 
-        if (!cardResponse.ok) {
-          throw new Error(`Failed to fetch card: ${cardResponse.statusText}`);
+        if (model === 'table') {
+          // For tables, we need to fetch table metadata and create a card-like object
+          console.log('Fetching table metadata from:', `/api/table/${id}`);
+          const tableResponse = await fetch(`/api/table/${id}`);
+          console.log('Table response status:', tableResponse.status);
+
+          if (!tableResponse.ok) {
+            throw new Error(`Failed to fetch table: ${tableResponse.statusText}`);
+          }
+
+          const table = await tableResponse.json();
+          console.log('Table data:', table);
+
+          // Create a card-like object for the table
+          card = {
+            id: table.id,
+            name: table.display_name || table.name,
+            display: 'table',
+            database_id: table.db_id,
+            dataset_query: {
+              database: table.db_id,
+              type: 'query',
+              query: {
+                'source-table': table.id
+              }
+            },
+            visualization_settings: {
+              'table.pivot': false,
+              'table.column_formatting': []
+            }
+          };
+        } else {
+          // For cards, fetch card data from the API
+          console.log('Fetching card data from:', `/api/card/${id}`);
+          const cardResponse = await fetch(`/api/card/${id}`);
+          console.log('Card response status:', cardResponse.status);
+
+          if (!cardResponse.ok) {
+            throw new Error(`Failed to fetch card: ${cardResponse.statusText}`);
+          }
+
+          card = await cardResponse.json();
+          console.log('Card data:', card);
+          console.log('Card display type:', card.display);
+          console.log('Card dataset_query:', card.dataset_query);
         }
 
-        const card = await cardResponse.json();
-        console.log('Card data:', card);
         setCardData(card);
 
-                // For card and table types, also fetch the query result
-        if (model === 'card' || model === 'table') {
+                                // Handle different model types
+        if (model === 'card') {
+          // For saved questions/cards, fetch the query result
           console.log('Fetching query results from:', `/api/card/${id}/query`);
           const queryResponse = await fetch(`/api/card/${id}/query`, {
             method: 'POST',
@@ -103,9 +143,50 @@ const VisualizationNode = ({ node }: { node: any }) => {
             hasRows: !!queryData.data?.rows,
             colsLength: queryData.data?.cols?.length,
             rowsLength: queryData.data?.rows?.length,
-            topLevelKeys: Object.keys(queryData)
+            topLevelKeys: Object.keys(queryData),
+            hasTopLevelCols: !!queryData.cols,
+            hasTopLevelRows: !!queryData.rows,
+            topLevelColsLength: queryData.cols?.length,
+            topLevelRowsLength: queryData.rows?.length
           });
           setQueryResult(queryData);
+        } else if (model === 'table') {
+          // For raw tables, we need to create a simple table query using the dataset endpoint
+          console.log('Creating table query for table ID:', id);
+          const tableQueryResponse = await fetch(`/api/dataset`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              database: card.database_id,
+              type: 'query',
+              query: {
+                'source-table': id,
+                limit: 100
+              }
+            })
+          });
+
+          if (!tableQueryResponse.ok) {
+            throw new Error(`Failed to fetch table data: ${tableQueryResponse.statusText}`);
+          }
+
+          const tableData = await tableQueryResponse.json();
+          console.log('Table data:', tableData);
+          console.log('Table data structure:', {
+            hasData: !!tableData.data,
+            hasCols: !!tableData.data?.cols,
+            hasRows: !!tableData.data?.rows,
+            colsLength: tableData.data?.cols?.length,
+            rowsLength: tableData.data?.rows?.length,
+            topLevelKeys: Object.keys(tableData),
+            hasTopLevelCols: !!tableData.cols,
+            hasTopLevelRows: !!tableData.rows,
+            topLevelColsLength: tableData.cols?.length,
+            topLevelRowsLength: tableData.rows?.length
+          });
+          setQueryResult(tableData);
         }
       } catch (err) {
         console.error('Error fetching card data:', err);
@@ -203,8 +284,48 @@ const VisualizationNode = ({ node }: { node: any }) => {
     );
   }
 
-  // For cards and tables, render the actual visualization
+    // For cards and tables, render the actual visualization
   if ((node.attrs.model === 'card' || node.attrs.model === 'table') && queryResult && cardData) {
+    const displayType = node.attrs.model === 'table' ? 'table' : cardData.display;
+
+        const dataToSpread = queryResult.data || queryResult;
+    console.log('Data to spread:', dataToSpread);
+    console.log('Data to spread structure:', {
+      hasData: !!dataToSpread.data,
+      hasCols: !!dataToSpread.cols,
+      hasRows: !!dataToSpread.rows,
+      topLevelKeys: Object.keys(dataToSpread),
+      colsLength: dataToSpread.cols?.length,
+      rowsLength: dataToSpread.rows?.length
+    });
+
+    const rawSeries = [{
+      ...dataToSpread,  // Spread the query result data
+      card: {
+        ...cardData,
+        display: displayType,
+        visualization_settings: {
+          ...cardData.visualization_settings,
+          ...(node.attrs.model === 'table' && {
+            'table.pivot': false,
+            'table.column_formatting': []
+          })
+        }
+      },
+      started_at: new Date().toISOString()
+    }];
+
+    console.log('About to render visualization with rawSeries:', rawSeries);
+    console.log('Data structure check:', {
+      hasCard: !!rawSeries[0].card,
+      hasData: !!rawSeries[0].data,
+      hasCols: !!rawSeries[0].cols,
+      hasRows: !!rawSeries[0].rows,
+      displayType: rawSeries[0].card.display,
+      colsCount: rawSeries[0].cols?.length,
+      rowsCount: rawSeries[0].rows?.length
+    });
+
     return (
       <Box
         style={{
@@ -221,20 +342,16 @@ const VisualizationNode = ({ node }: { node: any }) => {
           color="dimmed"
           style={{ marginBottom: "1rem", fontWeight: "bold" }}
         >
-          {node.attrs.name} ({node.attrs.model})
+          {node.attrs.name} ({node.attrs.model}) - Display: {displayType}
         </Text>
-        <Box style={{ height: "400px", width: "100%" }}>
+                <Box style={{ height: "400px", width: "100%" }}>
           <Visualization
-            rawSeries={[{
-              card: cardData,
-              data: queryResult.data || queryResult,
-              started_at: new Date().toISOString()
-            }]}
+            rawSeries={rawSeries}
             isDashboard={false}
             width={600}
             height={400}
-            isEditing={false}
-            isQueryBuilder={false}
+            showTitle={false}
+            handleVisualizationClick={() => {}}
           />
         </Box>
       </Box>
@@ -466,6 +583,7 @@ const ReportEditor = () => {
           items: ({ query }: any) => {
             if (query.length < 2) return [];
             setSearchQuery(query);
+            console.log('Search results:', searchResults?.data);
             return searchResults?.data || [];
           },
           render: () => {
