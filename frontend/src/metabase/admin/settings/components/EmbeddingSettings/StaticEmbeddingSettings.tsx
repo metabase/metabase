@@ -1,11 +1,13 @@
 import { t } from "ttag";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { useSetting } from "metabase/common/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
 import { SettingTitle } from "../SettingHeader";
@@ -34,6 +36,9 @@ export function StaticEmbeddingSettings() {
           </Box>
         )}
       </SettingsSection>
+      <ErrorBoundary>
+        <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
+      </ErrorBoundary>
     </SettingsPageWrapper>
   );
 }

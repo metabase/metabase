@@ -15,7 +15,7 @@ describe("ContentTranslationConfiguration", () => {
         screen.getByTestId("content-translation-configuration"),
       ).toBeInTheDocument();
       expect(
-        screen.getByText("Localizing user-generated content"),
+        screen.getByText("Translate user-generated content and data assets"),
       ).toBeInTheDocument();
     });
 
@@ -24,7 +24,7 @@ describe("ContentTranslationConfiguration", () => {
 
       expect(
         screen.getByText(
-          "You can upload a translation dictionary to handle user-generated strings, like dashboard names.",
+          "Upload a translation dictionary to translate user-generated strings like dashboard names and data assets like table and column names.",
         ),
       ).toBeInTheDocument();
       expect(
