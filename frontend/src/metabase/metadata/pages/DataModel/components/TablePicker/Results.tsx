@@ -4,6 +4,7 @@ import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
+import { MassTableVisibilityToggle } from "./MassTableVisibilityToggle";
 import S from "./Results.module.css";
 import { TableVisibilityToggle } from "./TableVisibilityToggle";
 import type { FlatItem, TreePath } from "./types";
@@ -97,6 +98,7 @@ export function Results({
           } = item;
           const isActive = type === "table" && value?.tableId === activeTableId;
           const parentIndex = items.findIndex((item) => item.key === parent);
+          const children = items.filter((item) => item.parent === key);
 
           const handleItemSelect = (open?: boolean) => {
             if (disabled) {
@@ -241,6 +243,19 @@ export function Results({
                   <TableVisibilityToggle
                     className={S.visibilityToggle}
                     table={item.table}
+                  />
+                )}
+
+              {type === "schema" &&
+                value?.schemaName !== undefined &&
+                !disabled && (
+                  <MassTableVisibilityToggle
+                    className={S.visibilityToggle}
+                    tables={children.flatMap((child) =>
+                      child.type === "table" && child.table != null
+                        ? [child.table]
+                        : [],
+                    )}
                   />
                 )}
             </Flex>
