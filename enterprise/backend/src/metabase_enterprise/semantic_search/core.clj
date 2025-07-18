@@ -18,12 +18,14 @@
   "Enterprise implementation of semantic search results."
   :feature :semantic-search
   [search-ctx]
+  (when-not @semantic.db/data-source (semantic.db/init-db!))
   (semantic.index/query-index search-ctx))
 
 (defenterprise update-index!
   "Enterprise implementation of semantic index updating."
   :feature :semantic-search
   [document-reducible]
+  (when-not @semantic.db/data-source (semantic.db/init-db!))
   (let [documents (vec document-reducible)]
     (when (seq documents)
       (semantic.index/upsert-index! documents))))
@@ -32,6 +34,7 @@
   "Enterprise implementation of semantic index deletion."
   :feature :semantic-search
   [model ids]
+  (when-not @semantic.db/data-source (semantic.db/init-db!))
   (semantic.index/delete-from-index! model ids))
 
 ;; TODO: add reindexing logic when index is detected as stale
@@ -48,11 +51,11 @@
   :feature :semantic-search
   [searchable-documents _opts]
   ;; TODO:implement reindexing without dropping the table
-  (when-not @semantic.db/data-source
-    (semantic.db/init-db!))
+  (when-not @semantic.db/data-source (semantic.db/init-db!))
   (semantic.index/create-index-table! {:force-reset? true})
   (semantic.index/populate-index! (into [] searchable-documents)))
 
+;; TODO: implement
 (defenterprise reset-tracking!
   "Enterprise implementation of semantic search tracking reset."
   :feature :semantic-search
