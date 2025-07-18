@@ -308,8 +308,8 @@
               (old-method-impl driver database session-timezone)))))
       (datasource-with-diagnostic-info! driver db-or-id-or-spec))))
 
-(def ^:private ^:dynamic ^{:added "0.47.0"} *connection-recursion-depth*
-  "In recursive calls to [[do-with-connection-with-options]] we don't want to set options AGAIN, because this might
+#_(def ^:private ^:dynamic ^{:added "0.47.0"} *connection-recursion-depth*
+    "In recursive calls to [[do-with-connection-with-options]] we don't want to set options AGAIN, because this might
   break things. For example in a top-level `:write?` call, we might disable auto-commit and run things in a
   transaction; a read-only call inside of this transaction block should not go in and change the connection to be
   auto-commit. So only set options at the top-level call, and use this to keep track of whether we're at the top level
@@ -318,14 +318,20 @@
   This gets incremented inside [[do-with-resolved-connection]], so the top level call with have a depth of `0`, a
   nested call will get `1`, and so forth. This is done this way and inside [[do-with-resolved-connection]]
   and [[set-default-connection-options!]] so drivers that implement "
-  -1)
+    -1)
 
-(defn recursive-connection?
-  "Whether or not we are in a recursive call to [[do-with-connection-with-options]]. If we are, you shouldn't set
+#_(defn recursive-connection?
+    "Whether or not we are in a recursive call to [[do-with-connection-with-options]]. If we are, you shouldn't set
   Connection options AGAIN, as that may override previous options that we don't want to override."
-  {:added "0.47.0"}
-  []
-  (pos? *connection-recursion-depth*))
+    {:added "0.47.0"}
+    []
+    (pos? *connection-recursion-depth*))
+
+(def ^:dynamic *db-conn*
+  "When recursive/nested calls to [[do-with-connection-with-options]] are made with a db or id (not a spec),
+   we want to continue using the same connection to ensure that the correct options have been set.
+   To ensure we are using the same connection we bind the connection from the top-level call to this var."
+  nil)
 
 (mu/defn do-with-resolved-connection
   "Execute
@@ -340,10 +346,21 @@
    db-or-id-or-spec :- [:or :int :map]
    options          :- ConnectionOptions
    f                :- fn?]
-  (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
-    (if-let [conn (:connection db-or-id-or-spec)]
-      (f conn)
-      (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
+  (cond
+    (:connection db-or-id-or-spec)
+    (let [conn (:connection db-or-id-or-spec)]
+      (f conn))
+
+    (not (u/id db-or-id-or-spec))
+    (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
+      (f conn))
+
+    *db-conn*
+    (f *db-conn*)
+
+    :else
+    (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
+      (binding [*db-conn* conn]
         (f conn)))))
 
 (mu/defn set-default-connection-options!
@@ -354,7 +371,8 @@
    db-or-id-or-spec
    ^Connection conn                                       :- (driver-api/instance-of-class Connection)
    {:keys [^String session-timezone write?], :as options} :- ConnectionOptions]
-  (when-not (recursive-connection?)
+  (when-not false
+    #_(recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
