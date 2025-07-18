@@ -8,6 +8,7 @@ import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { Box, Flex, Skeleton } from "metabase/ui";
+import { isCartesianChart } from "metabase/visualizations";
 import {
   getDataSources,
   getDatasets,
@@ -137,8 +138,11 @@ export function DatasetsList({
         models: ["card", "dataset", "metric"],
         include_dashboard_questions: true,
         include_metadata: true,
-        has_temporal_dim: timeDimensions.length > 0,
-        non_temporal_dim_ids: JSON.stringify(nonTemporalDimIds),
+        ...(visualizationType &&
+          isCartesianChart(visualizationType) && {
+            has_temporal_dim: timeDimensions.length > 0,
+            non_temporal_dim_ids: JSON.stringify(nonTemporalDimIds),
+          }),
       },
       {
         skip: muted,
