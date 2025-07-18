@@ -31,7 +31,7 @@ export const useMetadataToasts = () => {
   const sendUndoToast = useCallback(
     (error: unknown) => {
       if (error) {
-        sendErrorToast(t`Failed to undo`);
+        sendErrorToast(t`Couldn't undo`);
       } else {
         sendSuccessToast(t`Change undone`);
       }
