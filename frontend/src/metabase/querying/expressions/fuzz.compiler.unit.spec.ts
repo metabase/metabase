@@ -29,7 +29,7 @@ function compile(
 }
 
 beforeAll(() => {
-  console.warn = jest.fn();
+  console.warn = () => undefined;
 });
 
 describe("metabase/querying/expressions/compiler", () => {
