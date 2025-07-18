@@ -356,7 +356,7 @@ describe("TagEditorParam", () => {
 
   describe("multi select", () => {
     it.each<TemplateTagType>(["text", "number"])(
-      "should allow to make %s variables as multi-value",
+      "should support single and multiple values with %s variables",
       async (type) => {
         const tag = createMockTemplateTag({ type });
         setup({ tag });
@@ -368,7 +368,7 @@ describe("TagEditorParam", () => {
       },
     );
 
-    it("should allow to make field filters as multi-value", () => {
+    it("should support single and multiple values with field filters", () => {
       const tag = createMockTemplateTag({
         type: "dimension",
         dimension: ["field", PEOPLE.SOURCE, null],
@@ -379,7 +379,7 @@ describe("TagEditorParam", () => {
       expect(queryIcon("info_filled")).not.toBeInTheDocument();
     });
 
-    it("should not allow to make date variables as multi-value", () => {
+    it("should not support single and multiple values with date variables", () => {
       const tag = createMockTemplateTag({ type: "date" });
       setup({ tag });
       expect(
@@ -388,7 +388,7 @@ describe("TagEditorParam", () => {
       expect(screen.queryByLabelText("A single value")).not.toBeInTheDocument();
     });
 
-    it("should not allow to make temporal unit variables as multi-value", () => {
+    it("should not support single and multiple values with time grouping", () => {
       const tag = createMockTemplateTag({
         type: "temporal-unit",
         dimension: ["field", PEOPLE.CREATED_AT, null],
