@@ -54,6 +54,8 @@ export const useInitData = ({
       return;
     }
 
+    registerVisualizationsOnce();
+
     const isAuthUninitialized =
       store && store.getState().sdk.loginStatus.status === "uninitialized";
 
@@ -62,8 +64,6 @@ export const useInitData = ({
     }
 
     hasBeenInitialized.current = true;
-
-    registerVisualizationsOnce();
 
     dispatch(initAuth(authConfig));
 
