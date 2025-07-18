@@ -122,7 +122,7 @@ export const SelectEmbedOptionsStep = () => {
           )}
         </Group>
 
-        {isDashboardOrInteractiveQuestion && (
+        {isQuestionOrDashboardEmbed && (
           <>
             <Divider mb="md" />
 

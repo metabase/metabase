@@ -120,6 +120,7 @@ const SdkIframeEmbedView = ({
           questionId={settings.questionId}
           height="100%"
           initialSqlParameters={settings.initialSqlParameters}
+          title={settings.withTitle}
           key={rerenderKey}
         />
       ),

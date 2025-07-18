@@ -3,7 +3,7 @@ import { useSearchParam } from "react-use";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
-import { Box } from "metabase/ui";
+import { Card } from "metabase/ui";
 import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -84,8 +84,11 @@ export const SdkIframeEmbedPreview = () => {
   }, [settings, isIframeLoaded]);
 
   return (
-    <div>
-      <Box id="iframe-embed-container" data-iframe-loaded={isIframeLoaded} />
-    </div>
+    <Card
+      id="iframe-embed-container"
+      data-iframe-loaded={isIframeLoaded}
+      bg={settings.theme?.colors?.background}
+      h="100%"
+    />
   );
 };

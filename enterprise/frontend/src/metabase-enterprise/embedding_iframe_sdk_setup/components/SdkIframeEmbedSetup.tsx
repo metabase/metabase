@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import "react-resizable/css/styles.css";
 
-import { Box, Button, Card, Group, Stack } from "metabase/ui";
+import { Box, Button, Group } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { useSdkIframeEmbedNavigation } from "../hooks";
@@ -56,11 +56,7 @@ const SdkIframeEmbedSetupContent = () => {
       </SidebarResizer>
 
       <Box className={S.PreviewPanel}>
-        <Card p="md" h="100%">
-          <Stack h="100%">
-            <SdkIframeEmbedPreview />
-          </Stack>
-        </Card>
+        <SdkIframeEmbedPreview />
       </Box>
     </Box>
   );
