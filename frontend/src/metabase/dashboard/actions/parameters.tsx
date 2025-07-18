@@ -55,6 +55,7 @@ import {
   getDashboard,
   getDashboardBeforeEditing,
   getDashboardComplete,
+  getDashboardHeaderParameters,
   getDashboardId,
   getDashcardList,
   getDashcards,
@@ -72,6 +73,7 @@ import {
   hasInlineParameters,
   isDashcardInlineParameter,
   isQuestionDashCard,
+  setDashboardHeaderParameterIndex,
   supportsInlineParameters,
 } from "../utils";
 
@@ -922,21 +924,22 @@ export const setParameterIndex = createThunkAction(
       return;
     }
 
-    const parameterIndex = _.findIndex(
-      dashboard.parameters,
-      (p) => p.id === parameterId,
+    const headerParameters = getDashboardHeaderParameters(getState());
+    const headerParameterIds = headerParameters.map((p) => p.id);
+
+    dispatch(
+      setDashboardAttributes({
+        id: dashboard.id,
+        attributes: {
+          parameters: setDashboardHeaderParameterIndex(
+            dashboard.parameters,
+            headerParameterIds,
+            parameterId,
+            index,
+          ),
+        },
+      }),
     );
-    if (parameterIndex >= 0) {
-      const parameters = dashboard.parameters.slice();
-      parameters.splice(index, 0, parameters.splice(parameterIndex, 1)[0]);
-      dispatch(
-        setDashboardAttributes({
-          id: dashboard.id,
-          attributes: { parameters },
-        }),
-      );
-    }
-    return { id: parameterId, index };
   },
 );
 
