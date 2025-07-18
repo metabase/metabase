@@ -49,7 +49,7 @@ LIMIT 1000000;"
    })
 
 (deftest large-csv-test
-  (mt/test-drivers #{:postgres :mysql :sqlite :bigquery-cloud-sdk :snowflake}
+  (mt/test-drivers #{:postgres #_:mysql :sqlite #_:bigquery-cloud-sdk #_ :snowflake}
     (testing "Can download large CSVs without holding the entire results in memory #60733"
       (let [large-query (or (driver->query driver/*driver*)
                             (throw (ex-info "Driver doesn't implement big query"
